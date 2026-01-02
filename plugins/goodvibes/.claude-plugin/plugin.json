@@ -11,7 +11,16 @@
   "license": "MIT",
   "keywords": ["fullstack", "development", "mcp", "agents", "skills"],
   "commands": "./commands/",
-  "agents": "./agents/",
+  "agents": [
+    "./agents/factory.md",
+    "./agents/skill-creator.md",
+    "./agents/webdev/backend-engineer.md",
+    "./agents/webdev/content-platform.md",
+    "./agents/webdev/devops-deployer.md",
+    "./agents/webdev/frontend-architect.md",
+    "./agents/webdev/fullstack-integrator.md",
+    "./agents/webdev/test-engineer.md"
+  ],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
