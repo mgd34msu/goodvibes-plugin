@@ -1,0 +1,69 @@
+name: fetch_docs
+version: "1.0.0"
+description: |
+  Fetch current documentation for a library or framework.
+  Retrieves API references, guides, and migration notes.
+  Supplements static skill knowledge with live data.
+
+mcp:
+  server: goodvibes-tools
+  method: fetch_docs
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    library:
+      type: string
+      description: "Library or framework name"
+    topic:
+      type: string
+      description: "Specific topic or API to look up"
+    version:
+      type: string
+      description: "Specific version (default: latest)"
+      default: "latest"
+    format:
+      type: string
+      enum: ["summary", "full", "api"]
+      description: "Level of detail"
+      default: "summary"
+  required:
+    - library
+
+output_schema:
+  type: object
+  properties:
+    library: { type: string }
+    version: { type: string }
+    content:
+      type: string
+      description: "Documentation content"
+    api_reference:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          signature: { type: string }
+          description: { type: string }
+    source_url: { type: string }
+    last_updated: { type: string }
+
+examples:
+  - description: "Fetch Prisma schema docs"
+    input:
+      library: "prisma"
+      topic: "schema relations"
+      version: "latest"
+      format: "summary"
+    output:
+      library: "prisma"
+      version: "5.22.0"
+      content: "Relations in Prisma schema define connections between models..."
+      api_reference:
+        - name: "@relation"
+          signature: "@relation(fields: [], references: [])"
+          description: "Defines a relation between two models"
+      source_url: "https://www.prisma.io/docs/concepts/components/prisma-schema/relations"
+      last_updated: "2026-01-01"

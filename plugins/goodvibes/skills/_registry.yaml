@@ -1,0 +1,4807 @@
+version: 1.0.0
+generated: '2026-01-02T21:54:14.396Z'
+total: 150
+categories:
+  common:
+    development:
+      _items:
+        - name: debugging
+          path: common/development/debugging
+          description: >-
+            Analyzes stack traces, identifies log patterns, provides error solutions, and guides performance profiling,
+            memory debugging, and distributed tracing. Use when debugging errors, analyzing logs, profiling performance,
+            detecting memory leaks, or tracing distributed systems.
+          triggers: &ref_0
+            - debugging
+            - analyzes
+            - stack
+            - traces
+            - identifies
+            - log
+            - patterns
+            - provides
+            - error
+            - solutions
+            - guides
+            - performance
+            - profiling
+            - memory
+            - distributed
+            - tracing
+            - errors
+            - analyzing
+            - logs
+            - detecting
+            - leaks
+            - systems
+        - name: project-understanding
+          path: common/development/project-understanding
+          description: >-
+            Analyzes codebases to map architecture, dependencies, complexity metrics, and data flows for rapid
+            onboarding. Use when exploring new repos, understanding project layout, analyzing dependencies, measuring
+            code complexity, or preparing codebase documentation.
+          triggers: &ref_1
+            - project
+            - understanding
+            - analyzes
+            - codebases
+            - map
+            - architecture
+            - dependencies
+            - complexity
+            - metrics
+            - data
+            - flows
+            - rapid
+            - onboarding
+            - exploring
+            - new
+            - repos
+            - layout
+            - analyzing
+            - measuring
+            - code
+            - preparing
+            - codebase
+            - documentation
+        - name: refactoring
+          path: common/development/refactoring
+          description: >-
+            Identifies code smells, applies design patterns, guides migrations, and performs
+            security/performance/accessibility refactoring. Use when improving code quality, modernizing codebases,
+            applying design patterns, migrating to TypeScript, or extracting microservices.
+          triggers: &ref_2
+            - refactoring
+            - identifies
+            - code
+            - smells
+            - applies
+            - design
+            - patterns
+            - guides
+            - migrations
+            - performs
+            - security
+            - performance
+            - accessibility
+            - improving
+            - quality
+            - modernizing
+            - codebases
+            - applying
+            - migrating
+            - typescript
+            - extracting
+            - microservices
+    quality:
+      _items:
+        - name: code-quality
+          path: common/quality/code-quality
+          description: >-
+            Audits code for security vulnerabilities, performance issues, accessibility, complexity metrics, and
+            infrastructure security. Use when reviewing code quality, performing security audits, checking OWASP
+            compliance, analyzing complexity, auditing IaC, or finding dead code.
+          triggers: &ref_3
+            - code
+            - quality
+            - audits
+            - security
+            - vulnerabilities
+            - performance
+            - issues
+            - accessibility
+            - complexity
+            - metrics
+            - infrastructure
+            - reviewing
+            - performing
+            - checking
+            - owasp
+            - compliance
+            - analyzing
+            - auditing
+            - iac
+            - finding
+            - dead
+        - name: testing
+          path: common/quality/testing
+          description: >-
+            Generates test cases, creates mocks, identifies edge cases, analyzes coverage gaps, and supports
+            property-based, mutation, and contract testing. Use when writing tests, improving coverage, detecting flaky
+            tests, or implementing advanced testing strategies.
+          triggers: &ref_4
+            - testing
+            - generates
+            - test
+            - cases
+            - creates
+            - mocks
+            - identifies
+            - edge
+            - analyzes
+            - coverage
+            - gaps
+            - supports
+            - property
+            - based
+            - mutation
+            - contract
+            - writing
+            - tests
+            - improving
+            - detecting
+            - flaky
+            - implementing
+            - advanced
+            - strategies
+    workflow:
+      _items:
+        - name: documentation
+          path: common/workflow/documentation
+          description: >-
+            Generates README files, API documentation, changelogs, runbooks, and SDK code from project analysis. Use
+            when creating documentation, generating changelogs, documenting APIs, creating runbooks, or generating
+            client SDKs.
+          triggers: &ref_5
+            - documentation
+            - generates
+            - readme
+            - files
+            - api
+            - changelogs
+            - runbooks
+            - sdk
+            - code
+            - from
+            - project
+            - analysis
+            - creating
+            - generating
+            - documenting
+            - apis
+            - client
+            - sdks
+        - name: git-workflows
+          path: common/workflow/git-workflows
+          description: >-
+            Generates PR descriptions, commit messages, release notes, and manages branch strategies, changelog
+            automation, and git hooks. Use when creating pull requests, writing commits, preparing releases, managing
+            branches, or automating changelogs.
+          triggers: &ref_6
+            - git
+            - workflows
+            - generates
+            - descriptions
+            - commit
+            - messages
+            - release
+            - notes
+            - manages
+            - branch
+            - strategies
+            - changelog
+            - automation
+            - hooks
+            - creating
+            - pull
+            - requests
+            - writing
+            - commits
+            - preparing
+            - releases
+            - managing
+            - branches
+            - automating
+            - changelogs
+  create:
+    _items:
+      - name: agent-sdk-definitions
+        path: create/agent-sdk-definitions
+        description: >-
+          Programmatic agent definitions for the Claude Agent SDK in TypeScript and Python. Use when creating agents for
+          SDK-based applications rather than filesystem-based Claude Code.
+        triggers: &ref_7
+          - agent
+          - sdk
+          - definitions
+          - programmatic
+          - claude
+          - typescript
+          - python
+          - creating
+          - agents
+          - based
+          - applications
+          - rather
+          - than
+          - filesystem
+          - code
+      - name: hook-integration
+        path: create/hook-integration
+        description: >-
+          Comprehensive guide to integrating skills with Claude Code's 12 hook events. Use when creating hook-aware
+          skills for harnesses like Clausitron, or when needing hook response schemas and patterns.
+        triggers: &ref_8
+          - hook
+          - integration
+          - comprehensive
+          - guide
+          - integrating
+          - skills
+          - claude
+          - code
+          - events
+          - creating
+          - aware
+          - harnesses
+          - like
+          - clausitron
+          - needing
+          - response
+          - schemas
+          - patterns
+      - name: script-best-practices
+        path: create/script-best-practices
+        description: >-
+          Best practices for bundling scripts in skills including error handling, constants documentation, and execution
+          patterns. Use when creating script-enabled skills.
+        triggers: &ref_9
+          - script
+          - best
+          - practices
+          - bundling
+          - scripts
+          - skills
+          - including
+          - error
+          - handling
+          - constants
+          - documentation
+          - execution
+          - patterns
+          - creating
+          - enabled
+      - name: workflow-patterns
+        path: create/workflow-patterns
+        description: >-
+          Reusable workflow patterns for skills and agents including sequential checklists, conditional routing,
+          validation loops, and progressive disclosure. Use when designing structured procedures.
+        triggers: &ref_10
+          - workflow
+          - patterns
+          - reusable
+          - skills
+          - agents
+          - including
+          - sequential
+          - checklists
+          - conditional
+          - routing
+          - validation
+          - loops
+          - progressive
+          - disclosure
+          - designing
+          - structured
+          - procedures
+      - name: writing-descriptions
+        path: create/writing-descriptions
+        description: >-
+          Examples and patterns for writing effective agent and skill descriptions. Use when crafting descriptions that
+          serve as routing keys for Claude's invocation decisions.
+        triggers: &ref_11
+          - writing
+          - descriptions
+          - examples
+          - patterns
+          - effective
+          - agent
+          - skill
+          - crafting
+          - that
+          - serve
+          - routing
+          - keys
+          - claude
+          - invocation
+          - decisions
+  webdev:
+    ai-integration:
+      _items:
+        - name: vercel-ai-sdk
+          path: webdev/ai-integration/vercel-ai-sdk
+          description: >-
+            Builds AI-powered applications with Vercel AI SDK including streaming responses, chat interfaces, and model
+            integration. Use when integrating LLMs, building chat applications, streaming AI responses, or implementing
+            AI features in React.
+          triggers: &ref_12
+            - vercel
+            - ai
+            - sdk
+            - builds
+            - powered
+            - applications
+            - including
+            - streaming
+            - responses
+            - chat
+            - interfaces
+            - model
+            - integration
+            - integrating
+            - llms
+            - building
+            - implementing
+            - features
+            - react
+    animation:
+      _items:
+        - name: framer-motion
+          path: webdev/animation/framer-motion
+          description: >-
+            Creates animations with Framer Motion/Motion including transitions, gestures, layout animations, and scroll
+            effects. Use when animating React components, creating page transitions, adding gesture interactions, or
+            building animated interfaces.
+          triggers: &ref_13
+            - framer
+            - motion
+            - creates
+            - animations
+            - including
+            - transitions
+            - gestures
+            - layout
+            - scroll
+            - effects
+            - animating
+            - react
+            - components
+            - creating
+            - page
+            - adding
+            - gesture
+            - interactions
+            - building
+            - animated
+            - interfaces
+    api-layer:
+      _items:
+        - name: apollo-server
+          path: webdev/api-layer/apollo-server
+          description: >-
+            Builds GraphQL APIs with Apollo Server 4, schema design, resolvers, and data sources. Use when implementing
+            GraphQL servers, building federated graphs, or integrating GraphQL with Node.js frameworks.
+          triggers: &ref_14
+            - apollo
+            - server
+            - builds
+            - graphql
+            - apis
+            - schema
+            - design
+            - resolvers
+            - data
+            - sources
+            - implementing
+            - servers
+            - building
+            - federated
+            - graphs
+            - integrating
+            - node
+            - frameworks
+        - name: express
+          path: webdev/api-layer/express
+          description: >-
+            Builds APIs with Express including routing, middleware, error handling, and security. Use when creating
+            Node.js APIs, building REST services, or adding middleware-based server functionality.
+          triggers: &ref_15
+            - express
+            - builds
+            - apis
+            - including
+            - routing
+            - middleware
+            - error
+            - handling
+            - security
+            - creating
+            - node
+            - building
+            - rest
+            - services
+            - adding
+            - based
+            - server
+            - functionality
+        - name: fastify
+          path: webdev/api-layer/fastify
+          description: >-
+            Builds high-performance Node.js APIs with Fastify, TypeScript, schema validation, and plugins. Use when
+            building fast REST APIs, microservices, or needing schema-based validation.
+          triggers: &ref_16
+            - fastify
+            - builds
+            - high
+            - performance
+            - node
+            - apis
+            - typescript
+            - schema
+            - validation
+            - plugins
+            - building
+            - fast
+            - rest
+            - microservices
+            - needing
+            - based
+        - name: graphql
+          path: webdev/api-layer/graphql
+          description: >-
+            Builds APIs with GraphQL including schemas, queries, mutations, resolvers, and client integration. Use when
+            designing flexible APIs, fetching related data, or implementing real-time subscriptions.
+          triggers: &ref_17
+            - graphql
+            - builds
+            - apis
+            - including
+            - schemas
+            - queries
+            - mutations
+            - resolvers
+            - client
+            - integration
+            - designing
+            - flexible
+            - fetching
+            - related
+            - data
+            - implementing
+            - real
+            - time
+            - subscriptions
+        - name: hono
+          path: webdev/api-layer/hono
+          description: >-
+            Builds APIs with Hono including routing, middleware, validation, and edge deployment. Use when creating fast
+            APIs, building edge functions, or developing serverless applications.
+          triggers: &ref_18
+            - hono
+            - builds
+            - apis
+            - including
+            - routing
+            - middleware
+            - validation
+            - edge
+            - deployment
+            - creating
+            - fast
+            - building
+            - functions
+            - developing
+            - serverless
+            - applications
+        - name: openapi
+          path: webdev/api-layer/openapi
+          description: >-
+            Defines and generates OpenAPI 3.1 specifications with TypeScript type generation, validation, and
+            documentation. Use when documenting APIs, generating client SDKs, or implementing contract-first API design.
+          triggers: &ref_19
+            - openapi
+            - defines
+            - generates
+            - specifications
+            - typescript
+            - type
+            - generation
+            - validation
+            - documentation
+            - documenting
+            - apis
+            - generating
+            - client
+            - sdks
+            - implementing
+            - contract
+            - first
+            - api
+            - design
+        - name: rest-api-design
+          path: webdev/api-layer/rest-api-design
+          description: >-
+            Designs RESTful APIs following industry best practices for resource naming, HTTP methods, status codes, and
+            error handling. Use when designing new APIs, refactoring existing endpoints, or establishing API standards.
+          triggers: &ref_20
+            - rest
+            - api
+            - design
+            - designs
+            - restful
+            - apis
+            - following
+            - industry
+            - best
+            - practices
+            - resource
+            - naming
+            - http
+            - methods
+            - status
+            - codes
+            - error
+            - handling
+            - designing
+            - new
+            - refactoring
+            - existing
+            - endpoints
+            - establishing
+            - standards
+        - name: trpc
+          path: webdev/api-layer/trpc
+          description: >-
+            Builds type-safe APIs with tRPC including routers, procedures, context, and client integration. Use when
+            creating end-to-end type-safe APIs, building full-stack TypeScript applications, or replacing REST/GraphQL
+            with simpler patterns.
+          triggers: &ref_21
+            - trpc
+            - builds
+            - type
+            - safe
+            - apis
+            - including
+            - routers
+            - procedures
+            - context
+            - client
+            - integration
+            - creating
+            - end
+            - building
+            - full
+            - stack
+            - typescript
+            - applications
+            - replacing
+            - rest
+            - graphql
+            - simpler
+            - patterns
+    authentication:
+      _items:
+        - name: auth0
+          path: webdev/authentication/auth0
+          description: >-
+            Implements Auth0 authentication with Next.js SDK, React hooks, role-based access, and API protection. Use
+            when integrating Auth0, implementing enterprise SSO, or needing managed authentication with MFA.
+          triggers: &ref_22
+            - auth0
+            - implements
+            - authentication
+            - next
+            - sdk
+            - react
+            - hooks
+            - role
+            - based
+            - access
+            - api
+            - protection
+            - integrating
+            - implementing
+            - enterprise
+            - sso
+            - needing
+            - managed
+            - mfa
+        - name: clerk
+          path: webdev/authentication/clerk
+          description: >-
+            Implements authentication with Clerk including user management, protected routes, middleware, and React
+            components. Use when adding authentication, managing users, protecting routes, or implementing
+            sign-in/sign-up flows.
+          triggers: &ref_23
+            - clerk
+            - implements
+            - authentication
+            - including
+            - user
+            - management
+            - protected
+            - routes
+            - middleware
+            - react
+            - components
+            - adding
+            - managing
+            - users
+            - protecting
+            - implementing
+            - sign
+            - flows
+        - name: firebase-auth
+          path: webdev/authentication/firebase-auth
+          description: >-
+            Implements Firebase Authentication with email, OAuth, phone auth, and custom tokens. Use when building apps
+            with Firebase, needing flexible auth methods, or integrating with Firebase ecosystem.
+          triggers: &ref_24
+            - firebase
+            - auth
+            - implements
+            - authentication
+            - email
+            - oauth
+            - phone
+            - custom
+            - tokens
+            - building
+            - apps
+            - needing
+            - flexible
+            - methods
+            - integrating
+            - ecosystem
+        - name: lucia
+          path: webdev/authentication/lucia
+          description: >-
+            Implements session-based authentication with Lucia Auth library for server-side session management and
+            cookie handling. Use when building custom authentication, session management, or when user mentions Lucia,
+            server-side auth, or session cookies.
+          triggers: &ref_25
+            - lucia
+            - implements
+            - session
+            - based
+            - authentication
+            - auth
+            - library
+            - server
+            - side
+            - management
+            - cookie
+            - handling
+            - building
+            - custom
+            - user
+            - mentions
+            - cookies
+        - name: nextauth
+          path: webdev/authentication/nextauth
+          description: >-
+            Implements authentication with Auth.js/NextAuth.js v5 including OAuth providers, credentials, sessions, and
+            route protection. Use when adding authentication to Next.js, configuring OAuth providers, or protecting
+            routes.
+          triggers: &ref_26
+            - nextauth
+            - implements
+            - authentication
+            - auth
+            - including
+            - oauth
+            - providers
+            - credentials
+            - sessions
+            - route
+            - protection
+            - adding
+            - next
+            - configuring
+            - protecting
+            - routes
+        - name: passport
+          path: webdev/authentication/passport
+          description: >-
+            Implements Passport.js authentication middleware with local, OAuth, and JWT strategies for Express/Node.js.
+            Use when building Node.js APIs, implementing custom auth flows, or needing flexible authentication
+            strategies.
+          triggers: &ref_27
+            - passport
+            - implements
+            - authentication
+            - middleware
+            - local
+            - oauth
+            - jwt
+            - strategies
+            - express
+            - node
+            - building
+            - apis
+            - implementing
+            - custom
+            - auth
+            - flows
+            - needing
+            - flexible
+        - name: supabase-auth
+          path: webdev/authentication/supabase-auth
+          description: >-
+            Implements Supabase Authentication with email, OAuth, magic links, and phone auth. Use when building apps
+            with Supabase, needing auth integrated with Row Level Security, or implementing passwordless login.
+          triggers: &ref_28
+            - supabase
+            - auth
+            - implements
+            - authentication
+            - email
+            - oauth
+            - magic
+            - links
+            - phone
+            - building
+            - apps
+            - needing
+            - integrated
+            - row
+            - level
+            - security
+            - implementing
+            - passwordless
+            - login
+    build-tools:
+      _items:
+        - name: bun
+          path: webdev/build-tools/bun
+          description: >-
+            Configures Bun as an all-in-one JavaScript runtime, bundler, package manager, and test runner with native
+            TypeScript support. Use when building fast applications, bundling for production, or replacing Node.js
+            tooling.
+          triggers: &ref_29
+            - bun
+            - configures
+            - all
+            - one
+            - javascript
+            - runtime
+            - bundler
+            - package
+            - manager
+            - test
+            - runner
+            - native
+            - typescript
+            - support
+            - building
+            - fast
+            - applications
+            - bundling
+            - production
+            - replacing
+            - node
+            - tooling
+        - name: esbuild
+          path: webdev/build-tools/esbuild
+          description: >-
+            Configures esbuild for extremely fast JavaScript/TypeScript bundling with plugins, code splitting, and build
+            optimization. Use when building libraries, rapid prototyping, or optimizing build performance.
+          triggers: &ref_30
+            - esbuild
+            - configures
+            - extremely
+            - fast
+            - javascript
+            - typescript
+            - bundling
+            - plugins
+            - code
+            - splitting
+            - build
+            - optimization
+            - building
+            - libraries
+            - rapid
+            - prototyping
+            - optimizing
+            - performance
+        - name: rollup
+          path: webdev/build-tools/rollup
+          description: >-
+            Configures Rollup for ES module bundling with plugins, tree shaking, and multiple output formats. Use when
+            building JavaScript libraries, creating optimized bundles, or publishing npm packages.
+          triggers: &ref_31
+            - rollup
+            - configures
+            - module
+            - bundling
+            - plugins
+            - tree
+            - shaking
+            - multiple
+            - output
+            - formats
+            - building
+            - javascript
+            - libraries
+            - creating
+            - optimized
+            - bundles
+            - publishing
+            - npm
+            - packages
+        - name: tsup
+          path: webdev/build-tools/tsup
+          description: >-
+            Configures tsup for zero-config TypeScript library bundling with ESM/CJS output, declarations, and esbuild
+            speed. Use when building TypeScript packages, creating dual ESM/CJS libraries, or publishing to npm.
+          triggers: &ref_32
+            - tsup
+            - configures
+            - zero
+            - config
+            - typescript
+            - library
+            - bundling
+            - esm
+            - cjs
+            - output
+            - declarations
+            - esbuild
+            - speed
+            - building
+            - packages
+            - creating
+            - dual
+            - libraries
+            - publishing
+            - npm
+        - name: turbopack
+          path: webdev/build-tools/turbopack
+          description: >-
+            Configures Turbopack as the default Rust-based bundler for Next.js with incremental compilation and webpack
+            loader compatibility. Use when optimizing Next.js development builds, migrating from webpack, or configuring
+            custom loaders.
+          triggers: &ref_33
+            - turbopack
+            - configures
+            - default
+            - rust
+            - based
+            - bundler
+            - next
+            - incremental
+            - compilation
+            - webpack
+            - loader
+            - compatibility
+            - optimizing
+            - development
+            - builds
+            - migrating
+            - from
+            - configuring
+            - custom
+            - loaders
+        - name: vite
+          path: webdev/build-tools/vite
+          description: >-
+            Builds web applications with Vite including dev server, production builds, plugins, and configuration. Use
+            when scaffolding projects, configuring build tools, optimizing bundles, or setting up development
+            environments.
+          triggers: &ref_34
+            - vite
+            - builds
+            - web
+            - applications
+            - including
+            - dev
+            - server
+            - production
+            - plugins
+            - configuration
+            - scaffolding
+            - projects
+            - configuring
+            - build
+            - tools
+            - optimizing
+            - bundles
+            - setting
+            - development
+            - environments
+        - name: webpack
+          path: webdev/build-tools/webpack
+          description: >-
+            Configures Webpack 5 for JavaScript/TypeScript bundling with loaders, plugins, code splitting, and Module
+            Federation. Use when setting up custom builds, migrating to Webpack 5, or implementing micro-frontends.
+          triggers: &ref_35
+            - webpack
+            - configures
+            - javascript
+            - typescript
+            - bundling
+            - loaders
+            - plugins
+            - code
+            - splitting
+            - module
+            - federation
+            - setting
+            - custom
+            - builds
+            - migrating
+            - implementing
+            - micro
+            - frontends
+    cms-content:
+      _items:
+        - name: mdx
+          path: webdev/cms-content/mdx
+          description: >-
+            Creates content with MDX including Markdown with JSX, custom components, and frontmatter. Use when building
+            content-heavy sites, documentation, blogs, or mixing Markdown with interactive components.
+          triggers: &ref_36
+            - mdx
+            - creates
+            - content
+            - including
+            - markdown
+            - jsx
+            - custom
+            - components
+            - frontmatter
+            - building
+            - heavy
+            - sites
+            - documentation
+            - blogs
+            - mixing
+            - interactive
+    component-libraries:
+      _items:
+        - name: ant-design
+          path: webdev/component-libraries/ant-design
+          description: >-
+            Builds enterprise React applications with Ant Design's comprehensive component library. Use when creating
+            admin dashboards, data tables, complex forms, or enterprise UIs with consistent design language.
+          triggers: &ref_37
+            - ant
+            - design
+            - builds
+            - enterprise
+            - react
+            - applications
+            - comprehensive
+            - component
+            - library
+            - creating
+            - admin
+            - dashboards
+            - data
+            - tables
+            - complex
+            - forms
+            - uis
+            - consistent
+            - language
+        - name: ark-ui
+          path: webdev/component-libraries/ark-ui
+          description: >-
+            Builds accessible UI components with Ark UI headless primitives for React, Vue, Solid, and Svelte. Use when
+            creating custom-styled components with robust state management and accessibility built-in.
+          triggers: &ref_38
+            - ark
+            - ui
+            - builds
+            - accessible
+            - components
+            - headless
+            - primitives
+            - react
+            - vue
+            - solid
+            - svelte
+            - creating
+            - custom
+            - styled
+            - robust
+            - state
+            - management
+            - accessibility
+            - built
+        - name: chakra-ui
+          path: webdev/component-libraries/chakra-ui
+          description: >-
+            Builds accessible React applications with Chakra UI v3 components, tokens, and recipes. Use when creating
+            styled component systems, theming, or accessible form controls.
+          triggers: &ref_39
+            - chakra
+            - ui
+            - builds
+            - accessible
+            - react
+            - applications
+            - components
+            - tokens
+            - recipes
+            - creating
+            - styled
+            - component
+            - systems
+            - theming
+            - form
+            - controls
+        - name: headless-ui
+          path: webdev/component-libraries/headless-ui
+          description: >-
+            Builds accessible UI components with Headless UI primitives for React and Vue. Use when creating
+            custom-styled dropdowns, modals, tabs, or other interactive components with full accessibility support.
+          triggers: &ref_40
+            - headless
+            - ui
+            - builds
+            - accessible
+            - components
+            - primitives
+            - react
+            - vue
+            - creating
+            - custom
+            - styled
+            - dropdowns
+            - modals
+            - tabs
+            - other
+            - interactive
+            - full
+            - accessibility
+            - support
+        - name: mantine
+          path: webdev/component-libraries/mantine
+          description: >-
+            Builds React applications with Mantine's 100+ components, hooks, and form library. Use when creating
+            feature-rich UIs with built-in dark mode, accessibility, and TypeScript support.
+          triggers: &ref_41
+            - mantine
+            - builds
+            - react
+            - applications
+            - '100'
+            - components
+            - hooks
+            - form
+            - library
+            - creating
+            - feature
+            - rich
+            - uis
+            - built
+            - dark
+            - mode
+            - accessibility
+            - typescript
+            - support
+        - name: material-ui
+          path: webdev/component-libraries/material-ui
+          description: >-
+            Builds React applications with Material UI (MUI) components implementing Material Design. Use when creating
+            modern UIs with Google's design system, custom theming, or accessible form controls.
+          triggers: &ref_42
+            - material
+            - ui
+            - builds
+            - react
+            - applications
+            - mui
+            - components
+            - implementing
+            - design
+            - creating
+            - modern
+            - uis
+            - google
+            - system
+            - custom
+            - theming
+            - accessible
+            - form
+            - controls
+        - name: radix-ui
+          path: webdev/component-libraries/radix-ui
+          description: >-
+            Builds accessible components with Radix UI primitives including dialogs, dropdowns, tooltips, and form
+            controls. Use when building accessible interfaces, creating headless components, or implementing complex UI
+            patterns.
+          triggers: &ref_43
+            - radix
+            - ui
+            - builds
+            - accessible
+            - components
+            - primitives
+            - including
+            - dialogs
+            - dropdowns
+            - tooltips
+            - form
+            - controls
+            - building
+            - interfaces
+            - creating
+            - headless
+            - implementing
+            - complex
+            - patterns
+        - name: shadcn-ui
+          path: webdev/component-libraries/shadcn-ui
+          description: >-
+            Builds accessible UI with shadcn/ui including component installation, customization, theming, and Radix
+            primitives. Use when adding UI components, customizing design systems, implementing accessible interfaces,
+            or building component libraries.
+          triggers: &ref_44
+            - shadcn
+            - ui
+            - builds
+            - accessible
+            - including
+            - component
+            - installation
+            - customization
+            - theming
+            - radix
+            - primitives
+            - adding
+            - components
+            - customizing
+            - design
+            - systems
+            - implementing
+            - interfaces
+            - building
+            - libraries
+    databases-orms:
+      _items:
+        - name: drizzle
+          path: webdev/databases-orms/drizzle
+          description: >-
+            Builds type-safe database applications with Drizzle ORM including schema definition, queries, relations, and
+            migrations. Use when working with databases in TypeScript, defining schemas, writing type-safe queries, or
+            managing migrations.
+          triggers: &ref_45
+            - drizzle
+            - builds
+            - type
+            - safe
+            - database
+            - applications
+            - orm
+            - including
+            - schema
+            - definition
+            - queries
+            - relations
+            - migrations
+            - working
+            - databases
+            - typescript
+            - defining
+            - schemas
+            - writing
+            - managing
+        - name: kysely
+          path: webdev/databases-orms/kysely
+          description: >-
+            Implements Kysely type-safe SQL query builder with full TypeScript inference, migrations, and multi-database
+            support. Use when building type-safe SQL queries, needing a lightweight ORM alternative, or wanting SQL
+            control with TypeScript safety.
+          triggers: &ref_46
+            - kysely
+            - implements
+            - type
+            - safe
+            - sql
+            - query
+            - builder
+            - full
+            - typescript
+            - inference
+            - migrations
+            - multi
+            - database
+            - support
+            - building
+            - queries
+            - needing
+            - lightweight
+            - orm
+            - alternative
+            - wanting
+            - control
+            - safety
+        - name: mongodb
+          path: webdev/databases-orms/mongodb
+          description: >-
+            Integrates MongoDB document database with Node.js applications using the official driver or Mongoose ODM.
+            Use when building applications with flexible schemas, document storage, or when user mentions MongoDB,
+            NoSQL, or document databases.
+          triggers: &ref_47
+            - mongodb
+            - integrates
+            - document
+            - database
+            - node
+            - applications
+            - using
+            - official
+            - driver
+            - mongoose
+            - odm
+            - building
+            - flexible
+            - schemas
+            - storage
+            - user
+            - mentions
+            - nosql
+            - databases
+        - name: planetscale
+          path: webdev/databases-orms/planetscale
+          description: >-
+            Implements PlanetScale serverless MySQL with branching workflows, non-blocking schema changes, and Prisma
+            integration. Use when building apps with PlanetScale, implementing database branching, or needing serverless
+            MySQL.
+          triggers: &ref_48
+            - planetscale
+            - implements
+            - serverless
+            - mysql
+            - branching
+            - workflows
+            - non
+            - blocking
+            - schema
+            - changes
+            - prisma
+            - integration
+            - building
+            - apps
+            - implementing
+            - database
+            - needing
+        - name: postgresql
+          path: webdev/databases-orms/postgresql
+          description: >-
+            Works with PostgreSQL including queries, migrations, indexes, and performance tuning. Use when designing
+            database schemas, writing SQL queries, optimizing performance, or managing PostgreSQL databases.
+          triggers: &ref_49
+            - postgresql
+            - works
+            - including
+            - queries
+            - migrations
+            - indexes
+            - performance
+            - tuning
+            - designing
+            - database
+            - schemas
+            - writing
+            - sql
+            - optimizing
+            - managing
+            - databases
+        - name: prisma
+          path: webdev/databases-orms/prisma
+          description: >-
+            Provides type-safe database access with Prisma ORM including schema definition, migrations, queries, and
+            relations. Use when setting up database connections, defining data models, writing queries, or managing
+            database migrations.
+          triggers: &ref_50
+            - prisma
+            - provides
+            - type
+            - safe
+            - database
+            - access
+            - orm
+            - including
+            - schema
+            - definition
+            - migrations
+            - queries
+            - relations
+            - setting
+            - connections
+            - defining
+            - data
+            - models
+            - writing
+            - managing
+        - name: redis
+          path: webdev/databases-orms/redis
+          description: >-
+            Uses Redis for caching, sessions, pub/sub, and data structures with Node.js. Use when implementing caching,
+            session storage, real-time messaging, or high-performance data storage.
+          triggers: &ref_51
+            - redis
+            - uses
+            - caching
+            - sessions
+            - pub
+            - sub
+            - data
+            - structures
+            - node
+            - implementing
+            - session
+            - storage
+            - real
+            - time
+            - messaging
+            - high
+            - performance
+        - name: sqlite
+          path: webdev/databases-orms/sqlite
+          description: >-
+            Integrates SQLite embedded database with Node.js using better-sqlite3 for synchronous operations or the
+            native Node.js SQLite module. Use when building applications with local storage, embedded databases, or when
+            user mentions SQLite, better-sqlite3, or embedded SQL.
+          triggers: &ref_52
+            - sqlite
+            - integrates
+            - embedded
+            - database
+            - node
+            - using
+            - better
+            - sqlite3
+            - synchronous
+            - operations
+            - native
+            - module
+            - building
+            - applications
+            - local
+            - storage
+            - databases
+            - user
+            - mentions
+            - sql
+        - name: supabase-db
+          path: webdev/databases-orms/supabase-db
+          description: >-
+            Implements Supabase PostgreSQL database with JavaScript client, Row Level Security, real-time subscriptions,
+            and edge functions. Use when building apps with Supabase, implementing RLS policies, or needing real-time
+            database features.
+          triggers: &ref_53
+            - supabase
+            - db
+            - implements
+            - postgresql
+            - database
+            - javascript
+            - client
+            - row
+            - level
+            - security
+            - real
+            - time
+            - subscriptions
+            - edge
+            - functions
+            - building
+            - apps
+            - implementing
+            - rls
+            - policies
+            - needing
+            - features
+        - name: turso
+          path: webdev/databases-orms/turso
+          description: >-
+            Implements Turso edge SQLite database with libSQL client, embedded replicas, and vector search. Use when
+            building edge-first apps, implementing embedded databases, or needing SQLite with global replication.
+          triggers: &ref_54
+            - turso
+            - implements
+            - edge
+            - sqlite
+            - database
+            - libsql
+            - client
+            - embedded
+            - replicas
+            - vector
+            - search
+            - building
+            - first
+            - apps
+            - implementing
+            - databases
+            - needing
+            - global
+            - replication
+    deployment:
+      _items:
+        - name: aws-amplify
+          path: webdev/deployment/aws-amplify
+          description: >-
+            Deploys and hosts full-stack web applications on AWS Amplify with SSR support, CI/CD, and backend services.
+            Use when deploying Next.js apps to AWS, setting up Amplify hosting, or configuring Amplify backends.
+          triggers: &ref_55
+            - aws
+            - amplify
+            - deploys
+            - hosts
+            - full
+            - stack
+            - web
+            - applications
+            - ssr
+            - support
+            - backend
+            - services
+            - deploying
+            - next
+            - apps
+            - setting
+            - hosting
+            - configuring
+            - backends
+        - name: docker-web
+          path: webdev/deployment/docker-web
+          description: >-
+            Containerizes web applications with Docker for consistent deployments across environments. Use when creating
+            Dockerfiles, building container images, or setting up Docker Compose for development.
+          triggers: &ref_56
+            - docker
+            - web
+            - containerizes
+            - applications
+            - consistent
+            - deployments
+            - across
+            - environments
+            - creating
+            - dockerfiles
+            - building
+            - container
+            - images
+            - setting
+            - compose
+            - development
+        - name: fly-io
+          path: webdev/deployment/fly-io
+          description: >-
+            Deploys applications globally on Fly.io edge infrastructure with Firecracker VMs, multi-region deployment,
+            and usage-based pricing. Use when deploying to multiple regions, running containers at the edge, or needing
+            fast cold starts.
+          triggers: &ref_57
+            - fly
+            - io
+            - deploys
+            - applications
+            - globally
+            - edge
+            - infrastructure
+            - firecracker
+            - vms
+            - multi
+            - region
+            - deployment
+            - usage
+            - based
+            - pricing
+            - deploying
+            - multiple
+            - regions
+            - running
+            - containers
+            - needing
+            - fast
+            - cold
+            - starts
+        - name: railway
+          path: webdev/deployment/railway
+          description: >-
+            Deploys applications on Railway with zero-config detection, databases, and automatic CI/CD. Use when
+            deploying Node.js apps, setting up databases, or needing simple PaaS deployment.
+          triggers: &ref_58
+            - railway
+            - deploys
+            - applications
+            - zero
+            - config
+            - detection
+            - databases
+            - automatic
+            - deploying
+            - node
+            - apps
+            - setting
+            - needing
+            - simple
+            - paas
+            - deployment
+        - name: render
+          path: webdev/deployment/render
+          description: >-
+            Deploys web applications on Render with automatic builds, managed databases, and zero-config SSL. Use when
+            deploying web services, static sites, or setting up managed infrastructure.
+          triggers: &ref_59
+            - render
+            - deploys
+            - web
+            - applications
+            - automatic
+            - builds
+            - managed
+            - databases
+            - zero
+            - config
+            - ssl
+            - deploying
+            - services
+            - static
+            - sites
+            - setting
+            - infrastructure
+    deployment-hosting:
+      _items:
+        - name: cloudflare-pages
+          path: webdev/deployment-hosting/cloudflare-pages
+          description: >-
+            Deploys applications to Cloudflare Pages including Functions, KV, D1, and R2 bindings. Use when deploying to
+            the edge, building globally distributed applications, or using Cloudflare's ecosystem.
+          triggers: &ref_60
+            - cloudflare
+            - pages
+            - deploys
+            - applications
+            - including
+            - functions
+            - bindings
+            - deploying
+            - edge
+            - building
+            - globally
+            - distributed
+            - using
+            - ecosystem
+        - name: netlify
+          path: webdev/deployment-hosting/netlify
+          description: >-
+            Deploys applications to Netlify including functions, forms, redirects, and edge functions. Use when
+            deploying static sites, JAMstack applications, or serverless functions.
+          triggers: &ref_61
+            - netlify
+            - deploys
+            - applications
+            - including
+            - functions
+            - forms
+            - redirects
+            - edge
+            - deploying
+            - static
+            - sites
+            - jamstack
+            - serverless
+        - name: vercel
+          path: webdev/deployment-hosting/vercel
+          description: >-
+            Deploys applications to Vercel including serverless functions, edge functions, environment variables, and
+            CI/CD. Use when deploying Next.js applications, frontend projects, or serverless APIs.
+          triggers: &ref_62
+            - vercel
+            - deploys
+            - applications
+            - including
+            - serverless
+            - functions
+            - edge
+            - environment
+            - variables
+            - deploying
+            - next
+            - frontend
+            - projects
+            - apis
+    email:
+      _items:
+        - name: resend
+          path: webdev/email/resend
+          description: >-
+            Sends transactional emails with Resend including React Email templates, API integration, and Next.js setup.
+            Use when sending emails, creating email templates, or integrating transactional email in applications.
+          triggers: &ref_63
+            - resend
+            - sends
+            - transactional
+            - emails
+            - including
+            - react
+            - email
+            - templates
+            - api
+            - integration
+            - next
+            - setup
+            - sending
+            - creating
+            - integrating
+            - applications
+    forms:
+      _items:
+        - name: conform
+          path: webdev/forms/conform
+          description: >-
+            Builds progressive enhancement forms with Conform using web standards, server validation, and framework
+            integration. Use when building Remix/Next.js forms, implementing progressive enhancement, or needing
+            accessible form validation.
+          triggers: &ref_64
+            - conform
+            - builds
+            - progressive
+            - enhancement
+            - forms
+            - using
+            - web
+            - standards
+            - server
+            - validation
+            - framework
+            - integration
+            - building
+            - remix
+            - next
+            - implementing
+            - needing
+            - accessible
+            - form
+        - name: formik
+          path: webdev/forms/formik
+          description: >-
+            Manages React form state with Formik using validation, field arrays, and form context. Use when building
+            complex forms in React, handling form submission, or integrating with Yup validation.
+          triggers: &ref_65
+            - formik
+            - manages
+            - react
+            - form
+            - state
+            - using
+            - validation
+            - field
+            - arrays
+            - context
+            - building
+            - complex
+            - forms
+            - handling
+            - submission
+            - integrating
+            - yup
+        - name: valibot
+          path: webdev/forms/valibot
+          description: >-
+            Validates data with Valibot's modular, tree-shakable schema library for minimal bundle size. Use when bundle
+            size matters, building form validation, or needing lightweight TypeScript validation.
+          triggers: &ref_66
+            - valibot
+            - validates
+            - data
+            - modular
+            - tree
+            - shakable
+            - schema
+            - library
+            - minimal
+            - bundle
+            - size
+            - matters
+            - building
+            - form
+            - validation
+            - needing
+            - lightweight
+            - typescript
+        - name: yup
+          path: webdev/forms/yup
+          description: >-
+            Validates data with Yup schema builder using chainable methods, custom rules, and TypeScript inference. Use
+            when validating forms with React Hook Form or Formik, or when needing flexible schema validation.
+          triggers: &ref_67
+            - yup
+            - validates
+            - data
+            - schema
+            - builder
+            - using
+            - chainable
+            - methods
+            - custom
+            - rules
+            - typescript
+            - inference
+            - validating
+            - forms
+            - react
+            - hook
+            - form
+            - formik
+            - needing
+            - flexible
+            - validation
+    forms-validation:
+      _items:
+        - name: react-hook-form
+          path: webdev/forms-validation/react-hook-form
+          description: >-
+            Builds performant forms with React Hook Form including validation, error handling, and schema integration.
+            Use when creating forms, validating inputs, integrating with Zod, or handling complex form state.
+          triggers: &ref_68
+            - react
+            - hook
+            - form
+            - builds
+            - performant
+            - forms
+            - including
+            - validation
+            - error
+            - handling
+            - schema
+            - integration
+            - creating
+            - validating
+            - inputs
+            - integrating
+            - zod
+            - complex
+            - state
+        - name: zod
+          path: webdev/forms-validation/zod
+          description: >-
+            Validates data with Zod schemas including type inference, transformations, error handling, and form
+            integration. Use when validating API inputs, form data, environment variables, or any runtime data
+            validation.
+          triggers: &ref_69
+            - zod
+            - validates
+            - data
+            - schemas
+            - including
+            - type
+            - inference
+            - transformations
+            - error
+            - handling
+            - form
+            - integration
+            - validating
+            - api
+            - inputs
+            - environment
+            - variables
+            - any
+            - runtime
+            - validation
+    frontend-core:
+      _items:
+        - name: alpine-js
+          path: webdev/frontend-core/alpine-js
+          description: >-
+            Adds reactive and declarative behavior to HTML with minimal JavaScript using Alpine.js directives. Use when
+            adding lightweight interactivity to server-rendered pages, building interactive components without a build
+            step, or when user mentions Alpine.js, x-data, or Tailwind-style reactivity.
+          triggers: &ref_70
+            - alpine
+            - js
+            - adds
+            - reactive
+            - declarative
+            - behavior
+            - html
+            - minimal
+            - javascript
+            - using
+            - directives
+            - adding
+            - lightweight
+            - interactivity
+            - server
+            - rendered
+            - pages
+            - building
+            - interactive
+            - components
+            - without
+            - build
+            - step
+            - user
+            - mentions
+            - data
+            - tailwind
+            - style
+            - reactivity
+        - name: htmx
+          path: webdev/frontend-core/htmx
+          description: >-
+            Adds AJAX, CSS Transitions, WebSockets, and Server Sent Events to HTML using attributes. Use when building
+            hypermedia-driven applications, adding interactivity without JavaScript frameworks, or when user mentions
+            HTMX, hx-boost, or HTML-first development.
+          triggers: &ref_71
+            - htmx
+            - adds
+            - ajax
+            - css
+            - transitions
+            - websockets
+            - server
+            - sent
+            - events
+            - html
+            - using
+            - attributes
+            - building
+            - hypermedia
+            - driven
+            - applications
+            - adding
+            - interactivity
+            - without
+            - javascript
+            - frameworks
+            - user
+            - mentions
+            - boost
+            - first
+            - development
+        - name: javascript-modern
+          path: webdev/frontend-core/javascript-modern
+          description: >-
+            Implements modern JavaScript features from ES2020-ES2024 including optional chaining, nullish coalescing,
+            private fields, Promise methods, and array transformations. Use when modernizing JavaScript code, using
+            ES2024 features, or when user asks about latest ECMAScript standards.
+          triggers: &ref_72
+            - javascript
+            - modern
+            - implements
+            - features
+            - from
+            - es2020
+            - es2024
+            - including
+            - optional
+            - chaining
+            - nullish
+            - coalescing
+            - private
+            - fields
+            - promise
+            - methods
+            - array
+            - transformations
+            - modernizing
+            - code
+            - using
+            - user
+            - asks
+            - about
+            - latest
+            - ecmascript
+            - standards
+        - name: preact
+          path: webdev/frontend-core/preact
+          description: >-
+            Builds fast, lightweight React-compatible applications with Preact's 3KB library and optional Signals for
+            fine-grained reactivity. Use when optimizing bundle size, migrating from React, or when user mentions
+            Preact, preact/compat, or lightweight React alternative.
+          triggers: &ref_73
+            - preact
+            - builds
+            - fast
+            - lightweight
+            - react
+            - compatible
+            - applications
+            - 3kb
+            - library
+            - optional
+            - signals
+            - fine
+            - grained
+            - reactivity
+            - optimizing
+            - bundle
+            - size
+            - migrating
+            - from
+            - user
+            - mentions
+            - compat
+            - alternative
+        - name: react
+          path: webdev/frontend-core/react
+          description: >-
+            Builds user interfaces with React using components, hooks, state management, and modern patterns. Use when
+            creating React components, managing state, handling side effects, optimizing performance, or integrating
+            with frameworks.
+          triggers: &ref_74
+            - react
+            - builds
+            - user
+            - interfaces
+            - using
+            - components
+            - hooks
+            - state
+            - management
+            - modern
+            - patterns
+            - creating
+            - managing
+            - handling
+            - side
+            - effects
+            - optimizing
+            - performance
+            - integrating
+            - frameworks
+        - name: solidjs
+          path: webdev/frontend-core/solidjs
+          description: >-
+            Builds UIs with SolidJS including signals, effects, memos, and fine-grained reactivity. Use when creating
+            high-performance reactive applications, building without virtual DOM, or needing granular updates.
+          triggers: &ref_75
+            - solidjs
+            - builds
+            - uis
+            - including
+            - signals
+            - effects
+            - memos
+            - fine
+            - grained
+            - reactivity
+            - creating
+            - high
+            - performance
+            - reactive
+            - applications
+            - building
+            - without
+            - virtual
+            - dom
+            - needing
+            - granular
+            - updates
+        - name: svelte
+          path: webdev/frontend-core/svelte
+          description: >-
+            Builds UIs with Svelte 5 including runes, components, reactivity, and stores. Use when creating Svelte
+            applications, building reactive interfaces, or working with compile-time frameworks.
+          triggers: &ref_76
+            - svelte
+            - builds
+            - uis
+            - including
+            - runes
+            - components
+            - reactivity
+            - stores
+            - creating
+            - applications
+            - building
+            - reactive
+            - interfaces
+            - working
+            - compile
+            - time
+            - frameworks
+        - name: typescript
+          path: webdev/frontend-core/typescript
+          description: >-
+            Adds static typing to JavaScript with TypeScript including type annotations, interfaces, generics, and
+            advanced type utilities. Use when setting up TypeScript projects, defining types, creating generic
+            utilities, or debugging type errors.
+          triggers: &ref_77
+            - typescript
+            - adds
+            - static
+            - typing
+            - javascript
+            - including
+            - type
+            - annotations
+            - interfaces
+            - generics
+            - advanced
+            - utilities
+            - setting
+            - projects
+            - defining
+            - types
+            - creating
+            - generic
+            - debugging
+            - errors
+        - name: vue
+          path: webdev/frontend-core/vue
+          description: >-
+            Builds UIs with Vue 3 including Composition API, reactivity, components, and state management. Use when
+            creating Vue applications, building reactive interfaces, or working with the Vue ecosystem.
+          triggers: &ref_78
+            - vue
+            - builds
+            - uis
+            - including
+            - composition
+            - api
+            - reactivity
+            - components
+            - state
+            - management
+            - creating
+            - applications
+            - building
+            - reactive
+            - interfaces
+            - working
+            - ecosystem
+        - name: web-components
+          path: webdev/frontend-core/web-components
+          description: >-
+            Creates reusable custom HTML elements using Web Components standards including Custom Elements, Shadow DOM,
+            templates, and slots. Use when building framework-agnostic components, creating design systems, or when user
+            mentions web components, custom elements, or shadow DOM.
+          triggers: &ref_79
+            - web
+            - components
+            - creates
+            - reusable
+            - custom
+            - html
+            - elements
+            - using
+            - standards
+            - including
+            - shadow
+            - dom
+            - templates
+            - slots
+            - building
+            - framework
+            - agnostic
+            - creating
+            - design
+            - systems
+            - user
+            - mentions
+    meta-frameworks:
+      _items:
+        - name: astro
+          path: webdev/meta-frameworks/astro
+          description: >-
+            Builds content-focused websites with Astro using islands architecture, content collections, and
+            multi-framework support. Use when creating static sites, blogs, documentation, marketing pages, or
+            content-heavy applications with minimal JavaScript.
+          triggers: &ref_80
+            - astro
+            - builds
+            - content
+            - focused
+            - websites
+            - using
+            - islands
+            - architecture
+            - collections
+            - multi
+            - framework
+            - support
+            - creating
+            - static
+            - sites
+            - blogs
+            - documentation
+            - marketing
+            - pages
+            - heavy
+            - applications
+            - minimal
+            - javascript
+        - name: gatsby
+          path: webdev/meta-frameworks/gatsby
+          description: >-
+            Builds static and hybrid sites with Gatsby, React, and GraphQL data layer. Use when creating content-heavy
+            websites, blogs, e-commerce storefronts, or when user mentions Gatsby, static site generation with React, or
+            GraphQL-powered sites.
+          triggers: &ref_81
+            - gatsby
+            - builds
+            - static
+            - hybrid
+            - sites
+            - react
+            - graphql
+            - data
+            - layer
+            - creating
+            - content
+            - heavy
+            - websites
+            - blogs
+            - commerce
+            - storefronts
+            - user
+            - mentions
+            - site
+            - generation
+            - powered
+        - name: nextjs
+          path: webdev/meta-frameworks/nextjs
+          description: >-
+            Builds full-stack React applications with Next.js App Router, Server Components, Server Actions, and edge
+            deployment. Use when creating Next.js projects, implementing routing, data fetching, caching,
+            authentication, or deploying to Vercel.
+          triggers: &ref_82
+            - nextjs
+            - builds
+            - full
+            - stack
+            - react
+            - applications
+            - next
+            - app
+            - router
+            - server
+            - components
+            - actions
+            - edge
+            - deployment
+            - creating
+            - projects
+            - implementing
+            - routing
+            - data
+            - fetching
+            - caching
+            - authentication
+            - deploying
+            - vercel
+        - name: nuxt
+          path: webdev/meta-frameworks/nuxt
+          description: >-
+            Builds applications with Nuxt 3 including pages, layouts, composables, server routes, and data fetching. Use
+            when creating Vue applications with SSR, building full-stack Vue apps, or needing file-based routing with
+            Vue.
+          triggers: &ref_83
+            - nuxt
+            - builds
+            - applications
+            - including
+            - pages
+            - layouts
+            - composables
+            - server
+            - routes
+            - data
+            - fetching
+            - creating
+            - vue
+            - ssr
+            - building
+            - full
+            - stack
+            - apps
+            - needing
+            - file
+            - based
+            - routing
+        - name: qwik
+          path: webdev/meta-frameworks/qwik
+          description: >-
+            Builds instant-loading web applications with Qwik's resumable architecture and fine-grained lazy loading.
+            Use when creating highly performant sites, when user mentions Qwik, resumability, zero hydration, or O(1)
+            startup time.
+          triggers: &ref_84
+            - qwik
+            - builds
+            - instant
+            - loading
+            - web
+            - applications
+            - resumable
+            - architecture
+            - fine
+            - grained
+            - lazy
+            - creating
+            - highly
+            - performant
+            - sites
+            - user
+            - mentions
+            - resumability
+            - zero
+            - hydration
+            - startup
+            - time
+        - name: remix
+          path: webdev/meta-frameworks/remix
+          description: >-
+            Builds full-stack React applications with Remix using loaders, actions, nested routes, and progressive
+            enhancement. Use when creating Remix projects, implementing data loading, form handling, error boundaries,
+            or deploying to various platforms.
+          triggers: &ref_85
+            - remix
+            - builds
+            - full
+            - stack
+            - react
+            - applications
+            - using
+            - loaders
+            - actions
+            - nested
+            - routes
+            - progressive
+            - enhancement
+            - creating
+            - projects
+            - implementing
+            - data
+            - loading
+            - form
+            - handling
+            - error
+            - boundaries
+            - deploying
+            - various
+            - platforms
+        - name: solidstart
+          path: webdev/meta-frameworks/solidstart
+          description: >-
+            Builds full-stack applications with SolidStart, combining Solid's fine-grained reactivity with server
+            functions and multiple rendering modes. Use when creating SolidJS applications with SSR/SSG, server
+            functions, or when user mentions SolidStart or Solid meta-framework.
+          triggers: &ref_86
+            - solidstart
+            - builds
+            - full
+            - stack
+            - applications
+            - combining
+            - solid
+            - fine
+            - grained
+            - reactivity
+            - server
+            - functions
+            - multiple
+            - rendering
+            - modes
+            - creating
+            - solidjs
+            - ssr
+            - ssg
+            - user
+            - mentions
+            - meta
+            - framework
+        - name: sveltekit
+          path: webdev/meta-frameworks/sveltekit
+          description: >-
+            Builds applications with SvelteKit including routing, load functions, form actions, hooks, and adapters. Use
+            when creating Svelte applications with SSR, building full-stack apps, or needing file-based routing with
+            Svelte.
+          triggers: &ref_87
+            - sveltekit
+            - builds
+            - applications
+            - including
+            - routing
+            - load
+            - functions
+            - form
+            - actions
+            - hooks
+            - adapters
+            - creating
+            - svelte
+            - ssr
+            - building
+            - full
+            - stack
+            - apps
+            - needing
+            - file
+            - based
+    monitoring-analytics:
+      _items:
+        - name: sentry
+          path: webdev/monitoring-analytics/sentry
+          description: >-
+            Monitors applications with Sentry including error tracking, performance monitoring, and alerting. Use when
+            tracking errors, monitoring performance, setting up alerts, or debugging production issues.
+          triggers: &ref_88
+            - sentry
+            - monitors
+            - applications
+            - including
+            - error
+            - tracking
+            - performance
+            - monitoring
+            - alerting
+            - errors
+            - setting
+            - alerts
+            - debugging
+            - production
+            - issues
+    payments:
+      _items:
+        - name: stripe
+          path: webdev/payments/stripe
+          description: >-
+            Integrates Stripe payments including checkout, subscriptions, webhooks, and customer management. Use when
+            accepting payments, setting up subscriptions, handling webhooks, or managing billing.
+          triggers: &ref_89
+            - stripe
+            - integrates
+            - payments
+            - including
+            - checkout
+            - subscriptions
+            - webhooks
+            - customer
+            - management
+            - accepting
+            - setting
+            - handling
+            - managing
+            - billing
+    realtime-websockets:
+      _items:
+        - name: socket-io
+          path: webdev/realtime-websockets/socket-io
+          description: >-
+            Builds real-time applications with Socket.IO including events, rooms, namespaces, and acknowledgements. Use
+            when implementing real-time features, chat applications, live updates, or multiplayer functionality.
+          triggers: &ref_90
+            - socket
+            - io
+            - builds
+            - real
+            - time
+            - applications
+            - including
+            - events
+            - rooms
+            - namespaces
+            - acknowledgements
+            - implementing
+            - features
+            - chat
+            - live
+            - updates
+            - multiplayer
+            - functionality
+    skills:
+      _items:
+        - name: ably
+          path: webdev/skills/ably
+          description: >-
+            Implements real-time pub/sub messaging with Ably's edge infrastructure. Use when building real-time features
+            requiring enterprise reliability, presence, message history, and global low-latency delivery.
+          triggers: &ref_91
+            - ably
+            - implements
+            - real
+            - time
+            - pub
+            - sub
+            - messaging
+            - edge
+            - infrastructure
+            - building
+            - features
+            - requiring
+            - enterprise
+            - reliability
+            - presence
+            - message
+            - history
+            - global
+            - low
+            - latency
+            - delivery
+        - name: anthropic-api
+          path: webdev/skills/anthropic-api
+          description: >-
+            Integrates Anthropic Claude API for chat, tool use, and vision capabilities. Use when building AI-powered
+            features with Claude models including streaming, extended thinking, and multi-turn conversations.
+          triggers: &ref_92
+            - anthropic
+            - api
+            - integrates
+            - claude
+            - chat
+            - tool
+            - vision
+            - capabilities
+            - building
+            - powered
+            - features
+            - models
+            - including
+            - streaming
+            - extended
+            - thinking
+            - multi
+            - turn
+            - conversations
+        - name: auto-animate
+          path: webdev/skills/auto-animate
+          description: >-
+            Adds automatic animations to DOM changes with zero configuration using FormKit's AutoAnimate. Use when
+            adding smooth transitions for list reordering, adding/removing elements, or quick UI polish.
+          triggers: &ref_93
+            - auto
+            - animate
+            - adds
+            - automatic
+            - animations
+            - dom
+            - changes
+            - zero
+            - configuration
+            - using
+            - formkit
+            - autoanimate
+            - adding
+            - smooth
+            - transitions
+            - list
+            - reordering
+            - removing
+            - elements
+            - quick
+            - polish
+        - name: aws-s3
+          path: webdev/skills/aws-s3
+          description: >-
+            Manages file storage with AWS S3 using the JavaScript SDK v3. Use when uploading files, generating presigned
+            URLs, managing buckets, or implementing cloud storage in Node.js applications.
+          triggers: &ref_94
+            - aws
+            - s3
+            - manages
+            - file
+            - storage
+            - using
+            - javascript
+            - sdk
+            - uploading
+            - files
+            - generating
+            - presigned
+            - urls
+            - managing
+            - buckets
+            - implementing
+            - cloud
+            - node
+            - applications
+        - name: axiom
+          path: webdev/skills/axiom
+          description: >-
+            Implements structured logging and observability with Axiom for serverless applications. Use when adding
+            logging, tracing, and Web Vitals monitoring to Next.js and Vercel applications.
+          triggers: &ref_95
+            - axiom
+            - implements
+            - structured
+            - logging
+            - observability
+            - serverless
+            - applications
+            - adding
+            - tracing
+            - web
+            - vitals
+            - monitoring
+            - next
+            - vercel
+        - name: cloudinary
+          path: webdev/skills/cloudinary
+          description: >-
+            Manages images and videos with Cloudinary including upload, transformation, and CDN delivery. Use when
+            building media-rich applications requiring resize, crop, format conversion, and optimization.
+          triggers: &ref_96
+            - cloudinary
+            - manages
+            - images
+            - videos
+            - including
+            - upload
+            - transformation
+            - cdn
+            - delivery
+            - building
+            - media
+            - rich
+            - applications
+            - requiring
+            - resize
+            - crop
+            - format
+            - conversion
+            - optimization
+        - name: contentful
+          path: webdev/skills/contentful
+          description: >-
+            Manages content with Contentful headless CMS and Content Delivery API. Use when building content-driven
+            applications with structured content models, CDN delivery, and enterprise content management.
+          triggers: &ref_97
+            - contentful
+            - manages
+            - content
+            - headless
+            - cms
+            - delivery
+            - api
+            - building
+            - driven
+            - applications
+            - structured
+            - models
+            - cdn
+            - enterprise
+            - management
+        - name: css-animations
+          path: webdev/skills/css-animations
+          description: >-
+            Creates native CSS animations using keyframes, transitions, and modern animation properties. Use when
+            building animations without JavaScript libraries, optimizing performance, or implementing
+            micro-interactions.
+          triggers: &ref_98
+            - css
+            - animations
+            - creates
+            - native
+            - using
+            - keyframes
+            - transitions
+            - modern
+            - animation
+            - properties
+            - building
+            - without
+            - javascript
+            - libraries
+            - optimizing
+            - performance
+            - implementing
+            - micro
+            - interactions
+        - name: gsap
+          path: webdev/skills/gsap
+          description: >-
+            Creates professional animations with GSAP (GreenSock Animation Platform). Use when building complex
+            animations, scroll-triggered effects, timelines, or smooth transitions in any JavaScript framework.
+          triggers: &ref_99
+            - gsap
+            - creates
+            - professional
+            - animations
+            - greensock
+            - animation
+            - platform
+            - building
+            - complex
+            - scroll
+            - triggered
+            - effects
+            - timelines
+            - smooth
+            - transitions
+            - any
+            - javascript
+            - framework
+        - name: huggingface-js
+          path: webdev/skills/huggingface-js
+          description: >-
+            Runs ML models in the browser and Node.js with Transformers.js and Hugging Face Inference API. Use when
+            adding local inference, embeddings, or calling hosted models without GPU servers.
+          triggers: &ref_100
+            - huggingface
+            - js
+            - runs
+            - models
+            - browser
+            - node
+            - transformers
+            - hugging
+            - face
+            - inference
+            - api
+            - adding
+            - local
+            - embeddings
+            - calling
+            - hosted
+            - without
+            - gpu
+            - servers
+        - name: imgix
+          path: webdev/skills/imgix
+          description: >-
+            Optimizes and transforms images with Imgix CDN using URL-based API. Use when serving responsive images,
+            applying real-time transformations, and optimizing delivery without processing overhead.
+          triggers: &ref_101
+            - imgix
+            - optimizes
+            - transforms
+            - images
+            - cdn
+            - using
+            - url
+            - based
+            - api
+            - serving
+            - responsive
+            - applying
+            - real
+            - time
+            - transformations
+            - optimizing
+            - delivery
+            - without
+            - processing
+            - overhead
+        - name: keystonejs
+          path: webdev/skills/keystonejs
+          description: >-
+            Builds content APIs with KeystoneJS, the Node.js headless CMS with GraphQL. Use when creating admin UIs and
+            APIs with automatic CRUD operations, relationships, access control, and TypeScript support.
+          triggers: &ref_102
+            - keystonejs
+            - builds
+            - content
+            - apis
+            - node
+            - headless
+            - cms
+            - graphql
+            - creating
+            - admin
+            - uis
+            - automatic
+            - crud
+            - operations
+            - relationships
+            - access
+            - control
+            - typescript
+            - support
+        - name: langchain-js
+          path: webdev/skills/langchain-js
+          description: >-
+            Builds LLM-powered applications with LangChain.js for chat, agents, and RAG. Use when creating AI
+            applications with chains, memory, tools, and retrieval-augmented generation in JavaScript.
+          triggers: &ref_103
+            - langchain
+            - js
+            - builds
+            - llm
+            - powered
+            - applications
+            - chat
+            - agents
+            - rag
+            - creating
+            - chains
+            - memory
+            - tools
+            - retrieval
+            - augmented
+            - generation
+            - javascript
+        - name: lemonsqueezy
+          path: webdev/skills/lemonsqueezy
+          description: >-
+            Integrates payments and subscriptions with Lemon Squeezy merchant of record platform. Use when selling
+            digital products, SaaS subscriptions, or software licenses with built-in tax handling.
+          triggers: &ref_104
+            - lemonsqueezy
+            - integrates
+            - payments
+            - subscriptions
+            - lemon
+            - squeezy
+            - merchant
+            - record
+            - platform
+            - selling
+            - digital
+            - products
+            - saas
+            - software
+            - licenses
+            - built
+            - tax
+            - handling
+        - name: liveblocks
+          path: webdev/skills/liveblocks
+          description: >-
+            Builds real-time collaborative features with Liveblocks including presence, cursors, storage, comments, and
+            notifications. Use when adding multiplayer experiences, collaborative editing, or live cursors to React
+            applications.
+          triggers: &ref_105
+            - liveblocks
+            - builds
+            - real
+            - time
+            - collaborative
+            - features
+            - including
+            - presence
+            - cursors
+            - storage
+            - comments
+            - notifications
+            - adding
+            - multiplayer
+            - experiences
+            - editing
+            - live
+            - react
+            - applications
+        - name: logrocket
+          path: webdev/skills/logrocket
+          description: >-
+            Implements session replay and error tracking with LogRocket for debugging user issues. Use when adding
+            session recording, error monitoring, and performance tracking to React applications.
+          triggers: &ref_106
+            - logrocket
+            - implements
+            - session
+            - replay
+            - error
+            - tracking
+            - debugging
+            - user
+            - issues
+            - adding
+            - recording
+            - monitoring
+            - performance
+            - react
+            - applications
+        - name: lottie
+          path: webdev/skills/lottie
+          description: >-
+            Renders After Effects animations as lightweight JSON on web and mobile using lottie-web. Use when adding
+            vector animations, loading indicators, or complex motion graphics without video files.
+          triggers: &ref_107
+            - lottie
+            - renders
+            - after
+            - effects
+            - animations
+            - lightweight
+            - json
+            - web
+            - mobile
+            - using
+            - adding
+            - vector
+            - loading
+            - indicators
+            - complex
+            - motion
+            - graphics
+            - without
+            - video
+            - files
+        - name: nodemailer
+          path: webdev/skills/nodemailer
+          description: >-
+            Sends emails from Node.js applications using SMTP or other transports with Nodemailer. Use when implementing
+            email functionality with full control over transport configuration.
+          triggers: &ref_108
+            - nodemailer
+            - sends
+            - emails
+            - from
+            - node
+            - applications
+            - using
+            - smtp
+            - other
+            - transports
+            - implementing
+            - email
+            - functionality
+            - full
+            - control
+            - over
+            - transport
+            - configuration
+        - name: openai-api
+          path: webdev/skills/openai-api
+          description: >-
+            Integrates OpenAI APIs for chat completions, embeddings, and image generation. Use when building AI-powered
+            features with GPT models, DALL-E, or Whisper in Node.js applications.
+          triggers: &ref_109
+            - openai
+            - api
+            - integrates
+            - apis
+            - chat
+            - completions
+            - embeddings
+            - image
+            - generation
+            - building
+            - powered
+            - features
+            - gpt
+            - models
+            - dall
+            - whisper
+            - node
+            - applications
+        - name: paddle
+          path: webdev/skills/paddle
+          description: >-
+            Integrates billing and subscriptions with Paddle merchant of record platform. Use when selling SaaS
+            subscriptions with checkout overlays, pricing pages, and subscription management.
+          triggers: &ref_110
+            - paddle
+            - integrates
+            - billing
+            - subscriptions
+            - merchant
+            - record
+            - platform
+            - selling
+            - saas
+            - checkout
+            - overlays
+            - pricing
+            - pages
+            - subscription
+            - management
+        - name: partykit
+          path: webdev/skills/partykit
+          description: >-
+            Builds real-time multiplayer applications with PartyKit on Cloudflare's edge. Use when creating
+            collaborative apps, games, AI agents, or stateful WebSocket servers with global low-latency deployment.
+          triggers: &ref_111
+            - partykit
+            - builds
+            - real
+            - time
+            - multiplayer
+            - applications
+            - cloudflare
+            - edge
+            - creating
+            - collaborative
+            - apps
+            - games
+            - agents
+            - stateful
+            - websocket
+            - servers
+            - global
+            - low
+            - latency
+            - deployment
+        - name: payload
+          path: webdev/skills/payload
+          description: >-
+            Builds full-stack applications with Payload CMS, the Next.js-native headless CMS. Use when creating
+            content-driven apps with TypeScript, code-first configuration, and full control over your backend.
+          triggers: &ref_112
+            - payload
+            - builds
+            - full
+            - stack
+            - applications
+            - cms
+            - next
+            - native
+            - headless
+            - creating
+            - content
+            - driven
+            - apps
+            - typescript
+            - code
+            - first
+            - configuration
+            - control
+            - over
+            - your
+            - backend
+        - name: paypal
+          path: webdev/skills/paypal
+          description: >-
+            Integrates PayPal payments with the JavaScript SDK for checkout buttons and card fields. Use when accepting
+            PayPal, Venmo, Pay Later, and credit card payments in web applications.
+          triggers: &ref_113
+            - paypal
+            - integrates
+            - payments
+            - javascript
+            - sdk
+            - checkout
+            - buttons
+            - card
+            - fields
+            - accepting
+            - venmo
+            - pay
+            - later
+            - credit
+            - web
+            - applications
+        - name: pinecone
+          path: webdev/skills/pinecone
+          description: >-
+            Implements vector search with Pinecone for semantic similarity and RAG applications. Use when building
+            embeddings-based search, recommendation systems, or retrieval-augmented generation.
+          triggers: &ref_114
+            - pinecone
+            - implements
+            - vector
+            - search
+            - semantic
+            - similarity
+            - rag
+            - applications
+            - building
+            - embeddings
+            - based
+            - recommendation
+            - systems
+            - retrieval
+            - augmented
+            - generation
+        - name: plausible
+          path: webdev/skills/plausible
+          description: >-
+            Implements privacy-friendly web analytics with Plausible as a Google Analytics alternative. Use when adding
+            lightweight, cookie-free analytics that are GDPR compliant without consent banners.
+          triggers: &ref_115
+            - plausible
+            - implements
+            - privacy
+            - friendly
+            - web
+            - analytics
+            - google
+            - alternative
+            - adding
+            - lightweight
+            - cookie
+            - free
+            - that
+            - are
+            - gdpr
+            - compliant
+            - without
+            - consent
+            - banners
+        - name: posthog
+          path: webdev/skills/posthog
+          description: >-
+            Implements product analytics with PostHog including event tracking, feature flags, and session replay. Use
+            when adding analytics, A/B testing, or user behavior tracking to React and Next.js applications.
+          triggers: &ref_116
+            - posthog
+            - implements
+            - product
+            - analytics
+            - including
+            - event
+            - tracking
+            - feature
+            - flags
+            - session
+            - replay
+            - adding
+            - testing
+            - user
+            - behavior
+            - react
+            - next
+            - applications
+        - name: pusher
+          path: webdev/skills/pusher
+          description: >-
+            Implements real-time features with Pusher Channels for WebSocket-based pub/sub messaging. Use when adding
+            live updates, notifications, chat, presence indicators, or collaborative features.
+          triggers: &ref_117
+            - pusher
+            - implements
+            - real
+            - time
+            - features
+            - channels
+            - websocket
+            - based
+            - pub
+            - sub
+            - messaging
+            - adding
+            - live
+            - updates
+            - notifications
+            - chat
+            - presence
+            - indicators
+            - collaborative
+        - name: react-email
+          path: webdev/skills/react-email
+          description: >-
+            Creates email templates with React components using React Email. Use when building transactional emails,
+            newsletters, or notification emails with responsive layouts and dark mode support.
+          triggers: &ref_118
+            - react
+            - email
+            - creates
+            - templates
+            - components
+            - using
+            - building
+            - transactional
+            - emails
+            - newsletters
+            - notification
+            - responsive
+            - layouts
+            - dark
+            - mode
+            - support
+        - name: replicate
+          path: webdev/skills/replicate
+          description: >-
+            Runs open-source ML models via Replicate API for image generation, LLMs, and audio. Use when calling Stable
+            Diffusion, Llama, Whisper, or other models without infrastructure management.
+          triggers: &ref_119
+            - replicate
+            - runs
+            - open
+            - source
+            - models
+            - via
+            - api
+            - image
+            - generation
+            - llms
+            - audio
+            - calling
+            - stable
+            - diffusion
+            - llama
+            - whisper
+            - other
+            - without
+            - infrastructure
+            - management
+        - name: sanity
+          path: webdev/skills/sanity
+          description: >-
+            Manages structured content with Sanity headless CMS using GROQ queries and real-time collaboration. Use when
+            building content-driven sites with customizable schemas, live previews, and flexible data modeling.
+          triggers: &ref_120
+            - sanity
+            - manages
+            - structured
+            - content
+            - headless
+            - cms
+            - using
+            - groq
+            - queries
+            - real
+            - time
+            - collaboration
+            - building
+            - driven
+            - sites
+            - customizable
+            - schemas
+            - live
+            - previews
+            - flexible
+            - data
+            - modeling
+        - name: sendgrid
+          path: webdev/skills/sendgrid
+          description: >-
+            Sends transactional and marketing emails with SendGrid API. Use when integrating email delivery in Node.js
+            applications with templates, analytics, and high deliverability.
+          triggers: &ref_121
+            - sendgrid
+            - sends
+            - transactional
+            - marketing
+            - emails
+            - api
+            - integrating
+            - email
+            - delivery
+            - node
+            - applications
+            - templates
+            - analytics
+            - high
+            - deliverability
+        - name: sharp
+          path: webdev/skills/sharp
+          description: >-
+            Processes images with Sharp, the high-performance Node.js library for resizing, converting, and optimizing
+            images. Use when building image pipelines, generating thumbnails, or optimizing uploads server-side.
+          triggers: &ref_122
+            - sharp
+            - processes
+            - images
+            - high
+            - performance
+            - node
+            - library
+            - resizing
+            - converting
+            - optimizing
+            - building
+            - image
+            - pipelines
+            - generating
+            - thumbnails
+            - uploads
+            - server
+            - side
+        - name: strapi
+          path: webdev/skills/strapi
+          description: >-
+            Builds content APIs with Strapi open-source headless CMS. Use when creating self-hosted content management
+            with auto-generated REST/GraphQL APIs, customizable admin panel, and full control over your data.
+          triggers: &ref_123
+            - strapi
+            - builds
+            - content
+            - apis
+            - open
+            - source
+            - headless
+            - cms
+            - creating
+            - self
+            - hosted
+            - management
+            - auto
+            - generated
+            - rest
+            - graphql
+            - customizable
+            - admin
+            - panel
+            - full
+            - control
+            - over
+            - your
+            - data
+        - name: uploadthing
+          path: webdev/skills/uploadthing
+          description: >-
+            Handles file uploads with UploadThing for TypeScript applications. Use when adding file uploads to Next.js
+            or React apps with type-safe APIs, validation, and CDN delivery.
+          triggers: &ref_124
+            - uploadthing
+            - handles
+            - file
+            - uploads
+            - typescript
+            - applications
+            - adding
+            - next
+            - react
+            - apps
+            - type
+            - safe
+            - apis
+            - validation
+            - cdn
+            - delivery
+        - name: vercel-analytics
+          path: webdev/skills/vercel-analytics
+          description: >-
+            Implements privacy-friendly web analytics with Vercel Analytics for traffic insights and Web Vitals. Use
+            when tracking page views and performance metrics in Next.js applications deployed on Vercel.
+          triggers: &ref_125
+            - vercel
+            - analytics
+            - implements
+            - privacy
+            - friendly
+            - web
+            - traffic
+            - insights
+            - vitals
+            - tracking
+            - page
+            - views
+            - performance
+            - metrics
+            - next
+            - applications
+            - deployed
+        - name: view-transitions
+          path: webdev/skills/view-transitions
+          description: >-
+            Creates smooth animated transitions between views using the native View Transitions API. Use when building
+            page transitions, state changes, or morphing elements between different DOM states in SPAs and MPAs.
+          triggers: &ref_126
+            - view
+            - transitions
+            - creates
+            - smooth
+            - animated
+            - between
+            - views
+            - using
+            - native
+            - api
+            - building
+            - page
+            - state
+            - changes
+            - morphing
+            - elements
+            - different
+            - dom
+            - states
+            - spas
+            - mpas
+    state-management:
+      _items:
+        - name: jotai
+          path: webdev/state-management/jotai
+          description: >-
+            Manages React state with Jotai including atoms, derived atoms, async atoms, and utilities. Use when building
+            React applications needing atomic state, bottom-up state management, or fine-grained updates.
+          triggers: &ref_127
+            - jotai
+            - manages
+            - react
+            - state
+            - including
+            - atoms
+            - derived
+            - async
+            - utilities
+            - building
+            - applications
+            - needing
+            - atomic
+            - bottom
+            - management
+            - fine
+            - grained
+            - updates
+        - name: nanostores
+          path: webdev/state-management/nanostores
+          description: >-
+            Manages state with Nanostores using atoms, maps, computed stores, and framework integrations. Use when
+            building framework-agnostic state, sharing state between islands/components, or needing tiny bundle size.
+          triggers: &ref_128
+            - nanostores
+            - manages
+            - state
+            - using
+            - atoms
+            - maps
+            - computed
+            - stores
+            - framework
+            - integrations
+            - building
+            - agnostic
+            - sharing
+            - between
+            - islands
+            - components
+            - needing
+            - tiny
+            - bundle
+            - size
+        - name: pinia
+          path: webdev/state-management/pinia
+          description: >-
+            Manages Vue state with Pinia including stores, getters, actions, and plugins. Use when building Vue
+            applications needing centralized state, sharing state between components, or replacing Vuex.
+          triggers: &ref_129
+            - pinia
+            - manages
+            - vue
+            - state
+            - including
+            - stores
+            - getters
+            - actions
+            - plugins
+            - building
+            - applications
+            - needing
+            - centralized
+            - sharing
+            - between
+            - components
+            - replacing
+            - vuex
+        - name: redux-toolkit
+          path: webdev/state-management/redux-toolkit
+          description: >-
+            Manages global state with Redux Toolkit's createSlice, createAsyncThunk, and RTK Query for data fetching and
+            caching. Use when building large-scale applications, implementing predictable state management, or when user
+            mentions Redux, RTK, or Redux Toolkit.
+          triggers: &ref_130
+            - redux
+            - toolkit
+            - manages
+            - global
+            - state
+            - createslice
+            - createasyncthunk
+            - rtk
+            - query
+            - data
+            - fetching
+            - caching
+            - building
+            - large
+            - scale
+            - applications
+            - implementing
+            - predictable
+            - management
+            - user
+            - mentions
+        - name: tanstack-query
+          path: webdev/state-management/tanstack-query
+          description: >-
+            Manages server state with TanStack Query (React Query) including data fetching, caching, mutations, and
+            optimistic updates. Use when fetching API data, caching responses, handling loading states, or syncing
+            server state.
+          triggers: &ref_131
+            - tanstack
+            - query
+            - manages
+            - server
+            - state
+            - react
+            - including
+            - data
+            - fetching
+            - caching
+            - mutations
+            - optimistic
+            - updates
+            - api
+            - responses
+            - handling
+            - loading
+            - states
+            - syncing
+        - name: valtio
+          path: webdev/state-management/valtio
+          description: >-
+            Manages state with Valtio using proxy-based reactivity, direct mutations, and automatic re-renders. Use when
+            wanting mutable state syntax, fine-grained reactivity, or state management outside React components.
+          triggers: &ref_132
+            - valtio
+            - manages
+            - state
+            - using
+            - proxy
+            - based
+            - reactivity
+            - direct
+            - mutations
+            - automatic
+            - renders
+            - wanting
+            - mutable
+            - syntax
+            - fine
+            - grained
+            - management
+            - outside
+            - react
+            - components
+        - name: zustand
+          path: webdev/state-management/zustand
+          description: >-
+            Manages application state with Zustand including stores, selectors, actions, and middleware. Use when
+            managing client-side state, creating global stores, persisting state, or replacing Redux/Context.
+          triggers: &ref_133
+            - zustand
+            - manages
+            - application
+            - state
+            - including
+            - stores
+            - selectors
+            - actions
+            - middleware
+            - managing
+            - client
+            - side
+            - creating
+            - global
+            - persisting
+            - replacing
+            - redux
+            - context
+    styling:
+      _items:
+        - name: css-modules
+          path: webdev/styling/css-modules
+          description: >-
+            Implements scoped CSS using CSS Modules with automatic class name generation, composition, and TypeScript
+            support. Use when needing component-scoped styles, avoiding naming collisions, or migrating from global CSS.
+          triggers: &ref_134
+            - css
+            - modules
+            - implements
+            - scoped
+            - using
+            - automatic
+            - class
+            - name
+            - generation
+            - composition
+            - typescript
+            - support
+            - needing
+            - component
+            - styles
+            - avoiding
+            - naming
+            - collisions
+            - migrating
+            - from
+            - global
+        - name: css-variables
+          path: webdev/styling/css-variables
+          description: >-
+            Implements CSS custom properties for theming, component styling, and runtime customization. Use when
+            building theme systems, dynamic styling, or configurable components.
+          triggers: &ref_135
+            - css
+            - variables
+            - implements
+            - custom
+            - properties
+            - theming
+            - component
+            - styling
+            - runtime
+            - customization
+            - building
+            - theme
+            - systems
+            - dynamic
+            - configurable
+            - components
+        - name: panda-css
+          path: webdev/styling/panda-css
+          description: >-
+            Implements build-time CSS-in-JS with Panda CSS using type-safe tokens, recipes, and patterns. Use when
+            wanting zero-runtime CSS-in-JS, design system tokens, or type-safe component variants.
+          triggers: &ref_136
+            - panda
+            - css
+            - implements
+            - build
+            - time
+            - using
+            - type
+            - safe
+            - tokens
+            - recipes
+            - patterns
+            - wanting
+            - zero
+            - runtime
+            - design
+            - system
+            - component
+            - variants
+        - name: sass-scss
+          path: webdev/styling/sass-scss
+          description: >-
+            Implements CSS preprocessing with Sass/SCSS using modules, mixins, functions, and nesting. Use when needing
+            CSS preprocessing, design system variables, reusable mixins, or organizing large stylesheets.
+          triggers: &ref_137
+            - sass
+            - scss
+            - implements
+            - css
+            - preprocessing
+            - using
+            - modules
+            - mixins
+            - functions
+            - nesting
+            - needing
+            - design
+            - system
+            - variables
+            - reusable
+            - organizing
+            - large
+            - stylesheets
+        - name: styled-components
+          path: webdev/styling/styled-components
+          description: >-
+            Implements CSS-in-JS styling with styled-components using tagged template literals, theming, and dynamic
+            props. Use when wanting component-scoped CSS-in-JS, dynamic styling based on props, or theming support.
+          triggers: &ref_138
+            - styled
+            - components
+            - implements
+            - css
+            - styling
+            - using
+            - tagged
+            - template
+            - literals
+            - theming
+            - dynamic
+            - props
+            - wanting
+            - component
+            - scoped
+            - based
+            - support
+        - name: tailwindcss
+          path: webdev/styling/tailwindcss
+          description: >-
+            Styles web applications with Tailwind CSS using utility classes, responsive design, custom themes, and
+            component patterns. Use when setting up Tailwind, creating layouts, implementing responsive designs, or
+            customizing themes.
+          triggers: &ref_139
+            - tailwindcss
+            - styles
+            - web
+            - applications
+            - tailwind
+            - css
+            - using
+            - utility
+            - classes
+            - responsive
+            - design
+            - custom
+            - themes
+            - component
+            - patterns
+            - setting
+            - creating
+            - layouts
+            - implementing
+            - designs
+            - customizing
+        - name: unocss
+          path: webdev/styling/unocss
+          description: >-
+            Implements atomic CSS with UnoCSS using on-demand generation, custom rules, and presets. Use when wanting
+            instant atomic CSS, custom utility frameworks, or Tailwind alternatives with more flexibility.
+          triggers: &ref_140
+            - unocss
+            - implements
+            - atomic
+            - css
+            - using
+            - demand
+            - generation
+            - custom
+            - rules
+            - presets
+            - wanting
+            - instant
+            - utility
+            - frameworks
+            - tailwind
+            - alternatives
+            - more
+            - flexibility
+        - name: vanilla-extract
+          path: webdev/styling/vanilla-extract
+          description: >-
+            Implements zero-runtime CSS using vanilla-extract with type-safe styles, themes, recipes, and sprinkles. Use
+            when wanting type-safe CSS, static extraction at build time, or building design system utilities.
+          triggers: &ref_141
+            - vanilla
+            - extract
+            - implements
+            - zero
+            - runtime
+            - css
+            - using
+            - type
+            - safe
+            - styles
+            - themes
+            - recipes
+            - sprinkles
+            - wanting
+            - static
+            - extraction
+            - build
+            - time
+            - building
+            - design
+            - system
+            - utilities
+    testing:
+      _items:
+        - name: chromatic
+          path: webdev/testing/chromatic
+          description: >-
+            Automates visual regression testing for Storybook components using cloud-based snapshot comparison. Use when
+            setting up visual testing, catching UI regressions, or reviewing component changes.
+          triggers: &ref_142
+            - chromatic
+            - automates
+            - visual
+            - regression
+            - testing
+            - storybook
+            - components
+            - using
+            - cloud
+            - based
+            - snapshot
+            - comparison
+            - setting
+            - catching
+            - regressions
+            - reviewing
+            - component
+            - changes
+        - name: cypress
+          path: webdev/testing/cypress
+          description: >-
+            Writes E2E and component tests with Cypress including selectors, commands, fixtures, and API testing. Use
+            when testing web applications end-to-end, testing user flows, or writing integration tests.
+          triggers: &ref_143
+            - cypress
+            - writes
+            - e2e
+            - component
+            - tests
+            - including
+            - selectors
+            - commands
+            - fixtures
+            - api
+            - testing
+            - web
+            - applications
+            - end
+            - user
+            - flows
+            - writing
+            - integration
+        - name: jest
+          path: webdev/testing/jest
+          description: >-
+            Tests JavaScript and TypeScript applications with Jest test runner including mocking, snapshot testing, and
+            code coverage. Use when setting up testing, writing unit tests, or when user mentions Jest, test runner, or
+            JavaScript testing.
+          triggers: &ref_144
+            - jest
+            - tests
+            - javascript
+            - typescript
+            - applications
+            - test
+            - runner
+            - including
+            - mocking
+            - snapshot
+            - testing
+            - code
+            - coverage
+            - setting
+            - writing
+            - unit
+            - user
+            - mentions
+        - name: msw
+          path: webdev/testing/msw
+          description: >-
+            Mocks APIs with Mock Service Worker including request handlers, server/browser setup, and testing
+            integration. Use when mocking APIs in tests, developing without backend, or simulating network conditions.
+          triggers: &ref_145
+            - msw
+            - mocks
+            - apis
+            - mock
+            - service
+            - worker
+            - including
+            - request
+            - handlers
+            - server
+            - browser
+            - setup
+            - testing
+            - integration
+            - mocking
+            - tests
+            - developing
+            - without
+            - backend
+            - simulating
+            - network
+            - conditions
+        - name: playwright
+          path: webdev/testing/playwright
+          description: >-
+            Tests web applications with Playwright including E2E tests, locators, assertions, and visual testing. Use
+            when writing end-to-end tests, testing across browsers, automating user flows, or debugging test failures.
+          triggers: &ref_146
+            - playwright
+            - tests
+            - web
+            - applications
+            - including
+            - e2e
+            - locators
+            - assertions
+            - visual
+            - testing
+            - writing
+            - end
+            - across
+            - browsers
+            - automating
+            - user
+            - flows
+            - debugging
+            - test
+            - failures
+        - name: storybook
+          path: webdev/testing/storybook
+          description: >-
+            Develops and documents UI components in isolation with Storybook's interactive workshop environment. Use
+            when building component libraries, documenting design systems, or when user mentions Storybook, component
+            documentation, or UI development.
+          triggers: &ref_147
+            - storybook
+            - develops
+            - documents
+            - components
+            - isolation
+            - interactive
+            - workshop
+            - environment
+            - building
+            - component
+            - libraries
+            - documenting
+            - design
+            - systems
+            - user
+            - mentions
+            - documentation
+            - development
+        - name: testing-library
+          path: webdev/testing/testing-library
+          description: >-
+            Tests UI components with Testing Library including queries, user events, and async utilities. Use when
+            testing React/Vue/Svelte components, writing accessible tests, or testing user interactions.
+          triggers: &ref_148
+            - testing
+            - library
+            - tests
+            - components
+            - including
+            - queries
+            - user
+            - events
+            - async
+            - utilities
+            - react
+            - vue
+            - svelte
+            - writing
+            - accessible
+            - interactions
+        - name: vitest
+          path: webdev/testing/vitest
+          description: >-
+            Tests JavaScript and TypeScript applications with Vitest including unit tests, mocking, coverage, and React
+            component testing. Use when writing tests, setting up test infrastructure, mocking dependencies, or
+            measuring code coverage.
+          triggers: &ref_149
+            - vitest
+            - tests
+            - javascript
+            - typescript
+            - applications
+            - including
+            - unit
+            - mocking
+            - coverage
+            - react
+            - component
+            - testing
+            - writing
+            - setting
+            - test
+            - infrastructure
+            - dependencies
+            - measuring
+            - code
+search_index:
+  - name: debugging
+    keywords: *ref_0
+    path: common/development/debugging
+    description: >-
+      Analyzes stack traces, identifies log patterns, provides error solutions, and guides performance profiling, memory
+      debugging, and distributed tracing. Use when debugging errors, analyzing logs, profiling performance, detecting
+      memory leaks, or tracing distributed systems.
+  - name: project-understanding
+    keywords: *ref_1
+    path: common/development/project-understanding
+    description: >-
+      Analyzes codebases to map architecture, dependencies, complexity metrics, and data flows for rapid onboarding. Use
+      when exploring new repos, understanding project layout, analyzing dependencies, measuring code complexity, or
+      preparing codebase documentation.
+  - name: refactoring
+    keywords: *ref_2
+    path: common/development/refactoring
+    description: >-
+      Identifies code smells, applies design patterns, guides migrations, and performs
+      security/performance/accessibility refactoring. Use when improving code quality, modernizing codebases, applying
+      design patterns, migrating to TypeScript, or extracting microservices.
+  - name: code-quality
+    keywords: *ref_3
+    path: common/quality/code-quality
+    description: >-
+      Audits code for security vulnerabilities, performance issues, accessibility, complexity metrics, and
+      infrastructure security. Use when reviewing code quality, performing security audits, checking OWASP compliance,
+      analyzing complexity, auditing IaC, or finding dead code.
+  - name: testing
+    keywords: *ref_4
+    path: common/quality/testing
+    description: >-
+      Generates test cases, creates mocks, identifies edge cases, analyzes coverage gaps, and supports property-based,
+      mutation, and contract testing. Use when writing tests, improving coverage, detecting flaky tests, or implementing
+      advanced testing strategies.
+  - name: documentation
+    keywords: *ref_5
+    path: common/workflow/documentation
+    description: >-
+      Generates README files, API documentation, changelogs, runbooks, and SDK code from project analysis. Use when
+      creating documentation, generating changelogs, documenting APIs, creating runbooks, or generating client SDKs.
+  - name: git-workflows
+    keywords: *ref_6
+    path: common/workflow/git-workflows
+    description: >-
+      Generates PR descriptions, commit messages, release notes, and manages branch strategies, changelog automation,
+      and git hooks. Use when creating pull requests, writing commits, preparing releases, managing branches, or
+      automating changelogs.
+  - name: agent-sdk-definitions
+    keywords: *ref_7
+    path: create/agent-sdk-definitions
+    description: >-
+      Programmatic agent definitions for the Claude Agent SDK in TypeScript and Python. Use when creating agents for
+      SDK-based applications rather than filesystem-based Claude Code.
+  - name: hook-integration
+    keywords: *ref_8
+    path: create/hook-integration
+    description: >-
+      Comprehensive guide to integrating skills with Claude Code's 12 hook events. Use when creating hook-aware skills
+      for harnesses like Clausitron, or when needing hook response schemas and patterns.
+  - name: script-best-practices
+    keywords: *ref_9
+    path: create/script-best-practices
+    description: >-
+      Best practices for bundling scripts in skills including error handling, constants documentation, and execution
+      patterns. Use when creating script-enabled skills.
+  - name: workflow-patterns
+    keywords: *ref_10
+    path: create/workflow-patterns
+    description: >-
+      Reusable workflow patterns for skills and agents including sequential checklists, conditional routing, validation
+      loops, and progressive disclosure. Use when designing structured procedures.
+  - name: writing-descriptions
+    keywords: *ref_11
+    path: create/writing-descriptions
+    description: >-
+      Examples and patterns for writing effective agent and skill descriptions. Use when crafting descriptions that
+      serve as routing keys for Claude's invocation decisions.
+  - name: vercel-ai-sdk
+    keywords: *ref_12
+    path: webdev/ai-integration/vercel-ai-sdk
+    description: >-
+      Builds AI-powered applications with Vercel AI SDK including streaming responses, chat interfaces, and model
+      integration. Use when integrating LLMs, building chat applications, streaming AI responses, or implementing AI
+      features in React.
+  - name: framer-motion
+    keywords: *ref_13
+    path: webdev/animation/framer-motion
+    description: >-
+      Creates animations with Framer Motion/Motion including transitions, gestures, layout animations, and scroll
+      effects. Use when animating React components, creating page transitions, adding gesture interactions, or building
+      animated interfaces.
+  - name: apollo-server
+    keywords: *ref_14
+    path: webdev/api-layer/apollo-server
+    description: >-
+      Builds GraphQL APIs with Apollo Server 4, schema design, resolvers, and data sources. Use when implementing
+      GraphQL servers, building federated graphs, or integrating GraphQL with Node.js frameworks.
+  - name: express
+    keywords: *ref_15
+    path: webdev/api-layer/express
+    description: >-
+      Builds APIs with Express including routing, middleware, error handling, and security. Use when creating Node.js
+      APIs, building REST services, or adding middleware-based server functionality.
+  - name: fastify
+    keywords: *ref_16
+    path: webdev/api-layer/fastify
+    description: >-
+      Builds high-performance Node.js APIs with Fastify, TypeScript, schema validation, and plugins. Use when building
+      fast REST APIs, microservices, or needing schema-based validation.
+  - name: graphql
+    keywords: *ref_17
+    path: webdev/api-layer/graphql
+    description: >-
+      Builds APIs with GraphQL including schemas, queries, mutations, resolvers, and client integration. Use when
+      designing flexible APIs, fetching related data, or implementing real-time subscriptions.
+  - name: hono
+    keywords: *ref_18
+    path: webdev/api-layer/hono
+    description: >-
+      Builds APIs with Hono including routing, middleware, validation, and edge deployment. Use when creating fast APIs,
+      building edge functions, or developing serverless applications.
+  - name: openapi
+    keywords: *ref_19
+    path: webdev/api-layer/openapi
+    description: >-
+      Defines and generates OpenAPI 3.1 specifications with TypeScript type generation, validation, and documentation.
+      Use when documenting APIs, generating client SDKs, or implementing contract-first API design.
+  - name: rest-api-design
+    keywords: *ref_20
+    path: webdev/api-layer/rest-api-design
+    description: >-
+      Designs RESTful APIs following industry best practices for resource naming, HTTP methods, status codes, and error
+      handling. Use when designing new APIs, refactoring existing endpoints, or establishing API standards.
+  - name: trpc
+    keywords: *ref_21
+    path: webdev/api-layer/trpc
+    description: >-
+      Builds type-safe APIs with tRPC including routers, procedures, context, and client integration. Use when creating
+      end-to-end type-safe APIs, building full-stack TypeScript applications, or replacing REST/GraphQL with simpler
+      patterns.
+  - name: auth0
+    keywords: *ref_22
+    path: webdev/authentication/auth0
+    description: >-
+      Implements Auth0 authentication with Next.js SDK, React hooks, role-based access, and API protection. Use when
+      integrating Auth0, implementing enterprise SSO, or needing managed authentication with MFA.
+  - name: clerk
+    keywords: *ref_23
+    path: webdev/authentication/clerk
+    description: >-
+      Implements authentication with Clerk including user management, protected routes, middleware, and React
+      components. Use when adding authentication, managing users, protecting routes, or implementing sign-in/sign-up
+      flows.
+  - name: firebase-auth
+    keywords: *ref_24
+    path: webdev/authentication/firebase-auth
+    description: >-
+      Implements Firebase Authentication with email, OAuth, phone auth, and custom tokens. Use when building apps with
+      Firebase, needing flexible auth methods, or integrating with Firebase ecosystem.
+  - name: lucia
+    keywords: *ref_25
+    path: webdev/authentication/lucia
+    description: >-
+      Implements session-based authentication with Lucia Auth library for server-side session management and cookie
+      handling. Use when building custom authentication, session management, or when user mentions Lucia, server-side
+      auth, or session cookies.
+  - name: nextauth
+    keywords: *ref_26
+    path: webdev/authentication/nextauth
+    description: >-
+      Implements authentication with Auth.js/NextAuth.js v5 including OAuth providers, credentials, sessions, and route
+      protection. Use when adding authentication to Next.js, configuring OAuth providers, or protecting routes.
+  - name: passport
+    keywords: *ref_27
+    path: webdev/authentication/passport
+    description: >-
+      Implements Passport.js authentication middleware with local, OAuth, and JWT strategies for Express/Node.js. Use
+      when building Node.js APIs, implementing custom auth flows, or needing flexible authentication strategies.
+  - name: supabase-auth
+    keywords: *ref_28
+    path: webdev/authentication/supabase-auth
+    description: >-
+      Implements Supabase Authentication with email, OAuth, magic links, and phone auth. Use when building apps with
+      Supabase, needing auth integrated with Row Level Security, or implementing passwordless login.
+  - name: bun
+    keywords: *ref_29
+    path: webdev/build-tools/bun
+    description: >-
+      Configures Bun as an all-in-one JavaScript runtime, bundler, package manager, and test runner with native
+      TypeScript support. Use when building fast applications, bundling for production, or replacing Node.js tooling.
+  - name: esbuild
+    keywords: *ref_30
+    path: webdev/build-tools/esbuild
+    description: >-
+      Configures esbuild for extremely fast JavaScript/TypeScript bundling with plugins, code splitting, and build
+      optimization. Use when building libraries, rapid prototyping, or optimizing build performance.
+  - name: rollup
+    keywords: *ref_31
+    path: webdev/build-tools/rollup
+    description: >-
+      Configures Rollup for ES module bundling with plugins, tree shaking, and multiple output formats. Use when
+      building JavaScript libraries, creating optimized bundles, or publishing npm packages.
+  - name: tsup
+    keywords: *ref_32
+    path: webdev/build-tools/tsup
+    description: >-
+      Configures tsup for zero-config TypeScript library bundling with ESM/CJS output, declarations, and esbuild speed.
+      Use when building TypeScript packages, creating dual ESM/CJS libraries, or publishing to npm.
+  - name: turbopack
+    keywords: *ref_33
+    path: webdev/build-tools/turbopack
+    description: >-
+      Configures Turbopack as the default Rust-based bundler for Next.js with incremental compilation and webpack loader
+      compatibility. Use when optimizing Next.js development builds, migrating from webpack, or configuring custom
+      loaders.
+  - name: vite
+    keywords: *ref_34
+    path: webdev/build-tools/vite
+    description: >-
+      Builds web applications with Vite including dev server, production builds, plugins, and configuration. Use when
+      scaffolding projects, configuring build tools, optimizing bundles, or setting up development environments.
+  - name: webpack
+    keywords: *ref_35
+    path: webdev/build-tools/webpack
+    description: >-
+      Configures Webpack 5 for JavaScript/TypeScript bundling with loaders, plugins, code splitting, and Module
+      Federation. Use when setting up custom builds, migrating to Webpack 5, or implementing micro-frontends.
+  - name: mdx
+    keywords: *ref_36
+    path: webdev/cms-content/mdx
+    description: >-
+      Creates content with MDX including Markdown with JSX, custom components, and frontmatter. Use when building
+      content-heavy sites, documentation, blogs, or mixing Markdown with interactive components.
+  - name: ant-design
+    keywords: *ref_37
+    path: webdev/component-libraries/ant-design
+    description: >-
+      Builds enterprise React applications with Ant Design's comprehensive component library. Use when creating admin
+      dashboards, data tables, complex forms, or enterprise UIs with consistent design language.
+  - name: ark-ui
+    keywords: *ref_38
+    path: webdev/component-libraries/ark-ui
+    description: >-
+      Builds accessible UI components with Ark UI headless primitives for React, Vue, Solid, and Svelte. Use when
+      creating custom-styled components with robust state management and accessibility built-in.
+  - name: chakra-ui
+    keywords: *ref_39
+    path: webdev/component-libraries/chakra-ui
+    description: >-
+      Builds accessible React applications with Chakra UI v3 components, tokens, and recipes. Use when creating styled
+      component systems, theming, or accessible form controls.
+  - name: headless-ui
+    keywords: *ref_40
+    path: webdev/component-libraries/headless-ui
+    description: >-
+      Builds accessible UI components with Headless UI primitives for React and Vue. Use when creating custom-styled
+      dropdowns, modals, tabs, or other interactive components with full accessibility support.
+  - name: mantine
+    keywords: *ref_41
+    path: webdev/component-libraries/mantine
+    description: >-
+      Builds React applications with Mantine's 100+ components, hooks, and form library. Use when creating feature-rich
+      UIs with built-in dark mode, accessibility, and TypeScript support.
+  - name: material-ui
+    keywords: *ref_42
+    path: webdev/component-libraries/material-ui
+    description: >-
+      Builds React applications with Material UI (MUI) components implementing Material Design. Use when creating modern
+      UIs with Google's design system, custom theming, or accessible form controls.
+  - name: radix-ui
+    keywords: *ref_43
+    path: webdev/component-libraries/radix-ui
+    description: >-
+      Builds accessible components with Radix UI primitives including dialogs, dropdowns, tooltips, and form controls.
+      Use when building accessible interfaces, creating headless components, or implementing complex UI patterns.
+  - name: shadcn-ui
+    keywords: *ref_44
+    path: webdev/component-libraries/shadcn-ui
+    description: >-
+      Builds accessible UI with shadcn/ui including component installation, customization, theming, and Radix
+      primitives. Use when adding UI components, customizing design systems, implementing accessible interfaces, or
+      building component libraries.
+  - name: drizzle
+    keywords: *ref_45
+    path: webdev/databases-orms/drizzle
+    description: >-
+      Builds type-safe database applications with Drizzle ORM including schema definition, queries, relations, and
+      migrations. Use when working with databases in TypeScript, defining schemas, writing type-safe queries, or
+      managing migrations.
+  - name: kysely
+    keywords: *ref_46
+    path: webdev/databases-orms/kysely
+    description: >-
+      Implements Kysely type-safe SQL query builder with full TypeScript inference, migrations, and multi-database
+      support. Use when building type-safe SQL queries, needing a lightweight ORM alternative, or wanting SQL control
+      with TypeScript safety.
+  - name: mongodb
+    keywords: *ref_47
+    path: webdev/databases-orms/mongodb
+    description: >-
+      Integrates MongoDB document database with Node.js applications using the official driver or Mongoose ODM. Use when
+      building applications with flexible schemas, document storage, or when user mentions MongoDB, NoSQL, or document
+      databases.
+  - name: planetscale
+    keywords: *ref_48
+    path: webdev/databases-orms/planetscale
+    description: >-
+      Implements PlanetScale serverless MySQL with branching workflows, non-blocking schema changes, and Prisma
+      integration. Use when building apps with PlanetScale, implementing database branching, or needing serverless
+      MySQL.
+  - name: postgresql
+    keywords: *ref_49
+    path: webdev/databases-orms/postgresql
+    description: >-
+      Works with PostgreSQL including queries, migrations, indexes, and performance tuning. Use when designing database
+      schemas, writing SQL queries, optimizing performance, or managing PostgreSQL databases.
+  - name: prisma
+    keywords: *ref_50
+    path: webdev/databases-orms/prisma
+    description: >-
+      Provides type-safe database access with Prisma ORM including schema definition, migrations, queries, and
+      relations. Use when setting up database connections, defining data models, writing queries, or managing database
+      migrations.
+  - name: redis
+    keywords: *ref_51
+    path: webdev/databases-orms/redis
+    description: >-
+      Uses Redis for caching, sessions, pub/sub, and data structures with Node.js. Use when implementing caching,
+      session storage, real-time messaging, or high-performance data storage.
+  - name: sqlite
+    keywords: *ref_52
+    path: webdev/databases-orms/sqlite
+    description: >-
+      Integrates SQLite embedded database with Node.js using better-sqlite3 for synchronous operations or the native
+      Node.js SQLite module. Use when building applications with local storage, embedded databases, or when user
+      mentions SQLite, better-sqlite3, or embedded SQL.
+  - name: supabase-db
+    keywords: *ref_53
+    path: webdev/databases-orms/supabase-db
+    description: >-
+      Implements Supabase PostgreSQL database with JavaScript client, Row Level Security, real-time subscriptions, and
+      edge functions. Use when building apps with Supabase, implementing RLS policies, or needing real-time database
+      features.
+  - name: turso
+    keywords: *ref_54
+    path: webdev/databases-orms/turso
+    description: >-
+      Implements Turso edge SQLite database with libSQL client, embedded replicas, and vector search. Use when building
+      edge-first apps, implementing embedded databases, or needing SQLite with global replication.
+  - name: aws-amplify
+    keywords: *ref_55
+    path: webdev/deployment/aws-amplify
+    description: >-
+      Deploys and hosts full-stack web applications on AWS Amplify with SSR support, CI/CD, and backend services. Use
+      when deploying Next.js apps to AWS, setting up Amplify hosting, or configuring Amplify backends.
+  - name: docker-web
+    keywords: *ref_56
+    path: webdev/deployment/docker-web
+    description: >-
+      Containerizes web applications with Docker for consistent deployments across environments. Use when creating
+      Dockerfiles, building container images, or setting up Docker Compose for development.
+  - name: fly-io
+    keywords: *ref_57
+    path: webdev/deployment/fly-io
+    description: >-
+      Deploys applications globally on Fly.io edge infrastructure with Firecracker VMs, multi-region deployment, and
+      usage-based pricing. Use when deploying to multiple regions, running containers at the edge, or needing fast cold
+      starts.
+  - name: railway
+    keywords: *ref_58
+    path: webdev/deployment/railway
+    description: >-
+      Deploys applications on Railway with zero-config detection, databases, and automatic CI/CD. Use when deploying
+      Node.js apps, setting up databases, or needing simple PaaS deployment.
+  - name: render
+    keywords: *ref_59
+    path: webdev/deployment/render
+    description: >-
+      Deploys web applications on Render with automatic builds, managed databases, and zero-config SSL. Use when
+      deploying web services, static sites, or setting up managed infrastructure.
+  - name: cloudflare-pages
+    keywords: *ref_60
+    path: webdev/deployment-hosting/cloudflare-pages
+    description: >-
+      Deploys applications to Cloudflare Pages including Functions, KV, D1, and R2 bindings. Use when deploying to the
+      edge, building globally distributed applications, or using Cloudflare's ecosystem.
+  - name: netlify
+    keywords: *ref_61
+    path: webdev/deployment-hosting/netlify
+    description: >-
+      Deploys applications to Netlify including functions, forms, redirects, and edge functions. Use when deploying
+      static sites, JAMstack applications, or serverless functions.
+  - name: vercel
+    keywords: *ref_62
+    path: webdev/deployment-hosting/vercel
+    description: >-
+      Deploys applications to Vercel including serverless functions, edge functions, environment variables, and CI/CD.
+      Use when deploying Next.js applications, frontend projects, or serverless APIs.
+  - name: resend
+    keywords: *ref_63
+    path: webdev/email/resend
+    description: >-
+      Sends transactional emails with Resend including React Email templates, API integration, and Next.js setup. Use
+      when sending emails, creating email templates, or integrating transactional email in applications.
+  - name: conform
+    keywords: *ref_64
+    path: webdev/forms/conform
+    description: >-
+      Builds progressive enhancement forms with Conform using web standards, server validation, and framework
+      integration. Use when building Remix/Next.js forms, implementing progressive enhancement, or needing accessible
+      form validation.
+  - name: formik
+    keywords: *ref_65
+    path: webdev/forms/formik
+    description: >-
+      Manages React form state with Formik using validation, field arrays, and form context. Use when building complex
+      forms in React, handling form submission, or integrating with Yup validation.
+  - name: valibot
+    keywords: *ref_66
+    path: webdev/forms/valibot
+    description: >-
+      Validates data with Valibot's modular, tree-shakable schema library for minimal bundle size. Use when bundle size
+      matters, building form validation, or needing lightweight TypeScript validation.
+  - name: yup
+    keywords: *ref_67
+    path: webdev/forms/yup
+    description: >-
+      Validates data with Yup schema builder using chainable methods, custom rules, and TypeScript inference. Use when
+      validating forms with React Hook Form or Formik, or when needing flexible schema validation.
+  - name: react-hook-form
+    keywords: *ref_68
+    path: webdev/forms-validation/react-hook-form
+    description: >-
+      Builds performant forms with React Hook Form including validation, error handling, and schema integration. Use
+      when creating forms, validating inputs, integrating with Zod, or handling complex form state.
+  - name: zod
+    keywords: *ref_69
+    path: webdev/forms-validation/zod
+    description: >-
+      Validates data with Zod schemas including type inference, transformations, error handling, and form integration.
+      Use when validating API inputs, form data, environment variables, or any runtime data validation.
+  - name: alpine-js
+    keywords: *ref_70
+    path: webdev/frontend-core/alpine-js
+    description: >-
+      Adds reactive and declarative behavior to HTML with minimal JavaScript using Alpine.js directives. Use when adding
+      lightweight interactivity to server-rendered pages, building interactive components without a build step, or when
+      user mentions Alpine.js, x-data, or Tailwind-style reactivity.
+  - name: htmx
+    keywords: *ref_71
+    path: webdev/frontend-core/htmx
+    description: >-
+      Adds AJAX, CSS Transitions, WebSockets, and Server Sent Events to HTML using attributes. Use when building
+      hypermedia-driven applications, adding interactivity without JavaScript frameworks, or when user mentions HTMX,
+      hx-boost, or HTML-first development.
+  - name: javascript-modern
+    keywords: *ref_72
+    path: webdev/frontend-core/javascript-modern
+    description: >-
+      Implements modern JavaScript features from ES2020-ES2024 including optional chaining, nullish coalescing, private
+      fields, Promise methods, and array transformations. Use when modernizing JavaScript code, using ES2024 features,
+      or when user asks about latest ECMAScript standards.
+  - name: preact
+    keywords: *ref_73
+    path: webdev/frontend-core/preact
+    description: >-
+      Builds fast, lightweight React-compatible applications with Preact's 3KB library and optional Signals for
+      fine-grained reactivity. Use when optimizing bundle size, migrating from React, or when user mentions Preact,
+      preact/compat, or lightweight React alternative.
+  - name: react
+    keywords: *ref_74
+    path: webdev/frontend-core/react
+    description: >-
+      Builds user interfaces with React using components, hooks, state management, and modern patterns. Use when
+      creating React components, managing state, handling side effects, optimizing performance, or integrating with
+      frameworks.
+  - name: solidjs
+    keywords: *ref_75
+    path: webdev/frontend-core/solidjs
+    description: >-
+      Builds UIs with SolidJS including signals, effects, memos, and fine-grained reactivity. Use when creating
+      high-performance reactive applications, building without virtual DOM, or needing granular updates.
+  - name: svelte
+    keywords: *ref_76
+    path: webdev/frontend-core/svelte
+    description: >-
+      Builds UIs with Svelte 5 including runes, components, reactivity, and stores. Use when creating Svelte
+      applications, building reactive interfaces, or working with compile-time frameworks.
+  - name: typescript
+    keywords: *ref_77
+    path: webdev/frontend-core/typescript
+    description: >-
+      Adds static typing to JavaScript with TypeScript including type annotations, interfaces, generics, and advanced
+      type utilities. Use when setting up TypeScript projects, defining types, creating generic utilities, or debugging
+      type errors.
+  - name: vue
+    keywords: *ref_78
+    path: webdev/frontend-core/vue
+    description: >-
+      Builds UIs with Vue 3 including Composition API, reactivity, components, and state management. Use when creating
+      Vue applications, building reactive interfaces, or working with the Vue ecosystem.
+  - name: web-components
+    keywords: *ref_79
+    path: webdev/frontend-core/web-components
+    description: >-
+      Creates reusable custom HTML elements using Web Components standards including Custom Elements, Shadow DOM,
+      templates, and slots. Use when building framework-agnostic components, creating design systems, or when user
+      mentions web components, custom elements, or shadow DOM.
+  - name: astro
+    keywords: *ref_80
+    path: webdev/meta-frameworks/astro
+    description: >-
+      Builds content-focused websites with Astro using islands architecture, content collections, and multi-framework
+      support. Use when creating static sites, blogs, documentation, marketing pages, or content-heavy applications with
+      minimal JavaScript.
+  - name: gatsby
+    keywords: *ref_81
+    path: webdev/meta-frameworks/gatsby
+    description: >-
+      Builds static and hybrid sites with Gatsby, React, and GraphQL data layer. Use when creating content-heavy
+      websites, blogs, e-commerce storefronts, or when user mentions Gatsby, static site generation with React, or
+      GraphQL-powered sites.
+  - name: nextjs
+    keywords: *ref_82
+    path: webdev/meta-frameworks/nextjs
+    description: >-
+      Builds full-stack React applications with Next.js App Router, Server Components, Server Actions, and edge
+      deployment. Use when creating Next.js projects, implementing routing, data fetching, caching, authentication, or
+      deploying to Vercel.
+  - name: nuxt
+    keywords: *ref_83
+    path: webdev/meta-frameworks/nuxt
+    description: >-
+      Builds applications with Nuxt 3 including pages, layouts, composables, server routes, and data fetching. Use when
+      creating Vue applications with SSR, building full-stack Vue apps, or needing file-based routing with Vue.
+  - name: qwik
+    keywords: *ref_84
+    path: webdev/meta-frameworks/qwik
+    description: >-
+      Builds instant-loading web applications with Qwik's resumable architecture and fine-grained lazy loading. Use when
+      creating highly performant sites, when user mentions Qwik, resumability, zero hydration, or O(1) startup time.
+  - name: remix
+    keywords: *ref_85
+    path: webdev/meta-frameworks/remix
+    description: >-
+      Builds full-stack React applications with Remix using loaders, actions, nested routes, and progressive
+      enhancement. Use when creating Remix projects, implementing data loading, form handling, error boundaries, or
+      deploying to various platforms.
+  - name: solidstart
+    keywords: *ref_86
+    path: webdev/meta-frameworks/solidstart
+    description: >-
+      Builds full-stack applications with SolidStart, combining Solid's fine-grained reactivity with server functions
+      and multiple rendering modes. Use when creating SolidJS applications with SSR/SSG, server functions, or when user
+      mentions SolidStart or Solid meta-framework.
+  - name: sveltekit
+    keywords: *ref_87
+    path: webdev/meta-frameworks/sveltekit
+    description: >-
+      Builds applications with SvelteKit including routing, load functions, form actions, hooks, and adapters. Use when
+      creating Svelte applications with SSR, building full-stack apps, or needing file-based routing with Svelte.
+  - name: sentry
+    keywords: *ref_88
+    path: webdev/monitoring-analytics/sentry
+    description: >-
+      Monitors applications with Sentry including error tracking, performance monitoring, and alerting. Use when
+      tracking errors, monitoring performance, setting up alerts, or debugging production issues.
+  - name: stripe
+    keywords: *ref_89
+    path: webdev/payments/stripe
+    description: >-
+      Integrates Stripe payments including checkout, subscriptions, webhooks, and customer management. Use when
+      accepting payments, setting up subscriptions, handling webhooks, or managing billing.
+  - name: socket-io
+    keywords: *ref_90
+    path: webdev/realtime-websockets/socket-io
+    description: >-
+      Builds real-time applications with Socket.IO including events, rooms, namespaces, and acknowledgements. Use when
+      implementing real-time features, chat applications, live updates, or multiplayer functionality.
+  - name: ably
+    keywords: *ref_91
+    path: webdev/skills/ably
+    description: >-
+      Implements real-time pub/sub messaging with Ably's edge infrastructure. Use when building real-time features
+      requiring enterprise reliability, presence, message history, and global low-latency delivery.
+  - name: anthropic-api
+    keywords: *ref_92
+    path: webdev/skills/anthropic-api
+    description: >-
+      Integrates Anthropic Claude API for chat, tool use, and vision capabilities. Use when building AI-powered features
+      with Claude models including streaming, extended thinking, and multi-turn conversations.
+  - name: auto-animate
+    keywords: *ref_93
+    path: webdev/skills/auto-animate
+    description: >-
+      Adds automatic animations to DOM changes with zero configuration using FormKit's AutoAnimate. Use when adding
+      smooth transitions for list reordering, adding/removing elements, or quick UI polish.
+  - name: aws-s3
+    keywords: *ref_94
+    path: webdev/skills/aws-s3
+    description: >-
+      Manages file storage with AWS S3 using the JavaScript SDK v3. Use when uploading files, generating presigned URLs,
+      managing buckets, or implementing cloud storage in Node.js applications.
+  - name: axiom
+    keywords: *ref_95
+    path: webdev/skills/axiom
+    description: >-
+      Implements structured logging and observability with Axiom for serverless applications. Use when adding logging,
+      tracing, and Web Vitals monitoring to Next.js and Vercel applications.
+  - name: cloudinary
+    keywords: *ref_96
+    path: webdev/skills/cloudinary
+    description: >-
+      Manages images and videos with Cloudinary including upload, transformation, and CDN delivery. Use when building
+      media-rich applications requiring resize, crop, format conversion, and optimization.
+  - name: contentful
+    keywords: *ref_97
+    path: webdev/skills/contentful
+    description: >-
+      Manages content with Contentful headless CMS and Content Delivery API. Use when building content-driven
+      applications with structured content models, CDN delivery, and enterprise content management.
+  - name: css-animations
+    keywords: *ref_98
+    path: webdev/skills/css-animations
+    description: >-
+      Creates native CSS animations using keyframes, transitions, and modern animation properties. Use when building
+      animations without JavaScript libraries, optimizing performance, or implementing micro-interactions.
+  - name: gsap
+    keywords: *ref_99
+    path: webdev/skills/gsap
+    description: >-
+      Creates professional animations with GSAP (GreenSock Animation Platform). Use when building complex animations,
+      scroll-triggered effects, timelines, or smooth transitions in any JavaScript framework.
+  - name: huggingface-js
+    keywords: *ref_100
+    path: webdev/skills/huggingface-js
+    description: >-
+      Runs ML models in the browser and Node.js with Transformers.js and Hugging Face Inference API. Use when adding
+      local inference, embeddings, or calling hosted models without GPU servers.
+  - name: imgix
+    keywords: *ref_101
+    path: webdev/skills/imgix
+    description: >-
+      Optimizes and transforms images with Imgix CDN using URL-based API. Use when serving responsive images, applying
+      real-time transformations, and optimizing delivery without processing overhead.
+  - name: keystonejs
+    keywords: *ref_102
+    path: webdev/skills/keystonejs
+    description: >-
+      Builds content APIs with KeystoneJS, the Node.js headless CMS with GraphQL. Use when creating admin UIs and APIs
+      with automatic CRUD operations, relationships, access control, and TypeScript support.
+  - name: langchain-js
+    keywords: *ref_103
+    path: webdev/skills/langchain-js
+    description: >-
+      Builds LLM-powered applications with LangChain.js for chat, agents, and RAG. Use when creating AI applications
+      with chains, memory, tools, and retrieval-augmented generation in JavaScript.
+  - name: lemonsqueezy
+    keywords: *ref_104
+    path: webdev/skills/lemonsqueezy
+    description: >-
+      Integrates payments and subscriptions with Lemon Squeezy merchant of record platform. Use when selling digital
+      products, SaaS subscriptions, or software licenses with built-in tax handling.
+  - name: liveblocks
+    keywords: *ref_105
+    path: webdev/skills/liveblocks
+    description: >-
+      Builds real-time collaborative features with Liveblocks including presence, cursors, storage, comments, and
+      notifications. Use when adding multiplayer experiences, collaborative editing, or live cursors to React
+      applications.
+  - name: logrocket
+    keywords: *ref_106
+    path: webdev/skills/logrocket
+    description: >-
+      Implements session replay and error tracking with LogRocket for debugging user issues. Use when adding session
+      recording, error monitoring, and performance tracking to React applications.
+  - name: lottie
+    keywords: *ref_107
+    path: webdev/skills/lottie
+    description: >-
+      Renders After Effects animations as lightweight JSON on web and mobile using lottie-web. Use when adding vector
+      animations, loading indicators, or complex motion graphics without video files.
+  - name: nodemailer
+    keywords: *ref_108
+    path: webdev/skills/nodemailer
+    description: >-
+      Sends emails from Node.js applications using SMTP or other transports with Nodemailer. Use when implementing email
+      functionality with full control over transport configuration.
+  - name: openai-api
+    keywords: *ref_109
+    path: webdev/skills/openai-api
+    description: >-
+      Integrates OpenAI APIs for chat completions, embeddings, and image generation. Use when building AI-powered
+      features with GPT models, DALL-E, or Whisper in Node.js applications.
+  - name: paddle
+    keywords: *ref_110
+    path: webdev/skills/paddle
+    description: >-
+      Integrates billing and subscriptions with Paddle merchant of record platform. Use when selling SaaS subscriptions
+      with checkout overlays, pricing pages, and subscription management.
+  - name: partykit
+    keywords: *ref_111
+    path: webdev/skills/partykit
+    description: >-
+      Builds real-time multiplayer applications with PartyKit on Cloudflare's edge. Use when creating collaborative
+      apps, games, AI agents, or stateful WebSocket servers with global low-latency deployment.
+  - name: payload
+    keywords: *ref_112
+    path: webdev/skills/payload
+    description: >-
+      Builds full-stack applications with Payload CMS, the Next.js-native headless CMS. Use when creating content-driven
+      apps with TypeScript, code-first configuration, and full control over your backend.
+  - name: paypal
+    keywords: *ref_113
+    path: webdev/skills/paypal
+    description: >-
+      Integrates PayPal payments with the JavaScript SDK for checkout buttons and card fields. Use when accepting
+      PayPal, Venmo, Pay Later, and credit card payments in web applications.
+  - name: pinecone
+    keywords: *ref_114
+    path: webdev/skills/pinecone
+    description: >-
+      Implements vector search with Pinecone for semantic similarity and RAG applications. Use when building
+      embeddings-based search, recommendation systems, or retrieval-augmented generation.
+  - name: plausible
+    keywords: *ref_115
+    path: webdev/skills/plausible
+    description: >-
+      Implements privacy-friendly web analytics with Plausible as a Google Analytics alternative. Use when adding
+      lightweight, cookie-free analytics that are GDPR compliant without consent banners.
+  - name: posthog
+    keywords: *ref_116
+    path: webdev/skills/posthog
+    description: >-
+      Implements product analytics with PostHog including event tracking, feature flags, and session replay. Use when
+      adding analytics, A/B testing, or user behavior tracking to React and Next.js applications.
+  - name: pusher
+    keywords: *ref_117
+    path: webdev/skills/pusher
+    description: >-
+      Implements real-time features with Pusher Channels for WebSocket-based pub/sub messaging. Use when adding live
+      updates, notifications, chat, presence indicators, or collaborative features.
+  - name: react-email
+    keywords: *ref_118
+    path: webdev/skills/react-email
+    description: >-
+      Creates email templates with React components using React Email. Use when building transactional emails,
+      newsletters, or notification emails with responsive layouts and dark mode support.
+  - name: replicate
+    keywords: *ref_119
+    path: webdev/skills/replicate
+    description: >-
+      Runs open-source ML models via Replicate API for image generation, LLMs, and audio. Use when calling Stable
+      Diffusion, Llama, Whisper, or other models without infrastructure management.
+  - name: sanity
+    keywords: *ref_120
+    path: webdev/skills/sanity
+    description: >-
+      Manages structured content with Sanity headless CMS using GROQ queries and real-time collaboration. Use when
+      building content-driven sites with customizable schemas, live previews, and flexible data modeling.
+  - name: sendgrid
+    keywords: *ref_121
+    path: webdev/skills/sendgrid
+    description: >-
+      Sends transactional and marketing emails with SendGrid API. Use when integrating email delivery in Node.js
+      applications with templates, analytics, and high deliverability.
+  - name: sharp
+    keywords: *ref_122
+    path: webdev/skills/sharp
+    description: >-
+      Processes images with Sharp, the high-performance Node.js library for resizing, converting, and optimizing images.
+      Use when building image pipelines, generating thumbnails, or optimizing uploads server-side.
+  - name: strapi
+    keywords: *ref_123
+    path: webdev/skills/strapi
+    description: >-
+      Builds content APIs with Strapi open-source headless CMS. Use when creating self-hosted content management with
+      auto-generated REST/GraphQL APIs, customizable admin panel, and full control over your data.
+  - name: uploadthing
+    keywords: *ref_124
+    path: webdev/skills/uploadthing
+    description: >-
+      Handles file uploads with UploadThing for TypeScript applications. Use when adding file uploads to Next.js or
+      React apps with type-safe APIs, validation, and CDN delivery.
+  - name: vercel-analytics
+    keywords: *ref_125
+    path: webdev/skills/vercel-analytics
+    description: >-
+      Implements privacy-friendly web analytics with Vercel Analytics for traffic insights and Web Vitals. Use when
+      tracking page views and performance metrics in Next.js applications deployed on Vercel.
+  - name: view-transitions
+    keywords: *ref_126
+    path: webdev/skills/view-transitions
+    description: >-
+      Creates smooth animated transitions between views using the native View Transitions API. Use when building page
+      transitions, state changes, or morphing elements between different DOM states in SPAs and MPAs.
+  - name: jotai
+    keywords: *ref_127
+    path: webdev/state-management/jotai
+    description: >-
+      Manages React state with Jotai including atoms, derived atoms, async atoms, and utilities. Use when building React
+      applications needing atomic state, bottom-up state management, or fine-grained updates.
+  - name: nanostores
+    keywords: *ref_128
+    path: webdev/state-management/nanostores
+    description: >-
+      Manages state with Nanostores using atoms, maps, computed stores, and framework integrations. Use when building
+      framework-agnostic state, sharing state between islands/components, or needing tiny bundle size.
+  - name: pinia
+    keywords: *ref_129
+    path: webdev/state-management/pinia
+    description: >-
+      Manages Vue state with Pinia including stores, getters, actions, and plugins. Use when building Vue applications
+      needing centralized state, sharing state between components, or replacing Vuex.
+  - name: redux-toolkit
+    keywords: *ref_130
+    path: webdev/state-management/redux-toolkit
+    description: >-
+      Manages global state with Redux Toolkit's createSlice, createAsyncThunk, and RTK Query for data fetching and
+      caching. Use when building large-scale applications, implementing predictable state management, or when user
+      mentions Redux, RTK, or Redux Toolkit.
+  - name: tanstack-query
+    keywords: *ref_131
+    path: webdev/state-management/tanstack-query
+    description: >-
+      Manages server state with TanStack Query (React Query) including data fetching, caching, mutations, and optimistic
+      updates. Use when fetching API data, caching responses, handling loading states, or syncing server state.
+  - name: valtio
+    keywords: *ref_132
+    path: webdev/state-management/valtio
+    description: >-
+      Manages state with Valtio using proxy-based reactivity, direct mutations, and automatic re-renders. Use when
+      wanting mutable state syntax, fine-grained reactivity, or state management outside React components.
+  - name: zustand
+    keywords: *ref_133
+    path: webdev/state-management/zustand
+    description: >-
+      Manages application state with Zustand including stores, selectors, actions, and middleware. Use when managing
+      client-side state, creating global stores, persisting state, or replacing Redux/Context.
+  - name: css-modules
+    keywords: *ref_134
+    path: webdev/styling/css-modules
+    description: >-
+      Implements scoped CSS using CSS Modules with automatic class name generation, composition, and TypeScript support.
+      Use when needing component-scoped styles, avoiding naming collisions, or migrating from global CSS.
+  - name: css-variables
+    keywords: *ref_135
+    path: webdev/styling/css-variables
+    description: >-
+      Implements CSS custom properties for theming, component styling, and runtime customization. Use when building
+      theme systems, dynamic styling, or configurable components.
+  - name: panda-css
+    keywords: *ref_136
+    path: webdev/styling/panda-css
+    description: >-
+      Implements build-time CSS-in-JS with Panda CSS using type-safe tokens, recipes, and patterns. Use when wanting
+      zero-runtime CSS-in-JS, design system tokens, or type-safe component variants.
+  - name: sass-scss
+    keywords: *ref_137
+    path: webdev/styling/sass-scss
+    description: >-
+      Implements CSS preprocessing with Sass/SCSS using modules, mixins, functions, and nesting. Use when needing CSS
+      preprocessing, design system variables, reusable mixins, or organizing large stylesheets.
+  - name: styled-components
+    keywords: *ref_138
+    path: webdev/styling/styled-components
+    description: >-
+      Implements CSS-in-JS styling with styled-components using tagged template literals, theming, and dynamic props.
+      Use when wanting component-scoped CSS-in-JS, dynamic styling based on props, or theming support.
+  - name: tailwindcss
+    keywords: *ref_139
+    path: webdev/styling/tailwindcss
+    description: >-
+      Styles web applications with Tailwind CSS using utility classes, responsive design, custom themes, and component
+      patterns. Use when setting up Tailwind, creating layouts, implementing responsive designs, or customizing themes.
+  - name: unocss
+    keywords: *ref_140
+    path: webdev/styling/unocss
+    description: >-
+      Implements atomic CSS with UnoCSS using on-demand generation, custom rules, and presets. Use when wanting instant
+      atomic CSS, custom utility frameworks, or Tailwind alternatives with more flexibility.
+  - name: vanilla-extract
+    keywords: *ref_141
+    path: webdev/styling/vanilla-extract
+    description: >-
+      Implements zero-runtime CSS using vanilla-extract with type-safe styles, themes, recipes, and sprinkles. Use when
+      wanting type-safe CSS, static extraction at build time, or building design system utilities.
+  - name: chromatic
+    keywords: *ref_142
+    path: webdev/testing/chromatic
+    description: >-
+      Automates visual regression testing for Storybook components using cloud-based snapshot comparison. Use when
+      setting up visual testing, catching UI regressions, or reviewing component changes.
+  - name: cypress
+    keywords: *ref_143
+    path: webdev/testing/cypress
+    description: >-
+      Writes E2E and component tests with Cypress including selectors, commands, fixtures, and API testing. Use when
+      testing web applications end-to-end, testing user flows, or writing integration tests.
+  - name: jest
+    keywords: *ref_144
+    path: webdev/testing/jest
+    description: >-
+      Tests JavaScript and TypeScript applications with Jest test runner including mocking, snapshot testing, and code
+      coverage. Use when setting up testing, writing unit tests, or when user mentions Jest, test runner, or JavaScript
+      testing.
+  - name: msw
+    keywords: *ref_145
+    path: webdev/testing/msw
+    description: >-
+      Mocks APIs with Mock Service Worker including request handlers, server/browser setup, and testing integration. Use
+      when mocking APIs in tests, developing without backend, or simulating network conditions.
+  - name: playwright
+    keywords: *ref_146
+    path: webdev/testing/playwright
+    description: >-
+      Tests web applications with Playwright including E2E tests, locators, assertions, and visual testing. Use when
+      writing end-to-end tests, testing across browsers, automating user flows, or debugging test failures.
+  - name: storybook
+    keywords: *ref_147
+    path: webdev/testing/storybook
+    description: >-
+      Develops and documents UI components in isolation with Storybook's interactive workshop environment. Use when
+      building component libraries, documenting design systems, or when user mentions Storybook, component
+      documentation, or UI development.
+  - name: testing-library
+    keywords: *ref_148
+    path: webdev/testing/testing-library
+    description: >-
+      Tests UI components with Testing Library including queries, user events, and async utilities. Use when testing
+      React/Vue/Svelte components, writing accessible tests, or testing user interactions.
+  - name: vitest
+    keywords: *ref_149
+    path: webdev/testing/vitest
+    description: >-
+      Tests JavaScript and TypeScript applications with Vitest including unit tests, mocking, coverage, and React
+      component testing. Use when writing tests, setting up test infrastructure, mocking dependencies, or measuring code
+      coverage.

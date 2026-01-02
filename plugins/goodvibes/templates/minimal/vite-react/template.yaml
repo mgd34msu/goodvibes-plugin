@@ -1,0 +1,55 @@
+name: vite-react
+version: "1.0.0"
+description: Vite + React 19 with TypeScript and Tailwind CSS
+
+stack:
+  bundler: vite
+  ui_library: react
+  language: typescript
+  styling: tailwind
+
+required_skills:
+  - webdev/build-tools/vite
+  - webdev/frontend-core/react
+  - webdev/styling/tailwind
+
+variables:
+  - name: project_name
+    prompt: "Project name"
+    default: "my-vite-app"
+    validate: "^[a-z][a-z0-9-]*$"
+
+  - name: description
+    prompt: "Project description"
+    default: "A Vite + React application"
+
+features:
+  - Vite 6 with HMR
+  - React 19
+  - TypeScript strict mode
+  - Tailwind CSS
+  - Path aliases (@/*)
+  - ESLint + Prettier
+
+files:
+  - package.json.hbs
+  - tsconfig.json
+  - tsconfig.node.json
+  - vite.config.ts
+  - tailwind.config.ts
+  - postcss.config.js
+  - .eslintrc.json
+  - .prettierrc
+  - .gitignore
+  - index.html.hbs
+  - src/main.tsx
+  - src/App.tsx.hbs
+  - src/index.css
+  - src/vite-env.d.ts
+  - src/components/Button.tsx
+
+post_create:
+  - command: npm install
+    description: Install dependencies
+  - command: git init
+    description: Initialize git repository

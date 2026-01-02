@@ -1,0 +1,14 @@
+{
+  "name": "goodvibes-hooks",
+  "version": "1.0.0",
+  "description": "Hook scripts for GoodVibes plugin",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

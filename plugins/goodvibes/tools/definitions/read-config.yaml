@@ -1,0 +1,66 @@
+name: read_config
+version: "1.0.0"
+description: |
+  Parse and return existing configuration files.
+  Understands various config formats (JSON, YAML, JS, TS).
+  Skills can build upon existing configuration.
+
+mcp:
+  server: goodvibes-tools
+  method: read_config
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    config:
+      type: string
+      description: "Config type or filename"
+      enum: ["package.json", "tsconfig", "eslint", "prettier", "tailwind", "next", "vite", "prisma", "env", "custom"]
+    path:
+      type: string
+      description: "Custom path (required if config is 'custom')"
+    resolve_extends:
+      type: boolean
+      description: "Resolve extended configs"
+      default: true
+  required:
+    - config
+
+output_schema:
+  type: object
+  properties:
+    config_type: { type: string }
+    file_path: { type: string }
+    format: { type: string }
+    content:
+      type: object
+      description: "Parsed configuration"
+    extends:
+      type: array
+      items: { type: string }
+      description: "Extended config sources"
+    env_vars:
+      type: array
+      items: { type: string }
+      description: "Environment variables referenced"
+
+examples:
+  - description: "Read TypeScript config"
+    input:
+      config: "tsconfig"
+      resolve_extends: true
+    output:
+      config_type: "tsconfig"
+      file_path: "tsconfig.json"
+      format: "json"
+      content:
+        compilerOptions:
+          target: "ES2022"
+          module: "ESNext"
+          strict: true
+          jsx: "react-jsx"
+        include: ["src"]
+        exclude: ["node_modules"]
+      extends: ["@tsconfig/node20/tsconfig.json"]
+      env_vars: []

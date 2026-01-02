@@ -1,0 +1,51 @@
+name: search_tools
+version: "1.0.0"
+description: |
+  Search for available tools by functionality or use case.
+  Use when discovering what tools are available for a task.
+
+mcp:
+  server: goodvibes-tools
+  method: search_tools
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "Keywords describing the tool functionality needed"
+    limit:
+      type: integer
+      description: "Maximum number of results"
+      default: 5
+  required:
+    - query
+
+output_schema:
+  type: object
+  properties:
+    tools:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          path: { type: string }
+          description: { type: string }
+          relevance: { type: number }
+    total_count:
+      type: integer
+
+examples:
+  - description: "Search for search tools"
+    input:
+      query: "find skills"
+      limit: 3
+    output:
+      tools:
+        - name: "search_skills"
+          path: "definitions/search-skills.yaml"
+          description: "Search the skill registry for relevant skills"
+          relevance: 0.98
+      total_count: 1

@@ -1,0 +1,53 @@
+version: "1.0.0"
+generated: "2026-01-02T00:00:00Z"
+total: 3
+
+categories:
+  minimal:
+    description: Bare-bones starters with essential setup
+    templates:
+      - next-app
+      - vite-react
+
+  full:
+    description: Full-featured starters with auth, database, and more
+    templates:
+      - next-saas
+
+templates:
+  - name: next-app
+    path: minimal/next-app
+    description: Next.js 15 with TypeScript, Tailwind, and ESLint
+    category: minimal
+    stack: [next, react, typescript, tailwind]
+    complexity: simple
+
+  - name: vite-react
+    path: minimal/vite-react
+    description: Vite + React 19 with TypeScript and Tailwind
+    category: minimal
+    stack: [vite, react, typescript, tailwind]
+    complexity: simple
+
+  - name: next-saas
+    path: full/next-saas
+    description: Full-stack SaaS with NextAuth, Prisma, Stripe, and Tailwind
+    category: full
+    stack: [next, react, typescript, tailwind, nextauth, prisma, stripe]
+    complexity: complex
+
+search_index:
+  - name: next-app
+    keywords: [next, nextjs, react, typescript, minimal, starter, app]
+    path: minimal/next-app
+    description: Next.js 15 with TypeScript, Tailwind, and ESLint
+
+  - name: vite-react
+    keywords: [vite, react, typescript, minimal, fast, spa]
+    path: minimal/vite-react
+    description: Vite + React 19 with TypeScript and Tailwind
+
+  - name: next-saas
+    keywords: [next, saas, auth, database, prisma, stripe, payments, full]
+    path: full/next-saas
+    description: Full-stack SaaS with NextAuth, Prisma, Stripe, and Tailwind

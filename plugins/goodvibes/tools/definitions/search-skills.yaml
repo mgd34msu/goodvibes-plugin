@@ -1,0 +1,59 @@
+name: search_skills
+version: "1.0.0"
+description: |
+  Search the skill registry for relevant skills based on keywords,
+  technology, or task description. Use when needing domain-specific
+  guidance that matches available skills.
+
+mcp:
+  server: goodvibes-tools
+  method: search_skills
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "Natural language query or keywords to search for"
+    category:
+      type: string
+      description: "Optional category filter (e.g., webdev, devops)"
+      default: all
+    limit:
+      type: integer
+      description: "Maximum number of results"
+      default: 5
+      minimum: 1
+      maximum: 20
+  required:
+    - query
+
+output_schema:
+  type: object
+  properties:
+    skills:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          path: { type: string }
+          description: { type: string }
+          relevance: { type: number }
+    total_count:
+      type: integer
+
+examples:
+  - description: "Search for React patterns"
+    input:
+      query: "react hooks state management"
+      category: "webdev"
+      limit: 5
+    output:
+      skills:
+        - name: "implementing-react-hooks"
+          path: "webdev/frontend/ui-frameworks/implementing-react-hooks"
+          description: "Create custom React hooks for reusable stateful logic"
+          relevance: 0.95
+      total_count: 1

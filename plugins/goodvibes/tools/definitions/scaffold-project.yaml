@@ -1,0 +1,124 @@
+name: scaffold_project
+version: "1.0.0"
+description: |
+  Create a new project from a template. Copies template files,
+  applies variable substitutions, and runs post-create commands.
+  Lists recommended skills based on the template stack.
+
+mcp:
+  server: goodvibes-tools
+  method: scaffold_project
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    template:
+      type: string
+      description: "Template name (e.g., 'next-app', 'vite-react', 'next-saas')"
+    output_dir:
+      type: string
+      description: "Output directory for the new project"
+    variables:
+      type: object
+      description: "Template variables (project_name, description, etc.)"
+      additionalProperties: true
+    run_install:
+      type: boolean
+      description: "Run npm install after scaffolding"
+      default: true
+    run_git_init:
+      type: boolean
+      description: "Initialize git repository"
+      default: true
+  required:
+    - template
+    - output_dir
+
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    template: { type: string }
+    output_dir: { type: string }
+    created_files:
+      type: array
+      items: { type: string }
+    variables_applied:
+      type: object
+    post_create_results:
+      type: array
+      items:
+        type: object
+        properties:
+          command: { type: string }
+          success: { type: boolean }
+          output: { type: string }
+    recommended_skills:
+      type: array
+      items: { type: string }
+    next_steps:
+      type: array
+      items: { type: string }
+
+examples:
+  - description: "Create a new Next.js project"
+    input:
+      template: "next-app"
+      output_dir: "./my-project"
+      variables:
+        project_name: "my-project"
+        description: "My awesome app"
+      run_install: true
+    output:
+      success: true
+      template: "next-app"
+      output_dir: "./my-project"
+      created_files:
+        - "package.json"
+        - "tsconfig.json"
+        - "src/app/page.tsx"
+      variables_applied:
+        project_name: "my-project"
+        description: "My awesome app"
+      post_create_results:
+        - command: "npm install"
+          success: true
+          output: "added 150 packages"
+      recommended_skills:
+        - "webdev/meta-frameworks/nextjs"
+        - "webdev/styling/tailwind"
+      next_steps:
+        - "cd my-project"
+        - "npm run dev"
+        - "Open http://localhost:3000"
+
+  - description: "Create full SaaS project"
+    input:
+      template: "next-saas"
+      output_dir: "./my-saas"
+      variables:
+        project_name: "my-saas"
+        description: "SaaS platform"
+        database_provider: "postgresql"
+      run_install: true
+    output:
+      success: true
+      template: "next-saas"
+      output_dir: "./my-saas"
+      created_files:
+        - "package.json"
+        - "prisma/schema.prisma"
+        - "src/lib/auth.ts"
+        - "src/lib/stripe.ts"
+      recommended_skills:
+        - "webdev/meta-frameworks/nextjs"
+        - "webdev/authentication/nextauth"
+        - "webdev/databases-orms/prisma"
+        - "webdev/payments/stripe"
+      next_steps:
+        - "cd my-saas"
+        - "cp .env.example .env"
+        - "Configure environment variables"
+        - "npx prisma db push"
+        - "npm run dev"

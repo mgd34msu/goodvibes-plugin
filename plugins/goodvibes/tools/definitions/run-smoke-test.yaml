@@ -1,0 +1,80 @@
+name: run_smoke_test
+version: "1.0.0"
+description: |
+  Quick verification that generated code compiles and runs.
+  Performs basic sanity checks without full test suite.
+  Fast feedback loop for skill application.
+
+mcp:
+  server: goodvibes-tools
+  method: run_smoke_test
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    type:
+      type: string
+      enum: ["build", "typecheck", "lint", "import", "render", "api", "all"]
+      description: "Type of smoke test"
+      default: "all"
+    files:
+      type: array
+      items: { type: string }
+      description: "Specific files to test (empty = affected files)"
+    timeout:
+      type: integer
+      description: "Timeout in seconds"
+      default: 30
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    passed: { type: boolean }
+    tests:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          passed: { type: boolean }
+          duration_ms: { type: integer }
+          output: { type: string }
+          error: { type: string }
+    summary:
+      type: object
+      properties:
+        total: { type: integer }
+        passed: { type: integer }
+        failed: { type: integer }
+        duration_ms: { type: integer }
+
+examples:
+  - description: "Run all smoke tests"
+    input:
+      type: "all"
+      timeout: 30
+    output:
+      passed: false
+      tests:
+        - name: "typecheck"
+          passed: true
+          duration_ms: 2340
+          output: "No errors found"
+          error: null
+        - name: "lint"
+          passed: true
+          duration_ms: 890
+          output: "0 problems"
+          error: null
+        - name: "build"
+          passed: false
+          duration_ms: 5200
+          output: ""
+          error: "Module not found: '@/components/Button'"
+      summary:
+        total: 3
+        passed: 2
+        failed: 1
+        duration_ms: 8430

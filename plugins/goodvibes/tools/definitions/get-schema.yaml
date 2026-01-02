@@ -1,0 +1,97 @@
+name: get_schema
+version: "1.0.0"
+description: |
+  Introspect database schema from connection or schema files.
+  Returns tables, columns, relations, and indexes.
+  Enables skills to work with actual data structure.
+
+mcp:
+  server: goodvibes-tools
+  method: get_schema
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    source:
+      type: string
+      enum: ["prisma", "drizzle", "typeorm", "connection", "sql"]
+      description: "Schema source type"
+    path:
+      type: string
+      description: "Path to schema file or connection string env var"
+      default: "."
+    tables:
+      type: array
+      items: { type: string }
+      description: "Filter to specific tables (empty = all)"
+  required:
+    - source
+
+output_schema:
+  type: object
+  properties:
+    source: { type: string }
+    tables:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          columns:
+            type: array
+            items:
+              type: object
+              properties:
+                name: { type: string }
+                type: { type: string }
+                nullable: { type: boolean }
+                primary: { type: boolean }
+                unique: { type: boolean }
+                default: { type: string }
+          relations:
+            type: array
+            items:
+              type: object
+              properties:
+                name: { type: string }
+                type: { type: string }
+                target: { type: string }
+                fields: { type: array, items: { type: string } }
+          indexes:
+            type: array
+            items:
+              type: object
+              properties:
+                name: { type: string }
+                columns: { type: array, items: { type: string } }
+                unique: { type: boolean }
+
+examples:
+  - description: "Get Prisma schema"
+    input:
+      source: "prisma"
+      path: "prisma/schema.prisma"
+    output:
+      source: "prisma"
+      tables:
+        - name: "User"
+          columns:
+            - name: "id"
+              type: "String"
+              nullable: false
+              primary: true
+              unique: true
+            - name: "email"
+              type: "String"
+              nullable: false
+              unique: true
+          relations:
+            - name: "posts"
+              type: "one-to-many"
+              target: "Post"
+              fields: []
+          indexes:
+            - name: "User_email_key"
+              columns: ["email"]
+              unique: true

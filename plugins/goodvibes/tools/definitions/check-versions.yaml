@@ -1,0 +1,73 @@
+name: check_versions
+version: "1.0.0"
+description: |
+  Get installed package versions and compare against skill assumptions.
+  Identifies version mismatches that could cause skill advice to fail.
+  Checks both direct dependencies and peer dependencies.
+
+mcp:
+  server: goodvibes-tools
+  method: check_versions
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    packages:
+      type: array
+      items: { type: string }
+      description: "Specific packages to check (empty = all)"
+    check_latest:
+      type: boolean
+      description: "Compare against latest npm versions"
+      default: false
+    path:
+      type: string
+      description: "Project path"
+      default: "."
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    packages:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          installed: { type: string }
+          latest: { type: string }
+          wanted: { type: string }
+          outdated: { type: boolean }
+          breaking_changes: { type: boolean }
+    summary:
+      type: object
+      properties:
+        total: { type: integer }
+        outdated: { type: integer }
+        major_updates: { type: integer }
+
+examples:
+  - description: "Check React ecosystem versions"
+    input:
+      packages: ["react", "react-dom", "next"]
+      check_latest: true
+    output:
+      packages:
+        - name: "react"
+          installed: "18.2.0"
+          latest: "19.0.0"
+          wanted: "^18.2.0"
+          outdated: true
+          breaking_changes: true
+        - name: "next"
+          installed: "14.0.0"
+          latest: "15.1.0"
+          wanted: "^14.0.0"
+          outdated: true
+          breaking_changes: true
+      summary:
+        total: 3
+        outdated: 2
+        major_updates: 2

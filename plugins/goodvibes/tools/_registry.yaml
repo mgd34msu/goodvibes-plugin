@@ -1,0 +1,511 @@
+version: 1.0.0
+generated: '2026-01-02T21:54:14.419Z'
+total: 17
+categories: {}
+search_index:
+  - name: check_types
+    keywords:
+      - check
+      - types
+      - run
+      - typescript
+      - type
+      - checking
+      - files
+      - project
+      - returns
+      - detailed
+      - errors
+      - suggestions
+      - essential
+      - validation
+      - after
+      - generating
+      - code
+    path: definitions/check-types.yaml
+    description: |
+      Run TypeScript type checking on files or project.
+      Returns detailed type errors with suggestions.
+      Essential validation after generating TypeScript code.
+  - name: check_versions
+    keywords:
+      - check
+      - versions
+      - get
+      - installed
+      - package
+      - compare
+      - against
+      - skill
+      - assumptions
+      - identifies
+      - version
+      - mismatches
+      - that
+      - could
+      - cause
+      - advice
+      - fail
+      - checks
+      - both
+      - direct
+      - dependencies
+      - peer
+    path: definitions/check-versions.yaml
+    description: |
+      Get installed package versions and compare against skill assumptions.
+      Identifies version mismatches that could cause skill advice to fail.
+      Checks both direct dependencies and peer dependencies.
+  - name: detect_stack
+    keywords:
+      - detect
+      - stack
+      - analyze
+      - project
+      - identify
+      - technology
+      - scans
+      - package
+      - json
+      - config
+      - files
+      - directory
+      - structure
+      - determine
+      - frameworks
+      - libraries
+      - tools
+      - essential
+      - selecting
+      - appropriate
+      - skills
+    path: definitions/detect-stack.yaml
+    description: |
+      Analyze project to identify the technology stack. Scans package.json,
+      config files, and directory structure to determine frameworks, libraries,
+      and tools in use. Essential for selecting appropriate skills.
+  - name: fetch_docs
+    keywords:
+      - fetch
+      - docs
+      - current
+      - documentation
+      - library
+      - framework
+      - retrieves
+      - api
+      - references
+      - guides
+      - migration
+      - notes
+      - supplements
+      - static
+      - skill
+      - knowledge
+      - live
+      - data
+    path: definitions/fetch-docs.yaml
+    description: |
+      Fetch current documentation for a library or framework.
+      Retrieves API references, guides, and migration notes.
+      Supplements static skill knowledge with live data.
+  - name: get_schema
+    keywords:
+      - get
+      - schema
+      - introspect
+      - database
+      - from
+      - connection
+      - files
+      - returns
+      - tables
+      - columns
+      - relations
+      - indexes
+      - enables
+      - skills
+      - work
+      - actual
+      - data
+      - structure
+    path: definitions/get-schema.yaml
+    description: |
+      Introspect database schema from connection or schema files.
+      Returns tables, columns, relations, and indexes.
+      Enables skills to work with actual data structure.
+  - name: get_skill_content
+    keywords:
+      - get
+      - skill
+      - content
+      - load
+      - full
+      - its
+      - path
+      - after
+      - searching
+      - detailed
+      - instructions
+    path: definitions/get-skill-content.yaml
+    description: |
+      Load the full content of a skill by its path.
+      Use after searching to get detailed skill instructions.
+  - name: list_templates
+    keywords:
+      - list
+      - templates
+      - available
+      - project
+      - their
+      - descriptions
+      - tech
+      - stacks
+      - complexity
+      - levels
+      - filter
+      - category
+    path: definitions/list-templates.yaml
+    description: |
+      List available project templates with their descriptions,
+      tech stacks, and complexity levels. Filter by category.
+  - name: read_config
+    keywords:
+      - read
+      - config
+      - parse
+      - return
+      - existing
+      - configuration
+      - files
+      - understands
+      - various
+      - formats
+      - json
+      - yaml
+      - skills
+      - can
+      - build
+      - upon
+    path: definitions/read-config.yaml
+    description: |
+      Parse and return existing configuration files.
+      Understands various config formats (JSON, YAML, JS, TS).
+      Skills can build upon existing configuration.
+  - name: recommend_skills
+    keywords:
+      - recommend
+      - skills
+      - analyze
+      - task
+      - description
+      - project
+      - context
+      - relevant
+      - combines
+      - natural
+      - language
+      - understanding
+      - stack
+      - detection
+      - primary
+      - entry
+      - point
+      - skill
+      - discovery
+    path: definitions/recommend-skills.yaml
+    description: |
+      Analyze task description and project context to recommend relevant skills.
+      Combines natural language understanding with stack detection.
+      Primary entry point for skill discovery.
+  - name: run_smoke_test
+    keywords:
+      - run
+      - smoke
+      - test
+      - quick
+      - verification
+      - that
+      - generated
+      - code
+      - compiles
+      - runs
+      - performs
+      - basic
+      - sanity
+      - checks
+      - without
+      - full
+      - suite
+      - fast
+      - feedback
+      - loop
+      - skill
+      - application
+    path: definitions/run-smoke-test.yaml
+    description: |
+      Quick verification that generated code compiles and runs.
+      Performs basic sanity checks without full test suite.
+      Fast feedback loop for skill application.
+  - name: scaffold_project
+    keywords:
+      - scaffold
+      - project
+      - create
+      - new
+      - from
+      - template
+      - copies
+      - files
+      - applies
+      - variable
+      - substitutions
+      - runs
+      - post
+      - commands
+      - lists
+      - recommended
+      - skills
+      - based
+      - stack
+    path: definitions/scaffold-project.yaml
+    description: |
+      Create a new project from a template. Copies template files,
+      applies variable substitutions, and runs post-create commands.
+      Lists recommended skills based on the template stack.
+  - name: scan_patterns
+    keywords:
+      - scan
+      - patterns
+      - identify
+      - existing
+      - code
+      - conventions
+      - project
+      - helps
+      - apply
+      - skills
+      - consistently
+      - established
+      - detects
+      - naming
+      - file
+      - structure
+      - architectural
+    path: definitions/scan-patterns.yaml
+    description: |
+      Identify existing code patterns and conventions in the project.
+      Helps apply skills consistently with established patterns.
+      Detects naming conventions, file structure, and architectural patterns.
+  - name: search_agents
+    keywords:
+      - search
+      - agents
+      - specialized
+      - expertise
+      - area
+      - task
+      - type
+      - needing
+      - find
+      - agent
+      - specific
+      - domain
+      - knowledge
+    path: definitions/search-agents.yaml
+    description: |
+      Search for specialized agents by expertise area or task type.
+      Use when needing to find an agent with specific domain knowledge.
+  - name: search_skills
+    keywords:
+      - search
+      - skills
+      - skill
+      - registry
+      - relevant
+      - based
+      - keywords
+      - technology
+      - task
+      - description
+      - needing
+      - domain
+      - specific
+      - guidance
+      - that
+      - matches
+      - available
+    path: definitions/search-skills.yaml
+    description: |
+      Search the skill registry for relevant skills based on keywords,
+      technology, or task description. Use when needing domain-specific
+      guidance that matches available skills.
+  - name: search_tools
+    keywords:
+      - search
+      - tools
+      - available
+      - functionality
+      - case
+      - discovering
+      - what
+      - are
+      - task
+    path: definitions/search-tools.yaml
+    description: |
+      Search for available tools by functionality or use case.
+      Use when discovering what tools are available for a task.
+  - name: skill_dependencies
+    keywords:
+      - skill
+      - dependencies
+      - show
+      - which
+      - skills
+      - work
+      - together
+      - their
+      - identifies
+      - prerequisite
+      - complementary
+      - conflicts
+      - helps
+      - build
+      - complete
+      - sets
+      - complex
+      - tasks
+    path: definitions/skill-dependencies.yaml
+    description: |
+      Show which skills work together and their dependencies.
+      Identifies prerequisite skills, complementary skills, and conflicts.
+      Helps build complete skill sets for complex tasks.
+  - name: validate_implementation
+    keywords:
+      - validate
+      - implementation
+      - check
+      - that
+      - generated
+      - code
+      - matches
+      - skill
+      - patterns
+      - best
+      - practices
+      - validates
+      - structure
+      - naming
+      - error
+      - handling
+      - security
+      - run
+      - after
+      - application
+      - ensure
+      - quality
+    path: definitions/validate-implementation.yaml
+    description: |
+      Check that generated code matches skill patterns and best practices.
+      Validates structure, naming, error handling, and security.
+      Run after skill application to ensure quality.
+core_tools:
+  - name: list_templates
+    path: definitions/list-templates.yaml
+    description: |
+      List available project templates with their descriptions,
+      tech stacks, and complexity levels. Filter by category.
+deferred_tools:
+  - name: check_types
+    path: definitions/check-types.yaml
+    description: |
+      Run TypeScript type checking on files or project.
+      Returns detailed type errors with suggestions.
+      Essential validation after generating TypeScript code.
+  - name: check_versions
+    path: definitions/check-versions.yaml
+    description: |
+      Get installed package versions and compare against skill assumptions.
+      Identifies version mismatches that could cause skill advice to fail.
+      Checks both direct dependencies and peer dependencies.
+  - name: detect_stack
+    path: definitions/detect-stack.yaml
+    description: |
+      Analyze project to identify the technology stack. Scans package.json,
+      config files, and directory structure to determine frameworks, libraries,
+      and tools in use. Essential for selecting appropriate skills.
+  - name: fetch_docs
+    path: definitions/fetch-docs.yaml
+    description: |
+      Fetch current documentation for a library or framework.
+      Retrieves API references, guides, and migration notes.
+      Supplements static skill knowledge with live data.
+  - name: get_schema
+    path: definitions/get-schema.yaml
+    description: |
+      Introspect database schema from connection or schema files.
+      Returns tables, columns, relations, and indexes.
+      Enables skills to work with actual data structure.
+  - name: get_skill_content
+    path: definitions/get-skill-content.yaml
+    description: |
+      Load the full content of a skill by its path.
+      Use after searching to get detailed skill instructions.
+  - name: read_config
+    path: definitions/read-config.yaml
+    description: |
+      Parse and return existing configuration files.
+      Understands various config formats (JSON, YAML, JS, TS).
+      Skills can build upon existing configuration.
+  - name: recommend_skills
+    path: definitions/recommend-skills.yaml
+    description: |
+      Analyze task description and project context to recommend relevant skills.
+      Combines natural language understanding with stack detection.
+      Primary entry point for skill discovery.
+  - name: run_smoke_test
+    path: definitions/run-smoke-test.yaml
+    description: |
+      Quick verification that generated code compiles and runs.
+      Performs basic sanity checks without full test suite.
+      Fast feedback loop for skill application.
+  - name: scaffold_project
+    path: definitions/scaffold-project.yaml
+    description: |
+      Create a new project from a template. Copies template files,
+      applies variable substitutions, and runs post-create commands.
+      Lists recommended skills based on the template stack.
+  - name: scan_patterns
+    path: definitions/scan-patterns.yaml
+    description: |
+      Identify existing code patterns and conventions in the project.
+      Helps apply skills consistently with established patterns.
+      Detects naming conventions, file structure, and architectural patterns.
+  - name: search_agents
+    path: definitions/search-agents.yaml
+    description: |
+      Search for specialized agents by expertise area or task type.
+      Use when needing to find an agent with specific domain knowledge.
+  - name: search_skills
+    path: definitions/search-skills.yaml
+    description: |
+      Search the skill registry for relevant skills based on keywords,
+      technology, or task description. Use when needing domain-specific
+      guidance that matches available skills.
+  - name: search_tools
+    path: definitions/search-tools.yaml
+    description: |
+      Search for available tools by functionality or use case.
+      Use when discovering what tools are available for a task.
+  - name: skill_dependencies
+    path: definitions/skill-dependencies.yaml
+    description: |
+      Show which skills work together and their dependencies.
+      Identifies prerequisite skills, complementary skills, and conflicts.
+      Helps build complete skill sets for complex tasks.
+  - name: validate_implementation
+    path: definitions/validate-implementation.yaml
+    description: |
+      Check that generated code matches skill patterns and best practices.
+      Validates structure, naming, error handling, and security.
+      Run after skill application to ensure quality.

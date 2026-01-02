@@ -1,0 +1,298 @@
+version: 1.0.0
+generated: '2026-01-02T21:54:14.268Z'
+total: 8
+categories:
+  _items:
+    - name: factory
+      path: factory
+      description: >-
+        Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
+        domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
+        delegates to skill-creator.
+      triggers: &ref_0
+        - factory
+        - meta
+        - agent
+        - that
+        - creates
+        - specialized
+        - claude
+        - code
+        - subagents
+        - you
+        - need
+        - build
+        - new
+        - specific
+        - domain
+        - researches
+        - thoroughly
+        - applies
+        - sdk
+        - patterns
+        - generates
+        - production
+        - ready
+        - files
+        - skills
+        - delegates
+        - skill
+        - creator
+    - name: skill-creator
+      path: skill-creator
+      description: >-
+        Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
+        update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge,
+        workflows, or tool integrations.
+      triggers: &ref_1
+        - skill
+        - creator
+        - creates
+        - high
+        - quality
+        - agent
+        - skills
+        - claude
+        - code
+        - slash
+        - commands
+        - proactively
+        - users
+        - want
+        - create
+        - update
+        - improve
+        - that
+        - extend
+        - capabilities
+        - specialized
+        - knowledge
+        - workflows
+        - tool
+        - integrations
+  webdev:
+    _items:
+      - name: backend-engineer
+        path: webdev/backend-engineer
+        description: >-
+          Backend engineering specialist for APIs, databases, and authentication. Use PROACTIVELY when designing APIs,
+          writing database queries, implementing authentication, creating server-side logic, or optimizing database
+          performance.
+        triggers: &ref_2
+          - backend
+          - engineer
+          - engineering
+          - specialist
+          - apis
+          - databases
+          - authentication
+          - proactively
+          - designing
+          - writing
+          - database
+          - queries
+          - implementing
+          - creating
+          - server
+          - side
+          - logic
+          - optimizing
+          - performance
+      - name: content-platform
+        path: webdev/content-platform
+        description: >-
+          Content platform specialist for CMS integration, email systems, payment processing, and file management. Use
+          PROACTIVELY when integrating a CMS, sending emails, processing payments, handling file uploads, or managing
+          media assets.
+        triggers: &ref_3
+          - content
+          - platform
+          - specialist
+          - cms
+          - integration
+          - email
+          - systems
+          - payment
+          - processing
+          - file
+          - management
+          - proactively
+          - integrating
+          - sending
+          - emails
+          - payments
+          - handling
+          - uploads
+          - managing
+          - media
+          - assets
+      - name: devops-deployer
+        path: webdev/devops-deployer
+        description: >-
+          DevOps specialist for build tools, deployment, and monitoring. Use PROACTIVELY when configuring build systems,
+          deploying applications, setting up hosting, optimizing bundles, configuring monitoring, or troubleshooting
+          production issues.
+        triggers: &ref_4
+          - devops
+          - deployer
+          - specialist
+          - build
+          - tools
+          - deployment
+          - monitoring
+          - proactively
+          - configuring
+          - systems
+          - deploying
+          - applications
+          - setting
+          - hosting
+          - optimizing
+          - bundles
+          - troubleshooting
+          - production
+          - issues
+      - name: frontend-architect
+        path: webdev/frontend-architect
+        description: >-
+          Frontend architecture specialist for React, Vue, Svelte, and modern UI development. Use PROACTIVELY when
+          building UI components, implementing routing, creating layouts, choosing styling approaches, integrating
+          component libraries, or adding animations.
+        triggers: &ref_5
+          - frontend
+          - architect
+          - architecture
+          - specialist
+          - react
+          - vue
+          - svelte
+          - modern
+          - development
+          - proactively
+          - building
+          - components
+          - implementing
+          - routing
+          - creating
+          - layouts
+          - choosing
+          - styling
+          - approaches
+          - integrating
+          - component
+          - libraries
+          - adding
+          - animations
+      - name: fullstack-integrator
+        path: webdev/fullstack-integrator
+        description: >-
+          Fullstack integration specialist for state management, forms, real-time features, and AI integration. Use
+          PROACTIVELY when managing client state, building forms with validation, adding real-time features,
+          implementing WebSockets, or integrating AI/LLM capabilities.
+        triggers: &ref_6
+          - fullstack
+          - integrator
+          - integration
+          - specialist
+          - state
+          - management
+          - forms
+          - real
+          - time
+          - features
+          - proactively
+          - managing
+          - client
+          - building
+          - validation
+          - adding
+          - implementing
+          - websockets
+          - integrating
+          - llm
+          - capabilities
+      - name: test-engineer
+        path: webdev/test-engineer
+        description: >-
+          Testing specialist for unit tests, integration tests, E2E tests, and visual testing. Use PROACTIVELY when
+          writing tests, setting up test infrastructure, mocking APIs, improving coverage, debugging flaky tests, or
+          implementing component testing.
+        triggers: &ref_7
+          - test
+          - engineer
+          - testing
+          - specialist
+          - unit
+          - tests
+          - integration
+          - e2e
+          - visual
+          - proactively
+          - writing
+          - setting
+          - infrastructure
+          - mocking
+          - apis
+          - improving
+          - coverage
+          - debugging
+          - flaky
+          - implementing
+          - component
+search_index:
+  - name: factory
+    keywords: *ref_0
+    path: factory
+    description: >-
+      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
+      domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
+      delegates to skill-creator.
+  - name: skill-creator
+    keywords: *ref_1
+    path: skill-creator
+    description: >-
+      Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
+      update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows,
+      or tool integrations.
+  - name: backend-engineer
+    keywords: *ref_2
+    path: webdev/backend-engineer
+    description: >-
+      Backend engineering specialist for APIs, databases, and authentication. Use PROACTIVELY when designing APIs,
+      writing database queries, implementing authentication, creating server-side logic, or optimizing database
+      performance.
+  - name: content-platform
+    keywords: *ref_3
+    path: webdev/content-platform
+    description: >-
+      Content platform specialist for CMS integration, email systems, payment processing, and file management. Use
+      PROACTIVELY when integrating a CMS, sending emails, processing payments, handling file uploads, or managing media
+      assets.
+  - name: devops-deployer
+    keywords: *ref_4
+    path: webdev/devops-deployer
+    description: >-
+      DevOps specialist for build tools, deployment, and monitoring. Use PROACTIVELY when configuring build systems,
+      deploying applications, setting up hosting, optimizing bundles, configuring monitoring, or troubleshooting
+      production issues.
+  - name: frontend-architect
+    keywords: *ref_5
+    path: webdev/frontend-architect
+    description: >-
+      Frontend architecture specialist for React, Vue, Svelte, and modern UI development. Use PROACTIVELY when building
+      UI components, implementing routing, creating layouts, choosing styling approaches, integrating component
+      libraries, or adding animations.
+  - name: fullstack-integrator
+    keywords: *ref_6
+    path: webdev/fullstack-integrator
+    description: >-
+      Fullstack integration specialist for state management, forms, real-time features, and AI integration. Use
+      PROACTIVELY when managing client state, building forms with validation, adding real-time features, implementing
+      WebSockets, or integrating AI/LLM capabilities.
+  - name: test-engineer
+    keywords: *ref_7
+    path: webdev/test-engineer
+    description: >-
+      Testing specialist for unit tests, integration tests, E2E tests, and visual testing. Use PROACTIVELY when writing
+      tests, setting up test infrastructure, mocking APIs, improving coverage, debugging flaky tests, or implementing
+      component testing.

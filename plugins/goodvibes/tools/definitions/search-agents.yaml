@@ -1,0 +1,51 @@
+name: search_agents
+version: "1.0.0"
+description: |
+  Search for specialized agents by expertise area or task type.
+  Use when needing to find an agent with specific domain knowledge.
+
+mcp:
+  server: goodvibes-tools
+  method: search_agents
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "Keywords describing the expertise needed"
+    limit:
+      type: integer
+      description: "Maximum number of results"
+      default: 5
+  required:
+    - query
+
+output_schema:
+  type: object
+  properties:
+    agents:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          path: { type: string }
+          description: { type: string }
+          relevance: { type: number }
+    total_count:
+      type: integer
+
+examples:
+  - description: "Search for database expertise"
+    input:
+      query: "postgresql schema design"
+      limit: 3
+    output:
+      agents:
+        - name: "postgresql"
+          path: "webdev/databases/relational/postgresql"
+          description: "Expert in PostgreSQL database design and administration"
+          relevance: 0.92
+      total_count: 1
