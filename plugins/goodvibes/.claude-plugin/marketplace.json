@@ -1,0 +1,21 @@
+{
+  "name": "goodvibes-market",
+  "owner": {
+    "name": "Mike Davis",
+    "email": "mgd34msu@gmail.com"
+  },
+  "metadata": {
+    "description": "goodvibes plugin marketplace"
+  },
+  "plugins": [
+    {
+      "name": "goodvibes",
+      "source": "./plugins/goodvibes",
+      "description": "Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Mike Davis"
+      }
+    }
+  ]
+}
