@@ -1,0 +1,53 @@
+name: next-app
+version: "1.0.0"
+description: Next.js 15 with TypeScript, Tailwind CSS, and ESLint
+
+stack:
+  framework: next
+  ui_library: react
+  language: typescript
+  styling: tailwind
+  linting: eslint
+
+required_skills:
+  - webdev/meta-frameworks/nextjs
+  - webdev/styling/tailwind
+  - webdev/frontend-core/react
+
+variables:
+  - name: project_name
+    prompt: "Project name"
+    default: "my-next-app"
+    validate: "^[a-z][a-z0-9-]*$"
+
+  - name: description
+    prompt: "Project description"
+    default: "A Next.js application"
+
+features:
+  - App Router
+  - Server Components
+  - TypeScript strict mode
+  - Tailwind CSS with dark mode
+  - ESLint + Prettier
+  - Path aliases (@/*)
+
+files:
+  - package.json.hbs
+  - tsconfig.json
+  - next.config.ts
+  - tailwind.config.ts
+  - postcss.config.js
+  - .eslintrc.json
+  - .prettierrc
+  - .gitignore
+  - src/app/layout.tsx.hbs
+  - src/app/page.tsx.hbs
+  - src/app/globals.css
+  - src/components/Button.tsx
+
+post_create:
+  - command: npm install
+    description: Install dependencies
+  - command: git init
+    description: Initialize git repository

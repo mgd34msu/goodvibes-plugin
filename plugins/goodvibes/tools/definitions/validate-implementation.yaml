@@ -1,0 +1,81 @@
+name: validate_implementation
+version: "1.0.0"
+description: |
+  Check that generated code matches skill patterns and best practices.
+  Validates structure, naming, error handling, and security.
+  Run after skill application to ensure quality.
+
+mcp:
+  server: goodvibes-tools
+  method: validate_implementation
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    files:
+      type: array
+      items: { type: string }
+      description: "Files to validate"
+    skill:
+      type: string
+      description: "Skill that was applied (for pattern matching)"
+    checks:
+      type: array
+      items:
+        type: string
+        enum: ["structure", "naming", "types", "errors", "security", "performance", "all"]
+      description: "Validation checks to run"
+      default: ["all"]
+  required:
+    - files
+
+output_schema:
+  type: object
+  properties:
+    valid: { type: boolean }
+    score: { type: number }
+    issues:
+      type: array
+      items:
+        type: object
+        properties:
+          severity: { type: string, enum: ["error", "warning", "info"] }
+          file: { type: string }
+          line: { type: integer }
+          rule: { type: string }
+          message: { type: string }
+          suggestion: { type: string }
+    summary:
+      type: object
+      properties:
+        errors: { type: integer }
+        warnings: { type: integer }
+        passed: { type: integer }
+
+examples:
+  - description: "Validate auth implementation"
+    input:
+      files: ["src/lib/auth.ts", "src/app/api/auth/[...nextauth]/route.ts"]
+      skill: "webdev/authentication/nextauth"
+      checks: ["all"]
+    output:
+      valid: false
+      score: 85
+      issues:
+        - severity: "warning"
+          file: "src/lib/auth.ts"
+          line: 42
+          rule: "security/no-hardcoded-secrets"
+          message: "Potential hardcoded secret detected"
+          suggestion: "Move to environment variable"
+        - severity: "info"
+          file: "src/app/api/auth/[...nextauth]/route.ts"
+          line: 15
+          rule: "pattern/missing-error-handler"
+          message: "No error callback defined"
+          suggestion: "Add error callback for auth failures"
+      summary:
+        errors: 0
+        warnings: 1
+        passed: 12

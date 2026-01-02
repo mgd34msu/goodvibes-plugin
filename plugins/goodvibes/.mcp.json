@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "goodvibes-tools": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/tool-search-server/dist/index.js"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

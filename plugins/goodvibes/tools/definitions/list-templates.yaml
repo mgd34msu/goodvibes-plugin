@@ -1,0 +1,58 @@
+name: list_templates
+version: "1.0.0"
+description: |
+  List available project templates with their descriptions,
+  tech stacks, and complexity levels. Filter by category.
+
+mcp:
+  server: goodvibes-tools
+  method: list_templates
+  defer_loading: false
+
+input_schema:
+  type: object
+  properties:
+    category:
+      type: string
+      enum: ["minimal", "full"]
+      description: "Filter by template category"
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    templates:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          path: { type: string }
+          description: { type: string }
+          category: { type: string }
+          stack: { type: array, items: { type: string } }
+          complexity: { type: string }
+    total: { type: integer }
+    categories:
+      type: array
+      items: { type: string }
+
+examples:
+  - description: "List all templates"
+    input: {}
+    output:
+      templates:
+        - name: "next-app"
+          path: "minimal/next-app"
+          description: "Next.js 15 with TypeScript and Tailwind"
+          category: "minimal"
+          stack: ["next", "react", "typescript", "tailwind"]
+          complexity: "simple"
+        - name: "next-saas"
+          path: "full/next-saas"
+          description: "Full-stack SaaS with auth, database, payments"
+          category: "full"
+          stack: ["next", "nextauth", "prisma", "stripe"]
+          complexity: "complex"
+      total: 2
+      categories: ["minimal", "full"]

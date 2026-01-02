@@ -1,0 +1,82 @@
+name: check_types
+version: "1.0.0"
+description: |
+  Run TypeScript type checking on files or project.
+  Returns detailed type errors with suggestions.
+  Essential validation after generating TypeScript code.
+
+mcp:
+  server: goodvibes-tools
+  method: check_types
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    files:
+      type: array
+      items: { type: string }
+      description: "Specific files to check (empty = project)"
+    strict:
+      type: boolean
+      description: "Use strict mode regardless of tsconfig"
+      default: false
+    include_suggestions:
+      type: boolean
+      description: "Include fix suggestions"
+      default: true
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    valid: { type: boolean }
+    errors:
+      type: array
+      items:
+        type: object
+        properties:
+          file: { type: string }
+          line: { type: integer }
+          column: { type: integer }
+          code: { type: string }
+          message: { type: string }
+          suggestion: { type: string }
+          related:
+            type: array
+            items:
+              type: object
+              properties:
+                file: { type: string }
+                line: { type: integer }
+                message: { type: string }
+    summary:
+      type: object
+      properties:
+        files_checked: { type: integer }
+        errors: { type: integer }
+        warnings: { type: integer }
+
+examples:
+  - description: "Check types in auth module"
+    input:
+      files: ["src/lib/auth.ts"]
+      strict: true
+      include_suggestions: true
+    output:
+      valid: false
+      errors:
+        - file: "src/lib/auth.ts"
+          line: 28
+          column: 5
+          code: "TS2322"
+          message: "Type 'string | undefined' is not assignable to type 'string'"
+          suggestion: "Add null check or use non-null assertion"
+          related:
+            - file: "node_modules/next-auth/index.d.ts"
+              line: 156
+              message: "The expected type comes from property 'id'"
+      summary:
+        files_checked: 1
+        errors: 1
+        warnings: 0

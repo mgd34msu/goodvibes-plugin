@@ -1,0 +1,41 @@
+name: get_skill_content
+version: "1.0.0"
+description: |
+  Load the full content of a skill by its path.
+  Use after searching to get detailed skill instructions.
+
+mcp:
+  server: goodvibes-tools
+  method: get_skill_content
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Skill path from registry (e.g., webdev/frontend/ui-frameworks/implementing-react-hooks)"
+  required:
+    - path
+
+output_schema:
+  type: object
+  properties:
+    content:
+      type: string
+      description: "Full SKILL.md content"
+    metadata:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+
+examples:
+  - description: "Load React hooks skill"
+    input:
+      path: "webdev/frontend/ui-frameworks/implementing-react-hooks"
+    output:
+      content: "---\nname: implementing-react-hooks\n..."
+      metadata:
+        name: "implementing-react-hooks"
+        description: "Create custom React hooks"

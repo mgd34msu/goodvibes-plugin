@@ -1,0 +1,83 @@
+name: detect_stack
+version: "1.0.0"
+description: |
+  Analyze project to identify the technology stack. Scans package.json,
+  config files, and directory structure to determine frameworks, libraries,
+  and tools in use. Essential for selecting appropriate skills.
+
+mcp:
+  server: goodvibes-tools
+  method: detect_stack
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root path to analyze"
+      default: "."
+    deep:
+      type: boolean
+      description: "Perform deep analysis including dependency tree"
+      default: false
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    frontend:
+      type: object
+      properties:
+        framework: { type: string }
+        ui_library: { type: string }
+        styling: { type: string }
+        state_management: { type: string }
+    backend:
+      type: object
+      properties:
+        runtime: { type: string }
+        framework: { type: string }
+        database: { type: string }
+        orm: { type: string }
+    build:
+      type: object
+      properties:
+        bundler: { type: string }
+        package_manager: { type: string }
+        typescript: { type: boolean }
+    detected_configs:
+      type: array
+      items: { type: string }
+    recommended_skills:
+      type: array
+      items: { type: string }
+
+examples:
+  - description: "Detect Next.js project stack"
+    input:
+      path: "."
+      deep: false
+    output:
+      frontend:
+        framework: "next"
+        ui_library: "react"
+        styling: "tailwind"
+        state_management: "zustand"
+      backend:
+        runtime: "node"
+        framework: "next-api"
+        database: "postgresql"
+        orm: "prisma"
+      build:
+        bundler: "turbopack"
+        package_manager: "pnpm"
+        typescript: true
+      detected_configs:
+        - "next.config.js"
+        - "tailwind.config.ts"
+        - "prisma/schema.prisma"
+      recommended_skills:
+        - "webdev/meta-frameworks/nextjs"
+        - "webdev/styling/tailwind"
+        - "webdev/databases-orms/prisma"

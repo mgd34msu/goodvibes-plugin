@@ -1,0 +1,99 @@
+name: recommend_skills
+version: "1.0.0"
+description: |
+  Analyze task description and project context to recommend relevant skills.
+  Combines natural language understanding with stack detection.
+  Primary entry point for skill discovery.
+
+mcp:
+  server: goodvibes-tools
+  method: recommend_skills
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    task:
+      type: string
+      description: "Natural language task description"
+    context:
+      type: object
+      properties:
+        stack:
+          type: object
+          description: "Output from detect_stack (optional)"
+        files:
+          type: array
+          items: { type: string }
+          description: "Relevant files for context"
+        constraints:
+          type: array
+          items: { type: string }
+          description: "User constraints (e.g., 'no external deps')"
+    max_results:
+      type: integer
+      description: "Maximum recommendations"
+      default: 5
+  required:
+    - task
+
+output_schema:
+  type: object
+  properties:
+    recommendations:
+      type: array
+      items:
+        type: object
+        properties:
+          skill: { type: string }
+          path: { type: string }
+          relevance: { type: number }
+          reason: { type: string }
+          prerequisites:
+            type: array
+            items: { type: string }
+          complements:
+            type: array
+            items: { type: string }
+    task_analysis:
+      type: object
+      properties:
+        category: { type: string }
+        keywords: { type: array, items: { type: string } }
+        complexity: { type: string, enum: ["simple", "moderate", "complex"] }
+
+examples:
+  - description: "Recommend skills for auth implementation"
+    input:
+      task: "Add Google OAuth login to my Next.js app with Prisma"
+      context:
+        stack:
+          frontend:
+            framework: "next"
+          backend:
+            orm: "prisma"
+      max_results: 3
+    output:
+      recommendations:
+        - skill: "nextauth"
+          path: "webdev/authentication/nextauth"
+          relevance: 0.98
+          reason: "NextAuth.js is the standard auth solution for Next.js with built-in Google provider"
+          prerequisites: []
+          complements: ["webdev/databases-orms/prisma"]
+        - skill: "prisma-auth-adapter"
+          path: "webdev/authentication/prisma-adapter"
+          relevance: 0.92
+          reason: "Prisma adapter for NextAuth session storage"
+          prerequisites: ["webdev/authentication/nextauth"]
+          complements: []
+        - skill: "oauth-security"
+          path: "webdev/authentication/oauth-security"
+          relevance: 0.75
+          reason: "OAuth security best practices"
+          prerequisites: []
+          complements: ["webdev/authentication/nextauth"]
+      task_analysis:
+        category: "authentication"
+        keywords: ["oauth", "google", "nextjs", "prisma", "login"]
+        complexity: "moderate"

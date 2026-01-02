@@ -1,0 +1,19 @@
+{
+  "name": "goodvibes",
+  "version": "1.0.0",
+  "description": "Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
+  "author": {
+    "name": "Mike Davis",
+    "email": "mgd34msu@gmail.com"
+  },
+  "homepage": "https://goodvibes.sh",
+  "repository": "https://github.com/mgd34msu/goodvibes.sh",
+  "license": "MIT",
+  "keywords": ["fullstack", "development", "mcp", "agents", "skills"],
+  "commands": "./commands/",
+  "agents": "./agents/",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "lspServers": "./.lsp.json"
+}

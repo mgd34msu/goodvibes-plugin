@@ -1,0 +1,22 @@
+{
+  "name": "goodvibes-plugin",
+  "version": "1.0.0",
+  "description": "GoodVibes master plugin for Claude Code",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:registries && npm run build:server && npm run build:hooks",
+    "build:registries": "npx tsx scripts/build-registries.ts",
+    "build:server": "cd tools/implementations/tool-search-server && npm install && npm run build",
+    "build:hooks": "cd hooks/scripts && npm install && npm run build",
+    "migrate": "npx tsx scripts/migrate-content.ts",
+    "validate": "npx tsx scripts/validate.ts",
+    "postinstall": "npm run build"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.6.0",
+    "js-yaml": "^4.1.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0"
+  }
+}

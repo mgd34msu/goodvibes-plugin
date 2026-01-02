@@ -1,0 +1,109 @@
+name: skill_dependencies
+version: "1.0.0"
+description: |
+  Show which skills work together and their dependencies.
+  Identifies prerequisite skills, complementary skills, and conflicts.
+  Helps build complete skill sets for complex tasks.
+
+mcp:
+  server: goodvibes-tools
+  method: skill_dependencies
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    skill:
+      type: string
+      description: "Skill to analyze"
+    depth:
+      type: integer
+      description: "Depth of dependency tree"
+      default: 2
+      minimum: 1
+      maximum: 5
+    include_optional:
+      type: boolean
+      description: "Include optional/complementary dependencies"
+      default: true
+  required:
+    - skill
+
+output_schema:
+  type: object
+  properties:
+    skill: { type: string }
+    path: { type: string }
+    dependencies:
+      type: object
+      properties:
+        required:
+          type: array
+          items:
+            type: object
+            properties:
+              skill: { type: string }
+              path: { type: string }
+              reason: { type: string }
+        optional:
+          type: array
+          items:
+            type: object
+            properties:
+              skill: { type: string }
+              path: { type: string }
+              reason: { type: string }
+        conflicts:
+          type: array
+          items:
+            type: object
+            properties:
+              skill: { type: string }
+              path: { type: string }
+              reason: { type: string }
+    dependents:
+      type: array
+      items:
+        type: object
+        properties:
+          skill: { type: string }
+          path: { type: string }
+    suggested_bundle:
+      type: array
+      items: { type: string }
+      description: "Recommended skill combination"
+
+examples:
+  - description: "Get NextAuth skill dependencies"
+    input:
+      skill: "nextauth"
+      depth: 2
+      include_optional: true
+    output:
+      skill: "nextauth"
+      path: "webdev/authentication/nextauth"
+      dependencies:
+        required: []
+        optional:
+          - skill: "prisma-adapter"
+            path: "webdev/authentication/prisma-adapter"
+            reason: "Database session storage"
+          - skill: "oauth-security"
+            path: "webdev/authentication/oauth-security"
+            reason: "Security hardening"
+          - skill: "jwt-tokens"
+            path: "webdev/authentication/jwt-tokens"
+            reason: "JWT strategy configuration"
+        conflicts:
+          - skill: "clerk"
+            path: "webdev/authentication/clerk"
+            reason: "Alternative auth solution"
+      dependents:
+        - skill: "protected-routes"
+          path: "webdev/authentication/protected-routes"
+        - skill: "role-based-access"
+          path: "webdev/authentication/rbac"
+      suggested_bundle:
+        - "webdev/authentication/nextauth"
+        - "webdev/authentication/prisma-adapter"
+        - "webdev/authentication/protected-routes"

@@ -1,0 +1,77 @@
+name: scan_patterns
+version: "1.0.0"
+description: |
+  Identify existing code patterns and conventions in the project.
+  Helps apply skills consistently with established patterns.
+  Detects naming conventions, file structure, and architectural patterns.
+
+mcp:
+  server: goodvibes-tools
+  method: scan_patterns
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Directory to scan"
+      default: "src"
+    pattern_types:
+      type: array
+      items:
+        type: string
+        enum: ["naming", "structure", "architecture", "testing", "styling", "all"]
+      description: "Types of patterns to detect"
+      default: ["all"]
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    naming:
+      type: object
+      properties:
+        components: { type: string }
+        files: { type: string }
+        functions: { type: string }
+        variables: { type: string }
+    structure:
+      type: object
+      properties:
+        component_pattern: { type: string }
+        colocation: { type: boolean }
+        barrel_exports: { type: boolean }
+    architecture:
+      type: object
+      properties:
+        pattern: { type: string }
+        layers: { type: array, items: { type: string } }
+        state_location: { type: string }
+    testing:
+      type: object
+      properties:
+        framework: { type: string }
+        location: { type: string }
+        naming: { type: string }
+    styling:
+      type: object
+      properties:
+        approach: { type: string }
+        class_naming: { type: string }
+
+examples:
+  - description: "Scan React project patterns"
+    input:
+      path: "src"
+      pattern_types: ["naming", "structure"]
+    output:
+      naming:
+        components: "PascalCase"
+        files: "kebab-case"
+        functions: "camelCase"
+        variables: "camelCase"
+      structure:
+        component_pattern: "folder-per-component"
+        colocation: true
+        barrel_exports: true
