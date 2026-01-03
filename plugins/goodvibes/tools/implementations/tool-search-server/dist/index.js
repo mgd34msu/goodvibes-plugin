@@ -3232,8 +3232,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path4) {
-      let input = path4;
+    function removeDotSegments(path5) {
+      let input = path5;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3432,8 +3432,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path4, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
+        const [path5, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6787,12 +6787,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs3, exportName) {
+    function addFormats(ajv, list, fs4, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs3[f]);
+        ajv.addFormat(f, fs4[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7159,8 +7159,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path4, errorMaps, issueData } = params;
-  const fullPath = [...path4, ...issueData.path || []];
+  const { data, path: path5, errorMaps, issueData } = params;
+  const fullPath = [...path5, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7275,11 +7275,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path4, key) {
+  constructor(parent, value, path5, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path4;
+    this._path = path5;
     this._key = key;
   }
   get path() {
@@ -10925,10 +10925,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path4) {
-  if (!path4)
+function getElementAtPath(obj, path5) {
+  if (!path5)
     return obj;
-  return path4.reduce((acc, key) => acc?.[key], obj);
+  return path5.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11311,11 +11311,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path4, issues) {
+function prefixIssues(path5, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path4);
+    iss.path.unshift(path5);
     return iss;
   });
 }
@@ -20734,14 +20734,14 @@ var KeyStore = class {
   }
 };
 function createKey(key) {
-  let path4 = null;
+  let path5 = null;
   let id = null;
   let src = null;
   let weight = 1;
   let getFn = null;
   if (isString(key) || isArray(key)) {
     src = key;
-    path4 = createKeyPath(key);
+    path5 = createKeyPath(key);
     id = createKeyId(key);
   } else {
     if (!hasOwn.call(key, "name")) {
@@ -20755,11 +20755,11 @@ function createKey(key) {
         throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
       }
     }
-    path4 = createKeyPath(name);
+    path5 = createKeyPath(name);
     id = createKeyId(name);
     getFn = key.getFn;
   }
-  return { path: path4, id, weight, src, getFn };
+  return { path: path5, id, weight, src, getFn };
 }
 function createKeyPath(key) {
   return isArray(key) ? key : key.split(".");
@@ -20767,34 +20767,34 @@ function createKeyPath(key) {
 function createKeyId(key) {
   return isArray(key) ? key.join(".") : key;
 }
-function get(obj, path4) {
+function get(obj, path5) {
   let list = [];
   let arr = false;
-  const deepGet = (obj2, path5, index) => {
+  const deepGet = (obj2, path6, index) => {
     if (!isDefined(obj2)) {
       return;
     }
-    if (!path5[index]) {
+    if (!path6[index]) {
       list.push(obj2);
     } else {
-      let key = path5[index];
+      let key = path6[index];
       const value = obj2[key];
       if (!isDefined(value)) {
         return;
       }
-      if (index === path5.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
+      if (index === path6.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
         list.push(toString(value));
       } else if (isArray(value)) {
         arr = true;
         for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path5, index + 1);
+          deepGet(value[i], path6, index + 1);
         }
-      } else if (path5.length) {
-        deepGet(value, path5, index + 1);
+      } else if (path6.length) {
+        deepGet(value, path6, index + 1);
       }
     }
   };
-  deepGet(obj, isString(path4) ? path4.split(".") : path4, 0);
+  deepGet(obj, isString(path5) ? path5.split(".") : path5, 0);
   return arr ? list : list[0];
 }
 var MatchOptions = {
@@ -24646,8 +24646,8 @@ var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
 // src/index.ts
-import * as fs2 from "fs";
-import * as path3 from "path";
+import * as fs3 from "fs";
+import * as path4 from "path";
 import { exec as exec2 } from "child_process";
 import { promisify as promisify2 } from "util";
 import * as https from "https";
@@ -25045,16 +25045,116 @@ function handlePluginStatus() {
   return success2(status);
 }
 
+// src/handlers/search.ts
+function search2(index, query, limit = 5) {
+  if (!index)
+    return [];
+  const results = index.search(query, { limit });
+  return results.map((r) => ({
+    name: r.item.name,
+    path: r.item.path,
+    description: r.item.description,
+    relevance: Math.round((1 - (r.score || 0)) * 100) / 100
+  }));
+}
+function success3(data) {
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify(data, null, 2)
+    }]
+  };
+}
+function handleSearchSkills(skillsIndex, args) {
+  const results = search2(skillsIndex, args.query, args.limit || 5);
+  const filtered = args.category ? results.filter((r) => r.path.startsWith(args.category)) : results;
+  return success3({ skills: filtered, total_count: filtered.length, query: args.query });
+}
+function handleSearchAgents(agentsIndex, args) {
+  const results = search2(agentsIndex, args.query, args.limit || 5);
+  return success3({ agents: results, total_count: results.length, query: args.query });
+}
+function handleSearchTools(toolsIndex, args) {
+  const results = search2(toolsIndex, args.query, args.limit || 5);
+  return success3({ tools: results, total_count: results.length, query: args.query });
+}
+function handleRecommendSkills(skillsIndex, args) {
+  const keywords = args.task.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+  const results = search2(skillsIndex, args.task, args.max_results || 5);
+  const taskLower = args.task.toLowerCase();
+  let category = "general";
+  if (taskLower.includes("auth") || taskLower.includes("login"))
+    category = "authentication";
+  else if (taskLower.includes("database") || taskLower.includes("prisma") || taskLower.includes("sql"))
+    category = "database";
+  else if (taskLower.includes("api") || taskLower.includes("endpoint"))
+    category = "api";
+  else if (taskLower.includes("style") || taskLower.includes("css") || taskLower.includes("tailwind"))
+    category = "styling";
+  else if (taskLower.includes("test"))
+    category = "testing";
+  else if (taskLower.includes("deploy") || taskLower.includes("build"))
+    category = "deployment";
+  const recommendations = results.map((r) => ({
+    skill: r.name,
+    path: r.path,
+    relevance: r.relevance,
+    reason: `Matches task keywords: ${keywords.slice(0, 3).join(", ")}`,
+    prerequisites: [],
+    complements: []
+  }));
+  return success3({
+    recommendations,
+    task_analysis: {
+      category,
+      keywords: keywords.slice(0, 10),
+      complexity: keywords.length > 10 ? "complex" : keywords.length > 5 ? "moderate" : "simple"
+    }
+  });
+}
+
+// src/handlers/content.ts
+import * as fs2 from "fs";
+import * as path3 from "path";
+function handleGetSkillContent(args) {
+  const attempts = [
+    path3.join(PLUGIN_ROOT, "skills", args.path, "SKILL.md"),
+    path3.join(PLUGIN_ROOT, "skills", args.path + ".md"),
+    path3.join(PLUGIN_ROOT, "skills", args.path)
+  ];
+  for (const skillPath of attempts) {
+    if (fs2.existsSync(skillPath)) {
+      const content = fs2.readFileSync(skillPath, "utf-8");
+      return { content: [{ type: "text", text: content }] };
+    }
+  }
+  throw new Error(`Skill not found: ${args.path}`);
+}
+function handleGetAgentContent(args) {
+  const attempts = [
+    path3.join(PLUGIN_ROOT, "agents", `${args.path}.md`),
+    path3.join(PLUGIN_ROOT, "agents", args.path),
+    path3.join(PLUGIN_ROOT, "agents", args.path, "index.md")
+  ];
+  for (const agentPath of attempts) {
+    if (fs2.existsSync(agentPath)) {
+      const content = fs2.readFileSync(agentPath, "utf-8");
+      return { content: [{ type: "text", text: content }] };
+    }
+  }
+  throw new Error(`Agent not found: ${args.path}`);
+}
+
 // src/index.ts
 var execAsync2 = promisify2(exec2);
 function loadRegistry(registryPath) {
   try {
-    const fullPath = path3.join(PLUGIN_ROOT, registryPath);
-    if (!fs2.existsSync(fullPath)) {
+    const fullPath = path4.join(PLUGIN_ROOT, registryPath);
+    if (!fs3.existsSync(fullPath)) {
       console.error(`Registry not found: ${fullPath}`);
       return null;
     }
-    const content = fs2.readFileSync(fullPath, "utf-8");
+    const content = fs3.readFileSync(fullPath, "utf-8");
     return load(content);
   } catch (error2) {
     console.error(`Error loading registry ${registryPath}:`, error2);
@@ -25066,7 +25166,7 @@ function createIndex2(registry2) {
     return null;
   return new Fuse(registry2.search_index, FUSE_OPTIONS);
 }
-function search2(index, query, limit = 5) {
+function search3(index, query, limit = 5) {
   if (!index)
     return [];
   const results = index.search(query, { limit });
@@ -25079,9 +25179,9 @@ function search2(index, query, limit = 5) {
 }
 function readJsonFile(filePath) {
   try {
-    if (!fs2.existsSync(filePath))
+    if (!fs3.existsSync(filePath))
       return null;
-    const content = fs2.readFileSync(filePath, "utf-8");
+    const content = fs3.readFileSync(filePath, "utf-8");
     return JSON.parse(content);
   } catch {
     return null;
@@ -25101,11 +25201,11 @@ async function safeExec(command, cwd, timeout = 3e4) {
   }
 }
 function detectPackageManager(projectPath) {
-  if (fs2.existsSync(path3.join(projectPath, "pnpm-lock.yaml")))
+  if (fs3.existsSync(path4.join(projectPath, "pnpm-lock.yaml")))
     return "pnpm";
-  if (fs2.existsSync(path3.join(projectPath, "yarn.lock")))
+  if (fs3.existsSync(path4.join(projectPath, "yarn.lock")))
     return "yarn";
-  if (fs2.existsSync(path3.join(projectPath, "bun.lockb")))
+  if (fs3.existsSync(path4.join(projectPath, "bun.lockb")))
     return "bun";
   return "npm";
 }
@@ -25156,17 +25256,17 @@ var GoodVibesServer = class {
       try {
         switch (name) {
           case "search_skills":
-            return this.handleSearchSkills(args);
+            return handleSearchSkills(this.skillsIndex, args);
           case "search_agents":
-            return this.handleSearchAgents(args);
+            return handleSearchAgents(this.agentsIndex, args);
           case "search_tools":
-            return this.handleSearchTools(args);
+            return handleSearchTools(this.toolsIndex, args);
           case "recommend_skills":
-            return this.handleRecommendSkills(args);
+            return handleRecommendSkills(this.skillsIndex, args);
           case "get_skill_content":
-            return this.handleGetSkillContent(args);
+            return handleGetSkillContent(args);
           case "get_agent_content":
-            return this.handleGetAgentContent(args);
+            return handleGetAgentContent(args);
           case "skill_dependencies":
             return this.handleSkillDependencies(args);
           case "detect_stack":
@@ -25205,105 +25305,9 @@ var GoodVibesServer = class {
       }
     });
   }
-  // ============ Search Handlers ============
-  handleSearchSkills(args) {
-    const results = search2(this.skillsIndex, args.query, args.limit || 5);
-    const filtered = args.category ? results.filter((r) => r.path.startsWith(args.category)) : results;
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({ skills: filtered, total_count: filtered.length, query: args.query }, null, 2)
-      }]
-    };
-  }
-  handleSearchAgents(args) {
-    const results = search2(this.agentsIndex, args.query, args.limit || 5);
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({ agents: results, total_count: results.length, query: args.query }, null, 2)
-      }]
-    };
-  }
-  handleSearchTools(args) {
-    const results = search2(this.toolsIndex, args.query, args.limit || 5);
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({ tools: results, total_count: results.length, query: args.query }, null, 2)
-      }]
-    };
-  }
-  handleRecommendSkills(args) {
-    const keywords = args.task.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    const results = search2(this.skillsIndex, args.task, args.max_results || 5);
-    const taskLower = args.task.toLowerCase();
-    let category = "general";
-    if (taskLower.includes("auth") || taskLower.includes("login"))
-      category = "authentication";
-    else if (taskLower.includes("database") || taskLower.includes("prisma") || taskLower.includes("sql"))
-      category = "database";
-    else if (taskLower.includes("api") || taskLower.includes("endpoint"))
-      category = "api";
-    else if (taskLower.includes("style") || taskLower.includes("css") || taskLower.includes("tailwind"))
-      category = "styling";
-    else if (taskLower.includes("test"))
-      category = "testing";
-    else if (taskLower.includes("deploy") || taskLower.includes("build"))
-      category = "deployment";
-    const recommendations = results.map((r) => ({
-      skill: r.name,
-      path: r.path,
-      relevance: r.relevance,
-      reason: `Matches task keywords: ${keywords.slice(0, 3).join(", ")}`,
-      prerequisites: [],
-      complements: []
-    }));
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          recommendations,
-          task_analysis: {
-            category,
-            keywords: keywords.slice(0, 10),
-            complexity: keywords.length > 10 ? "complex" : keywords.length > 5 ? "moderate" : "simple"
-          }
-        }, null, 2)
-      }]
-    };
-  }
-  // ============ Content Retrieval Handlers ============
-  handleGetSkillContent(args) {
-    const attempts = [
-      path3.join(PLUGIN_ROOT, "skills", args.path, "SKILL.md"),
-      path3.join(PLUGIN_ROOT, "skills", args.path + ".md"),
-      path3.join(PLUGIN_ROOT, "skills", args.path)
-    ];
-    for (const skillPath of attempts) {
-      if (fs2.existsSync(skillPath)) {
-        const content = fs2.readFileSync(skillPath, "utf-8");
-        return { content: [{ type: "text", text: content }] };
-      }
-    }
-    throw new Error(`Skill not found: ${args.path}`);
-  }
-  handleGetAgentContent(args) {
-    const attempts = [
-      path3.join(PLUGIN_ROOT, "agents", `${args.path}.md`),
-      path3.join(PLUGIN_ROOT, "agents", args.path),
-      path3.join(PLUGIN_ROOT, "agents", args.path, "index.md")
-    ];
-    for (const agentPath of attempts) {
-      if (fs2.existsSync(agentPath)) {
-        const content = fs2.readFileSync(agentPath, "utf-8");
-        return { content: [{ type: "text", text: content }] };
-      }
-    }
-    throw new Error(`Agent not found: ${args.path}`);
-  }
+  // ============ Dependency Handler ============
   handleSkillDependencies(args) {
-    const results = search2(this.skillsIndex, args.skill, 1);
+    const results = search3(this.skillsIndex, args.skill, 1);
     if (results.length === 0) {
       throw new Error(`Skill not found: ${args.skill}`);
     }
@@ -25317,7 +25321,7 @@ var GoodVibesServer = class {
     const dependents = [];
     if (skillMetadata.requires) {
       for (const req of skillMetadata.requires) {
-        const reqResult = search2(this.skillsIndex, req, 1);
+        const reqResult = search3(this.skillsIndex, req, 1);
         if (reqResult.length > 0) {
           required2.push({
             skill: reqResult[0].name,
@@ -25328,7 +25332,7 @@ var GoodVibesServer = class {
             const nestedMeta = this.parseSkillMetadata(reqResult[0].path);
             if (nestedMeta.requires) {
               for (const nested of nestedMeta.requires.slice(0, 3)) {
-                const nestedResult = search2(this.skillsIndex, nested, 1);
+                const nestedResult = search3(this.skillsIndex, nested, 1);
                 if (nestedResult.length > 0 && !required2.find((r) => r.path === nestedResult[0].path)) {
                   required2.push({
                     skill: nestedResult[0].name,
@@ -25344,7 +25348,7 @@ var GoodVibesServer = class {
     }
     if (includeOptional && skillMetadata.complements) {
       for (const comp of skillMetadata.complements) {
-        const compResult = search2(this.skillsIndex, comp, 1);
+        const compResult = search3(this.skillsIndex, comp, 1);
         if (compResult.length > 0) {
           optional2.push({
             skill: compResult[0].name,
@@ -25356,7 +25360,7 @@ var GoodVibesServer = class {
     }
     if (skillMetadata.conflicts) {
       for (const conf of skillMetadata.conflicts) {
-        const confResult = search2(this.skillsIndex, conf, 1);
+        const confResult = search3(this.skillsIndex, conf, 1);
         if (confResult.length > 0) {
           conflicts.push({
             skill: confResult[0].name,
@@ -25381,7 +25385,7 @@ var GoodVibesServer = class {
     const skillPath = skill.path;
     const category = skillPath.split("/")[0];
     if (optional2.length < 3) {
-      const related = search2(this.skillsIndex, category, 10).filter((r) => r.path !== skillPath && !optional2.find((o) => o.path === r.path)).slice(0, 5 - optional2.length);
+      const related = search3(this.skillsIndex, category, 10).filter((r) => r.path !== skillPath && !optional2.find((o) => o.path === r.path)).slice(0, 5 - optional2.length);
       for (const r of related) {
         optional2.push({
           skill: r.name,
@@ -25432,14 +25436,14 @@ var GoodVibesServer = class {
    */
   parseSkillMetadata(skillPath) {
     const attempts = [
-      path3.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
-      path3.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
-      path3.join(PLUGIN_ROOT, "skills", skillPath)
+      path4.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
+      path4.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
+      path4.join(PLUGIN_ROOT, "skills", skillPath)
     ];
     for (const filePath of attempts) {
-      if (fs2.existsSync(filePath)) {
+      if (fs3.existsSync(filePath)) {
         try {
-          const content = fs2.readFileSync(filePath, "utf-8");
+          const content = fs3.readFileSync(filePath, "utf-8");
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
           if (frontmatterMatch) {
             const frontmatter = load(frontmatterMatch[1]);
@@ -25474,7 +25478,7 @@ var GoodVibesServer = class {
   }
   // ============ Context Gathering Handlers ============
   handleDetectStack(args) {
-    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
+    const projectPath = path4.resolve(PROJECT_ROOT, args.path || ".");
     const stack = {
       frontend: {},
       backend: {},
@@ -25482,7 +25486,7 @@ var GoodVibesServer = class {
       detected_configs: [],
       recommended_skills: []
     };
-    const pkg = readJsonFile(path3.join(projectPath, "package.json"));
+    const pkg = readJsonFile(path4.join(projectPath, "package.json"));
     const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
     if (deps?.["next"]) {
       stack.frontend.framework = "next";
@@ -25540,7 +25544,7 @@ var GoodVibesServer = class {
       stack.backend.orm = "typeorm";
     }
     stack.build.package_manager = detectPackageManager(projectPath);
-    stack.build.typescript = !!deps?.["typescript"] || fs2.existsSync(path3.join(projectPath, "tsconfig.json"));
+    stack.build.typescript = !!deps?.["typescript"] || fs3.existsSync(path4.join(projectPath, "tsconfig.json"));
     if (deps?.["vite"]) {
       stack.build.bundler = "vite";
       stack.recommended_skills.push("webdev/build-tools/vite");
@@ -25569,7 +25573,7 @@ var GoodVibesServer = class {
       "drizzle.config.ts"
     ];
     for (const config2 of configFiles) {
-      if (fs2.existsSync(path3.join(projectPath, config2))) {
+      if (fs3.existsSync(path4.join(projectPath, config2))) {
         stack.detected_configs.push(config2);
       }
     }
@@ -25578,8 +25582,8 @@ var GoodVibesServer = class {
     };
   }
   async handleCheckVersions(args) {
-    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
-    const pkg = readJsonFile(path3.join(projectPath, "package.json"));
+    const projectPath = path4.resolve(PROJECT_ROOT, args.path || ".");
+    const pkg = readJsonFile(path4.join(projectPath, "package.json"));
     if (!pkg) {
       throw new Error("package.json not found");
     }
@@ -25655,7 +25659,7 @@ var GoodVibesServer = class {
     }
   }
   handleScanPatterns(args) {
-    const scanPath = path3.resolve(PROJECT_ROOT, args.path || "src");
+    const scanPath = path4.resolve(PROJECT_ROOT, args.path || "src");
     const patterns = {
       naming: {
         components: "PascalCase",
@@ -25683,32 +25687,32 @@ var GoodVibesServer = class {
         class_naming: "unknown"
       }
     };
-    if (fs2.existsSync(scanPath)) {
-      if (fs2.existsSync(path3.join(scanPath, "index.ts")) || fs2.existsSync(path3.join(scanPath, "index.js"))) {
+    if (fs3.existsSync(scanPath)) {
+      if (fs3.existsSync(path4.join(scanPath, "index.ts")) || fs3.existsSync(path4.join(scanPath, "index.js"))) {
         patterns.structure.barrel_exports = true;
       }
-      if (fs2.existsSync(path3.join(scanPath, "components"))) {
+      if (fs3.existsSync(path4.join(scanPath, "components"))) {
         patterns.architecture.layers.push("components");
       }
-      if (fs2.existsSync(path3.join(scanPath, "lib"))) {
+      if (fs3.existsSync(path4.join(scanPath, "lib"))) {
         patterns.architecture.layers.push("lib");
       }
-      if (fs2.existsSync(path3.join(scanPath, "utils"))) {
+      if (fs3.existsSync(path4.join(scanPath, "utils"))) {
         patterns.architecture.layers.push("utils");
       }
-      if (fs2.existsSync(path3.join(scanPath, "hooks"))) {
+      if (fs3.existsSync(path4.join(scanPath, "hooks"))) {
         patterns.architecture.layers.push("hooks");
       }
-      if (fs2.existsSync(path3.join(scanPath, "services"))) {
+      if (fs3.existsSync(path4.join(scanPath, "services"))) {
         patterns.architecture.layers.push("services");
       }
-      const projectRoot = path3.resolve(scanPath, "..");
-      if (fs2.existsSync(path3.join(projectRoot, "__tests__"))) {
+      const projectRoot = path4.resolve(scanPath, "..");
+      if (fs3.existsSync(path4.join(projectRoot, "__tests__"))) {
         patterns.testing.location = "__tests__";
-      } else if (fs2.existsSync(path3.join(projectRoot, "tests"))) {
+      } else if (fs3.existsSync(path4.join(projectRoot, "tests"))) {
         patterns.testing.location = "tests";
       }
-      const pkg = readJsonFile(path3.join(projectRoot, "package.json"));
+      const pkg = readJsonFile(path4.join(projectRoot, "package.json"));
       const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
       if (deps?.["vitest"])
         patterns.testing.framework = "vitest";
@@ -25933,7 +25937,7 @@ var GoodVibesServer = class {
     return refs;
   }
   handleGetSchema(args) {
-    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
+    const projectPath = path4.resolve(PROJECT_ROOT, args.path || ".");
     if (args.source === "prisma") {
       return this.parsePrismaSchema(projectPath, args.tables);
     }
@@ -25949,11 +25953,11 @@ var GoodVibesServer = class {
     throw new Error(`Unknown schema source: ${args.source}. Supported: prisma, drizzle, typeorm, sql`);
   }
   parsePrismaSchema(projectPath, filterTables) {
-    const schemaPath = path3.join(projectPath, "prisma", "schema.prisma");
-    if (!fs2.existsSync(schemaPath)) {
+    const schemaPath = path4.join(projectPath, "prisma", "schema.prisma");
+    if (!fs3.existsSync(schemaPath)) {
       throw new Error("Prisma schema not found at prisma/schema.prisma");
     }
-    const content = fs2.readFileSync(schemaPath, "utf-8");
+    const content = fs3.readFileSync(schemaPath, "utf-8");
     const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
     const tables = [];
     let match;
@@ -26010,14 +26014,14 @@ var GoodVibesServer = class {
   }
   parseDrizzleSchema(projectPath, filterTables) {
     const schemaPaths = [
-      path3.join(projectPath, "drizzle", "schema.ts"),
-      path3.join(projectPath, "src", "db", "schema.ts"),
-      path3.join(projectPath, "src", "schema.ts"),
-      path3.join(projectPath, "db", "schema.ts")
+      path4.join(projectPath, "drizzle", "schema.ts"),
+      path4.join(projectPath, "src", "db", "schema.ts"),
+      path4.join(projectPath, "src", "schema.ts"),
+      path4.join(projectPath, "db", "schema.ts")
     ];
     let schemaPath = null;
     for (const p of schemaPaths) {
-      if (fs2.existsSync(p)) {
+      if (fs3.existsSync(p)) {
         schemaPath = p;
         break;
       }
@@ -26025,7 +26029,7 @@ var GoodVibesServer = class {
     if (!schemaPath) {
       throw new Error("Drizzle schema not found. Checked: drizzle/schema.ts, src/db/schema.ts, src/schema.ts, db/schema.ts");
     }
-    const content = fs2.readFileSync(schemaPath, "utf-8");
+    const content = fs3.readFileSync(schemaPath, "utf-8");
     const tables = [];
     const tableRegex = /export\s+const\s+(\w+)\s*=\s*(?:pgTable|mysqlTable|sqliteTable)\s*\(\s*['"](\w+)['"]\s*,\s*\{([^}]+)\}/g;
     let match;
@@ -26089,14 +26093,14 @@ var GoodVibesServer = class {
   }
   parseTypeORMSchema(projectPath, filterTables) {
     const entityPaths = [
-      path3.join(projectPath, "src", "entities"),
-      path3.join(projectPath, "src", "entity"),
-      path3.join(projectPath, "entities"),
-      path3.join(projectPath, "entity")
+      path4.join(projectPath, "src", "entities"),
+      path4.join(projectPath, "src", "entity"),
+      path4.join(projectPath, "entities"),
+      path4.join(projectPath, "entity")
     ];
     let entityDir = null;
     for (const p of entityPaths) {
-      if (fs2.existsSync(p)) {
+      if (fs3.existsSync(p)) {
         entityDir = p;
         break;
       }
@@ -26105,9 +26109,9 @@ var GoodVibesServer = class {
       throw new Error("TypeORM entities not found. Checked: src/entities, src/entity, entities, entity");
     }
     const tables = [];
-    const entityFiles = fs2.readdirSync(entityDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"));
+    const entityFiles = fs3.readdirSync(entityDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"));
     for (const file2 of entityFiles) {
-      const content = fs2.readFileSync(path3.join(entityDir, file2), "utf-8");
+      const content = fs3.readFileSync(path4.join(entityDir, file2), "utf-8");
       const entityMatch = content.match(/@Entity\s*\(\s*['"]?(\w+)?['"]?\s*\)/);
       if (!entityMatch)
         continue;
@@ -26159,37 +26163,37 @@ var GoodVibesServer = class {
   }
   parseSQLSchema(projectPath, filterTables) {
     const sqlPaths = [
-      path3.join(projectPath, "schema.sql"),
-      path3.join(projectPath, "db", "schema.sql"),
-      path3.join(projectPath, "sql", "schema.sql"),
-      path3.join(projectPath, "database", "schema.sql"),
-      path3.join(projectPath, "migrations", "schema.sql")
+      path4.join(projectPath, "schema.sql"),
+      path4.join(projectPath, "db", "schema.sql"),
+      path4.join(projectPath, "sql", "schema.sql"),
+      path4.join(projectPath, "database", "schema.sql"),
+      path4.join(projectPath, "migrations", "schema.sql")
     ];
     let sqlPath = null;
     for (const p of sqlPaths) {
-      if (fs2.existsSync(p)) {
+      if (fs3.existsSync(p)) {
         sqlPath = p;
         break;
       }
     }
     if (!sqlPath) {
       const findSql = (dir) => {
-        if (!fs2.existsSync(dir))
+        if (!fs3.existsSync(dir))
           return null;
-        const files = fs2.readdirSync(dir);
+        const files = fs3.readdirSync(dir);
         for (const f of files) {
           if (f.endsWith(".sql") && !f.includes("migration")) {
-            return path3.join(dir, f);
+            return path4.join(dir, f);
           }
         }
         return null;
       };
-      sqlPath = findSql(projectPath) || findSql(path3.join(projectPath, "db")) || findSql(path3.join(projectPath, "sql"));
+      sqlPath = findSql(projectPath) || findSql(path4.join(projectPath, "db")) || findSql(path4.join(projectPath, "sql"));
     }
     if (!sqlPath) {
       throw new Error("SQL schema not found. Checked: schema.sql, db/schema.sql, sql/schema.sql, database/schema.sql");
     }
-    const content = fs2.readFileSync(sqlPath, "utf-8");
+    const content = fs3.readFileSync(sqlPath, "utf-8");
     const tables = [];
     const tableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?(\w+)[`"']?\s*\(([^;]+)\)/gi;
     let match;
@@ -26244,7 +26248,7 @@ var GoodVibesServer = class {
     };
   }
   handleReadConfig(args) {
-    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
+    const projectPath = path4.resolve(PROJECT_ROOT, args.path || ".");
     const configPaths = {
       "package.json": ["package.json"],
       "tsconfig": ["tsconfig.json"],
@@ -26258,9 +26262,9 @@ var GoodVibesServer = class {
     };
     const filesToTry = args.config === "custom" && args.path ? [args.path] : configPaths[args.config] || [args.config];
     for (const file2 of filesToTry) {
-      const filePath = path3.join(projectPath, file2);
-      if (fs2.existsSync(filePath)) {
-        const content = fs2.readFileSync(filePath, "utf-8");
+      const filePath = path4.join(projectPath, file2);
+      if (fs3.existsSync(filePath)) {
+        const content = fs3.readFileSync(filePath, "utf-8");
         let parsed = null;
         try {
           if (file2.endsWith(".json")) {
@@ -26297,8 +26301,8 @@ var GoodVibesServer = class {
       skillPatterns = this.extractSkillPatterns(args.skill);
     }
     for (const file2 of args.files) {
-      const filePath = path3.resolve(PROJECT_ROOT, file2);
-      if (!fs2.existsSync(filePath)) {
+      const filePath = path4.resolve(PROJECT_ROOT, file2);
+      if (!fs3.existsSync(filePath)) {
         issues.push({
           severity: "error",
           file: file2,
@@ -26309,9 +26313,9 @@ var GoodVibesServer = class {
         });
         continue;
       }
-      const content = fs2.readFileSync(filePath, "utf-8");
+      const content = fs3.readFileSync(filePath, "utf-8");
       const lines = content.split("\n");
-      const ext = path3.extname(file2);
+      const ext = path4.extname(file2);
       const isTypeScript = ext === ".ts" || ext === ".tsx";
       const isReact = ext === ".tsx" || ext === ".jsx" || content.includes("import React") || content.includes("from 'react'");
       if (runAll || checks.includes("security")) {
@@ -26390,7 +26394,7 @@ var GoodVibesServer = class {
           });
         }
         if (isReact) {
-          const componentName = path3.basename(file2, ext);
+          const componentName = path4.basename(file2, ext);
           const pascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(componentName);
           if (!pascalCase && !file2.includes("index") && !file2.includes("use")) {
             issues.push({
@@ -26707,14 +26711,14 @@ var GoodVibesServer = class {
   extractSkillPatterns(skillPath) {
     const patterns = {};
     const attempts = [
-      path3.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
-      path3.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
-      path3.join(PLUGIN_ROOT, "skills", skillPath)
+      path4.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
+      path4.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
+      path4.join(PLUGIN_ROOT, "skills", skillPath)
     ];
     for (const filePath of attempts) {
-      if (fs2.existsSync(filePath)) {
+      if (fs3.existsSync(filePath)) {
         try {
-          const content = fs2.readFileSync(filePath, "utf-8");
+          const content = fs3.readFileSync(filePath, "utf-8");
           const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
           if (importsMatch) {
             patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(
@@ -26847,12 +26851,12 @@ var GoodVibesServer = class {
   }
   // ============ Scaffolding Handlers ============
   async handleScaffoldProject(args) {
-    const templatePath = path3.join(PLUGIN_ROOT, "templates");
+    const templatePath = path4.join(PLUGIN_ROOT, "templates");
     const templateDirs = ["minimal", "full"];
     let templateDir = null;
     for (const category of templateDirs) {
-      const candidatePath = path3.join(templatePath, category, args.template);
-      if (fs2.existsSync(candidatePath)) {
+      const candidatePath = path4.join(templatePath, category, args.template);
+      if (fs3.existsSync(candidatePath)) {
         templateDir = candidatePath;
         break;
       }
@@ -26860,11 +26864,11 @@ var GoodVibesServer = class {
     if (!templateDir) {
       throw new Error(`Template not found: ${args.template}`);
     }
-    const templateYamlPath = path3.join(templateDir, "template.yaml");
-    if (!fs2.existsSync(templateYamlPath)) {
+    const templateYamlPath = path4.join(templateDir, "template.yaml");
+    if (!fs3.existsSync(templateYamlPath)) {
       throw new Error(`Template config not found: ${args.template}/template.yaml`);
     }
-    const templateConfig = load(fs2.readFileSync(templateYamlPath, "utf-8"));
+    const templateConfig = load(fs3.readFileSync(templateYamlPath, "utf-8"));
     const variables = {};
     if (templateConfig.variables) {
       for (const v of templateConfig.variables) {
@@ -26872,36 +26876,36 @@ var GoodVibesServer = class {
       }
     }
     Object.assign(variables, args.variables || {});
-    const outputPath = path3.resolve(PROJECT_ROOT, args.output_dir);
-    if (!fs2.existsSync(outputPath)) {
-      fs2.mkdirSync(outputPath, { recursive: true });
+    const outputPath = path4.resolve(PROJECT_ROOT, args.output_dir);
+    if (!fs3.existsSync(outputPath)) {
+      fs3.mkdirSync(outputPath, { recursive: true });
     }
-    const filesDir = path3.join(templateDir, "files");
+    const filesDir = path4.join(templateDir, "files");
     const createdFiles = [];
     function copyFilesRecursive(src, dest) {
-      const entries = fs2.readdirSync(src, { withFileTypes: true });
+      const entries = fs3.readdirSync(src, { withFileTypes: true });
       for (const entry of entries) {
-        const srcPath = path3.join(src, entry.name);
+        const srcPath = path4.join(src, entry.name);
         let destName = entry.name;
         if (destName.endsWith(".hbs")) {
           destName = destName.slice(0, -4);
         }
-        const destPath = path3.join(dest, destName);
+        const destPath = path4.join(dest, destName);
         if (entry.isDirectory()) {
-          fs2.mkdirSync(destPath, { recursive: true });
+          fs3.mkdirSync(destPath, { recursive: true });
           copyFilesRecursive(srcPath, destPath);
         } else {
-          let content = fs2.readFileSync(srcPath, "utf-8");
+          let content = fs3.readFileSync(srcPath, "utf-8");
           for (const [key, value] of Object.entries(variables)) {
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
             content = content.replace(regex, value);
           }
-          fs2.writeFileSync(destPath, content);
-          createdFiles.push(path3.relative(outputPath, destPath));
+          fs3.writeFileSync(destPath, content);
+          createdFiles.push(path4.relative(outputPath, destPath));
         }
       }
     }
-    if (fs2.existsSync(filesDir)) {
+    if (fs3.existsSync(filesDir)) {
       copyFilesRecursive(filesDir, outputPath);
     }
     const postCreateResults = [];
@@ -26949,12 +26953,12 @@ var GoodVibesServer = class {
     };
   }
   handleListTemplates(args) {
-    const templatePath = path3.join(PLUGIN_ROOT, "templates");
-    const registryPath = path3.join(templatePath, "_registry.yaml");
-    if (!fs2.existsSync(registryPath)) {
+    const templatePath = path4.join(PLUGIN_ROOT, "templates");
+    const registryPath = path4.join(templatePath, "_registry.yaml");
+    if (!fs3.existsSync(registryPath)) {
       throw new Error("Template registry not found");
     }
-    const registry2 = load(fs2.readFileSync(registryPath, "utf-8"));
+    const registry2 = load(fs3.readFileSync(registryPath, "utf-8"));
     let templates = registry2.templates || [];
     if (args.category) {
       templates = templates.filter((t) => t.category === args.category);
