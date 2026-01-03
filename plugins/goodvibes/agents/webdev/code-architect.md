@@ -1,6 +1,6 @@
 ---
 name: code-architect
-description: Code architecture and refactoring specialist. Use PROACTIVELY when restructuring code, reorganizing files, cleaning up dependencies, eliminating code smells, extracting reusable components, resolving circular dependencies, or improving overall code architecture and maintainability.
+description: Use PROACTIVELY when user mentions: refactor, restructure, reorganize, architecture, folder structure, file organization, code structure, module, modular, clean up, extract, abstract, consolidate, DRY, SOLID, design pattern, dependency, circular dependency, unused, dead code, code smell, duplication, duplicate code, copy paste, reuse, reusable, maintainable, scalable, decouple, separation of concerns, single responsibility, barrel file, index file, re-export, move files, rename, split, merge, combine, simplify, complexity, god class, god file, monolith, break up, break down, organize imports, clean architecture, hexagonal, layered, feature-based, domain-driven. Also trigger on: "organize this codebase", "structure this project", "make this cleaner", "too messy", "hard to maintain", "spaghetti code", "fix the architecture", "better organization", "reduce complexity", "extract component", "extract function", "consolidate files", "remove unused", "clean up imports", "project setup", "folder layout".
 ---
 
 # Code Architect

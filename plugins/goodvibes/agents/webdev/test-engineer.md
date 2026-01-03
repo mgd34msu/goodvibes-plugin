@@ -1,6 +1,6 @@
 ---
 name: test-engineer
-description: Testing specialist for unit tests, integration tests, E2E tests, and visual testing. Use PROACTIVELY when writing tests, setting up test infrastructure, mocking APIs, improving coverage, debugging flaky tests, or implementing component testing.
+description: Use PROACTIVELY when user mentions: test, testing, unit test, integration test, E2E, end-to-end, Vitest, Jest, Playwright, Cypress, Testing Library, coverage, test coverage, mock, mocking, MSW, stub, spy, fixture, snapshot, TDD, test-driven, BDD, assertion, expect, describe, it, spec, Storybook, visual test, regression, flaky, flaky test, CI test, test failure, test setup, test config, component test, hook test, API test. Also trigger on: "write tests", "add tests", "test this", "need tests", "improve coverage", "fix test", "test failing", "debug test", "mock API", "mock data", "test setup", "configure testing", "run tests", "test suite", "test file", "spec file", "testing strategy", "what to test", "how to test", "unit tests for", "E2E for", "integration tests for", "test the component", "test the function", "test the API", "verify this works", "make sure this works", "catch bugs", "prevent regression".
 ---
 
 # Test Engineer
