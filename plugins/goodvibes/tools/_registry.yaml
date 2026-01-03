@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-01-03T02:47:28.636Z'
+generated: '2026-01-03T04:14:25.674Z'
 total: 18
 categories: {}
 search_index:
@@ -169,6 +169,28 @@ search_index:
     description: |
       List available project templates with their descriptions,
       tech stacks, and complexity levels. Filter by category.
+  - name: plugin_status
+    keywords:
+      - plugin
+      - status
+      - check
+      - goodvibes
+      - health
+      - verifies
+      - manifest
+      - registries
+      - hooks
+      - config
+      - script
+      - files
+      - returns
+      - issues
+      - overall
+    path: definitions/plugin-status.yaml
+    description: |
+      Check GoodVibes plugin health status.
+      Verifies manifest, registries, hooks config, and script files.
+      Returns issues and overall health status.
   - name: read_config
     keywords:
       - read
@@ -409,36 +431,18 @@ search_index:
       Check that generated code matches skill patterns and best practices.
       Validates structure, naming, error handling, and security.
       Run after skill application to ensure quality.
-  - name: plugin_status
-    keywords:
-      - plugin
-      - status
-      - health
-      - check
-      - manifest
-      - registries
-      - hooks
-      - mcp
-      - server
-      - verify
-      - diagnostic
-    path: definitions/plugin-status.yaml
-    description: |
-      Check GoodVibes plugin health status.
-      Verifies manifest, registries, hooks config, and script files.
-      Returns issues and overall health status.
 core_tools:
-  - name: plugin_status
-    path: definitions/plugin-status.yaml
-    description: |
-      Check GoodVibes plugin health status.
-      Verifies manifest, registries, hooks config, and script files.
-      Returns issues and overall health status.
   - name: list_templates
     path: definitions/list-templates.yaml
     description: |
       List available project templates with their descriptions,
       tech stacks, and complexity levels. Filter by category.
+  - name: plugin_status
+    path: definitions/plugin-status.yaml
+    description: |
+      Check GoodVibes plugin health status.
+      Verifies manifest, registries, hooks config, and script files.
+      Returns issues and overall health status.
 deferred_tools:
   - name: check_types
     path: definitions/check-types.yaml
