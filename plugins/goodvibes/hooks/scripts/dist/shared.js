@@ -3,16 +3,102 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-// Environment
-export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || path.resolve(process.cwd(), '..');
-export const PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
+// Environment - using official Claude Code environment variable names
+export const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), '..');
+export const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 export const CACHE_DIR = path.join(PLUGIN_ROOT, '.cache');
 export const ANALYTICS_FILE = path.join(CACHE_DIR, 'analytics.json');
 /**
- * Output hook response as JSON
+ * Read hook input from stdin
  */
-export function respond(response) {
+export async function readHookInput() {
+    return new Promise((resolve, reject) => {
+        let data = '';
+        process.stdin.setEncoding('utf-8');
+        process.stdin.on('data', (chunk) => {
+            data += chunk;
+        });
+        process.stdin.on('end', () => {
+            try {
+                resolve(JSON.parse(data));
+            }
+            catch (error) {
+                reject(new Error('Failed to parse hook input from stdin'));
+            }
+        });
+        process.stdin.on('error', reject);
+        // Handle case where no stdin is provided (timeout after 100ms)
+        setTimeout(() => {
+            if (!data) {
+                resolve({
+                    session_id: '',
+                    transcript_path: '',
+                    cwd: process.cwd(),
+                    permission_mode: 'default',
+                    hook_event_name: 'unknown',
+                });
+            }
+        }, 100);
+    });
+}
+/**
+ * Create a response that allows the tool to proceed
+ */
+export function allowTool(hookEventName, systemMessage) {
+    return {
+        continue: true,
+        systemMessage,
+        hookSpecificOutput: {
+            hookEventName,
+            permissionDecision: 'allow',
+        },
+    };
+}
+/**
+ * Create a response that blocks the tool
+ */
+export function blockTool(hookEventName, reason) {
+    return {
+        continue: false,
+        hookSpecificOutput: {
+            hookEventName,
+            permissionDecision: 'deny',
+            permissionDecisionReason: reason,
+        },
+    };
+}
+/**
+ * Log debug message to stderr (visible in Claude Code logs but won't affect hook response)
+ */
+export function debug(message, data) {
+    const timestamp = new Date().toISOString();
+    if (data !== undefined) {
+        console.error(`[GoodVibes ${timestamp}] ${message}:`, JSON.stringify(data, null, 2));
+    }
+    else {
+        console.error(`[GoodVibes ${timestamp}] ${message}`);
+    }
+}
+/**
+ * Log error to stderr with full stack trace
+ */
+export function logError(context, error) {
+    const timestamp = new Date().toISOString();
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error(`[GoodVibes ${timestamp}] ERROR in ${context}: ${message}`);
+    if (stack) {
+        console.error(stack);
+    }
+}
+/**
+ * Output hook response as JSON and exit with appropriate code
+ * Exit 0 = success, Exit 2 = blocking error
+ */
+export function respond(response, block = false) {
+    debug('Hook response', response);
     console.log(JSON.stringify(response));
+    process.exit(block ? 2 : 0);
 }
 /**
  * Ensure cache directory exists

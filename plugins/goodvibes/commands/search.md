@@ -10,10 +10,10 @@ Search across agents, skills, and tools to find relevant capabilities.
 ## Usage
 
 ```
-/search <query>              # Search all resources
-/search skills <query>       # Search only skills
-/search agents <query>       # Search only agents
-/search tools <query>        # Search only tools
+/goodvibes:search <query>              # Search all resources
+/goodvibes:search skills <query>       # Search only skills
+/goodvibes:search agents <query>       # Search only agents
+/goodvibes:search tools <query>        # Search only tools
 ```
 
 ## Instructions

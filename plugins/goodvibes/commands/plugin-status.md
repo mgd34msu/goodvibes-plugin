@@ -4,6 +4,12 @@ description: Show GoodVibes plugin status and statistics
 
 # Plugin Status
 
+## Usage
+
+```
+/goodvibes:plugin-status
+```
+
 Display the current status of the GoodVibes plugin including:
 - Plugin version
 - Number of agents, skills, and tools registered
