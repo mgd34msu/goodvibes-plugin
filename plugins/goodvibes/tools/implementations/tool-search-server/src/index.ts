@@ -28,7 +28,15 @@ import * as http from 'http';
 import { Registry, RegistryEntry, SearchResult, StackInfo, PackageInfo } from './types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT, FUSE_OPTIONS } from './config.js';
 import { TOOL_SCHEMAS } from './tool-schemas.js';
-import { handlePluginStatus } from './handlers/status.js';
+import {
+  handlePluginStatus,
+  handleSearchSkills,
+  handleSearchAgents,
+  handleSearchTools,
+  handleRecommendSkills,
+  handleGetSkillContent,
+  handleGetAgentContent,
+} from './handlers/index.js';
 
 const execAsync = promisify(exec);
 
@@ -183,19 +191,19 @@ class GoodVibesServer {
         switch (name) {
           // Search tools
           case 'search_skills':
-            return this.handleSearchSkills(args as { query: string; category?: string; limit?: number });
+            return handleSearchSkills(this.skillsIndex, args as { query: string; category?: string; limit?: number });
           case 'search_agents':
-            return this.handleSearchAgents(args as { query: string; limit?: number });
+            return handleSearchAgents(this.agentsIndex, args as { query: string; limit?: number });
           case 'search_tools':
-            return this.handleSearchTools(args as { query: string; limit?: number });
+            return handleSearchTools(this.toolsIndex, args as { query: string; limit?: number });
           case 'recommend_skills':
-            return this.handleRecommendSkills(args as { task: string; max_results?: number });
+            return handleRecommendSkills(this.skillsIndex, args as { task: string; max_results?: number });
 
           // Content retrieval
           case 'get_skill_content':
-            return this.handleGetSkillContent(args as { path: string });
+            return handleGetSkillContent(args as { path: string });
           case 'get_agent_content':
-            return this.handleGetAgentContent(args as { path: string });
+            return handleGetAgentContent(args as { path: string });
           case 'skill_dependencies':
             return this.handleSkillDependencies(args as { skill: string; depth?: number; include_optional?: boolean });
 
@@ -245,119 +253,7 @@ class GoodVibesServer {
     });
   }
 
-  // ============ Search Handlers ============
-
-  private handleSearchSkills(args: { query: string; category?: string; limit?: number }) {
-    const results = search(this.skillsIndex, args.query, args.limit || 5);
-    const filtered = args.category
-      ? results.filter((r) => r.path.startsWith(args.category!))
-      : results;
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({ skills: filtered, total_count: filtered.length, query: args.query }, null, 2),
-      }],
-    };
-  }
-
-  private handleSearchAgents(args: { query: string; limit?: number }) {
-    const results = search(this.agentsIndex, args.query, args.limit || 5);
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({ agents: results, total_count: results.length, query: args.query }, null, 2),
-      }],
-    };
-  }
-
-  private handleSearchTools(args: { query: string; limit?: number }) {
-    const results = search(this.toolsIndex, args.query, args.limit || 5);
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({ tools: results, total_count: results.length, query: args.query }, null, 2),
-      }],
-    };
-  }
-
-  private handleRecommendSkills(args: { task: string; max_results?: number }) {
-    // Extract keywords from task
-    const keywords = args.task.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-
-    // Search with combined query
-    const results = search(this.skillsIndex, args.task, args.max_results || 5);
-
-    // Analyze task for category hints
-    const taskLower = args.task.toLowerCase();
-    let category = 'general';
-    if (taskLower.includes('auth') || taskLower.includes('login')) category = 'authentication';
-    else if (taskLower.includes('database') || taskLower.includes('prisma') || taskLower.includes('sql')) category = 'database';
-    else if (taskLower.includes('api') || taskLower.includes('endpoint')) category = 'api';
-    else if (taskLower.includes('style') || taskLower.includes('css') || taskLower.includes('tailwind')) category = 'styling';
-    else if (taskLower.includes('test')) category = 'testing';
-    else if (taskLower.includes('deploy') || taskLower.includes('build')) category = 'deployment';
-
-    const recommendations = results.map(r => ({
-      skill: r.name,
-      path: r.path,
-      relevance: r.relevance,
-      reason: `Matches task keywords: ${keywords.slice(0, 3).join(', ')}`,
-      prerequisites: [],
-      complements: [],
-    }));
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          recommendations,
-          task_analysis: {
-            category,
-            keywords: keywords.slice(0, 10),
-            complexity: keywords.length > 10 ? 'complex' : keywords.length > 5 ? 'moderate' : 'simple',
-          },
-        }, null, 2),
-      }],
-    };
-  }
-
-  // ============ Content Retrieval Handlers ============
-
-  private handleGetSkillContent(args: { path: string }) {
-    // Try multiple path patterns
-    const attempts = [
-      path.join(PLUGIN_ROOT, 'skills', args.path, 'SKILL.md'),
-      path.join(PLUGIN_ROOT, 'skills', args.path + '.md'),
-      path.join(PLUGIN_ROOT, 'skills', args.path),
-    ];
-
-    for (const skillPath of attempts) {
-      if (fs.existsSync(skillPath)) {
-        const content = fs.readFileSync(skillPath, 'utf-8');
-        return { content: [{ type: 'text', text: content }] };
-      }
-    }
-
-    throw new Error(`Skill not found: ${args.path}`);
-  }
-
-  private handleGetAgentContent(args: { path: string }) {
-    const attempts = [
-      path.join(PLUGIN_ROOT, 'agents', `${args.path}.md`),
-      path.join(PLUGIN_ROOT, 'agents', args.path),
-      path.join(PLUGIN_ROOT, 'agents', args.path, 'index.md'),
-    ];
-
-    for (const agentPath of attempts) {
-      if (fs.existsSync(agentPath)) {
-        const content = fs.readFileSync(agentPath, 'utf-8');
-        return { content: [{ type: 'text', text: content }] };
-      }
-    }
-
-    throw new Error(`Agent not found: ${args.path}`);
-  }
+  // ============ Dependency Handler ============
 
   private handleSkillDependencies(args: { skill: string; depth?: number; include_optional?: boolean }) {
     // Search for the skill
