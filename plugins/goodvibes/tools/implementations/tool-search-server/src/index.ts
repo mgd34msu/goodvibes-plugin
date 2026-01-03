@@ -19,15 +19,23 @@ import Fuse from 'fuse.js';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync, exec } from 'child_process';
-import { promisify } from 'util';
-import * as https from 'https';
-import * as http from 'http';
 
 // Local imports
 import { Registry, RegistryEntry, SearchResult, StackInfo, PackageInfo } from './types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT, FUSE_OPTIONS } from './config.js';
 import { TOOL_SCHEMAS } from './tool-schemas.js';
+import {
+  loadRegistry,
+  createIndex,
+  search,
+  readJsonFile,
+  safeExec,
+  detectPackageManager,
+  parseSkillMetadata,
+  extractFunctionBody,
+  extractSkillPatterns,
+  fetchUrl,
+} from './utils.js';
 import {
   handlePluginStatus,
   handleSearchSkills,
@@ -36,98 +44,9 @@ import {
   handleRecommendSkills,
   handleGetSkillContent,
   handleGetAgentContent,
+  handleDetectStack,
+  handleScanPatterns,
 } from './handlers/index.js';
-
-const execAsync = promisify(exec);
-
-/**
- * Load registry from YAML file
- */
-function loadRegistry(registryPath: string): Registry | null {
-  try {
-    const fullPath = path.join(PLUGIN_ROOT, registryPath);
-    if (!fs.existsSync(fullPath)) {
-      console.error(`Registry not found: ${fullPath}`);
-      return null;
-    }
-    const content = fs.readFileSync(fullPath, 'utf-8');
-    return yaml.load(content) as Registry;
-  } catch (error) {
-    console.error(`Error loading registry ${registryPath}:`, error);
-    return null;
-  }
-}
-
-/**
- * Create Fuse index from registry
- */
-function createIndex(registry: Registry | null): Fuse<RegistryEntry> | null {
-  if (!registry || !registry.search_index) return null;
-  return new Fuse(registry.search_index, FUSE_OPTIONS);
-}
-
-/**
- * Perform search and return formatted results
- */
-function search(
-  index: Fuse<RegistryEntry> | null,
-  query: string,
-  limit: number = 5
-): SearchResult[] {
-  if (!index) return [];
-
-  const results = index.search(query, { limit });
-  return results.map((r) => ({
-    name: r.item.name,
-    path: r.item.path,
-    description: r.item.description,
-    relevance: Math.round((1 - (r.score || 0)) * 100) / 100,
-  }));
-}
-
-/**
- * Safely read JSON file
- */
-function readJsonFile(filePath: string): Record<string, unknown> | null {
-  try {
-    if (!fs.existsSync(filePath)) return null;
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Execute command safely with timeout
- */
-async function safeExec(
-  command: string,
-  cwd: string,
-  timeout: number = 30000
-): Promise<{ stdout: string; stderr: string; error?: string }> {
-  try {
-    const { stdout, stderr } = await execAsync(command, { cwd, timeout });
-    return { stdout: stdout.trim(), stderr: stderr.trim() };
-  } catch (error: unknown) {
-    const err = error as { stdout?: string; stderr?: string; message?: string };
-    return {
-      stdout: err.stdout || '',
-      stderr: err.stderr || '',
-      error: err.message || 'Command failed',
-    };
-  }
-}
-
-/**
- * Detect package manager in use
- */
-function detectPackageManager(projectPath: string): string {
-  if (fs.existsSync(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (fs.existsSync(path.join(projectPath, 'yarn.lock'))) return 'yarn';
-  if (fs.existsSync(path.join(projectPath, 'bun.lockb'))) return 'bun';
-  return 'npm';
-}
 
 /**
  * Main server class
@@ -209,11 +128,11 @@ class GoodVibesServer {
 
           // Context gathering
           case 'detect_stack':
-            return this.handleDetectStack(args as { path?: string; deep?: boolean });
+            return handleDetectStack(args as { path?: string; deep?: boolean });
           case 'check_versions':
             return this.handleCheckVersions(args as { packages?: string[]; check_latest?: boolean; path?: string });
           case 'scan_patterns':
-            return this.handleScanPatterns(args as { path?: string; pattern_types?: string[] });
+            return handleScanPatterns(args as { path?: string; pattern_types?: string[] });
 
           // Live data
           case 'fetch_docs':
@@ -267,7 +186,7 @@ class GoodVibesServer {
     const includeOptional = args.include_optional !== false;
 
     // Load and parse the skill file to get actual dependencies
-    const skillMetadata = this.parseSkillMetadata(skill.path);
+    const skillMetadata = parseSkillMetadata(skill.path);
 
     // Build dependency tree
     const required: Array<{ skill: string; path: string; reason: string }> = [];
@@ -288,7 +207,7 @@ class GoodVibesServer {
 
           // Recursively get nested dependencies if depth allows
           if (depth > 1) {
-            const nestedMeta = this.parseSkillMetadata(reqResult[0].path);
+            const nestedMeta = parseSkillMetadata(reqResult[0].path);
             if (nestedMeta.requires) {
               for (const nested of nestedMeta.requires.slice(0, 3)) {
                 const nestedResult = search(this.skillsIndex, nested, 1);
@@ -338,7 +257,7 @@ class GoodVibesServer {
     if (this.skillsRegistry?.search_index) {
       for (const entry of this.skillsRegistry.search_index) {
         if (entry.path === skill.path) continue;
-        const entryMeta = this.parseSkillMetadata(entry.path);
+        const entryMeta = parseSkillMetadata(entry.path);
         if (entryMeta.requires?.some(r =>
           r.toLowerCase().includes(skill.name.toLowerCase()) ||
           skill.path.includes(r)
@@ -404,160 +323,6 @@ class GoodVibesServer {
           },
         }, null, 2),
       }],
-    };
-  }
-
-  /**
-   * Parse skill metadata from YAML frontmatter
-   */
-  private parseSkillMetadata(skillPath: string): {
-    requires?: string[];
-    complements?: string[];
-    conflicts?: string[];
-    category?: string;
-    technologies?: string[];
-    difficulty?: string;
-  } {
-    const attempts = [
-      path.join(PLUGIN_ROOT, 'skills', skillPath, 'SKILL.md'),
-      path.join(PLUGIN_ROOT, 'skills', skillPath + '.md'),
-      path.join(PLUGIN_ROOT, 'skills', skillPath),
-    ];
-
-    for (const filePath of attempts) {
-      if (fs.existsSync(filePath)) {
-        try {
-          const content = fs.readFileSync(filePath, 'utf-8');
-
-          // Parse YAML frontmatter
-          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          if (frontmatterMatch) {
-            const frontmatter = yaml.load(frontmatterMatch[1]) as Record<string, unknown>;
-            return {
-              requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : undefined,
-              complements: Array.isArray(frontmatter.complements) ? frontmatter.complements :
-                          Array.isArray(frontmatter.related) ? frontmatter.related : undefined,
-              conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : undefined,
-              category: typeof frontmatter.category === 'string' ? frontmatter.category : undefined,
-              technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies :
-                           Array.isArray(frontmatter.tech) ? frontmatter.tech : undefined,
-              difficulty: typeof frontmatter.difficulty === 'string' ? frontmatter.difficulty : undefined,
-            };
-          }
-
-          // Try to extract metadata from content if no frontmatter
-          const metadata: {
-            requires?: string[];
-            complements?: string[];
-            conflicts?: string[];
-            technologies?: string[];
-          } = {};
-
-          // Look for "Requires:" or "Prerequisites:" sections
-          const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
-          if (requiresMatch) {
-            metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
-          }
-
-          // Look for "Related:" or "See also:" sections
-          const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
-          if (relatedMatch) {
-            metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
-          }
-
-          // Extract technologies from content
-          const techKeywords = ['react', 'next', 'nextjs', 'prisma', 'drizzle', 'tailwind', 'typescript', 'node', 'express', 'vite', 'vitest', 'jest', 'zustand', 'zod', 'trpc'];
-          const contentLower = content.toLowerCase();
-          metadata.technologies = techKeywords.filter(t => contentLower.includes(t));
-
-          return metadata;
-        } catch {
-          return {};
-        }
-      }
-    }
-
-    return {};
-  }
-
-  // ============ Context Gathering Handlers ============
-
-  private handleDetectStack(args: { path?: string; deep?: boolean }) {
-    const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
-    const stack: StackInfo = {
-      frontend: {},
-      backend: {},
-      build: { typescript: false },
-      detected_configs: [],
-      recommended_skills: [],
-    };
-
-    // Read package.json
-    const pkg = readJsonFile(path.join(projectPath, 'package.json')) as Record<string, Record<string, string>> | null;
-    const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
-
-    // Detect frontend
-    if (deps?.['next']) { stack.frontend.framework = 'next'; stack.recommended_skills.push('webdev/meta-frameworks/nextjs'); }
-    else if (deps?.['nuxt']) { stack.frontend.framework = 'nuxt'; stack.recommended_skills.push('webdev/meta-frameworks/nuxt'); }
-    else if (deps?.['@remix-run/react']) { stack.frontend.framework = 'remix'; }
-    else if (deps?.['astro']) { stack.frontend.framework = 'astro'; }
-
-    if (deps?.['react']) { stack.frontend.ui_library = 'react'; }
-    else if (deps?.['vue']) { stack.frontend.ui_library = 'vue'; }
-    else if (deps?.['svelte']) { stack.frontend.ui_library = 'svelte'; }
-
-    if (deps?.['tailwindcss']) { stack.frontend.styling = 'tailwind'; stack.recommended_skills.push('webdev/styling/tailwind'); }
-    else if (deps?.['styled-components']) { stack.frontend.styling = 'styled-components'; }
-    else if (deps?.['@emotion/react']) { stack.frontend.styling = 'emotion'; }
-
-    if (deps?.['zustand']) { stack.frontend.state_management = 'zustand'; stack.recommended_skills.push('webdev/state-management/zustand'); }
-    else if (deps?.['@reduxjs/toolkit']) { stack.frontend.state_management = 'redux'; }
-    else if (deps?.['jotai']) { stack.frontend.state_management = 'jotai'; }
-    else if (deps?.['recoil']) { stack.frontend.state_management = 'recoil'; }
-
-    // Detect backend
-    stack.backend.runtime = 'node';
-    if (deps?.['express']) { stack.backend.framework = 'express'; }
-    else if (deps?.['fastify']) { stack.backend.framework = 'fastify'; }
-    else if (deps?.['hono']) { stack.backend.framework = 'hono'; }
-    else if (deps?.['next']) { stack.backend.framework = 'next-api'; }
-
-    if (deps?.['prisma'] || deps?.['@prisma/client']) {
-      stack.backend.orm = 'prisma';
-      stack.recommended_skills.push('webdev/databases-orms/prisma');
-    }
-    else if (deps?.['drizzle-orm']) { stack.backend.orm = 'drizzle'; stack.recommended_skills.push('webdev/databases-orms/drizzle'); }
-    else if (deps?.['typeorm']) { stack.backend.orm = 'typeorm'; }
-
-    // Detect build
-    stack.build.package_manager = detectPackageManager(projectPath);
-    stack.build.typescript = !!deps?.['typescript'] || fs.existsSync(path.join(projectPath, 'tsconfig.json'));
-
-    if (deps?.['vite']) { stack.build.bundler = 'vite'; stack.recommended_skills.push('webdev/build-tools/vite'); }
-    else if (deps?.['turbo']) { stack.build.bundler = 'turbopack'; }
-    else if (deps?.['webpack']) { stack.build.bundler = 'webpack'; }
-    else if (deps?.['esbuild']) { stack.build.bundler = 'esbuild'; }
-
-    // Detect config files
-    const configFiles = [
-      'next.config.js', 'next.config.mjs', 'next.config.ts',
-      'vite.config.ts', 'vite.config.js',
-      'tailwind.config.js', 'tailwind.config.ts',
-      'tsconfig.json',
-      'prisma/schema.prisma',
-      '.eslintrc.js', '.eslintrc.json', 'eslint.config.js',
-      '.prettierrc', '.prettierrc.json',
-      'drizzle.config.ts',
-    ];
-
-    for (const config of configFiles) {
-      if (fs.existsSync(path.join(projectPath, config))) {
-        stack.detected_configs.push(config);
-      }
-    }
-
-    return {
-      content: [{ type: 'text', text: JSON.stringify(stack, null, 2) }],
     };
   }
 
@@ -662,90 +427,6 @@ class GoodVibesServer {
     }
   }
 
-  private handleScanPatterns(args: { path?: string; pattern_types?: string[] }) {
-    const scanPath = path.resolve(PROJECT_ROOT, args.path || 'src');
-
-    const patterns = {
-      naming: {
-        components: 'PascalCase',
-        files: 'kebab-case',
-        functions: 'camelCase',
-        variables: 'camelCase',
-      },
-      structure: {
-        component_pattern: 'unknown',
-        colocation: false,
-        barrel_exports: false,
-      },
-      architecture: {
-        pattern: 'unknown',
-        layers: [] as string[],
-        state_location: 'unknown',
-      },
-      testing: {
-        framework: 'unknown',
-        location: 'unknown',
-        naming: 'unknown',
-      },
-      styling: {
-        approach: 'unknown',
-        class_naming: 'unknown',
-      },
-    };
-
-    // Check for common patterns
-    if (fs.existsSync(scanPath)) {
-      // Check for barrel exports
-      if (fs.existsSync(path.join(scanPath, 'index.ts')) || fs.existsSync(path.join(scanPath, 'index.js'))) {
-        patterns.structure.barrel_exports = true;
-      }
-
-      // Check for components folder
-      if (fs.existsSync(path.join(scanPath, 'components'))) {
-        patterns.architecture.layers.push('components');
-      }
-      if (fs.existsSync(path.join(scanPath, 'lib'))) {
-        patterns.architecture.layers.push('lib');
-      }
-      if (fs.existsSync(path.join(scanPath, 'utils'))) {
-        patterns.architecture.layers.push('utils');
-      }
-      if (fs.existsSync(path.join(scanPath, 'hooks'))) {
-        patterns.architecture.layers.push('hooks');
-      }
-      if (fs.existsSync(path.join(scanPath, 'services'))) {
-        patterns.architecture.layers.push('services');
-      }
-
-      // Check for test files
-      const projectRoot = path.resolve(scanPath, '..');
-      if (fs.existsSync(path.join(projectRoot, '__tests__'))) {
-        patterns.testing.location = '__tests__';
-      } else if (fs.existsSync(path.join(projectRoot, 'tests'))) {
-        patterns.testing.location = 'tests';
-      }
-
-      // Check for test framework
-      const pkg = readJsonFile(path.join(projectRoot, 'package.json')) as Record<string, Record<string, string>> | null;
-      const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
-      if (deps?.['vitest']) patterns.testing.framework = 'vitest';
-      else if (deps?.['jest']) patterns.testing.framework = 'jest';
-      else if (deps?.['@playwright/test']) patterns.testing.framework = 'playwright';
-
-      // Check styling
-      if (deps?.['tailwindcss']) {
-        patterns.styling.approach = 'utility-first';
-        patterns.styling.class_naming = 'tailwind';
-      } else if (deps?.['styled-components']) {
-        patterns.styling.approach = 'css-in-js';
-      }
-    }
-
-    return {
-      content: [{ type: 'text', text: JSON.stringify(patterns, null, 2) }],
-    };
-  }
-
   // ============ Live Data Handlers ============
 
   private async handleFetchDocs(args: { library: string; topic?: string; version?: string }) {
@@ -827,7 +508,7 @@ class GoodVibesServer {
     // If we have a GitHub raw API for README, fetch it
     if (source?.api) {
       try {
-        const readmeContent = await this.fetchUrl(source.api);
+        const readmeContent = await fetchUrl(source.api);
         if (readmeContent) {
           result.readme = readmeContent.slice(0, 10000); // Limit size
           result.content = `Documentation fetched from GitHub README. See ${source.url} for full docs.`;
@@ -894,41 +575,6 @@ class GoodVibesServer {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Simple HTTPS fetch helper
-   */
-  private fetchUrl(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const client = url.startsWith('https') ? https : http;
-      const request = client.get(url, { timeout: 10000 }, (response) => {
-        if (response.statusCode === 301 || response.statusCode === 302) {
-          // Follow redirect
-          const redirectUrl = response.headers.location;
-          if (redirectUrl) {
-            this.fetchUrl(redirectUrl).then(resolve).catch(reject);
-            return;
-          }
-        }
-
-        if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode}`));
-          return;
-        }
-
-        let data = '';
-        response.on('data', chunk => data += chunk);
-        response.on('end', () => resolve(data));
-        response.on('error', reject);
-      });
-
-      request.on('error', reject);
-      request.on('timeout', () => {
-        request.destroy();
-        reject(new Error('Request timeout'));
-      });
-    });
   }
 
   /**
@@ -1466,9 +1112,9 @@ class GoodVibesServer {
     } = {};
 
     if (args.skill) {
-      const skillMeta = this.parseSkillMetadata(args.skill);
+      const skillMeta = parseSkillMetadata(args.skill);
       // Try to extract patterns from skill content
-      skillPatterns = this.extractSkillPatterns(args.skill);
+      skillPatterns = extractSkillPatterns(args.skill);
     }
 
     for (const file of args.files) {
@@ -1653,7 +1299,7 @@ class GoodVibesServer {
         const asyncMatches = content.matchAll(/async\s+(?:function\s+)?(\w+)?\s*\([^)]*\)\s*(?::\s*\w+(?:<[^>]+>)?)?\s*\{/g);
         for (const match of asyncMatches) {
           const startIndex = match.index || 0;
-          const funcContent = this.extractFunctionBody(content, startIndex);
+          const funcContent = extractFunctionBody(content, startIndex);
 
           if (funcContent && !funcContent.includes('try') && !funcContent.includes('catch') && !funcContent.includes('.catch(')) {
             const lineNum = content.substring(0, startIndex).split('\n').length;
@@ -1928,102 +1574,6 @@ class GoodVibesServer {
         }, null, 2),
       }],
     };
-  }
-
-  /**
-   * Extract function body from content starting at index
-   */
-  private extractFunctionBody(content: string, startIndex: number): string {
-    let braceCount = 0;
-    let started = false;
-    let endIndex = startIndex;
-
-    for (let i = startIndex; i < content.length && i < startIndex + 2000; i++) {
-      if (content[i] === '{') {
-        braceCount++;
-        started = true;
-      } else if (content[i] === '}') {
-        braceCount--;
-        if (started && braceCount === 0) {
-          endIndex = i + 1;
-          break;
-        }
-      }
-    }
-
-    return content.substring(startIndex, endIndex);
-  }
-
-  /**
-   * Extract validation patterns from skill content
-   */
-  private extractSkillPatterns(skillPath: string): {
-    required_imports?: string[];
-    must_include?: string[];
-    must_not_include?: string[];
-  } {
-    const patterns: {
-      required_imports?: string[];
-      must_include?: string[];
-      must_not_include?: string[];
-    } = {};
-
-    const attempts = [
-      path.join(PLUGIN_ROOT, 'skills', skillPath, 'SKILL.md'),
-      path.join(PLUGIN_ROOT, 'skills', skillPath + '.md'),
-      path.join(PLUGIN_ROOT, 'skills', skillPath),
-    ];
-
-    for (const filePath of attempts) {
-      if (fs.existsSync(filePath)) {
-        try {
-          const content = fs.readFileSync(filePath, 'utf-8');
-
-          // Look for Required imports section
-          const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
-          if (importsMatch) {
-            patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(m =>
-              m.replace(/^-\s*/, '').replace(/[`'"]/g, '').trim()
-            );
-          }
-
-          // Look for code block patterns that should be included
-          const codeBlocks = content.match(/```(?:typescript|javascript|tsx|jsx)?\n([\s\S]*?)```/g);
-          if (codeBlocks && codeBlocks.length > 0) {
-            // Extract key patterns from code examples
-            const keyPatterns: string[] = [];
-            for (const block of codeBlocks.slice(0, 3)) {
-              const code = block.replace(/```\w*\n?/g, '');
-              // Extract imports
-              const imports = code.match(/import\s+.*from\s+['"]([^'"]+)['"]/g);
-              if (imports) {
-                patterns.required_imports = patterns.required_imports || [];
-                for (const imp of imports) {
-                  const pkg = imp.match(/from\s+['"]([^'"]+)['"]/)?.[1];
-                  if (pkg && !pkg.startsWith('.') && !patterns.required_imports.includes(pkg)) {
-                    patterns.required_imports.push(pkg);
-                  }
-                }
-              }
-            }
-          }
-
-          // Look for "Avoid" or "Don't" patterns
-          const avoidMatch = content.match(/(?:Avoid|Don't|Do not|Never):\s*\n((?:\s*-\s*.+\n)+)/i);
-          if (avoidMatch) {
-            patterns.must_not_include = avoidMatch[1].match(/-\s*(.+)/g)?.map(m =>
-              m.replace(/^-\s*/, '').replace(/[`'"]/g, '').trim()
-            );
-          }
-
-          return patterns;
-        } catch {
-          return patterns;
-        }
-      }
-    }
-
-    return patterns;
   }
 
   private async handleRunSmokeTest(args: { type?: string; files?: string[]; timeout?: number }) {

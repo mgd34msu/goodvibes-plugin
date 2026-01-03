@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-03T02:47:28.583Z'
-total: 8
+generated: '2026-01-03T04:14:25.621Z'
+total: 9
 categories:
   _items:
     - name: factory
@@ -98,13 +98,41 @@ categories:
           - logic
           - optimizing
           - performance
+      - name: code-architect
+        path: webdev/code-architect
+        description: >-
+          Code architecture and refactoring specialist. Use PROACTIVELY when restructuring code, reorganizing files,
+          cleaning up dependencies, eliminating code smells, extracting reusable components, resolving circular
+          dependencies, or improving overall code architecture and maintainability.
+        triggers: &ref_3
+          - code
+          - architect
+          - architecture
+          - refactoring
+          - specialist
+          - proactively
+          - restructuring
+          - reorganizing
+          - files
+          - cleaning
+          - dependencies
+          - eliminating
+          - smells
+          - extracting
+          - reusable
+          - components
+          - resolving
+          - circular
+          - improving
+          - overall
+          - maintainability
       - name: content-platform
         path: webdev/content-platform
         description: >-
           Content platform specialist for CMS integration, email systems, payment processing, and file management. Use
           PROACTIVELY when integrating a CMS, sending emails, processing payments, handling file uploads, or managing
           media assets.
-        triggers: &ref_3
+        triggers: &ref_4
           - content
           - platform
           - specialist
@@ -132,7 +160,7 @@ categories:
           DevOps specialist for build tools, deployment, and monitoring. Use PROACTIVELY when configuring build systems,
           deploying applications, setting up hosting, optimizing bundles, configuring monitoring, or troubleshooting
           production issues.
-        triggers: &ref_4
+        triggers: &ref_5
           - devops
           - deployer
           - specialist
@@ -158,7 +186,7 @@ categories:
           Frontend architecture specialist for React, Vue, Svelte, and modern UI development. Use PROACTIVELY when
           building UI components, implementing routing, creating layouts, choosing styling approaches, integrating
           component libraries, or adding animations.
-        triggers: &ref_5
+        triggers: &ref_6
           - frontend
           - architect
           - architecture
@@ -189,7 +217,7 @@ categories:
           Fullstack integration specialist for state management, forms, real-time features, and AI integration. Use
           PROACTIVELY when managing client state, building forms with validation, adding real-time features,
           implementing WebSockets, or integrating AI/LLM capabilities.
-        triggers: &ref_6
+        triggers: &ref_7
           - fullstack
           - integrator
           - integration
@@ -217,7 +245,7 @@ categories:
           Testing specialist for unit tests, integration tests, E2E tests, and visual testing. Use PROACTIVELY when
           writing tests, setting up test infrastructure, mocking APIs, improving coverage, debugging flaky tests, or
           implementing component testing.
-        triggers: &ref_7
+        triggers: &ref_8
           - test
           - engineer
           - testing
@@ -261,36 +289,43 @@ search_index:
       Backend engineering specialist for APIs, databases, and authentication. Use PROACTIVELY when designing APIs,
       writing database queries, implementing authentication, creating server-side logic, or optimizing database
       performance.
-  - name: content-platform
+  - name: code-architect
     keywords: *ref_3
+    path: webdev/code-architect
+    description: >-
+      Code architecture and refactoring specialist. Use PROACTIVELY when restructuring code, reorganizing files,
+      cleaning up dependencies, eliminating code smells, extracting reusable components, resolving circular
+      dependencies, or improving overall code architecture and maintainability.
+  - name: content-platform
+    keywords: *ref_4
     path: webdev/content-platform
     description: >-
       Content platform specialist for CMS integration, email systems, payment processing, and file management. Use
       PROACTIVELY when integrating a CMS, sending emails, processing payments, handling file uploads, or managing media
       assets.
   - name: devops-deployer
-    keywords: *ref_4
+    keywords: *ref_5
     path: webdev/devops-deployer
     description: >-
       DevOps specialist for build tools, deployment, and monitoring. Use PROACTIVELY when configuring build systems,
       deploying applications, setting up hosting, optimizing bundles, configuring monitoring, or troubleshooting
       production issues.
   - name: frontend-architect
-    keywords: *ref_5
+    keywords: *ref_6
     path: webdev/frontend-architect
     description: >-
       Frontend architecture specialist for React, Vue, Svelte, and modern UI development. Use PROACTIVELY when building
       UI components, implementing routing, creating layouts, choosing styling approaches, integrating component
       libraries, or adding animations.
   - name: fullstack-integrator
-    keywords: *ref_6
+    keywords: *ref_7
     path: webdev/fullstack-integrator
     description: >-
       Fullstack integration specialist for state management, forms, real-time features, and AI integration. Use
       PROACTIVELY when managing client state, building forms with validation, adding real-time features, implementing
       WebSockets, or integrating AI/LLM capabilities.
   - name: test-engineer
-    keywords: *ref_7
+    keywords: *ref_8
     path: webdev/test-engineer
     description: >-
       Testing specialist for unit tests, integration tests, E2E tests, and visual testing. Use PROACTIVELY when writing
