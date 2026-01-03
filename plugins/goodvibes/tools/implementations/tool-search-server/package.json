@@ -7,7 +7,11 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --external:node:*",
     "dev": "tsc --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
@@ -17,7 +21,10 @@
   "devDependencies": {
     "@types/js-yaml": "latest",
     "@types/node": "latest",
+    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/ui": "^2.1.0",
     "typescript": "latest",
-    "esbuild": "latest"
+    "esbuild": "latest",
+    "vitest": "^2.1.0"
   }
 }
