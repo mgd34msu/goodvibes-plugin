@@ -14,17 +14,17 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "latest",
-    "fuse.js": "latest",
-    "js-yaml": "latest"
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "fuse.js": "^7.1.0",
+    "js-yaml": "^4.1.1"
   },
   "devDependencies": {
-    "@types/js-yaml": "latest",
-    "@types/node": "latest",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.0.3",
     "@vitest/coverage-v8": "^2.1.0",
     "@vitest/ui": "^2.1.0",
-    "typescript": "latest",
-    "esbuild": "latest",
+    "typescript": "^5.9.3",
+    "esbuild": "^0.27.2",
     "vitest": "^2.1.0"
   }
 }

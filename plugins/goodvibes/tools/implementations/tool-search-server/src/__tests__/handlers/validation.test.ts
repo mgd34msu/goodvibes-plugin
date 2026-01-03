@@ -25,6 +25,15 @@ import {
   sampleCleanTypeScript,
 } from '../setup.js';
 
+/** Validation issue reported by the validator */
+interface ValidationIssue {
+  rule: string;
+  message: string;
+  file: string;
+  line?: number;
+  severity: 'error' | 'warning' | 'info';
+}
+
 // Mock modules
 vi.mock('fs');
 vi.mock('../../config.js', () => ({
@@ -61,7 +70,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'file/exists')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'file/exists')).toBe(true);
         expect(data.valid).toBe(false);
       });
 
@@ -91,7 +100,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'security/no-hardcoded-secrets')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'security/no-hardcoded-secrets')).toBe(true);
       });
 
       it('should detect hardcoded API keys', async () => {
@@ -104,7 +113,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.message.includes('API key'))).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.message.includes('API key'))).toBe(true);
       });
 
       it('should not flag environment variables', async () => {
@@ -117,7 +126,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.filter((i: any) => i.rule === 'security/no-hardcoded-secrets').length).toBe(0);
+        expect(data.issues.filter((i: ValidationIssue) => i.rule === 'security/no-hardcoded-secrets').length).toBe(0);
       });
 
       it('should detect eval usage', async () => {
@@ -130,7 +139,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'security/no-eval')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'security/no-eval')).toBe(true);
       });
 
       it('should detect innerHTML usage', async () => {
@@ -143,7 +152,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'security/no-innerhtml')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'security/no-innerhtml')).toBe(true);
       });
 
       it('should detect dangerouslySetInnerHTML', async () => {
@@ -156,7 +165,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'security/dangerously-set-inner-html')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'security/dangerously-set-inner-html')).toBe(true);
       });
 
       it('should detect SQL injection risk', async () => {
@@ -169,7 +178,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'security/sql-injection')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'security/sql-injection')).toBe(true);
       });
     });
 
@@ -184,7 +193,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'structure/missing-export')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'structure/missing-export')).toBe(true);
       });
 
       it('should not warn about missing exports in index files', async () => {
@@ -197,7 +206,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.filter((i: any) => i.rule === 'structure/missing-export').length).toBe(0);
+        expect(data.issues.filter((i: ValidationIssue) => i.rule === 'structure/missing-export').length).toBe(0);
       });
 
       it('should warn about non-PascalCase React component files', async () => {
@@ -210,7 +219,7 @@ describe('validation handlers', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'structure/component-naming')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'structure/component-naming')).toBe(true);
       });
 
       it('should detect conditional hook usage', async () => {
@@ -232,7 +241,7 @@ export function Component() {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'react/hooks-rules')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'react/hooks-rules')).toBe(true);
       });
 
       it('should warn about large files', async () => {
@@ -245,7 +254,7 @@ export function Component() {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'structure/file-size')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'structure/file-size')).toBe(true);
       });
     });
 
@@ -265,7 +274,7 @@ export async function fetchData() {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'error-handling/async-try-catch')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'error-handling/async-try-catch')).toBe(true);
       });
 
       it('should not warn about async functions with try/catch', async () => {
@@ -278,7 +287,7 @@ export async function fetchData() {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.filter((i: any) => i.rule === 'error-handling/async-try-catch').length).toBe(0);
+        expect(data.issues.filter((i: ValidationIssue) => i.rule === 'error-handling/async-try-catch').length).toBe(0);
       });
 
       it('should warn about empty catch blocks', async () => {
@@ -293,7 +302,7 @@ try { doSomething(); } catch (e) {}
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'error-handling/empty-catch')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'error-handling/empty-catch')).toBe(true);
       });
     });
 
@@ -308,7 +317,7 @@ try { doSomething(); } catch (e) {}
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'typescript/no-any')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'typescript/no-any')).toBe(true);
       });
 
       it('should warn about @ts-ignore without explanation', async () => {
@@ -324,7 +333,7 @@ const x = something();
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'typescript/no-ts-ignore')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'typescript/no-ts-ignore')).toBe(true);
       });
 
       it('should warn about excessive non-null assertions', async () => {
@@ -339,7 +348,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'typescript/excessive-non-null')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'typescript/excessive-non-null')).toBe(true);
       });
     });
 
@@ -356,7 +365,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'naming/camelCase')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'naming/camelCase')).toBe(true);
       });
     });
 
@@ -371,7 +380,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'best-practices/no-console')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'best-practices/no-console')).toBe(true);
       });
 
       it('should detect TODO comments', async () => {
@@ -384,7 +393,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.issues.some((i: any) => i.rule === 'best-practices/no-todo')).toBe(true);
+        expect(data.issues.some((i: ValidationIssue) => i.rule === 'best-practices/no-todo')).toBe(true);
       });
     });
 

@@ -13,6 +13,15 @@ import * as fs from 'fs';
 
 import { handleRunSmokeTest } from '../../handlers/smoke-test.js';
 
+/** Result of a single test run */
+interface TestResult {
+  name: string;
+  passed: boolean;
+  duration_ms: number;
+  output?: string;
+  error?: string;
+}
+
 // Mock modules
 vi.mock('fs');
 vi.mock('../../config.js', () => ({
@@ -48,7 +57,7 @@ describe('smoke-test handler', () => {
         const result = await handleRunSmokeTest({ type: 'typecheck' });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.tests.some((t: any) => t.name === 'typecheck')).toBe(true);
+        expect(data.tests.some((t: TestResult) => t.name === 'typecheck')).toBe(true);
         expect(safeExec).toHaveBeenCalledWith(
           expect.stringContaining('tsc'),
           expect.any(String),
@@ -65,7 +74,7 @@ describe('smoke-test handler', () => {
 
         const result = await handleRunSmokeTest({ type: 'typecheck' });
         const data = JSON.parse(result.content[0].text);
-        const typecheck = data.tests.find((t: any) => t.name === 'typecheck');
+        const typecheck = data.tests.find((t: TestResult) => t.name === 'typecheck');
 
         expect(typecheck.passed).toBe(false);
       });
@@ -79,7 +88,7 @@ describe('smoke-test handler', () => {
 
         const result = await handleRunSmokeTest({ type: 'typecheck' });
         const data = JSON.parse(result.content[0].text);
-        const typecheck = data.tests.find((t: any) => t.name === 'typecheck');
+        const typecheck = data.tests.find((t: TestResult) => t.name === 'typecheck');
 
         expect(typecheck.passed).toBe(true);
       });
@@ -96,7 +105,7 @@ describe('smoke-test handler', () => {
         const result = await handleRunSmokeTest({ type: 'lint' });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.tests.some((t: any) => t.name === 'lint')).toBe(true);
+        expect(data.tests.some((t: TestResult) => t.name === 'lint')).toBe(true);
         expect(safeExec).toHaveBeenCalledWith(
           expect.stringContaining('lint'),
           expect.any(String),
@@ -113,7 +122,7 @@ describe('smoke-test handler', () => {
 
         const result = await handleRunSmokeTest({ type: 'lint' });
         const data = JSON.parse(result.content[0].text);
-        const lint = data.tests.find((t: any) => t.name === 'lint');
+        const lint = data.tests.find((t: TestResult) => t.name === 'lint');
 
         expect(lint.passed).toBe(false);
       });
@@ -130,7 +139,7 @@ describe('smoke-test handler', () => {
         const result = await handleRunSmokeTest({ type: 'build' });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.tests.some((t: any) => t.name === 'build')).toBe(true);
+        expect(data.tests.some((t: TestResult) => t.name === 'build')).toBe(true);
         expect(safeExec).toHaveBeenCalledWith(
           expect.stringContaining('build'),
           expect.any(String),
@@ -148,7 +157,7 @@ describe('smoke-test handler', () => {
 
         const result = await handleRunSmokeTest({ type: 'build' });
         const data = JSON.parse(result.content[0].text);
-        const build = data.tests.find((t: any) => t.name === 'build');
+        const build = data.tests.find((t: TestResult) => t.name === 'build');
 
         expect(build.passed).toBe(false);
       });
@@ -165,9 +174,9 @@ describe('smoke-test handler', () => {
         const result = await handleRunSmokeTest({ type: 'all' });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.tests.some((t: any) => t.name === 'typecheck')).toBe(true);
-        expect(data.tests.some((t: any) => t.name === 'lint')).toBe(true);
-        expect(data.tests.some((t: any) => t.name === 'build')).toBe(true);
+        expect(data.tests.some((t: TestResult) => t.name === 'typecheck')).toBe(true);
+        expect(data.tests.some((t: TestResult) => t.name === 'lint')).toBe(true);
+        expect(data.tests.some((t: TestResult) => t.name === 'build')).toBe(true);
       });
 
       it('should default to all when type not specified', async () => {
@@ -356,7 +365,7 @@ describe('smoke-test handler', () => {
         const data = JSON.parse(result.content[0].text);
 
         const totalDuration = data.tests.reduce(
-          (sum: number, t: any) => sum + t.duration_ms,
+          (sum: number, t: TestResult) => sum + t.duration_ms,
           0
         );
         expect(data.summary.duration_ms).toBe(totalDuration);

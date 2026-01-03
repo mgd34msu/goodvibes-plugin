@@ -15,6 +15,7 @@ import {
   fetchNpmPackageInfo,
   fetchNpmReadme,
 } from '../../handlers/npm.js';
+import { PackageInfo } from '../../types.js';
 import { samplePackageJson } from '../setup.js';
 
 // Mock modules
@@ -192,8 +193,8 @@ describe('npm handlers', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.packages.length).toBe(2);
-      expect(data.packages.some((p: any) => p.name === 'react')).toBe(true);
-      expect(data.packages.some((p: any) => p.name === 'next')).toBe(true);
+      expect(data.packages.some((p: PackageInfo) => p.name === 'react')).toBe(true);
+      expect(data.packages.some((p: PackageInfo) => p.name === 'next')).toBe(true);
     });
 
     it('should limit packages to 20 when none specified', async () => {
@@ -345,8 +346,8 @@ describe('npm handlers', () => {
       });
       const data = JSON.parse(result.content[0].text);
 
-      expect(data.packages.some((p: any) => p.name === 'react')).toBe(true);
-      expect(data.packages.some((p: any) => p.name === 'vitest')).toBe(true);
+      expect(data.packages.some((p: PackageInfo) => p.name === 'react')).toBe(true);
+      expect(data.packages.some((p: PackageInfo) => p.name === 'vitest')).toBe(true);
     });
 
     describe('response format', () => {

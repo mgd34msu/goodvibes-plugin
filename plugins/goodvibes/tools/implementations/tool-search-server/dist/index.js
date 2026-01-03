@@ -3221,8 +3221,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path11) {
-      let input = path11;
+    function removeDotSegments(path12) {
+      let input = path12;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3421,8 +3421,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path11, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
+        const [path12, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7147,8 +7147,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path11, errorMaps, issueData } = params;
-  const fullPath = [...path11, ...issueData.path || []];
+  const { data, path: path12, errorMaps, issueData } = params;
+  const fullPath = [...path12, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7263,11 +7263,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path11, key) {
+  constructor(parent, value, path12, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path11;
+    this._path = path12;
     this._key = key;
   }
   get path() {
@@ -10913,15 +10913,15 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path11) {
-  if (!path11)
+function getElementAtPath(obj, path12) {
+  if (!path12)
     return obj;
-  return path11.reduce((acc, key) => acc?.[key], obj);
+  return path12.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
-  const promises = keys.map((key) => promisesObj[key]);
-  return Promise.all(promises).then((results) => {
+  const promises3 = keys.map((key) => promisesObj[key]);
+  return Promise.all(promises3).then((results) => {
     const resolvedObj = {};
     for (let i = 0; i < keys.length; i++) {
       resolvedObj[keys[i]] = results[i];
@@ -11299,11 +11299,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path11, issues) {
+function prefixIssues(path12, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path11);
+    iss.path.unshift(path12);
     return iss;
   });
 }
@@ -21015,14 +21015,14 @@ var KeyStore = class {
   }
 };
 function createKey(key) {
-  let path11 = null;
+  let path12 = null;
   let id = null;
   let src = null;
   let weight = 1;
   let getFn = null;
   if (isString(key) || isArray(key)) {
     src = key;
-    path11 = createKeyPath(key);
+    path12 = createKeyPath(key);
     id = createKeyId(key);
   } else {
     if (!hasOwn.call(key, "name")) {
@@ -21036,11 +21036,11 @@ function createKey(key) {
         throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
       }
     }
-    path11 = createKeyPath(name);
+    path12 = createKeyPath(name);
     id = createKeyId(name);
     getFn = key.getFn;
   }
-  return { path: path11, id, weight, src, getFn };
+  return { path: path12, id, weight, src, getFn };
 }
 function createKeyPath(key) {
   return isArray(key) ? key : key.split(".");
@@ -21048,34 +21048,34 @@ function createKeyPath(key) {
 function createKeyId(key) {
   return isArray(key) ? key.join(".") : key;
 }
-function get(obj, path11) {
+function get(obj, path12) {
   let list = [];
   let arr = false;
-  const deepGet = (obj2, path12, index) => {
+  const deepGet = (obj2, path13, index) => {
     if (!isDefined(obj2)) {
       return;
     }
-    if (!path12[index]) {
+    if (!path13[index]) {
       list.push(obj2);
     } else {
-      let key = path12[index];
+      let key = path13[index];
       const value = obj2[key];
       if (!isDefined(value)) {
         return;
       }
-      if (index === path12.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
+      if (index === path13.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
         list.push(toString(value));
       } else if (isArray(value)) {
         arr = true;
         for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path12, index + 1);
+          deepGet(value[i], path13, index + 1);
         }
-      } else if (path12.length) {
-        deepGet(value, path12, index + 1);
+      } else if (path13.length) {
+        deepGet(value, path13, index + 1);
       }
     }
   };
-  deepGet(obj, isString(path11) ? path11.split(".") : path11, 0);
+  deepGet(obj, isString(path12) ? path12.split(".") : path12, 0);
   return arr ? list : list[0];
 }
 var MatchOptions = {
@@ -25141,26 +25141,18 @@ function search3(index, query, limit = 5) {
     relevance: Math.round((1 - (r.score || 0)) * 100) / 100
   }));
 }
-function success3(data) {
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify(data, null, 2)
-    }]
-  };
-}
 function handleSearchSkills(skillsIndex, args) {
   const results = search3(skillsIndex, args.query, args.limit || 5);
   const filtered = args.category ? results.filter((r) => r.path.startsWith(args.category)) : results;
-  return success3({ skills: filtered, total_count: filtered.length, query: args.query });
+  return success2({ skills: filtered, total_count: filtered.length, query: args.query });
 }
 function handleSearchAgents(agentsIndex, args) {
   const results = search3(agentsIndex, args.query, args.limit || 5);
-  return success3({ agents: results, total_count: results.length, query: args.query });
+  return success2({ agents: results, total_count: results.length, query: args.query });
 }
 function handleSearchTools(toolsIndex, args) {
   const results = search3(toolsIndex, args.query, args.limit || 5);
-  return success3({ tools: results, total_count: results.length, query: args.query });
+  return success2({ tools: results, total_count: results.length, query: args.query });
 }
 function handleRecommendSkills(skillsIndex, args) {
   const keywords = args.task.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
@@ -25181,7 +25173,7 @@ function handleRecommendSkills(skillsIndex, args) {
     prerequisites: [],
     complements: []
   }));
-  return success3({
+  return success2({
     recommendations,
     task_analysis: {
       category,
@@ -25194,7 +25186,7 @@ function handleRecommendSkills(skillsIndex, args) {
 // src/handlers/content.ts
 import * as fs3 from "fs";
 import * as path4 from "path";
-function handleGetSkillContent(args) {
+async function handleGetSkillContent(args) {
   const attempts = [
     path4.join(PLUGIN_ROOT, "skills", args.path, "SKILL.md"),
     path4.join(PLUGIN_ROOT, "skills", args.path + ".md"),
@@ -25202,13 +25194,13 @@ function handleGetSkillContent(args) {
   ];
   for (const skillPath of attempts) {
     if (fs3.existsSync(skillPath)) {
-      const content = fs3.readFileSync(skillPath, "utf-8");
+      const content = await fs3.promises.readFile(skillPath, "utf-8");
       return { content: [{ type: "text", text: content }] };
     }
   }
   throw new Error(`Skill not found: ${args.path}`);
 }
-function handleGetAgentContent(args) {
+async function handleGetAgentContent(args) {
   const attempts = [
     path4.join(PLUGIN_ROOT, "agents", `${args.path}.md`),
     path4.join(PLUGIN_ROOT, "agents", args.path),
@@ -25216,7 +25208,7 @@ function handleGetAgentContent(args) {
   ];
   for (const agentPath of attempts) {
     if (fs3.existsSync(agentPath)) {
-      const content = fs3.readFileSync(agentPath, "utf-8");
+      const content = await fs3.promises.readFile(agentPath, "utf-8");
       return { content: [{ type: "text", text: content }] };
     }
   }
@@ -25226,29 +25218,6 @@ function handleGetAgentContent(args) {
 // src/handlers/context.ts
 import * as fs4 from "fs";
 import * as path5 from "path";
-function success4(data) {
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify(data, null, 2)
-    }]
-  };
-}
-function readJsonFile2(filePath) {
-  try {
-    if (!fs4.existsSync(filePath)) return null;
-    const content = fs4.readFileSync(filePath, "utf-8");
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
-function detectPackageManager2(projectPath) {
-  if (fs4.existsSync(path5.join(projectPath, "pnpm-lock.yaml"))) return "pnpm";
-  if (fs4.existsSync(path5.join(projectPath, "yarn.lock"))) return "yarn";
-  if (fs4.existsSync(path5.join(projectPath, "bun.lockb"))) return "bun";
-  return "npm";
-}
 function handleDetectStack(args) {
   const projectPath = path5.resolve(PROJECT_ROOT, args.path || ".");
   const stack = {
@@ -25258,7 +25227,7 @@ function handleDetectStack(args) {
     detected_configs: [],
     recommended_skills: []
   };
-  const pkg = readJsonFile2(path5.join(projectPath, "package.json"));
+  const pkg = readJsonFile(path5.join(projectPath, "package.json"));
   const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
   if (deps?.["next"]) {
     stack.frontend.framework = "next";
@@ -25315,7 +25284,7 @@ function handleDetectStack(args) {
   } else if (deps?.["typeorm"]) {
     stack.backend.orm = "typeorm";
   }
-  stack.build.package_manager = detectPackageManager2(projectPath);
+  stack.build.package_manager = detectPackageManager(projectPath);
   stack.build.typescript = !!deps?.["typescript"] || fs4.existsSync(path5.join(projectPath, "tsconfig.json"));
   if (deps?.["vite"]) {
     stack.build.bundler = "vite";
@@ -25349,7 +25318,7 @@ function handleDetectStack(args) {
       stack.detected_configs.push(config2);
     }
   }
-  return success4(stack);
+  return success2(stack);
 }
 function handleScanPatterns(args) {
   const scanPath = path5.resolve(PROJECT_ROOT, args.path || "src");
@@ -25395,7 +25364,7 @@ function handleScanPatterns(args) {
     } else if (fs4.existsSync(path5.join(projectRoot, "tests"))) {
       patterns.testing.location = "tests";
     }
-    const pkg = readJsonFile2(path5.join(projectRoot, "package.json"));
+    const pkg = readJsonFile(path5.join(projectRoot, "package.json"));
     const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
     if (deps?.["vitest"]) patterns.testing.framework = "vitest";
     else if (deps?.["jest"]) patterns.testing.framework = "jest";
@@ -25407,7 +25376,7 @@ function handleScanPatterns(args) {
       patterns.styling.approach = "css-in-js";
     }
   }
-  return success4(patterns);
+  return success2(patterns);
 }
 
 // src/handlers/dependencies.ts
@@ -25635,6 +25604,36 @@ async function handleCheckVersions(args) {
 }
 
 // src/handlers/docs.ts
+var CACHE_TTL_MS = 15 * 60 * 1e3;
+var npmCache = /* @__PURE__ */ new Map();
+var githubReadmeCache = /* @__PURE__ */ new Map();
+function getCacheKey(library, version2) {
+  return `${library.toLowerCase()}@${version2 || "latest"}`;
+}
+function isCacheValid(entry) {
+  if (!entry) return false;
+  return Date.now() - entry.timestamp < CACHE_TTL_MS;
+}
+async function getCachedNpmData(library, version2) {
+  const key = getCacheKey(library, version2);
+  const cached2 = npmCache.get(key);
+  if (isCacheValid(cached2)) {
+    return { data: cached2.data, cacheHit: true };
+  }
+  const data = await fetchNpmReadme(library);
+  npmCache.set(key, { data, timestamp: Date.now() });
+  return { data, cacheHit: false };
+}
+async function getCachedGithubReadme(url2, library, version2) {
+  const key = getCacheKey(library, version2);
+  const cached2 = githubReadmeCache.get(key);
+  if (isCacheValid(cached2)) {
+    return { data: cached2.data, cacheHit: true };
+  }
+  const data = await fetchUrl(url2);
+  githubReadmeCache.set(key, { data, timestamp: Date.now() });
+  return { data, cacheHit: false };
+}
 var DOCS_SOURCES = {
   "react": { url: "https://react.dev", type: "website", searchUrl: (t) => `https://react.dev/reference/react/${t}` },
   "next": { url: "https://nextjs.org/docs", type: "website", searchUrl: (t) => `https://nextjs.org/docs/${t}` },
@@ -25717,19 +25716,23 @@ async function handleFetchDocs(args) {
   const library = args.library.toLowerCase();
   const topic = args.topic?.toLowerCase();
   const source = DOCS_SOURCES[library];
+  let npmCacheHit = false;
+  let githubCacheHit = false;
   const result = {
     library: args.library,
     version: args.version || "latest",
     content: "",
     api_reference: [],
     source_url: source?.url || `https://www.npmjs.com/package/${args.library}`,
-    last_updated: (/* @__PURE__ */ new Date()).toISOString().split("T")[0]
+    last_updated: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+    cache_hit: false
   };
   if (topic) {
     result.topic = topic;
   }
   try {
-    const npmData = await fetchNpmReadme(args.library);
+    const { data: npmData, cacheHit } = await getCachedNpmData(args.library, args.version);
+    npmCacheHit = cacheHit;
     if (npmData) {
       result.readme = npmData.readme;
       result.content = npmData.description || "";
@@ -25752,7 +25755,12 @@ async function handleFetchDocs(args) {
   }
   if (source?.api) {
     try {
-      const readmeContent = await fetchUrl(source.api);
+      const { data: readmeContent, cacheHit } = await getCachedGithubReadme(
+        source.api,
+        args.library,
+        args.version
+      );
+      githubCacheHit = cacheHit;
       if (readmeContent) {
         result.readme = readmeContent.slice(0, 1e4);
         result.content = `Documentation fetched from GitHub README. See ${source.url} for full docs.`;
@@ -25760,6 +25768,7 @@ async function handleFetchDocs(args) {
     } catch {
     }
   }
+  result.cache_hit = npmCacheHit || githubCacheHit;
   const apiReferences = getCommonApiReferences(library, topic);
   result.api_reference.push(...apiReferences);
   if (!result.content && !result.readme) {
@@ -26135,9 +26144,372 @@ function handleReadConfig(args) {
   throw new Error(`Config '${args.config}' not found`);
 }
 
-// src/handlers/validation.ts
+// src/handlers/validation/index.ts
 import * as fs7 from "fs";
+import * as path10 from "path";
+
+// src/handlers/validation/security-checks.ts
+var SECRET_PATTERNS = [
+  { pattern: /(?:password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/gi, name: "password" },
+  { pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*['"][^'"]+['"]/gi, name: "API key" },
+  { pattern: /(?:secret|token)\s*[:=]\s*['"][A-Za-z0-9+/=]{20,}['"]/gi, name: "secret/token" },
+  { pattern: /(?:aws[_-]?(?:access|secret))[_-]?(?:key|id)\s*[:=]\s*['"][^'"]+['"]/gi, name: "AWS credential" },
+  { pattern: /private[_-]?key\s*[:=]\s*['"][^'"]+['"]/gi, name: "private key" }
+];
+var DANGEROUS_PATTERNS = [
+  { pattern: /eval\s*\(/, rule: "security/no-eval", message: "Use of eval() is dangerous" },
+  { pattern: /innerHTML\s*=/, rule: "security/no-innerhtml", message: "innerHTML can lead to XSS" },
+  { pattern: /dangerouslySetInnerHTML/, rule: "security/dangerously-set-inner-html", message: "dangerouslySetInnerHTML should be used carefully" },
+  { pattern: /document\.write/, rule: "security/no-document-write", message: "document.write can be exploited" },
+  { pattern: /new\s+Function\s*\(/, rule: "security/no-new-function", message: "new Function() is similar to eval()" }
+];
+function runSecurityChecks(ctx) {
+  const issues = [];
+  ctx.lines.forEach((line, i) => {
+    if (line.includes("process.env") || line.includes("import.meta.env")) return;
+    for (const { pattern, name } of SECRET_PATTERNS) {
+      if (pattern.test(line)) {
+        issues.push({
+          severity: "error",
+          file: ctx.file,
+          line: i + 1,
+          rule: "security/no-hardcoded-secrets",
+          message: `Potential hardcoded ${name}`,
+          suggestion: "Move sensitive data to environment variables"
+        });
+      }
+      pattern.lastIndex = 0;
+    }
+  });
+  ctx.lines.forEach((line, i) => {
+    for (const { pattern, rule, message } of DANGEROUS_PATTERNS) {
+      if (pattern.test(line)) {
+        issues.push({
+          severity: rule.includes("dangerously") ? "warning" : "error",
+          file: ctx.file,
+          line: i + 1,
+          rule,
+          message,
+          suggestion: "Use safer alternatives or sanitize input"
+        });
+      }
+    }
+  });
+  if (ctx.content.includes("query(") || ctx.content.includes("execute(")) {
+    ctx.lines.forEach((line, i) => {
+      if (/query\s*\(\s*[`'"].*\$\{/.test(line) || /query\s*\(\s*.*\+/.test(line)) {
+        issues.push({
+          severity: "error",
+          file: ctx.file,
+          line: i + 1,
+          rule: "security/sql-injection",
+          message: "Potential SQL injection vulnerability",
+          suggestion: "Use parameterized queries or prepared statements"
+        });
+      }
+    });
+  }
+  return issues;
+}
+
+// src/handlers/validation/structure-checks.ts
 import * as path9 from "path";
+function runStructureChecks(ctx) {
+  const issues = [];
+  const hasExport = ctx.content.includes("export default") || ctx.content.includes("export {") || ctx.content.includes("export const") || ctx.content.includes("export function") || ctx.content.includes("export class") || ctx.content.includes("export type") || ctx.content.includes("export interface");
+  if (!hasExport && !ctx.file.includes("index") && !ctx.file.includes(".d.ts")) {
+    issues.push({
+      severity: "warning",
+      file: ctx.file,
+      line: 1,
+      rule: "structure/missing-export",
+      message: "No exports found in file",
+      suggestion: "Add exports to make the module usable"
+    });
+  }
+  if (ctx.isReact) {
+    const componentName = path9.basename(ctx.file, ctx.ext);
+    const pascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(componentName);
+    if (!pascalCase && !ctx.file.includes("index") && !ctx.file.includes("use")) {
+      issues.push({
+        severity: "info",
+        file: ctx.file,
+        line: 1,
+        rule: "structure/component-naming",
+        message: "React component files should use PascalCase",
+        suggestion: `Rename to ${componentName.charAt(0).toUpperCase() + componentName.slice(1)}`
+      });
+    }
+    const hookUsage = ctx.content.match(/use[A-Z]\w+/g);
+    if (hookUsage) {
+      ctx.lines.forEach((line, i) => {
+        if (/if\s*\(.*use[A-Z]/.test(line) || /&&\s*use[A-Z]/.test(line)) {
+          issues.push({
+            severity: "error",
+            file: ctx.file,
+            line: i + 1,
+            rule: "react/hooks-rules",
+            message: "Hooks cannot be called conditionally",
+            suggestion: "Move hook call outside of conditions"
+          });
+        }
+      });
+    }
+  }
+  if (ctx.lines.length > 500) {
+    issues.push({
+      severity: "info",
+      file: ctx.file,
+      line: 1,
+      rule: "structure/file-size",
+      message: `File has ${ctx.lines.length} lines, consider splitting`,
+      suggestion: "Break large files into smaller, focused modules"
+    });
+  }
+  if (ctx.file.includes("index") && ctx.content.length < 50 && !ctx.content.includes("export")) {
+    issues.push({
+      severity: "info",
+      file: ctx.file,
+      line: 1,
+      rule: "structure/empty-index",
+      message: "Index file appears empty or incomplete",
+      suggestion: "Add barrel exports or remove empty index"
+    });
+  }
+  return issues;
+}
+
+// src/handlers/validation/error-handling-checks.ts
+function runErrorHandlingChecks(ctx) {
+  const issues = [];
+  const asyncMatches = ctx.content.matchAll(/async\s+(?:function\s+)?(\w+)?\s*\([^)]*\)\s*(?::\s*\w+(?:<[^>]+>)?)?\s*\{/g);
+  for (const match of asyncMatches) {
+    const startIndex = match.index || 0;
+    const funcContent = extractFunctionBody(ctx.content, startIndex);
+    if (funcContent && !funcContent.includes("try") && !funcContent.includes("catch") && !funcContent.includes(".catch(")) {
+      const lineNum = ctx.content.substring(0, startIndex).split("\n").length;
+      issues.push({
+        severity: "warning",
+        file: ctx.file,
+        line: lineNum,
+        rule: "error-handling/async-try-catch",
+        message: "Async function without error handling",
+        suggestion: "Wrap async code in try/catch or use .catch()"
+      });
+    }
+  }
+  ctx.lines.forEach((line, i) => {
+    if (/catch\s*\([^)]*\)\s*\{\s*\}/.test(line) || line.includes("catch") && ctx.lines[i + 1]?.trim() === "}") {
+      issues.push({
+        severity: "warning",
+        file: ctx.file,
+        line: i + 1,
+        rule: "error-handling/empty-catch",
+        message: "Empty catch block swallows errors",
+        suggestion: "Log the error or handle it appropriately"
+      });
+    }
+  });
+  for (let i = 0; i < ctx.lines.length; i++) {
+    if (ctx.lines[i].includes("catch") && ctx.lines[i + 1]?.includes("console.log")) {
+      issues.push({
+        severity: "info",
+        file: ctx.file,
+        line: i + 2,
+        rule: "error-handling/console-error",
+        message: "Use console.error for errors, not console.log",
+        suggestion: "Replace console.log with console.error in catch blocks"
+      });
+    }
+  }
+  return issues;
+}
+
+// src/handlers/validation/typescript-checks.ts
+function runTypeScriptChecks(ctx) {
+  const issues = [];
+  if (!ctx.isTypeScript) return issues;
+  const anyMatches = ctx.content.matchAll(/:\s*any\b/g);
+  for (const match of anyMatches) {
+    const lineNum = ctx.content.substring(0, match.index || 0).split("\n").length;
+    issues.push({
+      severity: "warning",
+      file: ctx.file,
+      line: lineNum,
+      rule: "typescript/no-any",
+      message: 'Avoid using "any" type',
+      suggestion: 'Use a more specific type or "unknown"'
+    });
+  }
+  ctx.lines.forEach((line, i) => {
+    if (/@ts-ignore(?!\s+.{10,})/.test(line)) {
+      issues.push({
+        severity: "warning",
+        file: ctx.file,
+        line: i + 1,
+        rule: "typescript/no-ts-ignore",
+        message: "@ts-ignore should include an explanation",
+        suggestion: "Add a comment explaining why the ignore is needed"
+      });
+    }
+  });
+  const assertionCount = (ctx.content.match(/!\./g) || []).length;
+  if (assertionCount > 5) {
+    issues.push({
+      severity: "info",
+      file: ctx.file,
+      line: 1,
+      rule: "typescript/excessive-non-null",
+      message: `${assertionCount} non-null assertions found`,
+      suggestion: "Consider proper null checking instead of assertions"
+    });
+  }
+  return issues;
+}
+
+// src/handlers/validation/naming-checks.ts
+function runNamingChecks(ctx) {
+  const issues = [];
+  const funcMatches = ctx.content.matchAll(/(?:function|const|let)\s+([a-zA-Z_]\w*)\s*(?:=\s*(?:async\s*)?\(|[\(<])/g);
+  for (const match of funcMatches) {
+    const name = match[1];
+    if (name.startsWith("_")) continue;
+    if (/^[A-Z]/.test(name) && !ctx.isReact) {
+    } else if (!/^[a-z][a-zA-Z0-9]*$/.test(name) && !/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
+      const lineNum = ctx.content.substring(0, match.index || 0).split("\n").length;
+      issues.push({
+        severity: "info",
+        file: ctx.file,
+        line: lineNum,
+        rule: "naming/camelCase",
+        message: `Function "${name}" should use camelCase`,
+        suggestion: "Use camelCase for functions and variables"
+      });
+    }
+  }
+  const constMatches = ctx.content.matchAll(/const\s+([a-zA-Z_]\w*)\s*=/g);
+  for (const match of constMatches) {
+    const name = match[1];
+    if (/^[A-Z][A-Z0-9_]+$/.test(name)) {
+      const lineNum = ctx.content.substring(0, match.index || 0).split("\n").length;
+      const line = ctx.lines[lineNum - 1] || "";
+      if (line.includes("()") || line.includes("new ")) {
+        issues.push({
+          severity: "info",
+          file: ctx.file,
+          line: lineNum,
+          rule: "naming/screaming-case",
+          message: `SCREAMING_CASE "${name}" should be for constant values only`,
+          suggestion: "Use SCREAMING_CASE only for true constants, not functions or instances"
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+// src/handlers/validation/best-practices-checks.ts
+var VALID_STATUS_CODES = [200, 201, 204, 400, 401, 403, 404, 500];
+function runBestPracticesChecks(ctx) {
+  const issues = [];
+  ctx.lines.forEach((line, i) => {
+    if (/console\.(log|debug|info)\(/.test(line) && !line.includes("//") && !line.trim().startsWith("//")) {
+      issues.push({
+        severity: "info",
+        file: ctx.file,
+        line: i + 1,
+        rule: "best-practices/no-console",
+        message: "console.log found in code",
+        suggestion: "Remove or use a proper logging library"
+      });
+    }
+  });
+  ctx.lines.forEach((line, i) => {
+    if (/\/\/\s*(TODO|FIXME|HACK|XXX):/i.test(line)) {
+      issues.push({
+        severity: "info",
+        file: ctx.file,
+        line: i + 1,
+        rule: "best-practices/no-todo",
+        message: "TODO/FIXME comment found",
+        suggestion: "Address the TODO or create a ticket to track it"
+      });
+    }
+  });
+  const magicNumberRegex = /[^a-zA-Z0-9_"](\d{2,})[^a-zA-Z0-9_"]/g;
+  ctx.lines.forEach((line, i) => {
+    if (line.includes("import") || line.includes("require") || line.includes("version")) return;
+    if (line.includes("port") || line.includes("timeout") || line.includes("delay")) return;
+    let match;
+    while ((match = magicNumberRegex.exec(line)) !== null) {
+      const num = parseInt(match[1]);
+      if (num > 1 && num !== 100 && num !== 1e3 && !VALID_STATUS_CODES.includes(num)) {
+        issues.push({
+          severity: "info",
+          file: ctx.file,
+          line: i + 1,
+          rule: "best-practices/no-magic-numbers",
+          message: `Magic number ${num} found`,
+          suggestion: "Extract to a named constant"
+        });
+        break;
+      }
+    }
+    magicNumberRegex.lastIndex = 0;
+  });
+  return issues;
+}
+
+// src/handlers/validation/skill-pattern-checks.ts
+function runSkillPatternChecks(ctx, skillPatterns) {
+  const issues = [];
+  if (skillPatterns.required_imports) {
+    for (const imp of skillPatterns.required_imports) {
+      if (!ctx.content.includes(imp)) {
+        issues.push({
+          severity: "warning",
+          file: ctx.file,
+          line: 1,
+          rule: "skill/missing-import",
+          message: `Skill requires import: ${imp}`,
+          suggestion: `Add import for ${imp}`
+        });
+      }
+    }
+  }
+  if (skillPatterns.must_include) {
+    for (const pattern of skillPatterns.must_include) {
+      if (!ctx.content.includes(pattern)) {
+        issues.push({
+          severity: "warning",
+          file: ctx.file,
+          line: 1,
+          rule: "skill/missing-pattern",
+          message: `Skill expects pattern: ${pattern}`,
+          suggestion: "Implement the expected pattern"
+        });
+      }
+    }
+  }
+  if (skillPatterns.must_not_include) {
+    for (const pattern of skillPatterns.must_not_include) {
+      if (ctx.content.includes(pattern)) {
+        const lineNum = ctx.lines.findIndex((l) => l.includes(pattern)) + 1;
+        issues.push({
+          severity: "warning",
+          file: ctx.file,
+          line: lineNum || 1,
+          rule: "skill/forbidden-pattern",
+          message: `Skill advises against: ${pattern}`,
+          suggestion: "Remove or replace with recommended alternative"
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+// src/handlers/validation/index.ts
 async function handleValidateImplementation(args) {
   const issues = [];
   const checksRun = [];
@@ -26145,11 +26517,11 @@ async function handleValidateImplementation(args) {
   const runAll = checks.includes("all");
   let skillPatterns = {};
   if (args.skill) {
-    const skillMeta = parseSkillMetadata(args.skill);
+    parseSkillMetadata(args.skill);
     skillPatterns = extractSkillPatterns(args.skill);
   }
   for (const file2 of args.files) {
-    const filePath = path9.resolve(PROJECT_ROOT, file2);
+    const filePath = path10.resolve(PROJECT_ROOT, file2);
     if (!fs7.existsSync(filePath)) {
       issues.push({
         severity: "error",
@@ -26163,345 +26535,37 @@ async function handleValidateImplementation(args) {
     }
     const content = fs7.readFileSync(filePath, "utf-8");
     const lines = content.split("\n");
-    const ext = path9.extname(file2);
+    const ext = path10.extname(file2);
     const isTypeScript = ext === ".ts" || ext === ".tsx";
     const isReact = ext === ".tsx" || ext === ".jsx" || content.includes("import React") || content.includes("from 'react'");
+    const ctx = { content, lines, file: file2, ext, isTypeScript, isReact };
     if (runAll || checks.includes("security")) {
       checksRun.push("security");
-      const secretPatterns = [
-        { pattern: /(?:password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/gi, name: "password" },
-        { pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*['"][^'"]+['"]/gi, name: "API key" },
-        { pattern: /(?:secret|token)\s*[:=]\s*['"][A-Za-z0-9+/=]{20,}['"]/gi, name: "secret/token" },
-        { pattern: /(?:aws[_-]?(?:access|secret))[_-]?(?:key|id)\s*[:=]\s*['"][^'"]+['"]/gi, name: "AWS credential" },
-        { pattern: /private[_-]?key\s*[:=]\s*['"][^'"]+['"]/gi, name: "private key" }
-      ];
-      lines.forEach((line, i) => {
-        if (line.includes("process.env") || line.includes("import.meta.env")) return;
-        for (const { pattern, name } of secretPatterns) {
-          if (pattern.test(line)) {
-            issues.push({
-              severity: "error",
-              file: file2,
-              line: i + 1,
-              rule: "security/no-hardcoded-secrets",
-              message: `Potential hardcoded ${name}`,
-              suggestion: "Move sensitive data to environment variables"
-            });
-          }
-          pattern.lastIndex = 0;
-        }
-      });
-      const dangerousPatterns = [
-        { pattern: /eval\s*\(/, rule: "security/no-eval", message: "Use of eval() is dangerous" },
-        { pattern: /innerHTML\s*=/, rule: "security/no-innerhtml", message: "innerHTML can lead to XSS" },
-        { pattern: /dangerouslySetInnerHTML/, rule: "security/dangerously-set-inner-html", message: "dangerouslySetInnerHTML should be used carefully" },
-        { pattern: /document\.write/, rule: "security/no-document-write", message: "document.write can be exploited" },
-        { pattern: /new\s+Function\s*\(/, rule: "security/no-new-function", message: "new Function() is similar to eval()" }
-      ];
-      lines.forEach((line, i) => {
-        for (const { pattern, rule, message } of dangerousPatterns) {
-          if (pattern.test(line)) {
-            issues.push({
-              severity: rule.includes("dangerously") ? "warning" : "error",
-              file: file2,
-              line: i + 1,
-              rule,
-              message,
-              suggestion: "Use safer alternatives or sanitize input"
-            });
-          }
-        }
-      });
-      if (content.includes("query(") || content.includes("execute(")) {
-        lines.forEach((line, i) => {
-          if (/query\s*\(\s*[`'"].*\$\{/.test(line) || /query\s*\(\s*.*\+/.test(line)) {
-            issues.push({
-              severity: "error",
-              file: file2,
-              line: i + 1,
-              rule: "security/sql-injection",
-              message: "Potential SQL injection vulnerability",
-              suggestion: "Use parameterized queries or prepared statements"
-            });
-          }
-        });
-      }
+      issues.push(...runSecurityChecks(ctx));
     }
     if (runAll || checks.includes("structure")) {
       checksRun.push("structure");
-      const hasExport = content.includes("export default") || content.includes("export {") || content.includes("export const") || content.includes("export function") || content.includes("export class") || content.includes("export type") || content.includes("export interface");
-      if (!hasExport && !file2.includes("index") && !file2.includes(".d.ts")) {
-        issues.push({
-          severity: "warning",
-          file: file2,
-          line: 1,
-          rule: "structure/missing-export",
-          message: "No exports found in file",
-          suggestion: "Add exports to make the module usable"
-        });
-      }
-      if (isReact) {
-        const componentName = path9.basename(file2, ext);
-        const pascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(componentName);
-        if (!pascalCase && !file2.includes("index") && !file2.includes("use")) {
-          issues.push({
-            severity: "info",
-            file: file2,
-            line: 1,
-            rule: "structure/component-naming",
-            message: "React component files should use PascalCase",
-            suggestion: `Rename to ${componentName.charAt(0).toUpperCase() + componentName.slice(1)}`
-          });
-        }
-        const hookUsage = content.match(/use[A-Z]\w+/g);
-        if (hookUsage) {
-          lines.forEach((line, i) => {
-            if (/if\s*\(.*use[A-Z]/.test(line) || /&&\s*use[A-Z]/.test(line)) {
-              issues.push({
-                severity: "error",
-                file: file2,
-                line: i + 1,
-                rule: "react/hooks-rules",
-                message: "Hooks cannot be called conditionally",
-                suggestion: "Move hook call outside of conditions"
-              });
-            }
-          });
-        }
-      }
-      if (lines.length > 500) {
-        issues.push({
-          severity: "info",
-          file: file2,
-          line: 1,
-          rule: "structure/file-size",
-          message: `File has ${lines.length} lines, consider splitting`,
-          suggestion: "Break large files into smaller, focused modules"
-        });
-      }
-      if (file2.includes("index") && content.length < 50 && !content.includes("export")) {
-        issues.push({
-          severity: "info",
-          file: file2,
-          line: 1,
-          rule: "structure/empty-index",
-          message: "Index file appears empty or incomplete",
-          suggestion: "Add barrel exports or remove empty index"
-        });
-      }
+      issues.push(...runStructureChecks(ctx));
     }
     if (runAll || checks.includes("errors")) {
       checksRun.push("errors");
-      const asyncMatches = content.matchAll(/async\s+(?:function\s+)?(\w+)?\s*\([^)]*\)\s*(?::\s*\w+(?:<[^>]+>)?)?\s*\{/g);
-      for (const match of asyncMatches) {
-        const startIndex = match.index || 0;
-        const funcContent = extractFunctionBody(content, startIndex);
-        if (funcContent && !funcContent.includes("try") && !funcContent.includes("catch") && !funcContent.includes(".catch(")) {
-          const lineNum = content.substring(0, startIndex).split("\n").length;
-          issues.push({
-            severity: "warning",
-            file: file2,
-            line: lineNum,
-            rule: "error-handling/async-try-catch",
-            message: "Async function without error handling",
-            suggestion: "Wrap async code in try/catch or use .catch()"
-          });
-        }
-      }
-      lines.forEach((line, i) => {
-        if (/catch\s*\([^)]*\)\s*\{\s*\}/.test(line) || line.includes("catch") && lines[i + 1]?.trim() === "}") {
-          issues.push({
-            severity: "warning",
-            file: file2,
-            line: i + 1,
-            rule: "error-handling/empty-catch",
-            message: "Empty catch block swallows errors",
-            suggestion: "Log the error or handle it appropriately"
-          });
-        }
-      });
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes("catch") && lines[i + 1]?.includes("console.log")) {
-          issues.push({
-            severity: "info",
-            file: file2,
-            line: i + 2,
-            rule: "error-handling/console-error",
-            message: "Use console.error for errors, not console.log",
-            suggestion: "Replace console.log with console.error in catch blocks"
-          });
-        }
-      }
+      issues.push(...runErrorHandlingChecks(ctx));
     }
     if ((runAll || checks.includes("typescript")) && isTypeScript) {
       checksRun.push("typescript");
-      const anyMatches = content.matchAll(/:\s*any\b/g);
-      for (const match of anyMatches) {
-        const lineNum = content.substring(0, match.index || 0).split("\n").length;
-        issues.push({
-          severity: "warning",
-          file: file2,
-          line: lineNum,
-          rule: "typescript/no-any",
-          message: 'Avoid using "any" type',
-          suggestion: 'Use a more specific type or "unknown"'
-        });
-      }
-      lines.forEach((line, i) => {
-        if (/@ts-ignore(?!\s+.{10,})/.test(line)) {
-          issues.push({
-            severity: "warning",
-            file: file2,
-            line: i + 1,
-            rule: "typescript/no-ts-ignore",
-            message: "@ts-ignore should include an explanation",
-            suggestion: "Add a comment explaining why the ignore is needed"
-          });
-        }
-      });
-      const assertionCount = (content.match(/!\./g) || []).length;
-      if (assertionCount > 5) {
-        issues.push({
-          severity: "info",
-          file: file2,
-          line: 1,
-          rule: "typescript/excessive-non-null",
-          message: `${assertionCount} non-null assertions found`,
-          suggestion: "Consider proper null checking instead of assertions"
-        });
-      }
+      issues.push(...runTypeScriptChecks(ctx));
     }
     if (runAll || checks.includes("naming")) {
       checksRun.push("naming");
-      const funcMatches = content.matchAll(/(?:function|const|let)\s+([a-zA-Z_]\w*)\s*(?:=\s*(?:async\s*)?\(|[\(<])/g);
-      for (const match of funcMatches) {
-        const name = match[1];
-        if (name.startsWith("_")) continue;
-        if (/^[A-Z]/.test(name) && !isReact) {
-        } else if (!/^[a-z][a-zA-Z0-9]*$/.test(name) && !/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
-          const lineNum = content.substring(0, match.index || 0).split("\n").length;
-          issues.push({
-            severity: "info",
-            file: file2,
-            line: lineNum,
-            rule: "naming/camelCase",
-            message: `Function "${name}" should use camelCase`,
-            suggestion: "Use camelCase for functions and variables"
-          });
-        }
-      }
-      const constMatches = content.matchAll(/const\s+([a-zA-Z_]\w*)\s*=/g);
-      for (const match of constMatches) {
-        const name = match[1];
-        if (/^[A-Z][A-Z0-9_]+$/.test(name)) {
-          const lineNum = content.substring(0, match.index || 0).split("\n").length;
-          const line = lines[lineNum - 1] || "";
-          if (line.includes("()") || line.includes("new ")) {
-            issues.push({
-              severity: "info",
-              file: file2,
-              line: lineNum,
-              rule: "naming/screaming-case",
-              message: `SCREAMING_CASE "${name}" should be for constant values only`,
-              suggestion: "Use SCREAMING_CASE only for true constants, not functions or instances"
-            });
-          }
-        }
-      }
+      issues.push(...runNamingChecks(ctx));
     }
     if (runAll || checks.includes("best-practices")) {
       checksRun.push("best-practices");
-      lines.forEach((line, i) => {
-        if (/console\.(log|debug|info)\(/.test(line) && !line.includes("//") && !line.trim().startsWith("//")) {
-          issues.push({
-            severity: "info",
-            file: file2,
-            line: i + 1,
-            rule: "best-practices/no-console",
-            message: "console.log found in code",
-            suggestion: "Remove or use a proper logging library"
-          });
-        }
-      });
-      lines.forEach((line, i) => {
-        if (/\/\/\s*(TODO|FIXME|HACK|XXX):/i.test(line)) {
-          issues.push({
-            severity: "info",
-            file: file2,
-            line: i + 1,
-            rule: "best-practices/no-todo",
-            message: "TODO/FIXME comment found",
-            suggestion: "Address the TODO or create a ticket to track it"
-          });
-        }
-      });
-      const magicNumberRegex = /[^a-zA-Z0-9_"](\d{2,})[^a-zA-Z0-9_"]/g;
-      lines.forEach((line, i) => {
-        if (line.includes("import") || line.includes("require") || line.includes("version")) return;
-        if (line.includes("port") || line.includes("timeout") || line.includes("delay")) return;
-        let match;
-        while ((match = magicNumberRegex.exec(line)) !== null) {
-          const num = parseInt(match[1]);
-          if (num > 1 && num !== 100 && num !== 1e3 && ![200, 201, 204, 400, 401, 403, 404, 500].includes(num)) {
-            issues.push({
-              severity: "info",
-              file: file2,
-              line: i + 1,
-              rule: "best-practices/no-magic-numbers",
-              message: `Magic number ${num} found`,
-              suggestion: "Extract to a named constant"
-            });
-            break;
-          }
-        }
-        magicNumberRegex.lastIndex = 0;
-      });
+      issues.push(...runBestPracticesChecks(ctx));
     }
     if (args.skill && skillPatterns) {
       checksRun.push("skill-patterns");
-      if (skillPatterns.required_imports) {
-        for (const imp of skillPatterns.required_imports) {
-          if (!content.includes(imp)) {
-            issues.push({
-              severity: "warning",
-              file: file2,
-              line: 1,
-              rule: "skill/missing-import",
-              message: `Skill requires import: ${imp}`,
-              suggestion: `Add import for ${imp}`
-            });
-          }
-        }
-      }
-      if (skillPatterns.must_include) {
-        for (const pattern of skillPatterns.must_include) {
-          if (!content.includes(pattern)) {
-            issues.push({
-              severity: "warning",
-              file: file2,
-              line: 1,
-              rule: "skill/missing-pattern",
-              message: `Skill expects pattern: ${pattern}`,
-              suggestion: `Implement the expected pattern`
-            });
-          }
-        }
-      }
-      if (skillPatterns.must_not_include) {
-        for (const pattern of skillPatterns.must_not_include) {
-          if (content.includes(pattern)) {
-            const lineNum = content.split("\n").findIndex((l) => l.includes(pattern)) + 1;
-            issues.push({
-              severity: "warning",
-              file: file2,
-              line: lineNum || 1,
-              rule: "skill/forbidden-pattern",
-              message: `Skill advises against: ${pattern}`,
-              suggestion: "Remove or replace with recommended alternative"
-            });
-          }
-        }
-      }
+      issues.push(...runSkillPatternChecks(ctx, skillPatterns));
     }
   }
   const errors = issues.filter((i) => i.severity === "error").length;
@@ -26626,36 +26690,36 @@ async function handleRunSmokeTest(args) {
 
 // src/handlers/scaffolding.ts
 import * as fs8 from "fs";
-import * as path10 from "path";
-function copyFilesRecursive(src, dest, variables, createdFiles, outputPath) {
-  const entries = fs8.readdirSync(src, { withFileTypes: true });
+import * as path11 from "path";
+async function copyFilesRecursive(src, dest, variables, createdFiles, outputPath) {
+  const entries = await fs8.promises.readdir(src, { withFileTypes: true });
   for (const entry of entries) {
-    const srcPath = path10.join(src, entry.name);
+    const srcPath = path11.join(src, entry.name);
     let destName = entry.name;
     if (destName.endsWith(".hbs")) {
       destName = destName.slice(0, -4);
     }
-    const destPath = path10.join(dest, destName);
+    const destPath = path11.join(dest, destName);
     if (entry.isDirectory()) {
-      fs8.mkdirSync(destPath, { recursive: true });
-      copyFilesRecursive(srcPath, destPath, variables, createdFiles, outputPath);
+      await fs8.promises.mkdir(destPath, { recursive: true });
+      await copyFilesRecursive(srcPath, destPath, variables, createdFiles, outputPath);
     } else {
-      let content = fs8.readFileSync(srcPath, "utf-8");
+      let content = await fs8.promises.readFile(srcPath, "utf-8");
       for (const [key, value] of Object.entries(variables)) {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
         content = content.replace(regex, value);
       }
-      fs8.writeFileSync(destPath, content);
-      createdFiles.push(path10.relative(outputPath, destPath));
+      await fs8.promises.writeFile(destPath, content);
+      createdFiles.push(path11.relative(outputPath, destPath));
     }
   }
 }
 async function handleScaffoldProject(args) {
-  const templatePath = path10.join(PLUGIN_ROOT, "templates");
+  const templatePath = path11.join(PLUGIN_ROOT, "templates");
   const templateDirs = ["minimal", "full"];
   let templateDir = null;
   for (const category of templateDirs) {
-    const candidatePath = path10.join(templatePath, category, args.template);
+    const candidatePath = path11.join(templatePath, category, args.template);
     if (fs8.existsSync(candidatePath)) {
       templateDir = candidatePath;
       break;
@@ -26664,11 +26728,11 @@ async function handleScaffoldProject(args) {
   if (!templateDir) {
     throw new Error(`Template not found: ${args.template}`);
   }
-  const templateYamlPath = path10.join(templateDir, "template.yaml");
+  const templateYamlPath = path11.join(templateDir, "template.yaml");
   if (!fs8.existsSync(templateYamlPath)) {
     throw new Error(`Template config not found: ${args.template}/template.yaml`);
   }
-  const templateConfig = load(fs8.readFileSync(templateYamlPath, "utf-8"));
+  const templateConfig = load(await fs8.promises.readFile(templateYamlPath, "utf-8"));
   const variables = {};
   if (templateConfig.variables) {
     for (const v of templateConfig.variables) {
@@ -26676,14 +26740,14 @@ async function handleScaffoldProject(args) {
     }
   }
   Object.assign(variables, args.variables || {});
-  const outputPath = path10.resolve(PROJECT_ROOT, args.output_dir);
+  const outputPath = path11.resolve(PROJECT_ROOT, args.output_dir);
   if (!fs8.existsSync(outputPath)) {
-    fs8.mkdirSync(outputPath, { recursive: true });
+    await fs8.promises.mkdir(outputPath, { recursive: true });
   }
-  const filesDir = path10.join(templateDir, "files");
+  const filesDir = path11.join(templateDir, "files");
   const createdFiles = [];
   if (fs8.existsSync(filesDir)) {
-    copyFilesRecursive(filesDir, outputPath, variables, createdFiles, outputPath);
+    await copyFilesRecursive(filesDir, outputPath, variables, createdFiles, outputPath);
   }
   const postCreateResults = [];
   if (args.run_install !== false) {
@@ -26729,13 +26793,13 @@ async function handleScaffoldProject(args) {
     }]
   };
 }
-function handleListTemplates(args) {
-  const templatePath = path10.join(PLUGIN_ROOT, "templates");
-  const registryPath = path10.join(templatePath, "_registry.yaml");
+async function handleListTemplates(args) {
+  const templatePath = path11.join(PLUGIN_ROOT, "templates");
+  const registryPath = path11.join(templatePath, "_registry.yaml");
   if (!fs8.existsSync(registryPath)) {
     throw new Error("Template registry not found");
   }
-  const registry2 = load(fs8.readFileSync(registryPath, "utf-8"));
+  const registry2 = load(await fs8.promises.readFile(registryPath, "utf-8"));
   let templates = registry2.templates || [];
   if (args.category) {
     templates = templates.filter((t) => t.category === args.category);

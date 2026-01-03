@@ -114,7 +114,7 @@ function countCommands(): number {
 }
 
 function main() {
-  console.log('Validating Clausitron Plugin...\n');
+  console.log('Validating GoodVibes Plugin...\n');
 
   const result: ValidationResult = {
     valid: true,
