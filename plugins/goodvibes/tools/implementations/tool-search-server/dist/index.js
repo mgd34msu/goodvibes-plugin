@@ -25015,6 +25015,14 @@ var GoodVibesServer = class {
               category: { type: "string", description: "Filter by category (minimal, full)" }
             }
           }
+        },
+        {
+          name: "plugin_status",
+          description: "Check GoodVibes plugin health: manifest, registries, hooks, MCP server status",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
         }
       ]
     }));
@@ -25058,6 +25066,8 @@ var GoodVibesServer = class {
             return this.handleScaffoldProject(args);
           case "list_templates":
             return this.handleListTemplates(args);
+          case "plugin_status":
+            return this.handlePluginStatus();
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -26832,6 +26842,109 @@ var GoodVibesServer = class {
           total: templates.length,
           categories: ["minimal", "full"]
         }, null, 2)
+      }]
+    };
+  }
+  /**
+   * Check plugin health status
+   */
+  handlePluginStatus() {
+    const status = {
+      version: "1.0.0",
+      status: "healthy",
+      issues: [],
+      manifest: { exists: false, valid: false },
+      registries: {
+        agents: { exists: false, count: 0 },
+        skills: { exists: false, count: 0 },
+        tools: { exists: false, count: 0 }
+      },
+      hooks: {
+        config_exists: false,
+        config_valid: false,
+        events: []
+      },
+      mcp_server: { running: true }
+      // We're running, so true
+    };
+    const manifestPath = path.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
+    if (fs.existsSync(manifestPath)) {
+      status.manifest.exists = true;
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        status.manifest.valid = true;
+        status.manifest.version = manifest.version;
+        status.version = manifest.version || "1.0.0";
+      } catch {
+        status.issues.push("Manifest exists but is invalid JSON");
+      }
+    } else {
+      status.issues.push("Plugin manifest not found");
+    }
+    const registryChecks = [
+      { key: "agents", path: "agents/_registry.yaml" },
+      { key: "skills", path: "skills/_registry.yaml" },
+      { key: "tools", path: "tools/_registry.yaml" }
+    ];
+    for (const check2 of registryChecks) {
+      const regPath = path.join(PLUGIN_ROOT, check2.path);
+      if (fs.existsSync(regPath)) {
+        status.registries[check2.key].exists = true;
+        try {
+          const reg = load(fs.readFileSync(regPath, "utf-8"));
+          status.registries[check2.key].count = reg?.search_index?.length || 0;
+        } catch {
+          status.issues.push(`${check2.key} registry exists but is invalid`);
+        }
+      } else {
+        status.issues.push(`${check2.key} registry not found`);
+      }
+    }
+    const hooksPath = path.join(PLUGIN_ROOT, "hooks", "hooks.json");
+    if (fs.existsSync(hooksPath)) {
+      status.hooks.config_exists = true;
+      try {
+        const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, "utf-8"));
+        status.hooks.config_valid = true;
+        const hookEvents = Object.keys(hooksConfig.hooks || {});
+        const scriptMap = {
+          SessionStart: "session-start.js",
+          PreToolUse: "pre-tool-use.js",
+          PostToolUse: "post-tool-use.js",
+          PostToolUseFailure: "post-tool-use-failure.js",
+          PermissionRequest: "permission-request.js",
+          UserPromptSubmit: "user-prompt-submit.js",
+          Stop: "stop.js",
+          SubagentStart: "subagent-start.js",
+          SubagentStop: "subagent-stop.js",
+          PreCompact: "pre-compact.js",
+          SessionEnd: "session-end.js",
+          Notification: "notification.js"
+        };
+        for (const event of hookEvents) {
+          const scriptName = scriptMap[event] || `${event.toLowerCase()}.js`;
+          const scriptPath = path.join(PLUGIN_ROOT, "hooks", "scripts", "dist", scriptName);
+          const exists = fs.existsSync(scriptPath);
+          status.hooks.events.push({ name: event, script: scriptName, exists });
+          if (!exists) {
+            status.issues.push(`Hook script missing: ${scriptName}`);
+          }
+        }
+      } catch {
+        status.issues.push("Hooks config exists but is invalid JSON");
+      }
+    } else {
+      status.issues.push("Hooks config not found");
+    }
+    if (status.issues.length > 3) {
+      status.status = "error";
+    } else if (status.issues.length > 0) {
+      status.status = "degraded";
+    }
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify(status, null, 2)
       }]
     };
   }
