@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+# dist/ is kept for pre-built distribution
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local scripts
+reinstall-plugin.ps1
+
+# Test coverage
+coverage/

@@ -19,6 +19,32 @@ import {
   sampleSqlSchema,
 } from '../setup.js';
 
+/** Column definition in a schema table */
+interface SchemaColumn {
+  name: string;
+  type: string;
+  primary?: boolean;
+  unique?: boolean;
+  nullable?: boolean;
+  auto_increment?: boolean;
+  default?: string;
+}
+
+/** Relation definition between tables */
+interface SchemaRelation {
+  target: string;
+  type?: string;
+  field?: string;
+}
+
+/** Table definition in a schema */
+interface SchemaTable {
+  name: string;
+  columns: SchemaColumn[];
+  relations: SchemaRelation[];
+  indexes: string[];
+}
+
 // Mock modules
 vi.mock('fs');
 vi.mock('../../config.js', () => ({
@@ -45,8 +71,8 @@ describe('schema handler', () => {
 
         expect(data.source).toBe('prisma');
         expect(data.tables.length).toBeGreaterThan(0);
-        expect(data.tables.some((t: any) => t.name === 'User')).toBe(true);
-        expect(data.tables.some((t: any) => t.name === 'Post')).toBe(true);
+        expect(data.tables.some((t: SchemaTable) => t.name === 'User')).toBe(true);
+        expect(data.tables.some((t: SchemaTable) => t.name === 'Post')).toBe(true);
       });
 
       it('should parse Prisma columns with types', () => {
@@ -55,10 +81,10 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'prisma' });
         const data = JSON.parse(result.content[0].text);
-        const userTable = data.tables.find((t: any) => t.name === 'User');
+        const userTable = data.tables.find((t: SchemaTable) => t.name === 'User');
 
-        expect(userTable.columns.some((c: any) => c.name === 'id' && c.type === 'String')).toBe(true);
-        expect(userTable.columns.some((c: any) => c.name === 'email' && c.type === 'String')).toBe(true);
+        expect(userTable.columns.some((c: SchemaColumn) => c.name === 'id' && c.type === 'String')).toBe(true);
+        expect(userTable.columns.some((c: SchemaColumn) => c.name === 'email' && c.type === 'String')).toBe(true);
       });
 
       it('should detect primary keys', () => {
@@ -67,8 +93,8 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'prisma' });
         const data = JSON.parse(result.content[0].text);
-        const userTable = data.tables.find((t: any) => t.name === 'User');
-        const idColumn = userTable.columns.find((c: any) => c.name === 'id');
+        const userTable = data.tables.find((t: SchemaTable) => t.name === 'User');
+        const idColumn = userTable.columns.find((c: SchemaColumn) => c.name === 'id');
 
         expect(idColumn.primary).toBe(true);
       });
@@ -79,8 +105,8 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'prisma' });
         const data = JSON.parse(result.content[0].text);
-        const userTable = data.tables.find((t: any) => t.name === 'User');
-        const emailColumn = userTable.columns.find((c: any) => c.name === 'email');
+        const userTable = data.tables.find((t: SchemaTable) => t.name === 'User');
+        const emailColumn = userTable.columns.find((c: SchemaColumn) => c.name === 'email');
 
         expect(emailColumn.unique).toBe(true);
       });
@@ -91,8 +117,8 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'prisma' });
         const data = JSON.parse(result.content[0].text);
-        const userTable = data.tables.find((t: any) => t.name === 'User');
-        const nameColumn = userTable.columns.find((c: any) => c.name === 'name');
+        const userTable = data.tables.find((t: SchemaTable) => t.name === 'User');
+        const nameColumn = userTable.columns.find((c: SchemaColumn) => c.name === 'name');
 
         expect(nameColumn.nullable).toBe(true);
       });
@@ -103,9 +129,9 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'prisma' });
         const data = JSON.parse(result.content[0].text);
-        const userTable = data.tables.find((t: any) => t.name === 'User');
+        const userTable = data.tables.find((t: SchemaTable) => t.name === 'User');
 
-        expect(userTable.relations.some((r: any) => r.target === 'Post')).toBe(true);
+        expect(userTable.relations.some((r: SchemaRelation) => r.target === 'Post')).toBe(true);
       });
 
       it('should parse indexes', () => {
@@ -114,7 +140,7 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'prisma' });
         const data = JSON.parse(result.content[0].text);
-        const userTable = data.tables.find((t: any) => t.name === 'User');
+        const userTable = data.tables.find((t: SchemaTable) => t.name === 'User');
 
         expect(userTable.indexes.length).toBeGreaterThan(0);
       });
@@ -171,10 +197,10 @@ describe('schema handler', () => {
 
         const result = handleGetSchema({ source: 'drizzle' });
         const data = JSON.parse(result.content[0].text);
-        const usersTable = data.tables.find((t: any) => t.name === 'users');
+        const usersTable = data.tables.find((t: SchemaTable) => t.name === 'users');
 
-        expect(usersTable.columns.some((c: any) => c.name === 'id')).toBe(true);
-        expect(usersTable.columns.some((c: any) => c.name === 'email')).toBe(true);
+        expect(usersTable.columns.some((c: SchemaColumn) => c.name === 'id')).toBe(true);
+        expect(usersTable.columns.some((c: SchemaColumn) => c.name === 'email')).toBe(true);
       });
 
       it('should try multiple schema locations', () => {
@@ -263,8 +289,8 @@ class User {
         const data = JSON.parse(result.content[0].text);
 
         expect(data.source).toBe('sql');
-        expect(data.tables.some((t: any) => t.name === 'users')).toBe(true);
-        expect(data.tables.some((t: any) => t.name === 'posts')).toBe(true);
+        expect(data.tables.some((t: SchemaTable) => t.name === 'users')).toBe(true);
+        expect(data.tables.some((t: SchemaTable) => t.name === 'posts')).toBe(true);
       });
 
       it('should parse column types', () => {
@@ -273,10 +299,10 @@ class User {
 
         const result = handleGetSchema({ source: 'sql' });
         const data = JSON.parse(result.content[0].text);
-        const usersTable = data.tables.find((t: any) => t.name === 'users');
+        const usersTable = data.tables.find((t: SchemaTable) => t.name === 'users');
 
-        expect(usersTable.columns.some((c: any) => c.type === 'INTEGER')).toBe(true);
-        expect(usersTable.columns.some((c: any) => c.type === 'VARCHAR')).toBe(true);
+        expect(usersTable.columns.some((c: SchemaColumn) => c.type === 'INTEGER')).toBe(true);
+        expect(usersTable.columns.some((c: SchemaColumn) => c.type === 'VARCHAR')).toBe(true);
       });
 
       it('should detect primary keys', () => {
@@ -285,8 +311,8 @@ class User {
 
         const result = handleGetSchema({ source: 'sql' });
         const data = JSON.parse(result.content[0].text);
-        const usersTable = data.tables.find((t: any) => t.name === 'users');
-        const idColumn = usersTable.columns.find((c: any) => c.name === 'id');
+        const usersTable = data.tables.find((t: SchemaTable) => t.name === 'users');
+        const idColumn = usersTable.columns.find((c: SchemaColumn) => c.name === 'id');
 
         expect(idColumn.primary).toBe(true);
       });
@@ -297,9 +323,9 @@ class User {
 
         const result = handleGetSchema({ source: 'sql' });
         const data = JSON.parse(result.content[0].text);
-        const postsTable = data.tables.find((t: any) => t.name === 'posts');
+        const postsTable = data.tables.find((t: SchemaTable) => t.name === 'posts');
 
-        expect(postsTable.relations.some((r: any) => r.target === 'users')).toBe(true);
+        expect(postsTable.relations.some((r: SchemaRelation) => r.target === 'users')).toBe(true);
       });
 
       it('should detect auto increment columns', () => {
@@ -308,8 +334,8 @@ class User {
 
         const result = handleGetSchema({ source: 'sql' });
         const data = JSON.parse(result.content[0].text);
-        const usersTable = data.tables.find((t: any) => t.name === 'users');
-        const idColumn = usersTable.columns.find((c: any) => c.name === 'id');
+        const usersTable = data.tables.find((t: SchemaTable) => t.name === 'users');
+        const idColumn = usersTable.columns.find((c: SchemaColumn) => c.name === 'id');
 
         expect(idColumn.auto_increment).toBe(true);
       });
@@ -320,8 +346,8 @@ class User {
 
         const result = handleGetSchema({ source: 'sql' });
         const data = JSON.parse(result.content[0].text);
-        const postsTable = data.tables.find((t: any) => t.name === 'posts');
-        const publishedColumn = postsTable.columns.find((c: any) => c.name === 'published');
+        const postsTable = data.tables.find((t: SchemaTable) => t.name === 'posts');
+        const publishedColumn = postsTable.columns.find((c: SchemaColumn) => c.name === 'published');
 
         expect(publishedColumn.default).toBe('FALSE');
       });
@@ -346,11 +372,11 @@ class User {
       it('should include supported sources in error message', () => {
         try {
           handleGetSchema({ source: 'mongodb' });
-        } catch (e: any) {
-          expect(e.message).toContain('prisma');
-          expect(e.message).toContain('drizzle');
-          expect(e.message).toContain('typeorm');
-          expect(e.message).toContain('sql');
+        } catch (e: unknown) {
+          expect((e as Error).message).toContain('prisma');
+          expect((e as Error).message).toContain('drizzle');
+          expect((e as Error).message).toContain('typeorm');
+          expect((e as Error).message).toContain('sql');
         }
       });
     });

@@ -17,12 +17,20 @@ import {
   handleSearchTools,
   handleRecommendSkills,
 } from '../../handlers/search.js';
-import { RegistryEntry } from '../../types.js';
+import { RegistryEntry, SearchResult } from '../../types.js';
 import {
   sampleSkillsRegistry,
   sampleAgentsRegistry,
   sampleToolsRegistry,
 } from '../setup.js';
+
+/** Recommendation result with skill info and reason */
+interface Recommendation {
+  skill: string;
+  path: string;
+  relevance: number;
+  reason: string;
+}
 
 describe('search handlers', () => {
   let skillsIndex: Fuse<RegistryEntry>;
@@ -49,7 +57,7 @@ describe('search handlers', () => {
 
       expect(data.skills).toBeDefined();
       expect(data.skills.length).toBeGreaterThan(0);
-      expect(data.skills.some((s: any) => s.name === 'React Testing')).toBe(true);
+      expect(data.skills.some((s: SearchResult) => s.name === 'React Testing')).toBe(true);
     });
 
     it('should include query in response', () => {
@@ -73,7 +81,7 @@ describe('search handlers', () => {
       });
       const data = JSON.parse(result.content[0].text);
 
-      data.skills.forEach((skill: any) => {
+      data.skills.forEach((skill: SearchResult) => {
         expect(skill.path.startsWith('testing')).toBe(true);
       });
     });
@@ -104,14 +112,14 @@ describe('search handlers', () => {
       const result = handleSearchSkills(skillsIndex, { query: 'orm' });
       const data = JSON.parse(result.content[0].text);
 
-      expect(data.skills.some((s: any) => s.name === 'Prisma ORM')).toBe(true);
+      expect(data.skills.some((s: SearchResult) => s.name === 'Prisma ORM')).toBe(true);
     });
 
     it('should search by description', () => {
       const result = handleSearchSkills(skillsIndex, { query: 'state management' });
       const data = JSON.parse(result.content[0].text);
 
-      expect(data.skills.some((s: any) => s.name === 'Zustand State')).toBe(true);
+      expect(data.skills.some((s: SearchResult) => s.name === 'Zustand State')).toBe(true);
     });
 
     it('should return skills with path and description', () => {
@@ -131,7 +139,7 @@ describe('search handlers', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.agents).toBeDefined();
-      expect(data.agents.some((a: any) => a.name === 'Code Reviewer')).toBe(true);
+      expect(data.agents.some((a: SearchResult) => a.name === 'Code Reviewer')).toBe(true);
     });
 
     it('should include query in response', () => {
@@ -159,7 +167,7 @@ describe('search handlers', () => {
       const result = handleSearchAgents(agentsIndex, { query: 'best practices' });
       const data = JSON.parse(result.content[0].text);
 
-      expect(data.agents.some((a: any) => a.name === 'Code Reviewer')).toBe(true);
+      expect(data.agents.some((a: SearchResult) => a.name === 'Code Reviewer')).toBe(true);
     });
   });
 
@@ -169,7 +177,7 @@ describe('search handlers', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.tools).toBeDefined();
-      expect(data.tools.some((t: any) => t.name === 'search_skills')).toBe(true);
+      expect(data.tools.some((t: SearchResult) => t.name === 'search_skills')).toBe(true);
     });
 
     it('should include query in response', () => {
@@ -197,7 +205,7 @@ describe('search handlers', () => {
       const result = handleSearchTools(toolsIndex, { query: 'stack' });
       const data = JSON.parse(result.content[0].text);
 
-      expect(data.tools.some((t: any) => t.name === 'detect_stack')).toBe(true);
+      expect(data.tools.some((t: SearchResult) => t.name === 'detect_stack')).toBe(true);
     });
   });
 
@@ -340,7 +348,7 @@ describe('search handlers', () => {
       });
       const data = JSON.parse(result.content[0].text);
 
-      data.recommendations.forEach((rec: any) => {
+      data.recommendations.forEach((rec: Recommendation) => {
         expect(rec.reason).toBeDefined();
         expect(rec.reason).toContain('Matches task keywords');
       });
@@ -352,7 +360,7 @@ describe('search handlers', () => {
       });
       const data = JSON.parse(result.content[0].text);
 
-      data.recommendations.forEach((rec: any) => {
+      data.recommendations.forEach((rec: Recommendation) => {
         expect(rec.skill).toBeDefined();
         expect(rec.path).toBeDefined();
         expect(rec.relevance).toBeDefined();

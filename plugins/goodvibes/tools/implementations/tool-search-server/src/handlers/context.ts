@@ -6,32 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StackInfo } from '../types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../config.js';
-
-function success(data: unknown) {
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify(data, null, 2),
-    }],
-  };
-}
-
-function readJsonFile(filePath: string): Record<string, unknown> | null {
-  try {
-    if (!fs.existsSync(filePath)) return null;
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
-
-function detectPackageManager(projectPath: string): string {
-  if (fs.existsSync(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (fs.existsSync(path.join(projectPath, 'yarn.lock'))) return 'yarn';
-  if (fs.existsSync(path.join(projectPath, 'bun.lockb'))) return 'bun';
-  return 'npm';
-}
+import { success, readJsonFile, detectPackageManager } from '../utils.js';
 
 export function handleDetectStack(args: { path?: string; deep?: boolean }) {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');

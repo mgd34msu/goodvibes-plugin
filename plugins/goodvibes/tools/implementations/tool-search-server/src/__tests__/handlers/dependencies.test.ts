@@ -16,6 +16,13 @@ import { handleSkillDependencies } from '../../handlers/dependencies.js';
 import { RegistryEntry, Registry } from '../../types.js';
 import { sampleSkillsRegistry, sampleSkillContent } from '../setup.js';
 
+/** Dependency entry with skill info and reason */
+interface DependencyEntry {
+  skill: string;
+  path: string;
+  reason: string;
+}
+
 // Mock modules
 vi.mock('../../utils.js', async (importOriginal) => {
   const actual = await importOriginal();
@@ -180,7 +187,7 @@ describe('dependencies handler', () => {
 
         // Optional dependencies from complements should be empty
         const complementDeps = data.dependencies.optional.filter(
-          (d: any) => d.reason === 'Listed as complementary skill'
+          (d: DependencyEntry) => d.reason === 'Listed as complementary skill'
         );
         expect(complementDeps.length).toBe(0);
       });
@@ -196,7 +203,7 @@ describe('dependencies handler', () => {
 
         // Should find related skills in testing category
         const relatedInCategory = data.dependencies.optional.filter(
-          (o: any) => o.reason === 'Related skill in same category'
+          (o: DependencyEntry) => o.reason === 'Related skill in same category'
         );
         expect(relatedInCategory.length).toBeGreaterThanOrEqual(0);
       });

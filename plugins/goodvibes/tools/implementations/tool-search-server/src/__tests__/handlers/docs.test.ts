@@ -13,6 +13,13 @@ import {
   getCommonApiReferences,
 } from '../../handlers/docs.js';
 
+/** API reference entry for a library */
+interface ApiReference {
+  name: string;
+  description: string;
+  url?: string;
+}
+
 // Mock modules
 vi.mock('../../utils.js', async (importOriginal) => {
   const actual = await importOriginal();
@@ -220,7 +227,7 @@ describe('docs handlers', () => {
       });
       const data = JSON.parse(result.content[0].text);
 
-      expect(data.api_reference.some((r: any) =>
+      expect(data.api_reference.some((r: ApiReference) =>
         r.name.toLowerCase().includes('useeffect') ||
         r.url?.includes('useEffect')
       )).toBe(true);

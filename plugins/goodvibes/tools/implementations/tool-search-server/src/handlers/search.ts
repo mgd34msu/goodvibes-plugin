@@ -4,6 +4,7 @@
 
 import Fuse from 'fuse.js';
 import { RegistryEntry, SearchResult } from '../types.js';
+import { success } from '../utils.js';
 
 function search(
   index: Fuse<RegistryEntry> | null,
@@ -18,15 +19,6 @@ function search(
     description: r.item.description,
     relevance: Math.round((1 - (r.score || 0)) * 100) / 100,
   }));
-}
-
-function success(data: unknown) {
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify(data, null, 2),
-    }],
-  };
 }
 
 export function handleSearchSkills(

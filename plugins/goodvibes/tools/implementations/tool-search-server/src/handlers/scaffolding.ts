@@ -44,14 +44,14 @@ interface TemplateRegistry {
 /**
  * Copy files recursively with variable substitution
  */
-function copyFilesRecursive(
+async function copyFilesRecursive(
   src: string,
   dest: string,
   variables: Record<string, string>,
   createdFiles: string[],
   outputPath: string
-): void {
-  const entries = fs.readdirSync(src, { withFileTypes: true });
+): Promise<void> {
+  const entries = await fs.promises.readdir(src, { withFileTypes: true });
 
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
@@ -65,10 +65,10 @@ function copyFilesRecursive(
     const destPath = path.join(dest, destName);
 
     if (entry.isDirectory()) {
-      fs.mkdirSync(destPath, { recursive: true });
-      copyFilesRecursive(srcPath, destPath, variables, createdFiles, outputPath);
+      await fs.promises.mkdir(destPath, { recursive: true });
+      await copyFilesRecursive(srcPath, destPath, variables, createdFiles, outputPath);
     } else {
-      let content = fs.readFileSync(srcPath, 'utf-8');
+      let content = await fs.promises.readFile(srcPath, 'utf-8');
 
       // Apply variable substitutions (simple Handlebars-style)
       for (const [key, value] of Object.entries(variables)) {
@@ -76,7 +76,7 @@ function copyFilesRecursive(
         content = content.replace(regex, value);
       }
 
-      fs.writeFileSync(destPath, content);
+      await fs.promises.writeFile(destPath, content);
       createdFiles.push(path.relative(outputPath, destPath));
     }
   }
@@ -110,7 +110,7 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
     throw new Error(`Template config not found: ${args.template}/template.yaml`);
   }
 
-  const templateConfig = yaml.load(fs.readFileSync(templateYamlPath, 'utf-8')) as TemplateConfig;
+  const templateConfig = yaml.load(await fs.promises.readFile(templateYamlPath, 'utf-8')) as TemplateConfig;
 
   // Prepare variables with defaults
   const variables: Record<string, string> = {};
@@ -125,7 +125,7 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
   // Create output directory
   const outputPath = path.resolve(PROJECT_ROOT, args.output_dir);
   if (!fs.existsSync(outputPath)) {
-    fs.mkdirSync(outputPath, { recursive: true });
+    await fs.promises.mkdir(outputPath, { recursive: true });
   }
 
   // Copy files
@@ -133,7 +133,7 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
   const createdFiles: string[] = [];
 
   if (fs.existsSync(filesDir)) {
-    copyFilesRecursive(filesDir, outputPath, variables, createdFiles, outputPath);
+    await copyFilesRecursive(filesDir, outputPath, variables, createdFiles, outputPath);
   }
 
   // Run post-create commands
@@ -192,7 +192,7 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
 /**
  * Handle list_templates tool call
  */
-export function handleListTemplates(args: ListTemplatesArgs): ToolResponse {
+export async function handleListTemplates(args: ListTemplatesArgs): Promise<ToolResponse> {
   const templatePath = path.join(PLUGIN_ROOT, 'templates');
   const registryPath = path.join(templatePath, '_registry.yaml');
 
@@ -200,7 +200,7 @@ export function handleListTemplates(args: ListTemplatesArgs): ToolResponse {
     throw new Error('Template registry not found');
   }
 
-  const registry = yaml.load(fs.readFileSync(registryPath, 'utf-8')) as TemplateRegistry;
+  const registry = yaml.load(await fs.promises.readFile(registryPath, 'utf-8')) as TemplateRegistry;
 
   let templates = registry.templates || [];
 

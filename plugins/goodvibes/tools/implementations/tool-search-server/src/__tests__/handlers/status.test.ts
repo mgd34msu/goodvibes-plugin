@@ -22,6 +22,13 @@ import {
   sampleHooksJson,
 } from '../setup.js';
 
+/** Hook event status entry */
+interface HookEvent {
+  name: string;
+  script: string;
+  exists: boolean;
+}
+
 // Mock modules
 vi.mock('fs');
 vi.mock('../../config.js', () => ({
@@ -208,9 +215,9 @@ describe('handlePluginStatus', () => {
       const result = handlePluginStatus();
       const data = JSON.parse(result.content[0].text);
 
-      const sessionStart = data.hooks.events.find((e: any) => e.name === 'SessionStart');
-      const preToolUse = data.hooks.events.find((e: any) => e.name === 'PreToolUse');
-      const postToolUse = data.hooks.events.find((e: any) => e.name === 'PostToolUse');
+      const sessionStart = data.hooks.events.find((e: HookEvent) => e.name === 'SessionStart');
+      const preToolUse = data.hooks.events.find((e: HookEvent) => e.name === 'PreToolUse');
+      const postToolUse = data.hooks.events.find((e: HookEvent) => e.name === 'PostToolUse');
 
       expect(sessionStart?.exists).toBe(true);
       expect(preToolUse?.exists).toBe(false);

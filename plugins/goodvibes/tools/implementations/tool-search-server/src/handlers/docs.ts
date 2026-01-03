@@ -6,6 +6,77 @@ import { ToolResponse } from '../types.js';
 import { fetchUrl } from '../utils.js';
 import { fetchNpmReadme } from './npm.js';
 
+/**
+ * Cache entry with TTL tracking
+ */
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+/**
+ * In-memory cache for documentation fetches
+ * TTL: 15 minutes (900000ms)
+ */
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+const npmCache = new Map<string, CacheEntry<Awaited<ReturnType<typeof fetchNpmReadme>>>>();
+const githubReadmeCache = new Map<string, CacheEntry<string | null>>();
+
+/**
+ * Generate cache key from library name and version
+ */
+function getCacheKey(library: string, version?: string): string {
+  return `${library.toLowerCase()}@${version || 'latest'}`;
+}
+
+/**
+ * Check if a cache entry is still valid
+ */
+function isCacheValid<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
+  if (!entry) return false;
+  return Date.now() - entry.timestamp < CACHE_TTL_MS;
+}
+
+/**
+ * Get cached npm data or fetch and cache it
+ */
+async function getCachedNpmData(
+  library: string,
+  version?: string
+): Promise<{ data: Awaited<ReturnType<typeof fetchNpmReadme>>; cacheHit: boolean }> {
+  const key = getCacheKey(library, version);
+  const cached = npmCache.get(key);
+
+  if (isCacheValid(cached)) {
+    return { data: cached.data, cacheHit: true };
+  }
+
+  const data = await fetchNpmReadme(library);
+  npmCache.set(key, { data, timestamp: Date.now() });
+  return { data, cacheHit: false };
+}
+
+/**
+ * Get cached GitHub README or fetch and cache it
+ */
+async function getCachedGithubReadme(
+  url: string,
+  library: string,
+  version?: string
+): Promise<{ data: string | null; cacheHit: boolean }> {
+  const key = getCacheKey(library, version);
+  const cached = githubReadmeCache.get(key);
+
+  if (isCacheValid(cached)) {
+    return { data: cached.data, cacheHit: true };
+  }
+
+  const data = await fetchUrl(url);
+  githubReadmeCache.set(key, { data, timestamp: Date.now() });
+  return { data, cacheHit: false };
+}
+
 export interface FetchDocsArgs {
   library: string;
   topic?: string;
@@ -127,6 +198,11 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
   const topic = args.topic?.toLowerCase();
 
   const source = DOCS_SOURCES[library];
+
+  // Track cache hits for npm and github fetches
+  let npmCacheHit = false;
+  let githubCacheHit = false;
+
   const result: {
     library: string;
     version: string;
@@ -136,6 +212,7 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
     topic?: string;
     readme?: string;
     last_updated: string;
+    cache_hit: boolean;
   } = {
     library: args.library,
     version: args.version || 'latest',
@@ -143,15 +220,17 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
     api_reference: [],
     source_url: source?.url || `https://www.npmjs.com/package/${args.library}`,
     last_updated: new Date().toISOString().split('T')[0],
+    cache_hit: false,
   };
 
   if (topic) {
     result.topic = topic;
   }
 
-  // Try to fetch npm package info for any package
+  // Try to fetch npm package info for any package (with caching)
   try {
-    const npmData = await fetchNpmReadme(args.library);
+    const { data: npmData, cacheHit } = await getCachedNpmData(args.library, args.version);
+    npmCacheHit = cacheHit;
     if (npmData) {
       result.readme = npmData.readme;
       result.content = npmData.description || '';
@@ -174,10 +253,15 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
     // Continue without npm data
   }
 
-  // If we have a GitHub raw API for README, fetch it
+  // If we have a GitHub raw API for README, fetch it (with caching)
   if (source?.api) {
     try {
-      const readmeContent = await fetchUrl(source.api);
+      const { data: readmeContent, cacheHit } = await getCachedGithubReadme(
+        source.api,
+        args.library,
+        args.version
+      );
+      githubCacheHit = cacheHit;
       if (readmeContent) {
         result.readme = readmeContent.slice(0, 10000); // Limit size
         result.content = `Documentation fetched from GitHub README. See ${source.url} for full docs.`;
@@ -186,6 +270,9 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
       // Continue without GitHub readme
     }
   }
+
+  // Set cache_hit to true if any fetch was served from cache
+  result.cache_hit = npmCacheHit || githubCacheHit;
 
   // Add common API references based on library type
   const apiReferences = getCommonApiReferences(library, topic);

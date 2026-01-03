@@ -49,52 +49,50 @@ describe('scaffolding handlers', () => {
   });
 
   describe('handleListTemplates', () => {
-    it('should list all templates', () => {
+    it('should list all templates', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleTemplateRegistry));
+      vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
 
-      const result = handleListTemplates({});
+      const result = await handleListTemplates({});
       const data = JSON.parse(result.content[0].text);
 
       expect(data.templates.length).toBe(2);
       expect(data.total).toBe(2);
     });
 
-    it('should filter templates by category', () => {
+    it('should filter templates by category', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleTemplateRegistry));
+      vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
 
-      const result = handleListTemplates({ category: 'minimal' });
+      const result = await handleListTemplates({ category: 'minimal' });
       const data = JSON.parse(result.content[0].text);
 
       expect(data.templates.length).toBe(1);
       expect(data.templates[0].category).toBe('minimal');
     });
 
-    it('should return available categories', () => {
+    it('should return available categories', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleTemplateRegistry));
+      vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
 
-      const result = handleListTemplates({});
+      const result = await handleListTemplates({});
       const data = JSON.parse(result.content[0].text);
 
       expect(data.categories).toContain('minimal');
       expect(data.categories).toContain('full');
     });
 
-    it('should throw error when registry not found', () => {
+    it('should throw error when registry not found', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      expect(() => {
-        handleListTemplates({});
-      }).toThrow('Template registry not found');
+      await expect(handleListTemplates({})).rejects.toThrow('Template registry not found');
     });
 
-    it('should include template metadata', () => {
+    it('should include template metadata', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleTemplateRegistry));
+      vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
 
-      const result = handleListTemplates({});
+      const result = await handleListTemplates({});
       const data = JSON.parse(result.content[0].text);
 
       expect(data.templates[0]).toHaveProperty('name');
@@ -104,22 +102,22 @@ describe('scaffolding handlers', () => {
     });
 
     describe('response format', () => {
-      it('should return properly formatted response', () => {
+      it('should return properly formatted response', async () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleTemplateRegistry));
+        vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
 
-        const result = handleListTemplates({});
+        const result = await handleListTemplates({});
 
         expect(result).toHaveProperty('content');
         expect(result.content).toHaveLength(1);
         expect(result.content[0]).toHaveProperty('type', 'text');
       });
 
-      it('should return valid JSON', () => {
+      it('should return valid JSON', async () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleTemplateRegistry));
+        vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
 
-        const result = handleListTemplates({});
+        const result = await handleListTemplates({});
 
         expect(() => JSON.parse(result.content[0].text)).not.toThrow();
       });
@@ -138,22 +136,22 @@ describe('scaffolding handlers', () => {
           pathStr.includes('files')
         );
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
         if (String(p).includes('template.yaml')) {
           return yaml.dump(sampleTemplateConfig);
         }
         return '{"name": "{{projectName}}", "author": "{{author}}"}';
       });
-      // Mock readdirSync to return only files (no directories to avoid recursion)
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      // Mock readdir to return only files (no directories to avoid recursion)
+      vi.mocked(fs.promises.readdir).mockResolvedValue([
         {
           name: 'package.json.hbs',
           isDirectory: () => false,
           isFile: () => true,
         },
       ] as any);
-      vi.mocked(fs.mkdirSync).mockImplementation(() => undefined);
-      vi.mocked(fs.writeFileSync).mockImplementation(() => undefined);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
     });
 
     it('should throw error when template not found', async () => {
@@ -186,15 +184,15 @@ describe('scaffolding handlers', () => {
         output_dir: './my-new-project',
       });
 
-      expect(fs.mkdirSync).toHaveBeenCalled();
+      expect(fs.promises.mkdir).toHaveBeenCalled();
     });
 
     it('should apply variable substitutions', async () => {
       const writeCalls: Array<{ path: string; content: string }> = [];
-      vi.mocked(fs.writeFileSync).mockImplementation((p: fs.PathLike, content: string) => {
-        writeCalls.push({ path: String(p), content });
+      vi.mocked(fs.promises.writeFile).mockImplementation(async (p, content) => {
+        writeCalls.push({ path: String(p), content: String(content) });
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
         if (String(p).includes('template.yaml')) {
           return yaml.dump(sampleTemplateConfig);
         }
@@ -216,7 +214,7 @@ describe('scaffolding handlers', () => {
 
     it('should remove .hbs extension from output files', async () => {
       const writeCalls: string[] = [];
-      vi.mocked(fs.writeFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.promises.writeFile).mockImplementation(async (p) => {
         writeCalls.push(String(p));
       });
 
