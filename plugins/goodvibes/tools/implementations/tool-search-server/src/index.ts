@@ -23,6 +23,11 @@ import { execSync, exec } from 'child_process';
 import { promisify } from 'util';
 import * as https from 'https';
 import * as http from 'http';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const execAsync = promisify(exec);
 
