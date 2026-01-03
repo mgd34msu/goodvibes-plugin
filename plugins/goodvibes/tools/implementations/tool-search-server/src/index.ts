@@ -15,7 +15,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import Fuse, { IFuseOptions } from 'fuse.js';
+import Fuse from 'fuse.js';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,81 +23,14 @@ import { execSync, exec } from 'child_process';
 import { promisify } from 'util';
 import * as https from 'https';
 import * as http from 'http';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Local imports
+import { Registry, RegistryEntry, SearchResult, StackInfo, PackageInfo } from './types.js';
+import { PLUGIN_ROOT, PROJECT_ROOT, FUSE_OPTIONS } from './config.js';
+import { TOOL_SCHEMAS } from './tool-schemas.js';
+import { handlePluginStatus } from './handlers/status.js';
 
 const execAsync = promisify(exec);
-
-// Types
-interface RegistryEntry {
-  name: string;
-  path: string;
-  description: string;
-  keywords?: string[];
-  category?: string;
-}
-
-interface Registry {
-  version: string;
-  search_index: RegistryEntry[];
-}
-
-interface SearchResult {
-  name: string;
-  path: string;
-  description: string;
-  relevance: number;
-}
-
-interface StackInfo {
-  frontend: {
-    framework?: string;
-    ui_library?: string;
-    styling?: string;
-    state_management?: string;
-  };
-  backend: {
-    runtime?: string;
-    framework?: string;
-    database?: string;
-    orm?: string;
-  };
-  build: {
-    bundler?: string;
-    package_manager?: string;
-    typescript: boolean;
-  };
-  detected_configs: string[];
-  recommended_skills: string[];
-}
-
-interface PackageInfo {
-  name: string;
-  installed: string;
-  latest?: string;
-  wanted?: string;
-  outdated: boolean;
-  breaking_changes?: boolean;
-}
-
-// Configuration
-const PLUGIN_ROOT = process.env.PLUGIN_ROOT || path.resolve(__dirname, '../../..');
-const PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
-
-// Fuse.js options for fuzzy search
-const FUSE_OPTIONS: IFuseOptions<RegistryEntry> = {
-  keys: [
-    { name: 'name', weight: 0.3 },
-    { name: 'description', weight: 0.4 },
-    { name: 'keywords', weight: 0.3 },
-  ],
-  threshold: 0.4,
-  includeScore: true,
-  ignoreLocation: true,
-};
 
 /**
  * Load registry from YAML file
@@ -239,264 +172,7 @@ class GoodVibesServer {
   private setupHandlers(): void {
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [
-        // Core search tools
-        {
-          name: 'search_skills',
-          description: 'Search the skill registry for relevant skills based on keywords or task description',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              query: { type: 'string', description: 'Natural language query or keywords' },
-              category: { type: 'string', description: 'Optional category filter' },
-              limit: { type: 'integer', description: 'Max results (default: 5)', default: 5 },
-            },
-            required: ['query'],
-          },
-        },
-        {
-          name: 'search_agents',
-          description: 'Search for specialized agents by expertise area',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              query: { type: 'string', description: 'Keywords describing expertise needed' },
-              limit: { type: 'integer', description: 'Max results (default: 5)', default: 5 },
-            },
-            required: ['query'],
-          },
-        },
-        {
-          name: 'search_tools',
-          description: 'Search for available tools by functionality',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              query: { type: 'string', description: 'Keywords describing tool functionality' },
-              limit: { type: 'integer', description: 'Max results (default: 5)', default: 5 },
-            },
-            required: ['query'],
-          },
-        },
-        {
-          name: 'recommend_skills',
-          description: 'Analyze task and recommend relevant skills',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              task: { type: 'string', description: 'Natural language task description' },
-              max_results: { type: 'integer', description: 'Max recommendations (default: 5)', default: 5 },
-            },
-            required: ['task'],
-          },
-        },
-        // Content retrieval
-        {
-          name: 'get_skill_content',
-          description: 'Load full content of a skill by path',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'Skill path from registry' },
-            },
-            required: ['path'],
-          },
-        },
-        {
-          name: 'get_agent_content',
-          description: 'Load full content of an agent by path',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'Agent path from registry' },
-            },
-            required: ['path'],
-          },
-        },
-        {
-          name: 'skill_dependencies',
-          description: 'Show skill relationships and dependencies',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              skill: { type: 'string', description: 'Skill to analyze' },
-              depth: { type: 'integer', description: 'Dependency tree depth (default: 2)', default: 2 },
-              include_optional: { type: 'boolean', description: 'Include optional deps', default: true },
-            },
-            required: ['skill'],
-          },
-        },
-        // Context gathering
-        {
-          name: 'detect_stack',
-          description: 'Analyze project to identify technology stack',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'Project root path', default: '.' },
-              deep: { type: 'boolean', description: 'Deep analysis', default: false },
-            },
-          },
-        },
-        {
-          name: 'check_versions',
-          description: 'Get installed package versions',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              packages: { type: 'array', items: { type: 'string' }, description: 'Packages to check' },
-              check_latest: { type: 'boolean', description: 'Compare against latest', default: false },
-              path: { type: 'string', description: 'Project path', default: '.' },
-            },
-          },
-        },
-        {
-          name: 'scan_patterns',
-          description: 'Identify existing code patterns and conventions',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'Directory to scan', default: 'src' },
-              pattern_types: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Pattern types to detect',
-                default: ['all'],
-              },
-            },
-          },
-        },
-        // Live data
-        {
-          name: 'fetch_docs',
-          description: 'Fetch current documentation for a library',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              library: { type: 'string', description: 'Library or framework name' },
-              topic: { type: 'string', description: 'Specific topic to look up' },
-              version: { type: 'string', description: 'Specific version', default: 'latest' },
-            },
-            required: ['library'],
-          },
-        },
-        {
-          name: 'get_schema',
-          description: 'Introspect database schema',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              source: {
-                type: 'string',
-                enum: ['prisma', 'drizzle', 'typeorm', 'sql'],
-                description: 'Schema source type',
-              },
-              path: { type: 'string', description: 'Path to schema file', default: '.' },
-              tables: { type: 'array', items: { type: 'string' }, description: 'Filter tables' },
-            },
-            required: ['source'],
-          },
-        },
-        {
-          name: 'read_config',
-          description: 'Parse existing configuration files',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              config: {
-                type: 'string',
-                enum: ['package.json', 'tsconfig', 'eslint', 'prettier', 'tailwind', 'next', 'vite', 'prisma', 'env', 'custom'],
-                description: 'Config type or filename',
-              },
-              path: { type: 'string', description: 'Custom path' },
-              resolve_extends: { type: 'boolean', description: 'Resolve extended configs', default: true },
-            },
-            required: ['config'],
-          },
-        },
-        // Validation
-        {
-          name: 'validate_implementation',
-          description: 'Check code matches skill patterns',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              files: { type: 'array', items: { type: 'string' }, description: 'Files to validate' },
-              skill: { type: 'string', description: 'Skill that was applied' },
-              checks: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Validation checks to run',
-                default: ['all'],
-              },
-            },
-            required: ['files'],
-          },
-        },
-        {
-          name: 'run_smoke_test',
-          description: 'Quick verification generated code works',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              type: {
-                type: 'string',
-                enum: ['build', 'typecheck', 'lint', 'import', 'all'],
-                description: 'Type of smoke test',
-                default: 'all',
-              },
-              files: { type: 'array', items: { type: 'string' }, description: 'Specific files to test' },
-              timeout: { type: 'integer', description: 'Timeout in seconds', default: 30 },
-            },
-          },
-        },
-        {
-          name: 'check_types',
-          description: 'Run TypeScript type checking',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              files: { type: 'array', items: { type: 'string' }, description: 'Files to check' },
-              strict: { type: 'boolean', description: 'Use strict mode', default: false },
-              include_suggestions: { type: 'boolean', description: 'Include fix suggestions', default: true },
-            },
-          },
-        },
-        // Scaffolding
-        {
-          name: 'scaffold_project',
-          description: 'Create a new project from a template',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              template: { type: 'string', description: 'Template name (next-app, vite-react, next-saas)' },
-              output_dir: { type: 'string', description: 'Output directory for new project' },
-              variables: { type: 'object', description: 'Template variables', additionalProperties: true },
-              run_install: { type: 'boolean', description: 'Run npm install', default: true },
-              run_git_init: { type: 'boolean', description: 'Initialize git', default: true },
-            },
-            required: ['template', 'output_dir'],
-          },
-        },
-        {
-          name: 'list_templates',
-          description: 'List available project templates',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              category: { type: 'string', description: 'Filter by category (minimal, full)' },
-            },
-          },
-        },
-        {
-          name: 'plugin_status',
-          description: 'Check GoodVibes plugin health: manifest, registries, hooks, MCP server status',
-          inputSchema: {
-            type: 'object',
-            properties: {},
-          },
-        },
-      ],
+      tools: TOOL_SCHEMAS,
     }));
 
     // Handle tool calls
@@ -554,7 +230,7 @@ class GoodVibesServer {
             return this.handleListTemplates(args as { category?: string });
 
           case 'plugin_status':
-            return this.handlePluginStatus();
+            return handlePluginStatus();
 
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -2764,138 +2440,6 @@ class GoodVibesServer {
   }
 
   /**
-   * Check plugin health status
-   */
-  private handlePluginStatus() {
-    const status: {
-      version: string;
-      status: 'healthy' | 'degraded' | 'error';
-      issues: string[];
-      manifest: { exists: boolean; valid: boolean; version?: string };
-      registries: {
-        agents: { exists: boolean; count: number };
-        skills: { exists: boolean; count: number };
-        tools: { exists: boolean; count: number };
-      };
-      hooks: {
-        config_exists: boolean;
-        config_valid: boolean;
-        events: Array<{ name: string; script: string; exists: boolean }>;
-      };
-      mcp_server: { running: boolean };
-    } = {
-      version: '1.0.0',
-      status: 'healthy',
-      issues: [],
-      manifest: { exists: false, valid: false },
-      registries: {
-        agents: { exists: false, count: 0 },
-        skills: { exists: false, count: 0 },
-        tools: { exists: false, count: 0 },
-      },
-      hooks: {
-        config_exists: false,
-        config_valid: false,
-        events: [],
-      },
-      mcp_server: { running: true }, // We're running, so true
-    };
-
-    // Check manifest
-    const manifestPath = path.join(PLUGIN_ROOT, '.claude-plugin', 'plugin.json');
-    if (fs.existsSync(manifestPath)) {
-      status.manifest.exists = true;
-      try {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        status.manifest.valid = true;
-        status.manifest.version = manifest.version;
-        status.version = manifest.version || '1.0.0';
-      } catch {
-        status.issues.push('Manifest exists but is invalid JSON');
-      }
-    } else {
-      status.issues.push('Plugin manifest not found');
-    }
-
-    // Check registries
-    const registryChecks = [
-      { key: 'agents' as const, path: 'agents/_registry.yaml' },
-      { key: 'skills' as const, path: 'skills/_registry.yaml' },
-      { key: 'tools' as const, path: 'tools/_registry.yaml' },
-    ];
-
-    for (const check of registryChecks) {
-      const regPath = path.join(PLUGIN_ROOT, check.path);
-      if (fs.existsSync(regPath)) {
-        status.registries[check.key].exists = true;
-        try {
-          const reg = yaml.load(fs.readFileSync(regPath, 'utf-8')) as Registry;
-          status.registries[check.key].count = reg?.search_index?.length || 0;
-        } catch {
-          status.issues.push(`${check.key} registry exists but is invalid`);
-        }
-      } else {
-        status.issues.push(`${check.key} registry not found`);
-      }
-    }
-
-    // Check hooks
-    const hooksPath = path.join(PLUGIN_ROOT, 'hooks', 'hooks.json');
-    if (fs.existsSync(hooksPath)) {
-      status.hooks.config_exists = true;
-      try {
-        const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, 'utf-8'));
-        status.hooks.config_valid = true;
-
-        // Check each hook event
-        const hookEvents = Object.keys(hooksConfig.hooks || {});
-        const scriptMap: Record<string, string> = {
-          SessionStart: 'session-start.js',
-          PreToolUse: 'pre-tool-use.js',
-          PostToolUse: 'post-tool-use.js',
-          PostToolUseFailure: 'post-tool-use-failure.js',
-          PermissionRequest: 'permission-request.js',
-          UserPromptSubmit: 'user-prompt-submit.js',
-          Stop: 'stop.js',
-          SubagentStart: 'subagent-start.js',
-          SubagentStop: 'subagent-stop.js',
-          PreCompact: 'pre-compact.js',
-          SessionEnd: 'session-end.js',
-          Notification: 'notification.js',
-        };
-
-        for (const event of hookEvents) {
-          const scriptName = scriptMap[event] || `${event.toLowerCase()}.js`;
-          const scriptPath = path.join(PLUGIN_ROOT, 'hooks', 'scripts', 'dist', scriptName);
-          const exists = fs.existsSync(scriptPath);
-          status.hooks.events.push({ name: event, script: scriptName, exists });
-          if (!exists) {
-            status.issues.push(`Hook script missing: ${scriptName}`);
-          }
-        }
-      } catch {
-        status.issues.push('Hooks config exists but is invalid JSON');
-      }
-    } else {
-      status.issues.push('Hooks config not found');
-    }
-
-    // Determine overall status
-    if (status.issues.length > 3) {
-      status.status = 'error';
-    } else if (status.issues.length > 0) {
-      status.status = 'degraded';
-    }
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(status, null, 2),
-      }],
-    };
-  }
-
-  /**
    * Start the server
    */
   async run(): Promise<void> {
@@ -2904,7 +2448,7 @@ class GoodVibesServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
 
-    console.error('GoodVibes MCP Server v2.1.0 running with 17 tools');
+    console.error(`GoodVibes MCP Server v2.1.0 running with ${TOOL_SCHEMAS.length} tools`);
   }
 }
 

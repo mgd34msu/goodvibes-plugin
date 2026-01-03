@@ -2989,7 +2989,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve2.call(this, root, ref);
+      let _sch = resolve3.call(this, root, ref);
       if (_sch === void 0) {
         const schema2 = (_a2 = root.localRefs) === null || _a2 === void 0 ? void 0 : _a2[ref];
         const { schemaId } = this.opts;
@@ -3016,7 +3016,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve2(root, ref) {
+    function resolve3(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3232,8 +3232,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path2) {
-      let input = path2;
+    function removeDotSegments(path4) {
+      let input = path4;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3432,8 +3432,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path2, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path2 && path2 !== "/" ? path2 : void 0;
+        const [path4, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3592,7 +3592,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve2(baseURI, relativeURI, options) {
+    function resolve3(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse4(baseURI, schemelessOptions), parse4(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3820,7 +3820,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve2,
+      resolve: resolve3,
       resolveComponent,
       equal,
       serialize,
@@ -6787,12 +6787,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs2, exportName) {
+    function addFormats(ajv, list, fs3, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs2[f]);
+        ajv.addFormat(f, fs3[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7159,8 +7159,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path2, errorMaps, issueData } = params;
-  const fullPath = [...path2, ...issueData.path || []];
+  const { data, path: path4, errorMaps, issueData } = params;
+  const fullPath = [...path4, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7275,11 +7275,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path2, key) {
+  constructor(parent, value, path4, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path2;
+    this._path = path4;
     this._key = key;
   }
   get path() {
@@ -10925,10 +10925,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11311,11 +11311,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path2, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -19562,7 +19562,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+        await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -19579,7 +19579,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -19657,7 +19657,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve2(parseResult.data);
+            resolve3(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19918,12 +19918,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve2, interval);
+      const timeoutId = setTimeout(resolve3, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20652,12 +20652,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve2) => {
+    return new Promise((resolve3) => {
       const json3 = serializeMessage(message);
       if (this._stdout.write(json3)) {
-        resolve2();
+        resolve3();
       } else {
-        this._stdout.once("drain", resolve2);
+        this._stdout.once("drain", resolve3);
       }
     });
   }
@@ -20734,14 +20734,14 @@ var KeyStore = class {
   }
 };
 function createKey(key) {
-  let path2 = null;
+  let path4 = null;
   let id = null;
   let src = null;
   let weight = 1;
   let getFn = null;
   if (isString(key) || isArray(key)) {
     src = key;
-    path2 = createKeyPath(key);
+    path4 = createKeyPath(key);
     id = createKeyId(key);
   } else {
     if (!hasOwn.call(key, "name")) {
@@ -20755,11 +20755,11 @@ function createKey(key) {
         throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
       }
     }
-    path2 = createKeyPath(name);
+    path4 = createKeyPath(name);
     id = createKeyId(name);
     getFn = key.getFn;
   }
-  return { path: path2, id, weight, src, getFn };
+  return { path: path4, id, weight, src, getFn };
 }
 function createKeyPath(key) {
   return isArray(key) ? key : key.split(".");
@@ -20767,34 +20767,34 @@ function createKeyPath(key) {
 function createKeyId(key) {
   return isArray(key) ? key.join(".") : key;
 }
-function get(obj, path2) {
+function get(obj, path4) {
   let list = [];
   let arr = false;
-  const deepGet = (obj2, path3, index) => {
+  const deepGet = (obj2, path5, index) => {
     if (!isDefined(obj2)) {
       return;
     }
-    if (!path3[index]) {
+    if (!path5[index]) {
       list.push(obj2);
     } else {
-      let key = path3[index];
+      let key = path5[index];
       const value = obj2[key];
       if (!isDefined(value)) {
         return;
       }
-      if (index === path3.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
+      if (index === path5.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
         list.push(toString(value));
       } else if (isArray(value)) {
         arr = true;
         for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path3, index + 1);
+          deepGet(value[i], path5, index + 1);
         }
-      } else if (path3.length) {
-        deepGet(value, path3, index + 1);
+      } else if (path5.length) {
+        deepGet(value, path5, index + 1);
       }
     }
   };
-  deepGet(obj, isString(path2) ? path2.split(".") : path2, 0);
+  deepGet(obj, isString(path4) ? path4.split(".") : path4, 0);
   return arr ? list : list[0];
 }
 var MatchOptions = {
@@ -24646,17 +24646,19 @@ var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
 // src/index.ts
-import * as fs from "fs";
-import * as path from "path";
-import { exec } from "child_process";
-import { promisify } from "util";
+import * as fs2 from "fs";
+import * as path3 from "path";
+import { exec as exec2 } from "child_process";
+import { promisify as promisify2 } from "util";
 import * as https from "https";
 import * as http from "http";
+
+// src/config.ts
+import * as path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = dirname(__filename);
-var execAsync = promisify(exec);
 var PLUGIN_ROOT = process.env.PLUGIN_ROOT || path.resolve(__dirname, "../../..");
 var PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
 var FUSE_OPTIONS = {
@@ -24669,14 +24671,390 @@ var FUSE_OPTIONS = {
   includeScore: true,
   ignoreLocation: true
 };
+var HOOK_SCRIPT_MAP = {
+  SessionStart: "session-start.js",
+  PreToolUse: "pre-tool-use.js",
+  PostToolUse: "post-tool-use.js",
+  PostToolUseFailure: "post-tool-use-failure.js",
+  PermissionRequest: "permission-request.js",
+  UserPromptSubmit: "user-prompt-submit.js",
+  Stop: "stop.js",
+  SubagentStart: "subagent-start.js",
+  SubagentStop: "subagent-stop.js",
+  PreCompact: "pre-compact.js",
+  SessionEnd: "session-end.js",
+  Notification: "notification.js"
+};
+
+// src/tool-schemas.ts
+var TOOL_SCHEMAS = [
+  // Core search tools
+  {
+    name: "search_skills",
+    description: "Search the skill registry for relevant skills based on keywords or task description",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Natural language query or keywords" },
+        category: { type: "string", description: "Optional category filter" },
+        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "search_agents",
+    description: "Search for specialized agents by expertise area",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Keywords describing expertise needed" },
+        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "search_tools",
+    description: "Search for available tools by functionality",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Keywords describing tool functionality" },
+        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "recommend_skills",
+    description: "Analyze task and recommend relevant skills",
+    inputSchema: {
+      type: "object",
+      properties: {
+        task: { type: "string", description: "Natural language task description" },
+        max_results: { type: "integer", description: "Max recommendations (default: 5)", default: 5 }
+      },
+      required: ["task"]
+    }
+  },
+  // Content retrieval
+  {
+    name: "get_skill_content",
+    description: "Load full content of a skill by path",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Skill path from registry" }
+      },
+      required: ["path"]
+    }
+  },
+  {
+    name: "get_agent_content",
+    description: "Load full content of an agent by path",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Agent path from registry" }
+      },
+      required: ["path"]
+    }
+  },
+  {
+    name: "skill_dependencies",
+    description: "Show skill relationships and dependencies",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill: { type: "string", description: "Skill to analyze" },
+        depth: { type: "integer", description: "Dependency tree depth (default: 2)", default: 2 },
+        include_optional: { type: "boolean", description: "Include optional deps", default: true }
+      },
+      required: ["skill"]
+    }
+  },
+  // Context gathering
+  {
+    name: "detect_stack",
+    description: "Analyze project to identify technology stack",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path", default: "." },
+        deep: { type: "boolean", description: "Deep analysis", default: false }
+      }
+    }
+  },
+  {
+    name: "check_versions",
+    description: "Get installed package versions",
+    inputSchema: {
+      type: "object",
+      properties: {
+        packages: { type: "array", items: { type: "string" }, description: "Packages to check" },
+        check_latest: { type: "boolean", description: "Compare against latest", default: false },
+        path: { type: "string", description: "Project path", default: "." }
+      }
+    }
+  },
+  {
+    name: "scan_patterns",
+    description: "Identify existing code patterns and conventions",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Directory to scan", default: "src" },
+        pattern_types: {
+          type: "array",
+          items: { type: "string" },
+          description: "Pattern types to detect",
+          default: ["all"]
+        }
+      }
+    }
+  },
+  // Live data
+  {
+    name: "fetch_docs",
+    description: "Fetch current documentation for a library",
+    inputSchema: {
+      type: "object",
+      properties: {
+        library: { type: "string", description: "Library or framework name" },
+        topic: { type: "string", description: "Specific topic to look up" },
+        version: { type: "string", description: "Specific version", default: "latest" }
+      },
+      required: ["library"]
+    }
+  },
+  {
+    name: "get_schema",
+    description: "Introspect database schema",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: {
+          type: "string",
+          enum: ["prisma", "drizzle", "typeorm", "sql"],
+          description: "Schema source type"
+        },
+        path: { type: "string", description: "Path to schema file", default: "." },
+        tables: { type: "array", items: { type: "string" }, description: "Filter tables" }
+      },
+      required: ["source"]
+    }
+  },
+  {
+    name: "read_config",
+    description: "Parse existing configuration files",
+    inputSchema: {
+      type: "object",
+      properties: {
+        config: {
+          type: "string",
+          enum: ["package.json", "tsconfig", "eslint", "prettier", "tailwind", "next", "vite", "prisma", "env", "custom"],
+          description: "Config type or filename"
+        },
+        path: { type: "string", description: "Custom path" },
+        resolve_extends: { type: "boolean", description: "Resolve extended configs", default: true }
+      },
+      required: ["config"]
+    }
+  },
+  // Validation
+  {
+    name: "validate_implementation",
+    description: "Check code matches skill patterns",
+    inputSchema: {
+      type: "object",
+      properties: {
+        files: { type: "array", items: { type: "string" }, description: "Files to validate" },
+        skill: { type: "string", description: "Skill that was applied" },
+        checks: {
+          type: "array",
+          items: { type: "string" },
+          description: "Validation checks to run",
+          default: ["all"]
+        }
+      },
+      required: ["files"]
+    }
+  },
+  {
+    name: "run_smoke_test",
+    description: "Quick verification generated code works",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: {
+          type: "string",
+          enum: ["build", "typecheck", "lint", "import", "all"],
+          description: "Type of smoke test",
+          default: "all"
+        },
+        files: { type: "array", items: { type: "string" }, description: "Specific files to test" },
+        timeout: { type: "integer", description: "Timeout in seconds", default: 30 }
+      }
+    }
+  },
+  {
+    name: "check_types",
+    description: "Run TypeScript type checking",
+    inputSchema: {
+      type: "object",
+      properties: {
+        files: { type: "array", items: { type: "string" }, description: "Files to check" },
+        strict: { type: "boolean", description: "Use strict mode", default: false },
+        include_suggestions: { type: "boolean", description: "Include fix suggestions", default: true }
+      }
+    }
+  },
+  // Scaffolding
+  {
+    name: "scaffold_project",
+    description: "Create a new project from a template",
+    inputSchema: {
+      type: "object",
+      properties: {
+        template: { type: "string", description: "Template name (next-app, vite-react, next-saas)" },
+        output_dir: { type: "string", description: "Output directory for new project" },
+        variables: { type: "object", description: "Template variables", additionalProperties: true },
+        run_install: { type: "boolean", description: "Run npm install", default: true },
+        run_git_init: { type: "boolean", description: "Initialize git", default: true }
+      },
+      required: ["template", "output_dir"]
+    }
+  },
+  {
+    name: "list_templates",
+    description: "List available project templates",
+    inputSchema: {
+      type: "object",
+      properties: {
+        category: { type: "string", description: "Filter by category (minimal, full)" }
+      }
+    }
+  },
+  {
+    name: "plugin_status",
+    description: "Check GoodVibes plugin health: manifest, registries, hooks, MCP server status",
+    inputSchema: {
+      type: "object",
+      properties: {}
+    }
+  }
+];
+
+// src/handlers/status.ts
+import * as fs from "fs";
+import * as path2 from "path";
+
+// src/utils.ts
+import { exec } from "child_process";
+import { promisify } from "util";
+var execAsync = promisify(exec);
+function success2(data) {
+  return {
+    content: [{
+      type: "text",
+      text: typeof data === "string" ? data : JSON.stringify(data, null, 2)
+    }]
+  };
+}
+
+// src/handlers/status.ts
+function handlePluginStatus() {
+  const status = {
+    version: "1.0.0",
+    status: "healthy",
+    issues: [],
+    manifest: { exists: false, valid: false },
+    registries: {
+      agents: { exists: false, count: 0 },
+      skills: { exists: false, count: 0 },
+      tools: { exists: false, count: 0 }
+    },
+    hooks: {
+      config_exists: false,
+      config_valid: false,
+      events: []
+    },
+    mcp_server: { running: true }
+  };
+  const manifestPath = path2.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
+  if (fs.existsSync(manifestPath)) {
+    status.manifest.exists = true;
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+      status.manifest.valid = true;
+      status.manifest.version = manifest.version;
+      status.version = manifest.version || "1.0.0";
+    } catch {
+      status.issues.push("Manifest exists but is invalid JSON");
+    }
+  } else {
+    status.issues.push("Plugin manifest not found");
+  }
+  const registryChecks = [
+    { key: "agents", path: "agents/_registry.yaml" },
+    { key: "skills", path: "skills/_registry.yaml" },
+    { key: "tools", path: "tools/_registry.yaml" }
+  ];
+  for (const check2 of registryChecks) {
+    const regPath = path2.join(PLUGIN_ROOT, check2.path);
+    if (fs.existsSync(regPath)) {
+      status.registries[check2.key].exists = true;
+      try {
+        const reg = load(fs.readFileSync(regPath, "utf-8"));
+        status.registries[check2.key].count = reg?.search_index?.length || 0;
+      } catch {
+        status.issues.push(`${check2.key} registry exists but is invalid`);
+      }
+    } else {
+      status.issues.push(`${check2.key} registry not found`);
+    }
+  }
+  const hooksPath = path2.join(PLUGIN_ROOT, "hooks", "hooks.json");
+  if (fs.existsSync(hooksPath)) {
+    status.hooks.config_exists = true;
+    try {
+      const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, "utf-8"));
+      status.hooks.config_valid = true;
+      const hookEvents = Object.keys(hooksConfig.hooks || {});
+      for (const event of hookEvents) {
+        const scriptName = HOOK_SCRIPT_MAP[event] || `${event.toLowerCase()}.js`;
+        const scriptPath = path2.join(PLUGIN_ROOT, "hooks", "scripts", "dist", scriptName);
+        const exists = fs.existsSync(scriptPath);
+        status.hooks.events.push({ name: event, script: scriptName, exists });
+        if (!exists) {
+          status.issues.push(`Hook script missing: ${scriptName}`);
+        }
+      }
+    } catch {
+      status.issues.push("Hooks config exists but is invalid JSON");
+    }
+  } else {
+    status.issues.push("Hooks config not found");
+  }
+  if (status.issues.length > 3) {
+    status.status = "error";
+  } else if (status.issues.length > 0) {
+    status.status = "degraded";
+  }
+  return success2(status);
+}
+
+// src/index.ts
+var execAsync2 = promisify2(exec2);
 function loadRegistry(registryPath) {
   try {
-    const fullPath = path.join(PLUGIN_ROOT, registryPath);
-    if (!fs.existsSync(fullPath)) {
+    const fullPath = path3.join(PLUGIN_ROOT, registryPath);
+    if (!fs2.existsSync(fullPath)) {
       console.error(`Registry not found: ${fullPath}`);
       return null;
     }
-    const content = fs.readFileSync(fullPath, "utf-8");
+    const content = fs2.readFileSync(fullPath, "utf-8");
     return load(content);
   } catch (error2) {
     console.error(`Error loading registry ${registryPath}:`, error2);
@@ -24701,9 +25079,9 @@ function search2(index, query, limit = 5) {
 }
 function readJsonFile(filePath) {
   try {
-    if (!fs.existsSync(filePath))
+    if (!fs2.existsSync(filePath))
       return null;
-    const content = fs.readFileSync(filePath, "utf-8");
+    const content = fs2.readFileSync(filePath, "utf-8");
     return JSON.parse(content);
   } catch {
     return null;
@@ -24711,7 +25089,7 @@ function readJsonFile(filePath) {
 }
 async function safeExec(command, cwd, timeout = 3e4) {
   try {
-    const { stdout, stderr } = await execAsync(command, { cwd, timeout });
+    const { stdout, stderr } = await execAsync2(command, { cwd, timeout });
     return { stdout: stdout.trim(), stderr: stderr.trim() };
   } catch (error2) {
     const err = error2;
@@ -24723,11 +25101,11 @@ async function safeExec(command, cwd, timeout = 3e4) {
   }
 }
 function detectPackageManager(projectPath) {
-  if (fs.existsSync(path.join(projectPath, "pnpm-lock.yaml")))
+  if (fs2.existsSync(path3.join(projectPath, "pnpm-lock.yaml")))
     return "pnpm";
-  if (fs.existsSync(path.join(projectPath, "yarn.lock")))
+  if (fs2.existsSync(path3.join(projectPath, "yarn.lock")))
     return "yarn";
-  if (fs.existsSync(path.join(projectPath, "bun.lockb")))
+  if (fs2.existsSync(path3.join(projectPath, "bun.lockb")))
     return "bun";
   return "npm";
 }
@@ -24771,264 +25149,7 @@ var GoodVibesServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [
-        // Core search tools
-        {
-          name: "search_skills",
-          description: "Search the skill registry for relevant skills based on keywords or task description",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Natural language query or keywords" },
-              category: { type: "string", description: "Optional category filter" },
-              limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
-            },
-            required: ["query"]
-          }
-        },
-        {
-          name: "search_agents",
-          description: "Search for specialized agents by expertise area",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Keywords describing expertise needed" },
-              limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
-            },
-            required: ["query"]
-          }
-        },
-        {
-          name: "search_tools",
-          description: "Search for available tools by functionality",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Keywords describing tool functionality" },
-              limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
-            },
-            required: ["query"]
-          }
-        },
-        {
-          name: "recommend_skills",
-          description: "Analyze task and recommend relevant skills",
-          inputSchema: {
-            type: "object",
-            properties: {
-              task: { type: "string", description: "Natural language task description" },
-              max_results: { type: "integer", description: "Max recommendations (default: 5)", default: 5 }
-            },
-            required: ["task"]
-          }
-        },
-        // Content retrieval
-        {
-          name: "get_skill_content",
-          description: "Load full content of a skill by path",
-          inputSchema: {
-            type: "object",
-            properties: {
-              path: { type: "string", description: "Skill path from registry" }
-            },
-            required: ["path"]
-          }
-        },
-        {
-          name: "get_agent_content",
-          description: "Load full content of an agent by path",
-          inputSchema: {
-            type: "object",
-            properties: {
-              path: { type: "string", description: "Agent path from registry" }
-            },
-            required: ["path"]
-          }
-        },
-        {
-          name: "skill_dependencies",
-          description: "Show skill relationships and dependencies",
-          inputSchema: {
-            type: "object",
-            properties: {
-              skill: { type: "string", description: "Skill to analyze" },
-              depth: { type: "integer", description: "Dependency tree depth (default: 2)", default: 2 },
-              include_optional: { type: "boolean", description: "Include optional deps", default: true }
-            },
-            required: ["skill"]
-          }
-        },
-        // Context gathering
-        {
-          name: "detect_stack",
-          description: "Analyze project to identify technology stack",
-          inputSchema: {
-            type: "object",
-            properties: {
-              path: { type: "string", description: "Project root path", default: "." },
-              deep: { type: "boolean", description: "Deep analysis", default: false }
-            }
-          }
-        },
-        {
-          name: "check_versions",
-          description: "Get installed package versions",
-          inputSchema: {
-            type: "object",
-            properties: {
-              packages: { type: "array", items: { type: "string" }, description: "Packages to check" },
-              check_latest: { type: "boolean", description: "Compare against latest", default: false },
-              path: { type: "string", description: "Project path", default: "." }
-            }
-          }
-        },
-        {
-          name: "scan_patterns",
-          description: "Identify existing code patterns and conventions",
-          inputSchema: {
-            type: "object",
-            properties: {
-              path: { type: "string", description: "Directory to scan", default: "src" },
-              pattern_types: {
-                type: "array",
-                items: { type: "string" },
-                description: "Pattern types to detect",
-                default: ["all"]
-              }
-            }
-          }
-        },
-        // Live data
-        {
-          name: "fetch_docs",
-          description: "Fetch current documentation for a library",
-          inputSchema: {
-            type: "object",
-            properties: {
-              library: { type: "string", description: "Library or framework name" },
-              topic: { type: "string", description: "Specific topic to look up" },
-              version: { type: "string", description: "Specific version", default: "latest" }
-            },
-            required: ["library"]
-          }
-        },
-        {
-          name: "get_schema",
-          description: "Introspect database schema",
-          inputSchema: {
-            type: "object",
-            properties: {
-              source: {
-                type: "string",
-                enum: ["prisma", "drizzle", "typeorm", "sql"],
-                description: "Schema source type"
-              },
-              path: { type: "string", description: "Path to schema file", default: "." },
-              tables: { type: "array", items: { type: "string" }, description: "Filter tables" }
-            },
-            required: ["source"]
-          }
-        },
-        {
-          name: "read_config",
-          description: "Parse existing configuration files",
-          inputSchema: {
-            type: "object",
-            properties: {
-              config: {
-                type: "string",
-                enum: ["package.json", "tsconfig", "eslint", "prettier", "tailwind", "next", "vite", "prisma", "env", "custom"],
-                description: "Config type or filename"
-              },
-              path: { type: "string", description: "Custom path" },
-              resolve_extends: { type: "boolean", description: "Resolve extended configs", default: true }
-            },
-            required: ["config"]
-          }
-        },
-        // Validation
-        {
-          name: "validate_implementation",
-          description: "Check code matches skill patterns",
-          inputSchema: {
-            type: "object",
-            properties: {
-              files: { type: "array", items: { type: "string" }, description: "Files to validate" },
-              skill: { type: "string", description: "Skill that was applied" },
-              checks: {
-                type: "array",
-                items: { type: "string" },
-                description: "Validation checks to run",
-                default: ["all"]
-              }
-            },
-            required: ["files"]
-          }
-        },
-        {
-          name: "run_smoke_test",
-          description: "Quick verification generated code works",
-          inputSchema: {
-            type: "object",
-            properties: {
-              type: {
-                type: "string",
-                enum: ["build", "typecheck", "lint", "import", "all"],
-                description: "Type of smoke test",
-                default: "all"
-              },
-              files: { type: "array", items: { type: "string" }, description: "Specific files to test" },
-              timeout: { type: "integer", description: "Timeout in seconds", default: 30 }
-            }
-          }
-        },
-        {
-          name: "check_types",
-          description: "Run TypeScript type checking",
-          inputSchema: {
-            type: "object",
-            properties: {
-              files: { type: "array", items: { type: "string" }, description: "Files to check" },
-              strict: { type: "boolean", description: "Use strict mode", default: false },
-              include_suggestions: { type: "boolean", description: "Include fix suggestions", default: true }
-            }
-          }
-        },
-        // Scaffolding
-        {
-          name: "scaffold_project",
-          description: "Create a new project from a template",
-          inputSchema: {
-            type: "object",
-            properties: {
-              template: { type: "string", description: "Template name (next-app, vite-react, next-saas)" },
-              output_dir: { type: "string", description: "Output directory for new project" },
-              variables: { type: "object", description: "Template variables", additionalProperties: true },
-              run_install: { type: "boolean", description: "Run npm install", default: true },
-              run_git_init: { type: "boolean", description: "Initialize git", default: true }
-            },
-            required: ["template", "output_dir"]
-          }
-        },
-        {
-          name: "list_templates",
-          description: "List available project templates",
-          inputSchema: {
-            type: "object",
-            properties: {
-              category: { type: "string", description: "Filter by category (minimal, full)" }
-            }
-          }
-        },
-        {
-          name: "plugin_status",
-          description: "Check GoodVibes plugin health: manifest, registries, hooks, MCP server status",
-          inputSchema: {
-            type: "object",
-            properties: {}
-          }
-        }
-      ]
+      tools: TOOL_SCHEMAS
     }));
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
@@ -25071,7 +25192,7 @@ var GoodVibesServer = class {
           case "list_templates":
             return this.handleListTemplates(args);
           case "plugin_status":
-            return this.handlePluginStatus();
+            return handlePluginStatus();
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -25155,13 +25276,13 @@ var GoodVibesServer = class {
   // ============ Content Retrieval Handlers ============
   handleGetSkillContent(args) {
     const attempts = [
-      path.join(PLUGIN_ROOT, "skills", args.path, "SKILL.md"),
-      path.join(PLUGIN_ROOT, "skills", args.path + ".md"),
-      path.join(PLUGIN_ROOT, "skills", args.path)
+      path3.join(PLUGIN_ROOT, "skills", args.path, "SKILL.md"),
+      path3.join(PLUGIN_ROOT, "skills", args.path + ".md"),
+      path3.join(PLUGIN_ROOT, "skills", args.path)
     ];
     for (const skillPath of attempts) {
-      if (fs.existsSync(skillPath)) {
-        const content = fs.readFileSync(skillPath, "utf-8");
+      if (fs2.existsSync(skillPath)) {
+        const content = fs2.readFileSync(skillPath, "utf-8");
         return { content: [{ type: "text", text: content }] };
       }
     }
@@ -25169,13 +25290,13 @@ var GoodVibesServer = class {
   }
   handleGetAgentContent(args) {
     const attempts = [
-      path.join(PLUGIN_ROOT, "agents", `${args.path}.md`),
-      path.join(PLUGIN_ROOT, "agents", args.path),
-      path.join(PLUGIN_ROOT, "agents", args.path, "index.md")
+      path3.join(PLUGIN_ROOT, "agents", `${args.path}.md`),
+      path3.join(PLUGIN_ROOT, "agents", args.path),
+      path3.join(PLUGIN_ROOT, "agents", args.path, "index.md")
     ];
     for (const agentPath of attempts) {
-      if (fs.existsSync(agentPath)) {
-        const content = fs.readFileSync(agentPath, "utf-8");
+      if (fs2.existsSync(agentPath)) {
+        const content = fs2.readFileSync(agentPath, "utf-8");
         return { content: [{ type: "text", text: content }] };
       }
     }
@@ -25311,14 +25432,14 @@ var GoodVibesServer = class {
    */
   parseSkillMetadata(skillPath) {
     const attempts = [
-      path.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
-      path.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
-      path.join(PLUGIN_ROOT, "skills", skillPath)
+      path3.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
+      path3.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
+      path3.join(PLUGIN_ROOT, "skills", skillPath)
     ];
     for (const filePath of attempts) {
-      if (fs.existsSync(filePath)) {
+      if (fs2.existsSync(filePath)) {
         try {
-          const content = fs.readFileSync(filePath, "utf-8");
+          const content = fs2.readFileSync(filePath, "utf-8");
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
           if (frontmatterMatch) {
             const frontmatter = load(frontmatterMatch[1]);
@@ -25353,7 +25474,7 @@ var GoodVibesServer = class {
   }
   // ============ Context Gathering Handlers ============
   handleDetectStack(args) {
-    const projectPath = path.resolve(PROJECT_ROOT, args.path || ".");
+    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
     const stack = {
       frontend: {},
       backend: {},
@@ -25361,7 +25482,7 @@ var GoodVibesServer = class {
       detected_configs: [],
       recommended_skills: []
     };
-    const pkg = readJsonFile(path.join(projectPath, "package.json"));
+    const pkg = readJsonFile(path3.join(projectPath, "package.json"));
     const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
     if (deps?.["next"]) {
       stack.frontend.framework = "next";
@@ -25419,7 +25540,7 @@ var GoodVibesServer = class {
       stack.backend.orm = "typeorm";
     }
     stack.build.package_manager = detectPackageManager(projectPath);
-    stack.build.typescript = !!deps?.["typescript"] || fs.existsSync(path.join(projectPath, "tsconfig.json"));
+    stack.build.typescript = !!deps?.["typescript"] || fs2.existsSync(path3.join(projectPath, "tsconfig.json"));
     if (deps?.["vite"]) {
       stack.build.bundler = "vite";
       stack.recommended_skills.push("webdev/build-tools/vite");
@@ -25448,7 +25569,7 @@ var GoodVibesServer = class {
       "drizzle.config.ts"
     ];
     for (const config2 of configFiles) {
-      if (fs.existsSync(path.join(projectPath, config2))) {
+      if (fs2.existsSync(path3.join(projectPath, config2))) {
         stack.detected_configs.push(config2);
       }
     }
@@ -25457,8 +25578,8 @@ var GoodVibesServer = class {
     };
   }
   async handleCheckVersions(args) {
-    const projectPath = path.resolve(PROJECT_ROOT, args.path || ".");
-    const pkg = readJsonFile(path.join(projectPath, "package.json"));
+    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
+    const pkg = readJsonFile(path3.join(projectPath, "package.json"));
     if (!pkg) {
       throw new Error("package.json not found");
     }
@@ -25534,7 +25655,7 @@ var GoodVibesServer = class {
     }
   }
   handleScanPatterns(args) {
-    const scanPath = path.resolve(PROJECT_ROOT, args.path || "src");
+    const scanPath = path3.resolve(PROJECT_ROOT, args.path || "src");
     const patterns = {
       naming: {
         components: "PascalCase",
@@ -25562,32 +25683,32 @@ var GoodVibesServer = class {
         class_naming: "unknown"
       }
     };
-    if (fs.existsSync(scanPath)) {
-      if (fs.existsSync(path.join(scanPath, "index.ts")) || fs.existsSync(path.join(scanPath, "index.js"))) {
+    if (fs2.existsSync(scanPath)) {
+      if (fs2.existsSync(path3.join(scanPath, "index.ts")) || fs2.existsSync(path3.join(scanPath, "index.js"))) {
         patterns.structure.barrel_exports = true;
       }
-      if (fs.existsSync(path.join(scanPath, "components"))) {
+      if (fs2.existsSync(path3.join(scanPath, "components"))) {
         patterns.architecture.layers.push("components");
       }
-      if (fs.existsSync(path.join(scanPath, "lib"))) {
+      if (fs2.existsSync(path3.join(scanPath, "lib"))) {
         patterns.architecture.layers.push("lib");
       }
-      if (fs.existsSync(path.join(scanPath, "utils"))) {
+      if (fs2.existsSync(path3.join(scanPath, "utils"))) {
         patterns.architecture.layers.push("utils");
       }
-      if (fs.existsSync(path.join(scanPath, "hooks"))) {
+      if (fs2.existsSync(path3.join(scanPath, "hooks"))) {
         patterns.architecture.layers.push("hooks");
       }
-      if (fs.existsSync(path.join(scanPath, "services"))) {
+      if (fs2.existsSync(path3.join(scanPath, "services"))) {
         patterns.architecture.layers.push("services");
       }
-      const projectRoot = path.resolve(scanPath, "..");
-      if (fs.existsSync(path.join(projectRoot, "__tests__"))) {
+      const projectRoot = path3.resolve(scanPath, "..");
+      if (fs2.existsSync(path3.join(projectRoot, "__tests__"))) {
         patterns.testing.location = "__tests__";
-      } else if (fs.existsSync(path.join(projectRoot, "tests"))) {
+      } else if (fs2.existsSync(path3.join(projectRoot, "tests"))) {
         patterns.testing.location = "tests";
       }
-      const pkg = readJsonFile(path.join(projectRoot, "package.json"));
+      const pkg = readJsonFile(path3.join(projectRoot, "package.json"));
       const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
       if (deps?.["vitest"])
         patterns.testing.framework = "vitest";
@@ -25721,13 +25842,13 @@ var GoodVibesServer = class {
    * Simple HTTPS fetch helper
    */
   fetchUrl(url2) {
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       const client = url2.startsWith("https") ? https : http;
       const request = client.get(url2, { timeout: 1e4 }, (response) => {
         if (response.statusCode === 301 || response.statusCode === 302) {
           const redirectUrl = response.headers.location;
           if (redirectUrl) {
-            this.fetchUrl(redirectUrl).then(resolve2).catch(reject);
+            this.fetchUrl(redirectUrl).then(resolve3).catch(reject);
             return;
           }
         }
@@ -25737,7 +25858,7 @@ var GoodVibesServer = class {
         }
         let data = "";
         response.on("data", (chunk) => data += chunk);
-        response.on("end", () => resolve2(data));
+        response.on("end", () => resolve3(data));
         response.on("error", reject);
       });
       request.on("error", reject);
@@ -25812,7 +25933,7 @@ var GoodVibesServer = class {
     return refs;
   }
   handleGetSchema(args) {
-    const projectPath = path.resolve(PROJECT_ROOT, args.path || ".");
+    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
     if (args.source === "prisma") {
       return this.parsePrismaSchema(projectPath, args.tables);
     }
@@ -25828,11 +25949,11 @@ var GoodVibesServer = class {
     throw new Error(`Unknown schema source: ${args.source}. Supported: prisma, drizzle, typeorm, sql`);
   }
   parsePrismaSchema(projectPath, filterTables) {
-    const schemaPath = path.join(projectPath, "prisma", "schema.prisma");
-    if (!fs.existsSync(schemaPath)) {
+    const schemaPath = path3.join(projectPath, "prisma", "schema.prisma");
+    if (!fs2.existsSync(schemaPath)) {
       throw new Error("Prisma schema not found at prisma/schema.prisma");
     }
-    const content = fs.readFileSync(schemaPath, "utf-8");
+    const content = fs2.readFileSync(schemaPath, "utf-8");
     const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
     const tables = [];
     let match;
@@ -25889,14 +26010,14 @@ var GoodVibesServer = class {
   }
   parseDrizzleSchema(projectPath, filterTables) {
     const schemaPaths = [
-      path.join(projectPath, "drizzle", "schema.ts"),
-      path.join(projectPath, "src", "db", "schema.ts"),
-      path.join(projectPath, "src", "schema.ts"),
-      path.join(projectPath, "db", "schema.ts")
+      path3.join(projectPath, "drizzle", "schema.ts"),
+      path3.join(projectPath, "src", "db", "schema.ts"),
+      path3.join(projectPath, "src", "schema.ts"),
+      path3.join(projectPath, "db", "schema.ts")
     ];
     let schemaPath = null;
     for (const p of schemaPaths) {
-      if (fs.existsSync(p)) {
+      if (fs2.existsSync(p)) {
         schemaPath = p;
         break;
       }
@@ -25904,7 +26025,7 @@ var GoodVibesServer = class {
     if (!schemaPath) {
       throw new Error("Drizzle schema not found. Checked: drizzle/schema.ts, src/db/schema.ts, src/schema.ts, db/schema.ts");
     }
-    const content = fs.readFileSync(schemaPath, "utf-8");
+    const content = fs2.readFileSync(schemaPath, "utf-8");
     const tables = [];
     const tableRegex = /export\s+const\s+(\w+)\s*=\s*(?:pgTable|mysqlTable|sqliteTable)\s*\(\s*['"](\w+)['"]\s*,\s*\{([^}]+)\}/g;
     let match;
@@ -25968,14 +26089,14 @@ var GoodVibesServer = class {
   }
   parseTypeORMSchema(projectPath, filterTables) {
     const entityPaths = [
-      path.join(projectPath, "src", "entities"),
-      path.join(projectPath, "src", "entity"),
-      path.join(projectPath, "entities"),
-      path.join(projectPath, "entity")
+      path3.join(projectPath, "src", "entities"),
+      path3.join(projectPath, "src", "entity"),
+      path3.join(projectPath, "entities"),
+      path3.join(projectPath, "entity")
     ];
     let entityDir = null;
     for (const p of entityPaths) {
-      if (fs.existsSync(p)) {
+      if (fs2.existsSync(p)) {
         entityDir = p;
         break;
       }
@@ -25984,9 +26105,9 @@ var GoodVibesServer = class {
       throw new Error("TypeORM entities not found. Checked: src/entities, src/entity, entities, entity");
     }
     const tables = [];
-    const entityFiles = fs.readdirSync(entityDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"));
+    const entityFiles = fs2.readdirSync(entityDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"));
     for (const file2 of entityFiles) {
-      const content = fs.readFileSync(path.join(entityDir, file2), "utf-8");
+      const content = fs2.readFileSync(path3.join(entityDir, file2), "utf-8");
       const entityMatch = content.match(/@Entity\s*\(\s*['"]?(\w+)?['"]?\s*\)/);
       if (!entityMatch)
         continue;
@@ -26038,37 +26159,37 @@ var GoodVibesServer = class {
   }
   parseSQLSchema(projectPath, filterTables) {
     const sqlPaths = [
-      path.join(projectPath, "schema.sql"),
-      path.join(projectPath, "db", "schema.sql"),
-      path.join(projectPath, "sql", "schema.sql"),
-      path.join(projectPath, "database", "schema.sql"),
-      path.join(projectPath, "migrations", "schema.sql")
+      path3.join(projectPath, "schema.sql"),
+      path3.join(projectPath, "db", "schema.sql"),
+      path3.join(projectPath, "sql", "schema.sql"),
+      path3.join(projectPath, "database", "schema.sql"),
+      path3.join(projectPath, "migrations", "schema.sql")
     ];
     let sqlPath = null;
     for (const p of sqlPaths) {
-      if (fs.existsSync(p)) {
+      if (fs2.existsSync(p)) {
         sqlPath = p;
         break;
       }
     }
     if (!sqlPath) {
       const findSql = (dir) => {
-        if (!fs.existsSync(dir))
+        if (!fs2.existsSync(dir))
           return null;
-        const files = fs.readdirSync(dir);
+        const files = fs2.readdirSync(dir);
         for (const f of files) {
           if (f.endsWith(".sql") && !f.includes("migration")) {
-            return path.join(dir, f);
+            return path3.join(dir, f);
           }
         }
         return null;
       };
-      sqlPath = findSql(projectPath) || findSql(path.join(projectPath, "db")) || findSql(path.join(projectPath, "sql"));
+      sqlPath = findSql(projectPath) || findSql(path3.join(projectPath, "db")) || findSql(path3.join(projectPath, "sql"));
     }
     if (!sqlPath) {
       throw new Error("SQL schema not found. Checked: schema.sql, db/schema.sql, sql/schema.sql, database/schema.sql");
     }
-    const content = fs.readFileSync(sqlPath, "utf-8");
+    const content = fs2.readFileSync(sqlPath, "utf-8");
     const tables = [];
     const tableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?(\w+)[`"']?\s*\(([^;]+)\)/gi;
     let match;
@@ -26123,7 +26244,7 @@ var GoodVibesServer = class {
     };
   }
   handleReadConfig(args) {
-    const projectPath = path.resolve(PROJECT_ROOT, args.path || ".");
+    const projectPath = path3.resolve(PROJECT_ROOT, args.path || ".");
     const configPaths = {
       "package.json": ["package.json"],
       "tsconfig": ["tsconfig.json"],
@@ -26137,9 +26258,9 @@ var GoodVibesServer = class {
     };
     const filesToTry = args.config === "custom" && args.path ? [args.path] : configPaths[args.config] || [args.config];
     for (const file2 of filesToTry) {
-      const filePath = path.join(projectPath, file2);
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, "utf-8");
+      const filePath = path3.join(projectPath, file2);
+      if (fs2.existsSync(filePath)) {
+        const content = fs2.readFileSync(filePath, "utf-8");
         let parsed = null;
         try {
           if (file2.endsWith(".json")) {
@@ -26176,8 +26297,8 @@ var GoodVibesServer = class {
       skillPatterns = this.extractSkillPatterns(args.skill);
     }
     for (const file2 of args.files) {
-      const filePath = path.resolve(PROJECT_ROOT, file2);
-      if (!fs.existsSync(filePath)) {
+      const filePath = path3.resolve(PROJECT_ROOT, file2);
+      if (!fs2.existsSync(filePath)) {
         issues.push({
           severity: "error",
           file: file2,
@@ -26188,9 +26309,9 @@ var GoodVibesServer = class {
         });
         continue;
       }
-      const content = fs.readFileSync(filePath, "utf-8");
+      const content = fs2.readFileSync(filePath, "utf-8");
       const lines = content.split("\n");
-      const ext = path.extname(file2);
+      const ext = path3.extname(file2);
       const isTypeScript = ext === ".ts" || ext === ".tsx";
       const isReact = ext === ".tsx" || ext === ".jsx" || content.includes("import React") || content.includes("from 'react'");
       if (runAll || checks.includes("security")) {
@@ -26269,7 +26390,7 @@ var GoodVibesServer = class {
           });
         }
         if (isReact) {
-          const componentName = path.basename(file2, ext);
+          const componentName = path3.basename(file2, ext);
           const pascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(componentName);
           if (!pascalCase && !file2.includes("index") && !file2.includes("use")) {
             issues.push({
@@ -26586,14 +26707,14 @@ var GoodVibesServer = class {
   extractSkillPatterns(skillPath) {
     const patterns = {};
     const attempts = [
-      path.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
-      path.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
-      path.join(PLUGIN_ROOT, "skills", skillPath)
+      path3.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
+      path3.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
+      path3.join(PLUGIN_ROOT, "skills", skillPath)
     ];
     for (const filePath of attempts) {
-      if (fs.existsSync(filePath)) {
+      if (fs2.existsSync(filePath)) {
         try {
-          const content = fs.readFileSync(filePath, "utf-8");
+          const content = fs2.readFileSync(filePath, "utf-8");
           const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
           if (importsMatch) {
             patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(
@@ -26726,12 +26847,12 @@ var GoodVibesServer = class {
   }
   // ============ Scaffolding Handlers ============
   async handleScaffoldProject(args) {
-    const templatePath = path.join(PLUGIN_ROOT, "templates");
+    const templatePath = path3.join(PLUGIN_ROOT, "templates");
     const templateDirs = ["minimal", "full"];
     let templateDir = null;
     for (const category of templateDirs) {
-      const candidatePath = path.join(templatePath, category, args.template);
-      if (fs.existsSync(candidatePath)) {
+      const candidatePath = path3.join(templatePath, category, args.template);
+      if (fs2.existsSync(candidatePath)) {
         templateDir = candidatePath;
         break;
       }
@@ -26739,11 +26860,11 @@ var GoodVibesServer = class {
     if (!templateDir) {
       throw new Error(`Template not found: ${args.template}`);
     }
-    const templateYamlPath = path.join(templateDir, "template.yaml");
-    if (!fs.existsSync(templateYamlPath)) {
+    const templateYamlPath = path3.join(templateDir, "template.yaml");
+    if (!fs2.existsSync(templateYamlPath)) {
       throw new Error(`Template config not found: ${args.template}/template.yaml`);
     }
-    const templateConfig = load(fs.readFileSync(templateYamlPath, "utf-8"));
+    const templateConfig = load(fs2.readFileSync(templateYamlPath, "utf-8"));
     const variables = {};
     if (templateConfig.variables) {
       for (const v of templateConfig.variables) {
@@ -26751,36 +26872,36 @@ var GoodVibesServer = class {
       }
     }
     Object.assign(variables, args.variables || {});
-    const outputPath = path.resolve(PROJECT_ROOT, args.output_dir);
-    if (!fs.existsSync(outputPath)) {
-      fs.mkdirSync(outputPath, { recursive: true });
+    const outputPath = path3.resolve(PROJECT_ROOT, args.output_dir);
+    if (!fs2.existsSync(outputPath)) {
+      fs2.mkdirSync(outputPath, { recursive: true });
     }
-    const filesDir = path.join(templateDir, "files");
+    const filesDir = path3.join(templateDir, "files");
     const createdFiles = [];
     function copyFilesRecursive(src, dest) {
-      const entries = fs.readdirSync(src, { withFileTypes: true });
+      const entries = fs2.readdirSync(src, { withFileTypes: true });
       for (const entry of entries) {
-        const srcPath = path.join(src, entry.name);
+        const srcPath = path3.join(src, entry.name);
         let destName = entry.name;
         if (destName.endsWith(".hbs")) {
           destName = destName.slice(0, -4);
         }
-        const destPath = path.join(dest, destName);
+        const destPath = path3.join(dest, destName);
         if (entry.isDirectory()) {
-          fs.mkdirSync(destPath, { recursive: true });
+          fs2.mkdirSync(destPath, { recursive: true });
           copyFilesRecursive(srcPath, destPath);
         } else {
-          let content = fs.readFileSync(srcPath, "utf-8");
+          let content = fs2.readFileSync(srcPath, "utf-8");
           for (const [key, value] of Object.entries(variables)) {
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
             content = content.replace(regex, value);
           }
-          fs.writeFileSync(destPath, content);
-          createdFiles.push(path.relative(outputPath, destPath));
+          fs2.writeFileSync(destPath, content);
+          createdFiles.push(path3.relative(outputPath, destPath));
         }
       }
     }
-    if (fs.existsSync(filesDir)) {
+    if (fs2.existsSync(filesDir)) {
       copyFilesRecursive(filesDir, outputPath);
     }
     const postCreateResults = [];
@@ -26828,12 +26949,12 @@ var GoodVibesServer = class {
     };
   }
   handleListTemplates(args) {
-    const templatePath = path.join(PLUGIN_ROOT, "templates");
-    const registryPath = path.join(templatePath, "_registry.yaml");
-    if (!fs.existsSync(registryPath)) {
+    const templatePath = path3.join(PLUGIN_ROOT, "templates");
+    const registryPath = path3.join(templatePath, "_registry.yaml");
+    if (!fs2.existsSync(registryPath)) {
       throw new Error("Template registry not found");
     }
-    const registry2 = load(fs.readFileSync(registryPath, "utf-8"));
+    const registry2 = load(fs2.readFileSync(registryPath, "utf-8"));
     let templates = registry2.templates || [];
     if (args.category) {
       templates = templates.filter((t) => t.category === args.category);
@@ -26850,116 +26971,13 @@ var GoodVibesServer = class {
     };
   }
   /**
-   * Check plugin health status
-   */
-  handlePluginStatus() {
-    const status = {
-      version: "1.0.0",
-      status: "healthy",
-      issues: [],
-      manifest: { exists: false, valid: false },
-      registries: {
-        agents: { exists: false, count: 0 },
-        skills: { exists: false, count: 0 },
-        tools: { exists: false, count: 0 }
-      },
-      hooks: {
-        config_exists: false,
-        config_valid: false,
-        events: []
-      },
-      mcp_server: { running: true }
-      // We're running, so true
-    };
-    const manifestPath = path.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
-    if (fs.existsSync(manifestPath)) {
-      status.manifest.exists = true;
-      try {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-        status.manifest.valid = true;
-        status.manifest.version = manifest.version;
-        status.version = manifest.version || "1.0.0";
-      } catch {
-        status.issues.push("Manifest exists but is invalid JSON");
-      }
-    } else {
-      status.issues.push("Plugin manifest not found");
-    }
-    const registryChecks = [
-      { key: "agents", path: "agents/_registry.yaml" },
-      { key: "skills", path: "skills/_registry.yaml" },
-      { key: "tools", path: "tools/_registry.yaml" }
-    ];
-    for (const check2 of registryChecks) {
-      const regPath = path.join(PLUGIN_ROOT, check2.path);
-      if (fs.existsSync(regPath)) {
-        status.registries[check2.key].exists = true;
-        try {
-          const reg = load(fs.readFileSync(regPath, "utf-8"));
-          status.registries[check2.key].count = reg?.search_index?.length || 0;
-        } catch {
-          status.issues.push(`${check2.key} registry exists but is invalid`);
-        }
-      } else {
-        status.issues.push(`${check2.key} registry not found`);
-      }
-    }
-    const hooksPath = path.join(PLUGIN_ROOT, "hooks", "hooks.json");
-    if (fs.existsSync(hooksPath)) {
-      status.hooks.config_exists = true;
-      try {
-        const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, "utf-8"));
-        status.hooks.config_valid = true;
-        const hookEvents = Object.keys(hooksConfig.hooks || {});
-        const scriptMap = {
-          SessionStart: "session-start.js",
-          PreToolUse: "pre-tool-use.js",
-          PostToolUse: "post-tool-use.js",
-          PostToolUseFailure: "post-tool-use-failure.js",
-          PermissionRequest: "permission-request.js",
-          UserPromptSubmit: "user-prompt-submit.js",
-          Stop: "stop.js",
-          SubagentStart: "subagent-start.js",
-          SubagentStop: "subagent-stop.js",
-          PreCompact: "pre-compact.js",
-          SessionEnd: "session-end.js",
-          Notification: "notification.js"
-        };
-        for (const event of hookEvents) {
-          const scriptName = scriptMap[event] || `${event.toLowerCase()}.js`;
-          const scriptPath = path.join(PLUGIN_ROOT, "hooks", "scripts", "dist", scriptName);
-          const exists = fs.existsSync(scriptPath);
-          status.hooks.events.push({ name: event, script: scriptName, exists });
-          if (!exists) {
-            status.issues.push(`Hook script missing: ${scriptName}`);
-          }
-        }
-      } catch {
-        status.issues.push("Hooks config exists but is invalid JSON");
-      }
-    } else {
-      status.issues.push("Hooks config not found");
-    }
-    if (status.issues.length > 3) {
-      status.status = "error";
-    } else if (status.issues.length > 0) {
-      status.status = "degraded";
-    }
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(status, null, 2)
-      }]
-    };
-  }
-  /**
    * Start the server
    */
   async run() {
     this.initializeIndexes();
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error("GoodVibes MCP Server v2.1.0 running with 17 tools");
+    console.error(`GoodVibes MCP Server v2.1.0 running with ${TOOL_SCHEMAS.length} tools`);
   }
 };
 var server = new GoodVibesServer();
