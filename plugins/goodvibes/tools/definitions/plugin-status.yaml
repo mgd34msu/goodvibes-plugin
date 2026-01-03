@@ -1,0 +1,96 @@
+name: plugin_status
+version: "1.0.0"
+description: |
+  Check GoodVibes plugin health status.
+  Verifies manifest, registries, hooks config, and script files.
+  Returns issues and overall health status.
+
+mcp:
+  server: goodvibes-tools
+  method: plugin_status
+  defer_loading: false
+
+input_schema:
+  type: object
+  properties: {}
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    version:
+      type: string
+      description: "Plugin version from manifest"
+    status:
+      type: string
+      enum: ["healthy", "degraded", "error"]
+      description: "Overall health status"
+    issues:
+      type: array
+      items: { type: string }
+      description: "List of detected issues"
+    manifest:
+      type: object
+      properties:
+        exists: { type: boolean }
+        valid: { type: boolean }
+        version: { type: string }
+    registries:
+      type: object
+      properties:
+        agents:
+          type: object
+          properties:
+            exists: { type: boolean }
+            count: { type: integer }
+        skills:
+          type: object
+          properties:
+            exists: { type: boolean }
+            count: { type: integer }
+        tools:
+          type: object
+          properties:
+            exists: { type: boolean }
+            count: { type: integer }
+    hooks:
+      type: object
+      properties:
+        config_exists: { type: boolean }
+        config_valid: { type: boolean }
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              script: { type: string }
+              exists: { type: boolean }
+    mcp_server:
+      type: object
+      properties:
+        running: { type: boolean }
+
+examples:
+  - description: "Healthy plugin status"
+    input: {}
+    output:
+      version: "1.0.0"
+      status: "healthy"
+      issues: []
+      manifest:
+        exists: true
+        valid: true
+        version: "1.0.0"
+      registries:
+        agents: { exists: true, count: 8 }
+        skills: { exists: true, count: 150 }
+        tools: { exists: true, count: 18 }
+      hooks:
+        config_exists: true
+        config_valid: true
+        events:
+          - { name: "SessionStart", script: "session-start.js", exists: true }
+          - { name: "PreToolUse", script: "pre-tool-use.js", exists: true }
+      mcp_server:
+        running: true
