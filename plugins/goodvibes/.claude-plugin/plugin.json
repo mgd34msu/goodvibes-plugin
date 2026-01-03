@@ -22,7 +22,6 @@
     "./agents/webdev/test-engineer.md"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "lspServers": "./.lsp.json"
 }
