@@ -25,7 +25,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "mcp__goodvibes-tools__detect_stack",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__detect_stack",
         "hooks": [
           {
             "type": "command",
@@ -35,7 +35,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__get_schema",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__get_schema",
         "hooks": [
           {
             "type": "command",
@@ -45,7 +45,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__run_smoke_test",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__run_smoke_test",
         "hooks": [
           {
             "type": "command",
@@ -55,7 +55,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__check_types",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__check_types",
         "hooks": [
           {
             "type": "command",
@@ -65,7 +65,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__validate_implementation",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__validate_implementation",
         "hooks": [
           {
             "type": "command",
@@ -77,7 +77,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "mcp__goodvibes-tools__detect_stack",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__detect_stack",
         "hooks": [
           {
             "type": "command",
@@ -87,7 +87,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__recommend_skills",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__recommend_skills",
         "hooks": [
           {
             "type": "command",
@@ -97,7 +97,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__search_*",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__search_*",
         "hooks": [
           {
             "type": "command",
@@ -107,7 +107,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__validate_implementation",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__validate_implementation",
         "hooks": [
           {
             "type": "command",
@@ -117,7 +117,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__run_smoke_test",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__run_smoke_test",
         "hooks": [
           {
             "type": "command",
@@ -127,7 +127,7 @@
         ]
       },
       {
-        "matcher": "mcp__goodvibes-tools__check_types",
+        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__check_types",
         "hooks": [
           {
             "type": "command",
