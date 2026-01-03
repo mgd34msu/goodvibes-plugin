@@ -24,6 +24,7 @@ Display the current status of the GoodVibes plugin including:
    - `skills/_registry.yaml`
    - `tools/_registry.yaml`
 3. Check if MCP server files exist in `tools/implementations/tool-search-server/`
+4. Read `hooks/hooks.json` to list active hooks
 
 Present a status report:
 
@@ -40,6 +41,20 @@ Resources:
 
 MCP Server: [Installed/Not Installed]
 Registries: [Up to date/Needs rebuild]
+
+Hooks: Active
+  - SessionStart (startup/resume)
+  - PreToolUse (MCP tools)
+  - PostToolUse (MCP tools)
+  - PostToolUseFailure (MCP tools)
+  - PermissionRequest (MCP tools)
+  - UserPromptSubmit
+  - Stop
+  - SubagentStart
+  - SubagentStop
+  - PreCompact (auto/manual)
+  - SessionEnd
+  - Notification
 ```
 
 If registries appear empty but content exists, suggest running the registry builder.
