@@ -5,12 +5,27 @@ export declare const PLUGIN_ROOT: string;
 export declare const PROJECT_ROOT: string;
 export declare const CACHE_DIR: string;
 export declare const ANALYTICS_FILE: string;
+export interface HookInput {
+    session_id: string;
+    transcript_path: string;
+    cwd: string;
+    permission_mode: string;
+    hook_event_name: string;
+    tool_name?: string;
+    tool_input?: Record<string, unknown>;
+}
+export interface HookSpecificOutput {
+    hookEventName: string;
+    permissionDecision?: 'allow' | 'deny' | 'ask';
+    permissionDecisionReason?: string;
+    updatedInput?: Record<string, unknown>;
+}
 export interface HookResponse {
-    decision?: 'allow' | 'block';
-    reason?: string;
     continue?: boolean;
-    systemMessage?: string;
+    stopReason?: string;
     suppressOutput?: boolean;
+    systemMessage?: string;
+    hookSpecificOutput?: HookSpecificOutput;
 }
 export interface ToolUsage {
     tool: string;
@@ -29,9 +44,30 @@ export interface SessionAnalytics {
     issues_found: number;
 }
 /**
- * Output hook response as JSON
+ * Read hook input from stdin
  */
-export declare function respond(response: HookResponse): void;
+export declare function readHookInput(): Promise<HookInput>;
+/**
+ * Create a response that allows the tool to proceed
+ */
+export declare function allowTool(hookEventName: string, systemMessage?: string): HookResponse;
+/**
+ * Create a response that blocks the tool
+ */
+export declare function blockTool(hookEventName: string, reason: string): HookResponse;
+/**
+ * Log debug message to stderr (visible in Claude Code logs but won't affect hook response)
+ */
+export declare function debug(message: string, data?: unknown): void;
+/**
+ * Log error to stderr with full stack trace
+ */
+export declare function logError(context: string, error: unknown): void;
+/**
+ * Output hook response as JSON and exit with appropriate code
+ * Exit 0 = success, Exit 2 = blocking error
+ */
+export declare function respond(response: HookResponse, block?: boolean): void;
 /**
  * Ensure cache directory exists
  */

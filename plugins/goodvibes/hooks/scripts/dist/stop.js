@@ -8,10 +8,21 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadAnalytics, saveAnalytics, CACHE_DIR, } from './shared.js';
-function main() {
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, } from './shared.js';
+function createResponse(systemMessage) {
+    return {
+        continue: true,
+        systemMessage,
+    };
+}
+async function main() {
     try {
+        debug('Stop hook starting');
+        // Read hook input from stdin
+        const input = await readHookInput();
+        debug('Stop hook received input', { session_id: input.session_id });
         const analytics = loadAnalytics();
+        debug('Loaded analytics', { has_analytics: !!analytics, session_id: analytics?.session_id });
         if (analytics) {
             // Finalize analytics
             analytics.ended_at = new Date().toISOString();
@@ -32,8 +43,11 @@ function main() {
                 validations_run: analytics.validations_run,
                 issues_found: analytics.issues_found,
             }, null, 2));
-            // Log summary to stderr (won't affect hook response)
-            console.error(`GoodVibes session ended. Duration: ${durationMinutes}m, Tools: ${analytics.tool_usage.length}, Issues: ${analytics.issues_found}`);
+            debug(`Session summary saved to ${summaryFile}`, {
+                duration_minutes: durationMinutes,
+                tools_used: analytics.tool_usage.length,
+                issues_found: analytics.issues_found,
+            });
         }
         // Clean up temporary files (but keep analytics)
         const tempFiles = ['detected-stack.json'];
@@ -41,12 +55,15 @@ function main() {
             const filePath = path.join(CACHE_DIR, file);
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
+                debug(`Cleaned up temp file: ${file}`);
             }
         }
+        // Respond with success
+        respond(createResponse());
     }
     catch (error) {
-        // Silent cleanup - don't disrupt session end
-        console.error('GoodVibes cleanup warning:', error);
+        logError('Stop main', error);
+        respond(createResponse(`Cleanup error: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
 main();

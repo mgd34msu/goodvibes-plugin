@@ -10,7 +10,7 @@ Load the complete content of a skill by name or path.
 ## Usage
 
 ```
-/load-skill <skill-name-or-path>
+/goodvibes:load-skill <skill-name-or-path>
 ```
 
 ## Instructions

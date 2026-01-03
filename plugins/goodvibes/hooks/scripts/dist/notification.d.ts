@@ -6,4 +6,4 @@
  * - Test failures
  * - Build errors
  */
-declare function main(): void;
+export {};

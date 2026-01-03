@@ -9,29 +9,26 @@
  * - validate_implementation: Check files exist
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
 import {
   respond,
+  readHookInput,
+  allowTool,
+  blockTool,
   fileExists,
-  commandExists,
-  PROJECT_ROOT,
+  debug,
+  logError,
+  HookInput,
 } from './shared.js';
 
-const toolName = process.argv[2];
-
-function validateDetectStack(): void {
+function validateDetectStack(input: HookInput): void {
   if (!fileExists('package.json')) {
-    respond({
-      decision: 'block',
-      reason: 'No package.json found in project root. Cannot detect stack.',
-    });
+    respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
     return;
   }
-  respond({ decision: 'allow' });
+  respond(allowTool('PreToolUse'));
 }
 
-function validateGetSchema(): void {
+function validateGetSchema(input: HookInput): void {
   // Check for common schema files
   const schemaFiles = [
     'prisma/schema.prisma',
@@ -42,22 +39,17 @@ function validateGetSchema(): void {
   const found = schemaFiles.some(f => fileExists(f));
 
   if (!found) {
-    respond({
-      decision: 'allow', // Allow but warn
-      systemMessage: 'No schema file detected. get_schema may fail.',
-    });
+    // Allow but warn
+    respond(allowTool('PreToolUse', 'No schema file detected. get_schema may fail.'));
     return;
   }
-  respond({ decision: 'allow' });
+  respond(allowTool('PreToolUse'));
 }
 
-function validateRunSmokeTest(): void {
+function validateRunSmokeTest(input: HookInput): void {
   // Check if package.json exists
   if (!fileExists('package.json')) {
-    respond({
-      decision: 'block',
-      reason: 'No package.json found. Cannot run smoke tests.',
-    });
+    respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
     return;
   }
 
@@ -67,59 +59,61 @@ function validateRunSmokeTest(): void {
   const hasNpm = fileExists('package-lock.json');
 
   if (!hasPnpm && !hasYarn && !hasNpm) {
-    respond({
-      decision: 'allow',
-      systemMessage: 'No lockfile detected. Install dependencies first.',
-    });
+    respond(allowTool('PreToolUse', 'No lockfile detected. Install dependencies first.'));
     return;
   }
 
-  respond({ decision: 'allow' });
+  respond(allowTool('PreToolUse'));
 }
 
-function validateCheckTypes(): void {
+function validateCheckTypes(input: HookInput): void {
   // Check for TypeScript config
   if (!fileExists('tsconfig.json')) {
-    respond({
-      decision: 'block',
-      reason: 'No tsconfig.json found. TypeScript not configured.',
-    });
+    respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
     return;
   }
 
-  respond({ decision: 'allow' });
+  respond(allowTool('PreToolUse'));
 }
 
-function validateImplementation(): void {
-  // Read tool input from stdin if available
-  // For now, just allow and let the tool handle validation
-  respond({ decision: 'allow' });
+function validateImplementation(input: HookInput): void {
+  // Just allow and let the tool handle validation
+  respond(allowTool('PreToolUse'));
 }
 
-function main(): void {
+async function main(): Promise<void> {
   try {
+    const input = await readHookInput();
+    debug('PreToolUse hook received input', { tool_name: input.tool_name, cwd: input.cwd });
+
+    // Extract tool name from the full MCP tool name (e.g., "mcp__goodvibes-tools__detect_stack")
+    const toolName = input.tool_name?.split('__').pop() || '';
+    debug(`Extracted tool name: ${toolName}`);
+
     switch (toolName) {
       case 'detect_stack':
-        validateDetectStack();
+        validateDetectStack(input);
         break;
       case 'get_schema':
-        validateGetSchema();
+        validateGetSchema(input);
         break;
       case 'run_smoke_test':
-        validateRunSmokeTest();
+        validateRunSmokeTest(input);
         break;
       case 'check_types':
-        validateCheckTypes();
+        validateCheckTypes(input);
         break;
       case 'validate_implementation':
-        validateImplementation();
+        validateImplementation(input);
         break;
       default:
-        respond({ decision: 'allow' });
+        debug(`Unknown tool '${toolName}', allowing by default`);
+        respond(allowTool('PreToolUse'));
     }
   } catch (error) {
-    // On error, allow the tool to proceed
-    respond({ decision: 'allow' });
+    logError('PreToolUse main', error);
+    // On error, allow the tool to proceed but log the issue
+    respond(allowTool('PreToolUse', `Hook error: ${error instanceof Error ? error.message : String(error)}`));
   }
 }
 

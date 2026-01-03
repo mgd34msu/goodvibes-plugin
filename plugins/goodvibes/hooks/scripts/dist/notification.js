@@ -1,4 +1,3 @@
-"use strict";
 /**
  * Notification Hook (GoodVibes)
  *
@@ -7,30 +6,28 @@
  * - Test failures
  * - Build errors
  */
-function main() {
-    // Read notification from stdin
-    let input = '';
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (chunk) => {
-        input += chunk;
-    });
-    process.stdin.on('end', () => {
-        try {
-            if (input) {
-                const notification = JSON.parse(input);
-                // Log notification for debugging
-                console.error('GoodVibes notification:', notification.type || 'unknown');
-                // Could send to external service, log file, etc.
-                // For now, just acknowledge
-            }
-        }
-        catch {
-            // Ignore parse errors
-        }
-    });
-    // For non-piped input, exit immediately
-    if (process.stdin.isTTY) {
-        process.exit(0);
+import { respond, readHookInput, debug, logError, } from './shared.js';
+function createResponse(systemMessage) {
+    return {
+        continue: true,
+        systemMessage,
+    };
+}
+async function main() {
+    try {
+        debug('Notification hook starting');
+        const input = await readHookInput();
+        debug('Notification received', {
+            hook_event_name: input.hook_event_name,
+            tool_name: input.tool_name,
+        });
+        // Could send to external service, log file, etc.
+        // For now, just acknowledge
+        respond(createResponse());
+    }
+    catch (error) {
+        logError('Notification main', error);
+        respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
 main();

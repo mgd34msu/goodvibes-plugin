@@ -7,34 +7,38 @@
  * - Build errors
  */
 
-function main(): void {
-  // Read notification from stdin
-  let input = '';
+import {
+  respond,
+  readHookInput,
+  debug,
+  logError,
+  HookResponse,
+} from './shared.js';
 
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk) => {
-    input += chunk;
-  });
+function createResponse(systemMessage?: string): HookResponse {
+  return {
+    continue: true,
+    systemMessage,
+  };
+}
 
-  process.stdin.on('end', () => {
-    try {
-      if (input) {
-        const notification = JSON.parse(input);
+async function main(): Promise<void> {
+  try {
+    debug('Notification hook starting');
 
-        // Log notification for debugging
-        console.error('GoodVibes notification:', notification.type || 'unknown');
+    const input = await readHookInput();
+    debug('Notification received', {
+      hook_event_name: input.hook_event_name,
+      tool_name: input.tool_name,
+    });
 
-        // Could send to external service, log file, etc.
-        // For now, just acknowledge
-      }
-    } catch {
-      // Ignore parse errors
-    }
-  });
+    // Could send to external service, log file, etc.
+    // For now, just acknowledge
+    respond(createResponse());
 
-  // For non-piped input, exit immediately
-  if (process.stdin.isTTY) {
-    process.exit(0);
+  } catch (error) {
+    logError('Notification main', error);
+    respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
   }
 }
 

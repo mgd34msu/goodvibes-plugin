@@ -10,39 +10,22 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { respond, loadAnalytics, saveAnalytics, logToolUsage, ensureCacheDir, CACHE_DIR, } from './shared.js';
-const toolName = process.argv[2];
-// Read tool result from stdin
-let toolResult = '';
-process.stdin.setEncoding('utf8');
-async function readStdin() {
-    return new Promise((resolve) => {
-        let data = '';
-        // Set a short timeout for stdin
-        const timeout = setTimeout(() => {
-            resolve(data);
-        }, 100);
-        process.stdin.on('data', (chunk) => {
-            data += chunk;
-        });
-        process.stdin.on('end', () => {
-            clearTimeout(timeout);
-            resolve(data);
-        });
-        // If stdin is not being piped, resolve immediately
-        if (process.stdin.isTTY) {
-            clearTimeout(timeout);
-            resolve('');
-        }
-    });
+import { respond, readHookInput, loadAnalytics, saveAnalytics, logToolUsage, ensureCacheDir, debug, logError, CACHE_DIR, } from './shared.js';
+function createResponse(systemMessage) {
+    return {
+        continue: true,
+        systemMessage,
+    };
 }
-function handleDetectStack(result) {
+function handleDetectStack(input) {
     try {
-        // Cache the stack detection result
+        debug('handleDetectStack called', { has_tool_input: !!input.tool_input });
+        // Cache the stack detection result from tool_input
         ensureCacheDir();
         const cacheFile = path.join(CACHE_DIR, 'detected-stack.json');
-        if (result) {
-            fs.writeFileSync(cacheFile, result);
+        if (input.tool_input) {
+            fs.writeFileSync(cacheFile, JSON.stringify(input.tool_input, null, 2));
+            debug(`Cached stack detection to ${cacheFile}`);
         }
         // Log usage
         logToolUsage({
@@ -50,30 +33,25 @@ function handleDetectStack(result) {
             timestamp: new Date().toISOString(),
             success: true,
         });
-        respond({
-            continue: true,
-            systemMessage: 'Stack detected. Consider using recommend_skills for relevant skill suggestions.',
-        });
+        respond(createResponse('Stack detected. Consider using recommend_skills for relevant skill suggestions.'));
     }
-    catch {
-        respond({ continue: true });
+    catch (error) {
+        logError('handleDetectStack', error);
+        respond(createResponse(`Error caching stack: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
-function handleRecommendSkills(result) {
+function handleRecommendSkills(input) {
     try {
         const analytics = loadAnalytics();
-        if (analytics && result) {
-            // Try to parse and track recommended skills
-            try {
-                const parsed = JSON.parse(result);
-                if (parsed.recommendations) {
-                    const skillPaths = parsed.recommendations.map((r) => r.path);
-                    analytics.skills_recommended.push(...skillPaths);
-                    saveAnalytics(analytics);
-                }
-            }
-            catch {
-                // Ignore parse errors
+        if (analytics && input.tool_input) {
+            // Track recommended skills from tool input
+            const toolInput = input.tool_input;
+            if (toolInput.recommendations && Array.isArray(toolInput.recommendations)) {
+                const skillPaths = toolInput.recommendations
+                    .filter((r) => typeof r === 'object' && r !== null && 'path' in r && typeof r.path === 'string')
+                    .map((r) => r.path);
+                analytics.skills_recommended.push(...skillPaths);
+                saveAnalytics(analytics);
             }
         }
         logToolUsage({
@@ -81,36 +59,30 @@ function handleRecommendSkills(result) {
             timestamp: new Date().toISOString(),
             success: true,
         });
-        respond({ continue: true });
+        respond(createResponse());
     }
     catch {
-        respond({ continue: true });
+        respond(createResponse());
     }
 }
-function handleSearch(result) {
+function handleSearch(input) {
     logToolUsage({
         tool: 'search',
         timestamp: new Date().toISOString(),
         success: true,
     });
-    respond({ continue: true });
+    respond(createResponse());
 }
-function handleValidateImplementation(result) {
+function handleValidateImplementation(input) {
     try {
         const analytics = loadAnalytics();
         if (analytics) {
             analytics.validations_run += 1;
-            // Try to count issues
-            if (result) {
-                try {
-                    const parsed = JSON.parse(result);
-                    if (parsed.summary) {
-                        analytics.issues_found += (parsed.summary.errors || 0) + (parsed.summary.warnings || 0);
-                    }
-                }
-                catch {
-                    // Ignore parse errors
-                }
+            // Try to count issues from tool input
+            const toolInput = input.tool_input;
+            if (toolInput?.summary) {
+                const summary = toolInput.summary;
+                analytics.issues_found += (summary.errors || 0) + (summary.warnings || 0);
             }
             saveAnalytics(analytics);
         }
@@ -119,13 +91,13 @@ function handleValidateImplementation(result) {
             timestamp: new Date().toISOString(),
             success: true,
         });
-        respond({ continue: true });
+        respond(createResponse());
     }
     catch {
-        respond({ continue: true });
+        respond(createResponse());
     }
 }
-function handleRunSmokeTest(result) {
+function handleRunSmokeTest(input) {
     try {
         logToolUsage({
             tool: 'run_smoke_test',
@@ -133,29 +105,20 @@ function handleRunSmokeTest(result) {
             success: true,
         });
         // Check if tests failed and add system message
-        if (result) {
-            try {
-                const parsed = JSON.parse(result);
-                if (parsed.passed === false) {
-                    const failed = parsed.summary?.failed || 0;
-                    respond({
-                        continue: true,
-                        systemMessage: `Smoke test: ${failed} check(s) failed. Review output for details.`,
-                    });
-                    return;
-                }
-            }
-            catch {
-                // Ignore parse errors
-            }
+        const toolInput = input.tool_input;
+        if (toolInput?.passed === false) {
+            const summary = toolInput.summary;
+            const failed = summary?.failed || 0;
+            respond(createResponse(`Smoke test: ${failed} check(s) failed. Review output for details.`));
+            return;
         }
-        respond({ continue: true });
+        respond(createResponse());
     }
     catch {
-        respond({ continue: true });
+        respond(createResponse());
     }
 }
-function handleCheckTypes(result) {
+function handleCheckTypes(input) {
     try {
         const analytics = loadAnalytics();
         logToolUsage({
@@ -164,58 +127,55 @@ function handleCheckTypes(result) {
             success: true,
         });
         // Check for type errors
-        if (result && analytics) {
-            try {
-                const parsed = JSON.parse(result);
-                if (parsed.errors?.length > 0) {
-                    analytics.issues_found += parsed.errors.length;
-                    saveAnalytics(analytics);
-                    respond({
-                        continue: true,
-                        systemMessage: `TypeScript: ${parsed.errors.length} type error(s) found.`,
-                    });
-                    return;
-                }
-            }
-            catch {
-                // Ignore parse errors
-            }
+        const toolInput = input.tool_input;
+        if (toolInput?.errors && Array.isArray(toolInput.errors) && analytics) {
+            analytics.issues_found += toolInput.errors.length;
+            saveAnalytics(analytics);
+            respond(createResponse(`TypeScript: ${toolInput.errors.length} type error(s) found.`));
+            return;
         }
-        respond({ continue: true });
+        respond(createResponse());
     }
     catch {
-        respond({ continue: true });
+        respond(createResponse());
     }
 }
 async function main() {
     try {
-        // Read stdin for tool result
-        toolResult = await readStdin();
+        const input = await readHookInput();
+        debug('PostToolUse hook received input', { tool_name: input.tool_name });
+        // Extract tool name from the full MCP tool name (e.g., "mcp__goodvibes-tools__detect_stack")
+        const toolName = input.tool_name?.split('__').pop() || '';
+        debug(`Extracted tool name: ${toolName}`);
         switch (toolName) {
             case 'detect_stack':
-                handleDetectStack(toolResult);
+                handleDetectStack(input);
                 break;
             case 'recommend_skills':
-                handleRecommendSkills(toolResult);
+                handleRecommendSkills(input);
                 break;
-            case 'search':
-                handleSearch(toolResult);
+            case 'search_skills':
+            case 'search_agents':
+            case 'search_tools':
+                handleSearch(input);
                 break;
             case 'validate_implementation':
-                handleValidateImplementation(toolResult);
+                handleValidateImplementation(input);
                 break;
             case 'run_smoke_test':
-                handleRunSmokeTest(toolResult);
+                handleRunSmokeTest(input);
                 break;
             case 'check_types':
-                handleCheckTypes(toolResult);
+                handleCheckTypes(input);
                 break;
             default:
-                respond({ continue: true });
+                debug(`Unknown tool '${toolName}', continuing`);
+                respond(createResponse());
         }
     }
     catch (error) {
-        respond({ continue: true });
+        logError('PostToolUse main', error);
+        respond(createResponse(`Hook error: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
 main();
