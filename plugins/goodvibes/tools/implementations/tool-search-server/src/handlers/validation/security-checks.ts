@@ -58,10 +58,20 @@ export function runSecurityChecks(ctx: ValidationContext): ValidationIssue[] {
     }
   });
 
-  // SQL injection risk
-  if (ctx.content.includes('query(') || ctx.content.includes('execute(')) {
+  // SQL injection risk - check query(), execute(), and raw() methods
+  const sqlMethods = ['query', 'execute', 'raw', 'sql'];
+  const hasSqlMethod = sqlMethods.some(m => ctx.content.includes(`${m}(`));
+
+  if (hasSqlMethod) {
     ctx.lines.forEach((line, i) => {
-      if (/query\s*\(\s*[`'"].*\$\{/.test(line) || /query\s*\(\s*.*\+/.test(line)) {
+      // Check for template literals with interpolation: query(`...${var}...`)
+      const templateLiteralPattern = /(?:query|execute|raw|sql)\s*\(\s*`[^`]*\$\{/;
+      // Check for string concatenation: query("..." + var) or query(var + "...")
+      const concatPattern = /(?:query|execute|raw|sql)\s*\([^)]*\+/;
+      // Check for variable interpolation in strings: query("..." + variable)
+      const variablePattern = /(?:query|execute|raw|sql)\s*\(\s*[a-zA-Z_]\w*\s*[,)]/;
+
+      if (templateLiteralPattern.test(line) || concatPattern.test(line)) {
         issues.push({
           severity: 'error',
           file: ctx.file,
@@ -69,6 +79,16 @@ export function runSecurityChecks(ctx: ValidationContext): ValidationIssue[] {
           rule: 'security/sql-injection',
           message: 'Potential SQL injection vulnerability',
           suggestion: 'Use parameterized queries or prepared statements',
+        });
+      } else if (variablePattern.test(line) && !line.includes('?') && !line.includes('$1')) {
+        // Variable passed directly without parameterization markers
+        issues.push({
+          severity: 'warning',
+          file: ctx.file,
+          line: i + 1,
+          rule: 'security/sql-injection',
+          message: 'SQL query with variable - verify parameterization',
+          suggestion: 'Ensure query uses parameterized values',
         });
       }
     });

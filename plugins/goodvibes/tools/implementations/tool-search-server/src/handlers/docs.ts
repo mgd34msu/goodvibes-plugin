@@ -228,6 +228,7 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
   }
 
   // Try to fetch npm package info for any package (with caching)
+  let npmFetchError: Error | null = null;
   try {
     const { data: npmData, cacheHit } = await getCachedNpmData(args.library, args.version);
     npmCacheHit = cacheHit;
@@ -249,8 +250,8 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
         });
       }
     }
-  } catch {
-    // Continue without npm data
+  } catch (error) {
+    npmFetchError = error instanceof Error ? error : new Error(String(error));
   }
 
   // If we have a GitHub raw API for README, fetch it (with caching)
@@ -266,8 +267,10 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
         result.readme = readmeContent.slice(0, 10000); // Limit size
         result.content = `Documentation fetched from GitHub README. See ${source.url} for full docs.`;
       }
-    } catch {
-      // Continue without GitHub readme
+    } catch (error) {
+      // Log error but continue - GitHub readme is optional enhancement
+      const githubError = error instanceof Error ? error.message : String(error);
+      result.content = result.content || `Note: Could not fetch GitHub README (${githubError}). Using npm data.`;
     }
   }
 

@@ -25730,6 +25730,7 @@ async function handleFetchDocs(args) {
   if (topic) {
     result.topic = topic;
   }
+  let npmFetchError = null;
   try {
     const { data: npmData, cacheHit } = await getCachedNpmData(args.library, args.version);
     npmCacheHit = cacheHit;
@@ -25751,7 +25752,8 @@ async function handleFetchDocs(args) {
         });
       }
     }
-  } catch {
+  } catch (error2) {
+    npmFetchError = error2 instanceof Error ? error2 : new Error(String(error2));
   }
   if (source?.api) {
     try {
@@ -25765,7 +25767,9 @@ async function handleFetchDocs(args) {
         result.readme = readmeContent.slice(0, 1e4);
         result.content = `Documentation fetched from GitHub README. See ${source.url} for full docs.`;
       }
-    } catch {
+    } catch (error2) {
+      const githubError = error2 instanceof Error ? error2.message : String(error2);
+      result.content = result.content || `Note: Could not fetch GitHub README (${githubError}). Using npm data.`;
     }
   }
   result.cache_hit = npmCacheHit || githubCacheHit;
@@ -26195,9 +26199,14 @@ function runSecurityChecks(ctx) {
       }
     }
   });
-  if (ctx.content.includes("query(") || ctx.content.includes("execute(")) {
+  const sqlMethods = ["query", "execute", "raw", "sql"];
+  const hasSqlMethod = sqlMethods.some((m) => ctx.content.includes(`${m}(`));
+  if (hasSqlMethod) {
     ctx.lines.forEach((line, i) => {
-      if (/query\s*\(\s*[`'"].*\$\{/.test(line) || /query\s*\(\s*.*\+/.test(line)) {
+      const templateLiteralPattern = /(?:query|execute|raw|sql)\s*\(\s*`[^`]*\$\{/;
+      const concatPattern = /(?:query|execute|raw|sql)\s*\([^)]*\+/;
+      const variablePattern = /(?:query|execute|raw|sql)\s*\(\s*[a-zA-Z_]\w*\s*[,)]/;
+      if (templateLiteralPattern.test(line) || concatPattern.test(line)) {
         issues.push({
           severity: "error",
           file: ctx.file,
@@ -26205,6 +26214,15 @@ function runSecurityChecks(ctx) {
           rule: "security/sql-injection",
           message: "Potential SQL injection vulnerability",
           suggestion: "Use parameterized queries or prepared statements"
+        });
+      } else if (variablePattern.test(line) && !line.includes("?") && !line.includes("$1")) {
+        issues.push({
+          severity: "warning",
+          file: ctx.file,
+          line: i + 1,
+          rule: "security/sql-injection",
+          message: "SQL query with variable - verify parameterization",
+          suggestion: "Ensure query uses parameterized values"
         });
       }
     });
@@ -26374,8 +26392,20 @@ function runNamingChecks(ctx) {
   for (const match of funcMatches) {
     const name = match[1];
     if (name.startsWith("_")) continue;
-    if (/^[A-Z]/.test(name) && !ctx.isReact) {
-    } else if (!/^[a-z][a-zA-Z0-9]*$/.test(name) && !/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
+    const isPascalCase = /^[A-Z]/.test(name);
+    const isCamelCase = /^[a-z][a-zA-Z0-9]*$/.test(name);
+    const isValidPascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(name);
+    if (isPascalCase && !ctx.isReact && !isValidPascalCase) {
+      const lineNum = ctx.content.substring(0, match.index || 0).split("\n").length;
+      issues.push({
+        severity: "info",
+        file: ctx.file,
+        line: lineNum,
+        rule: "naming/camelCase",
+        message: `Function "${name}" uses PascalCase but file is not React`,
+        suggestion: "Use camelCase for non-component functions"
+      });
+    } else if (!isCamelCase && !isValidPascalCase) {
       const lineNum = ctx.content.substring(0, match.index || 0).split("\n").length;
       issues.push({
         severity: "info",
@@ -26412,16 +26442,32 @@ function runNamingChecks(ctx) {
 var VALID_STATUS_CODES = [200, 201, 204, 400, 401, 403, 404, 500];
 function runBestPracticesChecks(ctx) {
   const issues = [];
+  let inMultiLineComment = false;
   ctx.lines.forEach((line, i) => {
-    if (/console\.(log|debug|info)\(/.test(line) && !line.includes("//") && !line.trim().startsWith("//")) {
-      issues.push({
-        severity: "info",
-        file: ctx.file,
-        line: i + 1,
-        rule: "best-practices/no-console",
-        message: "console.log found in code",
-        suggestion: "Remove or use a proper logging library"
-      });
+    if (line.includes("/*") && !line.includes("*/")) {
+      inMultiLineComment = true;
+    }
+    if (line.includes("*/")) {
+      inMultiLineComment = false;
+      return;
+    }
+    if (inMultiLineComment) return;
+    const trimmed = line.trim();
+    if (trimmed.startsWith("//")) return;
+    const commentIndex = line.indexOf("//");
+    const consoleMatch = line.match(/console\.(log|debug|info)\(/);
+    if (consoleMatch) {
+      const consoleIndex = line.indexOf(consoleMatch[0]);
+      if (commentIndex === -1 || consoleIndex < commentIndex) {
+        issues.push({
+          severity: "info",
+          file: ctx.file,
+          line: i + 1,
+          rule: "best-practices/no-console",
+          message: "console.log found in code",
+          suggestion: "Remove or use a proper logging library"
+        });
+      }
     }
   });
   ctx.lines.forEach((line, i) => {

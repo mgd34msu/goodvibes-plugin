@@ -10,17 +10,40 @@ const VALID_STATUS_CODES = [200, 201, 204, 400, 401, 403, 404, 500];
 export function runBestPracticesChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
+  // Track multi-line comment state
+  let inMultiLineComment = false;
+
   // Check for console.log (should be removed in production)
   ctx.lines.forEach((line, i) => {
-    if (/console\.(log|debug|info)\(/.test(line) && !line.includes('//') && !line.trim().startsWith('//')) {
-      issues.push({
-        severity: 'info',
-        file: ctx.file,
-        line: i + 1,
-        rule: 'best-practices/no-console',
-        message: 'console.log found in code',
-        suggestion: 'Remove or use a proper logging library',
-      });
+    // Handle multi-line comment tracking
+    if (line.includes('/*') && !line.includes('*/')) {
+      inMultiLineComment = true;
+    }
+    if (line.includes('*/')) {
+      inMultiLineComment = false;
+      return; // Skip this line as it ends a comment
+    }
+    if (inMultiLineComment) return;
+
+    // Skip single-line comments
+    const trimmed = line.trim();
+    if (trimmed.startsWith('//')) return;
+
+    // Check if console.log appears before any comment on this line
+    const commentIndex = line.indexOf('//');
+    const consoleMatch = line.match(/console\.(log|debug|info)\(/);
+    if (consoleMatch) {
+      const consoleIndex = line.indexOf(consoleMatch[0]);
+      if (commentIndex === -1 || consoleIndex < commentIndex) {
+        issues.push({
+          severity: 'info',
+          file: ctx.file,
+          line: i + 1,
+          rule: 'best-practices/no-console',
+          message: 'console.log found in code',
+          suggestion: 'Remove or use a proper logging library',
+        });
+      }
     }
   });
 
