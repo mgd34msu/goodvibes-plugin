@@ -12,9 +12,23 @@ export function runNamingChecks(ctx: ValidationContext): ValidationIssue[] {
   for (const match of funcMatches) {
     const name = match[1];
     if (name.startsWith('_')) continue;
-    if (/^[A-Z]/.test(name) && !ctx.isReact) {
-      // Not PascalCase for non-React functions
-    } else if (!/^[a-z][a-zA-Z0-9]*$/.test(name) && !/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
+
+    const isPascalCase = /^[A-Z]/.test(name);
+    const isCamelCase = /^[a-z][a-zA-Z0-9]*$/.test(name);
+    const isValidPascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(name);
+
+    // PascalCase is valid for React components, camelCase for regular functions
+    if (isPascalCase && !ctx.isReact && !isValidPascalCase) {
+      const lineNum = ctx.content.substring(0, match.index || 0).split('\n').length;
+      issues.push({
+        severity: 'info',
+        file: ctx.file,
+        line: lineNum,
+        rule: 'naming/camelCase',
+        message: `Function "${name}" uses PascalCase but file is not React`,
+        suggestion: 'Use camelCase for non-component functions',
+      });
+    } else if (!isCamelCase && !isValidPascalCase) {
       const lineNum = ctx.content.substring(0, match.index || 0).split('\n').length;
       issues.push({
         severity: 'info',
