@@ -34,14 +34,29 @@ export interface ToolUsage {
     success: boolean;
     args?: Record<string, unknown>;
 }
+export interface ToolFailure {
+    tool: string;
+    error: string;
+    timestamp: string;
+}
+export interface SubagentSpawn {
+    type: string;
+    task: string;
+    started_at: string;
+    completed_at?: string;
+    success?: boolean;
+}
 export interface SessionAnalytics {
     session_id: string;
     started_at: string;
     ended_at?: string;
     tool_usage: ToolUsage[];
+    tool_failures?: ToolFailure[];
     skills_recommended: string[];
+    subagents_spawned?: SubagentSpawn[];
     validations_run: number;
     issues_found: number;
+    detected_stack?: Record<string, unknown>;
 }
 /**
  * Read hook input from stdin
