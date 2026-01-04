@@ -466,9 +466,14 @@ export function getMemoryFilePath(
 export function ensureGoodVibesDir(cwd: string): void {
   const goodVibesDir = getGoodVibesDir(cwd);
 
-  if (!fs.existsSync(goodVibesDir)) {
-    fs.mkdirSync(goodVibesDir, { recursive: true });
-    debug(`Created .goodvibes directory at ${goodVibesDir}`);
+  try {
+    if (!fs.existsSync(goodVibesDir)) {
+      fs.mkdirSync(goodVibesDir, { recursive: true });
+      debug(`Created .goodvibes directory at ${goodVibesDir}`);
+    }
+  } catch (error) {
+    logError('ensureGoodVibesDir:mkdir', error);
+    throw new Error(`Failed to create .goodvibes directory: ${error}`);
   }
 
   // Ensure security-hardened .gitignore
@@ -482,9 +487,14 @@ export function ensureMemoryDir(cwd: string): void {
   ensureGoodVibesDir(cwd);
 
   const memoryDir = getMemoryDir(cwd);
-  if (!fs.existsSync(memoryDir)) {
-    fs.mkdirSync(memoryDir, { recursive: true });
-    debug(`Created memory directory at ${memoryDir}`);
+  try {
+    if (!fs.existsSync(memoryDir)) {
+      fs.mkdirSync(memoryDir, { recursive: true });
+      debug(`Created memory directory at ${memoryDir}`);
+    }
+  } catch (error) {
+    logError('ensureMemoryDir:mkdir', error);
+    throw new Error(`Failed to create memory directory: ${error}`);
   }
 }
 
@@ -495,42 +505,47 @@ export function ensureMemoryDir(cwd: string): void {
 export function ensureSecurityGitignore(cwd: string): void {
   const gitignorePath = path.join(cwd, '.gitignore');
 
-  let existingContent = '';
-  if (fs.existsSync(gitignorePath)) {
-    existingContent = fs.readFileSync(gitignorePath, 'utf-8');
-  }
+  try {
+    let existingContent = '';
+    if (fs.existsSync(gitignorePath)) {
+      existingContent = fs.readFileSync(gitignorePath, 'utf-8');
+    }
 
-  // Parse security patterns into individual lines
-  const securityLines = SECURITY_GITIGNORE_PATTERNS.split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#'));
-
-  // Parse existing patterns
-  const existingPatterns = new Set(
-    existingContent
-      .split('\n')
+    // Parse security patterns into individual lines
+    const securityLines = SECURITY_GITIGNORE_PATTERNS.split('\n')
       .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#'))
-  );
+      .filter((line) => line && !line.startsWith('#'));
 
-  // Find patterns that need to be added
-  const patternsToAdd = securityLines.filter(
-    (pattern) => !existingPatterns.has(pattern)
-  );
+    // Parse existing patterns
+    const existingPatterns = new Set(
+      existingContent
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'))
+    );
 
-  if (patternsToAdd.length === 0) {
-    debug('.gitignore already has all security patterns');
-    return;
+    // Find patterns that need to be added
+    const patternsToAdd = securityLines.filter(
+      (pattern) => !existingPatterns.has(pattern)
+    );
+
+    if (patternsToAdd.length === 0) {
+      debug('.gitignore already has all security patterns');
+      return;
+    }
+
+    // Build only the missing patterns to append
+    const separator = existingContent.endsWith('\n') ? '' : '\n';
+    const newPatternsBlock = '\n# GoodVibes Security Patterns\n' + patternsToAdd.join('\n') + '\n';
+
+    // Write the updated .gitignore
+    fs.writeFileSync(gitignorePath, existingContent + separator + newPatternsBlock);
+
+    debug(`Added ${patternsToAdd.length} security patterns to .gitignore`);
+  } catch (error) {
+    logError('ensureSecurityGitignore', error);
+    // Don't throw - gitignore is non-critical
   }
-
-  // Build the new content to append
-  const separator = existingContent.endsWith('\n') ? '' : '\n';
-  const newPatterns = SECURITY_GITIGNORE_PATTERNS;
-
-  // Write the updated .gitignore
-  fs.writeFileSync(gitignorePath, existingContent + separator + newPatterns);
-
-  debug(`Added ${patternsToAdd.length} security patterns to .gitignore`);
 }
 
 // ============================================================================
@@ -988,7 +1003,7 @@ export function appendPreference(cwd: string, preference: Preference): void {
  * Get current date in ISO format (YYYY-MM-DD)
  */
 export function getCurrentDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0] ?? '';
 }
 
 /**

@@ -403,9 +403,15 @@ export function getMemoryFilePath(cwd, type) {
  */
 export function ensureGoodVibesDir(cwd) {
     const goodVibesDir = getGoodVibesDir(cwd);
-    if (!fs.existsSync(goodVibesDir)) {
-        fs.mkdirSync(goodVibesDir, { recursive: true });
-        debug(`Created .goodvibes directory at ${goodVibesDir}`);
+    try {
+        if (!fs.existsSync(goodVibesDir)) {
+            fs.mkdirSync(goodVibesDir, { recursive: true });
+            debug(`Created .goodvibes directory at ${goodVibesDir}`);
+        }
+    }
+    catch (error) {
+        logError('ensureGoodVibesDir:mkdir', error);
+        throw new Error(`Failed to create .goodvibes directory: ${error}`);
     }
     // Ensure security-hardened .gitignore
     ensureSecurityGitignore(cwd);
@@ -416,9 +422,15 @@ export function ensureGoodVibesDir(cwd) {
 export function ensureMemoryDir(cwd) {
     ensureGoodVibesDir(cwd);
     const memoryDir = getMemoryDir(cwd);
-    if (!fs.existsSync(memoryDir)) {
-        fs.mkdirSync(memoryDir, { recursive: true });
-        debug(`Created memory directory at ${memoryDir}`);
+    try {
+        if (!fs.existsSync(memoryDir)) {
+            fs.mkdirSync(memoryDir, { recursive: true });
+            debug(`Created memory directory at ${memoryDir}`);
+        }
+    }
+    catch (error) {
+        logError('ensureMemoryDir:mkdir', error);
+        throw new Error(`Failed to create memory directory: ${error}`);
     }
 }
 /**
@@ -427,31 +439,37 @@ export function ensureMemoryDir(cwd) {
  */
 export function ensureSecurityGitignore(cwd) {
     const gitignorePath = path.join(cwd, '.gitignore');
-    let existingContent = '';
-    if (fs.existsSync(gitignorePath)) {
-        existingContent = fs.readFileSync(gitignorePath, 'utf-8');
+    try {
+        let existingContent = '';
+        if (fs.existsSync(gitignorePath)) {
+            existingContent = fs.readFileSync(gitignorePath, 'utf-8');
+        }
+        // Parse security patterns into individual lines
+        const securityLines = SECURITY_GITIGNORE_PATTERNS.split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line && !line.startsWith('#'));
+        // Parse existing patterns
+        const existingPatterns = new Set(existingContent
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line && !line.startsWith('#')));
+        // Find patterns that need to be added
+        const patternsToAdd = securityLines.filter((pattern) => !existingPatterns.has(pattern));
+        if (patternsToAdd.length === 0) {
+            debug('.gitignore already has all security patterns');
+            return;
+        }
+        // Build only the missing patterns to append
+        const separator = existingContent.endsWith('\n') ? '' : '\n';
+        const newPatternsBlock = '\n# GoodVibes Security Patterns\n' + patternsToAdd.join('\n') + '\n';
+        // Write the updated .gitignore
+        fs.writeFileSync(gitignorePath, existingContent + separator + newPatternsBlock);
+        debug(`Added ${patternsToAdd.length} security patterns to .gitignore`);
     }
-    // Parse security patterns into individual lines
-    const securityLines = SECURITY_GITIGNORE_PATTERNS.split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#'));
-    // Parse existing patterns
-    const existingPatterns = new Set(existingContent
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#')));
-    // Find patterns that need to be added
-    const patternsToAdd = securityLines.filter((pattern) => !existingPatterns.has(pattern));
-    if (patternsToAdd.length === 0) {
-        debug('.gitignore already has all security patterns');
-        return;
+    catch (error) {
+        logError('ensureSecurityGitignore', error);
+        // Don't throw - gitignore is non-critical
     }
-    // Build the new content to append
-    const separator = existingContent.endsWith('\n') ? '' : '\n';
-    const newPatterns = SECURITY_GITIGNORE_PATTERNS;
-    // Write the updated .gitignore
-    fs.writeFileSync(gitignorePath, existingContent + separator + newPatterns);
-    debug(`Added ${patternsToAdd.length} security patterns to .gitignore`);
 }
 // ============================================================================
 // Memory File Loading
@@ -884,7 +902,7 @@ export function appendPreference(cwd, preference) {
  * Get current date in ISO format (YYYY-MM-DD)
  */
 export function getCurrentDate() {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0] ?? '';
 }
 /**
  * Check if memory exists for a project
