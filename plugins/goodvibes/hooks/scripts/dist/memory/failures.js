@@ -13,7 +13,10 @@ Reference this to avoid repeating unsuccessful strategies.
 
 `;
 /**
- * Helper to check if a file exists using fs/promises.
+ * Checks if a file exists asynchronously.
+ *
+ * @param filePath - The path to check
+ * @returns Promise resolving to true if file exists, false otherwise
  */
 async function fileExists(filePath) {
     try {
@@ -56,7 +59,6 @@ export async function readFailures(cwd) {
  *
  * @param cwd - The current working directory (project root)
  * @param failure - The failure object to write
- * @returns Promise that resolves when the failure is written
  *
  * @example
  * await writeFailure('/path/to/project', {

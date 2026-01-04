@@ -74,13 +74,12 @@ export declare function getMemoryFilePath(cwd: string, type: keyof typeof MEMORY
  * prevent sensitive data from being committed.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise that resolves when the directory is ensured
  * @throws Error if the directory cannot be created
  *
  * @example
- * await ensureGoodVibesDir('/path/to/project');
+ * ensureGoodVibesDir('/path/to/project');
  */
-export declare function ensureGoodVibesDir(cwd: string): Promise<void>;
+export declare function ensureGoodVibesDir(cwd: string): void;
 /**
  * Ensure the memory directory exists (lazy creation).
  *
@@ -88,13 +87,12 @@ export declare function ensureGoodVibesDir(cwd: string): Promise<void>;
  * Also ensures the parent .goodvibes directory exists.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise that resolves when the directory is ensured
  * @throws Error if the directory cannot be created
  *
  * @example
- * await ensureMemoryDir('/path/to/project');
+ * ensureMemoryDir('/path/to/project');
  */
-export declare function ensureMemoryDir(cwd: string): Promise<void>;
+export declare function ensureMemoryDir(cwd: string): void;
 /**
  * Ensure .gitignore has comprehensive security patterns.
  *
@@ -103,12 +101,11 @@ export declare function ensureMemoryDir(cwd: string): Promise<void>;
  * patterns that are not already present.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise that resolves when the gitignore is ensured
  *
  * @example
- * await ensureSecurityGitignore('/path/to/project');
+ * ensureSecurityGitignore('/path/to/project');
  */
-export declare function ensureSecurityGitignore(cwd: string): Promise<void>;
+export declare function ensureSecurityGitignore(cwd: string): void;
 /**
  * Load all memory files from the .goodvibes/memory directory.
  *
@@ -116,13 +113,13 @@ export declare function ensureSecurityGitignore(cwd: string): Promise<void>;
  * Loads decisions, patterns, failures, and preferences from disk.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise resolving to the complete ProjectMemory object with all memory categories
+ * @returns The complete ProjectMemory object with all memory categories
  *
  * @example
- * const memory = await loadMemory('/path/to/project');
+ * const memory = loadMemory('/path/to/project');
  * console.log(`Found ${memory.decisions.length} decisions`);
  */
-export declare function loadMemory(cwd: string): Promise<ProjectMemory>;
+export declare function loadMemory(cwd: string): ProjectMemory;
 /**
  * Loads all project memory (decisions, patterns, failures, preferences).
  *
@@ -130,15 +127,15 @@ export declare function loadMemory(cwd: string): Promise<ProjectMemory>;
  * Returns empty arrays for any memory types that don't have files yet.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise resolving to the complete ProjectMemory object with all memory categories
+ * @returns The complete ProjectMemory object with all memory categories
  *
  * @example
- * const memory = await loadProjectMemory('/path/to/project');
+ * const memory = loadProjectMemory('/path/to/project');
  * if (memory.failures.length > 0) {
  *   console.log('Avoid these approaches:', memory.failures);
  * }
  */
-export declare function loadProjectMemory(cwd: string): Promise<ProjectMemory>;
+export declare function loadProjectMemory(cwd: string): ProjectMemory;
 /**
  * Append a new architectural decision to the decisions file.
  *
@@ -147,18 +144,17 @@ export declare function loadProjectMemory(cwd: string): Promise<ProjectMemory>;
  *
  * @param cwd - The current working directory (project root)
  * @param decision - The decision object containing title, rationale, alternatives, etc.
- * @returns Promise that resolves when the decision is appended
  * @throws Error if the decision cannot be written
  *
  * @example
- * await appendDecision('/path/to/project', {
+ * appendDecision('/path/to/project', {
  *   title: 'Use PostgreSQL',
  *   date: '2024-01-04',
  *   rationale: 'Better suited for relational data',
  *   alternatives: ['MongoDB', 'SQLite']
  * });
  */
-export declare function appendDecision(cwd: string, decision: Decision): Promise<void>;
+export declare function appendDecision(cwd: string, decision: Decision): void;
 /**
  * Append a new code pattern to the patterns file.
  *
@@ -167,18 +163,17 @@ export declare function appendDecision(cwd: string, decision: Decision): Promise
  *
  * @param cwd - The current working directory (project root)
  * @param pattern - The pattern object containing name, description, example, etc.
- * @returns Promise that resolves when the pattern is appended
  * @throws Error if the pattern cannot be written
  *
  * @example
- * await appendPattern('/path/to/project', {
+ * appendPattern('/path/to/project', {
  *   name: 'Error Handling',
  *   date: '2024-01-04',
  *   description: 'Use try-catch with specific error types',
  *   example: 'try { ... } catch (error: unknown) { ... }'
  * });
  */
-export declare function appendPattern(cwd: string, pattern: Pattern): Promise<void>;
+export declare function appendPattern(cwd: string, pattern: Pattern): void;
 /**
  * Append a failed approach to the failures file.
  *
@@ -187,18 +182,17 @@ export declare function appendPattern(cwd: string, pattern: Pattern): Promise<vo
  *
  * @param cwd - The current working directory (project root)
  * @param failure - The failure object containing approach, reason, context, etc.
- * @returns Promise that resolves when the failure is appended
  * @throws Error if the failure cannot be written
  *
  * @example
- * await appendFailure('/path/to/project', {
+ * appendFailure('/path/to/project', {
  *   approach: 'Using global state for auth',
  *   date: '2024-01-04',
  *   reason: 'Caused race conditions in concurrent requests',
  *   suggestion: 'Use context-based auth instead'
  * });
  */
-export declare function appendFailure(cwd: string, failure: Failure): Promise<void>;
+export declare function appendFailure(cwd: string, failure: Failure): void;
 /**
  * Append a user preference to the preferences file.
  *
@@ -207,18 +201,17 @@ export declare function appendFailure(cwd: string, failure: Failure): Promise<vo
  *
  * @param cwd - The current working directory (project root)
  * @param preference - The preference object containing key, value, date, and optional notes
- * @returns Promise that resolves when the preference is appended
  * @throws Error if the preference cannot be written
  *
  * @example
- * await appendPreference('/path/to/project', {
+ * appendPreference('/path/to/project', {
  *   key: 'test-framework',
  *   value: 'vitest',
  *   date: '2024-01-04',
  *   notes: 'Faster than Jest for this project'
  * });
  */
-export declare function appendPreference(cwd: string, preference: Preference): Promise<void>;
+export declare function appendPreference(cwd: string, preference: Preference): void;
 /**
  * Get current date in ISO format (YYYY-MM-DD).
  *
@@ -238,14 +231,14 @@ export declare function getCurrentDate(): string;
  * indicating that memory has been initialized.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise resolving to true if the memory directory exists, false otherwise
+ * @returns True if the memory directory exists, false otherwise
  *
  * @example
- * if (await hasMemory('/path/to/project')) {
- *   const memory = await loadMemory('/path/to/project');
+ * if (hasMemory('/path/to/project')) {
+ *   const memory = loadMemory('/path/to/project');
  * }
  */
-export declare function hasMemory(cwd: string): Promise<boolean>;
+export declare function hasMemory(cwd: string): boolean;
 /**
  * Get a summary of the project memory.
  *
@@ -253,19 +246,19 @@ export declare function hasMemory(cwd: string): Promise<boolean>;
  * Useful for quickly checking what memory exists for a project.
  *
  * @param cwd - The current working directory (project root)
- * @returns Promise resolving to an object containing hasMemory flag and counts for each memory type
+ * @returns An object containing hasMemory flag and counts for each memory type
  *
  * @example
- * const summary = await getMemorySummary('/path/to/project');
+ * const summary = getMemorySummary('/path/to/project');
  * console.log(`Project has ${summary.decisionsCount} decisions`);
  */
-export declare function getMemorySummary(cwd: string): Promise<{
+export declare function getMemorySummary(cwd: string): {
     hasMemory: boolean;
     decisionsCount: number;
     patternsCount: number;
     failuresCount: number;
     preferencesCount: number;
-}>;
+};
 /**
  * Search memory for relevant entries based on keywords.
  *
@@ -275,18 +268,18 @@ export declare function getMemorySummary(cwd: string): Promise<{
  *
  * @param cwd - The current working directory (project root)
  * @param keywords - Array of keywords to search for
- * @returns Promise resolving to filtered memory entries matching the search keywords
+ * @returns Filtered memory entries matching the search keywords
  *
  * @example
- * const results = await searchMemory('/path/to/project', ['auth', 'login']);
+ * const results = searchMemory('/path/to/project', ['auth', 'login']);
  * console.log(`Found ${results.decisions.length} relevant decisions`);
  */
-export declare function searchMemory(cwd: string, keywords: string[]): Promise<{
+export declare function searchMemory(cwd: string, keywords: string[]): {
     decisions: Decision[];
     patterns: Pattern[];
     failures: Failure[];
     preferences: Preference[];
-}>;
+};
 /**
  * Formats project memory into a human-readable context string.
  *
@@ -298,7 +291,7 @@ export declare function searchMemory(cwd: string, keywords: string[]): Promise<{
  * @returns A formatted string representation of the memory
  *
  * @example
- * const memory = await loadMemory('/path/to/project');
+ * const memory = loadMemory('/path/to/project');
  * const context = formatMemoryContext(memory);
  * console.log(context);
  */

@@ -2,7 +2,7 @@
  * Decisions memory module - stores architectural decisions with rationale.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryDecision } from '../types/memory.js';
 import { debug } from '../shared/logging.js';
@@ -17,28 +17,43 @@ Each decision includes the date, alternatives considered, rationale, and the age
 `;
 
 /**
+ * Checks if a file exists asynchronously.
+ *
+ * @param filePath - The path to check
+ * @returns Promise resolving to true if file exists, false otherwise
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Reads all project decisions from the memory file.
  *
  * Parses the decisions.md file and returns an array of structured decision objects.
  * Returns an empty array if the file doesn't exist or is empty.
  *
  * @param cwd - The current working directory (project root)
- * @returns Array of MemoryDecision objects parsed from the file
+ * @returns Promise resolving to array of MemoryDecision objects parsed from the file
  *
  * @example
- * const decisions = readDecisions('/path/to/project');
+ * const decisions = await readDecisions('/path/to/project');
  * for (const decision of decisions) {
  *   console.log(`${decision.title}: ${decision.rationale}`);
  * }
  */
-export function readDecisions(cwd: string): MemoryDecision[] {
+export async function readDecisions(cwd: string): Promise<MemoryDecision[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
 
-  if (!fs.existsSync(filePath)) {
+  if (!(await fileExists(filePath))) {
     return [];
   }
 
-  const content = fs.readFileSync(filePath, 'utf-8');
+  const content = await fs.readFile(filePath, 'utf-8');
   return parseDecisions(content);
 }
 
@@ -52,27 +67,27 @@ export function readDecisions(cwd: string): MemoryDecision[] {
  * @param decision - The decision object to write
  *
  * @example
- * writeDecision('/path/to/project', {
+ * await writeDecision('/path/to/project', {
  *   title: 'Use tRPC for API',
  *   date: '2024-01-04',
  *   rationale: 'End-to-end type safety with minimal boilerplate',
  *   alternatives: ['REST', 'GraphQL']
  * });
  */
-export function writeDecision(cwd: string, decision: MemoryDecision): void {
+export async function writeDecision(cwd: string, decision: MemoryDecision): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
 
   // Ensure file exists with header
-  if (!fs.existsSync(filePath)) {
+  if (!(await fileExists(filePath))) {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fs.mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, DECISIONS_HEADER);
+    await fs.writeFile(filePath, DECISIONS_HEADER);
   }
 
   const entry = formatDecision(decision);
-  fs.appendFileSync(filePath, entry);
+  await fs.appendFile(filePath, entry);
 }
 
 function parseDecisions(content: string): MemoryDecision[] {

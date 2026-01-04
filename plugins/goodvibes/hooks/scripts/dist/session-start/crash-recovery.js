@@ -18,8 +18,8 @@ export async function checkCrashRecovery(cwd) {
     }
     const state = await loadState(cwd);
     // Check for signs of incomplete work
-    const uncommitted = hasUncommittedChanges(cwd);
-    const uncommittedFiles = uncommitted ? getUncommittedFiles(cwd) : [];
+    const uncommitted = await hasUncommittedChanges(cwd);
+    const uncommittedFiles = uncommitted ? await getUncommittedFiles(cwd) : [];
     const onFeatureBranch = state.git.featureBranch !== null;
     const hasPendingFixes = state.tests.pendingFixes.length > 0;
     const failingBuild = state.build.status === 'failing';

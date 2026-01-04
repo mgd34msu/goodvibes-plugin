@@ -117,8 +117,8 @@ async function main(): Promise<void> {
 
     // Step 4: Load retry tracker to check current phase
     let errorState = getErrorState(state, signature);
-    const currentPhase = getCurrentPhase(cwd, retrySignature);
-    const retryCount = getRetryCount(cwd, retrySignature);
+    const currentPhase = await getCurrentPhase(cwd, retrySignature);
+    const retryCount = await getRetryCount(cwd, retrySignature);
 
     if (!errorState) {
       // First time seeing this error in state
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
     }
 
     // Check if we should escalate phase (max phase is 3)
-    const shouldEscalate = shouldEscalatePhase(errorState);
+    const shouldEscalate = await shouldEscalatePhase(errorState);
     if (shouldEscalate && errorState.phase < 3) {
       const nextPhase = (errorState.phase + 1) as 2 | 3;
       errorState = {
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
     saveRetry(cwd, retrySignature, errorState.phase);
 
     // Step 9: Check if all phases exhausted
-    const exhausted = hasExhaustedRetries(errorState);
+    const exhausted = await hasExhaustedRetries(errorState);
 
     if (exhausted) {
       debug('All phases exhausted, logging to memory');
@@ -215,12 +215,12 @@ async function main(): Promise<void> {
 
     // Step 10: Build response with fix suggestions and research hints
     const phaseDesc = getPhaseDescription(errorState.phase);
-    const remaining = getRemainingAttempts(errorState);
 
     const responseParts: string[] = [];
 
     // Header with phase info
     responseParts.push(`[GoodVibes Fix Loop - Phase ${errorState.phase}/3: ${phaseDesc}]`);
+    const remaining = await getRemainingAttempts(errorState);
     responseParts.push(`Attempt ${retryCount + 1} (${remaining} remaining this phase)`);
     responseParts.push('');
 

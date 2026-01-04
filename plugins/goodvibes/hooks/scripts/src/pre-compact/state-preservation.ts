@@ -18,7 +18,7 @@ import { ensureGoodVibesDir, debug, logError } from '../shared.js';
  */
 export async function createPreCompactCheckpoint(cwd: string): Promise<void> {
   try {
-    if (!hasUncommittedChanges(cwd)) {
+    if (!(await hasUncommittedChanges(cwd))) {
       debug('No uncommitted changes, skipping pre-compact checkpoint');
       return;
     }

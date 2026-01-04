@@ -27,7 +27,6 @@ export declare function readPreferences(cwd: string): Promise<MemoryPreference[]
  *
  * @param cwd - The current working directory (project root)
  * @param preference - The preference object to write
- * @returns Promise that resolves when the preference is written
  *
  * @example
  * await writePreference('/path/to/project', {

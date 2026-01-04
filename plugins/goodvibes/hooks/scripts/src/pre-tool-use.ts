@@ -113,7 +113,7 @@ async function handleGitCommand(input: HookInput, command: string): Promise<void
   debug('Git command detected, checking guards', { command });
 
   // Check branch guards (force push, hard reset, etc.)
-  const branchGuard = checkBranchGuard(command, cwd, state);
+  const branchGuard = await checkBranchGuard(command, cwd, state);
 
   if (!branchGuard.allowed) {
     respond(blockTool('PreToolUse', branchGuard.reason || 'Git operation blocked'), true);

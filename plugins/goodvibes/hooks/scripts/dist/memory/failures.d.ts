@@ -27,7 +27,6 @@ export declare function readFailures(cwd: string): Promise<MemoryFailure[]>;
  *
  * @param cwd - The current working directory (project root)
  * @param failure - The failure object to write
- * @returns Promise that resolves when the failure is written
  *
  * @example
  * await writeFailure('/path/to/project', {

@@ -48,10 +48,10 @@ export async function createCheckpointIfNeeded(state, cwd, forcedReason) {
     if (!trigger.triggered) {
         return { created: false, message: '' };
     }
-    if (!hasUncommittedChanges(cwd)) {
+    if (!(await hasUncommittedChanges(cwd))) {
         return { created: false, message: 'No changes to checkpoint' };
     }
-    const success = gitCheckpoint(cwd, trigger.reason);
+    const success = await gitCheckpoint(cwd, trigger.reason);
     if (success) {
         // Update state
         clearCheckpointTracking(state);

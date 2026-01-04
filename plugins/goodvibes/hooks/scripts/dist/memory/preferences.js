@@ -13,7 +13,10 @@ These preferences guide agent behavior and decision-making.
 
 `;
 /**
- * Helper to check if a file exists using fs/promises.
+ * Checks if a file exists asynchronously.
+ *
+ * @param filePath - The path to check
+ * @returns Promise resolving to true if file exists, false otherwise
  */
 async function fileExists(filePath) {
     try {
@@ -56,7 +59,6 @@ export async function readPreferences(cwd) {
  *
  * @param cwd - The current working directory (project root)
  * @param preference - The preference object to write
- * @returns Promise that resolves when the preference is written
  *
  * @example
  * await writePreference('/path/to/project', {

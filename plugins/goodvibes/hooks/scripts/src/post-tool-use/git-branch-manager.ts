@@ -63,7 +63,7 @@ export async function maybeCreateFeatureBranch(
   const name = featureName || state.session.featureDescription || 'feature';
   const branchName = `feature/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, BRANCH_NAME_MAX_LENGTH)}`;
 
-  const success = gitCreateBranch(cwd, name);
+  const success = await gitCreateBranch(cwd, name);
 
   if (success) {
     state.git.featureBranch = branchName;
@@ -137,7 +137,7 @@ export async function maybeMergeFeature(
   const featureBranch = state.git.featureBranch!;
   const mainBranch = state.git.mainBranch;
 
-  const success = gitMergeBranch(cwd, featureBranch, mainBranch);
+  const success = await gitMergeBranch(cwd, featureBranch, mainBranch);
 
   if (success) {
     state.git.currentBranch = mainBranch;

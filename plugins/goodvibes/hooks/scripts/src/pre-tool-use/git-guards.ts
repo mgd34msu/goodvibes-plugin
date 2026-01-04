@@ -19,21 +19,21 @@ export interface GitGuardResult {
  * @param command - The git command string to evaluate
  * @param cwd - The current working directory (repository root)
  * @param state - The current hooks state containing git configuration
- * @returns A GitGuardResult indicating if the operation is allowed, blocked, or has warnings
+ * @returns Promise resolving to a GitGuardResult indicating if the operation is allowed, blocked, or has warnings
  *
  * @example
- * const result = checkBranchGuard('git push --force origin main', '/repo', state);
+ * const result = await checkBranchGuard('git push --force origin main', '/repo', state);
  * if (!result.allowed) {
  *   console.error(result.reason);
  * }
  */
-export function checkBranchGuard(
+export async function checkBranchGuard(
   command: string,
   cwd: string,
   state: HooksState
-): GitGuardResult {
+): Promise<GitGuardResult> {
   // Check for dangerous commands on main branch
-  const currentBranch = getCurrentBranch(cwd);
+  const currentBranch = await getCurrentBranch(cwd);
   const mainBranch = state.git.mainBranch;
 
   // Prevent force push to main

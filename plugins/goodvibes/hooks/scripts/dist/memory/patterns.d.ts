@@ -27,7 +27,6 @@ export declare function readPatterns(cwd: string): Promise<MemoryPattern[]>;
  *
  * @param cwd - The current working directory (project root)
  * @param pattern - The pattern object to write
- * @returns Promise that resolves when the pattern is written
  *
  * @example
  * await writePattern('/path/to/project', {
