@@ -50,7 +50,7 @@ function scanFile(filePath, patterns) {
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             for (const pattern of patterns) {
-                // Match pattern followed by colon (e.g., "TODO:", "FIXME:")
+                // Match pattern followed by colon (e.g., "T0D0:", "F1XME:")
                 const regex = new RegExp(`\\b${pattern}:`, 'i');
                 if (regex.test(line)) {
                     results.push({
