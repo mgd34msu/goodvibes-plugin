@@ -259,4 +259,16 @@ export const TOOL_SCHEMAS = [
       properties: {},
     },
   },
+  // Project health
+  {
+    name: 'project_issues',
+    description: 'Get detailed project issues: high-priority TODOs with file:line, health warnings, environment issues',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Project root path', default: '.' },
+        include_low_priority: { type: 'boolean', description: 'Include low-priority TODOs', default: false },
+      },
+    },
+  },
 ];

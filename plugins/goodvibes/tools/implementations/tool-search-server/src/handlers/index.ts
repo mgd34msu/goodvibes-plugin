@@ -60,3 +60,7 @@ export type { RunSmokeTestArgs } from './smoke-test.js';
 // Scaffolding
 export { handleScaffoldProject, handleListTemplates } from './scaffolding.js';
 export type { ScaffoldProjectArgs, ListTemplatesArgs } from './scaffolding.js';
+
+// Issues
+export { handleProjectIssues } from './issues.js';
+export type { ProjectIssuesArgs } from './issues.js';
