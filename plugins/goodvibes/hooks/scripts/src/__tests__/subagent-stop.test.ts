@@ -52,7 +52,8 @@ describe('subagent-stop', () => {
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
-        fs.mkdirSync(goodvibesDir, { recursive: true });
+        const stateDir = path.join(goodvibesDir, 'state');
+        fs.mkdirSync(stateDir, { recursive: true });
         return goodvibesDir;
       });
 
@@ -81,7 +82,8 @@ describe('subagent-stop', () => {
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
-        fs.mkdirSync(goodvibesDir, { recursive: true });
+        const stateDir = path.join(goodvibesDir, 'state');
+        fs.mkdirSync(stateDir, { recursive: true });
         return goodvibesDir;
       });
 
@@ -111,7 +113,8 @@ describe('subagent-stop', () => {
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
-        fs.mkdirSync(goodvibesDir, { recursive: true });
+        const stateDir = path.join(goodvibesDir, 'state');
+        fs.mkdirSync(stateDir, { recursive: true });
         return goodvibesDir;
       });
 
@@ -150,7 +153,8 @@ describe('subagent-stop', () => {
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
-        fs.mkdirSync(goodvibesDir, { recursive: true });
+        const stateDir = path.join(goodvibesDir, 'state');
+        fs.mkdirSync(stateDir, { recursive: true });
         return goodvibesDir;
       });
 
@@ -184,16 +188,19 @@ describe('subagent-stop', () => {
 
     it('should handle corrupted tracking file gracefully', async () => {
       const { ensureGoodVibesDir } = await import('../shared.js');
-      const trackingDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
-        fs.mkdirSync(path.join(goodvibesDir, 'state'), { recursive: true });
+        const stateDir = path.join(goodvibesDir, 'state');
+        fs.mkdirSync(stateDir, { recursive: true });
         return goodvibesDir;
       });
 
       // Create corrupted file
+      const trackingDir = path.join(testDir, '.goodvibes', 'state');
       const trackingPath = path.join(trackingDir, 'agent-tracking.json');
+      // Ensure directory exists before writing
+      fs.mkdirSync(trackingDir, { recursive: true });
       fs.writeFileSync(trackingPath, 'invalid json {{{');
 
       const tracking: TelemetryTracking = {

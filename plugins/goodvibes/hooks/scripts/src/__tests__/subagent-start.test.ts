@@ -84,8 +84,10 @@ describe('subagent-start', () => {
         'session-1'
       );
 
+      // Agents without specific reminders should still get project context
       expect(context.additionalContext).toBeDefined();
-      expect(context.additionalContext).toContain('generic-agent');
+      expect(context.additionalContext).toContain('Project: project');
+      expect(context.additionalContext).toContain('Mode: autonomous');
     });
 
     it('should return null context when no parts are added', () => {
@@ -140,7 +142,7 @@ describe('subagent-start', () => {
 
       expect(context.additionalContext).toBeDefined();
       // Frontend doesn't have specific reminders in current implementation
-      expect(context.additionalContext).toContain('frontend-architect');
+      expect(context.additionalContext).toContain('Project: project');
     });
 
     it('should handle devops-related agent types', () => {
@@ -151,7 +153,7 @@ describe('subagent-start', () => {
       );
 
       expect(context.additionalContext).toBeDefined();
-      expect(context.additionalContext).toContain('devops-deployer');
+      expect(context.additionalContext).toContain('Project: project');
     });
 
     it('should include GoodVibes branding', () => {
@@ -219,7 +221,8 @@ describe('subagent-start', () => {
         'session-1'
       );
 
-      expect(context.additionalContext).toContain('brutal-reviewer-v2');
+      // The agent type contains 'brutal-reviewer' which triggers the reminder
+      expect(context.additionalContext).toContain('Be brutally honest');
     });
 
     it('should maintain reminder order', () => {

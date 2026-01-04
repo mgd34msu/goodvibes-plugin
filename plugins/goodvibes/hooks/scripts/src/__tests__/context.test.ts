@@ -7,8 +7,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 
-// Mock fs and child_process
+// Mock fs, fs/promises, and child_process
 vi.mock('fs');
+vi.mock('fs/promises', async () => {
+  return {
+    readdir: vi.fn(),
+    access: vi.fn(),
+    readFile: vi.fn(),
+  };
+});
 vi.mock('child_process');
 
 // Import modules under test
@@ -17,14 +24,27 @@ import { getGitContext, formatGitContext, GitContext } from '../context/git-cont
 import { checkProjectHealth, formatHealthStatus, HealthStatus } from '../context/health-checker';
 import { checkEnvironment, formatEnvStatus, EnvStatus } from '../context/env-checker';
 import { isEmptyProject, formatEmptyProjectContext } from '../context/empty-project';
+import * as fsPromises from 'fs/promises';
 
 // Type the mocked modules
 const mockedFs = vi.mocked(fs);
+const mockedFsPromises = vi.mocked(fsPromises);
 const mockedExecSync = vi.mocked(execSync);
 
 describe('stack-detector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Set up default mock behavior for fs functions
+    // By default, files don't exist and reading files throws
+    mockedFs.existsSync.mockReturnValue(false);
+    mockedFs.readFileSync.mockImplementation(() => {
+      throw new Error('File not found');
+    });
+
+    // Set up default behavior for fs/promises
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+    mockedFsPromises.readFile.mockRejectedValue(new Error('ENOENT'));
   });
 
   describe('detectStack', () => {
@@ -260,6 +280,12 @@ describe('stack-detector', () => {
 describe('git-context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Set up default mock behavior
+    mockedFs.existsSync.mockReturnValue(false);
+    mockedExecSync.mockImplementation(() => {
+      throw new Error('Command not found');
+    });
   });
 
   describe('getGitContext', () => {
@@ -447,6 +473,12 @@ describe('git-context', () => {
 describe('health-checker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Set up default mock behavior
+    mockedFs.existsSync.mockReturnValue(false);
+    mockedFs.readFileSync.mockImplementation(() => {
+      throw new Error('File not found');
+    });
   });
 
   describe('checkProjectHealth', () => {
@@ -621,6 +653,12 @@ describe('health-checker', () => {
 describe('env-checker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Set up default mock behavior
+    mockedFs.existsSync.mockReturnValue(false);
+    mockedFs.readFileSync.mockImplementation(() => {
+      throw new Error('File not found');
+    });
   });
 
   describe('checkEnvironment', () => {
@@ -829,7 +867,7 @@ describe('empty-project', () => {
 
   describe('isEmptyProject', () => {
     it('should return true for empty directory', async () => {
-      mockedFs.readdirSync.mockReturnValue([]);
+      mockedFsPromises.readdir.mockResolvedValue([]);
 
       const result = await isEmptyProject('/test/empty');
 
@@ -837,12 +875,12 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only scaffolding files', async () => {
-      mockedFs.readdirSync.mockReturnValue([
+      mockedFsPromises.readdir.mockResolvedValue([
         'README.md',
         'LICENSE',
         '.gitignore',
         '.git',
-      ] as unknown as fs.Dirent[]);
+      ] as any);
 
       const result = await isEmptyProject('/test/scaffolding');
 
@@ -850,11 +888,11 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with meaningful files', async () => {
-      mockedFs.readdirSync.mockReturnValue([
+      mockedFsPromises.readdir.mockResolvedValue([
         'package.json',
         'src',
         'README.md',
-      ] as unknown as fs.Dirent[]);
+      ] as any);
 
       const result = await isEmptyProject('/test/project');
 
@@ -862,9 +900,9 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with only package.json', async () => {
-      mockedFs.readdirSync.mockReturnValue([
+      mockedFsPromises.readdir.mockResolvedValue([
         'package.json',
-      ] as unknown as fs.Dirent[]);
+      ] as any);
 
       const result = await isEmptyProject('/test/project');
 
@@ -872,11 +910,11 @@ describe('empty-project', () => {
     });
 
     it('should ignore hidden files (starting with dot)', async () => {
-      mockedFs.readdirSync.mockReturnValue([
+      mockedFsPromises.readdir.mockResolvedValue([
         '.env',
         '.eslintrc',
         '.prettierrc',
-      ] as unknown as fs.Dirent[]);
+      ] as any);
 
       const result = await isEmptyProject('/test/project');
 
@@ -884,11 +922,11 @@ describe('empty-project', () => {
     });
 
     it('should handle case-insensitive scaffolding file names', async () => {
-      mockedFs.readdirSync.mockReturnValue([
+      mockedFsPromises.readdir.mockResolvedValue([
         'README.MD',
         'License.md',
         'license',
-      ] as unknown as fs.Dirent[]);
+      ] as any);
 
       const result = await isEmptyProject('/test/project');
 
@@ -896,9 +934,7 @@ describe('empty-project', () => {
     });
 
     it('should return true on fs error', async () => {
-      mockedFs.readdirSync.mockImplementation(() => {
-        throw new Error('ENOENT: no such file or directory');
-      });
+      mockedFsPromises.readdir.mockRejectedValue(new Error('ENOENT: no such file or directory'));
 
       const result = await isEmptyProject('/nonexistent');
 
@@ -906,10 +942,10 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with src folder', async () => {
-      mockedFs.readdirSync.mockReturnValue([
+      mockedFsPromises.readdir.mockResolvedValue([
         'src',
         'README.md',
-      ] as unknown as fs.Dirent[]);
+      ] as any);
 
       const result = await isEmptyProject('/test/project');
 
