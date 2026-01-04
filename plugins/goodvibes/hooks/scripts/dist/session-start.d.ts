@@ -5,6 +5,6 @@
  * - Validates registries exist
  * - Creates cache directory
  * - Initializes analytics
- * - Warms up indexes (optional)
+ * - Gathers and injects project context (Smart Context Injection)
  */
 export {};
