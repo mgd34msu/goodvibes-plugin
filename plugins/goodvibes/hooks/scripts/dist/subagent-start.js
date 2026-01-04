@@ -26,6 +26,7 @@ async function main() {
     try {
         debug('SubagentStart hook starting');
         const rawInput = await readHookInput();
+        debug('Raw input shape:', Object.keys(rawInput || {}));
         const input = rawInput;
         // Extract subagent info (handle different field names)
         const agentId = input.agent_id || input.subagent_id || ('agent_' + Date.now());
@@ -64,9 +65,8 @@ async function main() {
         // Track subagent spawns in session analytics
         const analytics = loadAnalytics();
         if (analytics) {
-            if (!analytics.subagents_spawned) {
-                analytics.subagents_spawned = [];
-            }
+            // Ensure array exists with proper typing
+            analytics.subagents_spawned = analytics.subagents_spawned || [];
             analytics.subagents_spawned.push({
                 type: agentType,
                 task: taskDescription?.substring(0, 200),

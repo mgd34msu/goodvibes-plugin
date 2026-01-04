@@ -63,6 +63,7 @@ async function main(): Promise<void> {
     debug('SubagentStop hook starting');
 
     const rawInput = await readHookInput();
+    debug('Raw input shape:', Object.keys(rawInput || {}));
     const input = rawInput as unknown as SubagentStopInput;
 
     // Extract subagent info (handle different field names)
@@ -109,8 +110,8 @@ async function main(): Promise<void> {
       if (transcriptPath && fs.existsSync(transcriptPath)) {
         try {
           transcriptContent = fs.readFileSync(transcriptPath, 'utf-8');
-        } catch {
-          // Ignore read errors
+        } catch (readError) {
+          debug('Failed to read transcript:', readError instanceof Error ? readError.message : 'unknown');
         }
       }
 
@@ -168,8 +169,8 @@ async function main(): Promise<void> {
           parsedTranscript = parseTranscript(transcriptPath);
           try {
             transcriptContent = fs.readFileSync(transcriptPath, 'utf-8');
-          } catch {
-            // Ignore
+          } catch (readError) {
+            debug('Failed to read transcript:', readError instanceof Error ? readError.message : 'unknown');
           }
         }
 

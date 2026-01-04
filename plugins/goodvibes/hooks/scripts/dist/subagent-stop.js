@@ -24,6 +24,7 @@ async function main() {
     try {
         debug('SubagentStop hook starting');
         const rawInput = await readHookInput();
+        debug('Raw input shape:', Object.keys(rawInput || {}));
         const input = rawInput;
         // Extract subagent info (handle different field names)
         const agentId = input.agent_id || input.subagent_id || '';
@@ -64,8 +65,8 @@ async function main() {
                 try {
                     transcriptContent = fs.readFileSync(transcriptPath, 'utf-8');
                 }
-                catch {
-                    // Ignore read errors
+                catch (readError) {
+                    debug('Failed to read transcript:', readError instanceof Error ? readError.message : 'unknown');
                 }
             }
             // Extract keywords
@@ -112,8 +113,8 @@ async function main() {
                     try {
                         transcriptContent = fs.readFileSync(transcriptPath, 'utf-8');
                     }
-                    catch {
-                        // Ignore
+                    catch (readError) {
+                        debug('Failed to read transcript:', readError instanceof Error ? readError.message : 'unknown');
                     }
                 }
                 const keywords = extractKeywords(undefined, transcriptContent, agentType);

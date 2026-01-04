@@ -66,6 +66,7 @@ async function main(): Promise<void> {
     debug('SubagentStart hook starting');
 
     const rawInput = await readHookInput();
+    debug('Raw input shape:', Object.keys(rawInput || {}));
     const input = rawInput as unknown as SubagentStartInput;
 
     // Extract subagent info (handle different field names)
@@ -112,9 +113,8 @@ async function main(): Promise<void> {
     // Track subagent spawns in session analytics
     const analytics = loadAnalytics();
     if (analytics) {
-      if (!analytics.subagents_spawned) {
-        analytics.subagents_spawned = [];
-      }
+      // Ensure array exists with proper typing
+      analytics.subagents_spawned = analytics.subagents_spawned || [];
       analytics.subagents_spawned.push({
         type: agentType,
         task: taskDescription?.substring(0, 200),
