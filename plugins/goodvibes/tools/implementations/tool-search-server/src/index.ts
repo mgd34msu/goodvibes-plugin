@@ -56,6 +56,8 @@ import {
   // Scaffolding
   handleScaffoldProject,
   handleListTemplates,
+  // Issues
+  handleProjectIssues,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
@@ -67,6 +69,7 @@ import {
   type RunSmokeTestArgs,
   type ScaffoldProjectArgs,
   type ListTemplatesArgs,
+  type ProjectIssuesArgs,
 } from './handlers/index.js';
 
 /**
@@ -179,6 +182,9 @@ class GoodVibesServer {
 
           case 'plugin_status':
             return handlePluginStatus();
+
+          case 'project_issues':
+            return handleProjectIssues(args as ProjectIssuesArgs);
 
           default:
             throw new Error(`Unknown tool: ${name}`);

@@ -2979,7 +2979,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve8.call(this, root, ref);
+      let _sch = resolve9.call(this, root, ref);
       if (_sch === void 0) {
         const schema2 = (_a2 = root.localRefs) === null || _a2 === void 0 ? void 0 : _a2[ref];
         const { schemaId } = this.opts;
@@ -3006,7 +3006,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve8(root, ref) {
+    function resolve9(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3221,8 +3221,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path12) {
-      let input = path12;
+    function removeDotSegments(path13) {
+      let input = path13;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3421,8 +3421,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path12, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
+        const [path13, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path13 && path13 !== "/" ? path13 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3581,55 +3581,55 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve8(baseURI, relativeURI, options) {
+    function resolve9(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse4(baseURI, schemelessOptions), parse4(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative2, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse4(serialize(base, options), options);
-        relative2 = parse4(serialize(relative2, options), options);
+        relative3 = parse4(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative2.scheme) {
-        target.scheme = relative2.scheme;
-        target.userinfo = relative2.userinfo;
-        target.host = relative2.host;
-        target.port = relative2.port;
-        target.path = removeDotSegments(relative2.path || "");
-        target.query = relative2.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
-          target.userinfo = relative2.userinfo;
-          target.host = relative2.host;
-          target.port = relative2.port;
-          target.path = removeDotSegments(relative2.path || "");
-          target.query = relative2.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative2.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative2.query !== void 0) {
-              target.query = relative2.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative2.path[0] === "/") {
-              target.path = removeDotSegments(relative2.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative2.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative2.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative2.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3637,7 +3637,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative2.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -3808,7 +3808,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve8,
+      resolve: resolve9,
       resolveComponent,
       equal,
       serialize,
@@ -6775,12 +6775,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs9, exportName) {
+    function addFormats(ajv, list, fs10, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs9[f]);
+        ajv.addFormat(f, fs10[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7147,8 +7147,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path12, errorMaps, issueData } = params;
-  const fullPath = [...path12, ...issueData.path || []];
+  const { data, path: path13, errorMaps, issueData } = params;
+  const fullPath = [...path13, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7263,11 +7263,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path12, key) {
+  constructor(parent, value, path13, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path12;
+    this._path = path13;
     this._key = key;
   }
   get path() {
@@ -10913,10 +10913,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path12) {
-  if (!path12)
+function getElementAtPath(obj, path13) {
+  if (!path13)
     return obj;
-  return path12.reduce((acc, key) => acc?.[key], obj);
+  return path13.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11299,11 +11299,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path12, issues) {
+function prefixIssues(path13, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path12);
+    iss.path.unshift(path13);
     return iss;
   });
 }
@@ -19550,7 +19550,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve8) => setTimeout(resolve8, pollInterval));
+        await new Promise((resolve9) => setTimeout(resolve9, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -19567,7 +19567,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve9, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -19645,7 +19645,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve8(parseResult.data);
+            resolve9(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19906,12 +19906,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve9, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve8, interval);
+      const timeoutId = setTimeout(resolve9, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20640,12 +20640,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve8) => {
+    return new Promise((resolve9) => {
       const json3 = serializeMessage(message);
       if (this._stdout.write(json3)) {
-        resolve8();
+        resolve9();
       } else {
-        this._stdout.once("drain", resolve8);
+        this._stdout.once("drain", resolve9);
       }
     });
   }
@@ -20941,6 +20941,18 @@ var TOOL_SCHEMAS = [
       type: "object",
       properties: {}
     }
+  },
+  // Project health
+  {
+    name: "project_issues",
+    description: "Get detailed project issues: high-priority TODOs with file:line, health warnings, environment issues",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path", default: "." },
+        include_low_priority: { type: "boolean", description: "Include low-priority TODOs", default: false }
+      }
+    }
   }
 ];
 
@@ -21015,14 +21027,14 @@ var KeyStore = class {
   }
 };
 function createKey(key) {
-  let path12 = null;
+  let path13 = null;
   let id = null;
   let src = null;
   let weight = 1;
   let getFn = null;
   if (isString(key) || isArray(key)) {
     src = key;
-    path12 = createKeyPath(key);
+    path13 = createKeyPath(key);
     id = createKeyId(key);
   } else {
     if (!hasOwn.call(key, "name")) {
@@ -21036,11 +21048,11 @@ function createKey(key) {
         throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
       }
     }
-    path12 = createKeyPath(name);
+    path13 = createKeyPath(name);
     id = createKeyId(name);
     getFn = key.getFn;
   }
-  return { path: path12, id, weight, src, getFn };
+  return { path: path13, id, weight, src, getFn };
 }
 function createKeyPath(key) {
   return isArray(key) ? key : key.split(".");
@@ -21048,34 +21060,34 @@ function createKeyPath(key) {
 function createKeyId(key) {
   return isArray(key) ? key.join(".") : key;
 }
-function get(obj, path12) {
+function get(obj, path13) {
   let list = [];
   let arr = false;
-  const deepGet = (obj2, path13, index) => {
+  const deepGet = (obj2, path14, index) => {
     if (!isDefined(obj2)) {
       return;
     }
-    if (!path13[index]) {
+    if (!path14[index]) {
       list.push(obj2);
     } else {
-      let key = path13[index];
+      let key = path14[index];
       const value = obj2[key];
       if (!isDefined(value)) {
         return;
       }
-      if (index === path13.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
+      if (index === path14.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
         list.push(toString(value));
       } else if (isArray(value)) {
         arr = true;
         for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path13, index + 1);
+          deepGet(value[i], path14, index + 1);
         }
-      } else if (path13.length) {
-        deepGet(value, path13, index + 1);
+      } else if (path14.length) {
+        deepGet(value, path14, index + 1);
       }
     }
   };
-  deepGet(obj, isString(path12) ? path12.split(".") : path12, 0);
+  deepGet(obj, isString(path13) ? path13.split(".") : path13, 0);
   return arr ? list : list[0];
 }
 var MatchOptions = {
@@ -24914,18 +24926,18 @@ function detectPackageManager(projectPath) {
   return "npm";
 }
 function fetchUrl(url2) {
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve9, reject) => {
     const client = url2.startsWith("https") ? https : http;
     client.get(url2, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchUrl(res.headers.location).then(resolve8).catch(reject);
+        fetchUrl(res.headers.location).then(resolve9).catch(reject);
         return;
       }
       let data = "";
       res.on("data", (chunk) => {
         data += chunk;
       });
-      res.on("end", () => resolve8(data));
+      res.on("end", () => resolve9(data));
       res.on("error", reject);
     }).on("error", reject);
   });
@@ -26862,6 +26874,387 @@ async function handleListTemplates(args) {
   };
 }
 
+// src/handlers/issues.ts
+import * as fs9 from "fs";
+import * as path12 from "path";
+var SCAN_EXTENSIONS = /* @__PURE__ */ new Set([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".vue",
+  ".svelte",
+  ".py",
+  ".rb",
+  ".go",
+  ".rs",
+  ".java",
+  ".kt",
+  ".swift",
+  ".cs",
+  ".php"
+]);
+var SKIP_DIRS = /* @__PURE__ */ new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "out",
+  ".next",
+  ".nuxt",
+  ".svelte-kit",
+  "coverage",
+  ".cache",
+  "vendor",
+  "__pycache__",
+  ".venv",
+  "venv",
+  "target",
+  "__tests__",
+  "tests",
+  "test",
+  "__mocks__",
+  "fixtures",
+  "__fixtures__"
+]);
+var TEST_FILE_PATTERNS = [
+  /\.test\.[jt]sx?$/,
+  /\.spec\.[jt]sx?$/,
+  /_test\.[jt]sx?$/,
+  /_spec\.[jt]sx?$/,
+  /\.stories\.[jt]sx?$/
+];
+var TODO_PATTERN = /\b(TODO|FIXME|HACK|XXX|BUG|NOTE)\b[:\s]*(.+?)(?:\*\/|-->|$)/gi;
+var LOCKFILES = {
+  "package-lock.json": "npm",
+  "yarn.lock": "yarn",
+  "pnpm-lock.yaml": "pnpm",
+  "bun.lockb": "bun"
+};
+var SENSITIVE_PATTERNS = [
+  /api[_-]?key/i,
+  /secret/i,
+  /password/i,
+  /token/i,
+  /private[_-]?key/i,
+  /credentials/i,
+  /auth/i,
+  /aws[_-]?secret/i,
+  /github[_-]?token/i,
+  /jwt[_-]?secret/i,
+  /encryption[_-]?key/i,
+  /access[_-]?key/i,
+  /client[_-]?secret/i
+];
+var ICONS = {
+  error: "\u{1F534}",
+  warning: "\u{1F7E1}",
+  info: "\u{1F535}",
+  suggestion: "\u{1F4A1}"
+};
+var ENV_FILES = [".env", ".env.local", ".env.development", ".env.production"];
+var ENV_EXAMPLE_FILES = [".env.example", ".env.sample", ".env.template"];
+function isTestFile(filename) {
+  return TEST_FILE_PATTERNS.some((pattern) => pattern.test(filename));
+}
+function getPriority(type2, text) {
+  const upperType = type2.toUpperCase();
+  const lowerText = text.toLowerCase();
+  if (upperType === "FIXME" || upperType === "BUG") return "high";
+  if (lowerText.includes("urgent") || lowerText.includes("critical") || lowerText.includes("important")) {
+    return "high";
+  }
+  if (lowerText.includes("security") || lowerText.includes("vulnerability")) return "high";
+  if (upperType === "NOTE") return "low";
+  if (lowerText.includes("maybe") || lowerText.includes("consider") || lowerText.includes("nice to have")) {
+    return "low";
+  }
+  return "medium";
+}
+function scanFile(filePath, relativePath) {
+  try {
+    const content = fs9.readFileSync(filePath, "utf-8");
+    const lines = content.split("\n");
+    const items = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      TODO_PATTERN.lastIndex = 0;
+      let match;
+      while ((match = TODO_PATTERN.exec(line)) !== null) {
+        const type2 = match[1].toUpperCase();
+        const text = match[2].trim();
+        if (text.length < 3) continue;
+        items.push({
+          type: type2,
+          text: text.slice(0, 100),
+          file: relativePath,
+          line: i + 1,
+          priority: getPriority(type2, text)
+        });
+      }
+    }
+    return items;
+  } catch (err) {
+    console.error(`[issues] Failed to scan file ${filePath}:`, err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+function scanDirectory(dir, baseDir, items, maxFiles = 500) {
+  if (items.length >= maxFiles * 10) return;
+  let filesScanned = 0;
+  try {
+    const entries = fs9.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (filesScanned >= maxFiles) break;
+      const fullPath = path12.join(dir, entry.name);
+      const relativePath = path12.relative(baseDir, fullPath);
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name)) {
+          scanDirectory(fullPath, baseDir, items, maxFiles - filesScanned);
+        }
+      } else if (entry.isFile()) {
+        const ext = path12.extname(entry.name).toLowerCase();
+        if (SCAN_EXTENSIONS.has(ext) && !isTestFile(entry.name)) {
+          filesScanned++;
+          const fileItems = scanFile(fullPath, relativePath);
+          items.push(...fileItems);
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`[issues] Failed to read directory ${dir}:`, err instanceof Error ? err.message : err);
+  }
+}
+function checkHealth(cwd) {
+  const warnings = [];
+  const suggestions = [];
+  const hasNodeModules = fs9.existsSync(path12.join(cwd, "node_modules"));
+  const lockfiles = [];
+  let packageManager = null;
+  for (const [file2, manager] of Object.entries(LOCKFILES)) {
+    if (fs9.existsSync(path12.join(cwd, file2))) {
+      lockfiles.push(file2);
+      if (!packageManager) packageManager = manager;
+    }
+  }
+  if (lockfiles.length > 0 && !hasNodeModules) {
+    warnings.push({
+      type: "warning",
+      message: `node_modules not found. Run \`${packageManager} install\` to install dependencies.`
+    });
+  }
+  if (lockfiles.length > 1) {
+    warnings.push({
+      type: "warning",
+      message: `Multiple lockfiles found (${lockfiles.join(", ")}). This can cause inconsistent installs.`
+    });
+  }
+  const tsconfigPath = path12.join(cwd, "tsconfig.json");
+  if (fs9.existsSync(tsconfigPath)) {
+    try {
+      const content = fs9.readFileSync(tsconfigPath, "utf-8");
+      const jsonContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "");
+      const tsconfig = JSON.parse(jsonContent);
+      const compilerOptions = tsconfig.compilerOptions || {};
+      if (!compilerOptions.strict) {
+        warnings.push({
+          type: "info",
+          message: "TypeScript strict mode is not enabled. Consider enabling for better type safety."
+        });
+      }
+    } catch (err) {
+      console.error(`[issues] Failed to parse tsconfig.json:`, err instanceof Error ? err.message : err);
+    }
+  }
+  const packageJsonPath = path12.join(cwd, "package.json");
+  if (fs9.existsSync(packageJsonPath)) {
+    try {
+      const content = fs9.readFileSync(packageJsonPath, "utf-8");
+      const packageJson = JSON.parse(content);
+      const scripts = Object.keys(packageJson.scripts || {});
+      if (!scripts.includes("lint") && !scripts.includes("eslint")) {
+        suggestions.push("Add a `lint` script to catch code issues");
+      }
+      if (!scripts.includes("test") && !scripts.includes("jest") && !scripts.includes("vitest")) {
+        suggestions.push("Add a `test` script for automated testing");
+      }
+    } catch (err) {
+      console.error(`[issues] Failed to parse package.json:`, err instanceof Error ? err.message : err);
+    }
+  }
+  return { warnings, suggestions: suggestions.slice(0, 3) };
+}
+function checkEnvironment(cwd) {
+  const issues = [];
+  const envFiles = [];
+  let definedVars = [];
+  for (const envFile of ENV_FILES) {
+    const filePath = path12.join(cwd, envFile);
+    if (fs9.existsSync(filePath)) {
+      envFiles.push(envFile);
+      try {
+        const content = fs9.readFileSync(filePath, "utf-8");
+        for (const line of content.split("\n")) {
+          const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
+          if (match) definedVars.push(match[1]);
+        }
+      } catch (err) {
+        console.error(`[issues] Failed to read ${envFile}:`, err instanceof Error ? err.message : err);
+      }
+    }
+  }
+  definedVars = [...new Set(definedVars)];
+  let exampleVars = [];
+  for (const exampleFile of ENV_EXAMPLE_FILES) {
+    const filePath = path12.join(cwd, exampleFile);
+    if (fs9.existsSync(filePath)) {
+      try {
+        const content = fs9.readFileSync(filePath, "utf-8");
+        for (const line of content.split("\n")) {
+          const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
+          if (match) exampleVars.push(match[1]);
+        }
+      } catch (err) {
+        console.error(`[issues] Failed to read ${exampleFile}:`, err instanceof Error ? err.message : err);
+      }
+      break;
+    }
+  }
+  const missingVars = exampleVars.filter((v) => !definedVars.includes(v));
+  for (const varName of missingVars) {
+    issues.push({
+      type: "missing_var",
+      message: `Missing env var: ${varName} (defined in .env.example but not set)`
+    });
+  }
+  const gitignorePath = path12.join(cwd, ".gitignore");
+  if (fs9.existsSync(gitignorePath) && envFiles.length > 0) {
+    try {
+      const gitignore = fs9.readFileSync(gitignorePath, "utf-8");
+      const patterns = gitignore.split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("#"));
+      for (const envFile of envFiles) {
+        if (envFile === ".env.example") continue;
+        const isIgnored = patterns.some((pattern) => {
+          if (pattern === envFile) return true;
+          if (pattern === ".env" && envFile.startsWith(".env")) return true;
+          if (pattern === ".env*" || pattern === "*.env*") return true;
+          if (pattern === ".env.*" && envFile.startsWith(".env.")) return true;
+          return false;
+        });
+        if (!isIgnored) {
+          const vars = definedVars.filter((v) => SENSITIVE_PATTERNS.some((p) => p.test(v)));
+          for (const varName of vars.slice(0, 3)) {
+            issues.push({
+              type: "sensitive_exposed",
+              message: `Sensitive var ${varName} in ${envFile} may not be gitignored`
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[issues] Failed to read .gitignore:`, err instanceof Error ? err.message : err);
+    }
+  }
+  return issues;
+}
+function formatIssues(result) {
+  const sections = [];
+  sections.push(`## Project Issues (${result.total_issues} total)
+`);
+  sections.push(`### High-Priority TODOs (${result.todos.high_priority.length})`);
+  if (result.todos.high_priority.length > 0) {
+    for (const todo of result.todos.high_priority.slice(0, 10)) {
+      sections.push(`- **${todo.type}** in \`${todo.file}:${todo.line}\`: ${todo.text}`);
+    }
+    if (result.todos.high_priority.length > 10) {
+      sections.push(`  _(${result.todos.high_priority.length - 10} more...)_`);
+    }
+  } else {
+    sections.push("No high-priority TODOs found.");
+  }
+  sections.push("");
+  sections.push(`### Health Warnings (${result.health.warnings.length})`);
+  if (result.health.warnings.length > 0) {
+    for (const warning of result.health.warnings) {
+      const icon = ICONS[warning.type] || ICONS.info;
+      sections.push(`- ${icon} ${warning.message}`);
+    }
+  } else {
+    sections.push("No health warnings.");
+  }
+  sections.push("");
+  sections.push(`### Environment Issues (${result.environment.issues.length})`);
+  if (result.environment.issues.length > 0) {
+    for (const issue2 of result.environment.issues) {
+      const icon = issue2.type === "sensitive_exposed" ? ICONS.error : ICONS.warning;
+      sections.push(`- ${icon} ${issue2.message}`);
+    }
+  } else {
+    sections.push("No environment issues found.");
+  }
+  sections.push("");
+  if (result.todos.medium_priority.length > 0) {
+    sections.push(`### Medium-Priority TODOs (${result.todos.medium_priority.length})`);
+    for (const todo of result.todos.medium_priority.slice(0, 5)) {
+      sections.push(`- ${todo.type} in \`${todo.file}:${todo.line}\`: ${todo.text}`);
+    }
+    if (result.todos.medium_priority.length > 5) {
+      sections.push(`  _(${result.todos.medium_priority.length - 5} more...)_`);
+    }
+    sections.push("");
+  }
+  if (result.health.suggestions.length > 0) {
+    sections.push("### Suggestions");
+    for (const suggestion of result.health.suggestions) {
+      sections.push(`- ${ICONS.suggestion} ${suggestion}`);
+    }
+  }
+  return sections.join("\n");
+}
+function handleProjectIssues(args) {
+  const cwd = args.path ? path12.resolve(args.path) : process.cwd();
+  if (!fs9.existsSync(cwd)) {
+    return success2(`## Project Issues
+
+Error: Path does not exist: ${cwd}`);
+  }
+  const stats = fs9.statSync(cwd);
+  if (!stats.isDirectory()) {
+    return success2(`## Project Issues
+
+Error: Path is not a directory: ${cwd}`);
+  }
+  const allTodos = [];
+  scanDirectory(cwd, cwd, allTodos);
+  const highPriority = allTodos.filter((t) => t.priority === "high");
+  const mediumPriority = allTodos.filter((t) => t.priority === "medium");
+  const lowPriority = allTodos.filter((t) => t.priority === "low");
+  const health = checkHealth(cwd);
+  const envIssues = checkEnvironment(cwd);
+  const totalIssues = highPriority.length + health.warnings.filter((w) => w.type !== "info").length + envIssues.length;
+  const result = {
+    total_issues: totalIssues,
+    todos: {
+      high_priority: highPriority,
+      medium_priority: args.include_low_priority ? mediumPriority : mediumPriority.slice(0, 10),
+      low_priority: args.include_low_priority ? lowPriority : [],
+      total: allTodos.length
+    },
+    health: {
+      warnings: health.warnings,
+      suggestions: health.suggestions
+    },
+    environment: {
+      issues: envIssues
+    },
+    formatted: ""
+  };
+  result.formatted = formatIssues(result);
+  return success2(result.formatted);
+}
+
 // src/index.ts
 var GoodVibesServer = class {
   server;
@@ -26947,6 +27340,8 @@ var GoodVibesServer = class {
             return handleListTemplates(args);
           case "plugin_status":
             return handlePluginStatus();
+          case "project_issues":
+            return handleProjectIssues(args);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
