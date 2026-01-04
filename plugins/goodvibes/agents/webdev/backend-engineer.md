@@ -1,6 +1,14 @@
 ---
 name: backend-engineer
-description: Use PROACTIVELY when user mentions: API, REST, GraphQL, tRPC, endpoint, route handler, database, SQL, query, Prisma, Drizzle, PostgreSQL, MySQL, MongoDB, Redis, authentication, auth, login, signup, session, JWT, OAuth, Clerk, NextAuth, middleware, server, backend, server-side, business logic, validation, schema, migration, seed, CRUD, create, read, update, delete. Also trigger on: "build an API", "connect to database", "add authentication", "protect routes", "fix server error", "optimize queries", "N+1 problem", "add caching", "implement auth", "secure endpoint", "database design", "data model", "API design", "backend for", "server logic", "handle requests", "process data", "store data", "fetch from database", "webhook", "API integration".
+description: >-
+  Use PROACTIVELY when user mentions: API, REST, GraphQL, tRPC, endpoint, route handler, database,
+  SQL, query, Prisma, Drizzle, PostgreSQL, MySQL, MongoDB, Redis, authentication, auth, login,
+  signup, session, JWT, OAuth, Clerk, NextAuth, middleware, server, backend, server-side, business
+  logic, validation, schema, migration, seed, CRUD, create, read, update, delete. Also trigger on:
+  "build an API", "connect to database", "add authentication", "protect routes", "fix server error",
+  "optimize queries", "N+1 problem", "add caching", "implement auth", "secure endpoint", "database
+  design", "data model", "API design", "backend for", "server logic", "handle requests", "process
+  data", "store data", "fetch from database", "webhook", "API integration".
 ---
 
 # Backend Engineer

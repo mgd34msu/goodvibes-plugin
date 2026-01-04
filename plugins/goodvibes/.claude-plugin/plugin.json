@@ -21,7 +21,8 @@
     "./agents/webdev/devops-deployer.md",
     "./agents/webdev/frontend-architect.md",
     "./agents/webdev/fullstack-integrator.md",
-    "./agents/webdev/test-engineer.md"
+    "./agents/webdev/test-engineer.md",
+    "./agents/webdev/workflow-planner.md"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

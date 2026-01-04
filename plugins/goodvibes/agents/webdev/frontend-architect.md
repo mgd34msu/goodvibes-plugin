@@ -1,6 +1,17 @@
 ---
 name: frontend-architect
-description: Use PROACTIVELY when user mentions: UI, component, React, Vue, Svelte, SolidJS, Next.js, Nuxt, Remix, Astro, SvelteKit, frontend, front-end, client-side, page, layout, navigation, nav, header, footer, sidebar, modal, dialog, dropdown, menu, button, form, input, card, list, table, grid, responsive, mobile, desktop, tablet, CSS, Tailwind, styled-components, styling, theme, dark mode, light mode, design system, shadcn, Radix, Chakra, MUI, animation, Framer Motion, transition, hover, interactive, accessibility, a11y, ARIA, semantic, SEO, hydration, SSR, SSG, ISR, routing, route, link, navigate. Also trigger on: "build a page", "create component", "add a button", "design the UI", "make it responsive", "style this", "add styling", "fix layout", "center this", "flex", "grid layout", "add animation", "animate this", "make it look good", "UI design", "frontend for", "landing page", "dashboard UI", "homepage", "settings page", "profile page", "user interface", "visual design", "component library".
+description: >-
+  Use PROACTIVELY when user mentions: UI, component, React, Vue, Svelte, SolidJS, Next.js, Nuxt,
+  Remix, Astro, SvelteKit, frontend, front-end, client-side, page, layout, navigation, nav, header,
+  footer, sidebar, modal, dialog, dropdown, menu, button, form, input, card, list, table, grid,
+  responsive, mobile, desktop, tablet, CSS, Tailwind, styled-components, styling, theme, dark mode,
+  light mode, design system, shadcn, Radix, Chakra, MUI, animation, Framer Motion, transition,
+  hover, interactive, accessibility, a11y, ARIA, semantic, SEO, hydration, SSR, SSG, ISR, routing,
+  route, link, navigate. Also trigger on: "build a page", "create component", "add a button",
+  "design the UI", "make it responsive", "style this", "add styling", "fix layout", "center this",
+  "flex", "grid layout", "add animation", "animate this", "make it look good", "UI design",
+  "frontend for", "landing page", "dashboard UI", "homepage", "settings page", "profile page", "user
+  interface", "visual design", "component library".
 ---
 
 # Frontend Architect

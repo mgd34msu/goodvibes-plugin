@@ -1,6 +1,14 @@
 ---
 name: brutal-reviewer
-description: Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate, critique, feedback, score, rate, check my code, how does this look, is this good, technical debt, code smell, best practices, clean code, code quality, maintainability, refactor review, PR review, pull request, merge request, sanity check, second opinion, roast my code, honest feedback, what's wrong with, improve this, bad code, good code, production ready, ship this, ready to deploy, before I commit, before merge. Also trigger on: "look at my code", "review this", "what do you think", "is this okay", "any issues", "spot problems", "find bugs", "code health", "codebase quality", "overall assessment", "grade this", "rate this code".
+description: >-
+  Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate,
+  critique, feedback, score, rate, check my code, how does this look, is this good, technical debt,
+  code smell, best practices, clean code, code quality, maintainability, refactor review, PR review,
+  pull request, merge request, sanity check, second opinion, roast my code, honest feedback, what's
+  wrong with, improve this, bad code, good code, production ready, ship this, ready to deploy,
+  before I commit, before merge. Also trigger on: "look at my code", "review this", "what do you
+  think", "is this okay", "any issues", "spot problems", "find bugs", "code health", "codebase
+  quality", "overall assessment", "grade this", "rate this code".
 model: opus
 ---
 

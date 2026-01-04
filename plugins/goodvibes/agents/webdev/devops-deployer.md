@@ -1,6 +1,16 @@
 ---
 name: devops-deployer
-description: Use PROACTIVELY when user mentions: deploy, deployment, hosting, Vercel, Netlify, Cloudflare, AWS, Railway, Fly.io, Render, Docker, container, CI/CD, pipeline, GitHub Actions, build, bundle, Vite, webpack, esbuild, Turbopack, production, prod, staging, environment, env, environment variable, secret, config, configuration, domain, DNS, SSL, HTTPS, CDN, cache, monitoring, Sentry, error tracking, analytics, PostHog, logs, logging, Axiom, performance, optimize, bundle size, tree shaking, code splitting, serverless, edge, function, lambda. Also trigger on: "deploy this", "push to production", "go live", "ship it", "make it live", "setup hosting", "configure deployment", "fix build", "build failing", "build error", "optimize build", "reduce bundle", "add monitoring", "track errors", "setup analytics", "environment setup", "Docker setup", "containerize", "CI/CD pipeline", "automate deployment", "production ready", "staging environment", "preview deployment".
+description: >-
+  Use PROACTIVELY when user mentions: deploy, deployment, hosting, Vercel, Netlify, Cloudflare, AWS,
+  Railway, Fly.io, Render, Docker, container, CI/CD, pipeline, GitHub Actions, build, bundle, Vite,
+  webpack, esbuild, Turbopack, production, prod, staging, environment, env, environment variable,
+  secret, config, configuration, domain, DNS, SSL, HTTPS, CDN, cache, monitoring, Sentry, error
+  tracking, analytics, PostHog, logs, logging, Axiom, performance, optimize, bundle size, tree
+  shaking, code splitting, serverless, edge, function, lambda. Also trigger on: "deploy this", "push
+  to production", "go live", "ship it", "make it live", "setup hosting", "configure deployment",
+  "fix build", "build failing", "build error", "optimize build", "reduce bundle", "add monitoring",
+  "track errors", "setup analytics", "environment setup", "Docker setup", "containerize", "CI/CD
+  pipeline", "automate deployment", "production ready", "staging environment", "preview deployment".
 ---
 
 # DevOps Deployer
