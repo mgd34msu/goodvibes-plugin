@@ -11,8 +11,11 @@ import * as path from 'path';
 import { debug } from '../shared.js';
 
 /**
- * Sanitize a string for safe use in git commands.
+ * Sanitizes a string for safe use in git commands.
  * Removes shell metacharacters that could enable command injection.
+ *
+ * @param input - The string to sanitize
+ * @returns A sanitized string safe for use in git commands
  */
 function sanitizeForGit(input: string): string {
   // Remove or escape shell metacharacters
@@ -20,7 +23,18 @@ function sanitizeForGit(input: string): string {
 }
 
 /**
- * Execute a git command safely using array arguments.
+ * Executes a git command and returns the output.
+ * Handles errors gracefully by returning null on failure.
+ *
+ * @param command - The git command to execute
+ * @param cwd - The current working directory (repository root)
+ * @returns The trimmed command output, or null if the command failed
+ *
+ * @example
+ * const branch = execGit('git branch --show-current', '/repo');
+ * if (branch) {
+ *   console.log('Current branch:', branch);
+ * }
  */
 export function execGit(command: string, cwd: string): string | null {
   try {
@@ -32,14 +46,30 @@ export function execGit(command: string, cwd: string): string | null {
 }
 
 /**
- * Checks if a directory is a git repository.
+ * Checks if a directory is a git repository by looking for a .git directory.
+ *
+ * @param cwd - The directory path to check
+ * @returns True if the directory contains a .git folder, false otherwise
+ *
+ * @example
+ * if (isGitRepo('/my-project')) {
+ *   console.log('This is a git repository');
+ * }
  */
 export function isGitRepo(cwd: string): boolean {
   return fs.existsSync(path.join(cwd, '.git'));
 }
 
 /**
- * Detects the main branch name (main or master) for the repository.
+ * Detects the main branch name for the repository.
+ * Checks for 'main' first, then 'master', defaulting to 'main'.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @returns The name of the main branch ('main' or 'master')
+ *
+ * @example
+ * const mainBranch = detectMainBranch('/repo');
+ * console.log('Main branch is:', mainBranch);
  */
 export function detectMainBranch(cwd: string): string {
   const main = execGit('git rev-parse --verify main', cwd);
@@ -52,7 +82,16 @@ export function detectMainBranch(cwd: string): string {
 }
 
 /**
- * Returns the current git branch name, or null if not in a branch.
+ * Returns the current git branch name.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @returns The current branch name, or null if not on a branch (detached HEAD)
+ *
+ * @example
+ * const branch = getCurrentBranch('/repo');
+ * if (branch === 'main') {
+ *   console.log('On main branch');
+ * }
  */
 export function getCurrentBranch(cwd: string): string | null {
   return execGit('git branch --show-current', cwd);
@@ -60,6 +99,15 @@ export function getCurrentBranch(cwd: string): string | null {
 
 /**
  * Checks if there are uncommitted changes in the working directory.
+ * Includes both staged and unstaged changes.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @returns True if there are uncommitted changes, false otherwise
+ *
+ * @example
+ * if (hasUncommittedChanges('/repo')) {
+ *   console.log('You have uncommitted changes');
+ * }
  */
 export function hasUncommittedChanges(cwd: string): boolean {
   const status = execGit('git status --porcelain', cwd);
@@ -68,6 +116,14 @@ export function hasUncommittedChanges(cwd: string): boolean {
 
 /**
  * Returns a list of file paths with uncommitted changes.
+ * Parses git status --porcelain output to extract file paths.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @returns An array of file paths with changes, or empty array if none
+ *
+ * @example
+ * const files = getUncommittedFiles('/repo');
+ * files.forEach(f => console.log('Modified:', f));
  */
 export function getUncommittedFiles(cwd: string): string[] {
   const status = execGit('git status --porcelain', cwd);
@@ -77,6 +133,17 @@ export function getUncommittedFiles(cwd: string): string[] {
 
 /**
  * Creates a checkpoint commit with all current changes.
+ * Stages all files with git add -A and commits with a prefixed message.
+ * Returns false if there are no changes to commit.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param message - The checkpoint message (will be prefixed with 'checkpoint:')
+ * @returns True if the checkpoint was created successfully, false otherwise
+ *
+ * @example
+ * if (createCheckpoint('/repo', 'pre-refactor state')) {
+ *   console.log('Checkpoint created');
+ * }
  */
 export function createCheckpoint(cwd: string, message: string): boolean {
   if (!hasUncommittedChanges(cwd)) return false;
@@ -98,6 +165,16 @@ export function createCheckpoint(cwd: string, message: string): boolean {
 
 /**
  * Creates a new feature branch with a sanitized name.
+ * Normalizes the name to lowercase with hyphens and prefixes with 'feature/'.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param name - The feature name (will be sanitized and normalized)
+ * @returns True if the branch was created successfully, false otherwise
+ *
+ * @example
+ * if (createFeatureBranch('/repo', 'Add User Authentication')) {
+ *   // Creates and checks out branch: feature/add-user-authentication
+ * }
  */
 export function createFeatureBranch(cwd: string, name: string): boolean {
   try {
@@ -116,6 +193,17 @@ export function createFeatureBranch(cwd: string, name: string): boolean {
 
 /**
  * Merges a feature branch into the main branch and deletes the feature branch.
+ * Performs a no-fast-forward merge to preserve branch history.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param featureBranch - The name of the feature branch to merge
+ * @param mainBranch - The name of the main branch to merge into
+ * @returns True if merge and cleanup succeeded, false otherwise
+ *
+ * @example
+ * if (mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
+ *   console.log('Feature merged and branch cleaned up');
+ * }
  */
 export function mergeFeatureBranch(cwd: string, featureBranch: string, mainBranch: string): boolean {
   try {
