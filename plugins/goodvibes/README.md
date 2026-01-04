@@ -151,4 +151,4 @@ plugins/goodvibes/
 
 ## License
 
-Part of the vibeplug ecosystem.
+Part of the goodvibes ecosystem.
