@@ -12,15 +12,14 @@ const RECENT_ATTEMPTS_COUNT = 3;
  * Analyzes the error message content to determine the type of error for
  * appropriate fix strategy selection.
  *
- * @param _toolName - The name of the tool that produced the error (unused, for API consistency)
  * @param errorMessage - The error message to categorize
  * @returns The ErrorCategory that best matches the error message
  *
  * @example
- * const category = categorizeError('Bash', 'npm ERR! ERESOLVE could not resolve');
+ * const category = categorizeError('npm ERR! ERESOLVE could not resolve');
  * // Returns: 'npm_install'
  */
-export function categorizeError(_toolName, errorMessage) {
+export function categorizeError(errorMessage) {
     const lower = errorMessage.toLowerCase();
     if (lower.includes('eresolve') || lower.includes('npm') || lower.includes('peer dep')) {
         return 'npm_install';

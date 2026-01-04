@@ -71,82 +71,82 @@ describe('fix-loop', () => {
     it('should categorize npm install errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'ERESOLVE unable to resolve dependency tree')).toBe('npm_install');
-      expect(categorizeError('Bash', 'npm ERR! peer dep missing')).toBe('npm_install');
-      expect(categorizeError('Bash', 'npm install failed')).toBe('npm_install');
+      expect(categorizeError('ERESOLVE unable to resolve dependency tree')).toBe('npm_install');
+      expect(categorizeError('npm ERR! peer dep missing')).toBe('npm_install');
+      expect(categorizeError('npm install failed')).toBe('npm_install');
     });
 
     it('should categorize TypeScript errors with error keyword', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
       // Must contain 'ts' AND ('error' OR 'type')
-      expect(categorizeError('Bash', 'error TS2304: Cannot find name')).toBe('typescript_error');
-      expect(categorizeError('Bash', 'tsc error: Property does not exist')).toBe('typescript_error');
+      expect(categorizeError('error TS2304: Cannot find name')).toBe('typescript_error');
+      expect(categorizeError('tsc error: Property does not exist')).toBe('typescript_error');
     });
 
     it('should categorize TypeScript errors with type keyword', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
       // String must contain 'ts' AND 'type' (not 'error')
-      expect(categorizeError('Bash', 'tsc: Type mismatch')).toBe('typescript_error');
-      expect(categorizeError('Bash', 'ts type check failed')).toBe('typescript_error');
+      expect(categorizeError('tsc: Type mismatch')).toBe('typescript_error');
+      expect(categorizeError('ts type check failed')).toBe('typescript_error');
     });
 
     it('should categorize test failures', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'Test failed: expected true')).toBe('test_failure');
-      expect(categorizeError('Bash', 'FAIL tests/unit.test.ts')).toBe('test_failure');
+      expect(categorizeError('Test failed: expected true')).toBe('test_failure');
+      expect(categorizeError('FAIL tests/unit.test.ts')).toBe('test_failure');
     });
 
     it('should categorize build failures', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'Build failed with errors')).toBe('build_failure');
-      expect(categorizeError('Bash', 'Compile error in module')).toBe('build_failure');
+      expect(categorizeError('Build failed with errors')).toBe('build_failure');
+      expect(categorizeError('Compile error in module')).toBe('build_failure');
     });
 
     it('should categorize file not found errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Read', 'ENOENT: no such file')).toBe('file_not_found');
-      expect(categorizeError('Edit', 'File not found: config.ts')).toBe('file_not_found');
+      expect(categorizeError('ENOENT: no such file')).toBe('file_not_found');
+      expect(categorizeError('File not found: config.ts')).toBe('file_not_found');
     });
 
     it('should categorize git conflict errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'Merge conflict in file.ts')).toBe('git_conflict');
-      expect(categorizeError('Bash', 'CONFLICT (content): Merge conflict')).toBe('git_conflict');
+      expect(categorizeError('Merge conflict in file.ts')).toBe('git_conflict');
+      expect(categorizeError('CONFLICT (content): Merge conflict')).toBe('git_conflict');
     });
 
     it('should categorize database errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'Database connection failed')).toBe('database_error');
-      expect(categorizeError('Bash', 'Prisma client error')).toBe('database_error');
-      expect(categorizeError('Bash', 'SQL syntax error')).toBe('database_error');
+      expect(categorizeError('Database connection failed')).toBe('database_error');
+      expect(categorizeError('Prisma client error')).toBe('database_error');
+      expect(categorizeError('SQL syntax error')).toBe('database_error');
     });
 
     it('should categorize API errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'API request failed')).toBe('api_error');
-      expect(categorizeError('Bash', 'fetch error: network timeout')).toBe('api_error');
+      expect(categorizeError('API request failed')).toBe('api_error');
+      expect(categorizeError('fetch error: network timeout')).toBe('api_error');
     });
 
     it('should return unknown for uncategorized errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'Something went wrong')).toBe('unknown');
-      expect(categorizeError('Edit', 'Unexpected token')).toBe('unknown');
+      expect(categorizeError('Something went wrong')).toBe('unknown');
+      expect(categorizeError('Unexpected token')).toBe('unknown');
     });
 
     it('should be case insensitive', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Bash', 'NPM ERROR')).toBe('npm_install');
-      expect(categorizeError('Bash', 'DATABASE ERROR')).toBe('database_error');
+      expect(categorizeError('NPM ERROR')).toBe('npm_install');
+      expect(categorizeError('DATABASE ERROR')).toBe('database_error');
     });
   });
 

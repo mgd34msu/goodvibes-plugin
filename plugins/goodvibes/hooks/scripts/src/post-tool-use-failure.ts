@@ -112,7 +112,7 @@ async function main(): Promise<void> {
     debug('Error signatures', { signature, retrySignature });
 
     // Step 3: Categorize the error
-    const category = categorizeError(toolName, errorMessage);
+    const category = categorizeError(errorMessage);
     debug('Error category', { category });
 
     // Step 4: Load retry tracker to check current phase

@@ -9,15 +9,15 @@ import type { MemoryPreference } from '../types/memory.js';
  * Returns an empty array if the file doesn't exist or is empty.
  *
  * @param cwd - The current working directory (project root)
- * @returns Array of MemoryPreference objects parsed from the file
+ * @returns Promise resolving to array of MemoryPreference objects parsed from the file
  *
  * @example
- * const preferences = readPreferences('/path/to/project');
+ * const preferences = await readPreferences('/path/to/project');
  * for (const pref of preferences) {
  *   console.log(`${pref.key}: ${pref.value}`);
  * }
  */
-export declare function readPreferences(cwd: string): MemoryPreference[];
+export declare function readPreferences(cwd: string): Promise<MemoryPreference[]>;
 /**
  * Writes or updates a preference in the preferences memory file.
  *
@@ -27,13 +27,14 @@ export declare function readPreferences(cwd: string): MemoryPreference[];
  *
  * @param cwd - The current working directory (project root)
  * @param preference - The preference object to write
+ * @returns Promise that resolves when the preference is written
  *
  * @example
- * writePreference('/path/to/project', {
+ * await writePreference('/path/to/project', {
  *   key: 'code-style',
  *   value: 'functional',
  *   date: '2024-01-04',
  *   notes: 'Prefer functional components over class components'
  * });
  */
-export declare function writePreference(cwd: string, preference: MemoryPreference): void;
+export declare function writePreference(cwd: string, preference: MemoryPreference): Promise<void>;

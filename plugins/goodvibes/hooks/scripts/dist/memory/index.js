@@ -4,7 +4,7 @@
  * This module provides backward compatibility with the old memory.ts API
  * while delegating to the new modular implementation.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug, logError } from '../shared.js';
 import { readDecisions, writeDecision } from './decisions.js';
@@ -83,6 +83,21 @@ export function getMemoryFilePath(cwd, type) {
     return path.join(getMemoryDir(cwd), MEMORY_FILES[type]);
 }
 // ============================================================================
+// Async File Existence Helper
+// ============================================================================
+/**
+ * Helper to check if a file or directory exists using fs/promises.
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+// ============================================================================
 // Directory Management (Lazy Creation)
 // ============================================================================
 /**
@@ -93,16 +108,17 @@ export function getMemoryFilePath(cwd, type) {
  * prevent sensitive data from being committed.
  *
  * @param cwd - The current working directory (project root)
+ * @returns Promise that resolves when the directory is ensured
  * @throws Error if the directory cannot be created
  *
  * @example
- * ensureGoodVibesDir('/path/to/project');
+ * await ensureGoodVibesDir('/path/to/project');
  */
-export function ensureGoodVibesDir(cwd) {
+export async function ensureGoodVibesDir(cwd) {
     const goodVibesDir = getGoodVibesDir(cwd);
     try {
-        if (!fs.existsSync(goodVibesDir)) {
-            fs.mkdirSync(goodVibesDir, { recursive: true });
+        if (!(await fileExists(goodVibesDir))) {
+            await fs.mkdir(goodVibesDir, { recursive: true });
             debug(`Created .goodvibes directory at ${goodVibesDir}`);
         }
     }
@@ -111,7 +127,7 @@ export function ensureGoodVibesDir(cwd) {
         throw new Error(`Failed to create .goodvibes directory: ${error}`);
     }
     // Ensure security-hardened .gitignore
-    ensureSecurityGitignore(cwd);
+    await ensureSecurityGitignore(cwd);
 }
 /**
  * Ensure the memory directory exists (lazy creation).
@@ -120,17 +136,18 @@ export function ensureGoodVibesDir(cwd) {
  * Also ensures the parent .goodvibes directory exists.
  *
  * @param cwd - The current working directory (project root)
+ * @returns Promise that resolves when the directory is ensured
  * @throws Error if the directory cannot be created
  *
  * @example
- * ensureMemoryDir('/path/to/project');
+ * await ensureMemoryDir('/path/to/project');
  */
-export function ensureMemoryDir(cwd) {
-    ensureGoodVibesDir(cwd);
+export async function ensureMemoryDir(cwd) {
+    await ensureGoodVibesDir(cwd);
     const memoryDir = getMemoryDir(cwd);
     try {
-        if (!fs.existsSync(memoryDir)) {
-            fs.mkdirSync(memoryDir, { recursive: true });
+        if (!(await fileExists(memoryDir))) {
+            await fs.mkdir(memoryDir, { recursive: true });
             debug(`Created memory directory at ${memoryDir}`);
         }
     }
@@ -147,16 +164,17 @@ export function ensureMemoryDir(cwd) {
  * patterns that are not already present.
  *
  * @param cwd - The current working directory (project root)
+ * @returns Promise that resolves when the gitignore is ensured
  *
  * @example
- * ensureSecurityGitignore('/path/to/project');
+ * await ensureSecurityGitignore('/path/to/project');
  */
-export function ensureSecurityGitignore(cwd) {
+export async function ensureSecurityGitignore(cwd) {
     const gitignorePath = path.join(cwd, '.gitignore');
     try {
         let existingContent = '';
-        if (fs.existsSync(gitignorePath)) {
-            existingContent = fs.readFileSync(gitignorePath, 'utf-8');
+        if (await fileExists(gitignorePath)) {
+            existingContent = await fs.readFile(gitignorePath, 'utf-8');
         }
         // Parse security patterns into individual lines
         const securityLines = SECURITY_GITIGNORE_PATTERNS.split('\n')
@@ -177,7 +195,7 @@ export function ensureSecurityGitignore(cwd) {
         const separator = existingContent.endsWith('\n') ? '' : '\n';
         const newPatternsBlock = '\n# GoodVibes Security Patterns\n' + patternsToAdd.join('\n') + '\n';
         // Write the updated .gitignore
-        fs.writeFileSync(gitignorePath, existingContent + separator + newPatternsBlock);
+        await fs.writeFile(gitignorePath, existingContent + separator + newPatternsBlock);
         debug(`Added ${patternsToAdd.length} security patterns to .gitignore`);
     }
     catch (error) {
@@ -195,13 +213,13 @@ export function ensureSecurityGitignore(cwd) {
  * Loads decisions, patterns, failures, and preferences from disk.
  *
  * @param cwd - The current working directory (project root)
- * @returns The complete ProjectMemory object with all memory categories
+ * @returns Promise resolving to the complete ProjectMemory object with all memory categories
  *
  * @example
- * const memory = loadMemory('/path/to/project');
+ * const memory = await loadMemory('/path/to/project');
  * console.log(`Found ${memory.decisions.length} decisions`);
  */
-export function loadMemory(cwd) {
+export async function loadMemory(cwd) {
     return loadProjectMemory(cwd);
 }
 /**
@@ -211,20 +229,26 @@ export function loadMemory(cwd) {
  * Returns empty arrays for any memory types that don't have files yet.
  *
  * @param cwd - The current working directory (project root)
- * @returns The complete ProjectMemory object with all memory categories
+ * @returns Promise resolving to the complete ProjectMemory object with all memory categories
  *
  * @example
- * const memory = loadProjectMemory('/path/to/project');
+ * const memory = await loadProjectMemory('/path/to/project');
  * if (memory.failures.length > 0) {
  *   console.log('Avoid these approaches:', memory.failures);
  * }
  */
-export function loadProjectMemory(cwd) {
+export async function loadProjectMemory(cwd) {
+    const [decisions, patterns, failures, preferences] = await Promise.all([
+        readDecisions(cwd),
+        readPatterns(cwd),
+        readFailures(cwd),
+        readPreferences(cwd),
+    ]);
     return {
-        decisions: readDecisions(cwd),
-        patterns: readPatterns(cwd),
-        failures: readFailures(cwd),
-        preferences: readPreferences(cwd),
+        decisions,
+        patterns,
+        failures,
+        preferences,
     };
 }
 /**
@@ -235,20 +259,21 @@ export function loadProjectMemory(cwd) {
  *
  * @param cwd - The current working directory (project root)
  * @param decision - The decision object containing title, rationale, alternatives, etc.
+ * @returns Promise that resolves when the decision is appended
  * @throws Error if the decision cannot be written
  *
  * @example
- * appendDecision('/path/to/project', {
+ * await appendDecision('/path/to/project', {
  *   title: 'Use PostgreSQL',
  *   date: '2024-01-04',
  *   rationale: 'Better suited for relational data',
  *   alternatives: ['MongoDB', 'SQLite']
  * });
  */
-export function appendDecision(cwd, decision) {
+export async function appendDecision(cwd, decision) {
     try {
-        ensureMemoryDir(cwd);
-        writeDecision(cwd, decision);
+        await ensureMemoryDir(cwd);
+        await writeDecision(cwd, decision);
         debug(`Appended decision: ${decision.title}`);
     }
     catch (error) {
@@ -264,20 +289,21 @@ export function appendDecision(cwd, decision) {
  *
  * @param cwd - The current working directory (project root)
  * @param pattern - The pattern object containing name, description, example, etc.
+ * @returns Promise that resolves when the pattern is appended
  * @throws Error if the pattern cannot be written
  *
  * @example
- * appendPattern('/path/to/project', {
+ * await appendPattern('/path/to/project', {
  *   name: 'Error Handling',
  *   date: '2024-01-04',
  *   description: 'Use try-catch with specific error types',
  *   example: 'try { ... } catch (error: unknown) { ... }'
  * });
  */
-export function appendPattern(cwd, pattern) {
+export async function appendPattern(cwd, pattern) {
     try {
-        ensureMemoryDir(cwd);
-        writePattern(cwd, pattern);
+        await ensureMemoryDir(cwd);
+        await writePattern(cwd, pattern);
         debug(`Appended pattern: ${pattern.name}`);
     }
     catch (error) {
@@ -293,20 +319,21 @@ export function appendPattern(cwd, pattern) {
  *
  * @param cwd - The current working directory (project root)
  * @param failure - The failure object containing approach, reason, context, etc.
+ * @returns Promise that resolves when the failure is appended
  * @throws Error if the failure cannot be written
  *
  * @example
- * appendFailure('/path/to/project', {
+ * await appendFailure('/path/to/project', {
  *   approach: 'Using global state for auth',
  *   date: '2024-01-04',
  *   reason: 'Caused race conditions in concurrent requests',
  *   suggestion: 'Use context-based auth instead'
  * });
  */
-export function appendFailure(cwd, failure) {
+export async function appendFailure(cwd, failure) {
     try {
-        ensureMemoryDir(cwd);
-        writeFailure(cwd, failure);
+        await ensureMemoryDir(cwd);
+        await writeFailure(cwd, failure);
         debug(`Appended failure: ${failure.approach}`);
     }
     catch (error) {
@@ -322,20 +349,21 @@ export function appendFailure(cwd, failure) {
  *
  * @param cwd - The current working directory (project root)
  * @param preference - The preference object containing key, value, date, and optional notes
+ * @returns Promise that resolves when the preference is appended
  * @throws Error if the preference cannot be written
  *
  * @example
- * appendPreference('/path/to/project', {
+ * await appendPreference('/path/to/project', {
  *   key: 'test-framework',
  *   value: 'vitest',
  *   date: '2024-01-04',
  *   notes: 'Faster than Jest for this project'
  * });
  */
-export function appendPreference(cwd, preference) {
+export async function appendPreference(cwd, preference) {
     try {
-        ensureMemoryDir(cwd);
-        writePreference(cwd, preference);
+        await ensureMemoryDir(cwd);
+        await writePreference(cwd, preference);
         debug(`Appended preference: ${preference.key}`);
     }
     catch (error) {
@@ -367,15 +395,15 @@ export function getCurrentDate() {
  * indicating that memory has been initialized.
  *
  * @param cwd - The current working directory (project root)
- * @returns True if the memory directory exists, false otherwise
+ * @returns Promise resolving to true if the memory directory exists, false otherwise
  *
  * @example
- * if (hasMemory('/path/to/project')) {
- *   const memory = loadMemory('/path/to/project');
+ * if (await hasMemory('/path/to/project')) {
+ *   const memory = await loadMemory('/path/to/project');
  * }
  */
-export function hasMemory(cwd) {
-    return fs.existsSync(getMemoryDir(cwd));
+export async function hasMemory(cwd) {
+    return fileExists(getMemoryDir(cwd));
 }
 /**
  * Get a summary of the project memory.
@@ -384,14 +412,14 @@ export function hasMemory(cwd) {
  * Useful for quickly checking what memory exists for a project.
  *
  * @param cwd - The current working directory (project root)
- * @returns An object containing hasMemory flag and counts for each memory type
+ * @returns Promise resolving to an object containing hasMemory flag and counts for each memory type
  *
  * @example
- * const summary = getMemorySummary('/path/to/project');
+ * const summary = await getMemorySummary('/path/to/project');
  * console.log(`Project has ${summary.decisionsCount} decisions`);
  */
-export function getMemorySummary(cwd) {
-    if (!hasMemory(cwd)) {
+export async function getMemorySummary(cwd) {
+    if (!(await hasMemory(cwd))) {
         return {
             hasMemory: false,
             decisionsCount: 0,
@@ -400,7 +428,7 @@ export function getMemorySummary(cwd) {
             preferencesCount: 0,
         };
     }
-    const memory = loadMemory(cwd);
+    const memory = await loadMemory(cwd);
     return {
         hasMemory: true,
         decisionsCount: memory.decisions.length,
@@ -418,14 +446,14 @@ export function getMemorySummary(cwd) {
  *
  * @param cwd - The current working directory (project root)
  * @param keywords - Array of keywords to search for
- * @returns Filtered memory entries matching the search keywords
+ * @returns Promise resolving to filtered memory entries matching the search keywords
  *
  * @example
- * const results = searchMemory('/path/to/project', ['auth', 'login']);
+ * const results = await searchMemory('/path/to/project', ['auth', 'login']);
  * console.log(`Found ${results.decisions.length} relevant decisions`);
  */
-export function searchMemory(cwd, keywords) {
-    const memory = loadMemory(cwd);
+export async function searchMemory(cwd, keywords) {
+    const memory = await loadMemory(cwd);
     const lowerKeywords = keywords.map((k) => k.toLowerCase());
     const matchesKeywords = (text) => {
         const lowerText = text.toLowerCase();
@@ -460,7 +488,7 @@ export function searchMemory(cwd, keywords) {
  * @returns A formatted string representation of the memory
  *
  * @example
- * const memory = loadMemory('/path/to/project');
+ * const memory = await loadMemory('/path/to/project');
  * const context = formatMemoryContext(memory);
  * console.log(context);
  */

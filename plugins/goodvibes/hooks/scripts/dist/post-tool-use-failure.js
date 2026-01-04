@@ -66,7 +66,7 @@ async function main() {
         const retrySignature = generateRetrySignature(errorMessage, toolName);
         debug('Error signatures', { signature, retrySignature });
         // Step 3: Categorize the error
-        const category = categorizeError(toolName, errorMessage);
+        const category = categorizeError(errorMessage);
         debug('Error category', { category });
         // Step 4: Load retry tracker to check current phase
         let errorState = getErrorState(state, signature);

@@ -9,15 +9,15 @@ import type { MemoryPattern } from '../types/memory.js';
  * Returns an empty array if the file doesn't exist or is empty.
  *
  * @param cwd - The current working directory (project root)
- * @returns Array of MemoryPattern objects parsed from the file
+ * @returns Promise resolving to array of MemoryPattern objects parsed from the file
  *
  * @example
- * const patterns = readPatterns('/path/to/project');
+ * const patterns = await readPatterns('/path/to/project');
  * for (const pattern of patterns) {
  *   console.log(`${pattern.name}: ${pattern.description}`);
  * }
  */
-export declare function readPatterns(cwd: string): MemoryPattern[];
+export declare function readPatterns(cwd: string): Promise<MemoryPattern[]>;
 /**
  * Writes a new pattern to the patterns memory file.
  *
@@ -27,9 +27,10 @@ export declare function readPatterns(cwd: string): MemoryPattern[];
  *
  * @param cwd - The current working directory (project root)
  * @param pattern - The pattern object to write
+ * @returns Promise that resolves when the pattern is written
  *
  * @example
- * writePattern('/path/to/project', {
+ * await writePattern('/path/to/project', {
  *   name: 'Repository Pattern',
  *   date: '2024-01-04',
  *   description: 'Use repository classes for data access abstraction',
@@ -37,4 +38,4 @@ export declare function readPatterns(cwd: string): MemoryPattern[];
  *   files: ['src/repositories/user.ts']
  * });
  */
-export declare function writePattern(cwd: string, pattern: MemoryPattern): void;
+export declare function writePattern(cwd: string, pattern: MemoryPattern): Promise<void>;

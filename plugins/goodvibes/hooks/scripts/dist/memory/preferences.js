@@ -1,7 +1,7 @@
 /**
  * Preferences memory module - stores user preferences for the project.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
 const PREFERENCES_HEADER = `# User Preferences
@@ -13,26 +13,38 @@ These preferences guide agent behavior and decision-making.
 
 `;
 /**
+ * Helper to check if a file exists using fs/promises.
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+/**
  * Reads all user preferences from the memory file.
  *
  * Parses the preferences.md file and returns an array of structured preference objects.
  * Returns an empty array if the file doesn't exist or is empty.
  *
  * @param cwd - The current working directory (project root)
- * @returns Array of MemoryPreference objects parsed from the file
+ * @returns Promise resolving to array of MemoryPreference objects parsed from the file
  *
  * @example
- * const preferences = readPreferences('/path/to/project');
+ * const preferences = await readPreferences('/path/to/project');
  * for (const pref of preferences) {
  *   console.log(`${pref.key}: ${pref.value}`);
  * }
  */
-export function readPreferences(cwd) {
+export async function readPreferences(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
-    if (!fs.existsSync(filePath)) {
+    if (!(await fileExists(filePath))) {
         return [];
     }
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, 'utf-8');
     return parsePreferences(content);
 }
 /**
@@ -44,27 +56,28 @@ export function readPreferences(cwd) {
  *
  * @param cwd - The current working directory (project root)
  * @param preference - The preference object to write
+ * @returns Promise that resolves when the preference is written
  *
  * @example
- * writePreference('/path/to/project', {
+ * await writePreference('/path/to/project', {
  *   key: 'code-style',
  *   value: 'functional',
  *   date: '2024-01-04',
  *   notes: 'Prefer functional components over class components'
  * });
  */
-export function writePreference(cwd, preference) {
+export async function writePreference(cwd, preference) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
     // Ensure file exists with header
-    if (!fs.existsSync(filePath)) {
+    if (!(await fileExists(filePath))) {
         const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+        if (!(await fileExists(dir))) {
+            await fs.mkdir(dir, { recursive: true });
         }
-        fs.writeFileSync(filePath, PREFERENCES_HEADER);
+        await fs.writeFile(filePath, PREFERENCES_HEADER);
     }
     const entry = formatPreference(preference);
-    fs.appendFileSync(filePath, entry);
+    await fs.appendFile(filePath, entry);
 }
 function parsePreferences(content) {
     const preferences = [];

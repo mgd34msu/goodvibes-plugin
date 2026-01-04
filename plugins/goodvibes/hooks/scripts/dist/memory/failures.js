@@ -1,7 +1,7 @@
 /**
  * Failures memory module - stores failed approaches to avoid repeating.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
 const FAILURES_HEADER = `# Failed Approaches
@@ -13,26 +13,38 @@ Reference this to avoid repeating unsuccessful strategies.
 
 `;
 /**
+ * Helper to check if a file exists using fs/promises.
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+/**
  * Reads all known failures from the memory file.
  *
  * Parses the failures.md file and returns an array of structured failure objects.
  * Returns an empty array if the file doesn't exist or is empty.
  *
  * @param cwd - The current working directory (project root)
- * @returns Array of MemoryFailure objects parsed from the file
+ * @returns Promise resolving to array of MemoryFailure objects parsed from the file
  *
  * @example
- * const failures = readFailures('/path/to/project');
+ * const failures = await readFailures('/path/to/project');
  * for (const failure of failures) {
  *   console.log(`Avoid: ${failure.approach} - ${failure.reason}`);
  * }
  */
-export function readFailures(cwd) {
+export async function readFailures(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
-    if (!fs.existsSync(filePath)) {
+    if (!(await fileExists(filePath))) {
         return [];
     }
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, 'utf-8');
     return parseFailures(content);
 }
 /**
@@ -44,9 +56,10 @@ export function readFailures(cwd) {
  *
  * @param cwd - The current working directory (project root)
  * @param failure - The failure object to write
+ * @returns Promise that resolves when the failure is written
  *
  * @example
- * writeFailure('/path/to/project', {
+ * await writeFailure('/path/to/project', {
  *   approach: 'Direct DOM manipulation in React',
  *   date: '2024-01-04',
  *   reason: 'Conflicts with React virtual DOM, causes bugs',
@@ -54,18 +67,18 @@ export function readFailures(cwd) {
  *   suggestion: 'Use refs or state management instead'
  * });
  */
-export function writeFailure(cwd, failure) {
+export async function writeFailure(cwd, failure) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
     // Ensure file exists with header
-    if (!fs.existsSync(filePath)) {
+    if (!(await fileExists(filePath))) {
         const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+        if (!(await fileExists(dir))) {
+            await fs.mkdir(dir, { recursive: true });
         }
-        fs.writeFileSync(filePath, FAILURES_HEADER);
+        await fs.writeFile(filePath, FAILURES_HEADER);
     }
     const entry = formatFailure(failure);
-    fs.appendFileSync(filePath, entry);
+    await fs.appendFile(filePath, entry);
 }
 function parseFailures(content) {
     const failures = [];

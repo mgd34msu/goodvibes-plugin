@@ -6,15 +6,14 @@ export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhauste
  * Analyzes the error message content to determine the type of error for
  * appropriate fix strategy selection.
  *
- * @param _toolName - The name of the tool that produced the error (unused, for API consistency)
  * @param errorMessage - The error message to categorize
  * @returns The ErrorCategory that best matches the error message
  *
  * @example
- * const category = categorizeError('Bash', 'npm ERR! ERESOLVE could not resolve');
+ * const category = categorizeError('npm ERR! ERESOLVE could not resolve');
  * // Returns: 'npm_install'
  */
-export declare function categorizeError(_toolName: string, errorMessage: string): ErrorCategory;
+export declare function categorizeError(errorMessage: string): ErrorCategory;
 /**
  * Creates a new error state object for tracking fix attempts.
  * Initializes all counters and tracking arrays for a fresh error fixing session.

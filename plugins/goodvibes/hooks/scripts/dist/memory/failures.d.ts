@@ -9,15 +9,15 @@ import type { MemoryFailure } from '../types/memory.js';
  * Returns an empty array if the file doesn't exist or is empty.
  *
  * @param cwd - The current working directory (project root)
- * @returns Array of MemoryFailure objects parsed from the file
+ * @returns Promise resolving to array of MemoryFailure objects parsed from the file
  *
  * @example
- * const failures = readFailures('/path/to/project');
+ * const failures = await readFailures('/path/to/project');
  * for (const failure of failures) {
  *   console.log(`Avoid: ${failure.approach} - ${failure.reason}`);
  * }
  */
-export declare function readFailures(cwd: string): MemoryFailure[];
+export declare function readFailures(cwd: string): Promise<MemoryFailure[]>;
 /**
  * Appends a new failure record to the failures memory file.
  *
@@ -27,9 +27,10 @@ export declare function readFailures(cwd: string): MemoryFailure[];
  *
  * @param cwd - The current working directory (project root)
  * @param failure - The failure object to write
+ * @returns Promise that resolves when the failure is written
  *
  * @example
- * writeFailure('/path/to/project', {
+ * await writeFailure('/path/to/project', {
  *   approach: 'Direct DOM manipulation in React',
  *   date: '2024-01-04',
  *   reason: 'Conflicts with React virtual DOM, causes bugs',
@@ -37,4 +38,4 @@ export declare function readFailures(cwd: string): MemoryFailure[];
  *   suggestion: 'Use refs or state management instead'
  * });
  */
-export declare function writeFailure(cwd: string, failure: MemoryFailure): void;
+export declare function writeFailure(cwd: string, failure: MemoryFailure): Promise<void>;
