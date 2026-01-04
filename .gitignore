@@ -25,3 +25,6 @@ reinstall-plugin.ps1
 
 # Test coverage
 coverage/
+
+# GoodVibes local state
+.goodvibes/
