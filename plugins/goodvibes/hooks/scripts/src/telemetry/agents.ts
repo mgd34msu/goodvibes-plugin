@@ -4,10 +4,26 @@
  * Provides active agent state tracking for SubagentStart/Stop correlation.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { debug, logError } from '../shared.js';
+
+// ============================================================================
+// File System Helpers
+// ============================================================================
+
+/**
+ * Check if a file exists (async replacement for existsSync)
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ============================================================================
 // Constants and Paths
@@ -120,10 +136,10 @@ export function deriveProjectName(cwd: string): string {
 /**
  * Load active agents state from file
  */
-export function loadActiveAgents(activeAgentsFile: string): ActiveAgentsState {
-  if (fs.existsSync(activeAgentsFile)) {
+export async function loadActiveAgents(activeAgentsFile: string): Promise<ActiveAgentsState> {
+  if (await fileExists(activeAgentsFile)) {
     try {
-      const content = fs.readFileSync(activeAgentsFile, 'utf-8');
+      const content = await fs.readFile(activeAgentsFile, 'utf-8');
       return JSON.parse(content);
     } catch (error) {
       logError('loadActiveAgents', error);
@@ -139,10 +155,10 @@ export function loadActiveAgents(activeAgentsFile: string): ActiveAgentsState {
 /**
  * Save active agents state to file
  */
-export function saveActiveAgents(activeAgentsFile: string, state: ActiveAgentsState): void {
+export async function saveActiveAgents(activeAgentsFile: string, state: ActiveAgentsState): Promise<void> {
   try {
     state.last_updated = new Date().toISOString();
-    fs.writeFileSync(activeAgentsFile, JSON.stringify(state, null, 2));
+    await fs.writeFile(activeAgentsFile, JSON.stringify(state, null, 2));
   } catch (error) {
     logError('saveActiveAgents', error);
   }
@@ -151,23 +167,23 @@ export function saveActiveAgents(activeAgentsFile: string, state: ActiveAgentsSt
 /**
  * Register a new active agent
  */
-export function registerActiveAgent(activeAgentsFile: string, entry: ActiveAgentEntry): void {
-  const state = loadActiveAgents(activeAgentsFile);
+export async function registerActiveAgent(activeAgentsFile: string, entry: ActiveAgentEntry): Promise<void> {
+  const state = await loadActiveAgents(activeAgentsFile);
   state.agents[entry.agent_id] = entry;
-  saveActiveAgents(activeAgentsFile, state);
+  await saveActiveAgents(activeAgentsFile, state);
   debug('Registered active agent: ' + entry.agent_id + ' (' + entry.agent_type + ')');
 }
 
 /**
  * Look up and remove an active agent entry
  */
-export function popActiveAgent(activeAgentsFile: string, agentId: string): ActiveAgentEntry | null {
-  const state = loadActiveAgents(activeAgentsFile);
+export async function popActiveAgent(activeAgentsFile: string, agentId: string): Promise<ActiveAgentEntry | null> {
+  const state = await loadActiveAgents(activeAgentsFile);
   const entry = state.agents[agentId];
 
   if (entry) {
     delete state.agents[agentId];
-    saveActiveAgents(activeAgentsFile, state);
+    await saveActiveAgents(activeAgentsFile, state);
     debug('Popped active agent: ' + agentId);
     return entry;
   }
@@ -177,8 +193,8 @@ export function popActiveAgent(activeAgentsFile: string, agentId: string): Activ
 }
 
 /** Removes agent entries older than 24 hours. Returns count of removed entries. */
-export function cleanupStaleAgents(activeAgentsFile: string): number {
-  const state = loadActiveAgents(activeAgentsFile);
+export async function cleanupStaleAgents(activeAgentsFile: string): Promise<number> {
+  const state = await loadActiveAgents(activeAgentsFile);
   const now = Date.now();
   let removed = 0;
 
@@ -191,7 +207,7 @@ export function cleanupStaleAgents(activeAgentsFile: string): number {
   }
 
   if (removed > 0) {
-    saveActiveAgents(activeAgentsFile, state);
+    await saveActiveAgents(activeAgentsFile, state);
     debug('Cleaned up ' + removed + ' stale agent entries');
   }
 

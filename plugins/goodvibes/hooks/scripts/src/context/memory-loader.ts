@@ -5,9 +5,33 @@
  * This includes decisions, patterns, failures, and preferences.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+
+/**
+ * Check if a file or directory exists (async).
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a path is a directory (async).
+ */
+async function isDirectory(filePath: string): Promise<boolean> {
+  try {
+    const stat = await fs.stat(filePath);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 /** Aggregated project memory including decisions, patterns, and preferences. */
 export interface ProjectMemory {
@@ -61,17 +85,15 @@ const RECENT_FAILURES_LIMIT = 2;
 /**
  * Load a JSON file from the memory directory
  */
-function loadJsonFile<T>(cwd: string, filename: string): T | null {
+async function loadJsonFile<T>(cwd: string, filename: string): Promise<T | null> {
   const filePath = path.join(cwd, MEMORY_DIR, filename);
   try {
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
+    if (await fileExists(filePath)) {
+      const content = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(content) as T;
     }
   } catch (error) {
-
     debug('memory-loader failed', { error: String(error) });
-
   }
   return null;
 }
@@ -79,17 +101,17 @@ function loadJsonFile<T>(cwd: string, filename: string): T | null {
 /**
  * Load text files from a subdirectory
  */
-function loadTextFiles(cwd: string, subdir: string): string[] {
+async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
   const dirPath = path.join(cwd, MEMORY_DIR, subdir);
   const results: string[] = [];
 
   try {
-    if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-      const files = fs.readdirSync(dirPath);
+    if (await fileExists(dirPath) && await isDirectory(dirPath)) {
+      const files = await fs.readdir(dirPath);
       for (const file of files) {
         if (file.endsWith('.md') || file.endsWith('.txt')) {
           const filePath = path.join(dirPath, file);
-          const content = fs.readFileSync(filePath, 'utf-8').trim();
+          const content = (await fs.readFile(filePath, 'utf-8')).trim();
           if (content) {
             results.push(content);
           }
@@ -97,9 +119,7 @@ function loadTextFiles(cwd: string, subdir: string): string[] {
       }
     }
   } catch (error) {
-
     debug('memory-loader failed', { error: String(error) });
-
   }
 
   return results;
@@ -110,7 +130,7 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   const memoryPath = path.join(cwd, MEMORY_DIR);
 
   // Check if memory directory exists
-  if (!fs.existsSync(memoryPath)) {
+  if (!await fileExists(memoryPath)) {
     return {
       decisions: [],
       patterns: [],
@@ -121,19 +141,19 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   }
 
   // Load structured data
-  const decisions = loadJsonFile<Decision[]>(cwd, 'decisions.json') || [];
-  const patterns = loadJsonFile<Pattern[]>(cwd, 'patterns.json') || [];
-  const failures = loadJsonFile<Failure[]>(cwd, 'failures.json') || [];
-  const preferences = loadJsonFile<Preferences>(cwd, 'preferences.json') || {};
-
-  // Load custom context files
-  const customContext = loadTextFiles(cwd, 'context');
+  const [decisions, patterns, failures, preferences, customContext] = await Promise.all([
+    loadJsonFile<Decision[]>(cwd, 'decisions.json'),
+    loadJsonFile<Pattern[]>(cwd, 'patterns.json'),
+    loadJsonFile<Failure[]>(cwd, 'failures.json'),
+    loadJsonFile<Preferences>(cwd, 'preferences.json'),
+    loadTextFiles(cwd, 'context'),
+  ]);
 
   return {
-    decisions,
-    patterns,
-    failures,
-    preferences,
+    decisions: decisions || [],
+    patterns: patterns || [],
+    failures: failures || [],
+    preferences: preferences || {},
     customContext,
   };
 }

@@ -1,7 +1,21 @@
 import { execSync } from 'child_process';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug, logError } from '../shared/logging.js';
+
+/**
+ * Helper function to check if a file exists using async fs.access.
+ * @param filePath - The path to check
+ * @returns Promise resolving to true if file exists, false otherwise
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Configuration for a quality gate check */
 export interface QualityGate {
@@ -58,18 +72,19 @@ export const QUALITY_GATES: QualityGate[] = [
  *
  * @param tool - The tool command string (e.g., 'npx tsc' or 'npm test')
  * @param cwd - The current working directory to check for node_modules and package.json
- * @returns True if the tool is available, false otherwise
+ * @returns Promise resolving to true if the tool is available, false otherwise
  */
-function toolExists(tool: string, cwd: string): boolean {
+async function toolExists(tool: string, cwd: string): Promise<boolean> {
   // Check if it's an npx command (always available if node_modules exists)
   if (tool.startsWith('npx ')) {
-    return fs.existsSync(path.join(cwd, 'node_modules'));
+    return fileExists(path.join(cwd, 'node_modules'));
   }
   // Check if npm script exists
   if (tool.startsWith('npm ')) {
     const packageJson = path.join(cwd, 'package.json');
-    if (!fs.existsSync(packageJson)) return false;
-    const pkg = JSON.parse(fs.readFileSync(packageJson, 'utf-8'));
+    if (!(await fileExists(packageJson))) return false;
+    const content = await fs.readFile(packageJson, 'utf-8');
+    const pkg = JSON.parse(content);
     const scriptName = tool.replace('npm ', '').replace('run ', '');
     return !!pkg.scripts?.[scriptName];
   }
@@ -122,7 +137,7 @@ export async function runQualityGates(cwd: string): Promise<{
   for (const gate of QUALITY_GATES) {
     // Check if tool exists
     const checkTool = gate.check.split(' ')[0] + ' ' + gate.check.split(' ')[1];
-    if (!toolExists(checkTool, cwd)) {
+    if (!(await toolExists(checkTool, cwd))) {
       results.push({ gate: gate.name, status: 'skipped', message: 'Tool not available' });
       continue;
     }

@@ -3,18 +3,30 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-// Mock fs module
-vi.mock('fs');
+// Mock fs/promises module
+const mockAccess = vi.fn();
+const mockMkdir = vi.fn();
+const mockReadFile = vi.fn();
+const mockWriteFile = vi.fn();
+const mockRename = vi.fn();
+
+vi.mock('fs/promises', () => ({
+  access: mockAccess,
+  mkdir: mockMkdir,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+  rename: mockRename,
+}));
 
 describe('state management', () => {
   let tempDir: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
     // Create a mock temp directory path
     tempDir = path.join(os.tmpdir(), `state-test-${Date.now()}`);
   });
@@ -25,7 +37,7 @@ describe('state management', () => {
 
   describe('loadState', () => {
     it('should return default state when no file exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const { loadState } = await import('../state.js');
       const state = await loadState(tempDir);
@@ -80,8 +92,8 @@ describe('state management', () => {
         devServers: {},
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(existingState));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(existingState));
 
       const { loadState } = await import('../state.js');
       const state = await loadState(tempDir);
@@ -93,8 +105,8 @@ describe('state management', () => {
     });
 
     it('should return default state when file contains invalid JSON', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue('invalid json content');
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue('invalid json content');
 
       // Suppress console.error for this test
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -109,11 +121,9 @@ describe('state management', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should return default state when readFileSync throws', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockImplementation(() => {
-        throw new Error('Read error');
-      });
+    it('should return default state when readFile throws', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockRejectedValue(new Error('Read error'));
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -167,21 +177,21 @@ describe('state management', () => {
         devServers: {},
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
-      vi.mocked(fs.renameSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+      mockRename.mockResolvedValue(undefined);
 
       const { saveState } = await import('../state.js');
       await saveState(tempDir, stateToSave);
 
       // Should write to temp file first
-      expect(fs.writeFileSync).toHaveBeenCalled();
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      expect(mockWriteFile).toHaveBeenCalled();
+      const writeCall = mockWriteFile.mock.calls[0];
       expect(String(writeCall[0])).toContain('.tmp');
 
       // Should rename temp file to final
-      expect(fs.renameSync).toHaveBeenCalled();
+      expect(mockRename).toHaveBeenCalled();
     });
 
     it('should create state directory if it does not exist', async () => {
@@ -223,15 +233,15 @@ describe('state management', () => {
         devServers: {},
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
-      vi.mocked(fs.renameSync).mockReturnValue(undefined);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+      mockRename.mockResolvedValue(undefined);
 
       const { saveState } = await import('../state.js');
       await saveState(tempDir, stateToSave);
 
-      expect(fs.mkdirSync).toHaveBeenCalledWith(
+      expect(mockMkdir).toHaveBeenCalledWith(
         expect.stringContaining('.goodvibes'),
         expect.objectContaining({ recursive: true })
       );
@@ -276,11 +286,9 @@ describe('state management', () => {
         devServers: {},
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-      vi.mocked(fs.writeFileSync).mockImplementation(() => {
-        throw new Error('Write error');
-      });
+      mockAccess.mockResolvedValue(undefined);
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockRejectedValue(new Error('Write error'));
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -375,12 +383,12 @@ describe('state management', () => {
       };
 
       // Mock save to capture content
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-      vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      mockAccess.mockResolvedValue(undefined);
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockImplementation(async (_: unknown, content: unknown) => {
         savedContent = String(content);
       });
-      vi.mocked(fs.renameSync).mockReturnValue(undefined);
+      mockRename.mockResolvedValue(undefined);
 
       const { saveState, loadState } = await import('../state.js');
       await saveState(tempDir, originalState);
@@ -388,7 +396,7 @@ describe('state management', () => {
       expect(savedContent).not.toBeNull();
 
       // Now mock load to return saved content
-      vi.mocked(fs.readFileSync).mockReturnValue(savedContent!);
+      mockReadFile.mockResolvedValue(savedContent!);
 
       const loadedState = await loadState(tempDir);
 

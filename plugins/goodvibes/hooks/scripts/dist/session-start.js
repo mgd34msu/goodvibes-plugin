@@ -64,10 +64,10 @@ async function main() {
         const sessionId = input.session_id || `session_${Date.now()}`;
         initializeSession(state, sessionId);
         // Ensure cache directory exists
-        ensureCacheDir();
+        await ensureCacheDir();
         debug('Cache directory ensured');
         // Validate registries
-        const { valid, missing } = validateRegistries();
+        const { valid, missing } = await validateRegistries();
         debug('Registry validation', { valid, missing });
         if (!valid) {
             respond(createResponse(`GoodVibes: Warning - Missing registries: ${missing.join(', ')}. Run build-registries script.`));

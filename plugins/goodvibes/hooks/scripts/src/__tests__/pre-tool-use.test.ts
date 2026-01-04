@@ -12,11 +12,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
 import * as path from 'path';
 
-// Mock modules
-vi.mock('fs');
+// Mock fs/promises module
+vi.mock('fs/promises');
 
 describe('pre-tool-use hook utilities', () => {
   beforeEach(() => {
@@ -30,31 +29,47 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('fileExists', () => {
     it('should return true when file exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockResolvedValue(undefined),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists } = await import('../shared.js');
-      const result = fileExists('package.json');
+      const result = await fileExists('package.json');
 
       expect(result).toBe(true);
     });
 
     it('should return false when file does not exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists } = await import('../shared.js');
-      const result = fileExists('nonexistent.json');
+      const result = await fileExists('nonexistent.json');
 
       expect(result).toBe(false);
     });
 
     it('should resolve path relative to project root', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('fs/promises', () => ({
+        access: mockAccess,
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists } = await import('../shared.js');
-      fileExists('src/index.ts');
+      await fileExists('src/index.ts');
 
-      expect(fs.existsSync).toHaveBeenCalled();
-      const calledPath = vi.mocked(fs.existsSync).mock.calls[0][0] as string;
+      expect(mockAccess).toHaveBeenCalled();
+      const calledPath = mockAccess.mock.calls[0][0] as string;
       expect(calledPath).toContain('src');
     });
   });
@@ -121,10 +136,15 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('detect_stack validation logic', () => {
     it('should block when package.json is missing', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, blockTool } = await import('../shared.js');
-      const hasPackageJson = fileExists('package.json');
+      const hasPackageJson = await fileExists('package.json');
 
       expect(hasPackageJson).toBe(false);
       const response = blockTool('PreToolUse', 'No package.json found');
@@ -132,10 +152,15 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow when package.json exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockResolvedValue(undefined),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasPackageJson = fileExists('package.json');
+      const hasPackageJson = await fileExists('package.json');
 
       expect(hasPackageJson).toBe(true);
       const response = allowTool('PreToolUse');
@@ -145,14 +170,18 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('get_schema validation logic', () => {
     it('should allow when prisma schema exists', async () => {
-      // Mock existsSync to return true for any path containing prisma
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        const pathStr = String(p).replace(/\\/g, '/');
-        return pathStr.includes('prisma');
-      });
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) => {
+          const pathStr = String(p).replace(/\\/g, '/');
+          return pathStr.includes('prisma') ? Promise.resolve() : Promise.reject(new Error('ENOENT'));
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasPrisma = fileExists('prisma/schema.prisma');
+      const hasPrisma = await fileExists('prisma/schema.prisma');
 
       expect(hasPrisma).toBe(true);
       const response = allowTool('PreToolUse');
@@ -160,13 +189,18 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow when drizzle config exists', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        const pathStr = String(p).replace(/\\/g, '/');
-        return pathStr.includes('drizzle.config');
-      });
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) => {
+          const pathStr = String(p).replace(/\\/g, '/');
+          return pathStr.includes('drizzle.config') ? Promise.resolve() : Promise.reject(new Error('ENOENT'));
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasDrizzle = fileExists('drizzle.config.ts');
+      const hasDrizzle = await fileExists('drizzle.config.ts');
 
       expect(hasDrizzle).toBe(true);
       const response = allowTool('PreToolUse');
@@ -174,12 +208,17 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow with warning when no schema found', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasSchema = fileExists('prisma/schema.prisma') ||
-                        fileExists('drizzle.config.ts') ||
-                        fileExists('drizzle/schema.ts');
+      const hasSchema = await fileExists('prisma/schema.prisma') ||
+                        await fileExists('drizzle.config.ts') ||
+                        await fileExists('drizzle/schema.ts');
 
       expect(hasSchema).toBe(false);
       const response = allowTool('PreToolUse', 'No schema file detected. get_schema may fail.');
@@ -190,10 +229,15 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('run_smoke_test validation logic', () => {
     it('should block when package.json is missing', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, blockTool } = await import('../shared.js');
-      const hasPackageJson = fileExists('package.json');
+      const hasPackageJson = await fileExists('package.json');
 
       expect(hasPackageJson).toBe(false);
       const response = blockTool('PreToolUse', 'No package.json found');
@@ -201,12 +245,18 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow when npm lockfile exists', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        return String(p).includes('package-lock.json') || String(p).includes('package.json');
-      });
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) => {
+          return String(p).includes('package-lock.json') || String(p).includes('package.json')
+            ? Promise.resolve() : Promise.reject(new Error('ENOENT'));
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasLockfile = fileExists('package-lock.json');
+      const hasLockfile = await fileExists('package-lock.json');
 
       expect(hasLockfile).toBe(true);
       const response = allowTool('PreToolUse');
@@ -214,12 +264,18 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow when pnpm lockfile exists', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        return String(p).includes('pnpm-lock.yaml') || String(p).includes('package.json');
-      });
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) => {
+          return String(p).includes('pnpm-lock.yaml') || String(p).includes('package.json')
+            ? Promise.resolve() : Promise.reject(new Error('ENOENT'));
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasLockfile = fileExists('pnpm-lock.yaml');
+      const hasLockfile = await fileExists('pnpm-lock.yaml');
 
       expect(hasLockfile).toBe(true);
       const response = allowTool('PreToolUse');
@@ -227,12 +283,18 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow when yarn lockfile exists', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        return String(p).includes('yarn.lock') || String(p).includes('package.json');
-      });
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) => {
+          return String(p).includes('yarn.lock') || String(p).includes('package.json')
+            ? Promise.resolve() : Promise.reject(new Error('ENOENT'));
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasLockfile = fileExists('yarn.lock');
+      const hasLockfile = await fileExists('yarn.lock');
 
       expect(hasLockfile).toBe(true);
       const response = allowTool('PreToolUse');
@@ -240,14 +302,20 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow with warning when no lockfile found', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        return String(p).includes('package.json');
-      });
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) => {
+          return String(p).includes('package.json')
+            ? Promise.resolve() : Promise.reject(new Error('ENOENT'));
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasLockfile = fileExists('pnpm-lock.yaml') ||
-                          fileExists('yarn.lock') ||
-                          fileExists('package-lock.json');
+      const hasLockfile = await fileExists('pnpm-lock.yaml') ||
+                          await fileExists('yarn.lock') ||
+                          await fileExists('package-lock.json');
 
       expect(hasLockfile).toBe(false);
       const response = allowTool('PreToolUse', 'No lockfile detected. Install dependencies first.');
@@ -258,10 +326,15 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('check_types validation logic', () => {
     it('should block when tsconfig.json is missing', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, blockTool } = await import('../shared.js');
-      const hasTsConfig = fileExists('tsconfig.json');
+      const hasTsConfig = await fileExists('tsconfig.json');
 
       expect(hasTsConfig).toBe(false);
       const response = blockTool('PreToolUse', 'No tsconfig.json found');
@@ -269,10 +342,15 @@ describe('pre-tool-use hook utilities', () => {
     });
 
     it('should allow when tsconfig.json exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockResolvedValue(undefined),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue('{}'),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      }));
 
       const { fileExists, allowTool } = await import('../shared.js');
-      const hasTsConfig = fileExists('tsconfig.json');
+      const hasTsConfig = await fileExists('tsconfig.json');
 
       expect(hasTsConfig).toBe(true);
       const response = allowTool('PreToolUse');

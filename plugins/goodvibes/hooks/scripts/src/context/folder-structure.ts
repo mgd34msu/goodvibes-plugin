@@ -4,9 +4,21 @@
  * Detects the architecture pattern used in the project.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+
+/**
+ * Check if a file or directory exists (async).
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Folder structure analysis results. */
 export interface FolderStructure {
@@ -61,12 +73,11 @@ const FLAT_STRUCTURE_THRESHOLD = 3;
 /**
  * Get immediate subdirectories of a path
  */
-function getSubdirs(dirPath: string): string[] {
+async function getSubdirs(dirPath: string): Promise<string[]> {
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name.toLowerCase());
   } catch (error) {
-
     debug('folder-structure failed', { error: String(error) });
     return [];
   }
@@ -82,7 +93,7 @@ function hasIndicators(dirs: string[], indicators: string[]): number {
 /**
  * Detect the architecture pattern
  */
-function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): { pattern: ArchitecturePattern; confidence: 'high' | 'medium' | 'low' } {
+async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): Promise<{ pattern: ArchitecturePattern; confidence: 'high' | 'medium' | 'low' }> {
   const allDirs = [...topLevelDirs, ...srcDirs];
 
   // Check for Next.js App Router
@@ -91,20 +102,18 @@ function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): 
       ? path.join(cwd, 'app')
       : path.join(cwd, 'src', 'app');
 
-    if (fs.existsSync(appPath)) {
-      const appContents = getSubdirs(appPath);
+    if (await fileExists(appPath)) {
+      const appContents = await getSubdirs(appPath);
       if (appContents.some((d) => d.startsWith('(') || d === 'api')) {
         return { pattern: 'next-app-router', confidence: 'high' };
       }
       try {
-        const files = fs.readdirSync(appPath);
+        const files = await fs.readdir(appPath);
         if (files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))) {
           return { pattern: 'next-app-router', confidence: 'high' };
         }
       } catch (error) {
-
         debug('folder-structure failed', { error: String(error) });
-
       }
     }
   }
@@ -172,28 +181,26 @@ function checkSpecialDirs(dirs: string[]): SpecialDirectories {
 /**
  * Calculate approximate folder depth
  */
-function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): number {
+async function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): Promise<number> {
   let maxFound = 0;
 
-  function walk(dir: string, currentDepth: number): void {
+  async function walk(dir: string, currentDepth: number): Promise<void> {
     if (currentDepth > maxDepth) return;
     maxFound = Math.max(maxFound, currentDepth);
 
     try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      const entries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
-          walk(path.join(dir, entry.name), currentDepth + 1);
+          await walk(path.join(dir, entry.name), currentDepth + 1);
         }
       }
     } catch (error) {
-
       debug('folder-structure failed', { error: String(error) });
-
     }
   }
 
-  walk(cwd, 0);
+  await walk(cwd, 0);
   return maxFound;
 }
 
@@ -201,18 +208,19 @@ function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): numb
  * Analyze the folder structure of a project
  */
 export async function analyzeFolderStructure(cwd: string): Promise<FolderStructure> {
-  const topLevelDirs = getSubdirs(cwd).filter(
+  const allTopLevelDirs = await getSubdirs(cwd);
+  const topLevelDirs = allTopLevelDirs.filter(
     (d) => !d.startsWith('.') && d !== 'node_modules' && d !== 'dist' && d !== 'build',
   );
 
   const srcPath = path.join(cwd, 'src');
-  const srcDir = fs.existsSync(srcPath) ? 'src' : null;
-  const srcDirs = srcDir ? getSubdirs(srcPath) : [];
+  const srcDir = await fileExists(srcPath) ? 'src' : null;
+  const srcDirs = srcDir ? await getSubdirs(srcPath) : [];
 
-  const { pattern, confidence } = detectPattern(cwd, topLevelDirs, srcDirs);
+  const { pattern, confidence } = await detectPattern(cwd, topLevelDirs, srcDirs);
   const allDirs = [...topLevelDirs, ...srcDirs];
   const specialDirs = checkSpecialDirs(allDirs);
-  const depth = calculateDepth(cwd);
+  const depth = await calculateDepth(cwd);
 
   return {
     pattern,

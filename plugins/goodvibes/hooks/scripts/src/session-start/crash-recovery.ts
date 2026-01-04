@@ -1,8 +1,8 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import type { HooksState } from '../types/state.js';
 import { loadState } from '../state.js';
 import { hasUncommittedChanges, getUncommittedFiles } from '../automation/git-operations.js';
+import { fileExistsAsync } from '../shared.js';
 
 /** Information about a potential crash recovery scenario */
 export interface RecoveryInfo {
@@ -25,7 +25,7 @@ export async function checkCrashRecovery(cwd: string): Promise<RecoveryInfo> {
   const stateFile = path.join(cwd, '.goodvibes', 'state', 'hooks-state.json');
 
   // No previous state means no crash recovery needed
-  if (!fs.existsSync(stateFile)) {
+  if (!(await fileExistsAsync(stateFile))) {
     return {
       needsRecovery: false,
       previousFeature: null,

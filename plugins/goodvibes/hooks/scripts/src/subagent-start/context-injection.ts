@@ -9,13 +9,13 @@ export interface SubagentContext {
 }
 
 /** Builds context for a subagent based on agent type and project */
-export function buildSubagentContext(
+export async function buildSubagentContext(
   cwd: string,
   agentType: string,
   _sessionId: string
-): SubagentContext {
+): Promise<SubagentContext> {
   // Load shared config for telemetry settings (unused currently but available)
-  const _sharedConfig = loadSharedConfig(cwd);
+  const _sharedConfig = await loadSharedConfig(cwd);
   const automationConfig = getAutomationConfig();
   const projectName = path.basename(cwd);
 

@@ -10,10 +10,19 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
 
-// Mock modules before importing
-vi.mock('fs');
+// Mock fs/promises module
+const mockAccess = vi.fn();
+const mockMkdir = vi.fn();
+const mockReadFile = vi.fn();
+const mockWriteFile = vi.fn();
+
+vi.mock('fs/promises', () => ({
+  access: mockAccess,
+  mkdir: mockMkdir,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+}));
 
 // Mock process.stdin and process.stdout
 const mockStdin = {
@@ -67,33 +76,36 @@ describe('session-start hook', () => {
 
   describe('validateRegistries', () => {
     it('should return valid when all registries exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      mockAccess.mockResolvedValue(undefined);
 
       const { validateRegistries } = await import('../shared.js');
-      const result = validateRegistries();
+      const result = await validateRegistries();
 
       expect(result.valid).toBe(true);
       expect(result.missing).toHaveLength(0);
     });
 
     it('should return invalid when registries are missing', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const { validateRegistries } = await import('../shared.js');
-      const result = validateRegistries();
+      const result = await validateRegistries();
 
       expect(result.valid).toBe(false);
       expect(result.missing.length).toBeGreaterThan(0);
     });
 
     it('should identify specific missing registries', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
+      mockAccess.mockImplementation((p: string) => {
         const pathStr = String(p);
-        return pathStr.includes('skills');
+        if (pathStr.includes('skills')) {
+          return Promise.resolve();
+        }
+        return Promise.reject(new Error('ENOENT'));
       });
 
       const { validateRegistries } = await import('../shared.js');
-      const result = validateRegistries();
+      const result = await validateRegistries();
 
       expect(result.missing.some(m => m.includes('agents'))).toBe(true);
       expect(result.missing.some(m => m.includes('tools'))).toBe(true);
@@ -102,22 +114,22 @@ describe('session-start hook', () => {
 
   describe('ensureCacheDir', () => {
     it('should create cache directory if it does not exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockMkdir.mockResolvedValue(undefined);
 
       const { ensureCacheDir } = await import('../shared.js');
-      ensureCacheDir();
+      await ensureCacheDir();
 
-      expect(fs.mkdirSync).toHaveBeenCalled();
+      expect(mockMkdir).toHaveBeenCalled();
     });
 
     it('should not create cache directory if it already exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      mockAccess.mockResolvedValue(undefined);
 
       const { ensureCacheDir } = await import('../shared.js');
-      ensureCacheDir();
+      await ensureCacheDir();
 
-      expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(mockMkdir).not.toHaveBeenCalled();
     });
   });
 
@@ -132,14 +144,14 @@ describe('session-start hook', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { saveAnalytics } = await import('../shared.js');
-      saveAnalytics(mockAnalytics);
+      await saveAnalytics(mockAnalytics);
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      expect(mockWriteFile).toHaveBeenCalled();
+      const writeCall = mockWriteFile.mock.calls[0];
       expect(writeCall[1]).toContain('test-session');
     });
 
@@ -153,13 +165,13 @@ describe('session-start hook', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { saveAnalytics } = await import('../shared.js');
-      saveAnalytics(mockAnalytics);
+      await saveAnalytics(mockAnalytics);
 
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = writeCall[1] as string;
       const parsed = JSON.parse(writtenContent);
       expect(parsed.session_id).toBe('test-session');

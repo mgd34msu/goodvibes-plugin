@@ -29,7 +29,7 @@ import {
   findMatchingPattern,
   getSuggestedFix,
   getResearchHints,
-} from './post-tool-use-failure/error-recovery.js';
+} from './post-tool-use-failure/index.js';
 import {
   saveRetry,
   getRetryCount,
@@ -171,7 +171,7 @@ async function main(): Promise<void> {
       totalAttempts: errorState.totalAttempts + 1,
     };
     trackError(state, signature, errorState);
-    saveRetry(cwd, retrySignature, errorState.phase);
+    await saveRetry(cwd, retrySignature, errorState.phase);
 
     // Step 9: Check if all phases exhausted
     const exhausted = await hasExhaustedRetries(errorState);
@@ -199,7 +199,7 @@ async function main(): Promise<void> {
     await saveState(cwd, state);
 
     // Track the failure in analytics
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
     if (analytics) {
       if (!analytics.tool_failures) {
         analytics.tool_failures = [];
@@ -210,7 +210,7 @@ async function main(): Promise<void> {
         timestamp: new Date().toISOString(),
       });
       analytics.issues_found++;
-      saveAnalytics(analytics);
+      await saveAnalytics(analytics);
     }
 
     // Step 10: Build response with fix suggestions and research hints

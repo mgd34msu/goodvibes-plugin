@@ -69,13 +69,13 @@ describe('memory', () => {
   });
 
   describe('ensureGoodVibesDir', () => {
-    it('should create .goodvibes directory if it does not exist', () => {
-      ensureGoodVibesDir(testDir);
+    it('should create .goodvibes directory if it does not exist', async () => {
+      await ensureGoodVibesDir(testDir);
       expect(fs.existsSync(getGoodVibesDir(testDir))).toBe(true);
     });
 
-    it('should create .gitignore with security patterns', () => {
-      ensureGoodVibesDir(testDir);
+    it('should create .gitignore with security patterns', async () => {
+      await ensureGoodVibesDir(testDir);
       const gitignorePath = path.join(testDir, '.gitignore');
       expect(fs.existsSync(gitignorePath)).toBe(true);
 
@@ -86,12 +86,12 @@ describe('memory', () => {
       expect(content).toContain('*.tfstate');
     });
 
-    it('should append to existing .gitignore without duplicating patterns', () => {
+    it('should append to existing .gitignore without duplicating patterns', async () => {
       // Create existing .gitignore
       const gitignorePath = path.join(testDir, '.gitignore');
       fs.writeFileSync(gitignorePath, 'node_modules/\n*.log\n');
 
-      ensureGoodVibesDir(testDir);
+      await ensureGoodVibesDir(testDir);
 
       const content = fs.readFileSync(gitignorePath, 'utf-8');
       expect(content).toContain('node_modules/');
@@ -99,36 +99,36 @@ describe('memory', () => {
       expect(content).toContain('.goodvibes/');
     });
 
-    it('should be idempotent', () => {
-      ensureGoodVibesDir(testDir);
-      ensureGoodVibesDir(testDir);
+    it('should be idempotent', async () => {
+      await ensureGoodVibesDir(testDir);
+      await ensureGoodVibesDir(testDir);
       expect(fs.existsSync(getGoodVibesDir(testDir))).toBe(true);
     });
   });
 
   describe('hasMemory', () => {
-    it('should return false when memory directory does not exist', () => {
-      expect(hasMemory(testDir)).toBe(false);
+    it('should return false when memory directory does not exist', async () => {
+      expect(await hasMemory(testDir)).toBe(false);
     });
 
-    it('should return true when memory directory exists', () => {
+    it('should return true when memory directory exists', async () => {
       fs.mkdirSync(getMemoryDir(testDir), { recursive: true });
-      expect(hasMemory(testDir)).toBe(true);
+      expect(await hasMemory(testDir)).toBe(true);
     });
   });
 
   describe('loadMemory', () => {
-    it('should return empty memory when directory does not exist', () => {
-      const memory = loadMemory(testDir);
+    it('should return empty memory when directory does not exist', async () => {
+      const memory = await loadMemory(testDir);
       expect(memory.decisions).toEqual([]);
       expect(memory.patterns).toEqual([]);
       expect(memory.failures).toEqual([]);
       expect(memory.preferences).toEqual([]);
     });
 
-    it('should return empty memory when files do not exist', () => {
+    it('should return empty memory when files do not exist', async () => {
       fs.mkdirSync(getMemoryDir(testDir), { recursive: true });
-      const memory = loadMemory(testDir);
+      const memory = await loadMemory(testDir);
       expect(memory.decisions).toEqual([]);
       expect(memory.patterns).toEqual([]);
       expect(memory.failures).toEqual([]);
@@ -137,7 +137,7 @@ describe('memory', () => {
   });
 
   describe('appendDecision', () => {
-    it('should create decisions.md and append decision', () => {
+    it('should create decisions.md and append decision', async () => {
       const decision: Decision = {
         title: 'Use TypeScript',
         date: '2024-01-15',
@@ -146,7 +146,7 @@ describe('memory', () => {
         agent: 'backend-engineer',
       };
 
-      appendDecision(testDir, decision);
+      await appendDecision(testDir, decision);
 
       const filePath = getMemoryFilePath(testDir, 'decisions');
       expect(fs.existsSync(filePath)).toBe(true);
@@ -160,29 +160,29 @@ describe('memory', () => {
       expect(content).toContain('backend-engineer');
     });
 
-    it('should append multiple decisions', () => {
-      appendDecision(testDir, {
+    it('should append multiple decisions', async () => {
+      await appendDecision(testDir, {
         title: 'Decision 1',
         date: '2024-01-01',
         alternatives: ['Alt A'],
         rationale: 'Reason 1',
       });
 
-      appendDecision(testDir, {
+      await appendDecision(testDir, {
         title: 'Decision 2',
         date: '2024-01-02',
         alternatives: ['Alt B'],
         rationale: 'Reason 2',
       });
 
-      const memory = loadMemory(testDir);
+      const memory = await loadMemory(testDir);
       expect(memory.decisions).toHaveLength(2);
       expect(memory.decisions[0].title).toBe('Decision 1');
       expect(memory.decisions[1].title).toBe('Decision 2');
     });
 
-    it('should include optional context', () => {
-      appendDecision(testDir, {
+    it('should include optional context', async () => {
+      await appendDecision(testDir, {
         title: 'Database Choice',
         date: '2024-01-15',
         alternatives: ['MySQL', 'MongoDB'],
@@ -199,7 +199,7 @@ describe('memory', () => {
   });
 
   describe('appendPattern', () => {
-    it('should create patterns.md and append pattern', () => {
+    it('should create patterns.md and append pattern', async () => {
       const pattern: Pattern = {
         name: 'Repository Pattern',
         date: '2024-01-15',
@@ -208,7 +208,7 @@ describe('memory', () => {
         files: ['src/repositories/user.ts', 'src/repositories/post.ts'],
       };
 
-      appendPattern(testDir, pattern);
+      await appendPattern(testDir, pattern);
 
       const filePath = getMemoryFilePath(testDir, 'patterns');
       expect(fs.existsSync(filePath)).toBe(true);
@@ -220,14 +220,14 @@ describe('memory', () => {
       expect(content).toContain('src/repositories/user.ts');
     });
 
-    it('should work without optional fields', () => {
-      appendPattern(testDir, {
+    it('should work without optional fields', async () => {
+      await appendPattern(testDir, {
         name: 'Simple Pattern',
         date: '2024-01-15',
         description: 'A basic pattern',
       });
 
-      const memory = loadMemory(testDir);
+      const memory = await loadMemory(testDir);
       expect(memory.patterns).toHaveLength(1);
       expect(memory.patterns[0].name).toBe('Simple Pattern');
       expect(memory.patterns[0].example).toBeUndefined();
@@ -236,7 +236,7 @@ describe('memory', () => {
   });
 
   describe('appendFailure', () => {
-    it('should create failures.md and append failure', () => {
+    it('should create failures.md and append failure', async () => {
       const failure: Failure = {
         approach: 'Using raw SQL queries',
         date: '2024-01-15',
@@ -245,7 +245,7 @@ describe('memory', () => {
         suggestion: 'Use parameterized queries with an ORM',
       };
 
-      appendFailure(testDir, failure);
+      await appendFailure(testDir, failure);
 
       const filePath = getMemoryFilePath(testDir, 'failures');
       expect(fs.existsSync(filePath)).toBe(true);
@@ -257,21 +257,21 @@ describe('memory', () => {
       expect(content).toContain('Use parameterized queries');
     });
 
-    it('should work without optional fields', () => {
-      appendFailure(testDir, {
+    it('should work without optional fields', async () => {
+      await appendFailure(testDir, {
         approach: 'Approach X',
         date: '2024-01-15',
         reason: 'Did not work',
       });
 
-      const memory = loadMemory(testDir);
+      const memory = await loadMemory(testDir);
       expect(memory.failures).toHaveLength(1);
       expect(memory.failures[0].approach).toBe('Approach X');
     });
   });
 
   describe('appendPreference', () => {
-    it('should create preferences.md and append preference', () => {
+    it('should create preferences.md and append preference', async () => {
       const preference: Preference = {
         key: 'code_style',
         value: 'Use 2-space indentation',
@@ -279,7 +279,7 @@ describe('memory', () => {
         notes: 'Matches the prettier config',
       };
 
-      appendPreference(testDir, preference);
+      await appendPreference(testDir, preference);
 
       const filePath = getMemoryFilePath(testDir, 'preferences');
       expect(fs.existsSync(filePath)).toBe(true);
@@ -290,22 +290,22 @@ describe('memory', () => {
       expect(content).toContain('prettier config');
     });
 
-    it('should work without notes', () => {
-      appendPreference(testDir, {
+    it('should work without notes', async () => {
+      await appendPreference(testDir, {
         key: 'testing',
         value: 'Always write unit tests',
         date: '2024-01-15',
       });
 
-      const memory = loadMemory(testDir);
+      const memory = await loadMemory(testDir);
       expect(memory.preferences).toHaveLength(1);
       expect(memory.preferences[0].key).toBe('testing');
     });
   });
 
   describe('getMemorySummary', () => {
-    it('should return zeros when no memory exists', () => {
-      const summary = getMemorySummary(testDir);
+    it('should return zeros when no memory exists', async () => {
+      const summary = await getMemorySummary(testDir);
       expect(summary.hasMemory).toBe(false);
       expect(summary.decisionsCount).toBe(0);
       expect(summary.patternsCount).toBe(0);
@@ -313,46 +313,46 @@ describe('memory', () => {
       expect(summary.preferencesCount).toBe(0);
     });
 
-    it('should return correct counts', () => {
-      appendDecision(testDir, {
+    it('should return correct counts', async () => {
+      await appendDecision(testDir, {
         title: 'D1',
         date: '2024-01-01',
         alternatives: [],
         rationale: 'R1',
       });
-      appendDecision(testDir, {
+      await appendDecision(testDir, {
         title: 'D2',
         date: '2024-01-02',
         alternatives: [],
         rationale: 'R2',
       });
-      appendPattern(testDir, {
+      await appendPattern(testDir, {
         name: 'P1',
         date: '2024-01-01',
         description: 'Desc',
       });
-      appendFailure(testDir, {
+      await appendFailure(testDir, {
         approach: 'F1',
         date: '2024-01-01',
         reason: 'Failed',
       });
-      appendPreference(testDir, {
+      await appendPreference(testDir, {
         key: 'K1',
         value: 'V1',
         date: '2024-01-01',
       });
-      appendPreference(testDir, {
+      await appendPreference(testDir, {
         key: 'K2',
         value: 'V2',
         date: '2024-01-02',
       });
-      appendPreference(testDir, {
+      await appendPreference(testDir, {
         key: 'K3',
         value: 'V3',
         date: '2024-01-03',
       });
 
-      const summary = getMemorySummary(testDir);
+      const summary = await getMemorySummary(testDir);
       expect(summary.hasMemory).toBe(true);
       expect(summary.decisionsCount).toBe(2);
       expect(summary.patternsCount).toBe(1);
@@ -362,68 +362,68 @@ describe('memory', () => {
   });
 
   describe('searchMemory', () => {
-    beforeEach(() => {
-      appendDecision(testDir, {
+    beforeEach(async () => {
+      await appendDecision(testDir, {
         title: 'Use PostgreSQL for database',
         date: '2024-01-01',
         alternatives: ['MySQL', 'MongoDB'],
         rationale: 'Better JSON support and performance',
       });
-      appendPattern(testDir, {
+      await appendPattern(testDir, {
         name: 'API Error Handling',
         date: '2024-01-02',
         description: 'Always return structured error responses',
       });
-      appendFailure(testDir, {
+      await appendFailure(testDir, {
         approach: 'Using MongoDB for relational data',
         date: '2024-01-03',
         reason: 'Complex joins were too slow',
       });
-      appendPreference(testDir, {
+      await appendPreference(testDir, {
         key: 'database_pooling',
         value: 'Use connection pooling',
         date: '2024-01-04',
       });
     });
 
-    it('should find matching decisions', () => {
-      const results = searchMemory(testDir, ['PostgreSQL']);
+    it('should find matching decisions', async () => {
+      const results = await searchMemory(testDir, ['PostgreSQL']);
       expect(results.decisions).toHaveLength(1);
       expect(results.decisions[0].title).toContain('PostgreSQL');
     });
 
-    it('should find matching patterns', () => {
-      const results = searchMemory(testDir, ['error']);
+    it('should find matching patterns', async () => {
+      const results = await searchMemory(testDir, ['error']);
       expect(results.patterns).toHaveLength(1);
       expect(results.patterns[0].name).toContain('Error');
     });
 
-    it('should find matching failures', () => {
-      const results = searchMemory(testDir, ['MongoDB']);
+    it('should find matching failures', async () => {
+      const results = await searchMemory(testDir, ['MongoDB']);
       expect(results.decisions).toHaveLength(1); // In alternatives
       expect(results.failures).toHaveLength(1);
     });
 
-    it('should find matching preferences', () => {
-      const results = searchMemory(testDir, ['database']);
+    it('should find matching preferences', async () => {
+      const results = await searchMemory(testDir, ['database']);
       expect(results.decisions).toHaveLength(1);
       expect(results.preferences).toHaveLength(1);
     });
 
-    it('should be case-insensitive', () => {
-      const results = searchMemory(testDir, ['POSTGRESQL']);
+    it('should be case-insensitive', async () => {
+      const results = await searchMemory(testDir, ['POSTGRESQL']);
       expect(results.decisions).toHaveLength(1);
     });
 
-    it('should match multiple keywords', () => {
-      const results = searchMemory(testDir, ['database', 'error']);
+    it('should match multiple keywords', async () => {
+      const results = await searchMemory(testDir, ['database', 'error']);
       expect(results.decisions).toHaveLength(1);
       expect(results.patterns).toHaveLength(1);
       expect(results.preferences).toHaveLength(1);
     });
 
-    it('should return empty arrays when no matches', () => {
-      const results = searchMemory(testDir, ['nonexistent']);
+    it('should return empty arrays when no matches', async () => {
+      const results = await searchMemory(testDir, ['nonexistent']);
       expect(results.decisions).toHaveLength(0);
       expect(results.patterns).toHaveLength(0);
       expect(results.failures).toHaveLength(0);
@@ -439,7 +439,7 @@ describe('memory', () => {
   });
 
   describe('round-trip parsing', () => {
-    it('should correctly round-trip decisions', () => {
+    it('should correctly round-trip decisions', async () => {
       const original: Decision = {
         title: 'Complex Decision',
         date: '2024-01-15',
@@ -450,8 +450,8 @@ describe('memory', () => {
         context: 'Additional context about why this decision was made.',
       };
 
-      appendDecision(testDir, original);
-      const memory = loadMemory(testDir);
+      await appendDecision(testDir, original);
+      const memory = await loadMemory(testDir);
 
       expect(memory.decisions).toHaveLength(1);
       const loaded = memory.decisions[0];
@@ -463,7 +463,7 @@ describe('memory', () => {
       expect(loaded.context).toContain('Additional context');
     });
 
-    it('should correctly round-trip patterns with code examples', () => {
+    it('should correctly round-trip patterns with code examples', async () => {
       const original: Pattern = {
         name: 'Code Pattern',
         date: '2024-01-15',
@@ -472,8 +472,8 @@ describe('memory', () => {
         files: ['file1.ts', 'file2.ts'],
       };
 
-      appendPattern(testDir, original);
-      const memory = loadMemory(testDir);
+      await appendPattern(testDir, original);
+      const memory = await loadMemory(testDir);
 
       expect(memory.patterns).toHaveLength(1);
       const loaded = memory.patterns[0];

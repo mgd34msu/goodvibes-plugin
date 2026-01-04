@@ -4,9 +4,21 @@
  * Shared configuration loading and default settings for GoodVibes hooks.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from './logging.js';
+
+/**
+ * Helper to check if a file exists using async fs.access.
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Triggers that determine when quality checkpoints should run. */
 export const CHECKPOINT_TRIGGERS = {
@@ -114,11 +126,11 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
  * settings or the settings at the root level.
  *
  * @param cwd - The current working directory (project root) containing .goodvibes folder
- * @returns The merged SharedConfig with user overrides applied to defaults
+ * @returns Promise resolving to the merged SharedConfig with user overrides applied to defaults
  *
  * @example
  * // Load config from project directory
- * const config = loadSharedConfig('/path/to/project');
+ * const config = await loadSharedConfig('/path/to/project');
  *
  * // Check if telemetry is enabled
  * if (config.telemetry?.enabled) {
@@ -134,16 +146,16 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
  * //   }
  * // }
  */
-export function loadSharedConfig(cwd: string): SharedConfig {
+export async function loadSharedConfig(cwd: string): Promise<SharedConfig> {
   const configPath = path.join(cwd, '.goodvibes', 'settings.json');
   const defaults = getDefaultSharedConfig();
 
-  if (!fs.existsSync(configPath)) {
+  if (!(await fileExists(configPath))) {
     return defaults;
   }
 
   try {
-    const content = fs.readFileSync(configPath, 'utf-8');
+    const content = await fs.readFile(configPath, 'utf-8');
     const userConfig = JSON.parse(content);
     return deepMerge(defaults, userConfig.goodvibes || userConfig);
   } catch (error) {

@@ -4,9 +4,33 @@
  * Loads persisted context from .goodvibes/memory/ directory.
  * This includes decisions, patterns, failures, and preferences.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+/**
+ * Check if a file or directory exists (async).
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+/**
+ * Check if a path is a directory (async).
+ */
+async function isDirectory(filePath) {
+    try {
+        const stat = await fs.stat(filePath);
+        return stat.isDirectory();
+    }
+    catch {
+        return false;
+    }
+}
 const MEMORY_DIR = '.goodvibes/memory';
 /** Number of recent decisions to display. */
 const RECENT_DECISIONS_LIMIT = 3;
@@ -17,11 +41,11 @@ const RECENT_FAILURES_LIMIT = 2;
 /**
  * Load a JSON file from the memory directory
  */
-function loadJsonFile(cwd, filename) {
+async function loadJsonFile(cwd, filename) {
     const filePath = path.join(cwd, MEMORY_DIR, filename);
     try {
-        if (fs.existsSync(filePath)) {
-            const content = fs.readFileSync(filePath, 'utf-8');
+        if (await fileExists(filePath)) {
+            const content = await fs.readFile(filePath, 'utf-8');
             return JSON.parse(content);
         }
     }
@@ -33,16 +57,16 @@ function loadJsonFile(cwd, filename) {
 /**
  * Load text files from a subdirectory
  */
-function loadTextFiles(cwd, subdir) {
+async function loadTextFiles(cwd, subdir) {
     const dirPath = path.join(cwd, MEMORY_DIR, subdir);
     const results = [];
     try {
-        if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-            const files = fs.readdirSync(dirPath);
+        if (await fileExists(dirPath) && await isDirectory(dirPath)) {
+            const files = await fs.readdir(dirPath);
             for (const file of files) {
                 if (file.endsWith('.md') || file.endsWith('.txt')) {
                     const filePath = path.join(dirPath, file);
-                    const content = fs.readFileSync(filePath, 'utf-8').trim();
+                    const content = (await fs.readFile(filePath, 'utf-8')).trim();
                     if (content) {
                         results.push(content);
                     }
@@ -59,7 +83,7 @@ function loadTextFiles(cwd, subdir) {
 export async function loadMemory(cwd) {
     const memoryPath = path.join(cwd, MEMORY_DIR);
     // Check if memory directory exists
-    if (!fs.existsSync(memoryPath)) {
+    if (!await fileExists(memoryPath)) {
         return {
             decisions: [],
             patterns: [],
@@ -69,17 +93,18 @@ export async function loadMemory(cwd) {
         };
     }
     // Load structured data
-    const decisions = loadJsonFile(cwd, 'decisions.json') || [];
-    const patterns = loadJsonFile(cwd, 'patterns.json') || [];
-    const failures = loadJsonFile(cwd, 'failures.json') || [];
-    const preferences = loadJsonFile(cwd, 'preferences.json') || {};
-    // Load custom context files
-    const customContext = loadTextFiles(cwd, 'context');
+    const [decisions, patterns, failures, preferences, customContext] = await Promise.all([
+        loadJsonFile(cwd, 'decisions.json'),
+        loadJsonFile(cwd, 'patterns.json'),
+        loadJsonFile(cwd, 'failures.json'),
+        loadJsonFile(cwd, 'preferences.json'),
+        loadTextFiles(cwd, 'context'),
+    ]);
     return {
-        decisions,
-        patterns,
-        failures,
-        preferences,
+        decisions: decisions || [],
+        patterns: patterns || [],
+        failures: failures || [],
+        preferences: preferences || {},
         customContext,
     };
 }

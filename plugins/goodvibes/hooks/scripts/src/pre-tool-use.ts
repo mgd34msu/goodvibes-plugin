@@ -172,8 +172,8 @@ async function handleBashTool(input: HookInput): Promise<void> {
 }
 
 /** Validates prerequisites for detect_stack tool. */
-function validateDetectStack(_input: HookInput): void {
-  if (!fileExists('package.json')) {
+async function validateDetectStack(_input: HookInput): Promise<void> {
+  if (!(await fileExists('package.json'))) {
     respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
     return;
   }
@@ -181,7 +181,7 @@ function validateDetectStack(_input: HookInput): void {
 }
 
 /** Validates prerequisites for get_schema tool. */
-function validateGetSchema(_input: HookInput): void {
+async function validateGetSchema(_input: HookInput): Promise<void> {
   // Check for common schema files
   const schemaFiles = [
     'prisma/schema.prisma',
@@ -189,7 +189,8 @@ function validateGetSchema(_input: HookInput): void {
     'drizzle/schema.ts',
   ];
 
-  const found = schemaFiles.some(f => fileExists(f));
+  const results = await Promise.all(schemaFiles.map(f => fileExists(f)));
+  const found = results.some(Boolean);
 
   if (!found) {
     // Allow but warn
@@ -200,17 +201,19 @@ function validateGetSchema(_input: HookInput): void {
 }
 
 /** Validates prerequisites for run_smoke_test tool. */
-function validateRunSmokeTest(_input: HookInput): void {
+async function validateRunSmokeTest(_input: HookInput): Promise<void> {
   // Check if package.json exists
-  if (!fileExists('package.json')) {
+  if (!(await fileExists('package.json'))) {
     respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
     return;
   }
 
   // Check for package manager
-  const hasPnpm = fileExists('pnpm-lock.yaml');
-  const hasYarn = fileExists('yarn.lock');
-  const hasNpm = fileExists('package-lock.json');
+  const [hasPnpm, hasYarn, hasNpm] = await Promise.all([
+    fileExists('pnpm-lock.yaml'),
+    fileExists('yarn.lock'),
+    fileExists('package-lock.json'),
+  ]);
 
   if (!hasPnpm && !hasYarn && !hasNpm) {
     respond(allowTool('PreToolUse', 'No lockfile detected. Install dependencies first.'));
@@ -221,9 +224,9 @@ function validateRunSmokeTest(_input: HookInput): void {
 }
 
 /** Validates prerequisites for check_types tool. */
-function validateCheckTypes(_input: HookInput): void {
+async function validateCheckTypes(_input: HookInput): Promise<void> {
   // Check for TypeScript config
-  if (!fileExists('tsconfig.json')) {
+  if (!(await fileExists('tsconfig.json'))) {
     respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
     return;
   }
@@ -232,7 +235,7 @@ function validateCheckTypes(_input: HookInput): void {
 }
 
 /** Validates prerequisites for validate_implementation tool. */
-function validateImplementation(_input: HookInput): void {
+async function validateImplementation(_input: HookInput): Promise<void> {
   // Just allow and let the tool handle validation
   respond(allowTool('PreToolUse'));
 }
@@ -255,19 +258,19 @@ async function main(): Promise<void> {
 
     switch (toolName) {
       case 'detect_stack':
-        validateDetectStack(input);
+        await validateDetectStack(input);
         break;
       case 'get_schema':
-        validateGetSchema(input);
+        await validateGetSchema(input);
         break;
       case 'run_smoke_test':
-        validateRunSmokeTest(input);
+        await validateRunSmokeTest(input);
         break;
       case 'check_types':
-        validateCheckTypes(input);
+        await validateCheckTypes(input);
         break;
       case 'validate_implementation':
-        validateImplementation(input);
+        await validateImplementation(input);
         break;
       default:
         debug(`Unknown tool '${toolName}', allowing by default`);

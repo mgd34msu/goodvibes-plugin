@@ -5,8 +5,20 @@
  * accidental commits of sensitive files.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
+
+/**
+ * Helper to check if a file exists using async fs.access.
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Security-critical gitignore entries grouped by category. */
 export const SECURITY_GITIGNORE_ENTRIES: Record<string, string[]> = {
@@ -43,8 +55,8 @@ export async function ensureSecureGitignore(cwd: string): Promise<void> {
   const gitignorePath = path.join(cwd, '.gitignore');
   let content = '';
 
-  if (fs.existsSync(gitignorePath)) {
-    content = fs.readFileSync(gitignorePath, 'utf-8');
+  if (await fileExists(gitignorePath)) {
+    content = await fs.readFile(gitignorePath, 'utf-8');
   }
 
   const entriesToAdd: string[] = [];
@@ -59,6 +71,6 @@ export async function ensureSecureGitignore(cwd: string): Promise<void> {
 
   if (entriesToAdd.length > 0) {
     const newContent = content.trimEnd() + '\n' + entriesToAdd.join('\n') + '\n';
-    fs.writeFileSync(gitignorePath, newContent);
+    await fs.writeFile(gitignorePath, newContent);
   }
 }

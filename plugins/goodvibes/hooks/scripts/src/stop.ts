@@ -7,7 +7,7 @@
  * - Clean up temporary cache files
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import {
   respond,
@@ -19,6 +19,18 @@ import {
   CACHE_DIR,
   HookResponse,
 } from './shared.js';
+
+/**
+ * Helper to check if a file exists using async fs.access.
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
@@ -40,7 +52,7 @@ async function main(): Promise<void> {
     const input = await readHookInput();
     debug('Stop hook received input', { session_id: input.session_id });
 
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
     debug('Loaded analytics', { has_analytics: !!analytics, session_id: analytics?.session_id });
 
     if (analytics) {
@@ -53,11 +65,11 @@ async function main(): Promise<void> {
       const durationMinutes = Math.round((ended - started) / MS_PER_MINUTE);
 
       // Save final analytics
-      saveAnalytics(analytics);
+      await saveAnalytics(analytics);
 
       // Create session summary file
       const summaryFile = path.join(CACHE_DIR, `session-${analytics.session_id}.json`);
-      fs.writeFileSync(summaryFile, JSON.stringify({
+      await fs.writeFile(summaryFile, JSON.stringify({
         session_id: analytics.session_id,
         duration_minutes: durationMinutes,
         tools_used: analytics.tool_usage.length,
@@ -78,8 +90,8 @@ async function main(): Promise<void> {
     const tempFiles = ['detected-stack.json'];
     for (const file of tempFiles) {
       const filePath = path.join(CACHE_DIR, file);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fs.unlink(filePath);
         debug(`Cleaned up temp file: ${file}`);
       }
     }

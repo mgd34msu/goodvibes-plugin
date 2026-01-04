@@ -76,11 +76,11 @@ export declare function getDefaultSharedConfig(): SharedConfig;
  * settings or the settings at the root level.
  *
  * @param cwd - The current working directory (project root) containing .goodvibes folder
- * @returns The merged SharedConfig with user overrides applied to defaults
+ * @returns Promise resolving to the merged SharedConfig with user overrides applied to defaults
  *
  * @example
  * // Load config from project directory
- * const config = loadSharedConfig('/path/to/project');
+ * const config = await loadSharedConfig('/path/to/project');
  *
  * // Check if telemetry is enabled
  * if (config.telemetry?.enabled) {
@@ -96,4 +96,4 @@ export declare function getDefaultSharedConfig(): SharedConfig;
  * //   }
  * // }
  */
-export declare function loadSharedConfig(cwd: string): SharedConfig;
+export declare function loadSharedConfig(cwd: string): Promise<SharedConfig>;

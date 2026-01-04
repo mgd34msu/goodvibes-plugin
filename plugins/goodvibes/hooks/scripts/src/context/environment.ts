@@ -12,8 +12,7 @@
  * - env-checker.ts re-exports `checkEnvStatus` as `checkEnvironment` for existing consumers
  */
 
-import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
 
@@ -79,16 +78,16 @@ const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
 // =============================================================================
 
 /**
- * Parse an env file and extract variable names (sync version).
+ * Parse an env file and extract variable names (async version).
  */
-function parseEnvFileSync(filePath: string): string[] {
+async function parseEnvFile(filePath: string): Promise<string[]> {
   try {
-    if (!fs.existsSync(filePath)) return [];
+    if (!await fileExists(filePath)) return [];
 
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, 'utf-8');
     return parseEnvVars(content);
   } catch (error) {
-    debug('parseEnvFileSync failed', { error: String(error) });
+    debug('parseEnvFile failed', { error: String(error) });
     return [];
   }
 }
@@ -124,9 +123,9 @@ function isSensitiveVar(varName: string): boolean {
 /**
  * Check if a file exists (async version).
  */
-async function fileExistsAsync(filePath: string): Promise<boolean> {
+async function fileExists(filePath: string): Promise<boolean> {
   try {
-    await fsPromises.access(filePath);
+    await fs.access(filePath);
     return true;
   } catch {
     return false;
@@ -153,9 +152,9 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
   const envExamplePath = path.join(cwd, '.env.example');
 
   const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] = await Promise.all([
-    fileExistsAsync(envPath),
-    fileExistsAsync(envLocalPath),
-    fileExistsAsync(envExamplePath),
+    fileExists(envPath),
+    fileExists(envLocalPath),
+    fileExists(envExamplePath),
   ]);
 
   const hasEnvFile = hasEnvPathExists || hasEnvLocalExists;
@@ -165,14 +164,14 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
   const warnings: string[] = [];
 
   if (hasEnvExample) {
-    const exampleContent = await fsPromises.readFile(envExamplePath, 'utf-8');
+    const exampleContent = await fs.readFile(envExamplePath, 'utf-8');
     const requiredVars = parseEnvVars(exampleContent);
 
     let definedVars: string[] = [];
     if (hasEnvLocalExists) {
-      definedVars = parseEnvVars(await fsPromises.readFile(envLocalPath, 'utf-8'));
+      definedVars = parseEnvVars(await fs.readFile(envLocalPath, 'utf-8'));
     } else if (hasEnvPathExists) {
-      definedVars = parseEnvVars(await fsPromises.readFile(envPath, 'utf-8'));
+      definedVars = parseEnvVars(await fs.readFile(envPath, 'utf-8'));
     }
 
     missingVars = requiredVars.filter(v => !definedVars.includes(v));
@@ -207,9 +206,9 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
   // Check which env files exist
   for (const envFile of ENV_FILES) {
     const filePath = path.join(cwd, envFile);
-    if (fs.existsSync(filePath)) {
+    if (await fileExists(filePath)) {
       envFiles.push(envFile);
-      const vars = parseEnvFileSync(filePath);
+      const vars = await parseEnvFile(filePath);
       definedVars = [...definedVars, ...vars];
     }
   }
@@ -223,9 +222,9 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
 
   for (const exampleFile of ENV_EXAMPLE_FILES) {
     const filePath = path.join(cwd, exampleFile);
-    if (fs.existsSync(filePath)) {
+    if (await fileExists(filePath)) {
       hasEnvExample = true;
-      exampleVars = parseEnvFileSync(filePath);
+      exampleVars = await parseEnvFile(filePath);
       break;
     }
   }
@@ -237,8 +236,8 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
   const sensitiveVarsExposed: string[] = [];
 
   const gitignorePath = path.join(cwd, '.gitignore');
-  if (fs.existsSync(gitignorePath)) {
-    const gitignore = fs.readFileSync(gitignorePath, 'utf-8');
+  if (await fileExists(gitignorePath)) {
+    const gitignore = await fs.readFile(gitignorePath, 'utf-8');
 
     for (const envFile of envFiles) {
       // Simple check - see if the file pattern is in gitignore
@@ -249,7 +248,7 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
         gitignore.includes('.env.*');
 
       if (!isIgnored && envFile !== '.env.example') {
-        const vars = parseEnvFileSync(path.join(cwd, envFile));
+        const vars = await parseEnvFile(path.join(cwd, envFile));
         const sensitive = vars.filter(isSensitiveVar);
         sensitiveVarsExposed.push(...sensitive.map((v) => `${v} (in ${envFile})`));
       }

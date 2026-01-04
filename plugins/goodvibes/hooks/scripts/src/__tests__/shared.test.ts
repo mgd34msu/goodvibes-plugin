@@ -3,15 +3,24 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
 
-// Mock fs module
-vi.mock('fs');
+// Mock fs/promises module
+const mockAccess = vi.fn();
+const mockMkdir = vi.fn();
+const mockReadFile = vi.fn();
+const mockWriteFile = vi.fn();
+
+vi.mock('fs/promises', () => ({
+  access: mockAccess,
+  mkdir: mockMkdir,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+}));
 
 describe('shared utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -20,20 +29,20 @@ describe('shared utilities', () => {
 
   describe('validateRegistries', () => {
     it('should return valid when all registries exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      mockAccess.mockResolvedValue(undefined);
 
       const { validateRegistries } = await import('../shared.js');
-      const result = validateRegistries();
+      const result = await validateRegistries();
 
       expect(result.valid).toBe(true);
       expect(result.missing).toHaveLength(0);
     });
 
     it('should return invalid when registries are missing', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const { validateRegistries } = await import('../shared.js');
-      const result = validateRegistries();
+      const result = await validateRegistries();
 
       expect(result.valid).toBe(false);
       expect(result.missing.length).toBeGreaterThan(0);
@@ -42,35 +51,38 @@ describe('shared utilities', () => {
 
   describe('ensureCacheDir', () => {
     it('should create cache directory if it does not exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockMkdir.mockResolvedValue(undefined);
 
       const { ensureCacheDir } = await import('../shared.js');
-      ensureCacheDir();
+      await ensureCacheDir();
 
-      expect(fs.mkdirSync).toHaveBeenCalled();
+      expect(mockMkdir).toHaveBeenCalled();
     });
 
     it('should not create cache directory if it already exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      mockAccess.mockResolvedValue(undefined);
 
       const { ensureCacheDir } = await import('../shared.js');
-      ensureCacheDir();
+      await ensureCacheDir();
 
-      expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(mockMkdir).not.toHaveBeenCalled();
     });
   });
 
   describe('loadAnalytics', () => {
     it('should return null if analytics file does not exist', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
+      mockAccess.mockImplementation((p: string) => {
         const pathStr = String(p);
         // Cache dir exists but analytics file doesn't
-        return pathStr.includes('.cache') && !pathStr.includes('analytics.json');
+        if (pathStr.includes('analytics.json')) {
+          return Promise.reject(new Error('ENOENT'));
+        }
+        return Promise.resolve(undefined);
       });
 
       const { loadAnalytics } = await import('../shared.js');
-      const result = loadAnalytics();
+      const result = await loadAnalytics();
 
       expect(result).toBeNull();
     });
@@ -85,21 +97,21 @@ describe('shared utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
       const { loadAnalytics } = await import('../shared.js');
-      const result = loadAnalytics();
+      const result = await loadAnalytics();
 
       expect(result).toEqual(mockAnalytics);
     });
 
     it('should return null if analytics file is invalid JSON', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue('invalid json');
 
       const { loadAnalytics } = await import('../shared.js');
-      const result = loadAnalytics();
+      const result = await loadAnalytics();
 
       expect(result).toBeNull();
     });
@@ -116,13 +128,13 @@ describe('shared utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { saveAnalytics } = await import('../shared.js');
-      saveAnalytics(mockAnalytics);
+      await saveAnalytics(mockAnalytics);
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalled();
     });
   });
 
@@ -150,19 +162,19 @@ describe('shared utilities', () => {
 
   describe('fileExists', () => {
     it('should return true if file exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      mockAccess.mockResolvedValue(undefined);
 
       const { fileExists } = await import('../shared.js');
-      const result = fileExists('test.txt');
+      const result = await fileExists('test.txt');
 
       expect(result).toBe(true);
     });
 
     it('should return false if file does not exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const { fileExists } = await import('../shared.js');
-      const result = fileExists('nonexistent.txt');
+      const result = await fileExists('nonexistent.txt');
 
       expect(result).toBe(false);
     });
@@ -179,20 +191,21 @@ describe('shared utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
       const { getSessionId } = await import('../shared.js');
-      const result = getSessionId();
+      const result = await getSessionId();
 
       expect(result).toBe('existing-session-123');
     });
 
     it('should generate new session ID if no analytics exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockMkdir.mockResolvedValue(undefined);
 
       const { getSessionId } = await import('../shared.js');
-      const result = getSessionId();
+      const result = await getSessionId();
 
       expect(result).toMatch(/^session_\d+$/);
     });
@@ -209,18 +222,18 @@ describe('shared utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { logToolUsage } = await import('../shared.js');
-      logToolUsage({
+      await logToolUsage({
         tool: 'search_skills',
         timestamp: new Date().toISOString(),
         success: true,
       });
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalled();
     });
   });
 });

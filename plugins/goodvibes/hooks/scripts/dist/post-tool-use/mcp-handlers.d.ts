@@ -19,9 +19,9 @@ import { HookInput } from '../shared.js';
  *
  * @example
  * // Called automatically when detect_stack MCP tool completes
- * handleDetectStack(input);
+ * await handleDetectStack(input);
  */
-export declare function handleDetectStack(input: HookInput): void;
+export declare function handleDetectStack(input: HookInput): Promise<void>;
 /**
  * Handles recommend_skills tool results, tracking recommended skills.
  * Extracts skill paths from recommendations and adds them to analytics tracking.
@@ -30,9 +30,9 @@ export declare function handleDetectStack(input: HookInput): void;
  *
  * @example
  * // Called automatically when recommend_skills MCP tool completes
- * handleRecommendSkills(input);
+ * await handleRecommendSkills(input);
  */
-export declare function handleRecommendSkills(input: HookInput): void;
+export declare function handleRecommendSkills(input: HookInput): Promise<void>;
 /**
  * Handles search tool results, logging usage.
  * Records search tool invocation for analytics tracking.
@@ -41,9 +41,9 @@ export declare function handleRecommendSkills(input: HookInput): void;
  *
  * @example
  * // Called automatically when search_* MCP tools complete
- * handleSearch(input);
+ * await handleSearch(input);
  */
-export declare function handleSearch(_input: HookInput): void;
+export declare function handleSearch(_input: HookInput): Promise<void>;
 /**
  * Handles validate_implementation tool results, tracking validations and issues.
  * Increments validation counter and adds any errors/warnings to issues_found analytics.
@@ -52,9 +52,9 @@ export declare function handleSearch(_input: HookInput): void;
  *
  * @example
  * // Called automatically when validate_implementation MCP tool completes
- * handleValidateImplementation(input);
+ * await handleValidateImplementation(input);
  */
-export declare function handleValidateImplementation(input: HookInput): void;
+export declare function handleValidateImplementation(input: HookInput): Promise<void>;
 /**
  * Handles run_smoke_test tool results, reporting failures.
  * Returns a system message if tests failed with count of failures.
@@ -63,9 +63,9 @@ export declare function handleValidateImplementation(input: HookInput): void;
  *
  * @example
  * // Called automatically when run_smoke_test MCP tool completes
- * handleRunSmokeTest(input);
+ * await handleRunSmokeTest(input);
  */
-export declare function handleRunSmokeTest(input: HookInput): void;
+export declare function handleRunSmokeTest(input: HookInput): Promise<void>;
 /**
  * Handles check_types tool results, reporting type errors.
  * Tracks error count in analytics and returns system message with error count.
@@ -74,6 +74,6 @@ export declare function handleRunSmokeTest(input: HookInput): void;
  *
  * @example
  * // Called automatically when check_types MCP tool completes
- * handleCheckTypes(input);
+ * await handleCheckTypes(input);
  */
-export declare function handleCheckTypes(input: HookInput): void;
+export declare function handleCheckTypes(input: HookInput): Promise<void>;

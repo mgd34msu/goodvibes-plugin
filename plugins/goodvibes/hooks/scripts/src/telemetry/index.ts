@@ -1,21 +1,21 @@
 /**
- * Telemetry module - aggregates all telemetry subsystems.
+ * Telemetry Module
  *
- * This module provides backward compatibility with the old telemetry.ts API
- * while delegating to the new modular implementation.
+ * Central export point for all telemetry functionality.
+ * This is the canonical barrel file for the modular telemetry implementation.
+ *
+ * The core functions here take explicit path parameters for testability.
+ * For backward compatibility wrappers that use PROJECT_ROOT, import from
+ * '../telemetry.js' instead.
  */
 
-import * as path from 'path';
-import { PROJECT_ROOT } from '../shared.js';
-
-// ============================================================================
-// Re-export all types and functions from submodules
-// ============================================================================
-
-// Agent tracking
+// =============================================================================
+// Agent State Management
+// =============================================================================
 export type { ActiveAgentEntry, ActiveAgentsState, GitInfo } from './agents.js';
 export {
   STALE_AGENT_MAX_AGE_MS,
+  getActiveAgentsFilePath,
   getGitInfo,
   deriveProjectName,
   loadActiveAgents,
@@ -25,7 +25,9 @@ export {
   cleanupStaleAgents,
 } from './agents.js';
 
-// Transcript parsing
+// =============================================================================
+// Transcript Parsing
+// =============================================================================
 export type { ParsedTranscript } from './transcript.js';
 export {
   MAX_OUTPUT_LENGTH,
@@ -34,89 +36,12 @@ export {
   extractKeywords,
 } from './transcript.js';
 
-// Telemetry records
+// =============================================================================
+// Telemetry Records
+// =============================================================================
 export type { TelemetryRecord } from './records.js';
 export {
   ensureGoodVibesDirs,
   writeTelemetryRecord,
   createTelemetryRecord,
 } from './records.js';
-
-// ============================================================================
-// Constants and Paths (for backward compatibility)
-// ============================================================================
-
-const GOODVIBES_DIR = path.join(PROJECT_ROOT, '.goodvibes');
-const STATE_DIR = 'state';
-const TELEMETRY_DIR = 'telemetry';
-const ACTIVE_AGENTS_FILE = path.join(GOODVIBES_DIR, STATE_DIR, 'active-agents.json');
-
-// ============================================================================
-// Backward Compatibility Wrappers
-// ============================================================================
-
-import {
-  loadActiveAgents as loadActiveAgentsCore,
-  saveActiveAgents as saveActiveAgentsCore,
-  registerActiveAgent as registerActiveAgentCore,
-  popActiveAgent as popActiveAgentCore,
-  cleanupStaleAgents as cleanupStaleAgentsCore,
-} from './agents.js';
-
-import {
-  ensureGoodVibesDirs as ensureGoodVibesDirsCore,
-  writeTelemetryRecord as writeTelemetryRecordCore,
-} from './records.js';
-
-/**
- * Ensure .goodvibes directories exist (backward compatible wrapper)
- */
-export function ensureGoodVibesDirsCompat(): void {
-  ensureGoodVibesDirsCore(GOODVIBES_DIR, STATE_DIR, TELEMETRY_DIR);
-}
-
-/**
- * Load active agents state from file (backward compatible wrapper)
- */
-export function loadActiveAgentsCompat() {
-  ensureGoodVibesDirsCompat();
-  return loadActiveAgentsCore(ACTIVE_AGENTS_FILE);
-}
-
-/**
- * Save active agents state to file (backward compatible wrapper)
- */
-export function saveActiveAgentsCompat(state: import('./agents.js').ActiveAgentsState): void {
-  saveActiveAgentsCore(ACTIVE_AGENTS_FILE, state);
-}
-
-/**
- * Register a new active agent (backward compatible wrapper)
- */
-export function registerActiveAgentCompat(entry: import('./agents.js').ActiveAgentEntry): void {
-  ensureGoodVibesDirsCompat();
-  registerActiveAgentCore(ACTIVE_AGENTS_FILE, entry);
-}
-
-/**
- * Look up and remove an active agent entry (backward compatible wrapper)
- */
-export function popActiveAgentCompat(agentId: string) {
-  return popActiveAgentCore(ACTIVE_AGENTS_FILE, agentId);
-}
-
-/**
- * Removes agent entries older than 24 hours (backward compatible wrapper)
- */
-export function cleanupStaleAgentsCompat(): number {
-  return cleanupStaleAgentsCore(ACTIVE_AGENTS_FILE);
-}
-
-/**
- * Write a telemetry record to the monthly JSONL file (backward compatible wrapper)
- */
-export function writeTelemetryRecordCompat(record: import('./records.js').TelemetryRecord): void {
-  ensureGoodVibesDirsCompat();
-  const telemetryDirPath = path.join(GOODVIBES_DIR, TELEMETRY_DIR);
-  writeTelemetryRecordCore(telemetryDirPath, record);
-}

@@ -4,7 +4,7 @@
  * Runs when a Claude Code session ends.
  * Handles cleanup, logging, and saving session state.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, } from './shared.js';
 /** Creates a hook response with optional system message. */
@@ -24,7 +24,7 @@ async function main() {
         debug('SessionEnd received input', {
             session_id: input.session_id,
         });
-        const analytics = loadAnalytics();
+        const analytics = await loadAnalytics();
         if (analytics) {
             // Finalize analytics
             analytics.ended_at = new Date().toISOString();
@@ -33,10 +33,10 @@ async function main() {
             const ended = new Date(analytics.ended_at).getTime();
             const durationMinutes = Math.round((ended - started) / MS_PER_MINUTE);
             // Save final analytics
-            saveAnalytics(analytics);
+            await saveAnalytics(analytics);
             // Create session summary file
             const summaryFile = path.join(CACHE_DIR, `session-${analytics.session_id}.json`);
-            fs.writeFileSync(summaryFile, JSON.stringify({
+            await fs.writeFile(summaryFile, JSON.stringify({
                 session_id: analytics.session_id,
                 duration_minutes: durationMinutes,
                 tools_used: analytics.tool_usage.length,

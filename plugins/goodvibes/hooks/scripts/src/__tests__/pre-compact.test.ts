@@ -37,6 +37,7 @@ vi.mock('../shared.js', () => ({
   ensureGoodVibesDir: vi.fn(),
   debug: vi.fn(),
   logError: vi.fn(),
+  fileExistsAsync: vi.fn().mockResolvedValue(false),
 }));
 
 describe('pre-compact', () => {
@@ -58,7 +59,7 @@ describe('pre-compact', () => {
       const { hasUncommittedChanges } = await import('../automation/git-operations.js');
       const { createCheckpointIfNeeded } = await import('../post-tool-use/checkpoint-manager.js');
 
-      vi.mocked(hasUncommittedChanges).mockReturnValue(false);
+      vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
 
       await createPreCompactCheckpoint(testDir);
 
@@ -78,7 +79,7 @@ describe('pre-compact', () => {
         automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
       };
 
-      vi.mocked(hasUncommittedChanges).mockReturnValue(true);
+      vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
       vi.mocked(loadState).mockResolvedValue(mockState);
       vi.mocked(createCheckpointIfNeeded).mockResolvedValue({
         created: true,
@@ -108,7 +109,7 @@ describe('pre-compact', () => {
         automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
       };
 
-      vi.mocked(hasUncommittedChanges).mockReturnValue(true);
+      vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
       vi.mocked(loadState).mockResolvedValue(mockState);
       vi.mocked(createCheckpointIfNeeded).mockRejectedValue(new Error('Git error'));
 
@@ -129,7 +130,7 @@ describe('pre-compact', () => {
         automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
       };
 
-      vi.mocked(hasUncommittedChanges).mockReturnValue(true);
+      vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
       vi.mocked(loadState).mockResolvedValue(mockState);
       vi.mocked(createCheckpointIfNeeded).mockResolvedValue({
         created: false,

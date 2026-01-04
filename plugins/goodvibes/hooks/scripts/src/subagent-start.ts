@@ -99,7 +99,7 @@ async function main(): Promise<void> {
     });
 
     // Clean up any stale agent entries (from crashed sessions)
-    cleanupStaleAgents();
+    await cleanupStaleAgents();
 
     // Get git information
     const gitInfo = getGitInfo(cwd);
@@ -126,7 +126,7 @@ async function main(): Promise<void> {
     debug('Saved agent tracking', { agent_id: agentId });
 
     // Track subagent spawns in session analytics
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
     if (analytics) {
       // Ensure array exists with proper typing
       const TASK_MAX_LENGTH = 200;
@@ -136,7 +136,7 @@ async function main(): Promise<void> {
         task: taskDescription?.substring(0, TASK_MAX_LENGTH),
         started_at: tracking.started_at,
       });
-      saveAnalytics(analytics);
+      await saveAnalytics(analytics);
     }
 
     // Load state to track session info

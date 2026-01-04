@@ -177,17 +177,17 @@ async function main(): Promise<void> {
       debug('Removed agent tracking', { agent_id: agentId });
 
       // Update session analytics
-      const analytics = loadAnalytics();
+      const analytics = await loadAnalytics();
       if (analytics && analytics.subagents_spawned) {
         // Find and update the matching subagent entry
         const subagentEntry = analytics.subagents_spawned.find(
-          s => s.type === tracking.agent_type &&
+          (s: { type: string; started_at: string }) => s.type === tracking.agent_type &&
                s.started_at === tracking.started_at
         );
         if (subagentEntry) {
           subagentEntry.completed_at = new Date().toISOString();
           subagentEntry.success = status === 'completed';
-          saveAnalytics(analytics);
+          await saveAnalytics(analytics);
         }
       }
 

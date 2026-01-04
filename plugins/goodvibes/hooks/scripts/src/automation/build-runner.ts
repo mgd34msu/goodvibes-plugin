@@ -6,9 +6,23 @@
  */
 
 import { execSync } from 'child_process';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { extractErrorOutput } from '../shared.js';
+
+/**
+ * Helper function to check if a file exists using async fs.access.
+ * @param filePath - The path to check
+ * @returns Promise resolving to true if file exists, false otherwise
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Result of a build or type check operation. */
 export interface BuildResult {
@@ -37,22 +51,32 @@ export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
  * Checks for Next.js, Vite, or falls back to default npm build.
  *
  * @param cwd - The current working directory (project root)
- * @returns The build command string appropriate for the detected framework
+ * @returns Promise resolving to the build command string appropriate for the detected framework
  *
  * @example
- * const cmd = detectBuildCommand('/my-next-app');
+ * const cmd = await detectBuildCommand('/my-next-app');
  * // Returns 'npm run build' if next.config.js exists
  */
-export function detectBuildCommand(cwd: string): string {
-  if (fs.existsSync(path.join(cwd, 'next.config.js')) ||
-      fs.existsSync(path.join(cwd, 'next.config.mjs')) ||
-      fs.existsSync(path.join(cwd, 'next.config.ts'))) {
+export async function detectBuildCommand(cwd: string): Promise<string> {
+  // Check for Next.js config files
+  const [hasNextJs, hasNextMjs, hasNextTs] = await Promise.all([
+    fileExists(path.join(cwd, 'next.config.js')),
+    fileExists(path.join(cwd, 'next.config.mjs')),
+    fileExists(path.join(cwd, 'next.config.ts')),
+  ]);
+  if (hasNextJs || hasNextMjs || hasNextTs) {
     return BUILD_COMMANDS.next;
   }
-  if (fs.existsSync(path.join(cwd, 'vite.config.ts')) ||
-      fs.existsSync(path.join(cwd, 'vite.config.js'))) {
+
+  // Check for Vite config files
+  const [hasViteTs, hasViteJs] = await Promise.all([
+    fileExists(path.join(cwd, 'vite.config.ts')),
+    fileExists(path.join(cwd, 'vite.config.js')),
+  ]);
+  if (hasViteTs || hasViteJs) {
     return BUILD_COMMANDS.vite;
   }
+
   return BUILD_COMMANDS.default;
 }
 
@@ -61,16 +85,16 @@ export function detectBuildCommand(cwd: string): string {
  * Automatically detects the appropriate build command based on project configuration.
  *
  * @param cwd - The current working directory (project root)
- * @returns A BuildResult object containing pass/fail status, summary, and parsed errors
+ * @returns Promise resolving to a BuildResult object containing pass/fail status, summary, and parsed errors
  *
  * @example
- * const result = runBuild('/my-project');
+ * const result = await runBuild('/my-project');
  * if (!result.passed) {
  *   console.error('Build failed:', result.errors);
  * }
  */
-export function runBuild(cwd: string): BuildResult {
-  const command = detectBuildCommand(cwd);
+export async function runBuild(cwd: string): Promise<BuildResult> {
+  const command = await detectBuildCommand(cwd);
 
   try {
     execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });

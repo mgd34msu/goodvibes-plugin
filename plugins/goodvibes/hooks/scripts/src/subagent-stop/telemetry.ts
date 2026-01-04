@@ -1,8 +1,24 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
 import { ensureGoodVibesDir, parseTranscript, extractKeywords } from '../shared.js';
 import { debug } from '../shared/logging.js';
+
+// ============================================================================
+// File System Helpers
+// ============================================================================
+
+/**
+ * Check if a file exists (async replacement for existsSync)
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
@@ -13,26 +29,26 @@ export async function saveAgentTracking(cwd: string, tracking: TelemetryTracking
   const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
 
   let trackings: Record<string, TelemetryTracking> = {};
-  if (fs.existsSync(trackingPath)) {
+  if (await fileExists(trackingPath)) {
     try {
-      trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+      trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
     } catch (error) {
-    debug('telemetry operation failed', { error: String(error) });
-  }
+      debug('telemetry operation failed', { error: String(error) });
+    }
   }
 
   trackings[tracking.agent_id] = tracking;
-  fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
+  await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
 }
 
 /** Retrieves tracking data for a specific agent */
 export async function getAgentTracking(cwd: string, agentId: string): Promise<TelemetryTracking | null> {
   const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
 
-  if (!fs.existsSync(trackingPath)) return null;
+  if (!(await fileExists(trackingPath))) return null;
 
   try {
-    const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+    const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
     return trackings[agentId] || null;
   } catch (error) {
     debug('getAgentTracking failed', { error: String(error) });
@@ -44,12 +60,12 @@ export async function getAgentTracking(cwd: string, agentId: string): Promise<Te
 export async function removeAgentTracking(cwd: string, agentId: string): Promise<void> {
   const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
 
-  if (!fs.existsSync(trackingPath)) return;
+  if (!(await fileExists(trackingPath))) return;
 
   try {
-    const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+    const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
     delete trackings[agentId];
-    fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
+    await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
   } catch (error) {
     debug('telemetry operation failed', { error: String(error) });
   }
@@ -63,7 +79,7 @@ export async function writeTelemetryEntry(cwd: string, entry: TelemetryEntry): P
   const fileName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`;
   const telemetryPath = path.join(cwd, '.goodvibes', 'telemetry', fileName);
 
-  fs.appendFileSync(telemetryPath, JSON.stringify(entry) + '\n');
+  await fs.appendFile(telemetryPath, JSON.stringify(entry) + '\n');
 }
 
 /** Builds a telemetry entry from tracking data and transcript */
@@ -72,7 +88,7 @@ export async function buildTelemetryEntry(
   transcriptPath: string,
   status: 'completed' | 'failed'
 ): Promise<TelemetryEntry> {
-  const transcriptData = parseTranscript(transcriptPath);
+  const transcriptData = await parseTranscript(transcriptPath);
   const allText = transcriptData.summary + ' ' + transcriptData.filesModified.join(' ');
   const keywords = extractKeywords(allText);
 

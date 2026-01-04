@@ -3,10 +3,25 @@
  *
  * Provides active agent state tracking for SubagentStart/Stop correlation.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { debug, logError } from '../shared.js';
+// ============================================================================
+// File System Helpers
+// ============================================================================
+/**
+ * Check if a file exists (async replacement for existsSync)
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 // ============================================================================
 // Constants and Paths
 // ============================================================================
@@ -78,10 +93,10 @@ export function deriveProjectName(cwd) {
 /**
  * Load active agents state from file
  */
-export function loadActiveAgents(activeAgentsFile) {
-    if (fs.existsSync(activeAgentsFile)) {
+export async function loadActiveAgents(activeAgentsFile) {
+    if (await fileExists(activeAgentsFile)) {
         try {
-            const content = fs.readFileSync(activeAgentsFile, 'utf-8');
+            const content = await fs.readFile(activeAgentsFile, 'utf-8');
             return JSON.parse(content);
         }
         catch (error) {
@@ -96,10 +111,10 @@ export function loadActiveAgents(activeAgentsFile) {
 /**
  * Save active agents state to file
  */
-export function saveActiveAgents(activeAgentsFile, state) {
+export async function saveActiveAgents(activeAgentsFile, state) {
     try {
         state.last_updated = new Date().toISOString();
-        fs.writeFileSync(activeAgentsFile, JSON.stringify(state, null, 2));
+        await fs.writeFile(activeAgentsFile, JSON.stringify(state, null, 2));
     }
     catch (error) {
         logError('saveActiveAgents', error);
@@ -108,21 +123,21 @@ export function saveActiveAgents(activeAgentsFile, state) {
 /**
  * Register a new active agent
  */
-export function registerActiveAgent(activeAgentsFile, entry) {
-    const state = loadActiveAgents(activeAgentsFile);
+export async function registerActiveAgent(activeAgentsFile, entry) {
+    const state = await loadActiveAgents(activeAgentsFile);
     state.agents[entry.agent_id] = entry;
-    saveActiveAgents(activeAgentsFile, state);
+    await saveActiveAgents(activeAgentsFile, state);
     debug('Registered active agent: ' + entry.agent_id + ' (' + entry.agent_type + ')');
 }
 /**
  * Look up and remove an active agent entry
  */
-export function popActiveAgent(activeAgentsFile, agentId) {
-    const state = loadActiveAgents(activeAgentsFile);
+export async function popActiveAgent(activeAgentsFile, agentId) {
+    const state = await loadActiveAgents(activeAgentsFile);
     const entry = state.agents[agentId];
     if (entry) {
         delete state.agents[agentId];
-        saveActiveAgents(activeAgentsFile, state);
+        await saveActiveAgents(activeAgentsFile, state);
         debug('Popped active agent: ' + agentId);
         return entry;
     }
@@ -130,8 +145,8 @@ export function popActiveAgent(activeAgentsFile, agentId) {
     return null;
 }
 /** Removes agent entries older than 24 hours. Returns count of removed entries. */
-export function cleanupStaleAgents(activeAgentsFile) {
-    const state = loadActiveAgents(activeAgentsFile);
+export async function cleanupStaleAgents(activeAgentsFile) {
+    const state = await loadActiveAgents(activeAgentsFile);
     const now = Date.now();
     let removed = 0;
     for (const [agentId, entry] of Object.entries(state.agents)) {
@@ -142,7 +157,7 @@ export function cleanupStaleAgents(activeAgentsFile) {
         }
     }
     if (removed > 0) {
-        saveActiveAgents(activeAgentsFile, state);
+        await saveActiveAgents(activeAgentsFile, state);
         debug('Cleaned up ' + removed + ' stale agent entries');
     }
     return removed;

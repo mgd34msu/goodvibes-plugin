@@ -12,11 +12,20 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
 import * as path from 'path';
 
-// Mock modules
-vi.mock('fs');
+// Mock fs/promises module
+const mockAccess = vi.fn();
+const mockMkdir = vi.fn();
+const mockReadFile = vi.fn();
+const mockWriteFile = vi.fn();
+
+vi.mock('fs/promises', () => ({
+  access: mockAccess,
+  mkdir: mockMkdir,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+}));
 
 describe('post-tool-use hook utilities', () => {
   beforeEach(() => {
@@ -30,13 +39,10 @@ describe('post-tool-use hook utilities', () => {
 
   describe('loadAnalytics', () => {
     it('should return null if analytics file does not exist', async () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) => {
-        const pathStr = String(p);
-        return pathStr.includes('.cache') && !pathStr.includes('analytics.json');
-      });
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const { loadAnalytics } = await import('../shared.js');
-      const result = loadAnalytics();
+      const result = await loadAnalytics();
 
       expect(result).toBeNull();
     });
@@ -51,21 +57,21 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
       const { loadAnalytics } = await import('../shared.js');
-      const result = loadAnalytics();
+      const result = await loadAnalytics();
 
       expect(result).toEqual(mockAnalytics);
     });
 
     it('should return null if analytics file is invalid JSON', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue('invalid json');
 
       const { loadAnalytics } = await import('../shared.js');
-      const result = loadAnalytics();
+      const result = await loadAnalytics();
 
       expect(result).toBeNull();
     });
@@ -82,13 +88,13 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { saveAnalytics } = await import('../shared.js');
-      saveAnalytics(mockAnalytics);
+      await saveAnalytics(mockAnalytics);
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalled();
     });
 
     it('should ensure cache directory exists before saving', async () => {
@@ -101,14 +107,14 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { saveAnalytics } = await import('../shared.js');
-      saveAnalytics(mockAnalytics);
+      await saveAnalytics(mockAnalytics);
 
-      expect(fs.mkdirSync).toHaveBeenCalled();
+      expect(mockMkdir).toHaveBeenCalled();
     });
   });
 
@@ -123,38 +129,38 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { logToolUsage } = await import('../shared.js');
-      logToolUsage({
+      await logToolUsage({
         tool: 'search_skills',
         timestamp: new Date().toISOString(),
         success: true,
       });
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      expect(mockWriteFile).toHaveBeenCalled();
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.tool_usage.length).toBe(1);
       expect(writtenContent.tool_usage[0].tool).toBe('search_skills');
     });
 
     it('should create new analytics if none exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { logToolUsage } = await import('../shared.js');
-      logToolUsage({
+      await logToolUsage({
         tool: 'detect_stack',
         timestamp: new Date().toISOString(),
         success: true,
       });
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      expect(mockWriteFile).toHaveBeenCalled();
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.tool_usage.length).toBe(1);
     });
@@ -174,18 +180,18 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { logToolUsage } = await import('../shared.js');
-      logToolUsage({
+      await logToolUsage({
         tool: 'detect_stack',
         timestamp: new Date().toISOString(),
         success: true,
       });
 
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.tool_usage.length).toBe(2);
     });
@@ -193,9 +199,9 @@ describe('post-tool-use hook utilities', () => {
 
   describe('detect_stack caching', () => {
     it('should cache stack detection result to file', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
+      mockAccess.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify({
         session_id: 'test',
         started_at: '2025-01-01T00:00:00Z',
         tool_usage: [],
@@ -205,13 +211,13 @@ describe('post-tool-use hook utilities', () => {
       }));
 
       const { ensureCacheDir, CACHE_DIR } = await import('../shared.js');
-      ensureCacheDir();
+      await ensureCacheDir();
 
       // Simulate caching detected stack
       const stackData = { frameworks: ['next'], languages: ['typescript'] };
-      fs.writeFileSync(path.join(CACHE_DIR, 'detected-stack.json'), JSON.stringify(stackData));
+      await mockWriteFile(path.join(CACHE_DIR, 'detected-stack.json'), JSON.stringify(stackData));
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalled();
     });
   });
 
@@ -226,19 +232,19 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { loadAnalytics, saveAnalytics } = await import('../shared.js');
-      const analytics = loadAnalytics();
+      const analytics = await loadAnalytics();
 
       if (analytics) {
         analytics.skills_recommended.push('testing/vitest', 'frameworks/nextjs');
-        saveAnalytics(analytics);
+        await saveAnalytics(analytics);
       }
 
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.skills_recommended).toContain('testing/vitest');
       expect(writtenContent.skills_recommended).toContain('frameworks/nextjs');
@@ -256,19 +262,19 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { loadAnalytics, saveAnalytics } = await import('../shared.js');
-      const analytics = loadAnalytics();
+      const analytics = await loadAnalytics();
 
       if (analytics) {
         analytics.validations_run += 1;
-        saveAnalytics(analytics);
+        await saveAnalytics(analytics);
       }
 
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.validations_run).toBe(1);
     });
@@ -283,20 +289,20 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { loadAnalytics, saveAnalytics } = await import('../shared.js');
-      const analytics = loadAnalytics();
+      const analytics = await loadAnalytics();
 
       if (analytics) {
         const toolResult = { summary: { errors: 5, warnings: 3 } };
         analytics.issues_found += (toolResult.summary.errors + toolResult.summary.warnings);
-        saveAnalytics(analytics);
+        await saveAnalytics(analytics);
       }
 
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.issues_found).toBe(8);
     });
@@ -313,12 +319,12 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
-      vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
+      mockWriteFile.mockResolvedValue(undefined);
 
       const { loadAnalytics, saveAnalytics } = await import('../shared.js');
-      const analytics = loadAnalytics();
+      const analytics = await loadAnalytics();
 
       if (analytics) {
         const typeErrors = [
@@ -326,10 +332,10 @@ describe('post-tool-use hook utilities', () => {
           { file: 'src/utils.ts', message: 'Another error' },
         ];
         analytics.issues_found += typeErrors.length;
-        saveAnalytics(analytics);
+        await saveAnalytics(analytics);
       }
 
-      const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+      const writeCall = mockWriteFile.mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.issues_found).toBe(2);
     });
@@ -346,20 +352,20 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockAnalytics));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
       const { getSessionId } = await import('../shared.js');
-      const result = getSessionId();
+      const result = await getSessionId();
 
       expect(result).toBe('existing-session-123');
     });
 
     it('should generate new session ID if no analytics exist', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const { getSessionId } = await import('../shared.js');
-      const result = getSessionId();
+      const result = await getSessionId();
 
       expect(result).toMatch(/^session_\d+$/);
     });

@@ -3,9 +3,24 @@
  *
  * Provides transcript parsing, keyword extraction, and content analysis.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import { debug, logError } from '../shared.js';
 import { TRANSCRIPT_KEYWORD_CATEGORIES, extractTranscriptKeywords, } from '../shared/keywords.js';
+// ============================================================================
+// File System Helpers
+// ============================================================================
+/**
+ * Check if a file exists (async replacement for existsSync)
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 // ============================================================================
 // Constants
 // ============================================================================
@@ -32,19 +47,19 @@ export const KEYWORD_CATEGORIES = TRANSCRIPT_KEYWORD_CATEGORIES;
 /**
  * Parse a transcript file to extract useful information
  */
-export function parseTranscript(transcriptPath) {
+export async function parseTranscript(transcriptPath) {
     const result = {
         files_modified: [],
         tools_used: [],
         error_count: 0,
         success_indicators: [],
     };
-    if (!transcriptPath || !fs.existsSync(transcriptPath)) {
+    if (!transcriptPath || !(await fileExists(transcriptPath))) {
         debug('Transcript file not found: ' + transcriptPath);
         return result;
     }
     try {
-        const content = fs.readFileSync(transcriptPath, 'utf-8');
+        const content = await fs.readFile(transcriptPath, 'utf-8');
         // Try to parse as JSONL (each line is a JSON object)
         const lines = content.split('\n').filter(line => line.trim());
         for (const line of lines) {

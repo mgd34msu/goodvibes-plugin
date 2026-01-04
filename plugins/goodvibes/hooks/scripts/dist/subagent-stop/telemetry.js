@@ -1,7 +1,22 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ensureGoodVibesDir, parseTranscript, extractKeywords } from '../shared.js';
 import { debug } from '../shared/logging.js';
+// ============================================================================
+// File System Helpers
+// ============================================================================
+/**
+ * Check if a file exists (async replacement for existsSync)
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 /** Persists agent tracking data to disk */
@@ -9,24 +24,24 @@ export async function saveAgentTracking(cwd, tracking) {
     await ensureGoodVibesDir(cwd);
     const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
     let trackings = {};
-    if (fs.existsSync(trackingPath)) {
+    if (await fileExists(trackingPath)) {
         try {
-            trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+            trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
         }
         catch (error) {
             debug('telemetry operation failed', { error: String(error) });
         }
     }
     trackings[tracking.agent_id] = tracking;
-    fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
+    await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
 }
 /** Retrieves tracking data for a specific agent */
 export async function getAgentTracking(cwd, agentId) {
     const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
-    if (!fs.existsSync(trackingPath))
+    if (!(await fileExists(trackingPath)))
         return null;
     try {
-        const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+        const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
         return trackings[agentId] || null;
     }
     catch (error) {
@@ -37,12 +52,12 @@ export async function getAgentTracking(cwd, agentId) {
 /** Removes tracking data for a specific agent */
 export async function removeAgentTracking(cwd, agentId) {
     const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
-    if (!fs.existsSync(trackingPath))
+    if (!(await fileExists(trackingPath)))
         return;
     try {
-        const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+        const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
         delete trackings[agentId];
-        fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
+        await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
     }
     catch (error) {
         debug('telemetry operation failed', { error: String(error) });
@@ -54,11 +69,11 @@ export async function writeTelemetryEntry(cwd, entry) {
     const now = new Date();
     const fileName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`;
     const telemetryPath = path.join(cwd, '.goodvibes', 'telemetry', fileName);
-    fs.appendFileSync(telemetryPath, JSON.stringify(entry) + '\n');
+    await fs.appendFile(telemetryPath, JSON.stringify(entry) + '\n');
 }
 /** Builds a telemetry entry from tracking data and transcript */
 export async function buildTelemetryEntry(tracking, transcriptPath, status) {
-    const transcriptData = parseTranscript(transcriptPath);
+    const transcriptData = await parseTranscript(transcriptPath);
     const allText = transcriptData.summary + ' ' + transcriptData.filesModified.join(' ');
     const keywords = extractKeywords(allText);
     // Add agent type as keyword

@@ -10,15 +10,15 @@
  *
  * @param command - The git command to execute
  * @param cwd - The current working directory (repository root)
- * @returns The trimmed command output, or null if the command failed
+ * @returns Promise resolving to the trimmed command output, or null if the command failed
  *
  * @example
- * const branch = execGit('git branch --show-current', '/repo');
+ * const branch = await execGit('git branch --show-current', '/repo');
  * if (branch) {
  *   console.log('Current branch:', branch);
  * }
  */
-export declare function execGit(command: string, cwd: string): string | null;
+export declare function execGit(command: string, cwd: string): Promise<string | null>;
 /**
  * Checks if a directory is a git repository by looking for a .git directory.
  *
@@ -36,51 +36,51 @@ export declare function isGitRepo(cwd: string): boolean;
  * Checks for 'main' first, then 'master', defaulting to 'main'.
  *
  * @param cwd - The current working directory (repository root)
- * @returns The name of the main branch ('main' or 'master')
+ * @returns Promise resolving to the name of the main branch ('main' or 'master')
  *
  * @example
- * const mainBranch = detectMainBranch('/repo');
+ * const mainBranch = await detectMainBranch('/repo');
  * console.log('Main branch is:', mainBranch);
  */
-export declare function detectMainBranch(cwd: string): string;
+export declare function detectMainBranch(cwd: string): Promise<string>;
 /**
  * Returns the current git branch name.
  *
  * @param cwd - The current working directory (repository root)
- * @returns The current branch name, or null if not on a branch (detached HEAD)
+ * @returns Promise resolving to the current branch name, or null if not on a branch (detached HEAD)
  *
  * @example
- * const branch = getCurrentBranch('/repo');
+ * const branch = await getCurrentBranch('/repo');
  * if (branch === 'main') {
  *   console.log('On main branch');
  * }
  */
-export declare function getCurrentBranch(cwd: string): string | null;
+export declare function getCurrentBranch(cwd: string): Promise<string | null>;
 /**
  * Checks if there are uncommitted changes in the working directory.
  * Includes both staged and unstaged changes.
  *
  * @param cwd - The current working directory (repository root)
- * @returns True if there are uncommitted changes, false otherwise
+ * @returns Promise resolving to true if there are uncommitted changes, false otherwise
  *
  * @example
- * if (hasUncommittedChanges('/repo')) {
+ * if (await hasUncommittedChanges('/repo')) {
  *   console.log('You have uncommitted changes');
  * }
  */
-export declare function hasUncommittedChanges(cwd: string): boolean;
+export declare function hasUncommittedChanges(cwd: string): Promise<boolean>;
 /**
  * Returns a list of file paths with uncommitted changes.
  * Parses git status --porcelain output to extract file paths.
  *
  * @param cwd - The current working directory (repository root)
- * @returns An array of file paths with changes, or empty array if none
+ * @returns Promise resolving to an array of file paths with changes, or empty array if none
  *
  * @example
- * const files = getUncommittedFiles('/repo');
+ * const files = await getUncommittedFiles('/repo');
  * files.forEach(f => console.log('Modified:', f));
  */
-export declare function getUncommittedFiles(cwd: string): string[];
+export declare function getUncommittedFiles(cwd: string): Promise<string[]>;
 /**
  * Creates a checkpoint commit with all current changes.
  * Stages all files with git add -A and commits with a prefixed message.
@@ -88,28 +88,28 @@ export declare function getUncommittedFiles(cwd: string): string[];
  *
  * @param cwd - The current working directory (repository root)
  * @param message - The checkpoint message (will be prefixed with 'checkpoint:')
- * @returns True if the checkpoint was created successfully, false otherwise
+ * @returns Promise resolving to true if the checkpoint was created successfully, false otherwise
  *
  * @example
- * if (createCheckpoint('/repo', 'pre-refactor state')) {
+ * if (await createCheckpoint('/repo', 'pre-refactor state')) {
  *   console.log('Checkpoint created');
  * }
  */
-export declare function createCheckpoint(cwd: string, message: string): boolean;
+export declare function createCheckpoint(cwd: string, message: string): Promise<boolean>;
 /**
  * Creates a new feature branch with a sanitized name.
  * Normalizes the name to lowercase with hyphens and prefixes with 'feature/'.
  *
  * @param cwd - The current working directory (repository root)
  * @param name - The feature name (will be sanitized and normalized)
- * @returns True if the branch was created successfully, false otherwise
+ * @returns Promise resolving to true if the branch was created successfully, false otherwise
  *
  * @example
- * if (createFeatureBranch('/repo', 'Add User Authentication')) {
+ * if (await createFeatureBranch('/repo', 'Add User Authentication')) {
  *   // Creates and checks out branch: feature/add-user-authentication
  * }
  */
-export declare function createFeatureBranch(cwd: string, name: string): boolean;
+export declare function createFeatureBranch(cwd: string, name: string): Promise<boolean>;
 /**
  * Merges a feature branch into the main branch and deletes the feature branch.
  * Performs a no-fast-forward merge to preserve branch history.
@@ -117,11 +117,11 @@ export declare function createFeatureBranch(cwd: string, name: string): boolean;
  * @param cwd - The current working directory (repository root)
  * @param featureBranch - The name of the feature branch to merge
  * @param mainBranch - The name of the main branch to merge into
- * @returns True if merge and cleanup succeeded, false otherwise
+ * @returns Promise resolving to true if merge and cleanup succeeded, false otherwise
  *
  * @example
- * if (mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
+ * if (await mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
  *   console.log('Feature merged and branch cleaned up');
  * }
  */
-export declare function mergeFeatureBranch(cwd: string, featureBranch: string, mainBranch: string): boolean;
+export declare function mergeFeatureBranch(cwd: string, featureBranch: string, mainBranch: string): Promise<boolean>;

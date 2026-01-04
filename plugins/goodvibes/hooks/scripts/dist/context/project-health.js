@@ -15,9 +15,21 @@
  * Use this when you need comprehensive health analysis with suggestions;
  * use health-checker.ts for quick status checks.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+/**
+ * Check if a file or directory exists (async).
+ */
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 const LOCKFILES = {
     'package-lock.json': 'npm',
     'yarn.lock': 'yarn',
@@ -29,12 +41,12 @@ const MAX_SUGGESTIONS = 3;
 /**
  * Check for node_modules and lockfiles
  */
-function checkDependencies(cwd) {
-    const hasNodeModules = fs.existsSync(path.join(cwd, 'node_modules'));
+async function checkDependencies(cwd) {
+    const hasNodeModules = await fileExists(path.join(cwd, 'node_modules'));
     const lockfiles = [];
     let packageManager = null;
     for (const [file, manager] of Object.entries(LOCKFILES)) {
-        if (fs.existsSync(path.join(cwd, file))) {
+        if (await fileExists(path.join(cwd, file))) {
             lockfiles.push(file);
             if (!packageManager)
                 packageManager = manager;
@@ -45,13 +57,13 @@ function checkDependencies(cwd) {
 /**
  * Check TypeScript configuration
  */
-function checkTypeScript(cwd) {
+async function checkTypeScript(cwd) {
     const tsconfigPath = path.join(cwd, 'tsconfig.json');
-    if (!fs.existsSync(tsconfigPath)) {
+    if (!await fileExists(tsconfigPath)) {
         return null;
     }
     try {
-        const content = fs.readFileSync(tsconfigPath, 'utf-8');
+        const content = await fs.readFile(tsconfigPath, 'utf-8');
         const jsonContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
         const tsconfig = JSON.parse(jsonContent);
         const compilerOptions = tsconfig.compilerOptions || {};
@@ -77,13 +89,13 @@ function checkTypeScript(cwd) {
 /**
  * Get available npm scripts
  */
-function getScripts(cwd) {
+async function getScripts(cwd) {
     const packageJsonPath = path.join(cwd, 'package.json');
-    if (!fs.existsSync(packageJsonPath)) {
+    if (!await fileExists(packageJsonPath)) {
         return [];
     }
     try {
-        const content = fs.readFileSync(packageJsonPath, 'utf-8');
+        const content = await fs.readFile(packageJsonPath, 'utf-8');
         const packageJson = JSON.parse(content);
         return Object.keys(packageJson.scripts || {});
     }
@@ -141,9 +153,11 @@ function generateSuggestions(health) {
  * For lightweight status checks, use checkProjectHealth from health-checker.ts.
  */
 export async function checkProjectHealth(cwd) {
-    const { hasNodeModules, lockfiles, packageManager } = checkDependencies(cwd);
-    const typescript = checkTypeScript(cwd);
-    const scripts = getScripts(cwd);
+    const [{ hasNodeModules, lockfiles, packageManager }, typescript, scripts] = await Promise.all([
+        checkDependencies(cwd),
+        checkTypeScript(cwd),
+        getScripts(cwd),
+    ]);
     const health = {
         hasNodeModules,
         lockfiles,

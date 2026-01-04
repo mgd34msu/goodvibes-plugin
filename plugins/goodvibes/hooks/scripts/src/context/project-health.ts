@@ -16,9 +16,21 @@
  * use health-checker.ts for quick status checks.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+
+/**
+ * Check if a file or directory exists (async).
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Comprehensive project health analysis results. */
 export interface ProjectHealth {
@@ -60,17 +72,17 @@ const MAX_SUGGESTIONS = 3;
 /**
  * Check for node_modules and lockfiles
  */
-function checkDependencies(cwd: string): {
+async function checkDependencies(cwd: string): Promise<{
   hasNodeModules: boolean;
   lockfiles: string[];
   packageManager: string | null;
-} {
-  const hasNodeModules = fs.existsSync(path.join(cwd, 'node_modules'));
+}> {
+  const hasNodeModules = await fileExists(path.join(cwd, 'node_modules'));
   const lockfiles: string[] = [];
   let packageManager: string | null = null;
 
   for (const [file, manager] of Object.entries(LOCKFILES)) {
-    if (fs.existsSync(path.join(cwd, file))) {
+    if (await fileExists(path.join(cwd, file))) {
       lockfiles.push(file);
       if (!packageManager) packageManager = manager;
     }
@@ -82,15 +94,15 @@ function checkDependencies(cwd: string): {
 /**
  * Check TypeScript configuration
  */
-function checkTypeScript(cwd: string): TypeScriptHealth | null {
+async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
   const tsconfigPath = path.join(cwd, 'tsconfig.json');
 
-  if (!fs.existsSync(tsconfigPath)) {
+  if (!await fileExists(tsconfigPath)) {
     return null;
   }
 
   try {
-    const content = fs.readFileSync(tsconfigPath, 'utf-8');
+    const content = await fs.readFile(tsconfigPath, 'utf-8');
     const jsonContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
     const tsconfig = JSON.parse(jsonContent);
     const compilerOptions = tsconfig.compilerOptions || {};
@@ -103,7 +115,6 @@ function checkTypeScript(cwd: string): TypeScriptHealth | null {
       target: compilerOptions.target || null,
     };
   } catch (error) {
-
     debug('project-health failed', { error: String(error) });
     return {
       hasConfig: true,
@@ -118,19 +129,18 @@ function checkTypeScript(cwd: string): TypeScriptHealth | null {
 /**
  * Get available npm scripts
  */
-function getScripts(cwd: string): string[] {
+async function getScripts(cwd: string): Promise<string[]> {
   const packageJsonPath = path.join(cwd, 'package.json');
 
-  if (!fs.existsSync(packageJsonPath)) {
+  if (!await fileExists(packageJsonPath)) {
     return [];
   }
 
   try {
-    const content = fs.readFileSync(packageJsonPath, 'utf-8');
+    const content = await fs.readFile(packageJsonPath, 'utf-8');
     const packageJson = JSON.parse(content);
     return Object.keys(packageJson.scripts || {});
   } catch (error) {
-
     debug('project-health failed', { error: String(error) });
     return [];
   }
@@ -195,9 +205,11 @@ function generateSuggestions(health: Partial<ProjectHealth>): string[] {
  * For lightweight status checks, use checkProjectHealth from health-checker.ts.
  */
 export async function checkProjectHealth(cwd: string): Promise<ProjectHealth> {
-  const { hasNodeModules, lockfiles, packageManager } = checkDependencies(cwd);
-  const typescript = checkTypeScript(cwd);
-  const scripts = getScripts(cwd);
+  const [{ hasNodeModules, lockfiles, packageManager }, typescript, scripts] = await Promise.all([
+    checkDependencies(cwd),
+    checkTypeScript(cwd),
+    getScripts(cwd),
+  ]);
 
   const health: ProjectHealth = {
     hasNodeModules,

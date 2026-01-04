@@ -4,11 +4,27 @@
  * Provides telemetry record types and writing functionality.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared.js';
 import type { ActiveAgentEntry } from './agents.js';
 import type { ParsedTranscript } from './transcript.js';
+
+// ============================================================================
+// File System Helpers
+// ============================================================================
+
+/**
+ * Check if a file or directory exists (async replacement for existsSync)
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ============================================================================
 // Types
@@ -42,15 +58,15 @@ export interface TelemetryRecord {
 /**
  * Ensure .goodvibes directories exist with lazy creation
  */
-export function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, telemetryDir: string): void {
+export async function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, telemetryDir: string): Promise<void> {
   const dirs = [
     goodVibesDir,
     path.join(goodVibesDir, stateDir),
     path.join(goodVibesDir, telemetryDir),
   ];
   for (const dir of dirs) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fs.mkdir(dir, { recursive: true });
       debug('Created directory: ' + dir);
     }
   }
@@ -63,7 +79,7 @@ export function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, tele
 /**
  * Write a telemetry record to the monthly JSONL file
  */
-export function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): void {
+export async function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): Promise<void> {
   // Get current month for filename (YYYY-MM)
   const now = new Date();
   const yearMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -71,7 +87,7 @@ export function writeTelemetryRecord(telemetryDir: string, record: TelemetryReco
 
   // Append record as a single line of JSON
   const line = JSON.stringify(record) + '\n';
-  fs.appendFileSync(telemetryFile, line);
+  await fs.appendFile(telemetryFile, line);
 
   debug('Wrote telemetry record to ' + telemetryFile);
 }

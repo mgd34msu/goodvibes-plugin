@@ -11,8 +11,7 @@
  * - `checkEnvironment()` is an alias for `analyzeEnvironment()` (comprehensive)
  * - env-checker.ts re-exports `checkEnvStatus` as `checkEnvironment` for existing consumers
  */
-import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
 // =============================================================================
@@ -45,17 +44,17 @@ const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
 // Internal Helpers
 // =============================================================================
 /**
- * Parse an env file and extract variable names (sync version).
+ * Parse an env file and extract variable names (async version).
  */
-function parseEnvFileSync(filePath) {
+async function parseEnvFile(filePath) {
     try {
-        if (!fs.existsSync(filePath))
+        if (!await fileExists(filePath))
             return [];
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, 'utf-8');
         return parseEnvVars(content);
     }
     catch (error) {
-        debug('parseEnvFileSync failed', { error: String(error) });
+        debug('parseEnvFile failed', { error: String(error) });
         return [];
     }
 }
@@ -86,9 +85,9 @@ function isSensitiveVar(varName) {
 /**
  * Check if a file exists (async version).
  */
-async function fileExistsAsync(filePath) {
+async function fileExists(filePath) {
     try {
-        await fsPromises.access(filePath);
+        await fs.access(filePath);
         return true;
     }
     catch {
@@ -113,23 +112,23 @@ export async function checkEnvStatus(cwd) {
     const envLocalPath = path.join(cwd, '.env.local');
     const envExamplePath = path.join(cwd, '.env.example');
     const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] = await Promise.all([
-        fileExistsAsync(envPath),
-        fileExistsAsync(envLocalPath),
-        fileExistsAsync(envExamplePath),
+        fileExists(envPath),
+        fileExists(envLocalPath),
+        fileExists(envExamplePath),
     ]);
     const hasEnvFile = hasEnvPathExists || hasEnvLocalExists;
     const hasEnvExample = hasEnvExampleExists;
     let missingVars = [];
     const warnings = [];
     if (hasEnvExample) {
-        const exampleContent = await fsPromises.readFile(envExamplePath, 'utf-8');
+        const exampleContent = await fs.readFile(envExamplePath, 'utf-8');
         const requiredVars = parseEnvVars(exampleContent);
         let definedVars = [];
         if (hasEnvLocalExists) {
-            definedVars = parseEnvVars(await fsPromises.readFile(envLocalPath, 'utf-8'));
+            definedVars = parseEnvVars(await fs.readFile(envLocalPath, 'utf-8'));
         }
         else if (hasEnvPathExists) {
-            definedVars = parseEnvVars(await fsPromises.readFile(envPath, 'utf-8'));
+            definedVars = parseEnvVars(await fs.readFile(envPath, 'utf-8'));
         }
         missingVars = requiredVars.filter(v => !definedVars.includes(v));
         if (missingVars.length > 0) {
@@ -158,9 +157,9 @@ export async function analyzeEnvironment(cwd) {
     // Check which env files exist
     for (const envFile of ENV_FILES) {
         const filePath = path.join(cwd, envFile);
-        if (fs.existsSync(filePath)) {
+        if (await fileExists(filePath)) {
             envFiles.push(envFile);
-            const vars = parseEnvFileSync(filePath);
+            const vars = await parseEnvFile(filePath);
             definedVars = [...definedVars, ...vars];
         }
     }
@@ -171,9 +170,9 @@ export async function analyzeEnvironment(cwd) {
     let exampleVars = [];
     for (const exampleFile of ENV_EXAMPLE_FILES) {
         const filePath = path.join(cwd, exampleFile);
-        if (fs.existsSync(filePath)) {
+        if (await fileExists(filePath)) {
             hasEnvExample = true;
-            exampleVars = parseEnvFileSync(filePath);
+            exampleVars = await parseEnvFile(filePath);
             break;
         }
     }
@@ -182,8 +181,8 @@ export async function analyzeEnvironment(cwd) {
     // Check for sensitive vars that might be in version control
     const sensitiveVarsExposed = [];
     const gitignorePath = path.join(cwd, '.gitignore');
-    if (fs.existsSync(gitignorePath)) {
-        const gitignore = fs.readFileSync(gitignorePath, 'utf-8');
+    if (await fileExists(gitignorePath)) {
+        const gitignore = await fs.readFile(gitignorePath, 'utf-8');
         for (const envFile of envFiles) {
             // Simple check - see if the file pattern is in gitignore
             const isIgnored = gitignore.includes(envFile) ||
@@ -191,7 +190,7 @@ export async function analyzeEnvironment(cwd) {
                 gitignore.includes('.env*') ||
                 gitignore.includes('.env.*');
             if (!isIgnored && envFile !== '.env.example') {
-                const vars = parseEnvFileSync(path.join(cwd, envFile));
+                const vars = await parseEnvFile(path.join(cwd, envFile));
                 const sensitive = vars.filter(isSensitiveVar);
                 sensitiveVarsExposed.push(...sensitive.map((v) => `${v} (in ${envFile})`));
             }

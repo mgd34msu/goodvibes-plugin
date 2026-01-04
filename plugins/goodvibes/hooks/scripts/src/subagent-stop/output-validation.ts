@@ -19,7 +19,7 @@ export async function validateAgentOutput(
   transcriptPath: string,
   state: HooksState
 ): Promise<ValidationResult> {
-  const transcriptData = parseTranscript(transcriptPath);
+  const transcriptData = await parseTranscript(transcriptPath);
   const errors: string[] = [];
 
   // Track all files modified by the agent

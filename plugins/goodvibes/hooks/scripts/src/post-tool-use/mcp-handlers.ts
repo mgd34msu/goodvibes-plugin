@@ -10,7 +10,7 @@
  * - check_types: Reports type errors
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import {
   respond,
@@ -34,18 +34,18 @@ import { createResponse } from './response.js';
  *
  * @example
  * // Called automatically when detect_stack MCP tool completes
- * handleDetectStack(input);
+ * await handleDetectStack(input);
  */
-export function handleDetectStack(input: HookInput): void {
+export async function handleDetectStack(input: HookInput): Promise<void> {
   try {
     debug('handleDetectStack called', { has_tool_input: !!input.tool_input });
 
     // Cache the stack detection result from tool_input
-    ensureCacheDir();
+    await ensureCacheDir();
     const cacheFile = path.join(CACHE_DIR, 'detected-stack.json');
 
     if (input.tool_input) {
-      fs.writeFileSync(cacheFile, JSON.stringify(input.tool_input, null, 2));
+      await fs.writeFile(cacheFile, JSON.stringify(input.tool_input, null, 2));
       debug(`Cached stack detection to ${cacheFile}`);
     }
 
@@ -71,11 +71,11 @@ export function handleDetectStack(input: HookInput): void {
  *
  * @example
  * // Called automatically when recommend_skills MCP tool completes
- * handleRecommendSkills(input);
+ * await handleRecommendSkills(input);
  */
-export function handleRecommendSkills(input: HookInput): void {
+export async function handleRecommendSkills(input: HookInput): Promise<void> {
   try {
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
     if (analytics && input.tool_input) {
       // Track recommended skills from tool input
       const toolInput = input.tool_input as Record<string, unknown>;
@@ -86,11 +86,11 @@ export function handleRecommendSkills(input: HookInput): void {
           )
           .map((r) => r.path);
         analytics.skills_recommended.push(...skillPaths);
-        saveAnalytics(analytics);
+        await saveAnalytics(analytics);
       }
     }
 
-    logToolUsage({
+    await logToolUsage({
       tool: 'recommend_skills',
       timestamp: new Date().toISOString(),
       success: true,
@@ -111,10 +111,10 @@ export function handleRecommendSkills(input: HookInput): void {
  *
  * @example
  * // Called automatically when search_* MCP tools complete
- * handleSearch(input);
+ * await handleSearch(input);
  */
-export function handleSearch(_input: HookInput): void {
-  logToolUsage({
+export async function handleSearch(_input: HookInput): Promise<void> {
+  await logToolUsage({
     tool: 'search',
     timestamp: new Date().toISOString(),
     success: true,
@@ -131,11 +131,11 @@ export function handleSearch(_input: HookInput): void {
  *
  * @example
  * // Called automatically when validate_implementation MCP tool completes
- * handleValidateImplementation(input);
+ * await handleValidateImplementation(input);
  */
-export function handleValidateImplementation(input: HookInput): void {
+export async function handleValidateImplementation(input: HookInput): Promise<void> {
   try {
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
     if (analytics) {
       analytics.validations_run += 1;
 
@@ -146,10 +146,10 @@ export function handleValidateImplementation(input: HookInput): void {
         analytics.issues_found += (summary.errors || 0) + (summary.warnings || 0);
       }
 
-      saveAnalytics(analytics);
+      await saveAnalytics(analytics);
     }
 
-    logToolUsage({
+    await logToolUsage({
       tool: 'validate_implementation',
       timestamp: new Date().toISOString(),
       success: true,
@@ -170,11 +170,11 @@ export function handleValidateImplementation(input: HookInput): void {
  *
  * @example
  * // Called automatically when run_smoke_test MCP tool completes
- * handleRunSmokeTest(input);
+ * await handleRunSmokeTest(input);
  */
-export function handleRunSmokeTest(input: HookInput): void {
+export async function handleRunSmokeTest(input: HookInput): Promise<void> {
   try {
-    logToolUsage({
+    await logToolUsage({
       tool: 'run_smoke_test',
       timestamp: new Date().toISOString(),
       success: true,
@@ -204,13 +204,13 @@ export function handleRunSmokeTest(input: HookInput): void {
  *
  * @example
  * // Called automatically when check_types MCP tool completes
- * handleCheckTypes(input);
+ * await handleCheckTypes(input);
  */
-export function handleCheckTypes(input: HookInput): void {
+export async function handleCheckTypes(input: HookInput): Promise<void> {
   try {
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
 
-    logToolUsage({
+    await logToolUsage({
       tool: 'check_types',
       timestamp: new Date().toISOString(),
       success: true,
@@ -220,7 +220,7 @@ export function handleCheckTypes(input: HookInput): void {
     const toolInput = input.tool_input as Record<string, unknown>;
     if (toolInput?.errors && Array.isArray(toolInput.errors) && analytics) {
       analytics.issues_found += toolInput.errors.length;
-      saveAnalytics(analytics);
+      await saveAnalytics(analytics);
 
       respond(createResponse(`TypeScript: ${toolInput.errors.length} type error(s) found.`));
       return;

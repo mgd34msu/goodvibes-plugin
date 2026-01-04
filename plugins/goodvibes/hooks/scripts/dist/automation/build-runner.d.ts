@@ -23,27 +23,27 @@ export declare const TYPECHECK_COMMAND = "npx tsc --noEmit";
  * Checks for Next.js, Vite, or falls back to default npm build.
  *
  * @param cwd - The current working directory (project root)
- * @returns The build command string appropriate for the detected framework
+ * @returns Promise resolving to the build command string appropriate for the detected framework
  *
  * @example
- * const cmd = detectBuildCommand('/my-next-app');
+ * const cmd = await detectBuildCommand('/my-next-app');
  * // Returns 'npm run build' if next.config.js exists
  */
-export declare function detectBuildCommand(cwd: string): string;
+export declare function detectBuildCommand(cwd: string): Promise<string>;
 /**
  * Runs the build command for the project and returns structured results.
  * Automatically detects the appropriate build command based on project configuration.
  *
  * @param cwd - The current working directory (project root)
- * @returns A BuildResult object containing pass/fail status, summary, and parsed errors
+ * @returns Promise resolving to a BuildResult object containing pass/fail status, summary, and parsed errors
  *
  * @example
- * const result = runBuild('/my-project');
+ * const result = await runBuild('/my-project');
  * if (!result.passed) {
  *   console.error('Build failed:', result.errors);
  * }
  */
-export declare function runBuild(cwd: string): BuildResult;
+export declare function runBuild(cwd: string): Promise<BuildResult>;
 /**
  * Runs TypeScript type checking using tsc --noEmit.
  * Returns structured results with parsed error information.

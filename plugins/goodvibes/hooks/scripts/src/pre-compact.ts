@@ -5,7 +5,7 @@
  * Can save important context before it's compacted.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import {
   respond,
@@ -16,6 +16,8 @@ import {
   CACHE_DIR,
   HookResponse,
   parseTranscript,
+  fileExistsAsync,
+  SessionAnalytics,
 } from './shared.js';
 import { loadState } from './state.js';
 import {
@@ -36,7 +38,7 @@ function createResponse(systemMessage?: string): HookResponse {
  * Generate a session summary from analytics and state
  */
 function generateSessionSummary(
-  analytics: ReturnType<typeof loadAnalytics>,
+  analytics: SessionAnalytics | null,
   modifiedFiles: string[],
   transcriptSummary: string
 ): string {
@@ -92,13 +94,13 @@ async function main(): Promise<void> {
 
     // Load state and analytics
     const state = await loadState(cwd);
-    const analytics = loadAnalytics();
+    const analytics = await loadAnalytics();
     const modifiedFiles = getFilesModifiedThisSession(state);
 
     // Parse transcript for additional context
     let transcriptSummary = '';
-    if (input.transcript_path && fs.existsSync(input.transcript_path)) {
-      const transcriptData = parseTranscript(input.transcript_path);
+    if (input.transcript_path && (await fileExistsAsync(input.transcript_path))) {
+      const transcriptData = await parseTranscript(input.transcript_path);
       transcriptSummary = transcriptData.summary;
     }
 
@@ -109,7 +111,7 @@ async function main(): Promise<void> {
     // Save analytics backup before compact
     if (analytics) {
       const compactBackup = path.join(CACHE_DIR, 'pre-compact-backup.json');
-      fs.writeFileSync(compactBackup, JSON.stringify({
+      await fs.writeFile(compactBackup, JSON.stringify({
         ...analytics,
         compact_at: new Date().toISOString(),
         files_modified: modifiedFiles,

@@ -10,7 +10,7 @@
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, PROJECT_ROOT, } from './shared.js';
 import { loadState, saveState, trackError, getErrorState } from './state.js';
 import { generateErrorSignature, categorizeError, createErrorState, buildFixContext, } from './automation/fix-loop.js';
-import { findMatchingPattern, getSuggestedFix, getResearchHints, } from './post-tool-use-failure/error-recovery.js';
+import { findMatchingPattern, getSuggestedFix, getResearchHints, } from './post-tool-use-failure/index.js';
 import { saveRetry, getRetryCount, getCurrentPhase, shouldEscalatePhase, getPhaseDescription, getRemainingAttempts, hasExhaustedRetries, generateErrorSignature as generateRetrySignature, } from './post-tool-use-failure/retry-tracker.js';
 import { writeFailure } from './memory/failures.js';
 /** Creates a hook response with optional additional context for fix guidance. */
@@ -118,7 +118,7 @@ async function main() {
             totalAttempts: errorState.totalAttempts + 1,
         };
         trackError(state, signature, errorState);
-        saveRetry(cwd, retrySignature, errorState.phase);
+        await saveRetry(cwd, retrySignature, errorState.phase);
         // Step 9: Check if all phases exhausted
         const exhausted = await hasExhaustedRetries(errorState);
         if (exhausted) {
@@ -141,7 +141,7 @@ async function main() {
         // Save state
         await saveState(cwd, state);
         // Track the failure in analytics
-        const analytics = loadAnalytics();
+        const analytics = await loadAnalytics();
         if (analytics) {
             if (!analytics.tool_failures) {
                 analytics.tool_failures = [];
@@ -152,7 +152,7 @@ async function main() {
                 timestamp: new Date().toISOString(),
             });
             analytics.issues_found++;
-            saveAnalytics(analytics);
+            await saveAnalytics(analytics);
         }
         // Step 10: Build response with fix suggestions and research hints
         const phaseDesc = getPhaseDescription(errorState.phase);

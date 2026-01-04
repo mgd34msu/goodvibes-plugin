@@ -105,8 +105,8 @@ describe('telemetry', () => {
   });
 
   describe('ensureGoodVibesDirs', () => {
-    it('should create all required directories', () => {
-      ensureGoodVibesDirs();
+    it('should create all required directories', async () => {
+      await ensureGoodVibesDirs();
 
       // Verify directories were created in PROJECT_ROOT (scripts directory during tests)
       const stateDir = path.join(goodvibesDir, 'state');
@@ -117,10 +117,10 @@ describe('telemetry', () => {
       expect(fs.existsSync(telemetryDir)).toBe(true);
     });
 
-    it('should be idempotent - calling multiple times is safe', () => {
-      ensureGoodVibesDirs();
-      ensureGoodVibesDirs();
-      ensureGoodVibesDirs();
+    it('should be idempotent - calling multiple times is safe', async () => {
+      await ensureGoodVibesDirs();
+      await ensureGoodVibesDirs();
+      await ensureGoodVibesDirs();
 
       expect(fs.existsSync(goodvibesDir)).toBe(true);
     });
@@ -220,15 +220,15 @@ describe('telemetry', () => {
     });
 
     describe('loadActiveAgents', () => {
-      it('should return empty state when file does not exist', () => {
+      it('should return empty state when file does not exist', async () => {
         // Mock ensureGoodVibesDirs to not create files
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
 
         expect(state.agents).toEqual({});
         expect(state.last_updated).toBeDefined();
       });
 
-      it('should load existing state from file', () => {
+      it('should load existing state from file', async () => {
         const existingState: ActiveAgentsState = {
           agents: {
             'agent-1': {
@@ -245,32 +245,32 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(existingState));
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
 
         expect(state.agents['agent-1']).toBeDefined();
         expect(state.agents['agent-1'].agent_type).toBe('test-engineer');
       });
 
-      it('should handle corrupted JSON gracefully', () => {
+      it('should handle corrupted JSON gracefully', async () => {
         fs.writeFileSync(activeAgentsFile, 'invalid json {{{');
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
 
         expect(state.agents).toEqual({});
         expect(state.last_updated).toBeDefined();
       });
 
-      it('should handle empty file', () => {
+      it('should handle empty file', async () => {
         fs.writeFileSync(activeAgentsFile, '');
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
 
         expect(state.agents).toEqual({});
       });
     });
 
     describe('saveActiveAgents', () => {
-      it('should save state to file with proper formatting', () => {
+      it('should save state to file with proper formatting', async () => {
         const state: ActiveAgentsState = {
           agents: {
             'agent-1': {
@@ -287,7 +287,7 @@ describe('telemetry', () => {
           last_updated: '2025-01-01T00:00:00Z',
         };
 
-        saveActiveAgents(state);
+        await saveActiveAgents(state);
 
         expect(fs.existsSync(activeAgentsFile)).toBe(true);
 
@@ -296,14 +296,14 @@ describe('telemetry', () => {
         expect(saved.agents['agent-1'].git_branch).toBe('main');
       });
 
-      it('should update last_updated timestamp', () => {
+      it('should update last_updated timestamp', async () => {
         const state: ActiveAgentsState = {
           agents: {},
           last_updated: '2020-01-01T00:00:00Z',
         };
 
         const beforeSave = Date.now();
-        saveActiveAgents(state);
+        await saveActiveAgents(state);
         const afterSave = Date.now();
 
         const saved = JSON.parse(fs.readFileSync(activeAgentsFile, 'utf-8'));
@@ -313,7 +313,7 @@ describe('telemetry', () => {
         expect(savedTime).toBeLessThanOrEqual(afterSave);
       });
 
-      it('should handle multiple agents', () => {
+      it('should handle multiple agents', async () => {
         const state: ActiveAgentsState = {
           agents: {
             'agent-1': {
@@ -336,7 +336,7 @@ describe('telemetry', () => {
           last_updated: '2025-01-01T00:00:00Z',
         };
 
-        saveActiveAgents(state);
+        await saveActiveAgents(state);
 
         const saved = JSON.parse(fs.readFileSync(activeAgentsFile, 'utf-8'));
         expect(Object.keys(saved.agents)).toHaveLength(2);
@@ -346,7 +346,7 @@ describe('telemetry', () => {
     });
 
     describe('registerActiveAgent', () => {
-      it('should add agent to state', () => {
+      it('should add agent to state', async () => {
         const entry: ActiveAgentEntry = {
           agent_id: 'agent-123',
           agent_type: 'test-engineer',
@@ -356,14 +356,14 @@ describe('telemetry', () => {
           started_at: new Date().toISOString(),
         };
 
-        registerActiveAgent(entry);
+        await registerActiveAgent(entry);
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
         expect(state.agents['agent-123']).toBeDefined();
         expect(state.agents['agent-123'].agent_type).toBe('test-engineer');
       });
 
-      it('should include optional git information', () => {
+      it('should include optional git information', async () => {
         const entry: ActiveAgentEntry = {
           agent_id: 'agent-git',
           agent_type: 'backend-engineer',
@@ -376,15 +376,15 @@ describe('telemetry', () => {
           task_description: 'Implement new API endpoint',
         };
 
-        registerActiveAgent(entry);
+        await registerActiveAgent(entry);
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
         expect(state.agents['agent-git'].git_branch).toBe('feature/new-feature');
         expect(state.agents['agent-git'].git_commit).toBe('def5678');
         expect(state.agents['agent-git'].task_description).toBe('Implement new API endpoint');
       });
 
-      it('should overwrite existing agent with same ID', () => {
+      it('should overwrite existing agent with same ID', async () => {
         const entry1: ActiveAgentEntry = {
           agent_id: 'agent-dup',
           agent_type: 'test-engineer',
@@ -403,10 +403,10 @@ describe('telemetry', () => {
           started_at: '2025-01-01T01:00:00Z',
         };
 
-        registerActiveAgent(entry1);
-        registerActiveAgent(entry2);
+        await registerActiveAgent(entry1);
+        await registerActiveAgent(entry2);
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
         expect(Object.keys(state.agents)).toHaveLength(1);
         expect(state.agents['agent-dup'].agent_type).toBe('backend-engineer');
         expect(state.agents['agent-dup'].session_id).toBe('session-2');
@@ -441,38 +441,38 @@ describe('telemetry', () => {
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
       });
 
-      it('should return and remove agent from state', () => {
-        const entry = popActiveAgent('agent-1');
+      it('should return and remove agent from state', async () => {
+        const entry = await popActiveAgent('agent-1');
 
         expect(entry).toBeDefined();
         expect(entry?.agent_id).toBe('agent-1');
         expect(entry?.agent_type).toBe('test-engineer');
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
         expect(state.agents['agent-1']).toBeUndefined();
         expect(state.agents['agent-2']).toBeDefined();
       });
 
-      it('should return null for non-existent agent', () => {
-        const entry = popActiveAgent('non-existent');
+      it('should return null for non-existent agent', async () => {
+        const entry = await popActiveAgent('non-existent');
 
         expect(entry).toBeNull();
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
         expect(Object.keys(state.agents)).toHaveLength(2);
       });
 
-      it('should preserve other agents when popping one', () => {
-        popActiveAgent('agent-1');
+      it('should preserve other agents when popping one', async () => {
+        await popActiveAgent('agent-1');
 
-        const state = loadActiveAgents();
+        const state = await loadActiveAgents();
         expect(state.agents['agent-2']).toBeDefined();
         expect(state.agents['agent-2'].agent_type).toBe('backend-engineer');
       });
     });
 
     describe('cleanupStaleAgents', () => {
-      it('should remove agents older than 24 hours', () => {
+      it('should remove agents older than 24 hours', async () => {
         const now = Date.now();
         const oneDayAgo = new Date(now - 25 * 60 * 60 * 1000).toISOString(); // 25 hours
         const oneHourAgo = new Date(now - 1 * 60 * 60 * 1000).toISOString();
@@ -501,16 +501,16 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
 
-        const removed = cleanupStaleAgents();
+        const removed = await cleanupStaleAgents();
 
         expect(removed).toBe(1);
 
-        const updatedState = loadActiveAgents();
+        const updatedState = await loadActiveAgents();
         expect(updatedState.agents['stale-agent']).toBeUndefined();
         expect(updatedState.agents['fresh-agent']).toBeDefined();
       });
 
-      it('should return 0 when no stale agents', () => {
+      it('should return 0 when no stale agents', async () => {
         const now = Date.now();
         const oneHourAgo = new Date(now - 1 * 60 * 60 * 1000).toISOString();
 
@@ -530,12 +530,12 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
 
-        const removed = cleanupStaleAgents();
+        const removed = await cleanupStaleAgents();
 
         expect(removed).toBe(0);
       });
 
-      it('should handle empty state', () => {
+      it('should handle empty state', async () => {
         const state: ActiveAgentsState = {
           agents: {},
           last_updated: new Date().toISOString(),
@@ -543,7 +543,7 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
 
-        const removed = cleanupStaleAgents();
+        const removed = await cleanupStaleAgents();
 
         expect(removed).toBe(0);
       });
@@ -551,8 +551,8 @@ describe('telemetry', () => {
   });
 
   describe('parseTranscript', () => {
-    it('should return empty result for non-existent file', () => {
-      const result = parseTranscript('/non/existent/file.jsonl');
+    it('should return empty result for non-existent file', async () => {
+      const result = await parseTranscript('/non/existent/file.jsonl');
 
       expect(result.files_modified).toEqual([]);
       expect(result.tools_used).toEqual([]);
@@ -560,7 +560,7 @@ describe('telemetry', () => {
       expect(result.success_indicators).toEqual([]);
     });
 
-    it('should parse JSON transcript with tool usage', () => {
+    it('should parse JSON transcript with tool usage', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
         JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test/file1.ts' } }),
@@ -569,14 +569,14 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.tools_used).toContain('Write');
       expect(result.tools_used).toContain('Read');
       expect(result.files_modified).toContain('/test/file1.ts');
     });
 
-    it('should parse Edit tool for file modifications', () => {
+    it('should parse Edit tool for file modifications', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = JSON.stringify({
         type: 'tool_use',
@@ -586,13 +586,13 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.tools_used).toContain('Edit');
       expect(result.files_modified).toContain('/src/main.ts');
     });
 
-    it('should count errors in transcript', () => {
+    it('should count errors in transcript', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
         JSON.stringify({ type: 'error', message: 'Something went wrong' }),
@@ -601,12 +601,12 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.error_count).toBeGreaterThan(0);
     });
 
-    it('should detect success indicators', () => {
+    it('should detect success indicators', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
         JSON.stringify({ role: 'assistant', content: 'Successfully completed the task' }),
@@ -615,13 +615,13 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.success_indicators.length).toBeGreaterThan(0);
       expect(result.success_indicators[0]).toContain('success');
     });
 
-    it('should parse plain text transcript fallback', () => {
+    it('should parse plain text transcript fallback', async () => {
       const transcriptPath = path.join(testDir, 'transcript.txt');
       const content = [
         'Using Write tool to create file.ts',
@@ -631,13 +631,13 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.tools_used.length).toBeGreaterThan(0);
       expect(result.error_count).toBeGreaterThan(0);
     });
 
-    it('should deduplicate tools and files', () => {
+    it('should deduplicate tools and files', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
         JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test/file.ts' } }),
@@ -647,13 +647,13 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.tools_used).toHaveLength(1);
       expect(result.files_modified).toHaveLength(1);
     });
 
-    it('should extract final output', () => {
+    it('should extract final output', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
         JSON.stringify({ role: 'user', content: 'Do something' }),
@@ -663,24 +663,24 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.final_output).toBeDefined();
       expect(result.final_output).toContain('Final');
     });
 
-    it('should handle empty transcript file', () => {
+    it('should handle empty transcript file', async () => {
       const transcriptPath = path.join(testDir, 'empty.jsonl');
       fs.writeFileSync(transcriptPath, '');
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.files_modified).toEqual([]);
       expect(result.tools_used).toEqual([]);
       expect(result.error_count).toBe(0);
     });
 
-    it('should handle mixed valid and invalid JSON lines', () => {
+    it('should handle mixed valid and invalid JSON lines', async () => {
       const transcriptPath = path.join(testDir, 'mixed.jsonl');
       const content = [
         JSON.stringify({ type: 'tool_use', name: 'Write' }),
@@ -690,20 +690,20 @@ describe('telemetry', () => {
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.tools_used).toContain('Write');
       expect(result.tools_used).toContain('Read');
     });
 
-    it('should truncate long final output', () => {
+    it('should truncate long final output', async () => {
       const transcriptPath = path.join(testDir, 'long.jsonl');
       const longMessage = 'x'.repeat(1000);
       const content = JSON.stringify({ role: 'assistant', content: longMessage });
 
       fs.writeFileSync(transcriptPath, content);
 
-      const result = parseTranscript(transcriptPath);
+      const result = await parseTranscript(transcriptPath);
 
       expect(result.final_output).toBeDefined();
       expect(result.final_output!.length).toBeLessThanOrEqual(503); // 500 + '...'
@@ -840,7 +840,7 @@ describe('telemetry', () => {
       }
     });
 
-    it('should write record to monthly JSONL file', () => {
+    it('should write record to monthly JSONL file', async () => {
 
       const record: TelemetryRecord = {
         type: 'subagent_complete',
@@ -858,7 +858,7 @@ describe('telemetry', () => {
         success: true,
       };
 
-      writeTelemetryRecord(record);
+      await writeTelemetryRecord(record);
 
       // Verify the file was created in the actual PROJECT_ROOT
       const now = new Date();
@@ -872,7 +872,7 @@ describe('telemetry', () => {
       expect(record.duration_ms).toBeGreaterThan(0);
     });
 
-    it('should append multiple records to same file', () => {
+    it('should append multiple records to same file', async () => {
       const record1: TelemetryRecord = {
         type: 'subagent_complete',
         agent_id: 'agent-1',
@@ -896,8 +896,8 @@ describe('telemetry', () => {
         ended_at: '2025-01-01T01:30:00Z',
       };
 
-      writeTelemetryRecord(record1);
-      writeTelemetryRecord(record2);
+      await writeTelemetryRecord(record1);
+      await writeTelemetryRecord(record2);
 
       // Verify both were written to the same file
       const now = new Date();
@@ -911,7 +911,7 @@ describe('telemetry', () => {
       expect(lines.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('should handle records with all optional fields', () => {
+    it('should handle records with all optional fields', async () => {
       const record: TelemetryRecord = {
         type: 'subagent_complete',
         agent_id: 'agent-full',
@@ -932,7 +932,7 @@ describe('telemetry', () => {
         final_summary: 'Successfully implemented and tested the new endpoint',
       };
 
-      writeTelemetryRecord(record);
+      await writeTelemetryRecord(record);
 
       expect(record.git_branch).toBe('feature/new-api');
       expect(record.task_description).toBe('Implement new REST endpoint');

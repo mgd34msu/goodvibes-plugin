@@ -4,4 +4,4 @@ export interface SubagentContext {
     additionalContext: string | null;
 }
 /** Builds context for a subagent based on agent type and project */
-export declare function buildSubagentContext(cwd: string, agentType: string, _sessionId: string): SubagentContext;
+export declare function buildSubagentContext(cwd: string, agentType: string, _sessionId: string): Promise<SubagentContext>;

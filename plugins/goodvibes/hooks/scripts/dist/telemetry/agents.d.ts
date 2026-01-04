@@ -42,18 +42,18 @@ export declare function deriveProjectName(cwd: string): string;
 /**
  * Load active agents state from file
  */
-export declare function loadActiveAgents(activeAgentsFile: string): ActiveAgentsState;
+export declare function loadActiveAgents(activeAgentsFile: string): Promise<ActiveAgentsState>;
 /**
  * Save active agents state to file
  */
-export declare function saveActiveAgents(activeAgentsFile: string, state: ActiveAgentsState): void;
+export declare function saveActiveAgents(activeAgentsFile: string, state: ActiveAgentsState): Promise<void>;
 /**
  * Register a new active agent
  */
-export declare function registerActiveAgent(activeAgentsFile: string, entry: ActiveAgentEntry): void;
+export declare function registerActiveAgent(activeAgentsFile: string, entry: ActiveAgentEntry): Promise<void>;
 /**
  * Look up and remove an active agent entry
  */
-export declare function popActiveAgent(activeAgentsFile: string, agentId: string): ActiveAgentEntry | null;
+export declare function popActiveAgent(activeAgentsFile: string, agentId: string): Promise<ActiveAgentEntry | null>;
 /** Removes agent entries older than 24 hours. Returns count of removed entries. */
-export declare function cleanupStaleAgents(activeAgentsFile: string): number;
+export declare function cleanupStaleAgents(activeAgentsFile: string): Promise<number>;

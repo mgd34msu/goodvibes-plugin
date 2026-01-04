@@ -3,7 +3,7 @@ import { runTypeCheck } from '../automation/build-runner.js';
 import { trackFileModification } from '../post-tool-use/file-tracker.js';
 /** Validates agent output by checking type errors in modified files */
 export async function validateAgentOutput(cwd, transcriptPath, state) {
-    const transcriptData = parseTranscript(transcriptPath);
+    const transcriptData = await parseTranscript(transcriptPath);
     const errors = [];
     // Track all files modified by the agent
     for (const file of transcriptData.filesModified) {

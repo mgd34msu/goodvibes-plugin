@@ -130,11 +130,11 @@ async function main(): Promise<void> {
     initializeSession(state, sessionId);
 
     // Ensure cache directory exists
-    ensureCacheDir();
+    await ensureCacheDir();
     debug('Cache directory ensured');
 
     // Validate registries
-    const { valid, missing } = validateRegistries();
+    const { valid, missing } = await validateRegistries();
     debug('Registry validation', { valid, missing });
 
     if (!valid) {

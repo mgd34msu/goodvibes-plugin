@@ -28,11 +28,11 @@ export interface TelemetryRecord {
 /**
  * Ensure .goodvibes directories exist with lazy creation
  */
-export declare function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, telemetryDir: string): void;
+export declare function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, telemetryDir: string): Promise<void>;
 /**
  * Write a telemetry record to the monthly JSONL file
  */
-export declare function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): void;
+export declare function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): Promise<void>;
 /**
  * Create a telemetry record from agent start entry and stop data
  */

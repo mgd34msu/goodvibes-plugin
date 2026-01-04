@@ -398,12 +398,14 @@ describe('git-operations', () => {
   describe('detectMainBranch', () => {
     it('should return "main" when main branch exists', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue('abc123\n'),
-        spawnSync: vi.fn(),
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: 'abc123\n', stderr: '' });
+        }),
+        spawn: vi.fn(),
       }));
 
       const { detectMainBranch } = await import('../automation/git-operations.js');
-      const result = detectMainBranch('/test/project');
+      const result = await detectMainBranch('/test/project');
 
       expect(result).toBe('main');
     });
@@ -411,32 +413,33 @@ describe('git-operations', () => {
     it('should return "master" when only master branch exists', async () => {
       let callCount = 0;
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation((cmd: string) => {
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
           callCount++;
           if (callCount === 1) {
-            throw new Error('fatal: Needed a single revision');
+            callback(new Error('fatal: Needed a single revision'), { stdout: '', stderr: '' });
+          } else {
+            callback(null, { stdout: 'abc123\n', stderr: '' });
           }
-          return 'abc123\n';
         }),
-        spawnSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { detectMainBranch } = await import('../automation/git-operations.js');
-      const result = detectMainBranch('/test/project');
+      const result = await detectMainBranch('/test/project');
 
       expect(result).toBe('master');
     });
 
     it('should default to "main" when neither branch exists', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('fatal: Needed a single revision');
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(new Error('fatal: Needed a single revision'), { stdout: '', stderr: '' });
         }),
-        spawnSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { detectMainBranch } = await import('../automation/git-operations.js');
-      const result = detectMainBranch('/test/project');
+      const result = await detectMainBranch('/test/project');
 
       expect(result).toBe('main');
     });
@@ -445,38 +448,42 @@ describe('git-operations', () => {
   describe('hasUncommittedChanges', () => {
     it('should return true when there are uncommitted changes', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(' M src/file.ts\n'),
-        spawnSync: vi.fn(),
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M src/file.ts\n', stderr: '' });
+        }),
+        spawn: vi.fn(),
       }));
 
       const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const result = hasUncommittedChanges('/test/project');
+      const result = await hasUncommittedChanges('/test/project');
 
       expect(result).toBe(true);
     });
 
     it('should return false when working directory is clean', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-        spawnSync: vi.fn(),
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: '', stderr: '' });
+        }),
+        spawn: vi.fn(),
       }));
 
       const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const result = hasUncommittedChanges('/test/project');
+      const result = await hasUncommittedChanges('/test/project');
 
       expect(result).toBe(false);
     });
 
     it('should return false when git command fails', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('not a git repository');
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(new Error('not a git repository'), { stdout: '', stderr: '' });
         }),
-        spawnSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const result = hasUncommittedChanges('/test/project');
+      const result = await hasUncommittedChanges('/test/project');
 
       expect(result).toBe(false);
     });
@@ -484,27 +491,33 @@ describe('git-operations', () => {
 
   describe('sanitizeForGit (via createCheckpoint)', () => {
     it('should sanitize shell metacharacters from commit messages', async () => {
-      const mockSpawnSync = vi.fn().mockReturnValue({
-        status: 0,
-        pid: 123,
-        output: [],
-        stdout: Buffer.from(''),
-        stderr: Buffer.from(''),
-        signal: null,
-      });
+      const spawnEvents = new Map<string, (...args: unknown[]) => void>();
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          spawnEvents.set(event, handler);
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(' M file.ts\n'),
-        spawnSync: mockSpawnSync,
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
       }));
 
       const { createCheckpoint } = await import('../automation/git-operations.js');
 
       // Attempt to inject shell command via message
-      createCheckpoint('/test/project', 'test; rm -rf /');
+      await createCheckpoint('/test/project', 'test; rm -rf /');
 
-      // spawnSync should be called with sanitized message (semicolon removed)
-      expect(mockSpawnSync).toHaveBeenCalledWith(
+      // spawn should be called with sanitized message (semicolon removed)
+      expect(mockSpawn).toHaveBeenCalledWith(
         'git',
         ['commit', '-m', expect.stringContaining('test rm -rf ')],
         expect.any(Object)
@@ -512,25 +525,29 @@ describe('git-operations', () => {
     });
 
     it('should remove backticks from commit messages', async () => {
-      const mockSpawnSync = vi.fn().mockReturnValue({
-        status: 0,
-        pid: 123,
-        output: [],
-        stdout: Buffer.from(''),
-        stderr: Buffer.from(''),
-        signal: null,
-      });
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(' M file.ts\n'),
-        spawnSync: mockSpawnSync,
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
       }));
 
       const { createCheckpoint } = await import('../automation/git-operations.js');
 
-      createCheckpoint('/test/project', 'test `whoami`');
+      await createCheckpoint('/test/project', 'test `whoami`');
 
-      expect(mockSpawnSync).toHaveBeenCalledWith(
+      expect(mockSpawn).toHaveBeenCalledWith(
         'git',
         ['commit', '-m', expect.stringContaining('test whoami')],
         expect.any(Object)
@@ -538,26 +555,30 @@ describe('git-operations', () => {
     });
 
     it('should remove dollar signs and special characters', async () => {
-      const mockSpawnSync = vi.fn().mockReturnValue({
-        status: 0,
-        pid: 123,
-        output: [],
-        stdout: Buffer.from(''),
-        stderr: Buffer.from(''),
-        signal: null,
-      });
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(' M file.ts\n'),
-        spawnSync: mockSpawnSync,
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
       }));
 
       const { createCheckpoint } = await import('../automation/git-operations.js');
 
-      createCheckpoint('/test/project', 'test $HOME $(pwd) ${USER}');
+      await createCheckpoint('/test/project', 'test $HOME $(pwd) ${USER}');
 
       // Should have removed $, (, ), {, }
-      expect(mockSpawnSync).toHaveBeenCalledWith(
+      expect(mockSpawn).toHaveBeenCalledWith(
         'git',
         ['commit', '-m', expect.stringMatching(/test\s+HOME\s+pwd\s+USER/)],
         expect.any(Object)
@@ -568,26 +589,28 @@ describe('git-operations', () => {
   describe('execGit', () => {
     it('should return trimmed output on success', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue('  result  \n'),
-        spawnSync: vi.fn(),
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: '  result  \n', stderr: '' });
+        }),
+        spawn: vi.fn(),
       }));
 
       const { execGit } = await import('../automation/git-operations.js');
-      const result = execGit('git status', '/test/project');
+      const result = await execGit('git status', '/test/project');
 
       expect(result).toBe('result');
     });
 
     it('should return null on failure', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('git error');
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(new Error('git error'), { stdout: '', stderr: '' });
         }),
-        spawnSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { execGit } = await import('../automation/git-operations.js');
-      const result = execGit('git invalid-command', '/test/project');
+      const result = await execGit('git invalid-command', '/test/project');
 
       expect(result).toBeNull();
     });
@@ -608,67 +631,77 @@ describe('build-runner', () => {
 
   describe('detectBuildCommand', () => {
     it('should detect Next.js project with next.config.js', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('next.config.js')),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) =>
+          p.includes('next.config.js') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
+        ),
       }));
 
       const { detectBuildCommand } = await import('../automation/build-runner.js');
-      const result = detectBuildCommand('/test/project');
+      const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
     });
 
     it('should detect Next.js project with next.config.mjs', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('next.config.mjs')),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) =>
+          p.includes('next.config.mjs') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
+        ),
       }));
 
       const { detectBuildCommand } = await import('../automation/build-runner.js');
-      const result = detectBuildCommand('/test/project');
+      const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
     });
 
     it('should detect Next.js project with next.config.ts', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('next.config.ts')),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) =>
+          p.includes('next.config.ts') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
+        ),
       }));
 
       const { detectBuildCommand } = await import('../automation/build-runner.js');
-      const result = detectBuildCommand('/test/project');
+      const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
     });
 
     it('should detect Vite project with vite.config.ts', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('vite.config.ts')),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) =>
+          p.includes('vite.config.ts') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
+        ),
       }));
 
       const { detectBuildCommand } = await import('../automation/build-runner.js');
-      const result = detectBuildCommand('/test/project');
+      const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
     });
 
     it('should detect Vite project with vite.config.js', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('vite.config.js')),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockImplementation((p: string) =>
+          p.includes('vite.config.js') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
+        ),
       }));
 
       const { detectBuildCommand } = await import('../automation/build-runner.js');
-      const result = detectBuildCommand('/test/project');
+      const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
     });
 
     it('should return default command for unknown projects', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
       const { detectBuildCommand } = await import('../automation/build-runner.js');
-      const result = detectBuildCommand('/test/project');
+      const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
     });
@@ -676,8 +709,8 @@ describe('build-runner', () => {
 
   describe('parseBuildErrors (via runBuild)', () => {
     it('should parse TypeScript errors from build output', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
       vi.doMock('child_process', () => ({
@@ -690,7 +723,7 @@ describe('build-runner', () => {
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
-      const result = runBuild('/test/project');
+      const result = await runBuild('/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.errors).toHaveLength(1);
@@ -702,8 +735,8 @@ describe('build-runner', () => {
     });
 
     it('should parse multiple TypeScript errors', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
       const tsErrors = `src/a.ts(5,3): error TS2322: Type 'string' is not assignable
@@ -719,7 +752,7 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
-      const result = runBuild('/test/project');
+      const result = await runBuild('/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.errors).toHaveLength(2);
@@ -730,8 +763,8 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
     });
 
     it('should return empty errors for non-TypeScript output', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
       vi.doMock('child_process', () => ({
@@ -744,15 +777,15 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
-      const result = runBuild('/test/project');
+      const result = await runBuild('/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.errors).toHaveLength(0);
     });
 
     it('should return success when build passes', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
+      vi.doMock('fs/promises', () => ({
+        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
       vi.doMock('child_process', () => ({
@@ -760,7 +793,7 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
-      const result = runBuild('/test/project');
+      const result = await runBuild('/test/project');
 
       expect(result.passed).toBe(true);
       expect(result.summary).toBe('Build passed');

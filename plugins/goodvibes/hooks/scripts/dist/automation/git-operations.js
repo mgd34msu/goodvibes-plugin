@@ -4,10 +4,48 @@
  * Automated git operations including commits, branch management,
  * and repository state verification.
  */
-import { execSync, spawnSync } from 'child_process';
+import { exec, spawn } from 'child_process';
+import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { debug } from '../shared.js';
+const execAsync = promisify(exec);
+/**
+ * Promisified spawn that returns a promise resolving to exit code.
+ * Used for commands where we need to pass arguments as an array to avoid shell injection.
+ */
+function spawnAsync(command, args, options) {
+    return new Promise((resolve) => {
+        const child = spawn(command, args, {
+            cwd: options.cwd,
+            stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        child.stdout?.on('data', (data) => {
+            stdout += data.toString();
+        });
+        child.stderr?.on('data', (data) => {
+            stderr += data.toString();
+        });
+        const timeoutId = options.timeout
+            ? setTimeout(() => {
+                child.kill('SIGTERM');
+                resolve({ code: null, stdout, stderr: stderr + '\nProcess timed out' });
+            }, options.timeout)
+            : null;
+        child.on('close', (code) => {
+            if (timeoutId)
+                clearTimeout(timeoutId);
+            resolve({ code, stdout, stderr });
+        });
+        child.on('error', (err) => {
+            if (timeoutId)
+                clearTimeout(timeoutId);
+            resolve({ code: null, stdout, stderr: err.message });
+        });
+    });
+}
 /**
  * Sanitizes a string for safe use in git commands.
  * Removes shell metacharacters that could enable command injection.
@@ -25,17 +63,18 @@ function sanitizeForGit(input) {
  *
  * @param command - The git command to execute
  * @param cwd - The current working directory (repository root)
- * @returns The trimmed command output, or null if the command failed
+ * @returns Promise resolving to the trimmed command output, or null if the command failed
  *
  * @example
- * const branch = execGit('git branch --show-current', '/repo');
+ * const branch = await execGit('git branch --show-current', '/repo');
  * if (branch) {
  *   console.log('Current branch:', branch);
  * }
  */
-export function execGit(command, cwd) {
+export async function execGit(command, cwd) {
     try {
-        return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
+        const { stdout } = await execAsync(command, { cwd, encoding: 'utf-8', timeout: 30000 });
+        return stdout.trim();
     }
     catch (error) {
         debug('execGit failed', { command, error: String(error) });
@@ -61,17 +100,17 @@ export function isGitRepo(cwd) {
  * Checks for 'main' first, then 'master', defaulting to 'main'.
  *
  * @param cwd - The current working directory (repository root)
- * @returns The name of the main branch ('main' or 'master')
+ * @returns Promise resolving to the name of the main branch ('main' or 'master')
  *
  * @example
- * const mainBranch = detectMainBranch('/repo');
+ * const mainBranch = await detectMainBranch('/repo');
  * console.log('Main branch is:', mainBranch);
  */
-export function detectMainBranch(cwd) {
-    const main = execGit('git rev-parse --verify main', cwd);
+export async function detectMainBranch(cwd) {
+    const main = await execGit('git rev-parse --verify main', cwd);
     if (main)
         return 'main';
-    const master = execGit('git rev-parse --verify master', cwd);
+    const master = await execGit('git rev-parse --verify master', cwd);
     if (master)
         return 'master';
     return 'main'; // default
@@ -80,15 +119,15 @@ export function detectMainBranch(cwd) {
  * Returns the current git branch name.
  *
  * @param cwd - The current working directory (repository root)
- * @returns The current branch name, or null if not on a branch (detached HEAD)
+ * @returns Promise resolving to the current branch name, or null if not on a branch (detached HEAD)
  *
  * @example
- * const branch = getCurrentBranch('/repo');
+ * const branch = await getCurrentBranch('/repo');
  * if (branch === 'main') {
  *   console.log('On main branch');
  * }
  */
-export function getCurrentBranch(cwd) {
+export async function getCurrentBranch(cwd) {
     return execGit('git branch --show-current', cwd);
 }
 /**
@@ -96,15 +135,15 @@ export function getCurrentBranch(cwd) {
  * Includes both staged and unstaged changes.
  *
  * @param cwd - The current working directory (repository root)
- * @returns True if there are uncommitted changes, false otherwise
+ * @returns Promise resolving to true if there are uncommitted changes, false otherwise
  *
  * @example
- * if (hasUncommittedChanges('/repo')) {
+ * if (await hasUncommittedChanges('/repo')) {
  *   console.log('You have uncommitted changes');
  * }
  */
-export function hasUncommittedChanges(cwd) {
-    const status = execGit('git status --porcelain', cwd);
+export async function hasUncommittedChanges(cwd) {
+    const status = await execGit('git status --porcelain', cwd);
     return status !== null && status.length > 0;
 }
 /**
@@ -112,14 +151,14 @@ export function hasUncommittedChanges(cwd) {
  * Parses git status --porcelain output to extract file paths.
  *
  * @param cwd - The current working directory (repository root)
- * @returns An array of file paths with changes, or empty array if none
+ * @returns Promise resolving to an array of file paths with changes, or empty array if none
  *
  * @example
- * const files = getUncommittedFiles('/repo');
+ * const files = await getUncommittedFiles('/repo');
  * files.forEach(f => console.log('Modified:', f));
  */
-export function getUncommittedFiles(cwd) {
-    const status = execGit('git status --porcelain', cwd);
+export async function getUncommittedFiles(cwd) {
+    const status = await execGit('git status --porcelain', cwd);
     if (!status)
         return [];
     return status.split('\n').filter(Boolean).map(line => line.slice(3));
@@ -131,24 +170,24 @@ export function getUncommittedFiles(cwd) {
  *
  * @param cwd - The current working directory (repository root)
  * @param message - The checkpoint message (will be prefixed with 'checkpoint:')
- * @returns True if the checkpoint was created successfully, false otherwise
+ * @returns Promise resolving to true if the checkpoint was created successfully, false otherwise
  *
  * @example
- * if (createCheckpoint('/repo', 'pre-refactor state')) {
+ * if (await createCheckpoint('/repo', 'pre-refactor state')) {
  *   console.log('Checkpoint created');
  * }
  */
-export function createCheckpoint(cwd, message) {
-    if (!hasUncommittedChanges(cwd))
+export async function createCheckpoint(cwd, message) {
+    if (!(await hasUncommittedChanges(cwd)))
         return false;
     try {
         // Sanitize message to prevent command injection
         const safeMessage = sanitizeForGit(message);
         const commitMessage = `checkpoint: ${safeMessage}\n\n Auto-checkpoint by GoodVibes`;
-        execSync('git add -A', { cwd, stdio: 'pipe', timeout: 30000 });
-        // Use spawnSync with array args to avoid shell injection
-        const result = spawnSync('git', ['commit', '-m', commitMessage], { cwd, stdio: 'pipe' });
-        return result.status === 0;
+        await execAsync('git add -A', { cwd, timeout: 30000 });
+        // Use spawnAsync with array args to avoid shell injection
+        const result = await spawnAsync('git', ['commit', '-m', commitMessage], { cwd, timeout: 30000 });
+        return result.code === 0;
     }
     catch (error) {
         debug('createCheckpoint failed', { error: String(error) });
@@ -161,21 +200,21 @@ export function createCheckpoint(cwd, message) {
  *
  * @param cwd - The current working directory (repository root)
  * @param name - The feature name (will be sanitized and normalized)
- * @returns True if the branch was created successfully, false otherwise
+ * @returns Promise resolving to true if the branch was created successfully, false otherwise
  *
  * @example
- * if (createFeatureBranch('/repo', 'Add User Authentication')) {
+ * if (await createFeatureBranch('/repo', 'Add User Authentication')) {
  *   // Creates and checks out branch: feature/add-user-authentication
  * }
  */
-export function createFeatureBranch(cwd, name) {
+export async function createFeatureBranch(cwd, name) {
     try {
         // Sanitize and normalize branch name
         const safeName = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         const branchName = `feature/${safeName}`;
-        // Use spawnSync with array args to avoid shell injection
-        const result = spawnSync('git', ['checkout', '-b', branchName], { cwd, stdio: 'pipe' });
-        return result.status === 0;
+        // Use spawnAsync with array args to avoid shell injection
+        const result = await spawnAsync('git', ['checkout', '-b', branchName], { cwd, timeout: 30000 });
+        return result.code === 0;
     }
     catch (error) {
         debug('createFeatureBranch failed', { error: String(error) });
@@ -189,27 +228,27 @@ export function createFeatureBranch(cwd, name) {
  * @param cwd - The current working directory (repository root)
  * @param featureBranch - The name of the feature branch to merge
  * @param mainBranch - The name of the main branch to merge into
- * @returns True if merge and cleanup succeeded, false otherwise
+ * @returns Promise resolving to true if merge and cleanup succeeded, false otherwise
  *
  * @example
- * if (mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
+ * if (await mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
  *   console.log('Feature merged and branch cleaned up');
  * }
  */
-export function mergeFeatureBranch(cwd, featureBranch, mainBranch) {
+export async function mergeFeatureBranch(cwd, featureBranch, mainBranch) {
     try {
         // Sanitize branch names to prevent command injection
         const safeFeature = sanitizeForGit(featureBranch);
         const safeMain = sanitizeForGit(mainBranch);
-        // Use spawnSync with array args to avoid shell injection
-        const checkout = spawnSync('git', ['checkout', safeMain], { cwd, stdio: 'pipe' });
-        if (checkout.status !== 0)
+        // Use spawnAsync with array args to avoid shell injection
+        const checkout = await spawnAsync('git', ['checkout', safeMain], { cwd, timeout: 30000 });
+        if (checkout.code !== 0)
             return false;
-        const merge = spawnSync('git', ['merge', safeFeature, '--no-ff', '-m', `Merge ${safeFeature}`], { cwd, stdio: 'pipe' });
-        if (merge.status !== 0)
+        const merge = await spawnAsync('git', ['merge', safeFeature, '--no-ff', '-m', `Merge ${safeFeature}`], { cwd, timeout: 30000 });
+        if (merge.code !== 0)
             return false;
-        const deleteBranch = spawnSync('git', ['branch', '-d', safeFeature], { cwd, stdio: 'pipe' });
-        return deleteBranch.status === 0;
+        const deleteBranch = await spawnAsync('git', ['branch', '-d', safeFeature], { cwd, timeout: 30000 });
+        return deleteBranch.code === 0;
     }
     catch (error) {
         debug('mergeFeatureBranch failed', { error: String(error) });

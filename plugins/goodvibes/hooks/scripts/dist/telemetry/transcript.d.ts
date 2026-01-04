@@ -21,7 +21,7 @@ export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /**
  * Parse a transcript file to extract useful information
  */
-export declare function parseTranscript(transcriptPath: string): ParsedTranscript;
+export declare function parseTranscript(transcriptPath: string): Promise<ParsedTranscript>;
 /**
  * Extract keywords from task description and transcript content.
  * Delegates to the consolidated keywords module.

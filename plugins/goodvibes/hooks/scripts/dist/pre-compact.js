@@ -4,9 +4,9 @@
  * Runs before context compression (auto or manual).
  * Can save important context before it's compacted.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
-import { respond, readHookInput, loadAnalytics, debug, logError, CACHE_DIR, parseTranscript, } from './shared.js';
+import { respond, readHookInput, loadAnalytics, debug, logError, CACHE_DIR, parseTranscript, fileExistsAsync, } from './shared.js';
 import { loadState } from './state.js';
 import { createPreCompactCheckpoint, saveSessionSummary, getFilesModifiedThisSession, } from './pre-compact/index.js';
 /** Creates a hook response with optional system message. */
@@ -62,12 +62,12 @@ async function main() {
         await createPreCompactCheckpoint(cwd);
         // Load state and analytics
         const state = await loadState(cwd);
-        const analytics = loadAnalytics();
+        const analytics = await loadAnalytics();
         const modifiedFiles = getFilesModifiedThisSession(state);
         // Parse transcript for additional context
         let transcriptSummary = '';
-        if (input.transcript_path && fs.existsSync(input.transcript_path)) {
-            const transcriptData = parseTranscript(input.transcript_path);
+        if (input.transcript_path && (await fileExistsAsync(input.transcript_path))) {
+            const transcriptData = await parseTranscript(input.transcript_path);
             transcriptSummary = transcriptData.summary;
         }
         // Generate and save session summary
@@ -76,7 +76,7 @@ async function main() {
         // Save analytics backup before compact
         if (analytics) {
             const compactBackup = path.join(CACHE_DIR, 'pre-compact-backup.json');
-            fs.writeFileSync(compactBackup, JSON.stringify({
+            await fs.writeFile(compactBackup, JSON.stringify({
                 ...analytics,
                 compact_at: new Date().toISOString(),
                 files_modified: modifiedFiles,
