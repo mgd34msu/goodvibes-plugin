@@ -69,8 +69,11 @@ export async function detectStack(cwd) {
 }
 /** Format stack information for display in context output. */
 export function formatStackInfo(info) {
+    if (!info || typeof info !== 'object') {
+        return '';
+    }
     const parts = [];
-    if (info.frameworks.length > 0) {
+    if (info.frameworks && info.frameworks.length > 0) {
         parts.push(`Stack: ${info.frameworks.join(', ')}`);
     }
     if (info.hasTypeScript) {

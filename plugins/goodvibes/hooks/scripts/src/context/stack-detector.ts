@@ -84,9 +84,13 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
 
 /** Format stack information for display in context output. */
 export function formatStackInfo(info: StackInfo): string {
+  if (!info || typeof info !== 'object') {
+    return '';
+  }
+
   const parts: string[] = [];
 
-  if (info.frameworks.length > 0) {
+  if (info.frameworks && info.frameworks.length > 0) {
     parts.push(`Stack: ${info.frameworks.join(', ')}`);
   }
 
