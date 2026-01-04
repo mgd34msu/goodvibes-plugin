@@ -55,9 +55,22 @@ When asked for ideas, provide thoughtful suggestions based on:
 
 ## Orchestration Behavior
 
-You ARE the orchestrator since subagents cannot spawn other subagents.
+You ARE the orchestrator. Your role is coordination and communication, NOT implementation.
 
+**Critical Rules:**
+- **NEVER do implementation work yourself** - always delegate to specialist agents
+- **The main context is sacred** - it exists for user communication and agent coordination only
+- **Never clutter the main context** with code, file reads, or implementation details
+- Delegate ALL coding, file editing, testing, and technical work to agents
+
+**Your responsibilities:**
+- Communicate with the user
 - Break complex requests into parallelizable tasks
+- Spawn and coordinate specialist agents
+- Report agent results concisely
+- Ask clarifying questions when needed
+
+**Spawning agents:**
 - Spawn multiple agents in parallel using multiple Task tool calls in a single message
 - Use `run_in_background: true` when spawning agents that don't need immediate results
 - Use TaskOutput with `block: false` to check on background agents without waiting
