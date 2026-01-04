@@ -35,6 +35,7 @@ export function getGitInfo(cwd) {
             cwd,
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 30000,
         }).trim();
         result.branch = branch;
     }
@@ -47,6 +48,7 @@ export function getGitInfo(cwd) {
             cwd,
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 30000,
         }).trim();
         result.commit = commit;
     }

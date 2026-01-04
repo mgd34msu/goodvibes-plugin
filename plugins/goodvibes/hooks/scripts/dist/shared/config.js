@@ -5,6 +5,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from './logging.js';
 /** Triggers that determine when quality checkpoints should run. */
 export const CHECKPOINT_TRIGGERS = {
     fileCountThreshold: 5,
@@ -70,7 +71,8 @@ export function loadSharedConfig(cwd) {
         const userConfig = JSON.parse(content);
         return deepMerge(defaults, userConfig.goodvibes || userConfig);
     }
-    catch {
+    catch (error) {
+        debug('loadSharedConfig failed', { error: String(error) });
         return defaults;
     }
 }

@@ -4,6 +4,7 @@
  * Detects if the project directory is empty or contains only scaffolding files.
  */
 import * as fs from 'fs/promises';
+import { debug } from '../shared/logging.js';
 const SCAFFOLDING_ONLY = [
     'readme.md',
     'readme',
@@ -24,7 +25,7 @@ export async function isEmptyProject(cwd) {
     }
     catch (error) {
         // If we can't read the directory, treat it as empty
-        console.error('[empty-project] Failed to read directory:', error);
+        debug('empty-project: Failed to read directory', error);
         return true;
     }
 }

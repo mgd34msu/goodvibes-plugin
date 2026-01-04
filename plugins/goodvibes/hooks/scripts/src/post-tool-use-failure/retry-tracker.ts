@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { ensureGoodVibesDir } from '../shared.js';
+import { debug } from '../shared/logging.js';
 import { PHASE_RETRY_LIMITS, type ErrorCategory, type ErrorState } from '../types/errors.js';
 import type { HooksState } from '../types/state.js';
 
@@ -89,7 +90,8 @@ export function loadRetries(cwd: string): RetryData {
 
     // Return empty if data is invalid
     return {};
-  } catch {
+  } catch (error) {
+    debug('loadRetries failed', { error: String(error) });
     return {};
   }
 }
@@ -157,8 +159,8 @@ export function saveRetry(
 
   try {
     fs.writeFileSync(retriesPath, JSON.stringify(retries, null, 2));
-  } catch {
-    // Silently fail if unable to write (don't block operations)
+  } catch (error) {
+    debug('saveRetry failed', { error: String(error) });
   }
 }
 
@@ -362,8 +364,8 @@ export function clearRetry(cwd: string, signature: string): void {
     delete retries[signature];
     try {
       fs.writeFileSync(retriesPath, JSON.stringify(retries, null, 2));
-    } catch {
-      // Silently fail
+    } catch (error) {
+      debug('writeRetryData failed', { error: String(error) });
     }
   }
 }
@@ -392,8 +394,8 @@ export function pruneOldRetries(cwd: string, maxAgeHours: number = DEFAULT_MAX_A
   if (changed) {
     try {
       fs.writeFileSync(retriesPath, JSON.stringify(retries, null, 2));
-    } catch {
-      // Silently fail
+    } catch (error) {
+      debug('writeRetryData failed', { error: String(error) });
     }
   }
 }

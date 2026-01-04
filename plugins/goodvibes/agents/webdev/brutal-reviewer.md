@@ -328,6 +328,66 @@ grep -rn "query.*\`.*\${" src/
 grep -rn "execute.*\`.*\${" src/
 ```
 
+**TODO Detection (Context-Aware):**
+
+Not all "TODO" strings indicate unfinished work. Use this decision tree:
+
+| Context | Action | Rationale |
+|---------|--------|-----------|
+| `// TODO:` or `/* TODO:` | **FLAG** | Actual TODO comment with description |
+| `# TODO:` or `// TODO -` | **FLAG** | Actual TODO comment (various formats) |
+| `/TODO/` or `'TODO'` or `"TODO"` | **IGNORE** | Pattern in regex or string literal |
+| `TODO_PATTERN`, `TODO_REGEX` | **IGNORE** | Variable/constant storing pattern |
+| `checkTodo`, `todoScanner` | **IGNORE** | Function/tool name for TODO detection |
+| File named `*todo*checker*` | **BE LENIENT** | File's purpose is TODO detection |
+| File named `*todo*scanner*` | **BE LENIENT** | File's purpose is TODO detection |
+
+**Detection Heuristics:**
+
+1. **Flag as actual TODO** (unfinished work):
+   ```
+   // TODO: implement validation
+   // TODO fix this later
+   /* TODO: add error handling */
+   # TODO: refactor this function
+   // @todo: needs review
+   ```
+
+2. **Ignore as pattern/tooling** (not unfinished work):
+   ```typescript
+   // Pattern matching - the string "TODO" is the search target, not a marker
+   const TODO_PATTERN = /\/\/\s*TODO/gi;
+   const markers = ['TODO', 'FIXME', 'HACK'];
+   if (line.match(/TODO:/)) { /* detection logic */ }
+   grep -rn "TODO:" src/  // Command to find TODOs
+   ```
+
+3. **Ignore in documentation** (explaining what TODOs are):
+   ```typescript
+   // This tool scans for TODO comments and reports them
+   // Usage: Pass files to check for TODO markers
+   ```
+
+**Smart TODO Grep Commands:**
+```bash
+# Find ACTUAL TODO comments (in code comments, with colon/description)
+grep -rn "//\s*TODO[:\s]" src/ --include="*.ts" --include="*.js"
+grep -rn "#\s*TODO[:\s]" src/ --include="*.py"
+grep -rn "/\*\s*TODO" src/ --include="*.ts" --include="*.js"
+
+# Exclude TODO detection tools from the count
+grep -rn "//\s*TODO[:\s]" src/ | grep -v -E "(todo[-_]?checker|todo[-_]?scanner|todo[-_]?detector|todo[-_]?finder)"
+
+# Find files that ARE TODO checkers (review these separately)
+find src -type f \( -iname "*todo*check*" -o -iname "*todo*scan*" -o -iname "*todo*detect*" \)
+```
+
+**Scoring Rule:**
+- Count only ACTUAL TODO comments (those indicating unfinished work)
+- Do NOT penalize files whose purpose is TODO detection
+- A `todo-checker.ts` containing `const pattern = /TODO/` is NOT a TODO violation
+- A `todo-checker.ts` containing `// TODO: add FIXME support` IS a TODO violation
+
 **Test Coverage:**
 ```bash
 # Check for test files
@@ -622,7 +682,7 @@ For each category:
 | Missing edge case tests | 0.5 | Testing |
 | Outdated deps (no CVEs) | 0.5 | Dependencies |
 | Verbose variable names | 0.5 | Naming |
-| TODO comments without issues | 0.5 | Documentation |
+| TODO comments without issues (actual TODOs only - see context-aware detection rules) | 0.5 | Documentation |
 | Unused imports | 0.25 | Organization |
 
 ---

@@ -3,6 +3,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
 This file documents code patterns specific to this project.
@@ -96,7 +97,7 @@ function parsePatterns(content) {
             }
         }
         catch (error) {
-            // Skip malformed entries
+            debug('Skipping malformed pattern entry', { error: String(error), block: block.substring(0, 100) });
             continue;
         }
     }

@@ -6,6 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from './logging.js';
 
 /** Triggers that determine when quality checkpoints should run. */
 export const CHECKPOINT_TRIGGERS = {
@@ -105,7 +106,8 @@ export function loadSharedConfig(cwd: string): SharedConfig {
     const content = fs.readFileSync(configPath, 'utf-8');
     const userConfig = JSON.parse(content);
     return deepMerge(defaults, userConfig.goodvibes || userConfig);
-  } catch {
+  } catch (error) {
+    debug('loadSharedConfig failed', { error: String(error) });
     return defaults;
   }
 }

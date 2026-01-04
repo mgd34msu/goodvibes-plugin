@@ -5,6 +5,7 @@
  * the split modules in src/shared/
  */
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 export { readHookInput, allowTool, blockTool, respond } from './shared/hook-io.js';
 export { debug, logError } from './shared/logging.js';
@@ -54,7 +55,8 @@ export function loadAnalytics() {
             const content = fs.readFileSync(ANALYTICS_FILE, 'utf-8');
             return JSON.parse(content);
         }
-        catch {
+        catch (error) {
+            debugLog('loadAnalytics failed', { error: String(error) });
             return null;
         }
     }
@@ -212,13 +214,13 @@ export function parseTranscript(transcriptPath) {
                         : JSON.stringify(event.content);
                 }
             }
-            catch {
-                // Skip malformed lines
+            catch (error) {
+                debugLog('parseTranscript line parse failed', { error: String(error) });
             }
         }
     }
-    catch {
-        // Return empty data if transcript cannot be read
+    catch (error) {
+        debugLog('parseTranscript read failed', { error: String(error) });
     }
     return {
         toolsUsed: Array.from(toolsUsed),
@@ -234,4 +236,23 @@ export function extractErrorOutput(error) {
         return error.stdout?.toString() || error.stderr?.toString() || error.message || 'Unknown error';
     }
     return String(error);
+}
+/**
+ * Check if a file exists (async version with absolute path support).
+ *
+ * This is the shared async implementation used by context modules
+ * (env-checker, health-checker, stack-detector) to avoid duplicate code.
+ *
+ * @param filePath - Absolute path to the file
+ * @returns Promise resolving to true if file exists
+ */
+export async function fileExistsAsync(filePath) {
+    try {
+        await fsPromises.access(filePath);
+        return true;
+    }
+    catch (error) {
+        debugLog('fileExistsAsync failed', { error: String(error) });
+        return false;
+    }
 }

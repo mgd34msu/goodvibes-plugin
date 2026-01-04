@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 
 /** Aggregated project memory including decisions, patterns, and preferences. */
 export interface ProjectMemory {
@@ -67,8 +68,10 @@ function loadJsonFile<T>(cwd: string, filename: string): T | null {
       const content = fs.readFileSync(filePath, 'utf-8');
       return JSON.parse(content) as T;
     }
-  } catch {
-    // Ignore parse errors
+  } catch (error) {
+
+    debug('memory-loader failed', { error: String(error) });
+
   }
   return null;
 }
@@ -93,8 +96,10 @@ function loadTextFiles(cwd: string, subdir: string): string[] {
         }
       }
     }
-  } catch {
-    // Ignore read errors
+  } catch (error) {
+
+    debug('memory-loader failed', { error: String(error) });
+
   }
 
   return results;

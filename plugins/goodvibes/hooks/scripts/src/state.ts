@@ -7,6 +7,7 @@ import * as path from 'path';
 import type { HooksState } from './types/state.js';
 import { createDefaultState } from './types/state.js';
 import { ensureGoodVibesDir } from './shared.js';
+import { debug } from './shared/logging.js';
 
 /** Relative path to the state file within .goodvibes directory. */
 const STATE_FILE = 'state/hooks-state.json';
@@ -25,7 +26,7 @@ export async function loadState(cwd: string): Promise<HooksState> {
     const state = JSON.parse(content) as HooksState;
     return state;
   } catch (error) {
-    console.error('[GoodVibes] Failed to load state, using defaults:', error);
+    debug('Failed to load state, using defaults', error);
     return createDefaultState();
   }
 }
@@ -47,7 +48,7 @@ export async function saveState(cwd: string, state: HooksState): Promise<void> {
     fs.writeFileSync(tempPath, JSON.stringify(state, null, 2));
     fs.renameSync(tempPath, statePath);
   } catch (error) {
-    console.error('[GoodVibes] Failed to save state:', error);
+    debug('Failed to save state', error);
   }
 }
 

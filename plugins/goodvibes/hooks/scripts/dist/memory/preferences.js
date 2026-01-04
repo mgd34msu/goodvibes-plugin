@@ -3,6 +3,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 const PREFERENCES_HEADER = `# User Preferences
 
 This file stores user preferences for this project.
@@ -73,7 +74,7 @@ function parsePreferences(content) {
             }
         }
         catch (error) {
-            // Skip malformed entries
+            debug('Skipping malformed preference entry', { error: String(error), block: block.substring(0, 100) });
             continue;
         }
     }

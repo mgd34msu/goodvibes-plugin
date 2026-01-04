@@ -1,11 +1,21 @@
 /**
- * Environment Checker
+ * Environment Checker (Comprehensive)
  *
- * Checks .env files and finds missing environment variables.
+ * Performs comprehensive environment configuration analysis including:
+ * - Detection of all .env file variants (.env, .env.local, .env.production, etc.)
+ * - Missing variable detection against .env.example/.env.sample/.env.template
+ * - Sensitive variable exposure detection (API keys, secrets not in .gitignore)
+ *
+ * **Difference from env-checker.ts:**
+ * - This module returns {@link EnvironmentContext} with full analysis
+ * - env-checker.ts returns {@link EnvStatus} with basic presence/missing checks only
+ *
+ * Use this when you need comprehensive security analysis; use env-checker.ts for quick checks.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 
 /** Environment configuration analysis results. */
 export interface EnvironmentContext {
@@ -64,7 +74,8 @@ function parseEnvFile(filePath: string): string[] {
     }
 
     return vars;
-  } catch {
+  } catch (error) {
+    debug('parseEnvFile failed', { error: String(error) });
     return [];
   }
 }

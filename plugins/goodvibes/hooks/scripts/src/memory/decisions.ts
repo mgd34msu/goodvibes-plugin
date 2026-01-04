@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { MemoryDecision } from '../types/memory.js';
+import { debug } from '../shared/logging.js';
 
 const DECISIONS_HEADER = `# Architectural Decisions
 
@@ -96,7 +97,7 @@ function parseDecisions(content: string): MemoryDecision[] {
         });
       }
     } catch (error) {
-      // Skip malformed entries
+      debug('Skipping malformed decision entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }
   }

@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { MemoryPreference } from '../types/memory.js';
+import { debug } from '../shared/logging.js';
 
 const PREFERENCES_HEADER = `# User Preferences
 
@@ -85,7 +86,7 @@ function parsePreferences(content: string): MemoryPreference[] {
         });
       }
     } catch (error) {
-      // Skip malformed entries
+      debug('Skipping malformed preference entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }
   }

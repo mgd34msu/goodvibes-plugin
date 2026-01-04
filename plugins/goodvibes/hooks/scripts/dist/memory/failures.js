@@ -3,6 +3,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 const FAILURES_HEADER = `# Failed Approaches
 
 This file records approaches that were tried and failed.
@@ -84,7 +85,7 @@ function parseFailures(content) {
             }
         }
         catch (error) {
-            // Skip malformed entries
+            debug('Skipping malformed failure entry', { error: String(error), block: block.substring(0, 100) });
             continue;
         }
     }

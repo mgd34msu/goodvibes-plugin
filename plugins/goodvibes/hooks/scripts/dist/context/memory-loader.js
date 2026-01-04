@@ -6,6 +6,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 const MEMORY_DIR = '.goodvibes/memory';
 /** Number of recent decisions to display. */
 const RECENT_DECISIONS_LIMIT = 3;
@@ -24,8 +25,8 @@ function loadJsonFile(cwd, filename) {
             return JSON.parse(content);
         }
     }
-    catch {
-        // Ignore parse errors
+    catch (error) {
+        debug('memory-loader failed', { error: String(error) });
     }
     return null;
 }
@@ -49,8 +50,8 @@ function loadTextFiles(cwd, subdir) {
             }
         }
     }
-    catch {
-        // Ignore read errors
+    catch (error) {
+        debug('memory-loader failed', { error: String(error) });
     }
     return results;
 }

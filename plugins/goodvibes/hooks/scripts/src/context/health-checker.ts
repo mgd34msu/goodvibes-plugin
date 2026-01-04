@@ -1,12 +1,21 @@
 /**
- * Health Checker
+ * Health Checker (Lightweight)
  *
  * Checks project health: dependencies, lockfiles, TypeScript configuration.
+ * Returns a simple HealthStatus for quick checks.
+ *
+ * **Difference from project-health.ts:**
+ * - This module returns {@link HealthStatus} with basic health checks array
+ * - project-health.ts returns {@link ProjectHealth} with comprehensive analysis
+ *   including TypeScript config details, npm scripts, and suggestions
+ *
+ * Use this when you need quick health checks; use project-health.ts for full analysis.
  */
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { LOCKFILES } from '../shared.js';
+import { LOCKFILES, fileExistsAsync } from '../shared.js';
+import { debug } from '../shared/logging.js';
 
 /** Result of a single health check. */
 export interface HealthCheck {
@@ -20,22 +29,19 @@ export interface HealthStatus {
   checks: HealthCheck[];
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Check project health: dependencies, lockfiles, TypeScript configuration. */
+/**
+ * Check project health: dependencies, lockfiles, TypeScript configuration.
+ *
+ * This is a lightweight check returning basic status. For comprehensive
+ * health analysis including TypeScript details and suggestions, use
+ * {@link checkProjectHealth} from project-health.ts instead.
+ */
 export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
   const checks: HealthCheck[] = [];
 
   // Check node_modules
-  const hasNodeModules = await fileExists(path.join(cwd, 'node_modules'));
-  const hasPackageJson = await fileExists(path.join(cwd, 'package.json'));
+  const hasNodeModules = await fileExistsAsync(path.join(cwd, 'node_modules'));
+  const hasPackageJson = await fileExistsAsync(path.join(cwd, 'package.json'));
 
   if (hasPackageJson && !hasNodeModules) {
     checks.push({
@@ -47,7 +53,7 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
 
   // Check for multiple lockfiles
   const lockfileChecks = await Promise.all(
-    LOCKFILES.map(async (f) => ({ file: f, exists: await fileExists(path.join(cwd, f)) }))
+    LOCKFILES.map(async (f) => ({ file: f, exists: await fileExistsAsync(path.join(cwd, f)) }))
   );
   const foundLockfiles = lockfileChecks.filter(({ exists }) => exists).map(({ file }) => file);
 
@@ -61,7 +67,7 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
 
   // Check TypeScript strict mode
   const tsconfigPath = path.join(cwd, 'tsconfig.json');
-  if (await fileExists(tsconfigPath)) {
+  if (await fileExistsAsync(tsconfigPath)) {
     try {
       const content = await fs.readFile(tsconfigPath, 'utf-8');
       const config = JSON.parse(content);
@@ -74,7 +80,7 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
       }
     } catch (error) {
       // tsconfig.json might have comments or invalid JSON, which is fine
-      console.error('[health-checker] Failed to parse tsconfig.json:', error);
+      debug('health-checker: Failed to parse tsconfig.json', error);
     }
   }
 

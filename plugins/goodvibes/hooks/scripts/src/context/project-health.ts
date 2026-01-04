@@ -1,14 +1,24 @@
 /**
- * Project Health Checker
+ * Project Health Checker (Comprehensive)
  *
- * Checks various project health indicators:
- * - node_modules existence
- * - Multiple lockfiles (npm + yarn + pnpm)
- * - TypeScript strict mode
+ * Performs comprehensive project health analysis including:
+ * - node_modules existence and dependency status
+ * - Multiple lockfile detection (npm + yarn + pnpm + bun)
+ * - Detailed TypeScript configuration (strict, strictNullChecks, noImplicitAny, target)
+ * - Available npm scripts detection
+ * - Actionable suggestions for improvement
+ *
+ * **Difference from health-checker.ts:**
+ * - This module returns {@link ProjectHealth} with full analysis including suggestions
+ * - health-checker.ts returns {@link HealthStatus} with basic health checks array only
+ *
+ * Use this when you need comprehensive health analysis with suggestions;
+ * use health-checker.ts for quick status checks.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 
 /** Comprehensive project health analysis results. */
 export interface ProjectHealth {
@@ -92,7 +102,9 @@ function checkTypeScript(cwd: string): TypeScriptHealth | null {
       noImplicitAny: compilerOptions.noImplicitAny === true || compilerOptions.strict === true,
       target: compilerOptions.target || null,
     };
-  } catch {
+  } catch (error) {
+
+    debug('project-health failed', { error: String(error) });
     return {
       hasConfig: true,
       strict: false,
@@ -117,7 +129,9 @@ function getScripts(cwd: string): string[] {
     const content = fs.readFileSync(packageJsonPath, 'utf-8');
     const packageJson = JSON.parse(content);
     return Object.keys(packageJson.scripts || {});
-  } catch {
+  } catch (error) {
+
+    debug('project-health failed', { error: String(error) });
     return [];
   }
 }
@@ -174,7 +188,12 @@ function generateSuggestions(health: Partial<ProjectHealth>): string[] {
   return suggestions.slice(0, MAX_SUGGESTIONS);
 }
 
-/** Check overall project health including dependencies and TypeScript config. */
+/**
+ * Check overall project health with comprehensive analysis.
+ *
+ * This performs full analysis including TypeScript details and suggestions.
+ * For lightweight status checks, use checkProjectHealth from health-checker.ts.
+ */
 export async function checkProjectHealth(cwd: string): Promise<ProjectHealth> {
   const { hasNodeModules, lockfiles, packageManager } = checkDependencies(cwd);
   const typescript = checkTypeScript(cwd);

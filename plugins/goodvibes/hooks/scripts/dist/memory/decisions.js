@@ -3,6 +3,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 const DECISIONS_HEADER = `# Architectural Decisions
 
 This file records architectural decisions made for this project.
@@ -89,7 +90,7 @@ function parseDecisions(content) {
             }
         }
         catch (error) {
-            // Skip malformed entries
+            debug('Skipping malformed decision entry', { error: String(error), block: block.substring(0, 100) });
             continue;
         }
     }

@@ -5,7 +5,8 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { LOCKFILES } from '../shared.js';
+import { LOCKFILES, fileExistsAsync } from '../shared.js';
+import { debug } from '../shared/logging.js';
 /** Module-level cache for stack detection results */
 const stackCache = new Map();
 /** Cache TTL in milliseconds (5 minutes) */
@@ -35,15 +36,6 @@ const LOCKFILE_TO_PM = {
     'package-lock.json': 'npm',
     'bun.lockb': 'bun',
 };
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 /** Detect the technology stack used in the project. */
 export async function detectStack(cwd) {
     // Check cache first
@@ -60,10 +52,10 @@ export async function detectStack(cwd) {
     for (const [indicator, name] of Object.entries(STACK_INDICATORS)) {
         const checkPath = path.join(cwd, indicator);
         const checks = await Promise.all([
-            fileExists(checkPath),
-            fileExists(checkPath + '.js'),
-            fileExists(checkPath + '.ts'),
-            fileExists(checkPath + '.mjs'),
+            fileExistsAsync(checkPath),
+            fileExistsAsync(checkPath + '.js'),
+            fileExistsAsync(checkPath + '.ts'),
+            fileExistsAsync(checkPath + '.mjs'),
         ]);
         if (checks.some(exists => exists)) {
             frameworks.push(name);
@@ -73,14 +65,14 @@ export async function detectStack(cwd) {
     }
     // Check lockfiles for package manager
     for (const lockfile of LOCKFILES) {
-        if (await fileExists(path.join(cwd, lockfile))) {
+        if (await fileExistsAsync(path.join(cwd, lockfile))) {
             packageManager = LOCKFILE_TO_PM[lockfile];
             break;
         }
     }
     // Check tsconfig for strict mode
     const tsconfigPath = path.join(cwd, 'tsconfig.json');
-    if (await fileExists(tsconfigPath)) {
+    if (await fileExistsAsync(tsconfigPath)) {
         try {
             const content = await fs.readFile(tsconfigPath, 'utf-8');
             const config = JSON.parse(content);
@@ -88,7 +80,7 @@ export async function detectStack(cwd) {
         }
         catch (error) {
             // tsconfig.json might have comments or invalid JSON - ignore parse errors
-            console.error('[stack-detector] Failed to parse tsconfig.json:', error);
+            debug('stack-detector: Failed to parse tsconfig.json', error);
         }
     }
     const result = { frameworks, packageManager, hasTypeScript, isStrict };

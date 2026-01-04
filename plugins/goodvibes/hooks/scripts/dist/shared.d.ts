@@ -112,3 +112,13 @@ export declare function parseTranscript(transcriptPath: string): TranscriptData;
  * Extract error output from an exec error (child_process execSync failures)
  */
 export declare function extractErrorOutput(error: unknown): string;
+/**
+ * Check if a file exists (async version with absolute path support).
+ *
+ * This is the shared async implementation used by context modules
+ * (env-checker, health-checker, stack-detector) to avoid duplicate code.
+ *
+ * @param filePath - Absolute path to the file
+ * @returns Promise resolving to true if file exists
+ */
+export declare function fileExistsAsync(filePath: string): Promise<boolean>;

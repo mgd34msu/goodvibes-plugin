@@ -37,7 +37,7 @@ describe('stack-detector', () => {
 
     // Set up default mock behavior for fs functions
     // By default, files don't exist and reading files throws
-    mockedFs.existsSync.mockReturnValue(false);
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
     mockedFs.readFileSync.mockImplementation(() => {
       throw new Error('File not found');
     });
@@ -49,33 +49,36 @@ describe('stack-detector', () => {
 
   describe('detectStack', () => {
     it('should detect Next.js framework from next.config.js', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('next.config.js');
+        if (pathStr.endsWith('next.config.js')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-nextjs-js');
 
       expect(result.frameworks).toContain('Next.js');
     });
 
     it('should detect Next.js framework from next.config.ts', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('next.config.ts');
+        if (pathStr.endsWith('next.config.ts')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-nextjs-ts');
 
       expect(result.frameworks).toContain('Next.js');
     });
 
     it('should detect TypeScript from tsconfig.json', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
         compilerOptions: { strict: false }
       }));
 
@@ -87,76 +90,82 @@ describe('stack-detector', () => {
     });
 
     it('should detect TypeScript strict mode', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
         compilerOptions: { strict: true }
       }));
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-ts-strict');
 
       expect(result.hasTypeScript).toBe(true);
       expect(result.isStrict).toBe(true);
     });
 
     it('should detect pnpm from pnpm-lock.yaml', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('pnpm-lock.yaml');
+        if (pathStr.endsWith('pnpm-lock.yaml')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-pnpm');
 
       expect(result.packageManager).toBe('pnpm');
     });
 
     it('should detect yarn from yarn.lock', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('yarn.lock');
+        if (pathStr.endsWith('yarn.lock')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-yarn');
 
       expect(result.packageManager).toBe('yarn');
     });
 
     it('should detect npm from package-lock.json', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('package-lock.json');
+        if (pathStr.endsWith('package-lock.json')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-npm');
 
       expect(result.packageManager).toBe('npm');
     });
 
     it('should detect bun from bun.lockb', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('bun.lockb');
+        if (pathStr.endsWith('bun.lockb')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-bun');
 
       expect(result.packageManager).toBe('bun');
     });
 
     it('should detect multiple frameworks', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('next.config.js') ||
-               pathStr.endsWith('tailwind.config.js') ||
-               pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('next.config.js') ||
+            pathStr.endsWith('tailwind.config.js') ||
+            pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
         compilerOptions: { strict: true }
       }));
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-multi-framework');
 
       expect(result.frameworks).toContain('Next.js');
       expect(result.frameworks).toContain('Tailwind CSS');
@@ -164,9 +173,9 @@ describe('stack-detector', () => {
     });
 
     it('should return empty values for empty directory', async () => {
-      mockedFs.existsSync.mockReturnValue(false);
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
 
-      const result = await detectStack('/test/empty');
+      const result = await detectStack('/test/empty-dir');
 
       expect(result.frameworks).toEqual([]);
       expect(result.packageManager).toBeNull();
@@ -175,11 +184,12 @@ describe('stack-detector', () => {
     });
 
     it('should handle malformed tsconfig.json', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue('{ invalid json }');
+      mockedFsPromises.readFile.mockResolvedValue('{ invalid json }');
 
       const result = await detectStack('/test/project');
 
@@ -189,12 +199,13 @@ describe('stack-detector', () => {
     });
 
     it('should detect Vite from vite.config.mjs', async () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('vite.config.mjs');
+        if (pathStr.endsWith('vite.config.mjs')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = await detectStack('/test/project');
+      const result = await detectStack('/test/project-vite');
 
       expect(result.frameworks).toContain('Vite');
     });
@@ -281,8 +292,10 @@ describe('git-context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Set up default mock behavior for fs/promises
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+
     // Set up default mock behavior
-    mockedFs.existsSync.mockReturnValue(false);
     mockedExecSync.mockImplementation(() => {
       throw new Error('Command not found');
     });
@@ -290,9 +303,9 @@ describe('git-context', () => {
 
   describe('getGitContext', () => {
     it('should return not-a-repo context when .git is missing', async () => {
-      mockedFs.existsSync.mockReturnValue(false);
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
 
-      const result = await getGitContext('/test/project');
+      const result = await getGitContext('/test/project-no-git');
 
       expect(result.isRepo).toBe(false);
       expect(result.branch).toBeNull();
@@ -304,7 +317,7 @@ describe('git-context', () => {
     });
 
     it('should return full git context for a repo', async () => {
-      mockedFs.existsSync.mockReturnValue(true);
+      mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
         if (cmd.includes('branch --show-current')) return 'main\n';
         if (cmd.includes('status --porcelain')) return 'M file1.ts\nA file2.ts\n';
@@ -314,7 +327,7 @@ describe('git-context', () => {
         return '';
       });
 
-      const result = await getGitContext('/test/project');
+      const result = await getGitContext('/test/project-git-full');
 
       expect(result.isRepo).toBe(true);
       expect(result.branch).toBe('main');
@@ -326,7 +339,7 @@ describe('git-context', () => {
     });
 
     it('should handle clean repo with no changes', async () => {
-      mockedFs.existsSync.mockReturnValue(true);
+      mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
         if (cmd.includes('branch --show-current')) return 'develop\n';
         if (cmd.includes('status --porcelain')) return '';
@@ -336,7 +349,7 @@ describe('git-context', () => {
         return '';
       });
 
-      const result = await getGitContext('/test/project');
+      const result = await getGitContext('/test/project-git-clean');
 
       expect(result.hasUncommittedChanges).toBe(false);
       expect(result.uncommittedFileCount).toBe(0);
@@ -344,7 +357,7 @@ describe('git-context', () => {
     });
 
     it('should handle git command failures gracefully', async () => {
-      mockedFs.existsSync.mockReturnValue(true);
+      mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
         if (cmd.includes('branch --show-current')) throw new Error('git error');
         if (cmd.includes('status --porcelain')) throw new Error('git error');
@@ -353,7 +366,7 @@ describe('git-context', () => {
         throw new Error('git error');
       });
 
-      const result = await getGitContext('/test/project');
+      const result = await getGitContext('/test/project-git-full');
 
       expect(result.isRepo).toBe(true);
       expect(result.branch).toBeNull();
@@ -364,7 +377,7 @@ describe('git-context', () => {
     });
 
     it('should handle missing upstream for ahead/behind', async () => {
-      mockedFs.existsSync.mockReturnValue(true);
+      mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
         if (cmd.includes('branch --show-current')) return 'feature-branch\n';
         if (cmd.includes('status --porcelain')) return '';
@@ -474,34 +487,40 @@ describe('health-checker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Set up default mock behavior for fs/promises
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+    mockedFsPromises.readFile.mockRejectedValue(new Error('ENOENT'));
+
     // Set up default mock behavior
-    mockedFs.existsSync.mockReturnValue(false);
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
     mockedFs.readFileSync.mockImplementation(() => {
       throw new Error('File not found');
     });
   });
 
   describe('checkProjectHealth', () => {
-    it('should return no checks for healthy project', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should return no checks for healthy project', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('node_modules') ||
-               pathStr.endsWith('package.json') ||
-               pathStr.endsWith('pnpm-lock.yaml');
+        if (pathStr.endsWith('node_modules') ||
+            pathStr.endsWith('package.json') ||
+            pathStr.endsWith('pnpm-lock.yaml')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = checkProjectHealth('/test/project');
+      const result = await checkProjectHealth('//test/project');
 
       expect(result.checks).toEqual([]);
     });
 
-    it('should warn about missing node_modules', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should warn about missing node_modules', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('package.json');
+        if (pathStr.endsWith('package.json')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = checkProjectHealth('/test/project');
+      const result = await checkProjectHealth('//test/project');
 
       expect(result.checks).toHaveLength(1);
       expect(result.checks[0].check).toBe('dependencies');
@@ -509,16 +528,17 @@ describe('health-checker', () => {
       expect(result.checks[0].message).toContain('node_modules missing');
     });
 
-    it('should warn about multiple lockfiles', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should warn about multiple lockfiles', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('node_modules') ||
-               pathStr.endsWith('package.json') ||
-               pathStr.endsWith('pnpm-lock.yaml') ||
-               pathStr.endsWith('package-lock.json');
+        if (pathStr.endsWith('node_modules') ||
+            pathStr.endsWith('package.json') ||
+            pathStr.endsWith('pnpm-lock.yaml') ||
+            pathStr.endsWith('package-lock.json')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = checkProjectHealth('/test/project');
+      const result = await checkProjectHealth('/test/project-multi-lockfiles');
 
       expect(result.checks.some(c => c.check === 'lockfiles')).toBe(true);
       const lockfileCheck = result.checks.find(c => c.check === 'lockfiles');
@@ -526,18 +546,19 @@ describe('health-checker', () => {
       expect(lockfileCheck?.message).toContain('Multiple lockfiles');
     });
 
-    it('should report non-strict TypeScript', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should report non-strict TypeScript', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('node_modules') ||
-               pathStr.endsWith('package.json') ||
-               pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('node_modules') ||
+            pathStr.endsWith('package.json') ||
+            pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
         compilerOptions: { strict: false }
       }));
 
-      const result = checkProjectHealth('/test/project');
+      const result = await checkProjectHealth('//test/project');
 
       expect(result.checks.some(c => c.check === 'typescript')).toBe(true);
       const tsCheck = result.checks.find(c => c.check === 'typescript');
@@ -545,41 +566,43 @@ describe('health-checker', () => {
       expect(tsCheck?.message).toContain('strict mode is off');
     });
 
-    it('should not report strict TypeScript', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should not report strict TypeScript', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('node_modules') ||
-               pathStr.endsWith('package.json') ||
-               pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('node_modules') ||
+            pathStr.endsWith('package.json') ||
+            pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
         compilerOptions: { strict: true }
       }));
 
-      const result = checkProjectHealth('/test/project');
+      const result = await checkProjectHealth('//test/project');
 
       expect(result.checks.some(c => c.check === 'typescript')).toBe(false);
     });
 
-    it('should handle malformed tsconfig.json', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should handle malformed tsconfig.json', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('node_modules') ||
-               pathStr.endsWith('package.json') ||
-               pathStr.endsWith('tsconfig.json');
+        if (pathStr.endsWith('node_modules') ||
+            pathStr.endsWith('package.json') ||
+            pathStr.endsWith('tsconfig.json')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue('// comment\n{ invalid }');
+      mockedFsPromises.readFile.mockResolvedValue('// comment\n{ invalid }');
 
-      const result = checkProjectHealth('/test/project');
+      const result = await checkProjectHealth('//test/project');
 
       // Should not crash and should not add typescript check
       expect(result.checks.some(c => c.check === 'typescript')).toBe(false);
     });
 
-    it('should handle empty directory', () => {
-      mockedFs.existsSync.mockReturnValue(false);
+    it('should handle empty directory', async () => {
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
 
-      const result = checkProjectHealth('/test/empty');
+      const result = await checkProjectHealth('//test/empty');
 
       expect(result.checks).toEqual([]);
     });
@@ -654,56 +677,64 @@ describe('env-checker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Set up default mock behavior for fs/promises
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+    mockedFsPromises.readFile.mockRejectedValue(new Error('ENOENT'));
+
     // Set up default mock behavior
-    mockedFs.existsSync.mockReturnValue(false);
+    mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
     mockedFs.readFileSync.mockImplementation(() => {
       throw new Error('File not found');
     });
   });
 
   describe('checkEnvironment', () => {
-    it('should detect .env file', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should detect .env file', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('.env');
+        if (pathStr.endsWith('.env')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('//test/project');
 
       expect(result.hasEnvFile).toBe(true);
       expect(result.hasEnvExample).toBe(false);
     });
 
-    it('should detect .env.local file', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should detect .env.local file', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('.env.local');
+        if (pathStr.endsWith('.env.local')) return undefined;
+        throw new Error('ENOENT');
       });
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('//test/project');
 
       expect(result.hasEnvFile).toBe(true);
     });
 
-    it('should detect .env.example file', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should detect .env.example file', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('.env.example');
+        if (pathStr.endsWith('.env.example')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockReturnValue('');
+      mockedFsPromises.readFile.mockResolvedValue('');
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('//test/project');
 
       expect(result.hasEnvExample).toBe(true);
       expect(result.hasEnvFile).toBe(false);
     });
 
-    it('should detect missing env vars', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should detect missing env vars', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('.env.example') || pathStr.endsWith('.env');
+        if (pathStr.endsWith('.env.example') || pathStr.endsWith('.env')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockImplementation((p: fs.PathOrFileDescriptor) => {
+      mockedFsPromises.readFile.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
         if (pathStr.endsWith('.env.example')) {
           return 'API_KEY=\nDATABASE_URL=\nSECRET=';
@@ -714,7 +745,7 @@ describe('env-checker', () => {
         return '';
       });
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('/test/project-missing-env');
 
       expect(result.missingVars).toContain('DATABASE_URL');
       expect(result.missingVars).toContain('SECRET');
@@ -723,14 +754,15 @@ describe('env-checker', () => {
       expect(result.warnings[0]).toContain('Missing env vars');
     });
 
-    it('should prefer .env.local over .env', () => {
-      mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+    it('should prefer .env.local over .env', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        return pathStr.endsWith('.env.example') ||
-               pathStr.endsWith('.env') ||
-               pathStr.endsWith('.env.local');
+        if (pathStr.endsWith('.env.example') ||
+            pathStr.endsWith('.env') ||
+            pathStr.endsWith('.env.local')) return undefined;
+        throw new Error('ENOENT');
       });
-      mockedFs.readFileSync.mockImplementation((p: fs.PathOrFileDescriptor) => {
+      mockedFsPromises.readFile.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
         if (pathStr.endsWith('.env.example')) {
           return 'API_KEY=\nDATABASE_URL=';
@@ -744,13 +776,13 @@ describe('env-checker', () => {
         return '';
       });
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('/test/project-prefer-local');
 
       expect(result.missingVars).toEqual([]);
       expect(result.warnings).toEqual([]);
     });
 
-    it('should handle env file with comments', () => {
+    it('should handle env file with comments', async () => {
       mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
         const pathStr = p.toString();
         return pathStr.endsWith('.env.example') || pathStr.endsWith('.env');
@@ -766,15 +798,15 @@ describe('env-checker', () => {
         return '';
       });
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('//test/project');
 
       expect(result.missingVars).toEqual([]);
     });
 
-    it('should return empty values for no env files', () => {
-      mockedFs.existsSync.mockReturnValue(false);
+    it('should return empty values for no env files', async () => {
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('//test/project');
 
       expect(result.hasEnvFile).toBe(false);
       expect(result.hasEnvExample).toBe(false);
@@ -782,7 +814,7 @@ describe('env-checker', () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it('should handle empty lines in env files', () => {
+    it('should handle empty lines in env files', async () => {
       mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
         const pathStr = p.toString();
         return pathStr.endsWith('.env.example') || pathStr.endsWith('.env');
@@ -798,7 +830,7 @@ describe('env-checker', () => {
         return '';
       });
 
-      const result = checkEnvironment('/test/project');
+      const result = await checkEnvironment('//test/project');
 
       expect(result.missingVars).toEqual([]);
     });

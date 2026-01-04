@@ -5,6 +5,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 const LAYER_INDICATORS = ['controllers', 'services', 'repositories', 'models', 'middleware', 'routes'];
 const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
 const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];
@@ -25,7 +26,8 @@ function getSubdirs(dirPath) {
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         return entries.filter((e) => e.isDirectory()).map((e) => e.name.toLowerCase());
     }
-    catch {
+    catch (error) {
+        debug('folder-structure failed', { error: String(error) });
         return [];
     }
 }
@@ -56,8 +58,8 @@ function detectPattern(cwd, topLevelDirs, srcDirs) {
                     return { pattern: 'next-app-router', confidence: 'high' };
                 }
             }
-            catch {
-                // Ignore
+            catch (error) {
+                debug('folder-structure failed', { error: String(error) });
             }
         }
     }
@@ -129,8 +131,8 @@ function calculateDepth(cwd, maxDepth = DEFAULT_MAX_DEPTH) {
                 }
             }
         }
-        catch {
-            // Ignore
+        catch (error) {
+            debug('folder-structure failed', { error: String(error) });
         }
     }
     walk(cwd, 0);

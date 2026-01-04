@@ -5,6 +5,7 @@
  */
 import { execSync } from 'child_process';
 import * as os from 'os';
+import { debug } from '../shared/logging.js';
 /** Common development server ports to check. */
 export const COMMON_DEV_PORTS = [3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888];
 /** Timeout for netstat/lsof commands in milliseconds. */
@@ -54,8 +55,8 @@ function parseWindowsNetstat(output, ports) {
                         processName = match[1].replace('.exe', '');
                     }
                 }
-                catch {
-                    // Keep PID as fallback
+                catch (error) {
+                    debug('parseWindowsNetstat tasklist failed', { error: String(error) });
                 }
             }
             portMap.set(port, processName || 'unknown');
@@ -132,7 +133,8 @@ function checkPortsWindows(ports) {
         });
         return parseWindowsNetstat(output, ports);
     }
-    catch {
+    catch (error) {
+        debug("checkPortsWindows failed", { error: String(error) });
         return new Map();
     }
 }
@@ -149,7 +151,8 @@ function checkPortsUnix(ports) {
         });
         return parseUnixLsof(output, ports);
     }
-    catch {
+    catch (error) {
+        debug('checkPortsUnix lsof failed', { error: String(error) });
         // Fall back to netstat
         try {
             const output = execSync('netstat -tlnp 2>/dev/null || netstat -tln', {
@@ -158,7 +161,8 @@ function checkPortsUnix(ports) {
             });
             return parseUnixNetstat(output, ports);
         }
-        catch {
+        catch (error) {
+            debug("checkPortsUnix netstat failed", { error: String(error) });
             return new Map();
         }
     }

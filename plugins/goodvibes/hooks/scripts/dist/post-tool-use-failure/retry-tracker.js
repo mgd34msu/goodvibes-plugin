@@ -7,6 +7,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { ensureGoodVibesDir } from '../shared.js';
+import { debug } from '../shared/logging.js';
 import { PHASE_RETRY_LIMITS } from '../types/errors.js';
 // =============================================================================
 // Type Guards
@@ -59,7 +60,8 @@ export function loadRetries(cwd) {
         // Return empty if data is invalid
         return {};
     }
-    catch {
+    catch (error) {
+        debug('loadRetries failed', { error: String(error) });
         return {};
     }
 }
@@ -119,8 +121,8 @@ export function saveRetry(stateOrCwd, signature, errorStateOrPhase) {
     try {
         fs.writeFileSync(retriesPath, JSON.stringify(retries, null, 2));
     }
-    catch {
-        // Silently fail if unable to write (don't block operations)
+    catch (error) {
+        debug('saveRetry failed', { error: String(error) });
     }
 }
 /** Returns the number of retry attempts for a given error signature */
@@ -288,8 +290,8 @@ export function clearRetry(cwd, signature) {
         try {
             fs.writeFileSync(retriesPath, JSON.stringify(retries, null, 2));
         }
-        catch {
-            // Silently fail
+        catch (error) {
+            debug('writeRetryData failed', { error: String(error) });
         }
     }
 }
@@ -313,8 +315,8 @@ export function pruneOldRetries(cwd, maxAgeHours = DEFAULT_MAX_AGE_HOURS) {
         try {
             fs.writeFileSync(retriesPath, JSON.stringify(retries, null, 2));
         }
-        catch {
-            // Silently fail
+        catch (error) {
+            debug('writeRetryData failed', { error: String(error) });
         }
     }
 }

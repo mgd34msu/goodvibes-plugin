@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { MemoryPattern } from '../types/memory.js';
+import { debug } from '../shared/logging.js';
 
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
@@ -107,7 +108,7 @@ function parsePatterns(content: string): MemoryPattern[] {
         });
       }
     } catch (error) {
-      // Skip malformed entries
+      debug('Skipping malformed pattern entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }
   }

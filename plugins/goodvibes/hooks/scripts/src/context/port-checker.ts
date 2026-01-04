@@ -6,6 +6,7 @@
 
 import { execSync } from 'child_process';
 import * as os from 'os';
+import { debug } from '../shared/logging.js';
 
 /** Information about a network port. */
 export interface PortInfo {
@@ -68,8 +69,8 @@ function parseWindowsNetstat(output: string, ports: number[]): Map<number, strin
           if (match) {
             processName = match[1].replace('.exe', '');
           }
-        } catch {
-          // Keep PID as fallback
+        } catch (error) {
+          debug('parseWindowsNetstat tasklist failed', { error: String(error) });
         }
       }
 
@@ -156,7 +157,8 @@ function checkPortsWindows(ports: number[]): Map<number, string> {
       windowsHide: true,
     });
     return parseWindowsNetstat(output, ports);
-  } catch {
+  } catch (error) {
+    debug("checkPortsWindows failed", { error: String(error) });
     return new Map();
   }
 }
@@ -173,7 +175,8 @@ function checkPortsUnix(ports: number[]): Map<number, string> {
       timeout: COMMAND_TIMEOUT,
     });
     return parseUnixLsof(output, ports);
-  } catch {
+  } catch (error) {
+    debug('checkPortsUnix lsof failed', { error: String(error) });
     // Fall back to netstat
     try {
       const output = execSync('netstat -tlnp 2>/dev/null || netstat -tln', {
@@ -181,7 +184,8 @@ function checkPortsUnix(ports: number[]): Map<number, string> {
         timeout: COMMAND_TIMEOUT,
       });
       return parseUnixNetstat(output, ports);
-    } catch {
+    } catch (error) {
+      debug("checkPortsUnix netstat failed", { error: String(error) });
       return new Map();
     }
   }

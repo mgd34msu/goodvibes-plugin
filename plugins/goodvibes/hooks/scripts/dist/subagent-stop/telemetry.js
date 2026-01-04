@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { ensureGoodVibesDir, parseTranscript, extractKeywords } from '../shared.js';
+import { debug } from '../shared/logging.js';
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 /** Persists agent tracking data to disk */
@@ -12,7 +13,9 @@ export async function saveAgentTracking(cwd, tracking) {
         try {
             trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
         }
-        catch { }
+        catch (error) {
+            debug('telemetry operation failed', { error: String(error) });
+        }
     }
     trackings[tracking.agent_id] = tracking;
     fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
@@ -26,7 +29,8 @@ export async function getAgentTracking(cwd, agentId) {
         const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
         return trackings[agentId] || null;
     }
-    catch {
+    catch (error) {
+        debug('getAgentTracking failed', { error: String(error) });
         return null;
     }
 }
@@ -40,7 +44,9 @@ export async function removeAgentTracking(cwd, agentId) {
         delete trackings[agentId];
         fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
     }
-    catch { }
+    catch (error) {
+        debug('telemetry operation failed', { error: String(error) });
+    }
 }
 /** Appends a telemetry entry to the monthly log file */
 export async function writeTelemetryEntry(cwd, entry) {

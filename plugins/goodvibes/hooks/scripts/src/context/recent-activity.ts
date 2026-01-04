@@ -5,6 +5,7 @@
  */
 
 import { execSync } from 'child_process';
+import { debug } from '../shared/logging.js';
 
 /** Maximum buffer size for git command output (10MB). */
 const GIT_MAX_BUFFER = 10 * 1024 * 1024;
@@ -72,7 +73,7 @@ function gitExec(cwd: string, args: string): string | null {
     }).trim();
   } catch (error) {
     // Git command failed - log for debugging but return null as this is expected
-    console.error(`[recent-activity] Git command failed: git ${args}`, error);
+    debug(`recent-activity: Git command failed: git ${args}`, error);
     return null;
   }
 }

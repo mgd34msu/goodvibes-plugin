@@ -1,11 +1,20 @@
 /**
- * Environment Checker
+ * Environment Checker (Lightweight)
  *
  * Checks environment configuration and identifies missing variables.
+ * Returns a simple EnvStatus for quick status checks.
+ *
+ * **Difference from environment.ts:**
+ * - This module returns {@link EnvStatus} with basic env file presence/missing vars
+ * - environment.ts returns {@link EnvironmentContext} with comprehensive analysis
+ *   including sensitive variable detection and gitignore checks
+ *
+ * Use this when you need a quick check; use environment.ts for full analysis.
  */
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { fileExistsAsync } from '../shared.js';
 
 /** Environment configuration status. */
 export interface EnvStatus {
@@ -23,25 +32,22 @@ function parseEnvVars(content: string): string[] {
     .filter(Boolean);
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Check environment configuration: .env files and missing variables. */
+/**
+ * Check environment configuration: .env files and missing variables.
+ *
+ * This is a lightweight check that returns basic status. For comprehensive
+ * environment analysis including sensitive variable detection, use
+ * {@link checkEnvironment} from environment.ts instead.
+ */
 export async function checkEnvironment(cwd: string): Promise<EnvStatus> {
   const envPath = path.join(cwd, '.env');
   const envLocalPath = path.join(cwd, '.env.local');
   const envExamplePath = path.join(cwd, '.env.example');
 
   const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] = await Promise.all([
-    fileExists(envPath),
-    fileExists(envLocalPath),
-    fileExists(envExamplePath),
+    fileExistsAsync(envPath),
+    fileExistsAsync(envLocalPath),
+    fileExistsAsync(envExamplePath),
   ]);
 
   const hasEnvFile = hasEnvPathExists || hasEnvLocalExists;

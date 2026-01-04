@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { MemoryFailure } from '../types/memory.js';
+import { debug } from '../shared/logging.js';
 
 const FAILURES_HEADER = `# Failed Approaches
 
@@ -93,7 +94,7 @@ function parseFailures(content: string): MemoryFailure[] {
         });
       }
     } catch (error) {
-      // Skip malformed entries
+      debug('Skipping malformed failure entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }
   }

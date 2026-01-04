@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createDefaultState } from './types/state.js';
 import { ensureGoodVibesDir } from './shared.js';
+import { debug } from './shared/logging.js';
 /** Relative path to the state file within .goodvibes directory. */
 const STATE_FILE = 'state/hooks-state.json';
 /** Loads hook state from disk, returning defaults if not found. */
@@ -20,7 +21,7 @@ export async function loadState(cwd) {
         return state;
     }
     catch (error) {
-        console.error('[GoodVibes] Failed to load state, using defaults:', error);
+        debug('Failed to load state, using defaults', error);
         return createDefaultState();
     }
 }
@@ -40,7 +41,7 @@ export async function saveState(cwd, state) {
         fs.renameSync(tempPath, statePath);
     }
     catch (error) {
-        console.error('[GoodVibes] Failed to save state:', error);
+        debug('Failed to save state', error);
     }
 }
 /** Updates session-related state with partial data. */

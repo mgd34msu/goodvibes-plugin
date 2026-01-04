@@ -72,6 +72,7 @@ export function getGitInfo(cwd: string): GitInfo {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 30000,
     }).trim();
     result.branch = branch;
   } catch (error) {
@@ -84,6 +85,7 @@ export function getGitInfo(cwd: string): GitInfo {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 30000,
     }).trim();
     result.commit = commit;
   } catch (error) {

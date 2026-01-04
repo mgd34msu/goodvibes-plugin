@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
 import { ensureGoodVibesDir, parseTranscript, extractKeywords } from '../shared.js';
+import { debug } from '../shared/logging.js';
 
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
@@ -15,7 +16,9 @@ export async function saveAgentTracking(cwd: string, tracking: TelemetryTracking
   if (fs.existsSync(trackingPath)) {
     try {
       trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
-    } catch {}
+    } catch (error) {
+    debug('telemetry operation failed', { error: String(error) });
+  }
   }
 
   trackings[tracking.agent_id] = tracking;
@@ -31,7 +34,8 @@ export async function getAgentTracking(cwd: string, agentId: string): Promise<Te
   try {
     const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
     return trackings[agentId] || null;
-  } catch {
+  } catch (error) {
+    debug('getAgentTracking failed', { error: String(error) });
     return null;
   }
 }
@@ -46,7 +50,9 @@ export async function removeAgentTracking(cwd: string, agentId: string): Promise
     const trackings = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
     delete trackings[agentId];
     fs.writeFileSync(trackingPath, JSON.stringify(trackings, null, 2));
-  } catch {}
+  } catch (error) {
+    debug('telemetry operation failed', { error: String(error) });
+  }
 }
 
 /** Appends a telemetry entry to the monthly log file */

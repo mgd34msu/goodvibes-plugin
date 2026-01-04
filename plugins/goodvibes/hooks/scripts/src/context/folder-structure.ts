@@ -6,6 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 
 /** Folder structure analysis results. */
 export interface FolderStructure {
@@ -64,7 +65,9 @@ function getSubdirs(dirPath: string): string[] {
   try {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name.toLowerCase());
-  } catch {
+  } catch (error) {
+
+    debug('folder-structure failed', { error: String(error) });
     return [];
   }
 }
@@ -98,8 +101,10 @@ function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): 
         if (files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))) {
           return { pattern: 'next-app-router', confidence: 'high' };
         }
-      } catch {
-        // Ignore
+      } catch (error) {
+
+        debug('folder-structure failed', { error: String(error) });
+
       }
     }
   }
@@ -181,8 +186,10 @@ function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): numb
           walk(path.join(dir, entry.name), currentDepth + 1);
         }
       }
-    } catch {
-      // Ignore
+    } catch (error) {
+
+      debug('folder-structure failed', { error: String(error) });
+
     }
   }
 

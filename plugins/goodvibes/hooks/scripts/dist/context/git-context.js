@@ -6,6 +6,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 /** Constant for detached HEAD state. */
 const GIT_DETACHED_HEAD = 'detached';
 function execGit(command, cwd) {
@@ -14,7 +15,7 @@ function execGit(command, cwd) {
     }
     catch (error) {
         // Git command failed - this is expected for some operations (e.g., no upstream)
-        console.error(`[git-context] Git command failed: ${command}`, error);
+        debug(`git-context: Git command failed: ${command}`, error);
         return null;
     }
 }
@@ -23,7 +24,8 @@ async function directoryExists(dirPath) {
         await fs.access(dirPath);
         return true;
     }
-    catch {
+    catch (error) {
+        debug('git-context failed', { error: String(error) });
         return false;
     }
 }
