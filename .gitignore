@@ -19,6 +19,7 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Local scripts
 reinstall-plugin.ps1
