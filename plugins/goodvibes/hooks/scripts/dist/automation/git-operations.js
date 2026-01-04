@@ -21,7 +21,7 @@ function sanitizeForGit(input) {
  */
 export function execGit(command, cwd) {
     try {
-        return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
     }
     catch (error) {
         debug('execGit failed', { command, error: String(error) });
@@ -78,7 +78,7 @@ export function createCheckpoint(cwd, message) {
         // Sanitize message to prevent command injection
         const safeMessage = sanitizeForGit(message);
         const commitMessage = `checkpoint: ${safeMessage}\n\n Auto-checkpoint by GoodVibes`;
-        execSync('git add -A', { cwd, stdio: 'pipe' });
+        execSync('git add -A', { cwd, stdio: 'pipe', timeout: 30000 });
         // Use spawnSync with array args to avoid shell injection
         const result = spawnSync('git', ['commit', '-m', commitMessage], { cwd, stdio: 'pipe' });
         return result.status === 0;

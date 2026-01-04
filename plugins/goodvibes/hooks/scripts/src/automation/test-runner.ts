@@ -67,7 +67,7 @@ export function runTests(testFiles: string[], cwd: string): TestResult {
  */
 export function runFullTestSuite(cwd: string): TestResult {
   try {
-    execSync('npm test', { cwd, stdio: 'pipe' });
+    execSync('npm test', { cwd, stdio: 'pipe', timeout: 600000 });
     return { passed: true, summary: 'All tests passed', failures: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);

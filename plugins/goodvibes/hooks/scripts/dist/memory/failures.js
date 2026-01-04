@@ -3,7 +3,14 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared.js';
+const FAILURES_HEADER = `# Failed Approaches
+
+This file records approaches that were tried and failed.
+Reference this to avoid repeating unsuccessful strategies.
+
+---
+
+`;
 /** Reads all known failures from the memory file. */
 export function readFailures(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
@@ -14,61 +21,88 @@ export function readFailures(cwd) {
     return parseFailures(content);
 }
 /** Appends a new failure record to the failures memory file. */
-export async function writeFailure(cwd, failure) {
-    await ensureGoodVibesDir(cwd);
+export function writeFailure(cwd, failure) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
-    let content = '';
-    if (fs.existsSync(filePath)) {
-        content = fs.readFileSync(filePath, 'utf-8');
-    }
-    else {
-        content = '# Failed Approaches (Don\'t Repeat)\n\n';
+    // Ensure file exists with header
+    if (!fs.existsSync(filePath)) {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, FAILURES_HEADER);
     }
     const entry = formatFailure(failure);
-    content += entry;
-    fs.writeFileSync(filePath, content);
+    fs.appendFileSync(filePath, entry);
 }
 function parseFailures(content) {
     const failures = [];
-    const sections = content.split(/^## /m).slice(1);
-    for (const section of sections) {
-        const lines = section.split('\n');
-        const titleLine = lines[0];
-        const dateMatch = titleLine.match(/^(\d{4}-\d{2}-\d{2}):\s*(.+)/);
-        if (dateMatch) {
-            const failure = {
-                date: dateMatch[1],
-                what: dateMatch[2],
-                why_failed: '',
-                solution: '',
-            };
+    const blocks = content.split(/\n## /).slice(1);
+    for (const block of blocks) {
+        try {
+            const lines = block.split('\n');
+            const approach = lines[0]?.trim() || '';
+            let date = '';
+            let reason = '';
+            let context = '';
+            let suggestion = '';
+            let currentSection = '';
             for (const line of lines.slice(1)) {
-                if (line.startsWith('**What:**')) {
-                    failure.what = line.replace('**What:**', '').trim();
+                // Skip separator lines
+                if (line.trim() === '---') {
+                    continue;
                 }
-                else if (line.startsWith('**Why it failed:**')) {
-                    failure.why_failed = line.replace('**Why it failed:**', '').trim();
+                if (line.startsWith('**Date:**')) {
+                    date = line.replace('**Date:**', '').trim();
                 }
-                else if (line.startsWith('**Solution that worked:**')) {
-                    failure.solution = line.replace('**Solution that worked:**', '').trim();
+                else if (line.startsWith('**Reason:**')) {
+                    currentSection = 'reason';
                 }
-                else if (line.startsWith('**Agent:**')) {
-                    failure.agent = line.replace('**Agent:**', '').trim();
+                else if (line.startsWith('**Context:**')) {
+                    currentSection = 'context';
+                }
+                else if (line.startsWith('**Suggestion:**')) {
+                    currentSection = 'suggestion';
+                }
+                else if (currentSection === 'reason' && line.trim()) {
+                    reason += line.trim() + ' ';
+                }
+                else if (currentSection === 'context' && line.trim()) {
+                    context += line.trim() + ' ';
+                }
+                else if (currentSection === 'suggestion' && line.trim()) {
+                    suggestion += line.trim() + ' ';
                 }
             }
-            failures.push(failure);
+            if (approach && date && reason) {
+                failures.push({
+                    approach,
+                    date,
+                    reason: reason.trim(),
+                    context: context.trim() || undefined,
+                    suggestion: suggestion.trim() || undefined,
+                });
+            }
+        }
+        catch (error) {
+            // Skip malformed entries
+            continue;
         }
     }
     return failures;
 }
 function formatFailure(failure) {
-    let entry = `## ${failure.date}: ${failure.what}\n`;
-    entry += `**What:** ${failure.what}\n`;
-    entry += `**Why it failed:** ${failure.why_failed}\n`;
-    entry += `**Solution that worked:** ${failure.solution}\n`;
-    if (failure.agent) {
-        entry += `**Agent:** ${failure.agent}\n`;
+    let md = `\n## ${failure.approach}\n\n`;
+    md += `**Date:** ${failure.date}\n`;
+    md += '\n**Reason:**\n';
+    md += `${failure.reason}\n`;
+    if (failure.context) {
+        md += '\n**Context:**\n';
+        md += `${failure.context}\n`;
     }
-    entry += '\n';
-    return entry;
+    if (failure.suggestion) {
+        md += '\n**Suggestion:**\n';
+        md += `${failure.suggestion}\n`;
+    }
+    md += '\n---\n';
+    return md;
 }

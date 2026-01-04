@@ -127,10 +127,9 @@ async function main() {
             const ERROR_WHAT_LENGTH = 100;
             const failure = {
                 date: new Date().toISOString().split('T')[0],
-                what: `${toolName} failed: ${errorMessage.slice(0, ERROR_WHAT_LENGTH)}`,
-                why_failed: `Exhausted ${errorState.totalAttempts} attempts across 3 phases`,
-                solution: 'Manual intervention required',
-                agent: 'PostToolUseFailure',
+                approach: `${toolName} failed: ${errorMessage.slice(0, ERROR_WHAT_LENGTH)}`,
+                reason: `Exhausted ${errorState.totalAttempts} attempts across 3 phases`,
+                suggestion: 'Manual intervention required',
             };
             try {
                 await writeFailure(cwd, failure);

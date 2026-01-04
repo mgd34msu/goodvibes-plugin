@@ -3,7 +3,14 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared.js';
+const PREFERENCES_HEADER = `# User Preferences
+
+This file stores user preferences for this project.
+These preferences guide agent behavior and decision-making.
+
+---
+
+`;
 /** Reads all user preferences from the memory file. */
 export function readPreferences(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
@@ -14,47 +21,72 @@ export function readPreferences(cwd) {
     return parsePreferences(content);
 }
 /** Writes or updates a preference in the preferences memory file. */
-export async function writePreference(cwd, preference) {
-    await ensureGoodVibesDir(cwd);
+export function writePreference(cwd, preference) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
-    let content = '';
-    if (fs.existsSync(filePath)) {
-        content = fs.readFileSync(filePath, 'utf-8');
+    // Ensure file exists with header
+    if (!fs.existsSync(filePath)) {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, PREFERENCES_HEADER);
     }
-    else {
-        content = '# User Preferences\n\n';
-    }
-    // Check if preference already exists and update it
-    const prefRegex = new RegExp(`^- \\*\\*${preference.key}:\\*\\*.*$`, 'm');
-    const newEntry = formatPreference(preference);
-    if (prefRegex.test(content)) {
-        content = content.replace(prefRegex, newEntry.trim());
-    }
-    else {
-        content += newEntry;
-    }
-    fs.writeFileSync(filePath, content);
+    const entry = formatPreference(preference);
+    fs.appendFileSync(filePath, entry);
 }
 function parsePreferences(content) {
     const preferences = [];
-    const lines = content.split('\n');
-    for (const line of lines) {
-        const match = line.match(/^- \*\*(.+):\*\*\s*(.+?)(?:\s*\((.+)\))?$/);
-        if (match) {
-            preferences.push({
-                key: match[1],
-                value: match[2].trim(),
-                note: match[3]?.trim(),
-            });
+    const blocks = content.split(/\n## /).slice(1);
+    for (const block of blocks) {
+        try {
+            const lines = block.split('\n');
+            const key = lines[0]?.trim() || '';
+            let value = '';
+            let date = '';
+            let notes = '';
+            let currentSection = '';
+            for (const line of lines.slice(1)) {
+                // Skip separator lines
+                if (line.trim() === '---') {
+                    continue;
+                }
+                if (line.startsWith('**Value:**')) {
+                    value = line.replace('**Value:**', '').trim();
+                }
+                else if (line.startsWith('**Date:**')) {
+                    date = line.replace('**Date:**', '').trim();
+                }
+                else if (line.startsWith('**Notes:**')) {
+                    currentSection = 'notes';
+                }
+                else if (currentSection === 'notes' && line.trim()) {
+                    notes += line.trim() + ' ';
+                }
+            }
+            if (key && value && date) {
+                preferences.push({
+                    key,
+                    value,
+                    date,
+                    notes: notes.trim() || undefined,
+                });
+            }
+        }
+        catch (error) {
+            // Skip malformed entries
+            continue;
         }
     }
     return preferences;
 }
-function formatPreference(pref) {
-    let entry = `- **${pref.key}:** ${pref.value}`;
-    if (pref.note) {
-        entry += ` (${pref.note})`;
+function formatPreference(preference) {
+    let md = `\n## ${preference.key}\n\n`;
+    md += `**Value:** ${preference.value}\n`;
+    md += `**Date:** ${preference.date}\n`;
+    if (preference.notes) {
+        md += '\n**Notes:**\n';
+        md += `${preference.notes}\n`;
     }
-    entry += '\n';
-    return entry;
+    md += '\n---\n';
+    return md;
 }

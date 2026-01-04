@@ -3,7 +3,14 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared.js';
+const DECISIONS_HEADER = `# Architectural Decisions
+
+This file records architectural decisions made for this project.
+Each decision includes the date, alternatives considered, rationale, and the agent that made it.
+
+---
+
+`;
 /** Reads all project decisions from the memory file. */
 export function readDecisions(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
@@ -14,63 +21,96 @@ export function readDecisions(cwd) {
     return parseDecisions(content);
 }
 /** Appends a new decision to the decisions memory file. */
-export async function writeDecision(cwd, decision) {
-    await ensureGoodVibesDir(cwd);
+export function writeDecision(cwd, decision) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
-    let content = '';
-    if (fs.existsSync(filePath)) {
-        content = fs.readFileSync(filePath, 'utf-8');
-    }
-    else {
-        content = '# Project Decisions\n\n';
+    // Ensure file exists with header
+    if (!fs.existsSync(filePath)) {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, DECISIONS_HEADER);
     }
     const entry = formatDecision(decision);
-    content += entry;
-    fs.writeFileSync(filePath, content);
+    fs.appendFileSync(filePath, entry);
 }
 function parseDecisions(content) {
     const decisions = [];
-    const sections = content.split(/^## /m).slice(1);
-    for (const section of sections) {
-        const lines = section.split('\n');
-        const titleLine = lines[0];
-        const dateMatch = titleLine.match(/^(\d{4}-\d{2}-\d{2}):\s*(.+)/);
-        if (dateMatch) {
-            const decision = {
-                date: dateMatch[1],
-                title: dateMatch[2],
-                decision: '',
-                rationale: '',
-            };
+    const blocks = content.split(/\n## /).slice(1);
+    for (const block of blocks) {
+        try {
+            const lines = block.split('\n');
+            const title = lines[0]?.trim() || '';
+            let date = '';
+            let alternatives = [];
+            let rationale = '';
+            let agent = '';
+            let context = '';
+            let currentSection = '';
             for (const line of lines.slice(1)) {
-                if (line.startsWith('**Decision:**')) {
-                    decision.decision = line.replace('**Decision:**', '').trim();
+                // Skip separator lines
+                if (line.trim() === '---') {
+                    continue;
                 }
-                else if (line.startsWith('**Alternatives Considered:**')) {
-                    decision.alternatives = line.replace('**Alternatives Considered:**', '').trim().split(', ');
-                }
-                else if (line.startsWith('**Rationale:**')) {
-                    decision.rationale = line.replace('**Rationale:**', '').trim();
+                if (line.startsWith('**Date:**')) {
+                    date = line.replace('**Date:**', '').trim();
                 }
                 else if (line.startsWith('**Agent:**')) {
-                    decision.agent = line.replace('**Agent:**', '').trim();
+                    agent = line.replace('**Agent:**', '').trim();
+                }
+                else if (line.startsWith('**Alternatives:**')) {
+                    currentSection = 'alternatives';
+                }
+                else if (line.startsWith('**Rationale:**')) {
+                    currentSection = 'rationale';
+                }
+                else if (line.startsWith('**Context:**')) {
+                    currentSection = 'context';
+                }
+                else if (line.startsWith('- ') && currentSection === 'alternatives') {
+                    alternatives.push(line.replace('- ', '').trim());
+                }
+                else if (currentSection === 'rationale' && line.trim()) {
+                    rationale += line.trim() + ' ';
+                }
+                else if (currentSection === 'context' && line.trim()) {
+                    context += line.trim() + ' ';
                 }
             }
-            decisions.push(decision);
+            if (title && date && rationale) {
+                decisions.push({
+                    title,
+                    date,
+                    alternatives,
+                    rationale: rationale.trim(),
+                    agent: agent || undefined,
+                    context: context.trim() || undefined,
+                });
+            }
+        }
+        catch (error) {
+            // Skip malformed entries
+            continue;
         }
     }
     return decisions;
 }
 function formatDecision(decision) {
-    let entry = `## ${decision.date}: ${decision.title}\n`;
-    entry += `**Decision:** ${decision.decision}\n`;
-    if (decision.alternatives && decision.alternatives.length > 0) {
-        entry += `**Alternatives Considered:** ${decision.alternatives.join(', ')}\n`;
-    }
-    entry += `**Rationale:** ${decision.rationale}\n`;
+    let md = `\n## ${decision.title}\n\n`;
+    md += `**Date:** ${decision.date}\n`;
     if (decision.agent) {
-        entry += `**Agent:** ${decision.agent}\n`;
+        md += `**Agent:** ${decision.agent}\n`;
     }
-    entry += '\n';
-    return entry;
+    md += '\n**Alternatives:**\n';
+    for (const alt of decision.alternatives) {
+        md += `- ${alt}\n`;
+    }
+    md += '\n**Rationale:**\n';
+    md += `${decision.rationale}\n`;
+    if (decision.context) {
+        md += '\n**Context:**\n';
+        md += `${decision.context}\n`;
+    }
+    md += '\n---\n';
+    return md;
 }

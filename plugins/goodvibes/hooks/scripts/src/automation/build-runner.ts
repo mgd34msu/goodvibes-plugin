@@ -72,7 +72,7 @@ export function runBuild(cwd: string): BuildResult {
  */
 export function runTypeCheck(cwd: string): BuildResult {
   try {
-    execSync(TYPECHECK_COMMAND, { cwd, stdio: 'pipe' });
+    execSync(TYPECHECK_COMMAND, { cwd, stdio: 'pipe', timeout: 120000 });
     return { passed: true, summary: 'Type check passed', errors: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);

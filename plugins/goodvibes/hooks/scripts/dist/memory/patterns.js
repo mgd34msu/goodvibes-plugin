@@ -3,7 +3,14 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared.js';
+const PATTERNS_HEADER = `# Project-Specific Patterns
+
+This file documents code patterns specific to this project.
+These patterns help maintain consistency across the codebase.
+
+---
+
+`;
 /** Reads all established patterns from the memory file. */
 export function readPatterns(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
@@ -14,52 +21,102 @@ export function readPatterns(cwd) {
     return parsePatterns(content);
 }
 /** Writes a new pattern to the patterns memory file. */
-export async function writePattern(cwd, pattern) {
-    await ensureGoodVibesDir(cwd);
+export function writePattern(cwd, pattern) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
-    let content = '';
-    if (fs.existsSync(filePath)) {
-        content = fs.readFileSync(filePath, 'utf-8');
-    }
-    else {
-        content = '# Project Patterns\n\n';
-    }
-    // Check if category already exists
-    const categoryHeader = `## ${pattern.category}`;
-    if (content.includes(categoryHeader)) {
-        // Append to existing category
-        const parts = content.split(categoryHeader);
-        const beforeCategory = parts[0];
-        const afterCategory = parts[1];
-        const nextSection = afterCategory.indexOf('\n## ');
-        if (nextSection > -1) {
-            const categoryContent = afterCategory.slice(0, nextSection);
-            const rest = afterCategory.slice(nextSection);
-            content = beforeCategory + categoryHeader + categoryContent + pattern.patterns.map(p => `- ${p}`).join('\n') + '\n' + rest;
+    // Ensure file exists with header
+    if (!fs.existsSync(filePath)) {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
         }
-        else {
-            content = beforeCategory + categoryHeader + afterCategory + pattern.patterns.map(p => `- ${p}`).join('\n') + '\n';
-        }
+        fs.writeFileSync(filePath, PATTERNS_HEADER);
     }
-    else {
-        // Add new category
-        content += `## ${pattern.category}\n`;
-        content += pattern.patterns.map(p => `- ${p}`).join('\n') + '\n\n';
-    }
-    fs.writeFileSync(filePath, content);
+    const entry = formatPattern(pattern);
+    fs.appendFileSync(filePath, entry);
 }
 function parsePatterns(content) {
     const patterns = [];
-    const sections = content.split(/^## /m).slice(1);
-    for (const section of sections) {
-        const lines = section.split('\n');
-        const category = lines[0].trim();
-        const patternLines = lines.slice(1)
-            .filter(l => l.startsWith('- '))
-            .map(l => l.slice(2).trim());
-        if (category && patternLines.length > 0) {
-            patterns.push({ category, patterns: patternLines });
+    const blocks = content.split(/\n## /).slice(1);
+    for (const block of blocks) {
+        try {
+            const lines = block.split('\n');
+            const name = lines[0]?.trim() || '';
+            let date = '';
+            let description = '';
+            let example = '';
+            let files = [];
+            let currentSection = '';
+            let inCodeBlock = false;
+            for (const line of lines.slice(1)) {
+                // Skip separator lines (but only outside code blocks)
+                if (!inCodeBlock && line.trim() === '---') {
+                    continue;
+                }
+                if (line.startsWith('```')) {
+                    inCodeBlock = !inCodeBlock;
+                    if (inCodeBlock && currentSection === 'example') {
+                        example += line + '\n';
+                    }
+                    else if (!inCodeBlock && currentSection === 'example') {
+                        example += line + '\n';
+                    }
+                    continue;
+                }
+                if (inCodeBlock && currentSection === 'example') {
+                    example += line + '\n';
+                    continue;
+                }
+                if (line.startsWith('**Date:**')) {
+                    date = line.replace('**Date:**', '').trim();
+                }
+                else if (line.startsWith('**Description:**')) {
+                    currentSection = 'description';
+                }
+                else if (line.startsWith('**Example:**')) {
+                    currentSection = 'example';
+                }
+                else if (line.startsWith('**Files:**')) {
+                    currentSection = 'files';
+                }
+                else if (line.startsWith('- ') && currentSection === 'files') {
+                    files.push(line.replace('- ', '').trim());
+                }
+                else if (currentSection === 'description' && line.trim()) {
+                    description += line.trim() + ' ';
+                }
+            }
+            if (name && date && description) {
+                patterns.push({
+                    name,
+                    date,
+                    description: description.trim(),
+                    example: example.trim() || undefined,
+                    files: files.length > 0 ? files : undefined,
+                });
+            }
+        }
+        catch (error) {
+            // Skip malformed entries
+            continue;
         }
     }
     return patterns;
+}
+function formatPattern(pattern) {
+    let md = `\n## ${pattern.name}\n\n`;
+    md += `**Date:** ${pattern.date}\n`;
+    md += '\n**Description:**\n';
+    md += `${pattern.description}\n`;
+    if (pattern.example) {
+        md += '\n**Example:**\n';
+        md += `${pattern.example}\n`;
+    }
+    if (pattern.files && pattern.files.length > 0) {
+        md += '\n**Files:**\n';
+        for (const file of pattern.files) {
+            md += `- ${file}\n`;
+        }
+    }
+    md += '\n---\n';
+    return md;
 }

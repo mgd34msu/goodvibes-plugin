@@ -4,34 +4,38 @@
 
 /** Represents an architectural decision record. */
 export interface MemoryDecision {
-  date: string;
   title: string;
-  decision: string;
-  alternatives?: string[];
+  date: string;
+  alternatives: string[];
   rationale: string;
   agent?: string;
+  context?: string;
 }
 
-/** Represents a categorized set of code patterns. */
+/** Represents a project-specific code pattern. */
 export interface MemoryPattern {
-  category: string;
-  patterns: string[];
+  name: string;
+  date: string;
+  description: string;
+  example?: string;
+  files?: string[];
 }
 
 /** Represents a failed approach to avoid repeating. */
 export interface MemoryFailure {
+  approach: string;
   date: string;
-  what: string;
-  why_failed: string;
-  solution: string;
-  agent?: string;
+  reason: string;
+  context?: string;
+  suggestion?: string;
 }
 
 /** Represents a user preference setting. */
 export interface MemoryPreference {
   key: string;
   value: string;
-  note?: string;
+  date: string;
+  notes?: string;
 }
 
 /** Container for all project memory data. */

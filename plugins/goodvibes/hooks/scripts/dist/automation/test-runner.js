@@ -49,7 +49,7 @@ export function runTests(testFiles, cwd) {
  */
 export function runFullTestSuite(cwd) {
     try {
-        execSync('npm test', { cwd, stdio: 'pipe' });
+        execSync('npm test', { cwd, stdio: 'pipe', timeout: 600000 });
         return { passed: true, summary: 'All tests passed', failures: [] };
     }
     catch (error) {
