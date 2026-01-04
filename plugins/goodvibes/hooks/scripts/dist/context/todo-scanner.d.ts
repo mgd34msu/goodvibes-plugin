@@ -11,6 +11,6 @@ export interface TodoItem {
     text: string;
 }
 /** Scan project for TODO, FIXME, BUG, HACK, XXX comments. */
-export declare function scanTodos(cwd: string, limit?: number): TodoItem[];
+export declare function scanTodos(cwd: string, limit?: number): Promise<TodoItem[]>;
 /** Format TODO items for display in context output. */
 export declare function formatTodos(todos: TodoItem[]): string;

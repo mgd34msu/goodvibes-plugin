@@ -11,6 +11,6 @@ export interface EnvStatus {
     warnings: string[];
 }
 /** Check environment configuration: .env files and missing variables. */
-export declare function checkEnvironment(cwd: string): EnvStatus;
+export declare function checkEnvironment(cwd: string): Promise<EnvStatus>;
 /** Format environment status for display in context output. */
 export declare function formatEnvStatus(status: EnvStatus): string;

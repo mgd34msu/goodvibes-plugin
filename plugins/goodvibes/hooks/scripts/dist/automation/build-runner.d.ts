@@ -1,3 +1,9 @@
+/**
+ * Build Runner
+ *
+ * Executes build and type-check operations for the project,
+ * parsing output to extract structured error information.
+ */
 /** Result of a build or type check operation. */
 export interface BuildResult {
     passed: boolean;
@@ -10,8 +16,8 @@ export interface BuildResult {
 }
 /** Build commands mapped by framework type. */
 export declare const BUILD_COMMANDS: Record<string, string>;
-/** Type check commands mapped by framework type. */
-export declare const TYPECHECK_COMMANDS: Record<string, string>;
+/** TypeScript type check command (same for all frameworks). */
+export declare const TYPECHECK_COMMAND = "npx tsc --noEmit";
 /**
  * Detects the appropriate build command based on project config files.
  */

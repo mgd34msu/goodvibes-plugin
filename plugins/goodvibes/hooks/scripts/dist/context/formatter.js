@@ -16,52 +16,52 @@ const MAX_SUMMARY_FRAMEWORKS = 4;
 /** Maximum number of frameworks to display in minimal context. */
 const MAX_MINIMAL_FRAMEWORKS = 3;
 /** Format all gathered context into a readable string. */
-export function formatContext(ctx) {
+export function formatContext(context) {
     const sections = [];
     let issueCount = 0;
     sections.push('# Project Context');
     sections.push('');
-    const stackFormatted = formatStackInfo(ctx.stack);
+    const stackFormatted = formatStackInfo(context.stack);
     if (stackFormatted) {
         sections.push('## Tech Stack');
         sections.push(stackFormatted);
         sections.push('');
     }
-    const structureFormatted = formatFolderAnalysis(ctx.folderStructure);
+    const structureFormatted = formatFolderAnalysis(context.folderStructure);
     if (structureFormatted) {
         sections.push('## Architecture');
         sections.push(structureFormatted);
         sections.push('');
     }
-    const gitFormatted = formatGitContext(ctx.git);
+    const gitFormatted = formatGitContext(context.git);
     if (gitFormatted) {
         sections.push('## Git Status');
         sections.push(gitFormatted);
         sections.push('');
     }
-    const healthFormatted = formatHealthStatus(ctx.health);
+    const healthFormatted = formatHealthStatus(context.health);
     if (healthFormatted) {
         sections.push('## Project Health');
         sections.push(healthFormatted);
         // Count warnings and errors from health checks
-        issueCount += ctx.health.checks.filter(c => c.status === 'warning' || c.status === 'error').length;
+        issueCount += context.health.checks.filter(c => c.status === 'warning' || c.status === 'error').length;
         sections.push('');
     }
-    const envFormatted = formatEnvStatus(ctx.environment);
+    const envFormatted = formatEnvStatus(context.environment);
     if (envFormatted) {
         sections.push('## Environment');
         sections.push(envFormatted);
-        issueCount += ctx.environment.missingVars.length;
+        issueCount += context.environment.missingVars.length;
         sections.push('');
     }
-    const todosFormatted = formatTodos(ctx.todos);
+    const todosFormatted = formatTodos(context.todos);
     if (todosFormatted) {
         sections.push('## Code TODOs');
         sections.push(todosFormatted);
-        issueCount += ctx.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
+        issueCount += context.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
         sections.push('');
     }
-    const memoryFormatted = formatMemoryContext(ctx.memory);
+    const memoryFormatted = formatMemoryContext(context.memory);
     if (memoryFormatted) {
         sections.push('## Project Memory');
         sections.push(memoryFormatted);
@@ -69,13 +69,13 @@ export function formatContext(ctx) {
     }
     // Generate summary
     const summaryParts = [];
-    const allTech = ctx.stack.frameworks.slice(0, MAX_SUMMARY_FRAMEWORKS);
+    const allTech = context.stack.frameworks.slice(0, MAX_SUMMARY_FRAMEWORKS);
     if (allTech.length > 0) {
         summaryParts.push(allTech.join(' + '));
     }
-    if (ctx.git.isRepo && ctx.git.branch) {
-        if (ctx.git.uncommittedFileCount > 0) {
-            summaryParts.push(`${ctx.git.uncommittedFileCount} uncommitted changes`);
+    if (context.git.isRepo && context.git.branch) {
+        if (context.git.uncommittedFileCount > 0) {
+            summaryParts.push(`${context.git.uncommittedFileCount} uncommitted changes`);
         }
     }
     if (issueCount > 0) {
@@ -90,20 +90,20 @@ export function formatContext(ctx) {
     };
 }
 /** Create a minimal context string for low-overhead scenarios. */
-export function formatMinimalContext(ctx) {
+export function formatMinimalContext(context) {
     const parts = [];
-    const tech = ctx.stack.frameworks.slice(0, MAX_MINIMAL_FRAMEWORKS);
+    const tech = context.stack.frameworks.slice(0, MAX_MINIMAL_FRAMEWORKS);
     if (tech.length > 0) {
         parts.push(`Stack: ${tech.join(', ')}`);
     }
-    if (ctx.git.isRepo && ctx.git.branch) {
-        parts.push(`Branch: ${ctx.git.branch}`);
+    if (context.git.isRepo && context.git.branch) {
+        parts.push(`Branch: ${context.git.branch}`);
     }
-    const healthWarnings = ctx.health.checks.filter(c => c.status === 'warning' || c.status === 'error');
+    const healthWarnings = context.health.checks.filter(c => c.status === 'warning' || c.status === 'error');
     if (healthWarnings.length > 0) {
         parts.push(`${healthWarnings.length} health warning(s)`);
     }
-    const highPriorityTodos = ctx.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
+    const highPriorityTodos = context.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
     if (highPriorityTodos > 0) {
         parts.push(`${highPriorityTodos} high-priority TODO(s)`);
     }

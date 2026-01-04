@@ -26,6 +26,43 @@ export interface RetryEntry {
 /** Map of error signatures to retry entries */
 export type RetryData = Record<string, RetryEntry>;
 
+// =============================================================================
+// Type Guards
+// =============================================================================
+
+/** Type guard to check if a value is a RetryData object */
+function isRetryData(value: unknown): value is RetryData {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  // Check if all entries match RetryEntry interface
+  const obj = value as Record<string, unknown>;
+  return Object.values(obj).every(entry =>
+    entry !== null &&
+    typeof entry === 'object' &&
+    'signature' in entry &&
+    'attempts' in entry &&
+    'lastAttempt' in entry &&
+    'phase' in entry &&
+    typeof (entry as RetryEntry).signature === 'string' &&
+    typeof (entry as RetryEntry).attempts === 'number' &&
+    typeof (entry as RetryEntry).lastAttempt === 'string' &&
+    typeof (entry as RetryEntry).phase === 'number'
+  );
+}
+
+/** Type guard to check if a value is an ErrorState object */
+function isErrorState(value: unknown): value is ErrorState {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'category' in value &&
+    'phase' in value &&
+    'attemptsThisPhase' in value
+  );
+}
+
 /**
  * Get the path to the retries.json file
  */
@@ -43,7 +80,15 @@ export function loadRetries(cwd: string): RetryData {
 
   try {
     const content = fs.readFileSync(retriesPath, 'utf-8');
-    return JSON.parse(content) as RetryData;
+    const parsed: unknown = JSON.parse(content);
+
+    // Validate the parsed data before returning
+    if (isRetryData(parsed)) {
+      return parsed;
+    }
+
+    // Return empty if data is invalid
+    return {};
   } catch {
     return {};
   }
@@ -64,16 +109,26 @@ export function saveRetry(
   if (typeof stateOrCwd === 'string') {
     // Legacy signature: (cwd, signature, phase)
     cwd = stateOrCwd;
-    phase = errorStateOrPhase as number;
+
+    if (typeof errorStateOrPhase === 'number') {
+      phase = errorStateOrPhase;
+    } else {
+      // Unexpected type, use default phase
+      phase = 1;
+    }
   } else {
     // New signature: (state, signature, errorState)
     // Extract cwd from state - we need to find it from the environment
     cwd = process.cwd();
-    const errorState = errorStateOrPhase as ErrorState;
-    phase = errorState.phase;
 
-    // Update the state's error tracking
-    stateOrCwd.errors[signature] = errorState;
+    if (isErrorState(errorStateOrPhase)) {
+      phase = errorStateOrPhase.phase;
+      // Update the state's error tracking
+      stateOrCwd.errors[signature] = errorStateOrPhase;
+    } else {
+      // Unexpected type, use default phase
+      phase = 1;
+    }
   }
 
   // Ensure .goodvibes directory structure exists
@@ -143,14 +198,16 @@ export function shouldEscalatePhase(
     // Escalate if we've hit the retry limit for the current phase
     // and we're not already at the maximum phase (3)
     return entry.attempts >= limit && (currentPhase ?? entry.phase) < 3;
-  } else {
+  } else if (isErrorState(cwdOrErrorState)) {
     // ErrorState-based signature: (errorState)
     const errorState = cwdOrErrorState;
-    const errorCategory = errorState.category as ErrorCategory;
+    const errorCategory = errorState.category;
     const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
 
     return errorState.attemptsThisPhase >= limit && errorState.phase < 3;
   }
+
+  return false;
 }
 
 /**
@@ -161,11 +218,18 @@ export function escalatePhase(errorState: ErrorState): ErrorState {
     return errorState;
   }
 
-  return {
-    ...errorState,
-    phase: (errorState.phase + 1) as 1 | 2 | 3,
-    attemptsThisPhase: 0,
-  };
+  const nextPhase = errorState.phase + 1;
+  // Type-safe phase validation
+  if (nextPhase === 1 || nextPhase === 2 || nextPhase === 3) {
+    return {
+      ...errorState,
+      phase: nextPhase,
+      attemptsThisPhase: 0,
+    };
+  }
+
+  // Should never happen, but return unchanged state for safety
+  return errorState;
 }
 
 /**
@@ -189,14 +253,16 @@ export function hasExhaustedRetries(
 
     const limit = PHASE_RETRY_LIMITS[category];
     return entry.phase >= 3 && entry.attempts >= limit;
-  } else {
+  } else if (isErrorState(cwdOrErrorState)) {
     // ErrorState-based signature: (errorState)
     const errorState = cwdOrErrorState;
-    const errorCategory = errorState.category as ErrorCategory;
+    const errorCategory = errorState.category;
     const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
 
     return errorState.phase >= 3 && errorState.attemptsThisPhase >= limit;
   }
+
+  return false;
 }
 
 /**
@@ -236,14 +302,17 @@ export function getRemainingAttempts(
     }
 
     return Math.max(0, limit - entry.attempts);
-  } else {
+  } else if (isErrorState(cwdOrErrorState)) {
     // ErrorState-based signature: (errorState)
     const errorState = cwdOrErrorState;
-    const errorCategory = errorState.category as ErrorCategory;
+    const errorCategory = errorState.category;
     const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
 
     return Math.max(0, limit - errorState.attemptsThisPhase);
   }
+
+  // Default return value for unexpected types
+  return PHASE_RETRY_LIMITS[category];
 }
 
 /**

@@ -11,6 +11,12 @@ export const COMMON_DEV_PORTS = [3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888]
 const COMMAND_TIMEOUT = 10000;
 /** Timeout for tasklist command on Windows in milliseconds. */
 const TASKLIST_TIMEOUT = 5000;
+// =============================================================================
+// Platform-Specific Parsing Functions
+// =============================================================================
+/**
+ * Parse Windows netstat output to extract listening ports
+ */
 function parseWindowsNetstat(output, ports) {
     const portMap = new Map();
     const lines = output.split('\n');
@@ -57,6 +63,9 @@ function parseWindowsNetstat(output, ports) {
     }
     return portMap;
 }
+/**
+ * Parse Unix lsof output to extract listening ports
+ */
 function parseUnixLsof(output, ports) {
     const portMap = new Map();
     const lines = output.split('\n');
@@ -80,6 +89,9 @@ function parseUnixLsof(output, ports) {
     }
     return portMap;
 }
+/**
+ * Parse Unix netstat output to extract listening ports
+ */
 function parseUnixNetstat(output, ports) {
     const portMap = new Map();
     const lines = output.split('\n');
@@ -105,47 +117,61 @@ function parseUnixNetstat(output, ports) {
     }
     return portMap;
 }
+// =============================================================================
+// Platform-Specific Port Detection
+// =============================================================================
+/**
+ * Check ports on Windows using netstat
+ */
+function checkPortsWindows(ports) {
+    try {
+        const output = execSync('netstat -ano -p TCP', {
+            encoding: 'utf-8',
+            timeout: COMMAND_TIMEOUT,
+            windowsHide: true,
+        });
+        return parseWindowsNetstat(output, ports);
+    }
+    catch {
+        return new Map();
+    }
+}
+/**
+ * Check ports on Unix-like systems (Linux, macOS) using lsof or netstat
+ */
+function checkPortsUnix(ports) {
+    // Try lsof first (more reliable for process names)
+    try {
+        const portsArg = ports.map(p => `-i:${p}`).join(' ');
+        const output = execSync(`lsof ${portsArg} 2>/dev/null`, {
+            encoding: 'utf-8',
+            timeout: COMMAND_TIMEOUT,
+        });
+        return parseUnixLsof(output, ports);
+    }
+    catch {
+        // Fall back to netstat
+        try {
+            const output = execSync('netstat -tlnp 2>/dev/null || netstat -tln', {
+                encoding: 'utf-8',
+                timeout: COMMAND_TIMEOUT,
+            });
+            return parseUnixNetstat(output, ports);
+        }
+        catch {
+            return new Map();
+        }
+    }
+}
 /** Check which common development ports are in use. */
 export async function checkPorts(_cwd) {
     const platform = os.platform();
-    let activePortsMap = new Map();
-    try {
-        if (platform === 'win32') {
-            const output = execSync('netstat -ano -p TCP', {
-                encoding: 'utf-8',
-                timeout: COMMAND_TIMEOUT,
-                windowsHide: true,
-            });
-            activePortsMap = parseWindowsNetstat(output, COMMON_DEV_PORTS);
-        }
-        else {
-            // Try lsof first (more reliable for process names)
-            try {
-                const portsArg = COMMON_DEV_PORTS.map(p => `-i:${p}`).join(' ');
-                const output = execSync(`lsof ${portsArg} 2>/dev/null`, {
-                    encoding: 'utf-8',
-                    timeout: COMMAND_TIMEOUT,
-                });
-                activePortsMap = parseUnixLsof(output, COMMON_DEV_PORTS);
-            }
-            catch {
-                // Fall back to netstat
-                try {
-                    const output = execSync('netstat -tlnp 2>/dev/null || netstat -tln', {
-                        encoding: 'utf-8',
-                        timeout: COMMAND_TIMEOUT,
-                    });
-                    activePortsMap = parseUnixNetstat(output, COMMON_DEV_PORTS);
-                }
-                catch {
-                    // Both failed, return empty
-                }
-            }
-        }
+    let activePortsMap;
+    if (platform === 'win32') {
+        activePortsMap = checkPortsWindows(COMMON_DEV_PORTS);
     }
-    catch {
-        // Port checking failed entirely, return empty array
-        return [];
+    else {
+        activePortsMap = checkPortsUnix(COMMON_DEV_PORTS);
     }
     return COMMON_DEV_PORTS.map(port => ({
         port,

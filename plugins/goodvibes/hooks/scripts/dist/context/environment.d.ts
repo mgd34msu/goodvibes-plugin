@@ -18,4 +18,4 @@ export declare function checkEnvironment(cwd: string): Promise<EnvironmentContex
 /**
  * Format environment context for display
  */
-export declare function formatEnvironment(ctx: EnvironmentContext): string | null;
+export declare function formatEnvironment(context: EnvironmentContext): string | null;

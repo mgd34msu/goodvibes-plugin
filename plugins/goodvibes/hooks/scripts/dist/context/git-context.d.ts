@@ -19,4 +19,4 @@ export interface GitContext {
 /** Retrieve git context for the project directory. */
 export declare function getGitContext(cwd: string): Promise<GitContext>;
 /** Format git context for display in context output. */
-export declare function formatGitContext(ctx: GitContext): string;
+export declare function formatGitContext(context: GitContext): string;

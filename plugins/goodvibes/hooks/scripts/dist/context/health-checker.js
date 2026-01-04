@@ -3,14 +3,24 @@
  *
  * Checks project health: dependencies, lockfiles, TypeScript configuration.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
+import { LOCKFILES } from '../shared.js';
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 /** Check project health: dependencies, lockfiles, TypeScript configuration. */
-export function checkProjectHealth(cwd) {
+export async function checkProjectHealth(cwd) {
     const checks = [];
     // Check node_modules
-    const hasNodeModules = fs.existsSync(path.join(cwd, 'node_modules'));
-    const hasPackageJson = fs.existsSync(path.join(cwd, 'package.json'));
+    const hasNodeModules = await fileExists(path.join(cwd, 'node_modules'));
+    const hasPackageJson = await fileExists(path.join(cwd, 'package.json'));
     if (hasPackageJson && !hasNodeModules) {
         checks.push({
             check: 'dependencies',
@@ -19,8 +29,8 @@ export function checkProjectHealth(cwd) {
         });
     }
     // Check for multiple lockfiles
-    const lockfiles = ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'bun.lockb'];
-    const foundLockfiles = lockfiles.filter(f => fs.existsSync(path.join(cwd, f)));
+    const lockfileChecks = await Promise.all(LOCKFILES.map(async (f) => ({ file: f, exists: await fileExists(path.join(cwd, f)) })));
+    const foundLockfiles = lockfileChecks.filter(({ exists }) => exists).map(({ file }) => file);
     if (foundLockfiles.length > 1) {
         checks.push({
             check: 'lockfiles',
@@ -30,9 +40,9 @@ export function checkProjectHealth(cwd) {
     }
     // Check TypeScript strict mode
     const tsconfigPath = path.join(cwd, 'tsconfig.json');
-    if (fs.existsSync(tsconfigPath)) {
+    if (await fileExists(tsconfigPath)) {
         try {
-            const content = fs.readFileSync(tsconfigPath, 'utf-8');
+            const content = await fs.readFile(tsconfigPath, 'utf-8');
             const config = JSON.parse(content);
             if (!config.compilerOptions?.strict) {
                 checks.push({
@@ -42,8 +52,9 @@ export function checkProjectHealth(cwd) {
                 });
             }
         }
-        catch {
+        catch (error) {
             // tsconfig.json might have comments or invalid JSON, which is fine
+            console.error('[health-checker] Failed to parse tsconfig.json:', error);
         }
     }
     return { checks };

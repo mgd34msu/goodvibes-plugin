@@ -1,6 +1,14 @@
+/**
+ * Build Runner
+ *
+ * Executes build and type-check operations for the project,
+ * parsing output to extract structured error information.
+ */
+
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { extractErrorOutput } from '../shared.js';
 
 /** Result of a build or type check operation. */
 export interface BuildResult {
@@ -21,12 +29,8 @@ export const BUILD_COMMANDS: Record<string, string> = {
   default: 'npm run build',
 };
 
-/** Type check commands mapped by framework type. */
-export const TYPECHECK_COMMANDS: Record<string, string> = {
-  next: 'npx tsc --noEmit',
-  vite: 'npx tsc --noEmit',
-  default: 'npx tsc --noEmit',
-};
+/** TypeScript type check command (same for all frameworks). */
+export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
 
 /**
  * Detects the appropriate build command based on project config files.
@@ -51,7 +55,7 @@ export function runBuild(cwd: string): BuildResult {
   const command = detectBuildCommand(cwd);
 
   try {
-    execSync(command, { cwd, stdio: 'pipe' });
+    execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
     return { passed: true, summary: 'Build passed', errors: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);
@@ -68,7 +72,7 @@ export function runBuild(cwd: string): BuildResult {
  */
 export function runTypeCheck(cwd: string): BuildResult {
   try {
-    execSync('npx tsc --noEmit', { cwd, stdio: 'pipe' });
+    execSync(TYPECHECK_COMMAND, { cwd, stdio: 'pipe' });
     return { passed: true, summary: 'Type check passed', errors: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);
@@ -78,17 +82,6 @@ export function runTypeCheck(cwd: string): BuildResult {
       errors: parseBuildErrors(output),
     };
   }
-}
-
-/**
- * Extract error output from an exec error
- */
-function extractErrorOutput(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const execError = error as { stdout?: Buffer; stderr?: Buffer; message?: string };
-    return execError.stdout?.toString() || execError.stderr?.toString() || execError.message || 'Unknown error';
-  }
-  return String(error);
 }
 
 /**

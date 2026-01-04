@@ -1,4 +1,10 @@
 /**
+ * Git Operations
+ *
+ * Automated git operations including commits, branch management,
+ * and repository state verification.
+ */
+/**
  * Execute a git command safely using array arguments.
  */
 export declare function execGit(command: string, cwd: string): string | null;

@@ -8,6 +8,35 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ensureGoodVibesDir } from '../shared.js';
 import { PHASE_RETRY_LIMITS } from '../types/errors.js';
+// =============================================================================
+// Type Guards
+// =============================================================================
+/** Type guard to check if a value is a RetryData object */
+function isRetryData(value) {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+    // Check if all entries match RetryEntry interface
+    const obj = value;
+    return Object.values(obj).every(entry => entry !== null &&
+        typeof entry === 'object' &&
+        'signature' in entry &&
+        'attempts' in entry &&
+        'lastAttempt' in entry &&
+        'phase' in entry &&
+        typeof entry.signature === 'string' &&
+        typeof entry.attempts === 'number' &&
+        typeof entry.lastAttempt === 'string' &&
+        typeof entry.phase === 'number');
+}
+/** Type guard to check if a value is an ErrorState object */
+function isErrorState(value) {
+    return (value !== null &&
+        typeof value === 'object' &&
+        'category' in value &&
+        'phase' in value &&
+        'attemptsThisPhase' in value);
+}
 /**
  * Get the path to the retries.json file
  */
@@ -22,7 +51,13 @@ export function loadRetries(cwd) {
     }
     try {
         const content = fs.readFileSync(retriesPath, 'utf-8');
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+        // Validate the parsed data before returning
+        if (isRetryData(parsed)) {
+            return parsed;
+        }
+        // Return empty if data is invalid
+        return {};
     }
     catch {
         return {};
@@ -38,16 +73,27 @@ export function saveRetry(stateOrCwd, signature, errorStateOrPhase) {
     if (typeof stateOrCwd === 'string') {
         // Legacy signature: (cwd, signature, phase)
         cwd = stateOrCwd;
-        phase = errorStateOrPhase;
+        if (typeof errorStateOrPhase === 'number') {
+            phase = errorStateOrPhase;
+        }
+        else {
+            // Unexpected type, use default phase
+            phase = 1;
+        }
     }
     else {
         // New signature: (state, signature, errorState)
         // Extract cwd from state - we need to find it from the environment
         cwd = process.cwd();
-        const errorState = errorStateOrPhase;
-        phase = errorState.phase;
-        // Update the state's error tracking
-        stateOrCwd.errors[signature] = errorState;
+        if (isErrorState(errorStateOrPhase)) {
+            phase = errorStateOrPhase.phase;
+            // Update the state's error tracking
+            stateOrCwd.errors[signature] = errorStateOrPhase;
+        }
+        else {
+            // Unexpected type, use default phase
+            phase = 1;
+        }
     }
     // Ensure .goodvibes directory structure exists
     ensureGoodVibesDir(cwd);
@@ -105,13 +151,14 @@ export function shouldEscalatePhase(cwdOrErrorState, signature, currentPhase, ca
         // and we're not already at the maximum phase (3)
         return entry.attempts >= limit && (currentPhase ?? entry.phase) < 3;
     }
-    else {
+    else if (isErrorState(cwdOrErrorState)) {
         // ErrorState-based signature: (errorState)
         const errorState = cwdOrErrorState;
         const errorCategory = errorState.category;
         const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
         return errorState.attemptsThisPhase >= limit && errorState.phase < 3;
     }
+    return false;
 }
 /**
  * Escalate to the next phase
@@ -120,11 +167,17 @@ export function escalatePhase(errorState) {
     if (errorState.phase >= 3) {
         return errorState;
     }
-    return {
-        ...errorState,
-        phase: (errorState.phase + 1),
-        attemptsThisPhase: 0,
-    };
+    const nextPhase = errorState.phase + 1;
+    // Type-safe phase validation
+    if (nextPhase === 1 || nextPhase === 2 || nextPhase === 3) {
+        return {
+            ...errorState,
+            phase: nextPhase,
+            attemptsThisPhase: 0,
+        };
+    }
+    // Should never happen, but return unchanged state for safety
+    return errorState;
 }
 /**
  * Check if all phases have been exhausted
@@ -142,13 +195,14 @@ export function hasExhaustedRetries(cwdOrErrorState, signature, category = 'unkn
         const limit = PHASE_RETRY_LIMITS[category];
         return entry.phase >= 3 && entry.attempts >= limit;
     }
-    else {
+    else if (isErrorState(cwdOrErrorState)) {
         // ErrorState-based signature: (errorState)
         const errorState = cwdOrErrorState;
         const errorCategory = errorState.category;
         const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
         return errorState.phase >= 3 && errorState.attemptsThisPhase >= limit;
     }
+    return false;
 }
 /**
  * Get phase description for messaging
@@ -181,13 +235,15 @@ export function getRemainingAttempts(cwdOrErrorState, signature, category = 'unk
         }
         return Math.max(0, limit - entry.attempts);
     }
-    else {
+    else if (isErrorState(cwdOrErrorState)) {
         // ErrorState-based signature: (errorState)
         const errorState = cwdOrErrorState;
         const errorCategory = errorState.category;
         const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
         return Math.max(0, limit - errorState.attemptsThisPhase);
     }
+    // Default return value for unexpected types
+    return PHASE_RETRY_LIMITS[category];
 }
 /**
  * Generate a signature for an error message

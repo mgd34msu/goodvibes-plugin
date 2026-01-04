@@ -118,17 +118,17 @@ export async function checkEnvironment(cwd) {
 /**
  * Format environment context for display
  */
-export function formatEnvironment(ctx) {
+export function formatEnvironment(context) {
     const lines = [];
-    if (ctx.envFiles.length === 0) {
+    if (context.envFiles.length === 0) {
         return null;
     }
-    lines.push(`**Env Files:** ${ctx.envFiles.join(', ')}`);
-    if (ctx.missingVars.length > 0) {
-        lines.push(`**Missing Vars:** ${ctx.missingVars.join(', ')} (defined in .env.example but not set)`);
+    lines.push(`**Env Files:** ${context.envFiles.join(', ')}`);
+    if (context.missingVars.length > 0) {
+        lines.push(`**Missing Vars:** ${context.missingVars.join(', ')} (defined in .env.example but not set)`);
     }
-    if (ctx.sensitiveVarsExposed.length > 0) {
-        lines.push(`**Warning:** Potentially sensitive vars may not be gitignored: ${ctx.sensitiveVarsExposed.join(', ')}`);
+    if (context.sensitiveVarsExposed.length > 0) {
+        lines.push(`**Warning:** Potentially sensitive vars may not be gitignored: ${context.sensitiveVarsExposed.join(', ')}`);
     }
     return lines.length > 0 ? lines.join('\n') : null;
 }

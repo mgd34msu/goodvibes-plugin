@@ -1,17 +1,19 @@
 /** Records a file modification in the session state */
 export function trackFileModification(state, filePath) {
-    if (!state.files.modifiedThisSession.includes(filePath)) {
-        state.files.modifiedThisSession.push(filePath);
-    }
-    if (!state.files.modifiedSinceCheckpoint.includes(filePath)) {
-        state.files.modifiedSinceCheckpoint.push(filePath);
-    }
+    // Use Set for O(1) lookups, then convert to array
+    const modifiedSession = new Set(state.files.modifiedThisSession);
+    const modifiedCheckpoint = new Set(state.files.modifiedSinceCheckpoint);
+    modifiedSession.add(filePath);
+    modifiedCheckpoint.add(filePath);
+    state.files.modifiedThisSession = Array.from(modifiedSession);
+    state.files.modifiedSinceCheckpoint = Array.from(modifiedCheckpoint);
 }
 /** Records a new file creation in the session state */
 export function trackFileCreation(state, filePath) {
-    if (!state.files.createdThisSession.includes(filePath)) {
-        state.files.createdThisSession.push(filePath);
-    }
+    // Use Set for O(1) lookups, then convert to array
+    const created = new Set(state.files.createdThisSession);
+    created.add(filePath);
+    state.files.createdThisSession = Array.from(created);
     trackFileModification(state, filePath);
 }
 /** Clears the list of files modified since the last checkpoint */

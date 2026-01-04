@@ -1,3 +1,9 @@
+/**
+ * Git Operations
+ *
+ * Automated git operations including commits, branch management,
+ * and repository state verification.
+ */
 import { execSync, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';

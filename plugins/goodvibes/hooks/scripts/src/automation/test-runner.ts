@@ -1,6 +1,14 @@
+/**
+ * Test Runner
+ *
+ * Executes test suites and parses test runner output to extract
+ * failure information for automated debugging.
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { extractErrorOutput } from '../shared.js';
 
 /** Number of lines to include after a test failure match for context. */
 const FAILURE_CONTEXT_LINES = 5;
@@ -42,7 +50,7 @@ export function runTests(testFiles: string[], cwd: string): TestResult {
 
   try {
     const fileArgs = testFiles.join(' ');
-    execSync(`npm test -- ${fileArgs}`, { cwd, stdio: 'pipe' });
+    execSync(`npm test -- ${fileArgs}`, { cwd, stdio: 'pipe', timeout: 300000 });
     return { passed: true, summary: `${testFiles.length} test files passed`, failures: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);
@@ -69,17 +77,6 @@ export function runFullTestSuite(cwd: string): TestResult {
       failures: parseTestFailures(output),
     };
   }
-}
-
-/**
- * Extract error output from an exec error
- */
-function extractErrorOutput(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const execError = error as { stdout?: Buffer; stderr?: Buffer; message?: string };
-    return execError.stdout?.toString() || execError.stderr?.toString() || execError.message || 'Unknown error';
-  }
-  return String(error);
 }
 
 /**

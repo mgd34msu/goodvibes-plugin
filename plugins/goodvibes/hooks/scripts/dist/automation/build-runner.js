@@ -1,6 +1,13 @@
+/**
+ * Build Runner
+ *
+ * Executes build and type-check operations for the project,
+ * parsing output to extract structured error information.
+ */
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { extractErrorOutput } from '../shared.js';
 /** Build commands mapped by framework type. */
 export const BUILD_COMMANDS = {
     next: 'npm run build',
@@ -8,12 +15,8 @@ export const BUILD_COMMANDS = {
     typescript: 'npx tsc --noEmit',
     default: 'npm run build',
 };
-/** Type check commands mapped by framework type. */
-export const TYPECHECK_COMMANDS = {
-    next: 'npx tsc --noEmit',
-    vite: 'npx tsc --noEmit',
-    default: 'npx tsc --noEmit',
-};
+/** TypeScript type check command (same for all frameworks). */
+export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
 /**
  * Detects the appropriate build command based on project config files.
  */
@@ -35,7 +38,7 @@ export function detectBuildCommand(cwd) {
 export function runBuild(cwd) {
     const command = detectBuildCommand(cwd);
     try {
-        execSync(command, { cwd, stdio: 'pipe' });
+        execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
         return { passed: true, summary: 'Build passed', errors: [] };
     }
     catch (error) {
@@ -52,7 +55,7 @@ export function runBuild(cwd) {
  */
 export function runTypeCheck(cwd) {
     try {
-        execSync('npx tsc --noEmit', { cwd, stdio: 'pipe' });
+        execSync(TYPECHECK_COMMAND, { cwd, stdio: 'pipe' });
         return { passed: true, summary: 'Type check passed', errors: [] };
     }
     catch (error) {
@@ -63,16 +66,6 @@ export function runTypeCheck(cwd) {
             errors: parseBuildErrors(output),
         };
     }
-}
-/**
- * Extract error output from an exec error
- */
-function extractErrorOutput(error) {
-    if (error && typeof error === 'object') {
-        const execError = error;
-        return execError.stdout?.toString() || execError.stderr?.toString() || execError.message || 'Unknown error';
-    }
-    return String(error);
 }
 /**
  * Parses TypeScript compiler output to extract structured error information.

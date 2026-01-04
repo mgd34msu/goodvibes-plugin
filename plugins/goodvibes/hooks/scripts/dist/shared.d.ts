@@ -1,35 +1,21 @@
 /**
  * Shared utilities for GoodVibes hook scripts
+ *
+ * This file maintains backwards compatibility by re-exporting from
+ * the split modules in src/shared/
  */
+export type { HookInput, HookResponse, HookSpecificOutput } from './shared/hook-io.js';
+export { readHookInput, allowTool, blockTool, respond } from './shared/hook-io.js';
+export { debug, logError } from './shared/logging.js';
+export type { SharedConfig } from './shared/config.js';
+export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './shared/config.js';
+export { SECURITY_GITIGNORE_ENTRIES, ensureSecureGitignore } from './shared/gitignore.js';
+/** Package manager lockfiles for detection. */
+export declare const LOCKFILES: readonly ["pnpm-lock.yaml", "yarn.lock", "package-lock.json", "bun.lockb"];
 export declare const PLUGIN_ROOT: string;
 export declare const PROJECT_ROOT: string;
 export declare const CACHE_DIR: string;
 export declare const ANALYTICS_FILE: string;
-/** Hook input from stdin (provided by Claude Code). */
-export interface HookInput {
-    session_id: string;
-    transcript_path: string;
-    cwd: string;
-    permission_mode: string;
-    hook_event_name: string;
-    tool_name?: string;
-    tool_input?: Record<string, unknown>;
-}
-/** Hook-specific output for PreToolUse/PermissionRequest events. */
-export interface HookSpecificOutput {
-    hookEventName: string;
-    permissionDecision?: 'allow' | 'deny' | 'ask';
-    permissionDecisionReason?: string;
-    updatedInput?: Record<string, unknown>;
-}
-/** Hook response type (official Claude Code schema). */
-export interface HookResponse {
-    continue?: boolean;
-    stopReason?: string;
-    suppressOutput?: boolean;
-    systemMessage?: string;
-    hookSpecificOutput?: HookSpecificOutput;
-}
 /** Represents a single tool usage event for analytics. */
 export interface ToolUsage {
     tool: string;
@@ -65,31 +51,6 @@ export interface SessionAnalytics {
     issues_found: number;
     detected_stack?: Record<string, unknown>;
 }
-/**
- * Read hook input from stdin
- */
-export declare function readHookInput(): Promise<HookInput>;
-/**
- * Create a response that allows the tool to proceed
- */
-export declare function allowTool(hookEventName: string, systemMessage?: string): HookResponse;
-/**
- * Create a response that blocks the tool
- */
-export declare function blockTool(hookEventName: string, reason: string): HookResponse;
-/**
- * Log debug message to stderr (visible in Claude Code logs but won't affect hook response)
- */
-export declare function debug(message: string, data?: unknown): void;
-/**
- * Log error to stderr with full stack trace
- */
-export declare function logError(context: string, error: unknown): void;
-/**
- * Output hook response as JSON and exit with appropriate code
- * Exit 0 = success, Exit 2 = blocking error
- */
-export declare function respond(response: HookResponse, block?: boolean): void;
 /**
  * Ensure cache directory exists
  */
@@ -129,10 +90,6 @@ export declare function logToolUsage(usage: ToolUsage): void;
  * Ensure .goodvibes directory exists with all required subdirectories
  */
 export declare function ensureGoodVibesDir(cwd: string): Promise<string>;
-/**
- * Ensure .gitignore contains security-critical entries
- */
-export declare function ensureSecureGitignore(cwd: string): Promise<void>;
 /** Keyword categories for telemetry and stack detection. */
 export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /** Flat list of all keywords across all categories. */
@@ -151,57 +108,7 @@ export interface TranscriptData {
  * Parse a Claude Code transcript file to extract tools used and files modified
  */
 export declare function parseTranscript(transcriptPath: string): TranscriptData;
-/** Triggers that determine when quality checkpoints should run. */
-export declare const CHECKPOINT_TRIGGERS: {
-    fileCountThreshold: number;
-    afterAgentComplete: boolean;
-    afterMajorChange: boolean;
-};
-/** Default quality gate checks with auto-fix commands. */
-export declare const QUALITY_GATES: ({
-    name: string;
-    check: string;
-    autoFix: null;
-    blocking: boolean;
-} | {
-    name: string;
-    check: string;
-    autoFix: string;
-    blocking: boolean;
-})[];
 /**
- * Shared configuration for GoodVibes hooks (telemetry, quality, memory, checkpoints).
- * Note: This is separate from the automation config in ./types/config.ts which
- * handles build/test/git automation settings.
+ * Extract error output from an exec error (child_process execSync failures)
  */
-export interface SharedConfig {
-    telemetry?: {
-        enabled?: boolean;
-        anonymize?: boolean;
-    };
-    quality?: {
-        gates?: Array<{
-            name: string;
-            check: string;
-            autoFix: string | null;
-            blocking: boolean;
-        }>;
-        autoFix?: boolean;
-    };
-    memory?: {
-        enabled?: boolean;
-        maxEntries?: number;
-    };
-    checkpoints?: {
-        enabled?: boolean;
-        triggers?: typeof CHECKPOINT_TRIGGERS;
-    };
-}
-/**
- * Get default shared configuration
- */
-export declare function getDefaultSharedConfig(): SharedConfig;
-/**
- * Load shared configuration from .goodvibes/settings.json
- */
-export declare function loadSharedConfig(cwd: string): SharedConfig;
+export declare function extractErrorOutput(error: unknown): string;

@@ -4,7 +4,7 @@
  * Checks environment configuration and identifies missing variables.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 
 /** Environment configuration status. */
@@ -23,27 +23,42 @@ function parseEnvVars(content: string): string[] {
     .filter(Boolean);
 }
 
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Check environment configuration: .env files and missing variables. */
-export function checkEnvironment(cwd: string): EnvStatus {
+export async function checkEnvironment(cwd: string): Promise<EnvStatus> {
   const envPath = path.join(cwd, '.env');
   const envLocalPath = path.join(cwd, '.env.local');
   const envExamplePath = path.join(cwd, '.env.example');
 
-  const hasEnvFile = fs.existsSync(envPath) || fs.existsSync(envLocalPath);
-  const hasEnvExample = fs.existsSync(envExamplePath);
+  const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] = await Promise.all([
+    fileExists(envPath),
+    fileExists(envLocalPath),
+    fileExists(envExamplePath),
+  ]);
+
+  const hasEnvFile = hasEnvPathExists || hasEnvLocalExists;
+  const hasEnvExample = hasEnvExampleExists;
 
   let missingVars: string[] = [];
   const warnings: string[] = [];
 
   if (hasEnvExample) {
-    const exampleContent = fs.readFileSync(envExamplePath, 'utf-8');
+    const exampleContent = await fs.readFile(envExamplePath, 'utf-8');
     const requiredVars = parseEnvVars(exampleContent);
 
     let definedVars: string[] = [];
-    if (fs.existsSync(envLocalPath)) {
-      definedVars = parseEnvVars(fs.readFileSync(envLocalPath, 'utf-8'));
-    } else if (fs.existsSync(envPath)) {
-      definedVars = parseEnvVars(fs.readFileSync(envPath, 'utf-8'));
+    if (hasEnvLocalExists) {
+      definedVars = parseEnvVars(await fs.readFile(envLocalPath, 'utf-8'));
+    } else if (hasEnvPathExists) {
+      definedVars = parseEnvVars(await fs.readFile(envPath, 'utf-8'));
     }
 
     missingVars = requiredVars.filter(v => !definedVars.includes(v));

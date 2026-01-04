@@ -2,19 +2,24 @@ import type { HooksState } from '../types/state.js';
 
 /** Records a file modification in the session state */
 export function trackFileModification(state: HooksState, filePath: string): void {
-  if (!state.files.modifiedThisSession.includes(filePath)) {
-    state.files.modifiedThisSession.push(filePath);
-  }
-  if (!state.files.modifiedSinceCheckpoint.includes(filePath)) {
-    state.files.modifiedSinceCheckpoint.push(filePath);
-  }
+  // Use Set for O(1) lookups, then convert to array
+  const modifiedSession = new Set(state.files.modifiedThisSession);
+  const modifiedCheckpoint = new Set(state.files.modifiedSinceCheckpoint);
+
+  modifiedSession.add(filePath);
+  modifiedCheckpoint.add(filePath);
+
+  state.files.modifiedThisSession = Array.from(modifiedSession);
+  state.files.modifiedSinceCheckpoint = Array.from(modifiedCheckpoint);
 }
 
 /** Records a new file creation in the session state */
 export function trackFileCreation(state: HooksState, filePath: string): void {
-  if (!state.files.createdThisSession.includes(filePath)) {
-    state.files.createdThisSession.push(filePath);
-  }
+  // Use Set for O(1) lookups, then convert to array
+  const created = new Set(state.files.createdThisSession);
+  created.add(filePath);
+  state.files.createdThisSession = Array.from(created);
+
   trackFileModification(state, filePath);
 }
 

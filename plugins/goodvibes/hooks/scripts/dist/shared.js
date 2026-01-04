@@ -1,114 +1,39 @@
 /**
  * Shared utilities for GoodVibes hook scripts
+ *
+ * This file maintains backwards compatibility by re-exporting from
+ * the split modules in src/shared/
  */
 import * as fs from 'fs';
 import * as path from 'path';
+export { readHookInput, allowTool, blockTool, respond } from './shared/hook-io.js';
+export { debug, logError } from './shared/logging.js';
+export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './shared/config.js';
+export { SECURITY_GITIGNORE_ENTRIES, ensureSecureGitignore } from './shared/gitignore.js';
+// =============================================================================
+// Type Guards
+// =============================================================================
+/** Type guard for exec errors with stdout/stderr buffers */
+function isExecError(error) {
+    return error !== null && typeof error === 'object';
+}
 // =============================================================================
 // Constants
 // =============================================================================
-/** Timeout in ms for waiting on stdin input before using defaults. */
-const STDIN_TIMEOUT_MS = 100;
 /** Maximum length for transcript summary text. */
 const TRANSCRIPT_SUMMARY_MAX_LENGTH = 500;
 /** Maximum number of keywords to extract from text. */
 const MAX_EXTRACTED_KEYWORDS = 50;
+/** Package manager lockfiles for detection. */
+export const LOCKFILES = ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'bun.lockb'];
 // Environment - using official Claude Code environment variable names
 export const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), '..');
 export const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 export const CACHE_DIR = path.join(PLUGIN_ROOT, '.cache');
 export const ANALYTICS_FILE = path.join(CACHE_DIR, 'analytics.json');
-/**
- * Read hook input from stdin
- */
-export async function readHookInput() {
-    return new Promise((resolve, reject) => {
-        let data = '';
-        process.stdin.setEncoding('utf-8');
-        process.stdin.on('data', (chunk) => {
-            data += chunk;
-        });
-        process.stdin.on('end', () => {
-            try {
-                resolve(JSON.parse(data));
-            }
-            catch (error) {
-                reject(new Error('Failed to parse hook input from stdin'));
-            }
-        });
-        process.stdin.on('error', reject);
-        // Handle case where no stdin is provided (timeout after configured delay)
-        setTimeout(() => {
-            if (!data) {
-                resolve({
-                    session_id: '',
-                    transcript_path: '',
-                    cwd: process.cwd(),
-                    permission_mode: 'default',
-                    hook_event_name: 'unknown',
-                });
-            }
-        }, STDIN_TIMEOUT_MS);
-    });
-}
-/**
- * Create a response that allows the tool to proceed
- */
-export function allowTool(hookEventName, systemMessage) {
-    return {
-        continue: true,
-        systemMessage,
-        hookSpecificOutput: {
-            hookEventName,
-            permissionDecision: 'allow',
-        },
-    };
-}
-/**
- * Create a response that blocks the tool
- */
-export function blockTool(hookEventName, reason) {
-    return {
-        continue: false,
-        hookSpecificOutput: {
-            hookEventName,
-            permissionDecision: 'deny',
-            permissionDecisionReason: reason,
-        },
-    };
-}
-/**
- * Log debug message to stderr (visible in Claude Code logs but won't affect hook response)
- */
-export function debug(message, data) {
-    const timestamp = new Date().toISOString();
-    if (data !== undefined) {
-        console.error(`[GoodVibes ${timestamp}] ${message}:`, JSON.stringify(data, null, 2));
-    }
-    else {
-        console.error(`[GoodVibes ${timestamp}] ${message}`);
-    }
-}
-/**
- * Log error to stderr with full stack trace
- */
-export function logError(context, error) {
-    const timestamp = new Date().toISOString();
-    const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
-    console.error(`[GoodVibes ${timestamp}] ERROR in ${context}: ${message}`);
-    if (stack) {
-        console.error(stack);
-    }
-}
-/**
- * Output hook response as JSON and exit with appropriate code
- * Exit 0 = success, Exit 2 = blocking error
- */
-export function respond(response, block = false) {
-    debug('Hook response', response);
-    console.log(JSON.stringify(response));
-    process.exit(block ? 2 : 0);
-}
+// =============================================================================
+// Cache and Analytics Management
+// =============================================================================
 /**
  * Ensure cache directory exists
  */
@@ -219,42 +144,10 @@ export async function ensureGoodVibesDir(cwd) {
         fs.mkdirSync(path.join(goodvibesDir, 'logs'), { recursive: true });
         fs.mkdirSync(path.join(goodvibesDir, 'telemetry'), { recursive: true });
         // Add security-hardened gitignore
+        const { ensureSecureGitignore } = await import('./shared/gitignore.js');
         await ensureSecureGitignore(cwd);
     }
     return goodvibesDir;
-}
-// =============================================================================
-// Security-Hardened Gitignore Updater
-// =============================================================================
-const SECURITY_GITIGNORE_ENTRIES = {
-    'GoodVibes plugin state': ['.goodvibes/'],
-    'Environment files': ['.env', '.env.local', '.env.*.local', '*.env'],
-    'Secret files': ['*.pem', '*.key', 'credentials.json', 'secrets.json', 'service-account*.json'],
-    'Cloud credentials': ['.aws/', '.gcp/', 'kubeconfig'],
-    'Database files': ['*.db', '*.sqlite', '*.sqlite3', 'prisma/*.db'],
-    'Log files': ['*.log', 'logs/'],
-};
-/**
- * Ensure .gitignore contains security-critical entries
- */
-export async function ensureSecureGitignore(cwd) {
-    const gitignorePath = path.join(cwd, '.gitignore');
-    let content = '';
-    if (fs.existsSync(gitignorePath)) {
-        content = fs.readFileSync(gitignorePath, 'utf-8');
-    }
-    const entriesToAdd = [];
-    for (const [section, patterns] of Object.entries(SECURITY_GITIGNORE_ENTRIES)) {
-        const missing = patterns.filter(p => !content.includes(p));
-        if (missing.length > 0) {
-            entriesToAdd.push(`\n# ${section}`);
-            entriesToAdd.push(...missing);
-        }
-    }
-    if (entriesToAdd.length > 0) {
-        const newContent = content.trimEnd() + '\n' + entriesToAdd.join('\n') + '\n';
-        fs.writeFileSync(gitignorePath, newContent);
-    }
 }
 // =============================================================================
 // Master Keyword List for Telemetry
@@ -330,75 +223,12 @@ export function parseTranscript(transcriptPath) {
         summary: lastAssistantMessage.slice(0, TRANSCRIPT_SUMMARY_MAX_LENGTH),
     };
 }
-// =============================================================================
-// Checkpoint and Quality Gate Conditions
-// =============================================================================
-/** Triggers that determine when quality checkpoints should run. */
-export const CHECKPOINT_TRIGGERS = {
-    fileCountThreshold: 5,
-    afterAgentComplete: true,
-    afterMajorChange: true,
-};
-/** Default quality gate checks with auto-fix commands. */
-export const QUALITY_GATES = [
-    { name: 'TypeScript', check: 'npx tsc --noEmit', autoFix: null, blocking: true },
-    { name: 'ESLint', check: 'npx eslint . --max-warnings=0', autoFix: 'npx eslint . --fix', blocking: true },
-    { name: 'Prettier', check: 'npx prettier --check .', autoFix: 'npx prettier --write .', blocking: false },
-    { name: 'Tests', check: 'npm test', autoFix: null, blocking: true },
-];
 /**
- * Get default shared configuration
+ * Extract error output from an exec error (child_process execSync failures)
  */
-export function getDefaultSharedConfig() {
-    return {
-        telemetry: {
-            enabled: true,
-            anonymize: true,
-        },
-        quality: {
-            gates: QUALITY_GATES,
-            autoFix: true,
-        },
-        memory: {
-            enabled: true,
-            maxEntries: 100,
-        },
-        checkpoints: {
-            enabled: true,
-            triggers: CHECKPOINT_TRIGGERS,
-        },
-    };
-}
-/**
- * Deep merge two objects
- */
-function deepMerge(target, source) {
-    const result = { ...target };
-    for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-            result[key] = deepMerge(result[key], source[key]);
-        }
-        else if (source[key] !== undefined) {
-            result[key] = source[key];
-        }
+export function extractErrorOutput(error) {
+    if (isExecError(error)) {
+        return error.stdout?.toString() || error.stderr?.toString() || error.message || 'Unknown error';
     }
-    return result;
-}
-/**
- * Load shared configuration from .goodvibes/settings.json
- */
-export function loadSharedConfig(cwd) {
-    const configPath = path.join(cwd, '.goodvibes', 'settings.json');
-    const defaults = getDefaultSharedConfig();
-    if (!fs.existsSync(configPath)) {
-        return defaults;
-    }
-    try {
-        const content = fs.readFileSync(configPath, 'utf-8');
-        const userConfig = JSON.parse(content);
-        return deepMerge(defaults, userConfig.goodvibes || userConfig);
-    }
-    catch {
-        return defaults;
-    }
+    return String(error);
 }

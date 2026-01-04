@@ -3,7 +3,7 @@
  *
  * Scans source files for TODO, FIXME, BUG, HACK, and XXX comments.
  */
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 const TODO_PATTERNS = ['FIXME', 'BUG', 'TODO', 'HACK', 'XXX'];
 const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
@@ -15,15 +15,15 @@ const MAX_TODO_TEXT_LENGTH = 60;
 /**
  * Recursively get all files matching the extensions
  */
-function getFiles(dir, extensions, skipDirs) {
+async function getFiles(dir, extensions, skipDirs) {
     const files = [];
     try {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        const entries = await fs.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
                 if (!skipDirs.includes(entry.name)) {
-                    files.push(...getFiles(fullPath, extensions, skipDirs));
+                    files.push(...await getFiles(fullPath, extensions, skipDirs));
                 }
             }
             else if (entry.isFile()) {
@@ -42,10 +42,10 @@ function getFiles(dir, extensions, skipDirs) {
 /**
  * Scan a single file for TODO patterns
  */
-function scanFile(filePath, patterns) {
+async function scanFile(filePath, patterns) {
     const results = [];
     try {
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, 'utf-8');
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -70,14 +70,14 @@ function scanFile(filePath, patterns) {
     return results;
 }
 /** Scan project for TODO, FIXME, BUG, HACK, XXX comments. */
-export function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
+export async function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
     const results = [];
-    const files = getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
+    const files = await getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
     for (const file of files) {
         if (results.length >= limit)
             break;
         const relativePath = path.relative(cwd, file).replace(/\\/g, '/');
-        const todos = scanFile(file, TODO_PATTERNS);
+        const todos = await scanFile(file, TODO_PATTERNS);
         for (const todo of todos) {
             if (results.length >= limit)
                 break;

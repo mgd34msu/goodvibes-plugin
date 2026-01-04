@@ -1,3 +1,9 @@
+/**
+ * Test Runner
+ *
+ * Executes test suites and parses test runner output to extract
+ * failure information for automated debugging.
+ */
 /** Result of a test run operation. */
 export interface TestResult {
     passed: boolean;

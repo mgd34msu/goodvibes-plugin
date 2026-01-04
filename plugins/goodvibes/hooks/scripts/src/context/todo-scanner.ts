@@ -4,7 +4,7 @@
  * Scans source files for TODO, FIXME, BUG, HACK, and XXX comments.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 
 /** A TODO comment found in source code. */
@@ -27,18 +27,18 @@ const MAX_TODO_TEXT_LENGTH = 60;
 /**
  * Recursively get all files matching the extensions
  */
-function getFiles(dir: string, extensions: string[], skipDirs: string[]): string[] {
+async function getFiles(dir: string, extensions: string[], skipDirs: string[]): Promise<string[]> {
   const files: string[] = [];
 
   try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
         if (!skipDirs.includes(entry.name)) {
-          files.push(...getFiles(fullPath, extensions, skipDirs));
+          files.push(...await getFiles(fullPath, extensions, skipDirs));
         }
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
@@ -57,11 +57,11 @@ function getFiles(dir: string, extensions: string[], skipDirs: string[]): string
 /**
  * Scan a single file for TODO patterns
  */
-function scanFile(filePath: string, patterns: readonly string[]): TodoItem[] {
+async function scanFile(filePath: string, patterns: readonly string[]): Promise<TodoItem[]> {
   const results: TodoItem[] = [];
 
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, 'utf-8');
     const lines = content.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
@@ -88,15 +88,15 @@ function scanFile(filePath: string, patterns: readonly string[]): TodoItem[] {
 }
 
 /** Scan project for TODO, FIXME, BUG, HACK, XXX comments. */
-export function scanTodos(cwd: string, limit: number = DEFAULT_TODO_LIMIT): TodoItem[] {
+export async function scanTodos(cwd: string, limit: number = DEFAULT_TODO_LIMIT): Promise<TodoItem[]> {
   const results: TodoItem[] = [];
-  const files = getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
+  const files = await getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
 
   for (const file of files) {
     if (results.length >= limit) break;
 
     const relativePath = path.relative(cwd, file).replace(/\\/g, '/');
-    const todos = scanFile(file, TODO_PATTERNS);
+    const todos = await scanFile(file, TODO_PATTERNS);
 
     for (const todo of todos) {
       if (results.length >= limit) break;

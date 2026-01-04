@@ -14,6 +14,6 @@ export interface HealthStatus {
     checks: HealthCheck[];
 }
 /** Check project health: dependencies, lockfiles, TypeScript configuration. */
-export declare function checkProjectHealth(cwd: string): HealthStatus;
+export declare function checkProjectHealth(cwd: string): Promise<HealthStatus>;
 /** Format health status for display in context output. */
 export declare function formatHealthStatus(status: HealthStatus): string;

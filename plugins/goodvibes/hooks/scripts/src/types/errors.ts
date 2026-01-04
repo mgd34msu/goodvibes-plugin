@@ -2,10 +2,22 @@
  * Type definitions for error tracking and recovery.
  */
 
+/** Categories of errors for specialized handling. */
+export type ErrorCategory =
+  | 'npm_install'
+  | 'typescript_error'
+  | 'test_failure'
+  | 'build_failure'
+  | 'file_not_found'
+  | 'git_conflict'
+  | 'database_error'
+  | 'api_error'
+  | 'unknown';
+
 /** State for tracking an error through retry phases. */
 export interface ErrorState {
   signature: string;
-  category: string;
+  category: ErrorCategory;
   phase: 1 | 2 | 3;
   attemptsThisPhase: number;
   totalAttempts: number;
@@ -20,18 +32,6 @@ export interface ErrorState {
     timestamp: string;
   }[];
 }
-
-/** Categories of errors for specialized handling. */
-export type ErrorCategory =
-  | 'npm_install'
-  | 'typescript_error'
-  | 'test_failure'
-  | 'build_failure'
-  | 'file_not_found'
-  | 'git_conflict'
-  | 'database_error'
-  | 'api_error'
-  | 'unknown';
 
 /** Retry limits per error category before escalating to next phase. */
 export const PHASE_RETRY_LIMITS: Record<ErrorCategory, number> = {

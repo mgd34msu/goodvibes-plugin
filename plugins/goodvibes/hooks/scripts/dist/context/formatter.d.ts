@@ -29,6 +29,6 @@ export interface FormattedContext {
     issueCount: number;
 }
 /** Format all gathered context into a readable string. */
-export declare function formatContext(ctx: GatheredContext): FormattedContext;
+export declare function formatContext(context: GatheredContext): FormattedContext;
 /** Create a minimal context string for low-overhead scenarios. */
-export declare function formatMinimalContext(ctx: GatheredContext): string;
+export declare function formatMinimalContext(context: GatheredContext): string;

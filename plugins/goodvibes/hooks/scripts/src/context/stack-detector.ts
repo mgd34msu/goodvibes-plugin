@@ -4,8 +4,15 @@
  * Detects frameworks, package manager, and TypeScript configuration.
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
+import { LOCKFILES } from '../shared.js';
+
+/** Module-level cache for stack detection results */
+const stackCache = new Map<string, { result: StackInfo; timestamp: number }>();
+
+/** Cache TTL in milliseconds (5 minutes) */
+const CACHE_TTL = 5 * 60 * 1000;
 
 const STACK_INDICATORS: Record<string, string> = {
   'next.config': 'Next.js',
@@ -42,8 +49,25 @@ export interface StackInfo {
   isStrict: boolean;
 }
 
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Detect the technology stack used in the project. */
 export async function detectStack(cwd: string): Promise<StackInfo> {
+  // Check cache first
+  const cached = stackCache.get(cwd);
+  const now = Date.now();
+
+  if (cached && (now - cached.timestamp) < CACHE_TTL) {
+    return cached.result;
+  }
+
   const frameworks: string[] = [];
   let packageManager: string | null = null;
   let hasTypeScript = false;
@@ -52,34 +76,46 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
   // Check for framework indicators
   for (const [indicator, name] of Object.entries(STACK_INDICATORS)) {
     const checkPath = path.join(cwd, indicator);
-    if (fs.existsSync(checkPath) ||
-        fs.existsSync(checkPath + '.js') ||
-        fs.existsSync(checkPath + '.ts') ||
-        fs.existsSync(checkPath + '.mjs')) {
+    const checks = await Promise.all([
+      fileExists(checkPath),
+      fileExists(checkPath + '.js'),
+      fileExists(checkPath + '.ts'),
+      fileExists(checkPath + '.mjs'),
+    ]);
+
+    if (checks.some(exists => exists)) {
       frameworks.push(name);
       if (name === 'TypeScript') hasTypeScript = true;
     }
   }
 
   // Check lockfiles for package manager
-  for (const [lockfile, pm] of Object.entries(LOCKFILE_TO_PM)) {
-    if (fs.existsSync(path.join(cwd, lockfile))) {
-      packageManager = pm;
+  for (const lockfile of LOCKFILES) {
+    if (await fileExists(path.join(cwd, lockfile))) {
+      packageManager = LOCKFILE_TO_PM[lockfile];
       break;
     }
   }
 
   // Check tsconfig for strict mode
   const tsconfigPath = path.join(cwd, 'tsconfig.json');
-  if (fs.existsSync(tsconfigPath)) {
+  if (await fileExists(tsconfigPath)) {
     try {
-      const content = fs.readFileSync(tsconfigPath, 'utf-8');
+      const content = await fs.readFile(tsconfigPath, 'utf-8');
       const config = JSON.parse(content);
       isStrict = config.compilerOptions?.strict === true;
-    } catch {}
+    } catch (error) {
+      // tsconfig.json might have comments or invalid JSON - ignore parse errors
+      console.error('[stack-detector] Failed to parse tsconfig.json:', error);
+    }
   }
 
-  return { frameworks, packageManager, hasTypeScript, isStrict };
+  const result = { frameworks, packageManager, hasTypeScript, isStrict };
+
+  // Store in cache
+  stackCache.set(cwd, { result, timestamp: now });
+
+  return result;
 }
 
 /** Format stack information for display in context output. */
