@@ -20,13 +20,51 @@ export interface GateResult {
 }
 /** Default quality gates for TypeScript projects */
 export declare const QUALITY_GATES: QualityGate[];
-/** Runs all quality gates and returns aggregate results */
+/**
+ * Runs all quality gates and returns aggregate results.
+ * Iterates through TypeScript, ESLint, Prettier, and Test gates,
+ * attempting auto-fixes where available if a gate fails.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns A promise resolving to an object containing:
+ *   - allPassed: Whether all gates passed or were auto-fixed
+ *   - blocking: Whether any blocking gate failed
+ *   - results: Array of individual gate results
+ *
+ * @example
+ * const { allPassed, blocking, results } = await runQualityGates('/project');
+ * if (blocking) {
+ *   console.error('Blocking quality gates failed');
+ * }
+ */
 export declare function runQualityGates(cwd: string): Promise<{
     allPassed: boolean;
     blocking: boolean;
     results: GateResult[];
 }>;
-/** Checks if a command is a git commit command */
+/**
+ * Checks if a command string is a git commit command.
+ *
+ * @param command - The command string to check
+ * @returns True if the command contains 'git commit', false otherwise
+ *
+ * @example
+ * isCommitCommand('git commit -m "message"'); // true
+ * isCommitCommand('git push origin main');    // false
+ */
 export declare function isCommitCommand(command: string): boolean;
-/** Formats gate results into a human-readable string */
+/**
+ * Formats gate results into a human-readable string.
+ * Each result is formatted as "GateName: status (message)" and joined with commas.
+ *
+ * @param results - Array of GateResult objects to format
+ * @returns A comma-separated string of formatted gate results
+ *
+ * @example
+ * const formatted = formatGateResults([
+ *   { gate: 'TypeScript', status: 'passed' },
+ *   { gate: 'ESLint', status: 'failed', message: 'Lint errors' }
+ * ]);
+ * // Returns: "TypeScript: passed, ESLint: failed (Lint errors)"
+ */
 export declare function formatGateResults(results: GateResult[]): string;

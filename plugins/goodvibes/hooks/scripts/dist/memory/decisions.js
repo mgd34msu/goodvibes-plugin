@@ -12,7 +12,21 @@ Each decision includes the date, alternatives considered, rationale, and the age
 ---
 
 `;
-/** Reads all project decisions from the memory file. */
+/**
+ * Reads all project decisions from the memory file.
+ *
+ * Parses the decisions.md file and returns an array of structured decision objects.
+ * Returns an empty array if the file doesn't exist or is empty.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Array of MemoryDecision objects parsed from the file
+ *
+ * @example
+ * const decisions = readDecisions('/path/to/project');
+ * for (const decision of decisions) {
+ *   console.log(`${decision.title}: ${decision.rationale}`);
+ * }
+ */
 export function readDecisions(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
     if (!fs.existsSync(filePath)) {
@@ -21,7 +35,23 @@ export function readDecisions(cwd) {
     const content = fs.readFileSync(filePath, 'utf-8');
     return parseDecisions(content);
 }
-/** Appends a new decision to the decisions memory file. */
+/**
+ * Appends a new decision to the decisions memory file.
+ *
+ * Creates the decisions.md file with a header if it doesn't exist,
+ * then appends the decision in a structured markdown format.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param decision - The decision object to write
+ *
+ * @example
+ * writeDecision('/path/to/project', {
+ *   title: 'Use tRPC for API',
+ *   date: '2024-01-04',
+ *   rationale: 'End-to-end type safety with minimal boilerplate',
+ *   alternatives: ['REST', 'GraphQL']
+ * });
+ */
 export function writeDecision(cwd, decision) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
     // Ensure file exists with header

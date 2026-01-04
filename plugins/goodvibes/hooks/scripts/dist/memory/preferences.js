@@ -12,7 +12,21 @@ These preferences guide agent behavior and decision-making.
 ---
 
 `;
-/** Reads all user preferences from the memory file. */
+/**
+ * Reads all user preferences from the memory file.
+ *
+ * Parses the preferences.md file and returns an array of structured preference objects.
+ * Returns an empty array if the file doesn't exist or is empty.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Array of MemoryPreference objects parsed from the file
+ *
+ * @example
+ * const preferences = readPreferences('/path/to/project');
+ * for (const pref of preferences) {
+ *   console.log(`${pref.key}: ${pref.value}`);
+ * }
+ */
 export function readPreferences(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
     if (!fs.existsSync(filePath)) {
@@ -21,7 +35,24 @@ export function readPreferences(cwd) {
     const content = fs.readFileSync(filePath, 'utf-8');
     return parsePreferences(content);
 }
-/** Writes or updates a preference in the preferences memory file. */
+/**
+ * Writes or updates a preference in the preferences memory file.
+ *
+ * Creates the preferences.md file with a header if it doesn't exist,
+ * then appends the preference in a structured markdown format. Note that
+ * this appends rather than updates, so duplicate keys may exist.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param preference - The preference object to write
+ *
+ * @example
+ * writePreference('/path/to/project', {
+ *   key: 'code-style',
+ *   value: 'functional',
+ *   date: '2024-01-04',
+ *   notes: 'Prefer functional components over class components'
+ * });
+ */
 export function writePreference(cwd, preference) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
     // Ensure file exists with header

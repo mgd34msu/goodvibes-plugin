@@ -2,7 +2,39 @@
  * Patterns memory module - stores project-specific code patterns.
  */
 import type { MemoryPattern } from '../types/memory.js';
-/** Reads all established patterns from the memory file. */
+/**
+ * Reads all established patterns from the memory file.
+ *
+ * Parses the patterns.md file and returns an array of structured pattern objects.
+ * Returns an empty array if the file doesn't exist or is empty.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Array of MemoryPattern objects parsed from the file
+ *
+ * @example
+ * const patterns = readPatterns('/path/to/project');
+ * for (const pattern of patterns) {
+ *   console.log(`${pattern.name}: ${pattern.description}`);
+ * }
+ */
 export declare function readPatterns(cwd: string): MemoryPattern[];
-/** Writes a new pattern to the patterns memory file. */
+/**
+ * Writes a new pattern to the patterns memory file.
+ *
+ * Creates the patterns.md file with a header if it doesn't exist,
+ * then appends the pattern in a structured markdown format with optional
+ * code examples and file references.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param pattern - The pattern object to write
+ *
+ * @example
+ * writePattern('/path/to/project', {
+ *   name: 'Repository Pattern',
+ *   date: '2024-01-04',
+ *   description: 'Use repository classes for data access abstraction',
+ *   example: 'class UserRepository { async findById(id) { ... } }',
+ *   files: ['src/repositories/user.ts']
+ * });
+ */
 export declare function writePattern(cwd: string, pattern: MemoryPattern): void;

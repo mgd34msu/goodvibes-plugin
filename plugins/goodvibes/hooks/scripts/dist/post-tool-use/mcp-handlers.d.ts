@@ -12,25 +12,68 @@
 import { HookInput } from '../shared.js';
 /**
  * Handles detect_stack tool results, caching stack info.
+ * Writes the detected stack configuration to .goodvibes/detected-stack.json
+ * and logs usage for analytics tracking.
+ *
+ * @param input - The hook input containing tool_input with stack detection results
+ *
+ * @example
+ * // Called automatically when detect_stack MCP tool completes
+ * handleDetectStack(input);
  */
 export declare function handleDetectStack(input: HookInput): void;
 /**
  * Handles recommend_skills tool results, tracking recommended skills.
+ * Extracts skill paths from recommendations and adds them to analytics tracking.
+ *
+ * @param input - The hook input containing tool_input with recommendations array
+ *
+ * @example
+ * // Called automatically when recommend_skills MCP tool completes
+ * handleRecommendSkills(input);
  */
 export declare function handleRecommendSkills(input: HookInput): void;
 /**
  * Handles search tool results, logging usage.
+ * Records search tool invocation for analytics tracking.
+ *
+ * @param _input - The hook input (unused, search results are passed through)
+ *
+ * @example
+ * // Called automatically when search_* MCP tools complete
+ * handleSearch(input);
  */
 export declare function handleSearch(_input: HookInput): void;
 /**
  * Handles validate_implementation tool results, tracking validations and issues.
+ * Increments validation counter and adds any errors/warnings to issues_found analytics.
+ *
+ * @param input - The hook input containing tool_input with summary of errors and warnings
+ *
+ * @example
+ * // Called automatically when validate_implementation MCP tool completes
+ * handleValidateImplementation(input);
  */
 export declare function handleValidateImplementation(input: HookInput): void;
 /**
  * Handles run_smoke_test tool results, reporting failures.
+ * Returns a system message if tests failed with count of failures.
+ *
+ * @param input - The hook input containing tool_input with passed status and summary
+ *
+ * @example
+ * // Called automatically when run_smoke_test MCP tool completes
+ * handleRunSmokeTest(input);
  */
 export declare function handleRunSmokeTest(input: HookInput): void;
 /**
  * Handles check_types tool results, reporting type errors.
+ * Tracks error count in analytics and returns system message with error count.
+ *
+ * @param input - The hook input containing tool_input with errors array
+ *
+ * @example
+ * // Called automatically when check_types MCP tool completes
+ * handleCheckTypes(input);
  */
 export declare function handleCheckTypes(input: HookInput): void;
