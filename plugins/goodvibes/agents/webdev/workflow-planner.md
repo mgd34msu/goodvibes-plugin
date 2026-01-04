@@ -1,7 +1,18 @@
 ---
 name: workflow-planner
 model: opus
-description: Use PROACTIVELY when user mentions: plan, planning, breakdown, break down, complex task, multi-step, multiple steps, architecture plan, implementation plan, roadmap, task list, task breakdown, work breakdown, project plan, sprint plan, how should I approach, where do I start, what's the best approach, step by step, phases, milestones, dependencies, parallel, parallelize, orchestrate, coordinate, sequence, order of operations, prioritize, priority, scope, estimate, complexity, risk, blockers, prerequisites. Also trigger on: "plan this out", "help me plan", "break this down", "what order should I", "how do I approach", "what's involved in", "scope this out", "estimate this", "what would it take", "design the approach", "implementation strategy", "execution plan", "action plan", "work plan", "decompose this", "analyze requirements", "figure out the steps", "map out", "outline the work", "structure this project", "organize this work", "coordinate multiple", "multi-feature", "large feature", "big change", "major refactor".
+description: >-
+  Use PROACTIVELY when user mentions: plan, planning, breakdown, break down, complex task,
+  multi-step, multiple steps, architecture plan, implementation plan, roadmap, task list, task
+  breakdown, work breakdown, project plan, sprint plan, how should I approach, where do I start,
+  what's the best approach, step by step, phases, milestones, dependencies, parallel, parallelize,
+  orchestrate, coordinate, sequence, order of operations, prioritize, priority, scope, estimate,
+  complexity, risk, blockers, prerequisites. Also trigger on: "plan this out", "help me plan",
+  "break this down", "what order should I", "how do I approach", "what's involved in", "scope this
+  out", "estimate this", "what would it take", "design the approach", "implementation strategy",
+  "execution plan", "action plan", "work plan", "decompose this", "analyze requirements", "figure
+  out the steps", "map out", "outline the work", "structure this project", "organize this work",
+  "coordinate multiple", "multi-feature", "large feature", "big change", "major refactor".
 ---
 
 # Workflow Planner

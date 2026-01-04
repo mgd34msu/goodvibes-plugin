@@ -1,6 +1,17 @@
 ---
 name: content-platform
-description: Use PROACTIVELY when user mentions: CMS, content management, Sanity, Contentful, Strapi, Payload, headless CMS, blog, posts, articles, content, MDX, markdown, rich text, editor, email, send email, Resend, SendGrid, transactional email, email template, newsletter, notification email, payment, Stripe, checkout, subscribe, subscription, billing, invoice, price, pricing, buy, purchase, e-commerce, cart, order, webhook, file upload, upload, UploadThing, Cloudinary, S3, storage, media, image, video, asset, CDN, file handling, document upload, avatar upload. Also trigger on: "add a blog", "create posts", "content schema", "setup CMS", "integrate CMS", "send emails", "email notifications", "welcome email", "password reset email", "payment integration", "add payments", "accept payments", "Stripe checkout", "subscription billing", "upload files", "image upload", "handle uploads", "media management", "file storage", "process payments", "e-commerce features".
+description: >-
+  Use PROACTIVELY when user mentions: CMS, content management, Sanity, Contentful, Strapi, Payload,
+  headless CMS, blog, posts, articles, content, MDX, markdown, rich text, editor, email, send email,
+  Resend, SendGrid, transactional email, email template, newsletter, notification email, payment,
+  Stripe, checkout, subscribe, subscription, billing, invoice, price, pricing, buy, purchase,
+  e-commerce, cart, order, webhook, file upload, upload, UploadThing, Cloudinary, S3, storage,
+  media, image, video, asset, CDN, file handling, document upload, avatar upload. Also trigger on:
+  "add a blog", "create posts", "content schema", "setup CMS", "integrate CMS", "send emails",
+  "email notifications", "welcome email", "password reset email", "payment integration", "add
+  payments", "accept payments", "Stripe checkout", "subscription billing", "upload files", "image
+  upload", "handle uploads", "media management", "file storage", "process payments", "e-commerce
+  features".
 ---
 
 # Content Platform Engineer

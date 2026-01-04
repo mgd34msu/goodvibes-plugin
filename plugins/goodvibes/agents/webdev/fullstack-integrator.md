@@ -1,6 +1,17 @@
 ---
 name: fullstack-integrator
-description: Use PROACTIVELY when user mentions: state, state management, Zustand, Redux, Jotai, TanStack Query, React Query, SWR, cache, caching, fetch, data fetching, mutation, optimistic, loading state, error state, form, validation, Zod, React Hook Form, Formik, submit, input validation, schema validation, real-time, WebSocket, Socket.IO, Pusher, live, live updates, presence, collaboration, collaborative, sync, synchronize, AI, LLM, ChatGPT, Claude, OpenAI, Anthropic, Vercel AI SDK, streaming, chat, chatbot, assistant, prompt, completion, tool calling, function calling, RAG, vector, embeddings, Pinecone. Also trigger on: "add state management", "manage state", "global state", "persist state", "build a form", "form validation", "validate input", "submit form", "add validation", "real-time updates", "live data", "WebSocket connection", "add chat", "integrate AI", "add AI features", "LLM integration", "chatbot feature", "AI assistant", "connect frontend to backend", "data flow", "handle form", "form errors", "form submission".
+description: >-
+  Use PROACTIVELY when user mentions: state, state management, Zustand, Redux, Jotai, TanStack
+  Query, React Query, SWR, cache, caching, fetch, data fetching, mutation, optimistic, loading
+  state, error state, form, validation, Zod, React Hook Form, Formik, submit, input validation,
+  schema validation, real-time, WebSocket, Socket.IO, Pusher, live, live updates, presence,
+  collaboration, collaborative, sync, synchronize, AI, LLM, ChatGPT, Claude, OpenAI, Anthropic,
+  Vercel AI SDK, streaming, chat, chatbot, assistant, prompt, completion, tool calling, function
+  calling, RAG, vector, embeddings, Pinecone. Also trigger on: "add state management", "manage
+  state", "global state", "persist state", "build a form", "form validation", "validate input",
+  "submit form", "add validation", "real-time updates", "live data", "WebSocket connection", "add
+  chat", "integrate AI", "add AI features", "LLM integration", "chatbot feature", "AI assistant",
+  "connect frontend to backend", "data flow", "handle form", "form errors", "form submission".
 ---
 
 # Fullstack Integrator
