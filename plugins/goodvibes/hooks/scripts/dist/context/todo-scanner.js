@@ -15,8 +15,24 @@ const SKIP_DIRS = new Set([
     'node_modules', '.git', 'dist', 'build', 'out',
     '.next', '.nuxt', '.svelte-kit', 'coverage',
     '.cache', 'vendor', '__pycache__', '.venv', 'venv', 'target',
+    // Skip test directories - they often contain TODO/FIXME as test fixtures
+    '__tests__', 'tests', 'test', '__mocks__', 'fixtures', '__fixtures__',
 ]);
+// Skip test files - they often contain TODO/FIXME as test input strings
+const TEST_FILE_PATTERNS = [
+    /\.test\.[jt]sx?$/,
+    /\.spec\.[jt]sx?$/,
+    /_test\.[jt]sx?$/,
+    /_spec\.[jt]sx?$/,
+    /\.stories\.[jt]sx?$/,
+];
 const TODO_PATTERN = /\b(TODO|FIXME|HACK|XXX|BUG|NOTE)\b[:\s]*(.+?)(?:\*\/|-->|$)/gi;
+/**
+ * Check if a filename matches test file patterns
+ */
+function isTestFile(filename) {
+    return TEST_FILE_PATTERNS.some(pattern => pattern.test(filename));
+}
 /**
  * Determine priority based on type and text
  */
@@ -90,7 +106,8 @@ function scanDirectory(dir, baseDir, items, maxFiles = 500) {
             }
             else if (entry.isFile()) {
                 const ext = path.extname(entry.name).toLowerCase();
-                if (SCAN_EXTENSIONS.has(ext)) {
+                // Skip test files - they often contain TODO/FIXME as test fixtures
+                if (SCAN_EXTENSIONS.has(ext) && !isTestFile(entry.name)) {
                     filesScanned++;
                     const fileItems = scanFile(fullPath, relativePath);
                     items.push(...fileItems);
