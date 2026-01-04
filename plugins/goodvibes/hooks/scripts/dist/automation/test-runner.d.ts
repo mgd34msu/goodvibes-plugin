@@ -15,14 +15,42 @@ export interface TestResult {
     }[];
 }
 /**
- * Finds test files corresponding to a source file using common patterns.
+ * Finds test files corresponding to a source file using common naming patterns.
+ * Checks for .test.ts, .test.tsx, .spec.ts, .spec.tsx variations and
+ * common test directory structures like __tests__ and tests/.
+ *
+ * @param sourceFile - The path to the source file to find tests for
+ * @returns An array of existing test file paths that match the source file
+ *
+ * @example
+ * const tests = findTestsForFile('src/utils/helper.ts');
+ * // May return ['src/utils/helper.test.ts', 'src/__tests__/utils/helper.test.ts']
  */
 export declare function findTestsForFile(sourceFile: string): string[];
 /**
- * Run tests for specific files
+ * Runs tests for specific test files and returns structured results.
+ * Uses npm test with file arguments. Returns early if no files provided.
+ *
+ * @param testFiles - Array of test file paths to run
+ * @param cwd - The current working directory (project root)
+ * @returns A TestResult object with pass/fail status, summary, and parsed failures
+ *
+ * @example
+ * const result = runTests(['src/utils/helper.test.ts'], '/my-project');
+ * if (!result.passed) {
+ *   result.failures.forEach(f => console.error(`${f.testFile}: ${f.error}`));
+ * }
  */
 export declare function runTests(testFiles: string[], cwd: string): TestResult;
 /**
- * Run the full test suite
+ * Runs the full test suite using npm test.
+ * Returns structured results with parsed failure information.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns A TestResult object with pass/fail status, summary, and parsed failures
+ *
+ * @example
+ * const result = runFullTestSuite('/my-project');
+ * console.log(result.summary); // 'All tests passed' or 'Tests failed'
  */
 export declare function runFullTestSuite(cwd: string): TestResult;
