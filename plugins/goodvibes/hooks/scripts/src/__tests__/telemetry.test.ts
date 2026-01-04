@@ -127,16 +127,17 @@ describe('telemetry', () => {
 
   describe('getGitInfo', () => {
     it('should return branch and commit when git is available', () => {
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
+      vi.mocked(execSync).mockImplementation((cmd: string, options?: any) => {
         if (typeof cmd === 'string') {
           if (cmd.includes('--abbrev-ref')) {
-            return Buffer.from('main\n');
+            // When encoding is specified, execSync returns a string
+            return 'main\n' as any;
           }
           if (cmd.includes('--short')) {
-            return Buffer.from('abc1234\n');
+            return 'abc1234\n' as any;
           }
         }
-        return Buffer.from('');
+        return '' as any;
       });
 
       const info = getGitInfo(testDir);
@@ -157,10 +158,10 @@ describe('telemetry', () => {
     });
 
     it('should handle partial git availability - branch only', () => {
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
+      vi.mocked(execSync).mockImplementation((cmd: string, options?: any) => {
         if (typeof cmd === 'string') {
           if (cmd.includes('--abbrev-ref')) {
-            return Buffer.from('feature-branch\n');
+            return 'feature-branch\n' as any;
           }
         }
         throw new Error('detached HEAD');
@@ -173,16 +174,16 @@ describe('telemetry', () => {
     });
 
     it('should trim whitespace from git output', () => {
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
+      vi.mocked(execSync).mockImplementation((cmd: string, options?: any) => {
         if (typeof cmd === 'string') {
           if (cmd.includes('--abbrev-ref')) {
-            return Buffer.from('  develop  \n\n');
+            return '  develop  \n\n' as any;
           }
           if (cmd.includes('--short')) {
-            return Buffer.from('\n  def5678  \n');
+            return '\n  def5678  \n' as any;
           }
         }
-        return Buffer.from('');
+        return '' as any;
       });
 
       const info = getGitInfo(testDir);
