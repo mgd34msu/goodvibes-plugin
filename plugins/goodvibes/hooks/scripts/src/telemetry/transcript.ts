@@ -6,6 +6,10 @@
 
 import * as fs from 'fs';
 import { debug, logError } from '../shared.js';
+import {
+  TRANSCRIPT_KEYWORD_CATEGORIES,
+  extractTranscriptKeywords,
+} from '../shared/keywords.js';
 
 // ============================================================================
 // Constants
@@ -13,6 +17,14 @@ import { debug, logError } from '../shared.js';
 
 /** Maximum length for truncated output text. */
 export const MAX_OUTPUT_LENGTH = 500;
+
+/** Regex patterns for detecting tool usage in plain text lines. */
+const TOOL_PATTERNS = [
+  /using\s+(\w+)\s+tool/i,
+  /calling\s+(\w+)/i,
+  /<tool_use\s+name="(\w+)"/i,
+  /invoke\s+name="(\w+)"/i,
+] as const;
 
 // ============================================================================
 // Types
@@ -28,93 +40,14 @@ export interface ParsedTranscript {
 }
 
 // ============================================================================
-// Keyword Categories
+// Keyword Categories (Re-export from consolidated module)
 // ============================================================================
 
-/** Keyword categories for classifying agent tasks and transcript content. */
-export const KEYWORD_CATEGORIES: Record<string, string[]> = {
-  // Frameworks
-  frameworks: [
-    'react', 'next', 'nextjs', 'vue', 'angular', 'svelte', 'remix', 'astro',
-    'express', 'fastify', 'hono', 'koa', 'nest', 'nestjs',
-    'django', 'flask', 'fastapi', 'rails', 'laravel',
-    'spring', 'springboot',
-  ],
-
-  // Databases
-  databases: [
-    'postgres', 'postgresql', 'mysql', 'mariadb', 'sqlite',
-    'mongodb', 'mongo', 'redis', 'dynamodb',
-    'supabase', 'planetscale', 'turso', 'neon',
-    'prisma', 'drizzle', 'kysely', 'typeorm', 'sequelize',
-  ],
-
-  // Authentication
-  auth: [
-    'auth', 'authentication', 'authorization', 'oauth', 'jwt', 'session',
-    'clerk', 'auth0', 'nextauth', 'lucia', 'passport',
-    'login', 'signup', 'password', 'token',
-  ],
-
-  // Testing
-  testing: [
-    'test', 'testing', 'jest', 'vitest', 'mocha', 'chai',
-    'playwright', 'cypress', 'puppeteer',
-    'unit test', 'integration test', 'e2e', 'coverage',
-  ],
-
-  // API
-  api: [
-    'api', 'rest', 'graphql', 'trpc', 'grpc',
-    'endpoint', 'route', 'handler', 'middleware',
-    'openapi', 'swagger', 'apollo',
-  ],
-
-  // DevOps / Infrastructure
-  devops: [
-    'docker', 'kubernetes', 'k8s', 'terraform', 'ansible',
-    'ci', 'cd', 'pipeline', 'deploy', 'deployment',
-    'aws', 'gcp', 'azure', 'vercel', 'netlify', 'railway',
-    'github actions', 'gitlab ci',
-  ],
-
-  // Frontend
-  frontend: [
-    'css', 'tailwind', 'styled-components', 'sass', 'scss',
-    'component', 'ui', 'ux', 'responsive', 'animation',
-    'form', 'modal', 'table', 'button', 'input',
-  ],
-
-  // State Management
-  state: [
-    'state', 'redux', 'zustand', 'jotai', 'recoil', 'mobx',
-    'context', 'provider', 'store',
-  ],
-
-  // TypeScript
-  typescript: [
-    'typescript', 'type', 'interface', 'generic', 'enum',
-    'zod', 'yup', 'io-ts', 'validation', 'schema',
-  ],
-
-  // Performance
-  performance: [
-    'performance', 'optimization', 'cache', 'caching', 'lazy',
-    'bundle', 'minify', 'compress', 'speed',
-  ],
-
-  // Security
-  security: [
-    'security', 'xss', 'csrf', 'sql injection', 'sanitize',
-    'encrypt', 'hash', 'ssl', 'https', 'cors',
-  ],
-
-  // File Operations
-  files: [
-    'file', 'upload', 'download', 'stream', 'buffer',
-    'read', 'write', 'create', 'delete', 'modify',
-  ],
-};
+/**
+ * Keyword categories for classifying agent tasks and transcript content.
+ * Re-exported from the consolidated keywords module for backwards compatibility.
+ */
+export const KEYWORD_CATEGORIES = TRANSCRIPT_KEYWORD_CATEGORIES;
 
 // ============================================================================
 // Transcript Parsing
@@ -217,14 +150,7 @@ function processPlainTextLine(line: string, result: ParsedTranscript): void {
   const lowerLine = line.toLowerCase();
 
   // Look for tool usage patterns
-  const toolPatterns = [
-    /using\s+(\w+)\s+tool/i,
-    /calling\s+(\w+)/i,
-    /<tool_use\s+name="(\w+)"/i,
-    /invoke\s+name="(\w+)"/i,
-  ];
-
-  for (const pattern of toolPatterns) {
+  for (const pattern of TOOL_PATTERNS) {
     const match = line.match(pattern);
     if (match) {
       result.tools_used.push(match[1]);
@@ -282,45 +208,13 @@ function extractLastOutput(content: string): string | undefined {
 // ============================================================================
 
 /**
- * Extract keywords from task description and transcript content
+ * Extract keywords from task description and transcript content.
+ * Delegates to the consolidated keywords module.
  */
 export function extractKeywords(
   taskDescription?: string,
   transcriptContent?: string,
   agentType?: string
 ): string[] {
-  const keywords: Set<string> = new Set();
-  const searchText = [
-    taskDescription || '',
-    transcriptContent || '',
-    agentType || '',
-  ].join(' ').toLowerCase();
-
-  // Check for each keyword category
-  for (const [category, categoryKeywords] of Object.entries(KEYWORD_CATEGORIES)) {
-    for (const keyword of categoryKeywords) {
-      // Use word boundary matching for accuracy
-      const pattern = new RegExp('\\b' + escapeRegex(keyword) + '\\b', 'i');
-      if (pattern.test(searchText)) {
-        keywords.add(keyword);
-        // Also add the category as a meta-keyword
-        keywords.add('category:' + category);
-      }
-    }
-  }
-
-  // Add agent type as keyword if it's a known type
-  if (agentType) {
-    const agentKeyword = agentType.replace(/^goodvibes:/, '').replace(/-/g, ' ');
-    keywords.add('agent:' + agentKeyword);
-  }
-
-  return Array.from(keywords).sort();
-}
-
-/**
- * Escape special regex characters
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return extractTranscriptKeywords(taskDescription, transcriptContent, agentType);
 }

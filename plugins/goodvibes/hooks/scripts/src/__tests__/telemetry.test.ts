@@ -37,6 +37,7 @@ import {
   ParsedTranscript,
   TelemetryRecord,
 } from '../telemetry.js';
+import { createMockGitExecSync } from './test-utils/mock-factories.js';
 
 // Mock child_process module
 vi.mock('child_process', () => ({
@@ -127,18 +128,9 @@ describe('telemetry', () => {
 
   describe('getGitInfo', () => {
     it('should return branch and commit when git is available', () => {
-      vi.mocked(execSync).mockImplementation((cmd: string, options?: any) => {
-        if (typeof cmd === 'string') {
-          if (cmd.includes('--abbrev-ref')) {
-            // When encoding is specified, execSync returns a string
-            return 'main\n' as any;
-          }
-          if (cmd.includes('--short')) {
-            return 'abc1234\n' as any;
-          }
-        }
-        return '' as any;
-      });
+      vi.mocked(execSync).mockImplementation(
+        createMockGitExecSync({ branch: 'main', commit: 'abc1234' })
+      );
 
       const info = getGitInfo(testDir);
 
@@ -147,9 +139,9 @@ describe('telemetry', () => {
     });
 
     it('should handle missing git repository gracefully', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('not a git repository');
-      });
+      vi.mocked(execSync).mockImplementation(
+        createMockGitExecSync({ errors: { branch: true, commit: true } })
+      );
 
       const info = getGitInfo(testDir);
 
@@ -158,14 +150,9 @@ describe('telemetry', () => {
     });
 
     it('should handle partial git availability - branch only', () => {
-      vi.mocked(execSync).mockImplementation((cmd: string, options?: any) => {
-        if (typeof cmd === 'string') {
-          if (cmd.includes('--abbrev-ref')) {
-            return 'feature-branch\n' as any;
-          }
-        }
-        throw new Error('detached HEAD');
-      });
+      vi.mocked(execSync).mockImplementation(
+        createMockGitExecSync({ branch: 'feature-branch', errors: { commit: true } })
+      );
 
       const info = getGitInfo(testDir);
 
@@ -174,17 +161,10 @@ describe('telemetry', () => {
     });
 
     it('should trim whitespace from git output', () => {
-      vi.mocked(execSync).mockImplementation((cmd: string, options?: any) => {
-        if (typeof cmd === 'string') {
-          if (cmd.includes('--abbrev-ref')) {
-            return '  develop  \n\n' as any;
-          }
-          if (cmd.includes('--short')) {
-            return '\n  def5678  \n' as any;
-          }
-        }
-        return '' as any;
-      });
+      // Custom implementation to test whitespace trimming behavior
+      vi.mocked(execSync).mockImplementation(
+        createMockGitExecSync({ branch: '  develop  ', commit: '  def5678  ' })
+      );
 
       const info = getGitInfo(testDir);
 

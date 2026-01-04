@@ -1,29 +1,12 @@
-import { PHASE_RETRY_LIMITS } from '../types/errors.js';
-/** Maximum length for normalized error message before hashing. */
-const ERROR_NORMALIZE_MAX_LENGTH = 100;
-/** Maximum length for base64 signature suffix. */
-const SIGNATURE_MAX_LENGTH = 20;
+import { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries, MAX_PHASE, } from '../shared/error-handling-core.js';
+// Re-export consolidated functions for backwards compatibility
+export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries };
 /** Maximum length for error message in fix context. */
 const ERROR_PREVIEW_MAX_LENGTH = 200;
 /** Maximum length for documentation content in fix context. */
 const DOCS_CONTENT_MAX_LENGTH = 2000;
 /** Number of recent fix attempts to show in context. */
 const RECENT_ATTEMPTS_COUNT = 3;
-/** Maximum phase number before exhaustion. */
-const MAX_PHASE = 3;
-/** Default retry limit when category not found. */
-const DEFAULT_RETRY_LIMIT = 2;
-/**
- * Generates a stable signature from tool name and error message for deduplication.
- */
-export function generateErrorSignature(toolName, errorMessage) {
-    // Create a stable signature from the error
-    const normalized = errorMessage
-        .replace(/\d+/g, 'N') // Replace numbers
-        .replace(/(['"])[^'"]*\1/g, 'STR') // Replace strings
-        .slice(0, ERROR_NORMALIZE_MAX_LENGTH);
-    return `${toolName}:${Buffer.from(normalized).toString('base64').slice(0, SIGNATURE_MAX_LENGTH)}`;
-}
 /**
  * Categorizes an error message into a known error category based on keywords.
  */
@@ -71,32 +54,6 @@ export function createErrorState(signature, category) {
         unofficialDocsContent: '',
         fixStrategiesAttempted: [],
     };
-}
-/**
- * Determines if the current phase should escalate based on retry limits.
- */
-export function shouldEscalatePhase(state) {
-    const maxPerPhase = PHASE_RETRY_LIMITS[state.category] || DEFAULT_RETRY_LIMIT;
-    return state.attemptsThisPhase >= maxPerPhase;
-}
-/**
- * Escalates the error state to the next phase, resetting attempt counter.
- */
-export function escalatePhase(state) {
-    if (state.phase >= MAX_PHASE)
-        return state;
-    return {
-        ...state,
-        phase: (state.phase + 1),
-        attemptsThisPhase: 0,
-    };
-}
-/**
- * Checks if all retry phases have been exhausted for the error.
- */
-export function hasExhaustedRetries(state) {
-    const maxPerPhase = PHASE_RETRY_LIMITS[state.category] || DEFAULT_RETRY_LIMIT;
-    return state.phase >= MAX_PHASE && state.attemptsThisPhase >= maxPerPhase;
 }
 /**
  * Builds a context string for the fix loop with error details and history.

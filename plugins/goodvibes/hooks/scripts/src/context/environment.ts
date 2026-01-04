@@ -1,23 +1,41 @@
 /**
- * Environment Checker (Comprehensive)
+ * Environment Configuration Module
  *
- * Performs comprehensive environment configuration analysis including:
- * - Detection of all .env file variants (.env, .env.local, .env.production, etc.)
- * - Missing variable detection against .env.example/.env.sample/.env.template
- * - Sensitive variable exposure detection (API keys, secrets not in .gitignore)
+ * Consolidated environment analysis providing both quick checks and comprehensive analysis.
  *
- * **Difference from env-checker.ts:**
- * - This module returns {@link EnvironmentContext} with full analysis
- * - env-checker.ts returns {@link EnvStatus} with basic presence/missing checks only
+ * **Two APIs:**
+ * - `checkEnvStatus()` - Quick check returning {@link EnvStatus} (basic presence/missing vars)
+ * - `analyzeEnvironment()` - Comprehensive analysis returning {@link EnvironmentContext}
  *
- * Use this when you need comprehensive security analysis; use env-checker.ts for quick checks.
+ * **Backwards Compatibility:**
+ * - `checkEnvironment()` is an alias for `analyzeEnvironment()` (comprehensive)
+ * - env-checker.ts re-exports `checkEnvStatus` as `checkEnvironment` for existing consumers
  */
 
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
 
-/** Environment configuration analysis results. */
+// =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * Lightweight environment status for quick checks.
+ * Used by consumers that need basic env file presence information.
+ */
+export interface EnvStatus {
+  hasEnvFile: boolean;
+  hasEnvExample: boolean;
+  missingVars: string[];
+  warnings: string[];
+}
+
+/**
+ * Comprehensive environment analysis results.
+ * Includes sensitive variable detection and detailed file information.
+ */
 export interface EnvironmentContext {
   envFiles: string[];
   hasEnvExample: boolean;
@@ -26,7 +44,11 @@ export interface EnvironmentContext {
   sensitiveVarsExposed: string[];
 }
 
-// Common sensitive variable patterns
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Common sensitive variable patterns for security detection. */
 const SENSITIVE_PATTERNS = [
   /api[_-]?key/i,
   /secret/i,
@@ -37,7 +59,7 @@ const SENSITIVE_PATTERNS = [
   /auth/i,
 ];
 
-// Files to check for environment configuration
+/** All env file variants to check for. */
 const ENV_FILES = [
   '.env',
   '.env.local',
@@ -49,48 +71,136 @@ const ENV_FILES = [
   '.env.test.local',
 ];
 
+/** Example/template env files to check for required variables. */
 const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
 
+// =============================================================================
+// Internal Helpers
+// =============================================================================
+
 /**
- * Parse an env file and extract variable names
+ * Parse an env file and extract variable names (sync version).
  */
-function parseEnvFile(filePath: string): string[] {
+function parseEnvFileSync(filePath: string): string[] {
   try {
     if (!fs.existsSync(filePath)) return [];
 
     const content = fs.readFileSync(filePath, 'utf-8');
-    const vars: string[] = [];
-
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim();
-      // Skip comments and empty lines
-      if (!trimmed || trimmed.startsWith('#')) continue;
-
-      // Extract variable name
-      const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
-      if (match) {
-        vars.push(match[1]);
-      }
-    }
-
-    return vars;
+    return parseEnvVars(content);
   } catch (error) {
-    debug('parseEnvFile failed', { error: String(error) });
+    debug('parseEnvFileSync failed', { error: String(error) });
     return [];
   }
 }
 
 /**
- * Check if a variable name looks sensitive
+ * Parse env content and extract variable names.
+ */
+function parseEnvVars(content: string): string[] {
+  const vars: string[] = [];
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    // Skip comments and empty lines
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    // Extract variable name (support both KEY=value and KEY= formats)
+    const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
+    if (match) {
+      vars.push(match[1]);
+    }
+  }
+
+  return vars;
+}
+
+/**
+ * Check if a variable name looks sensitive.
  */
 function isSensitiveVar(varName: string): boolean {
   return SENSITIVE_PATTERNS.some((pattern) => pattern.test(varName));
 }
 
 /**
- * Check environment configuration
+ * Check if a file exists (async version).
  */
-export async function checkEnvironment(cwd: string): Promise<EnvironmentContext> {
+async function fileExistsAsync(filePath: string): Promise<boolean> {
+  try {
+    await fsPromises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// =============================================================================
+// Quick Check API (EnvStatus)
+// =============================================================================
+
+/**
+ * Quick environment check returning basic status.
+ *
+ * This is the lightweight check that returns basic status. For comprehensive
+ * environment analysis including sensitive variable detection, use
+ * {@link analyzeEnvironment} instead.
+ *
+ * @param cwd - Working directory to check
+ * @returns Promise resolving to EnvStatus
+ */
+export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
+  const envPath = path.join(cwd, '.env');
+  const envLocalPath = path.join(cwd, '.env.local');
+  const envExamplePath = path.join(cwd, '.env.example');
+
+  const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] = await Promise.all([
+    fileExistsAsync(envPath),
+    fileExistsAsync(envLocalPath),
+    fileExistsAsync(envExamplePath),
+  ]);
+
+  const hasEnvFile = hasEnvPathExists || hasEnvLocalExists;
+  const hasEnvExample = hasEnvExampleExists;
+
+  let missingVars: string[] = [];
+  const warnings: string[] = [];
+
+  if (hasEnvExample) {
+    const exampleContent = await fsPromises.readFile(envExamplePath, 'utf-8');
+    const requiredVars = parseEnvVars(exampleContent);
+
+    let definedVars: string[] = [];
+    if (hasEnvLocalExists) {
+      definedVars = parseEnvVars(await fsPromises.readFile(envLocalPath, 'utf-8'));
+    } else if (hasEnvPathExists) {
+      definedVars = parseEnvVars(await fsPromises.readFile(envPath, 'utf-8'));
+    }
+
+    missingVars = requiredVars.filter(v => !definedVars.includes(v));
+
+    if (missingVars.length > 0) {
+      warnings.push(`Missing env vars: ${missingVars.join(', ')}`);
+    }
+  }
+
+  return { hasEnvFile, hasEnvExample, missingVars, warnings };
+}
+
+// =============================================================================
+// Comprehensive Analysis API (EnvironmentContext)
+// =============================================================================
+
+/**
+ * Comprehensive environment analysis including security checks.
+ *
+ * Performs full analysis including:
+ * - Detection of all .env file variants
+ * - Missing variable detection against example files
+ * - Sensitive variable exposure detection (not in .gitignore)
+ *
+ * @param cwd - Working directory to analyze
+ * @returns Promise resolving to EnvironmentContext
+ */
+export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContext> {
   const envFiles: string[] = [];
   let definedVars: string[] = [];
 
@@ -99,7 +209,7 @@ export async function checkEnvironment(cwd: string): Promise<EnvironmentContext>
     const filePath = path.join(cwd, envFile);
     if (fs.existsSync(filePath)) {
       envFiles.push(envFile);
-      const vars = parseEnvFile(filePath);
+      const vars = parseEnvFileSync(filePath);
       definedVars = [...definedVars, ...vars];
     }
   }
@@ -115,7 +225,7 @@ export async function checkEnvironment(cwd: string): Promise<EnvironmentContext>
     const filePath = path.join(cwd, exampleFile);
     if (fs.existsSync(filePath)) {
       hasEnvExample = true;
-      exampleVars = parseEnvFile(filePath);
+      exampleVars = parseEnvFileSync(filePath);
       break;
     }
   }
@@ -139,7 +249,7 @@ export async function checkEnvironment(cwd: string): Promise<EnvironmentContext>
         gitignore.includes('.env.*');
 
       if (!isIgnored && envFile !== '.env.example') {
-        const vars = parseEnvFile(path.join(cwd, envFile));
+        const vars = parseEnvFileSync(path.join(cwd, envFile));
         const sensitive = vars.filter(isSensitiveVar);
         sensitiveVarsExposed.push(...sensitive.map((v) => `${v} (in ${envFile})`));
       }
@@ -156,7 +266,47 @@ export async function checkEnvironment(cwd: string): Promise<EnvironmentContext>
 }
 
 /**
- * Format environment context for display
+ * Check environment configuration (comprehensive).
+ *
+ * @deprecated Use {@link analyzeEnvironment} for clarity. This is an alias for backwards compatibility.
+ * @param cwd - Working directory to analyze
+ * @returns Promise resolving to EnvironmentContext
+ */
+export async function checkEnvironment(cwd: string): Promise<EnvironmentContext> {
+  return analyzeEnvironment(cwd);
+}
+
+// =============================================================================
+// Formatting Functions
+// =============================================================================
+
+/**
+ * Format EnvStatus for display in context output.
+ *
+ * @param status - The EnvStatus to format
+ * @returns Formatted string or empty string if no relevant info
+ */
+export function formatEnvStatus(status: EnvStatus): string {
+  const parts: string[] = [];
+
+  if (status.hasEnvFile) {
+    parts.push('Environment: .env present');
+  } else if (status.hasEnvExample) {
+    parts.push('Environment: .env.example exists but no .env file');
+  }
+
+  if (status.warnings.length > 0) {
+    parts.push(`Warning: ${status.warnings.join(', ')}`);
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Format EnvironmentContext for display.
+ *
+ * @param context - The EnvironmentContext to format
+ * @returns Formatted string or null if no env files
  */
 export function formatEnvironment(context: EnvironmentContext): string | null {
   const lines: string[] = [];

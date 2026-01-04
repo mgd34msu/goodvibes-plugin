@@ -13,13 +13,17 @@ export interface ParsedTranscript {
     error_count: number;
     success_indicators: string[];
 }
-/** Keyword categories for classifying agent tasks and transcript content. */
+/**
+ * Keyword categories for classifying agent tasks and transcript content.
+ * Re-exported from the consolidated keywords module for backwards compatibility.
+ */
 export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /**
  * Parse a transcript file to extract useful information
  */
 export declare function parseTranscript(transcriptPath: string): ParsedTranscript;
 /**
- * Extract keywords from task description and transcript content
+ * Extract keywords from task description and transcript content.
+ * Delegates to the consolidated keywords module.
  */
 export declare function extractKeywords(taskDescription?: string, transcriptContent?: string, agentType?: string): string[];

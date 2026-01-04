@@ -56,6 +56,9 @@ export declare function getRemainingAttempts(cwdOrErrorState: string | ErrorStat
 /**
  * Generate a signature for an error message
  * Normalizes the error to group similar errors together
+ *
+ * Note: This wrapper maintains the original API where error comes first
+ * and toolName is optional. The core implementation supports both orderings.
  */
 export declare function generateErrorSignature(error: string, toolName?: string): string;
 /** Clears retry data for a specific signature after successful fix */

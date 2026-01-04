@@ -9,28 +9,81 @@ import type { GoodVibesConfig } from '../types/config.js';
 import { type TestResult } from '../automation/test-runner.js';
 import { type BuildResult } from '../automation/build-runner.js';
 /**
- * Run tests for modified files if enabled.
+ * Run tests for modified files if test automation is enabled in config.
+ * Skips test files themselves and files with no associated tests.
+ * Updates session state with test results on completion.
+ *
+ * @param state - The current hooks session state to update with results
+ * @param config - GoodVibes configuration containing automation settings
+ * @param filePath - Absolute path to the modified file to find tests for
+ * @param cwd - Current working directory for running tests
+ * @returns Object with `ran` boolean indicating if tests executed, and `result` containing test output or null
+ *
+ * @example
+ * const { ran, result } = await maybeRunTests(state, config, '/src/utils.ts', '/project');
+ * if (ran && result && !result.passed) {
+ *   console.log('Tests failed:', result.summary);
+ * }
  */
 export declare function maybeRunTests(state: HooksState, config: GoodVibesConfig, filePath: string, cwd: string): Promise<{
     ran: boolean;
     result: TestResult | null;
 }>;
 /**
- * Run build/typecheck if threshold reached.
+ * Run TypeScript type checking if the file modification threshold is reached.
+ * Tracks the number of modified files since last build and triggers when threshold exceeded.
+ * Updates session state with build status and any errors found.
+ *
+ * @param state - The current hooks session state containing modification counts
+ * @param config - GoodVibes configuration with automation.building.runAfterFileThreshold
+ * @param cwd - Current working directory for running the type checker
+ * @returns Object with `ran` boolean indicating if build executed, and `result` containing build output or null
+ *
+ * @example
+ * const { ran, result } = await maybeRunBuild(state, config, '/project');
+ * if (ran && result && !result.passed) {
+ *   console.log('Build errors:', result.errors);
+ * }
  */
 export declare function maybeRunBuild(state: HooksState, config: GoodVibesConfig, cwd: string): Promise<{
     ran: boolean;
     result: BuildResult | null;
 }>;
 /**
- * Check if checkpoint should be created and create it.
+ * Check if a git checkpoint should be created and create it if conditions are met.
+ * Creates automatic checkpoints based on file modification count thresholds.
+ * Only creates checkpoint if autoCheckpoint is enabled in config.
+ *
+ * @param state - The current hooks session state with file tracking data
+ * @param config - GoodVibes configuration with automation.git.autoCheckpoint setting
+ * @param cwd - Current working directory (git repository root)
+ * @returns Object with `created` boolean and `message` describing the checkpoint or empty string
+ *
+ * @example
+ * const { created, message } = await maybeCreateCheckpoint(state, config, '/project');
+ * if (created) {
+ *   console.log('Checkpoint created:', message);
+ * }
  */
 export declare function maybeCreateCheckpoint(state: HooksState, config: GoodVibesConfig, cwd: string): Promise<{
     created: boolean;
     message: string;
 }>;
 /**
- * Check if feature branch should be created.
+ * Check if a feature branch should be created and create it if conditions are met.
+ * Creates a feature branch when significant file creation is detected on main branch.
+ * Only creates branch if autoFeatureBranch is enabled in config.
+ *
+ * @param state - The current hooks session state with git and file tracking data
+ * @param config - GoodVibes configuration with automation.git.autoFeatureBranch setting
+ * @param cwd - Current working directory (git repository root)
+ * @returns Object with `created` boolean and `branchName` string or null if not created
+ *
+ * @example
+ * const { created, branchName } = await maybeCreateBranch(state, config, '/project');
+ * if (created) {
+ *   console.log('Created branch:', branchName);
+ * }
  */
 export declare function maybeCreateBranch(state: HooksState, config: GoodVibesConfig, cwd: string): Promise<{
     created: boolean;

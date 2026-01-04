@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug, logError } from '../shared/logging.js';
 /** Default quality gates for TypeScript projects */
 export const QUALITY_GATES = [
     {
@@ -50,7 +51,6 @@ function runCheck(command, cwd) {
         return true;
     }
     catch (error) {
-        const { debug } = require('../shared/logging.js');
         debug(`Quality gate check failed: ${command} - ${error}`);
         return false;
     }
@@ -89,8 +89,7 @@ export async function runQualityGates(cwd) {
                 }
             }
             catch (error) {
-                const { logError } = require('../shared/logging.js');
-                logError(`Auto-fix failed for ${gate.name}: ${error}`);
+                logError(`Auto-fix for ${gate.name}`, error);
                 results.push({ gate: gate.name, status: 'failed', message: 'Auto-fix failed' });
                 allPassed = false;
                 if (gate.blocking)

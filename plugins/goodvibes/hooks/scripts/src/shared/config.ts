@@ -53,7 +53,20 @@ export interface SharedConfig {
 }
 
 /**
- * Get default shared configuration
+ * Returns the default shared configuration for GoodVibes hooks.
+ *
+ * Provides sensible defaults for all configuration sections:
+ * - Telemetry: enabled with anonymization
+ * - Quality: all default gates with auto-fix enabled
+ * - Memory: enabled with 100 entry limit
+ * - Checkpoints: enabled with default triggers
+ *
+ * @returns The default SharedConfig object with all sections populated
+ *
+ * @example
+ * const config = getDefaultSharedConfig();
+ * console.log(config.telemetry?.enabled); // true
+ * console.log(config.quality?.gates?.length); // 4 (TypeScript, ESLint, Prettier, Tests)
  */
 export function getDefaultSharedConfig(): SharedConfig {
   return {
@@ -92,7 +105,34 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
 }
 
 /**
- * Load shared configuration from .goodvibes/settings.json
+ * Loads shared configuration from the .goodvibes/settings.json file.
+ *
+ * Reads the user's configuration file and deep-merges it with defaults.
+ * If the file doesn't exist or is invalid, returns the default configuration.
+ *
+ * The configuration file can contain either a `goodvibes` key with nested
+ * settings or the settings at the root level.
+ *
+ * @param cwd - The current working directory (project root) containing .goodvibes folder
+ * @returns The merged SharedConfig with user overrides applied to defaults
+ *
+ * @example
+ * // Load config from project directory
+ * const config = loadSharedConfig('/path/to/project');
+ *
+ * // Check if telemetry is enabled
+ * if (config.telemetry?.enabled) {
+ *   collectTelemetry();
+ * }
+ *
+ * @example
+ * // Example settings.json structure:
+ * // {
+ * //   "goodvibes": {
+ * //     "telemetry": { "enabled": false },
+ * //     "quality": { "autoFix": false }
+ * //   }
+ * // }
  */
 export function loadSharedConfig(cwd: string): SharedConfig {
   const configPath = path.join(cwd, '.goodvibes', 'settings.json');

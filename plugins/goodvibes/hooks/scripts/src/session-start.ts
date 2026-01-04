@@ -38,7 +38,7 @@ import {
   formatStackInfo,
   getGitContext,
   formatGitContext,
-  checkEnvironment,
+  checkEnvStatus,
   formatEnvStatus,
   scanTodos,
   formatTodos,
@@ -184,7 +184,7 @@ async function main(): Promise<void> {
         ] = await Promise.all([
           detectStack(projectDir),
           getGitContext(projectDir),
-          checkEnvironment(projectDir),
+          checkEnvStatus(projectDir),
           scanTodos(projectDir),
           checkProjectHealth(projectDir),
           analyzeFolderStructure(projectDir),

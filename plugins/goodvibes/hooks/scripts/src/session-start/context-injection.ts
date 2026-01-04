@@ -3,7 +3,7 @@ import {
   formatStackInfo,
   getGitContext,
   formatGitContext,
-  checkEnvironment,
+  checkEnvStatus,
   formatEnvStatus,
   scanTodos,
   formatTodos,
@@ -49,7 +49,7 @@ export async function gatherAndFormatContext(cwd: string): Promise<ContextInject
   ] = await Promise.all([
     detectStack(cwd),
     getGitContext(cwd),
-    checkEnvironment(cwd),
+    checkEnvStatus(cwd),
     scanTodos(cwd),
     checkProjectHealth(cwd),
     analyzeFolderStructure(cwd),

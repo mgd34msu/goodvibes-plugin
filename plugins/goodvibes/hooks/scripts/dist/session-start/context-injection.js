@@ -1,4 +1,4 @@
-import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnvironment, formatEnvStatus, scanTodos, formatTodos, checkProjectHealth, formatHealthStatus, analyzeFolderStructure, formatFolderAnalysis, isEmptyProject, formatEmptyProjectContext, } from '../context/index.js';
+import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnvStatus, formatEnvStatus, scanTodos, formatTodos, checkProjectHealth, formatHealthStatus, analyzeFolderStructure, formatFolderAnalysis, isEmptyProject, formatEmptyProjectContext, } from '../context/index.js';
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
 /** Width of the separator line in context output */
 const SEPARATOR_WIDTH = 50;
@@ -15,7 +15,7 @@ export async function gatherAndFormatContext(cwd) {
     const [stackInfo, gitContext, envStatus, todos, healthStatus, folderAnalysis, memory,] = await Promise.all([
         detectStack(cwd),
         getGitContext(cwd),
-        checkEnvironment(cwd),
+        checkEnvStatus(cwd),
         scanTodos(cwd),
         checkProjectHealth(cwd),
         analyzeFolderStructure(cwd),

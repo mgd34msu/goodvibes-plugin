@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { createMockReaddirStrings } from './test-utils/mock-factories.js';
 
 // Mock fs, fs/promises, and child_process
 vi.mock('fs');
@@ -907,12 +908,12 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only scaffolding files', async () => {
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         'README.md',
         'LICENSE',
         '.gitignore',
         '.git',
-      ] as any);
+      ]));
 
       const result = await isEmptyProject('/test/scaffolding');
 
@@ -920,11 +921,11 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with meaningful files', async () => {
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         'package.json',
         'src',
         'README.md',
-      ] as any);
+      ]));
 
       const result = await isEmptyProject('/test/project');
 
@@ -932,9 +933,9 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with only package.json', async () => {
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         'package.json',
-      ] as any);
+      ]));
 
       const result = await isEmptyProject('/test/project');
 
@@ -942,11 +943,11 @@ describe('empty-project', () => {
     });
 
     it('should ignore hidden files (starting with dot)', async () => {
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         '.env',
         '.eslintrc',
         '.prettierrc',
-      ] as any);
+      ]));
 
       const result = await isEmptyProject('/test/project');
 
@@ -954,11 +955,11 @@ describe('empty-project', () => {
     });
 
     it('should handle case-insensitive scaffolding file names', async () => {
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         'README.MD',
         'License.md',
         'license',
-      ] as any);
+      ]));
 
       const result = await isEmptyProject('/test/project');
 
@@ -974,10 +975,10 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with src folder', async () => {
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         'src',
         'README.md',
-      ] as any);
+      ]));
 
       const result = await isEmptyProject('/test/project');
 

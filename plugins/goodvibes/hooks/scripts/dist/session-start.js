@@ -21,7 +21,7 @@
  */
 import { respond, readHookInput, validateRegistries, ensureCacheDir, saveAnalytics, debug, logError, PROJECT_ROOT, } from './shared.js';
 // Context gathering modules
-import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnvironment, formatEnvStatus, scanTodos, formatTodos, checkProjectHealth, formatHealthStatus, analyzeFolderStructure, formatFolderAnalysis, isEmptyProject, formatEmptyProjectContext, checkPorts, formatPortStatus, } from './context/index.js';
+import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnvStatus, formatEnvStatus, scanTodos, formatTodos, checkProjectHealth, formatHealthStatus, analyzeFolderStructure, formatFolderAnalysis, isEmptyProject, formatEmptyProjectContext, checkPorts, formatPortStatus, } from './context/index.js';
 // Session-start specific modules
 import { checkCrashRecovery, formatRecoveryContext, } from './session-start/index.js';
 // Memory module
@@ -105,7 +105,7 @@ async function main() {
                 const [stackInfo, gitContext, envStatus, todos, healthStatus, folderAnalysis, memory, portStatus,] = await Promise.all([
                     detectStack(projectDir),
                     getGitContext(projectDir),
-                    checkEnvironment(projectDir),
+                    checkEnvStatus(projectDir),
                     scanTodos(projectDir),
                     checkProjectHealth(projectDir),
                     analyzeFolderStructure(projectDir),

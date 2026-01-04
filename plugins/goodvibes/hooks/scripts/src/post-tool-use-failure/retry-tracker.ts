@@ -11,6 +11,16 @@ import { ensureGoodVibesDir } from '../shared.js';
 import { debug } from '../shared/logging.js';
 import { PHASE_RETRY_LIMITS, type ErrorCategory, type ErrorState } from '../types/errors.js';
 import type { HooksState } from '../types/state.js';
+import {
+  generateErrorSignature as generateErrorSignatureCore,
+  shouldEscalatePhase as shouldEscalatePhaseCore,
+  escalatePhase as escalatePhaseCore,
+  hasExhaustedRetries as hasExhaustedRetriesCore,
+  getPhaseDescription as getPhaseDescriptionCore,
+  getRemainingAttemptsInPhase,
+  MAX_PHASE,
+  DEFAULT_RETRY_LIMIT,
+} from '../shared/error-handling-core.js';
 
 /** A single retry tracking entry */
 export interface RetryEntry {
@@ -199,14 +209,10 @@ export function shouldEscalatePhase(
     const limit = PHASE_RETRY_LIMITS[category];
     // Escalate if we've hit the retry limit for the current phase
     // and we're not already at the maximum phase (3)
-    return entry.attempts >= limit && (currentPhase ?? entry.phase) < 3;
+    return entry.attempts >= limit && (currentPhase ?? entry.phase) < MAX_PHASE;
   } else if (isErrorState(cwdOrErrorState)) {
-    // ErrorState-based signature: (errorState)
-    const errorState = cwdOrErrorState;
-    const errorCategory = errorState.category;
-    const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
-
-    return errorState.attemptsThisPhase >= limit && errorState.phase < 3;
+    // ErrorState-based signature: delegate to core implementation
+    return shouldEscalatePhaseCore(cwdOrErrorState);
   }
 
   return false;
@@ -216,22 +222,7 @@ export function shouldEscalatePhase(
  * Escalate to the next phase
  */
 export function escalatePhase(errorState: ErrorState): ErrorState {
-  if (errorState.phase >= 3) {
-    return errorState;
-  }
-
-  const nextPhase = errorState.phase + 1;
-  // Type-safe phase validation
-  if (nextPhase === 1 || nextPhase === 2 || nextPhase === 3) {
-    return {
-      ...errorState,
-      phase: nextPhase,
-      attemptsThisPhase: 0,
-    };
-  }
-
-  // Should never happen, but return unchanged state for safety
-  return errorState;
+  return escalatePhaseCore(errorState);
 }
 
 /**
@@ -254,14 +245,10 @@ export function hasExhaustedRetries(
     }
 
     const limit = PHASE_RETRY_LIMITS[category];
-    return entry.phase >= 3 && entry.attempts >= limit;
+    return entry.phase >= MAX_PHASE && entry.attempts >= limit;
   } else if (isErrorState(cwdOrErrorState)) {
-    // ErrorState-based signature: (errorState)
-    const errorState = cwdOrErrorState;
-    const errorCategory = errorState.category;
-    const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
-
-    return errorState.phase >= 3 && errorState.attemptsThisPhase >= limit;
+    // ErrorState-based signature: delegate to core implementation
+    return hasExhaustedRetriesCore(cwdOrErrorState);
   }
 
   return false;
@@ -271,16 +258,7 @@ export function hasExhaustedRetries(
  * Get phase description for messaging
  */
 export function getPhaseDescription(phase: number): string {
-  switch (phase) {
-    case 1:
-      return 'Raw attempts with existing knowledge';
-    case 2:
-      return 'Including official documentation search';
-    case 3:
-      return 'Including community solutions search';
-    default:
-      return 'Unknown phase';
-  }
+  return getPhaseDescriptionCore(phase);
 }
 
 /**
@@ -305,12 +283,8 @@ export function getRemainingAttempts(
 
     return Math.max(0, limit - entry.attempts);
   } else if (isErrorState(cwdOrErrorState)) {
-    // ErrorState-based signature: (errorState)
-    const errorState = cwdOrErrorState;
-    const errorCategory = errorState.category;
-    const limit = PHASE_RETRY_LIMITS[errorCategory] || PHASE_RETRY_LIMITS['unknown'];
-
-    return Math.max(0, limit - errorState.attemptsThisPhase);
+    // ErrorState-based signature: delegate to core implementation
+    return getRemainingAttemptsInPhase(cwdOrErrorState);
   }
 
   // Default return value for unexpected types
@@ -320,39 +294,13 @@ export function getRemainingAttempts(
 /**
  * Generate a signature for an error message
  * Normalizes the error to group similar errors together
+ *
+ * Note: This wrapper maintains the original API where error comes first
+ * and toolName is optional. The core implementation supports both orderings.
  */
 export function generateErrorSignature(error: string, toolName?: string): string {
-  // Remove variable parts like file paths, line numbers, timestamps
-  let normalized = error
-    // Remove absolute paths
-    .replace(/[A-Z]:\\[^\s:]+/gi, '<PATH>')
-    .replace(/\/[^\s:]+/g, '<PATH>')
-    // Remove line/column numbers
-    .replace(/:\d+:\d+/g, ':<LINE>:<COL>')
-    .replace(/line \d+/gi, 'line <LINE>')
-    // Remove timestamps
-    .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*/g, '<TIMESTAMP>')
-    // Remove hex addresses
-    .replace(/0x[a-f0-9]+/gi, '<ADDR>')
-    // Normalize whitespace
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-
-  // Include tool name if provided
-  if (toolName) {
-    normalized = `${toolName}::${normalized}`;
-  }
-
-  // Create a simple hash of the normalized error
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    const char = normalized.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-
-  return `err_${Math.abs(hash).toString(16)}`;
+  // Delegate to core implementation - it handles both signatures
+  return generateErrorSignatureCore(error, toolName);
 }
 
 /** Clears retry data for a specific signature after successful fix */
