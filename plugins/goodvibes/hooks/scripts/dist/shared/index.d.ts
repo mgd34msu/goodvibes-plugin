@@ -9,3 +9,4 @@ export { debug, logError } from './logging.js';
 export type { SharedConfig } from './config.js';
 export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './config.js';
 export { SECURITY_GITIGNORE_ENTRIES, ensureSecureGitignore } from './gitignore.js';
+export { SECURITY_GITIGNORE_PATTERNS } from './security-patterns.js';

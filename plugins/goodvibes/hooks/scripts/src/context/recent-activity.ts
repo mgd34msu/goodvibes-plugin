@@ -68,8 +68,11 @@ function gitExec(cwd: string, args: string): string | null {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
       maxBuffer: GIT_MAX_BUFFER,
+      timeout: 30000,
     }).trim();
-  } catch {
+  } catch (error) {
+    // Git command failed - log for debugging but return null as this is expected
+    console.error(`[recent-activity] Git command failed: git ${args}`, error);
     return null;
   }
 }

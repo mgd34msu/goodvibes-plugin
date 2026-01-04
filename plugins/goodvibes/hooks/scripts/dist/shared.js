@@ -8,6 +8,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 export { readHookInput, allowTool, blockTool, respond } from './shared/hook-io.js';
 export { debug, logError } from './shared/logging.js';
+// Import for internal use
+import { debug as debugLog } from './shared/logging.js';
 export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './shared/config.js';
 export { SECURITY_GITIGNORE_ENTRIES, ensureSecureGitignore } from './shared/gitignore.js';
 // =============================================================================
@@ -74,10 +76,11 @@ export function commandExists(cmd) {
         // Use 'where' on Windows, 'which' on Unix/Mac
         const isWindows = process.platform === 'win32';
         const checkCmd = isWindows ? `where ${cmd}` : `which ${cmd}`;
-        execSync(checkCmd, { stdio: 'ignore' });
+        execSync(checkCmd, { stdio: 'ignore', timeout: 30000 });
         return true;
     }
-    catch {
+    catch (error) {
+        debugLog(`Command check failed for ${cmd}: ${error}`);
         return false;
     }
 }

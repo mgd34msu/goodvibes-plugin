@@ -17,3 +17,6 @@ export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedC
 
 // Gitignore Management
 export { SECURITY_GITIGNORE_ENTRIES, ensureSecureGitignore } from './gitignore.js';
+
+// Security Patterns
+export { SECURITY_GITIGNORE_PATTERNS } from './security-patterns.js';

@@ -10,7 +10,7 @@ import * as path from 'path';
 const GIT_DETACHED_HEAD = 'detached';
 function execGit(command, cwd) {
     try {
-        return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
     }
     catch (error) {
         // Git command failed - this is expected for some operations (e.g., no upstream)

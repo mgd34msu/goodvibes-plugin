@@ -70,9 +70,11 @@ function toolExists(tool: string, cwd: string): boolean {
 
 function runCheck(command: string, cwd: string): boolean {
   try {
-    execSync(command, { cwd, stdio: 'pipe' });
+    execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
     return true;
-  } catch {
+  } catch (error) {
+    const { debug } = require('../shared/logging.js');
+    debug(`Quality gate check failed: ${command} - ${error}`);
     return false;
   }
 }
@@ -103,7 +105,7 @@ export async function runQualityGates(cwd: string): Promise<{
     } else if (gate.autoFix) {
       // Try auto-fix
       try {
-        execSync(gate.autoFix, { cwd, stdio: 'pipe' });
+        execSync(gate.autoFix, { cwd, stdio: 'pipe', timeout: 120000 });
         // Re-check
         const fixedPassed = runCheck(gate.check, cwd);
         if (fixedPassed) {
@@ -113,7 +115,9 @@ export async function runQualityGates(cwd: string): Promise<{
           allPassed = false;
           if (gate.blocking) hasBlockingFailure = true;
         }
-      } catch {
+      } catch (error) {
+        const { logError } = require('../shared/logging.js');
+        logError(`Auto-fix failed for ${gate.name}: ${error}`);
         results.push({ gate: gate.name, status: 'failed', message: 'Auto-fix failed' });
         allPassed = false;
         if (gate.blocking) hasBlockingFailure = true;
