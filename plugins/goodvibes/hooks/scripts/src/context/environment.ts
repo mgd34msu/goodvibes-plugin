@@ -7,6 +7,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+/** Environment configuration analysis results. */
 export interface EnvironmentContext {
   envFiles: string[];
   hasEnvExample: boolean;

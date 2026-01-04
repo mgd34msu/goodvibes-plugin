@@ -5,6 +5,7 @@ export declare const PLUGIN_ROOT: string;
 export declare const PROJECT_ROOT: string;
 export declare const CACHE_DIR: string;
 export declare const ANALYTICS_FILE: string;
+/** Hook input from stdin (provided by Claude Code). */
 export interface HookInput {
     session_id: string;
     transcript_path: string;
@@ -14,12 +15,14 @@ export interface HookInput {
     tool_name?: string;
     tool_input?: Record<string, unknown>;
 }
+/** Hook-specific output for PreToolUse/PermissionRequest events. */
 export interface HookSpecificOutput {
     hookEventName: string;
     permissionDecision?: 'allow' | 'deny' | 'ask';
     permissionDecisionReason?: string;
     updatedInput?: Record<string, unknown>;
 }
+/** Hook response type (official Claude Code schema). */
 export interface HookResponse {
     continue?: boolean;
     stopReason?: string;
@@ -27,6 +30,7 @@ export interface HookResponse {
     systemMessage?: string;
     hookSpecificOutput?: HookSpecificOutput;
 }
+/** Represents a single tool usage event for analytics. */
 export interface ToolUsage {
     tool: string;
     timestamp: string;
@@ -34,11 +38,13 @@ export interface ToolUsage {
     success: boolean;
     args?: Record<string, unknown>;
 }
+/** Represents a tool failure event for analytics. */
 export interface ToolFailure {
     tool: string;
     error: string;
     timestamp: string;
 }
+/** Represents a subagent spawn event for analytics. */
 export interface SubagentSpawn {
     type: string;
     task: string;
@@ -46,6 +52,7 @@ export interface SubagentSpawn {
     completed_at?: string;
     success?: boolean;
 }
+/** Aggregated analytics for a session. */
 export interface SessionAnalytics {
     session_id: string;
     started_at: string;
@@ -96,7 +103,7 @@ export declare function loadAnalytics(): SessionAnalytics | null;
  */
 export declare function saveAnalytics(analytics: SessionAnalytics): void;
 /**
- * Check if a command is available
+ * Check if a command is available (cross-platform)
  */
 export declare function commandExists(cmd: string): boolean;
 /**
@@ -118,3 +125,83 @@ export declare function getSessionId(): string;
  * Log a tool usage event
  */
 export declare function logToolUsage(usage: ToolUsage): void;
+/**
+ * Ensure .goodvibes directory exists with all required subdirectories
+ */
+export declare function ensureGoodVibesDir(cwd: string): Promise<string>;
+/**
+ * Ensure .gitignore contains security-critical entries
+ */
+export declare function ensureSecureGitignore(cwd: string): Promise<void>;
+/** Keyword categories for telemetry and stack detection. */
+export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
+/** Flat list of all keywords across all categories. */
+export declare const ALL_KEYWORDS: string[];
+/**
+ * Extract known keywords from text
+ */
+export declare function extractKeywords(text: string): string[];
+/** Parsed transcript data containing tools used and files modified. */
+export interface TranscriptData {
+    toolsUsed: string[];
+    filesModified: string[];
+    summary: string;
+}
+/**
+ * Parse a Claude Code transcript file to extract tools used and files modified
+ */
+export declare function parseTranscript(transcriptPath: string): TranscriptData;
+/** Triggers that determine when quality checkpoints should run. */
+export declare const CHECKPOINT_TRIGGERS: {
+    fileCountThreshold: number;
+    afterAgentComplete: boolean;
+    afterMajorChange: boolean;
+};
+/** Default quality gate checks with auto-fix commands. */
+export declare const QUALITY_GATES: ({
+    name: string;
+    check: string;
+    autoFix: null;
+    blocking: boolean;
+} | {
+    name: string;
+    check: string;
+    autoFix: string;
+    blocking: boolean;
+})[];
+/**
+ * Shared configuration for GoodVibes hooks (telemetry, quality, memory, checkpoints).
+ * Note: This is separate from the automation config in ./types/config.ts which
+ * handles build/test/git automation settings.
+ */
+export interface SharedConfig {
+    telemetry?: {
+        enabled?: boolean;
+        anonymize?: boolean;
+    };
+    quality?: {
+        gates?: Array<{
+            name: string;
+            check: string;
+            autoFix: string | null;
+            blocking: boolean;
+        }>;
+        autoFix?: boolean;
+    };
+    memory?: {
+        enabled?: boolean;
+        maxEntries?: number;
+    };
+    checkpoints?: {
+        enabled?: boolean;
+        triggers?: typeof CHECKPOINT_TRIGGERS;
+    };
+}
+/**
+ * Get default shared configuration
+ */
+export declare function getDefaultSharedConfig(): SharedConfig;
+/**
+ * Load shared configuration from .goodvibes/settings.json
+ */
+export declare function loadSharedConfig(cwd: string): SharedConfig;

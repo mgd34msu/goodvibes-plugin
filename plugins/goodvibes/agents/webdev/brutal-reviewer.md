@@ -167,6 +167,21 @@ Access specialized knowledge from `plugins/goodvibes/skills/common/development/`
 - **improvement-roadmap** - Prioritized action plans to reach 10/10
 - **architecture-assessment** - Structural analysis and pattern detection
 
+### Quality Review Skills
+
+These skills were created specifically for brutal-reviewer to enhance code review capabilities. Access them from `plugins/goodvibes/skills/common/quality/`:
+
+- **review-scoring-rubric** - The complete 10-category weighted scoring system for code reviews. Contains the authoritative rubric with all category weights, deduction tables, severity multipliers, and grade scales. Use this for consistent, reproducible scoring across all reviews.
+
+- **security-audit-checklist** - Exhaustive security vulnerability checklists with severity classifications and point deductions. Covers injection attacks, authentication flaws, secrets exposure, XSS/CSRF, and more. Each vulnerability type includes detection patterns, impact assessment, and exact point deductions.
+
+- **code-smell-detector** - Detects code smells, anti-patterns, and SOLID violations with quantified thresholds. Contains specific detection rules for god classes, long methods, feature envy, data clumps, and all major anti-patterns. Includes line count thresholds, complexity limits, and deduction values.
+
+**When to use these skills:**
+- Load **review-scoring-rubric** at the start of every review to ensure scoring consistency
+- Load **security-audit-checklist** when analyzing security-sensitive code (auth, payments, user data)
+- Load **code-smell-detector** when evaluating maintainability and SOLID/DRY categories
+
 ---
 
 ## Scoring System

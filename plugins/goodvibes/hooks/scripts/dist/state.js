@@ -1,0 +1,88 @@
+/**
+ * State management for GoodVibes hooks.
+ */
+import * as fs from 'fs';
+import * as path from 'path';
+import { createDefaultState } from './types/state.js';
+import { ensureGoodVibesDir } from './shared.js';
+/** Relative path to the state file within .goodvibes directory. */
+const STATE_FILE = 'state/hooks-state.json';
+/** Loads hook state from disk, returning defaults if not found. */
+export async function loadState(cwd) {
+    const goodvibesDir = path.join(cwd, '.goodvibes');
+    const statePath = path.join(goodvibesDir, STATE_FILE);
+    if (!fs.existsSync(statePath)) {
+        return createDefaultState();
+    }
+    try {
+        const content = fs.readFileSync(statePath, 'utf-8');
+        const state = JSON.parse(content);
+        return state;
+    }
+    catch (error) {
+        console.error('[GoodVibes] Failed to load state, using defaults:', error);
+        return createDefaultState();
+    }
+}
+/** Persists hook state to disk with atomic write. */
+export async function saveState(cwd, state) {
+    await ensureGoodVibesDir(cwd);
+    const statePath = path.join(cwd, '.goodvibes', STATE_FILE);
+    // Ensure state directory exists
+    const stateDir = path.dirname(statePath);
+    if (!fs.existsSync(stateDir)) {
+        fs.mkdirSync(stateDir, { recursive: true });
+    }
+    try {
+        // Atomic write: write to temp file, then rename
+        const tempPath = statePath + '.tmp';
+        fs.writeFileSync(tempPath, JSON.stringify(state, null, 2));
+        fs.renameSync(tempPath, statePath);
+    }
+    catch (error) {
+        console.error('[GoodVibes] Failed to save state:', error);
+    }
+}
+/** Updates session-related state with partial data. */
+export function updateSessionState(state, updates) {
+    state.session = { ...state.session, ...updates };
+}
+/** Updates test-related state with partial data. */
+export function updateTestState(state, updates) {
+    state.tests = { ...state.tests, ...updates };
+}
+/** Updates build-related state with partial data. */
+export function updateBuildState(state, updates) {
+    state.build = { ...state.build, ...updates };
+}
+/** Updates git-related state with partial data. */
+export function updateGitState(state, updates) {
+    state.git = { ...state.git, ...updates };
+}
+/** Tracks an error by its signature for retry management. */
+export function trackError(state, signature, errorState) {
+    state.errors[signature] = errorState;
+}
+/** Removes a tracked error by its signature. */
+export function clearError(state, signature) {
+    delete state.errors[signature];
+}
+/** Retrieves error state by signature, if it exists. */
+export function getErrorState(state, signature) {
+    return state.errors[signature];
+}
+/** Initializes a new session with the given ID and clears session-specific data. */
+export function initializeSession(state, sessionId) {
+    state.session.id = sessionId;
+    state.session.startedAt = new Date().toISOString();
+    state.files.modifiedThisSession = [];
+    state.files.createdThisSession = [];
+}
+/** Resets state for a new session while preserving git and error history. */
+export function resetForNewSession(state) {
+    const newState = createDefaultState();
+    // Preserve some state across sessions
+    newState.git = state.git;
+    newState.errors = state.errors;
+    return newState;
+}

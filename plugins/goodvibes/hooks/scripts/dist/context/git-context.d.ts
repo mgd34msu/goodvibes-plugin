@@ -1,33 +1,22 @@
 /**
- * Git Context Gatherer
+ * Git Context
  *
- * Gathers git-related context: branch, uncommitted changes, last commit, ahead/behind status.
+ * Retrieves git repository information including branch, status, and commits.
  */
+/** Git repository status and recent activity. */
 export interface GitContext {
-    isGitRepo: boolean;
-    branch?: string;
-    uncommittedChanges: number;
-    stagedChanges: number;
-    unstagedChanges: number;
-    untrackedFiles: number;
-    lastCommit?: {
-        hash: string;
-        message: string;
-        author: string;
-        date: string;
-    };
-    aheadBehind?: {
+    isRepo: boolean;
+    branch: string | null;
+    hasUncommittedChanges: boolean;
+    uncommittedFileCount: number;
+    lastCommit: string | null;
+    recentCommits: string[];
+    aheadBehind: {
         ahead: number;
         behind: number;
-    };
-    hasStash: boolean;
-    stashCount: number;
+    } | null;
 }
-/**
- * Gather all git context for a project
- */
+/** Retrieve git context for the project directory. */
 export declare function getGitContext(cwd: string): Promise<GitContext>;
-/**
- * Format git context for display
- */
+/** Format git context for display in context output. */
 export declare function formatGitContext(ctx: GitContext): string;

@@ -5,21 +5,34 @@
  * Correlates with SubagentStart to calculate duration and capture telemetry.
  *
  * Actions:
- * - Look up stored entry by agent_id from active-agents.json
- * - Calculate duration_ms
+ * - Look up stored entry by agent_id from agent-tracking.json
  * - Parse agent_transcript_path for files modified, tools used, final output
- * - Extract keywords from transcript
+ * - Validate agent output (type check if TS files modified)
+ * - Verify tests for modified files
+ * - Build telemetry entry with keywords, files, tools, summary
  * - Write telemetry record to .goodvibes/telemetry/YYYY-MM.jsonl
+ * - Remove tracking entry
+ * - Return validation results in output
  */
-import * as fs from 'fs';
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared.js';
-import { popActiveAgent, parseTranscript, extractKeywords, createTelemetryRecord, writeTelemetryRecord, } from './telemetry.js';
-function createResponse(systemMessage) {
-    return {
+import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './subagent-stop/telemetry.js';
+import { validateAgentOutput } from './subagent-stop/output-validation.js';
+import { verifyAgentTests } from './subagent-stop/test-verification.js';
+import { loadState, saveState } from './state.js';
+/** Creates a hook response with optional system message and output data. */
+function createResponse(options) {
+    const response = {
         continue: true,
-        systemMessage,
     };
+    if (options?.systemMessage) {
+        response.systemMessage = options.systemMessage;
+    }
+    if (options?.output) {
+        response.output = options.output;
+    }
+    return response;
 }
+/** Main entry point for subagent-stop hook. Correlates with start, validates output, writes telemetry. */
 async function main() {
     try {
         debug('SubagentStop hook starting');
@@ -30,115 +43,118 @@ async function main() {
         const agentId = input.agent_id || input.subagent_id || '';
         const agentType = input.agent_type || input.subagent_type || 'unknown';
         const transcriptPath = input.agent_transcript_path || input.subagent_transcript_path || '';
+        const cwd = input.cwd || process.cwd();
         debug('SubagentStop received input', {
             agent_id: agentId,
             agent_type: agentType,
             session_id: input.session_id,
             transcript_path: transcriptPath,
         });
-        // Look up the active agent entry
-        const startEntry = agentId ? popActiveAgent(agentId) : null;
-        if (startEntry) {
-            debug('Found matching start entry', {
-                agent_id: startEntry.agent_id,
-                agent_type: startEntry.agent_type,
-                started_at: startEntry.started_at,
+        // Load state for validation and test tracking
+        const state = await loadState(cwd);
+        // Initialize output results
+        let validationResult;
+        let testResult;
+        let telemetryWritten = false;
+        let durationMs = 0;
+        // Get agent tracking from start
+        const tracking = agentId ? await getAgentTracking(cwd, agentId) : null;
+        if (tracking) {
+            debug('Found matching tracking entry', {
+                agent_id: tracking.agent_id,
+                agent_type: tracking.agent_type,
+                started_at: tracking.started_at,
             });
-            // Parse the transcript if available
-            let parsedTranscript = {
-                files_modified: [],
-                tools_used: [],
-                error_count: 0,
-                success_indicators: [],
-            };
-            if (transcriptPath && fs.existsSync(transcriptPath)) {
-                parsedTranscript = parseTranscript(transcriptPath);
-                debug('Parsed transcript', {
-                    files_modified: parsedTranscript.files_modified.length,
-                    tools_used: parsedTranscript.tools_used.length,
-                    error_count: parsedTranscript.error_count,
+            // Calculate duration
+            const startedAt = new Date(tracking.started_at).getTime();
+            durationMs = Date.now() - startedAt;
+            // Validate agent output (type check if TS files modified)
+            if (transcriptPath) {
+                validationResult = await validateAgentOutput(cwd, transcriptPath, state);
+                debug('Validation result', {
+                    valid: validationResult.valid,
+                    filesModified: validationResult.filesModified.length,
+                    errors: validationResult.errors.length,
                 });
-            }
-            // Read transcript content for keyword extraction
-            let transcriptContent = '';
-            if (transcriptPath && fs.existsSync(transcriptPath)) {
-                try {
-                    transcriptContent = fs.readFileSync(transcriptPath, 'utf-8');
+                // Verify tests for modified files
+                if (validationResult.filesModified.length > 0) {
+                    testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
+                    debug('Test verification result', {
+                        ran: testResult.ran,
+                        passed: testResult.passed,
+                        summary: testResult.summary,
+                    });
                 }
-                catch (readError) {
-                    debug('Failed to read transcript:', readError instanceof Error ? readError.message : 'unknown');
-                }
             }
-            // Extract keywords
-            const keywords = extractKeywords(startEntry.task_description, transcriptContent, startEntry.agent_type);
-            debug('Extracted keywords', keywords);
-            // Create and write telemetry record
-            const record = createTelemetryRecord(startEntry, parsedTranscript, keywords);
-            writeTelemetryRecord(record);
-            debug('Telemetry record written', {
-                agent_id: record.agent_id,
-                duration_ms: record.duration_ms,
-                success: record.success,
+            // Build telemetry entry with keywords, files, tools, summary
+            const status = (validationResult?.valid !== false && testResult?.passed !== false)
+                ? 'completed'
+                : 'failed';
+            const telemetryEntry = await buildTelemetryEntry(tracking, transcriptPath, status);
+            // Write telemetry to monthly JSONL file
+            await writeTelemetryEntry(cwd, telemetryEntry);
+            telemetryWritten = true;
+            debug('Telemetry entry written', {
+                agent_id: telemetryEntry.agent_id,
+                duration_ms: telemetryEntry.duration_ms,
+                status: telemetryEntry.status,
             });
+            // Remove tracking entry
+            await removeAgentTracking(cwd, agentId);
+            debug('Removed agent tracking', { agent_id: agentId });
             // Update session analytics
             const analytics = loadAnalytics();
             if (analytics && analytics.subagents_spawned) {
                 // Find and update the matching subagent entry
-                const subagentEntry = analytics.subagents_spawned.find(s => s.type === startEntry.agent_type &&
-                    s.started_at === startEntry.started_at);
+                const subagentEntry = analytics.subagents_spawned.find(s => s.type === tracking.agent_type &&
+                    s.started_at === tracking.started_at);
                 if (subagentEntry) {
                     subagentEntry.completed_at = new Date().toISOString();
-                    subagentEntry.success = record.success;
+                    subagentEntry.success = status === 'completed';
                     saveAnalytics(analytics);
                 }
             }
+            // Save updated state
+            await saveState(cwd, state);
         }
         else {
-            debug('No matching start entry found, creating minimal telemetry', {
+            debug('No matching tracking entry found', {
                 agent_id: agentId,
                 agent_type: agentType,
             });
-            // Even without a start entry, we can still record some telemetry
-            if (agentId || agentType !== 'unknown') {
-                // Parse transcript if available
-                let parsedTranscript = {
-                    files_modified: [],
-                    tools_used: [],
-                    error_count: 0,
-                    success_indicators: [],
-                };
-                let transcriptContent = '';
-                if (transcriptPath && fs.existsSync(transcriptPath)) {
-                    parsedTranscript = parseTranscript(transcriptPath);
-                    try {
-                        transcriptContent = fs.readFileSync(transcriptPath, 'utf-8');
-                    }
-                    catch (readError) {
-                        debug('Failed to read transcript:', readError instanceof Error ? readError.message : 'unknown');
-                    }
+            // Even without a tracking entry, we can still validate if transcript exists
+            if (transcriptPath) {
+                validationResult = await validateAgentOutput(cwd, transcriptPath, state);
+                if (validationResult.filesModified.length > 0) {
+                    testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
                 }
-                const keywords = extractKeywords(undefined, transcriptContent, agentType);
-                // Create a minimal telemetry record
-                const nowTime = Date.now();
-                const record = {
-                    type: 'subagent_complete',
-                    agent_id: agentId || 'unknown_' + nowTime,
-                    agent_type: agentType,
-                    session_id: input.session_id || '',
-                    project_name: 'unknown',
-                    started_at: new Date().toISOString(), // Unknown actual start
-                    ended_at: new Date().toISOString(),
-                    duration_ms: 0, // Unknown
-                    cwd: input.cwd || process.cwd(),
-                    files_modified: parsedTranscript.files_modified,
-                    tools_used: parsedTranscript.tools_used,
-                    keywords,
-                    success: parsedTranscript.error_count === 0,
-                };
-                writeTelemetryRecord(record);
+                await saveState(cwd, state);
             }
         }
-        respond(createResponse());
+        // Build system message summarizing results
+        let systemMessage;
+        const issues = [];
+        if (validationResult && !validationResult.valid) {
+            issues.push('Validation errors: ' + validationResult.errors.join(', '));
+        }
+        if (testResult && !testResult.passed) {
+            issues.push('Test failures: ' + testResult.summary);
+        }
+        if (issues.length > 0) {
+            systemMessage = '[GoodVibes] Agent ' + agentType + ' completed with issues: ' + issues.join('; ');
+        }
+        // Return validation results in output
+        respond(createResponse({
+            systemMessage,
+            output: {
+                validation: validationResult,
+                tests: testResult,
+                telemetryWritten,
+                agentId: agentId || undefined,
+                agentType,
+                durationMs,
+            },
+        }));
     }
     catch (error) {
         logError('SubagentStop main', error);

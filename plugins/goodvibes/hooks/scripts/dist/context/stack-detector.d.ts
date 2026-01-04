@@ -1,23 +1,16 @@
 /**
  * Stack Detector
  *
- * Detects frameworks and tools from configuration files.
+ * Detects frameworks, package manager, and TypeScript configuration.
  */
-export interface DetectedStack {
+/** Detected technology stack information. */
+export interface StackInfo {
     frameworks: string[];
-    databases: string[];
-    styling: string[];
-    testing: string[];
-    buildTools: string[];
-    runtime: string[];
-    deployment: string[];
-    other: string[];
+    packageManager: string | null;
+    hasTypeScript: boolean;
+    isStrict: boolean;
 }
-/**
- * Detect the project's technology stack from config files
- */
-export declare function detectStack(cwd: string): Promise<DetectedStack>;
-/**
- * Format detected stack for display
- */
-export declare function formatStack(stack: DetectedStack): string;
+/** Detect the technology stack used in the project. */
+export declare function detectStack(cwd: string): Promise<StackInfo>;
+/** Format stack information for display in context output. */
+export declare function formatStackInfo(info: StackInfo): string;

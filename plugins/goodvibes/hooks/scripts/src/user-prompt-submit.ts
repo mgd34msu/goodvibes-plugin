@@ -13,6 +13,7 @@ import {
   HookResponse,
 } from './shared.js';
 
+/** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
   return {
     continue: true,
@@ -20,6 +21,7 @@ function createResponse(systemMessage?: string): HookResponse {
   };
 }
 
+/** Main entry point for user-prompt-submit hook. Can add context or validate prompts. */
 async function main(): Promise<void> {
   try {
     debug('UserPromptSubmit hook starting');

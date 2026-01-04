@@ -18,6 +18,7 @@ import {
   HookResponse,
 } from './shared.js';
 
+/** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
   return {
     continue: true,
@@ -25,6 +26,10 @@ function createResponse(systemMessage?: string): HookResponse {
   };
 }
 
+/** Milliseconds per minute for duration calculation. */
+const MS_PER_MINUTE = 60000;
+
+/** Main entry point for session-end hook. Finalizes analytics and saves session summary. */
 async function main(): Promise<void> {
   try {
     debug('SessionEnd hook starting');
@@ -43,7 +48,7 @@ async function main(): Promise<void> {
       // Calculate session duration
       const started = new Date(analytics.started_at).getTime();
       const ended = new Date(analytics.ended_at).getTime();
-      const durationMinutes = Math.round((ended - started) / 60000);
+      const durationMinutes = Math.round((ended - started) / MS_PER_MINUTE);
 
       // Save final analytics
       saveAnalytics(analytics);

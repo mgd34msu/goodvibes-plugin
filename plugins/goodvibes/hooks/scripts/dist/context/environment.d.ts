@@ -3,6 +3,7 @@
  *
  * Checks .env files and finds missing environment variables.
  */
+/** Environment configuration analysis results. */
 export interface EnvironmentContext {
     envFiles: string[];
     hasEnvExample: boolean;

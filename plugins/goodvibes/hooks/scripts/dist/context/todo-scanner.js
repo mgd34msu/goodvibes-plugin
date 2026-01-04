@@ -1,172 +1,101 @@
 /**
  * TODO Scanner
  *
- * Scans source files for TODO, FIXME, HACK, and similar comments.
+ * Scans source files for TODO, FIXME, BUG, HACK, and XXX comments.
  */
 import * as fs from 'fs';
 import * as path from 'path';
-const SCAN_EXTENSIONS = new Set([
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-    '.vue', '.svelte', '.py', '.rb', '.go', '.rs',
-    '.java', '.kt', '.swift', '.cs', '.php',
-    '.css', '.scss', '.sass', '.less',
-]);
-const SKIP_DIRS = new Set([
-    'node_modules', '.git', 'dist', 'build', 'out',
-    '.next', '.nuxt', '.svelte-kit', 'coverage',
-    '.cache', 'vendor', '__pycache__', '.venv', 'venv', 'target',
-    // Skip test directories - they often contain TODO/FIXME as test fixtures
-    '__tests__', 'tests', 'test', '__mocks__', 'fixtures', '__fixtures__',
-]);
-// Skip test files - they often contain TODO/FIXME as test input strings
-const TEST_FILE_PATTERNS = [
-    /\.test\.[jt]sx?$/,
-    /\.spec\.[jt]sx?$/,
-    /_test\.[jt]sx?$/,
-    /_spec\.[jt]sx?$/,
-    /\.stories\.[jt]sx?$/,
-];
-const TODO_PATTERN = /\b(TODO|FIXME|HACK|XXX|BUG|NOTE)\b[:\s]*(.+?)(?:\*\/|-->|$)/gi;
+const TODO_PATTERNS = ['FIXME', 'BUG', 'TODO', 'HACK', 'XXX'];
+const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
+const SKIP_DIRS = ['node_modules', 'dist', '.git', 'coverage', '.goodvibes', '__tests__', 'test', 'tests'];
+/** Default maximum number of TODOs to return. */
+const DEFAULT_TODO_LIMIT = 10;
+/** Maximum text length to display in formatted output. */
+const MAX_TODO_TEXT_LENGTH = 60;
 /**
- * Check if a filename matches test file patterns
+ * Recursively get all files matching the extensions
  */
-function isTestFile(filename) {
-    return TEST_FILE_PATTERNS.some(pattern => pattern.test(filename));
-}
-/**
- * Determine priority based on type and text
- */
-function getPriority(type, text) {
-    const upperType = type.toUpperCase();
-    const lowerText = text.toLowerCase();
-    if (upperType === 'FIXME' || upperType === 'BUG')
-        return 'high';
-    if (lowerText.includes('urgent') || lowerText.includes('critical') || lowerText.includes('important')) {
-        return 'high';
-    }
-    if (lowerText.includes('security') || lowerText.includes('vulnerability'))
-        return 'high';
-    if (upperType === 'NOTE')
-        return 'low';
-    if (lowerText.includes('maybe') || lowerText.includes('consider') || lowerText.includes('nice to have')) {
-        return 'low';
-    }
-    return 'medium';
-}
-/**
- * Scan a single file for TODOs
- */
-function scanFile(filePath, relativePath) {
-    try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\n');
-        const items = [];
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            TODO_PATTERN.lastIndex = 0;
-            let match;
-            while ((match = TODO_PATTERN.exec(line)) !== null) {
-                const type = match[1].toUpperCase();
-                const text = match[2].trim();
-                if (text.length < 3)
-                    continue;
-                items.push({
-                    type,
-                    text: text.slice(0, 100),
-                    file: relativePath,
-                    line: i + 1,
-                    priority: getPriority(type, text),
-                });
-            }
-        }
-        return items;
-    }
-    catch {
-        return [];
-    }
-}
-/**
- * Recursively scan directory for TODOs
- */
-function scanDirectory(dir, baseDir, items, maxFiles = 500) {
-    if (items.length >= maxFiles * 10)
-        return;
-    let filesScanned = 0;
+function getFiles(dir, extensions, skipDirs) {
+    const files = [];
     try {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const entry of entries) {
-            if (filesScanned >= maxFiles)
-                break;
             const fullPath = path.join(dir, entry.name);
-            const relativePath = path.relative(baseDir, fullPath);
             if (entry.isDirectory()) {
-                if (!SKIP_DIRS.has(entry.name)) {
-                    scanDirectory(fullPath, baseDir, items, maxFiles - filesScanned);
+                if (!skipDirs.includes(entry.name)) {
+                    files.push(...getFiles(fullPath, extensions, skipDirs));
                 }
             }
             else if (entry.isFile()) {
                 const ext = path.extname(entry.name).toLowerCase();
-                // Skip test files - they often contain TODO/FIXME as test fixtures
-                if (SCAN_EXTENSIONS.has(ext) && !isTestFile(entry.name)) {
-                    filesScanned++;
-                    const fileItems = scanFile(fullPath, relativePath);
-                    items.push(...fileItems);
+                if (extensions.includes(ext)) {
+                    files.push(fullPath);
                 }
             }
         }
     }
-    catch {
-        // Ignore directory read errors
+    catch (_error) {
+        // Skip directories we can't read (permission errors, etc.)
     }
+    return files;
 }
 /**
- * Scan project for TODO comments
+ * Scan a single file for TODO patterns
  */
-export async function scanTodos(cwd) {
-    const items = [];
-    scanDirectory(cwd, cwd, items);
-    const byType = {};
-    const byFile = {};
-    for (const item of items) {
-        byType[item.type] = (byType[item.type] || 0) + 1;
-        byFile[item.file] = (byFile[item.file] || 0) + 1;
+function scanFile(filePath, patterns) {
+    const results = [];
+    try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            for (const pattern of patterns) {
+                // Match pattern followed by colon (e.g., "TODO:", "FIXME:")
+                const regex = new RegExp(`\\b${pattern}:`, 'i');
+                if (regex.test(line)) {
+                    results.push({
+                        type: pattern,
+                        file: filePath,
+                        line: i + 1,
+                        text: line.trim(),
+                    });
+                    break; // Only count each line once
+                }
+            }
+        }
     }
-    items.sort((a, b) => {
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityDiff !== 0)
-            return priorityDiff;
-        const typeOrder = { BUG: 0, FIXME: 1, HACK: 2, TODO: 3, XXX: 4, NOTE: 5 };
-        return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
-    });
-    return {
-        items: items.slice(0, 50),
-        totalCount: items.length,
-        byType,
-        byFile,
-    };
+    catch (_error) {
+        // Skip files we can't read
+    }
+    return results;
 }
-/**
- * Format TODO scan results for display
- */
-export function formatTodos(result) {
-    if (result.totalCount === 0) {
-        return null;
+/** Scan project for TODO, FIXME, BUG, HACK, XXX comments. */
+export function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
+    const results = [];
+    const files = getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
+    for (const file of files) {
+        if (results.length >= limit)
+            break;
+        const relativePath = path.relative(cwd, file).replace(/\\/g, '/');
+        const todos = scanFile(file, TODO_PATTERNS);
+        for (const todo of todos) {
+            if (results.length >= limit)
+                break;
+            results.push({
+                ...todo,
+                file: relativePath,
+            });
+        }
     }
-    const sections = [];
-    const typeSummary = Object.entries(result.byType)
-        .map(([type, count]) => `${type}: ${count}`)
-        .join(', ');
-    sections.push(`**Code TODOs:** ${result.totalCount} total (${typeSummary})`);
-    const highPriority = result.items.filter((i) => i.priority === 'high').slice(0, 5);
-    if (highPriority.length > 0) {
-        const lines = highPriority.map((i) => `- **${i.type}** in \`${i.file}:${i.line}\`: ${i.text}`);
-        sections.push(`**High Priority:**\n${lines.join('\n')}`);
+    return results;
+}
+/** Format TODO items for display in context output. */
+export function formatTodos(todos) {
+    if (todos.length === 0)
+        return '';
+    const lines = ['TODOs in code:'];
+    for (const todo of todos) {
+        lines.push(`- ${todo.type}: ${todo.file}:${todo.line} - ${todo.text.slice(0, MAX_TODO_TEXT_LENGTH)}`);
     }
-    const otherItems = result.items.filter((i) => i.priority !== 'high').slice(0, 3);
-    if (otherItems.length > 0 && highPriority.length < 5) {
-        const lines = otherItems.map((i) => `- ${i.type} in \`${i.file}:${i.line}\`: ${i.text}`);
-        sections.push(`**Other:**\n${lines.join('\n')}`);
-    }
-    return sections.join('\n\n');
+    return lines.join('\n');
 }

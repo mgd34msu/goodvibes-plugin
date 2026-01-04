@@ -1,22 +1,234 @@
 /**
  * Post-Tool-Use Hook (GoodVibes)
  *
- * Processes tool results:
- * - detect_stack: Cache results, suggest running recommend_skills
- * - search_*: Log queries for analytics
- * - validate_implementation: Track issues found
- * - run_smoke_test: Summarize failures
- * - check_types: Track type errors
+ * Processes tool results and triggers automation:
+ * - Track file modifications (Edit, Write tools)
+ * - Check if checkpoint commit should be created
+ * - Detect and monitor dev server commands (Bash tool)
+ * - Optionally run tests for modified files
+ * - Optionally check build status
+ * - Check if feature branch should be created
+ * - Process MCP tool results (detect_stack, validate_implementation, etc.)
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { respond, readHookInput, loadAnalytics, saveAnalytics, logToolUsage, ensureCacheDir, debug, logError, CACHE_DIR, } from './shared.js';
+// State management
+import { loadState, saveState, updateTestState, updateBuildState } from './state.js';
+// Configuration
+import { getDefaultConfig } from './types/config.js';
+// Automation modules - file tracking
+import { trackFileModification, trackFileCreation, getModifiedFileCount } from './post-tool-use/file-tracker.js';
+// Automation modules - git operations
+import { createCheckpointIfNeeded } from './post-tool-use/checkpoint-manager.js';
+import { maybeCreateFeatureBranch } from './post-tool-use/git-branch-manager.js';
+// Automation modules - dev server monitoring
+import { isDevServerCommand, registerDevServer, parseDevServerErrors, recordDevServerError } from './post-tool-use/dev-server-monitor.js';
+// Automation modules - testing and building
+import { findTestsForFile, runTests } from './automation/test-runner.js';
+import { runTypeCheck } from './automation/build-runner.js';
+/** Creates a hook response with optional system message. */
 function createResponse(systemMessage) {
     return {
         continue: true,
         systemMessage,
     };
 }
+/**
+ * Load automation configuration (from types/config.ts)
+ * This provides build/test/git automation settings.
+ */
+function loadAutomationConfig(_cwd) {
+    // Return the default automation config
+    // In the future, this could load from .goodvibes/automation.json
+    return getDefaultConfig();
+}
+/**
+ * Handle file modification tracking for Edit and Write tools
+ */
+function handleFileModification(state, input, toolName) {
+    const toolInput = input.tool_input;
+    const filePath = toolInput?.file_path;
+    if (!filePath) {
+        return { tracked: false, filePath: null };
+    }
+    if (toolName === 'Write') {
+        trackFileCreation(state, filePath);
+        debug(`Tracked file creation: ${filePath}`);
+    }
+    else {
+        trackFileModification(state, filePath);
+        debug(`Tracked file modification: ${filePath}`);
+    }
+    return { tracked: true, filePath };
+}
+/**
+ * Handle Bash tool for dev server detection
+ */
+function handleBashTool(state, input) {
+    const toolInput = input.tool_input;
+    const command = toolInput?.command;
+    const output = toolInput?.output;
+    if (!command) {
+        return { isDevServer: false, errors: [] };
+    }
+    // Check if this is a dev server command
+    if (isDevServerCommand(command)) {
+        // Register the dev server (we don't have PID, use command as identifier)
+        const pid = `bash_${Date.now()}`;
+        registerDevServer(state, pid, command, 3000); // Default port
+        debug(`Registered dev server: ${command}`);
+        return { isDevServer: true, errors: [] };
+    }
+    // Check for errors in command output
+    if (output) {
+        const errors = parseDevServerErrors(output);
+        if (errors.length > 0) {
+            // Record errors for any running dev servers
+            for (const pid of Object.keys(state.devServers)) {
+                recordDevServerError(state, pid, errors.join('; '));
+            }
+            return { isDevServer: false, errors };
+        }
+    }
+    return { isDevServer: false, errors: [] };
+}
+/**
+ * Run tests for modified files if enabled
+ */
+async function maybeRunTests(state, config, filePath, cwd) {
+    if (!config.automation.enabled || !config.automation.testing.runAfterFileChange) {
+        return { ran: false, result: null };
+    }
+    // Skip if file is a test file itself
+    if (filePath.includes('.test.') || filePath.includes('.spec.')) {
+        return { ran: false, result: null };
+    }
+    // Find tests for this file
+    const testFiles = findTestsForFile(filePath);
+    if (testFiles.length === 0) {
+        debug(`No tests found for: ${filePath}`);
+        return { ran: false, result: null };
+    }
+    debug(`Running tests for: ${filePath}`, { testFiles });
+    try {
+        const result = await runTests(testFiles, cwd);
+        // Update state with test results
+        if (result.passed) {
+            updateTestState(state, {
+                lastQuickRun: new Date().toISOString(),
+                passingFiles: [...new Set([...state.tests.passingFiles, ...testFiles])],
+                failingFiles: state.tests.failingFiles.filter(f => !testFiles.includes(f)),
+            });
+        }
+        else {
+            updateTestState(state, {
+                lastQuickRun: new Date().toISOString(),
+                failingFiles: [...new Set([...state.tests.failingFiles, ...testFiles])],
+                passingFiles: state.tests.passingFiles.filter(f => !testFiles.includes(f)),
+                pendingFixes: result.failures.map(f => ({
+                    testFile: f.testFile,
+                    error: f.error,
+                    fixAttempts: 0,
+                })),
+            });
+        }
+        return { ran: true, result };
+    }
+    catch (error) {
+        logError('maybeRunTests', error);
+        return { ran: false, result: null };
+    }
+}
+/**
+ * Run build/typecheck if threshold reached
+ */
+async function maybeRunBuild(state, config, cwd) {
+    if (!config.automation.enabled) {
+        return { ran: false, result: null };
+    }
+    const modifiedCount = getModifiedFileCount(state);
+    const threshold = config.automation.building.runAfterFileThreshold;
+    if (modifiedCount < threshold) {
+        debug(`Build skipped: ${modifiedCount} files modified (threshold: ${threshold})`);
+        return { ran: false, result: null };
+    }
+    debug(`Running typecheck after ${modifiedCount} file modifications`);
+    try {
+        const result = await runTypeCheck(cwd);
+        // Update build state
+        updateBuildState(state, {
+            lastRun: new Date().toISOString(),
+            status: result.passed ? 'passing' : 'failing',
+            errors: result.errors,
+            fixAttempts: result.passed ? 0 : state.build.fixAttempts + 1,
+        });
+        return { ran: true, result };
+    }
+    catch (error) {
+        logError('maybeRunBuild', error);
+        return { ran: false, result: null };
+    }
+}
+/**
+ * Check if checkpoint should be created and create it
+ */
+async function maybeCreateCheckpoint(state, config, cwd) {
+    if (!config.automation.enabled || !config.automation.git.autoCheckpoint) {
+        return { created: false, message: '' };
+    }
+    return await createCheckpointIfNeeded(state, cwd);
+}
+/**
+ * Check if feature branch should be created
+ */
+async function maybeCreateBranch(state, config, cwd) {
+    if (!config.automation.enabled || !config.automation.git.autoFeatureBranch) {
+        return { created: false, branchName: null };
+    }
+    return await maybeCreateFeatureBranch(state, cwd);
+}
+/**
+ * Process automation for file-modifying tools (Edit, Write)
+ */
+async function processFileAutomation(state, config, input, toolName) {
+    const messages = [];
+    const cwd = input.cwd;
+    // Track file modification
+    const { tracked, filePath } = handleFileModification(state, input, toolName);
+    if (!tracked || !filePath) {
+        return { messages };
+    }
+    // Run tests for modified file
+    const testResult = await maybeRunTests(state, config, filePath, cwd);
+    if (testResult.ran && testResult.result) {
+        if (!testResult.result.passed) {
+            messages.push(`Tests failed: ${testResult.result.summary}`);
+        }
+    }
+    // Check if build should run
+    const buildResult = await maybeRunBuild(state, config, cwd);
+    if (buildResult.ran && buildResult.result) {
+        if (!buildResult.result.passed) {
+            messages.push(`Build check: ${buildResult.result.summary}`);
+        }
+    }
+    // Check if checkpoint should be created
+    const checkpoint = await maybeCreateCheckpoint(state, config, cwd);
+    if (checkpoint.created) {
+        messages.push(checkpoint.message);
+    }
+    // Check if feature branch should be created
+    const branch = await maybeCreateBranch(state, config, cwd);
+    if (branch.created && branch.branchName) {
+        messages.push(`Created feature branch: ${branch.branchName}`);
+    }
+    return { messages };
+}
+// =============================================================================
+// MCP Tool Handlers (existing functionality)
+// =============================================================================
+/** Handles detect_stack tool results, caching stack info. */
 function handleDetectStack(input) {
     try {
         debug('handleDetectStack called', { has_tool_input: !!input.tool_input });
@@ -40,6 +252,7 @@ function handleDetectStack(input) {
         respond(createResponse(`Error caching stack: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
+/** Handles recommend_skills tool results, tracking recommended skills. */
 function handleRecommendSkills(input) {
     try {
         const analytics = loadAnalytics();
@@ -65,7 +278,8 @@ function handleRecommendSkills(input) {
         respond(createResponse());
     }
 }
-function handleSearch(input) {
+/** Handles search tool results, logging usage. */
+function handleSearch(_input) {
     logToolUsage({
         tool: 'search',
         timestamp: new Date().toISOString(),
@@ -73,6 +287,7 @@ function handleSearch(input) {
     });
     respond(createResponse());
 }
+/** Handles validate_implementation tool results, tracking validations and issues. */
 function handleValidateImplementation(input) {
     try {
         const analytics = loadAnalytics();
@@ -97,6 +312,7 @@ function handleValidateImplementation(input) {
         respond(createResponse());
     }
 }
+/** Handles run_smoke_test tool results, reporting failures. */
 function handleRunSmokeTest(input) {
     try {
         logToolUsage({
@@ -118,6 +334,7 @@ function handleRunSmokeTest(input) {
         respond(createResponse());
     }
 }
+/** Handles check_types tool results, reporting type errors. */
 function handleCheckTypes(input) {
     try {
         const analytics = loadAnalytics();
@@ -140,38 +357,80 @@ function handleCheckTypes(input) {
         respond(createResponse());
     }
 }
+// =============================================================================
+// Main Entry Point
+// =============================================================================
+/** Main entry point for post-tool-use hook. Processes tool results and triggers automation. */
 async function main() {
     try {
         const input = await readHookInput();
         debug('PostToolUse hook received input', { tool_name: input.tool_name });
-        // Extract tool name from the full MCP tool name (e.g., "mcp__goodvibes-tools__detect_stack")
-        const toolName = input.tool_name?.split('__').pop() || '';
-        debug(`Extracted tool name: ${toolName}`);
+        const cwd = input.cwd;
+        // Load state and config
+        const state = await loadState(cwd);
+        const config = loadAutomationConfig(cwd);
+        // Extract tool name (handle both MCP and built-in tools)
+        // MCP tools: "mcp__goodvibes-tools__detect_stack" -> "detect_stack"
+        // Built-in tools: "Edit", "Write", "Bash"
+        const fullToolName = input.tool_name || '';
+        const toolName = fullToolName.includes('__')
+            ? fullToolName.split('__').pop() || ''
+            : fullToolName;
+        debug(`Processing tool: ${toolName} (full: ${fullToolName})`);
+        let automationMessages = [];
+        // Handle built-in tools with automation
         switch (toolName) {
+            case 'Edit':
+            case 'Write': {
+                const result = await processFileAutomation(state, config, input, toolName);
+                automationMessages = result.messages;
+                break;
+            }
+            case 'Bash': {
+                const bashResult = handleBashTool(state, input);
+                const MAX_ERRORS_TO_DISPLAY = 3;
+                if (bashResult.errors.length > 0) {
+                    automationMessages.push(`Dev server errors detected: ${bashResult.errors.slice(0, MAX_ERRORS_TO_DISPLAY).join(', ')}`);
+                }
+                break;
+            }
+            // MCP GoodVibes tools
             case 'detect_stack':
+                await saveState(cwd, state);
                 handleDetectStack(input);
-                break;
+                return;
             case 'recommend_skills':
+                await saveState(cwd, state);
                 handleRecommendSkills(input);
-                break;
+                return;
             case 'search_skills':
             case 'search_agents':
             case 'search_tools':
+                await saveState(cwd, state);
                 handleSearch(input);
-                break;
+                return;
             case 'validate_implementation':
+                await saveState(cwd, state);
                 handleValidateImplementation(input);
-                break;
+                return;
             case 'run_smoke_test':
+                await saveState(cwd, state);
                 handleRunSmokeTest(input);
-                break;
+                return;
             case 'check_types':
+                await saveState(cwd, state);
                 handleCheckTypes(input);
-                break;
+                return;
             default:
-                debug(`Unknown tool '${toolName}', continuing`);
-                respond(createResponse());
+                debug(`Tool '${toolName}' - no special handling`);
         }
+        // Save state after processing
+        await saveState(cwd, state);
+        // Build system message from automation results
+        const systemMessage = automationMessages.length > 0
+            ? automationMessages.join(' | ')
+            : undefined;
+        respond(createResponse(systemMessage));
     }
     catch (error) {
         logError('PostToolUse main', error);

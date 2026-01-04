@@ -1,222 +1,93 @@
 /**
- * Git Context Gatherer
+ * Git Context
  *
- * Gathers git-related context: branch, uncommitted changes, last commit, ahead/behind status.
+ * Retrieves git repository information including branch, status, and commits.
  */
 
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
+/** Git repository status and recent activity. */
 export interface GitContext {
-  isGitRepo: boolean;
-  branch?: string;
-  uncommittedChanges: number;
-  stagedChanges: number;
-  unstagedChanges: number;
-  untrackedFiles: number;
-  lastCommit?: {
-    hash: string;
-    message: string;
-    author: string;
-    date: string;
-  };
-  aheadBehind?: {
-    ahead: number;
-    behind: number;
-  };
-  hasStash: boolean;
-  stashCount: number;
+  isRepo: boolean;
+  branch: string | null;
+  hasUncommittedChanges: boolean;
+  uncommittedFileCount: number;
+  lastCommit: string | null;
+  recentCommits: string[];
+  aheadBehind: { ahead: number; behind: number } | null;
 }
 
-/**
- * Execute a git command and return output
- */
-function gitExec(cwd: string, args: string): string | null {
+function execGit(command: string, cwd: string): string | null {
   try {
-    return execSync(`git ${args}`, {
-      cwd,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim();
+    return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
   } catch {
     return null;
   }
 }
 
-/**
- * Check if directory is a git repository
- */
-function isGitRepo(cwd: string): boolean {
-  const result = gitExec(cwd, 'rev-parse --is-inside-work-tree');
-  return result === 'true';
-}
-
-/**
- * Get current branch name
- */
-function getCurrentBranch(cwd: string): string | undefined {
-  const branch = gitExec(cwd, 'branch --show-current');
-  if (branch) return branch;
-
-  // Detached HEAD - get the commit hash
-  const hash = gitExec(cwd, 'rev-parse --short HEAD');
-  return hash ? `(detached at ${hash})` : undefined;
-}
-
-/**
- * Get uncommitted changes count
- */
-function getChangeCounts(cwd: string): { staged: number; unstaged: number; untracked: number } {
-  const status = gitExec(cwd, 'status --porcelain');
-  if (!status) return { staged: 0, unstaged: 0, untracked: 0 };
-
-  let staged = 0;
-  let unstaged = 0;
-  let untracked = 0;
-
-  const lines = status.split('\n').filter((line) => line.length > 0);
-  for (const line of lines) {
-    const indexStatus = line[0];
-    const workTreeStatus = line[1];
-
-    if (indexStatus === '?' && workTreeStatus === '?') {
-      untracked++;
-    } else {
-      if (indexStatus !== ' ' && indexStatus !== '?') {
-        staged++;
-      }
-      if (workTreeStatus !== ' ' && workTreeStatus !== '?') {
-        unstaged++;
-      }
-    }
-  }
-
-  return { staged, unstaged, untracked };
-}
-
-/**
- * Get last commit info
- */
-function getLastCommit(cwd: string): GitContext['lastCommit'] {
-  const format = '%H|%s|%an|%ar';
-  const result = gitExec(cwd, `log -1 --format="${format}"`);
-  if (!result) return undefined;
-
-  const [hash, message, author, date] = result.split('|');
-  return {
-    hash: hash?.slice(0, 7) || '',
-    message: message || '',
-    author: author || '',
-    date: date || '',
-  };
-}
-
-/**
- * Get ahead/behind status relative to upstream
- */
-function getAheadBehind(cwd: string): GitContext['aheadBehind'] {
-  const result = gitExec(cwd, 'rev-list --left-right --count HEAD...@{upstream}');
-  if (!result) return undefined;
-
-  const parts = result.split('\t');
-  const ahead = parseInt(parts[0] || '0', 10);
-  const behind = parseInt(parts[1] || '0', 10);
-  return {
-    ahead: isNaN(ahead) ? 0 : ahead,
-    behind: isNaN(behind) ? 0 : behind,
-  };
-}
-
-/**
- * Get stash count
- */
-function getStashCount(cwd: string): number {
-  const result = gitExec(cwd, 'stash list');
-  if (!result) return 0;
-  return result.split('\n').filter((line) => line.length > 0).length;
-}
-
-/**
- * Gather all git context for a project
- */
+/** Retrieve git context for the project directory. */
 export async function getGitContext(cwd: string): Promise<GitContext> {
-  if (!isGitRepo(cwd)) {
+  const gitDir = path.join(cwd, '.git');
+  const isRepo = fs.existsSync(gitDir);
+
+  if (!isRepo) {
     return {
-      isGitRepo: false,
-      uncommittedChanges: 0,
-      stagedChanges: 0,
-      unstagedChanges: 0,
-      untrackedFiles: 0,
-      hasStash: false,
-      stashCount: 0,
+      isRepo: false,
+      branch: null,
+      hasUncommittedChanges: false,
+      uncommittedFileCount: 0,
+      lastCommit: null,
+      recentCommits: [],
+      aheadBehind: null,
     };
   }
 
-  const branch = getCurrentBranch(cwd);
-  const { staged, unstaged, untracked } = getChangeCounts(cwd);
-  const lastCommit = getLastCommit(cwd);
-  const aheadBehind = getAheadBehind(cwd);
-  const stashCount = getStashCount(cwd);
+  const branch = execGit('git branch --show-current', cwd);
+  const status = execGit('git status --porcelain', cwd) || '';
+  const uncommittedFiles = status.split('\n').filter(Boolean);
+  const lastCommit = execGit('git log -1 --format="%s (%ar)"', cwd);
+  const recentCommitsRaw = execGit('git log -5 --format="- %s"', cwd);
+  const recentCommits = recentCommitsRaw ? recentCommitsRaw.split('\n') : [];
+
+  let aheadBehind: { ahead: number; behind: number } | null = null;
+  const abRaw = execGit('git rev-list --left-right --count HEAD...@{u}', cwd);
+  if (abRaw) {
+    const [ahead, behind] = abRaw.split('\t').map(Number);
+    aheadBehind = { ahead, behind };
+  }
 
   return {
-    isGitRepo: true,
+    isRepo: true,
     branch,
-    uncommittedChanges: staged + unstaged,
-    stagedChanges: staged,
-    unstagedChanges: unstaged,
-    untrackedFiles: untracked,
+    hasUncommittedChanges: uncommittedFiles.length > 0,
+    uncommittedFileCount: uncommittedFiles.length,
     lastCommit,
+    recentCommits,
     aheadBehind,
-    hasStash: stashCount > 0,
-    stashCount,
   };
 }
 
-/**
- * Format git context for display
- */
+/** Format git context for display in context output. */
 export function formatGitContext(ctx: GitContext): string {
-  if (!ctx.isGitRepo) {
-    return '**Git:** Not a git repository';
+  if (!ctx.isRepo) return 'Git: Not a git repository';
+
+  const parts: string[] = [];
+  parts.push(`Git: ${ctx.branch || 'detached'} branch`);
+
+  if (ctx.hasUncommittedChanges) {
+    parts.push(`${ctx.uncommittedFileCount} uncommitted files`);
   }
 
-  const lines: string[] = [];
-
-  // Branch info
-  if (ctx.branch) {
-    let branchLine = `**Branch:** \`${ctx.branch}\``;
-    if (ctx.aheadBehind) {
-      const { ahead, behind } = ctx.aheadBehind;
-      if (ahead > 0 || behind > 0) {
-        const parts: string[] = [];
-        if (ahead > 0) parts.push(`${ahead} ahead`);
-        if (behind > 0) parts.push(`${behind} behind`);
-        branchLine += ` (${parts.join(', ')})`;
-      }
-    }
-    lines.push(branchLine);
+  if (ctx.aheadBehind) {
+    if (ctx.aheadBehind.ahead > 0) parts.push(`${ctx.aheadBehind.ahead} ahead`);
+    if (ctx.aheadBehind.behind > 0) parts.push(`${ctx.aheadBehind.behind} behind`);
   }
 
-  // Changes
-  const changesParts: string[] = [];
-  if (ctx.stagedChanges > 0) changesParts.push(`${ctx.stagedChanges} staged`);
-  if (ctx.unstagedChanges > 0) changesParts.push(`${ctx.unstagedChanges} unstaged`);
-  if (ctx.untrackedFiles > 0) changesParts.push(`${ctx.untrackedFiles} untracked`);
-
-  if (changesParts.length > 0) {
-    lines.push(`**Changes:** ${changesParts.join(', ')}`);
-  } else {
-    lines.push('**Changes:** Working tree clean');
-  }
-
-  // Last commit
   if (ctx.lastCommit) {
-    lines.push(`**Last commit:** "${ctx.lastCommit.message}" (${ctx.lastCommit.date})`);
+    parts.push(`\nLast: "${ctx.lastCommit}"`);
   }
 
-  // Stash
-  if (ctx.hasStash) {
-    lines.push(`**Stash:** ${ctx.stashCount} stashed change(s)`);
-  }
-
-  return lines.join('\n');
+  return parts.join(', ');
 }

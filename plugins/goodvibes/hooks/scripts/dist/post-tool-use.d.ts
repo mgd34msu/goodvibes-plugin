@@ -1,11 +1,13 @@
 /**
  * Post-Tool-Use Hook (GoodVibes)
  *
- * Processes tool results:
- * - detect_stack: Cache results, suggest running recommend_skills
- * - search_*: Log queries for analytics
- * - validate_implementation: Track issues found
- * - run_smoke_test: Summarize failures
- * - check_types: Track type errors
+ * Processes tool results and triggers automation:
+ * - Track file modifications (Edit, Write tools)
+ * - Check if checkpoint commit should be created
+ * - Detect and monitor dev server commands (Bash tool)
+ * - Optionally run tests for modified files
+ * - Optionally check build status
+ * - Check if feature branch should be created
+ * - Process MCP tool results (detect_stack, validate_implementation, etc.)
  */
 export {};

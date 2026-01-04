@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+/** Aggregated project memory including decisions, patterns, and preferences. */
 export interface ProjectMemory {
   decisions: Decision[];
   patterns: Pattern[];
@@ -16,6 +17,7 @@ export interface ProjectMemory {
   customContext: string[];
 }
 
+/** A recorded architectural or implementation decision. */
 export interface Decision {
   date: string;
   description: string;
@@ -23,12 +25,14 @@ export interface Decision {
   tags?: string[];
 }
 
+/** A code or design pattern used in the project. */
 export interface Pattern {
   name: string;
   description: string;
   examples?: string[];
 }
 
+/** A recorded failure or error with optional resolution. */
 export interface Failure {
   date: string;
   error: string;
@@ -36,6 +40,7 @@ export interface Failure {
   resolution?: string;
 }
 
+/** Project-specific coding preferences and conventions. */
 export interface Preferences {
   codeStyle?: Record<string, string>;
   conventions?: string[];
@@ -44,6 +49,13 @@ export interface Preferences {
 }
 
 const MEMORY_DIR = '.goodvibes/memory';
+
+/** Number of recent decisions to display. */
+const RECENT_DECISIONS_LIMIT = 3;
+/** Maximum patterns to display. */
+const MAX_PATTERNS_DISPLAY = 5;
+/** Number of recent failures to display. */
+const RECENT_FAILURES_LIMIT = 2;
 
 /**
  * Load a JSON file from the memory directory
@@ -88,9 +100,7 @@ function loadTextFiles(cwd: string, subdir: string): string[] {
   return results;
 }
 
-/**
- * Load all project memory
- */
+/** Load all project memory from the .goodvibes/memory directory. */
 export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   const memoryPath = path.join(cwd, MEMORY_DIR);
 
@@ -123,28 +133,26 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   };
 }
 
-/**
- * Format memory for display
- */
+/** Format project memory for display in context output. */
 export function formatMemory(memory: ProjectMemory): string | null {
   const sections: string[] = [];
 
-  // Recent decisions (last 3)
+  // Recent decisions
   if (memory.decisions.length > 0) {
-    const recent = memory.decisions.slice(-3);
+    const recent = memory.decisions.slice(-RECENT_DECISIONS_LIMIT);
     const decisionLines = recent.map((d) => `- ${d.description}${d.rationale ? ` (${d.rationale})` : ''}`);
     sections.push(`**Recent Decisions:**\n${decisionLines.join('\n')}`);
   }
 
   // Active patterns
   if (memory.patterns.length > 0) {
-    const patternLines = memory.patterns.slice(0, 5).map((p) => `- **${p.name}:** ${p.description}`);
+    const patternLines = memory.patterns.slice(0, MAX_PATTERNS_DISPLAY).map((p) => `- **${p.name}:** ${p.description}`);
     sections.push(`**Project Patterns:**\n${patternLines.join('\n')}`);
   }
 
-  // Recent failures (last 2)
+  // Recent failures
   if (memory.failures.length > 0) {
-    const recent = memory.failures.slice(-2);
+    const recent = memory.failures.slice(-RECENT_FAILURES_LIMIT);
     const failureLines = recent.map((f) => {
       let line = `- ${f.error}`;
       if (f.resolution) line += ` -> Resolved: ${f.resolution}`;

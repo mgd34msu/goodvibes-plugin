@@ -3,6 +3,7 @@
  *
  * Detects the architecture pattern used in the project.
  */
+/** Folder structure analysis results. */
 export interface FolderStructure {
     pattern: ArchitecturePattern;
     confidence: 'high' | 'medium' | 'low';
@@ -11,7 +12,9 @@ export interface FolderStructure {
     specialDirs: SpecialDirectories;
     depth: number;
 }
+/** Recognized architecture patterns for project organization. */
 export type ArchitecturePattern = 'next-app-router' | 'next-pages-router' | 'feature-based' | 'layer-based' | 'domain-driven' | 'atomic-design' | 'component-based' | 'flat' | 'unknown';
+/** Flags indicating presence of common special directories. */
 export interface SpecialDirectories {
     hasComponents: boolean;
     hasPages: boolean;

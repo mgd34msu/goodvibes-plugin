@@ -4,6 +4,26 @@
  * Analyzes recent git changes to identify hotspots and activity patterns.
  */
 import { execSync } from 'child_process';
+/** Maximum buffer size for git command output (10MB). */
+const GIT_MAX_BUFFER = 10 * 1024 * 1024;
+/** Default number of days to look back for recent changes. */
+const DEFAULT_DAYS_LOOKBACK = 7;
+/** Default number of commits to analyze for hotspots. */
+const DEFAULT_COMMITS_FOR_HOTSPOTS = 50;
+/** Default number of recent commits to retrieve. */
+const DEFAULT_RECENT_COMMITS = 5;
+/** Maximum recently modified files to return. */
+const MAX_RECENT_FILES = 10;
+/** Maximum hotspots to return. */
+const MAX_HOTSPOTS = 5;
+/** Minimum hotspot threshold multiplier. */
+const HOTSPOT_THRESHOLD_MULTIPLIER = 0.1;
+/** Minimum absolute hotspot threshold. */
+const MIN_HOTSPOT_THRESHOLD = 3;
+/** Maximum recent commits to display in formatted output. */
+const MAX_DISPLAY_COMMITS = 3;
+/** Maximum recently modified files to display. */
+const MAX_DISPLAY_FILES = 5;
 /**
  * Execute a git command and return output
  */
@@ -13,7 +33,7 @@ function gitExec(cwd, args) {
             cwd,
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
-            maxBuffer: 10 * 1024 * 1024,
+            maxBuffer: GIT_MAX_BUFFER,
         }).trim();
     }
     catch {
@@ -30,7 +50,7 @@ function isGitRepo(cwd) {
 /**
  * Get files changed in recent commits
  */
-function getRecentlyModifiedFiles(cwd, days = 7) {
+function getRecentlyModifiedFiles(cwd, days = DEFAULT_DAYS_LOOKBACK) {
     const since = new Date();
     since.setDate(since.getDate() - days);
     const sinceStr = since.toISOString().split('T')[0];
@@ -73,12 +93,12 @@ function getRecentlyModifiedFiles(cwd, days = 7) {
         }
         changes.push({ file, changes: total, type });
     }
-    return changes.sort((a, b) => b.changes - a.changes).slice(0, 10);
+    return changes.sort((a, b) => b.changes - a.changes).slice(0, MAX_RECENT_FILES);
 }
 /**
  * Identify hotspots (frequently changed files)
  */
-function getHotspots(cwd, commits = 50) {
+function getHotspots(cwd, commits = DEFAULT_COMMITS_FOR_HOTSPOTS) {
     const result = gitExec(cwd, `log -${commits} --name-only --pretty=format:""`);
     if (!result)
         return [];
@@ -96,7 +116,7 @@ function getHotspots(cwd, commits = 50) {
         }
         fileCount.set(file, (fileCount.get(file) || 0) + 1);
     }
-    const threshold = Math.max(3, commits * 0.1);
+    const threshold = Math.max(MIN_HOTSPOT_THRESHOLD, commits * HOTSPOT_THRESHOLD_MULTIPLIER);
     const hotspots = [];
     for (const [file, count] of fileCount) {
         if (count >= threshold) {
@@ -107,12 +127,12 @@ function getHotspots(cwd, commits = 50) {
             });
         }
     }
-    return hotspots.sort((a, b) => b.changeCount - a.changeCount).slice(0, 5);
+    return hotspots.sort((a, b) => b.changeCount - a.changeCount).slice(0, MAX_HOTSPOTS);
 }
 /**
  * Get recent commits summary
  */
-function getRecentCommits(cwd, count = 5) {
+function getRecentCommits(cwd, count = DEFAULT_RECENT_COMMITS) {
     const format = '%h|%s|%an|%ar';
     const result = gitExec(cwd, `log -${count} --format="${format}"`);
     if (!result)
@@ -135,9 +155,7 @@ function getRecentCommits(cwd, count = 5) {
     }
     return commits.slice(0, count);
 }
-/**
- * Gather all recent activity context
- */
+/** Gather all recent git activity context for the project. */
 export async function getRecentActivity(cwd) {
     if (!isGitRepo(cwd)) {
         return {
@@ -157,14 +175,12 @@ export async function getRecentActivity(cwd) {
         activeContributors: [],
     };
 }
-/**
- * Format recent activity for display
- */
+/** Format recent activity for display in context output. */
 export function formatRecentActivity(activity) {
     const sections = [];
     if (activity.recentCommits.length > 0) {
         const commitLines = activity.recentCommits
-            .slice(0, 3)
+            .slice(0, MAX_DISPLAY_COMMITS)
             .map((c) => `- \`${c.hash}\` ${c.message} (${c.date})`);
         sections.push(`**Recent Commits:**\n${commitLines.join('\n')}`);
     }
@@ -174,7 +190,7 @@ export function formatRecentActivity(activity) {
     }
     if (activity.recentlyModifiedFiles.length > 0) {
         const fileLines = activity.recentlyModifiedFiles
-            .slice(0, 5)
+            .slice(0, MAX_DISPLAY_FILES)
             .map((f) => `- \`${f.file}\` (${f.type}, ${f.changes} change(s))`);
         sections.push(`**Recently Modified:**\n${fileLines.join('\n')}`);
     }

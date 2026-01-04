@@ -5,26 +5,32 @@
  * for injection via additionalContext.
  */
 
-import { DetectedStack, formatStack } from './stack-detector.js';
+import { StackInfo, formatStackInfo } from './stack-detector.js';
 import { GitContext, formatGitContext } from './git-context.js';
-import { ProjectMemory, formatMemory } from './memory-loader.js';
-import { EnvironmentContext, formatEnvironment } from './environment.js';
-import { RecentActivity, formatRecentActivity } from './recent-activity.js';
-import { TodoScanResult, formatTodos } from './todo-scanner.js';
-import { ProjectHealth, formatProjectHealth } from './project-health.js';
-import { FolderStructure, formatFolderStructure } from './folder-structure.js';
+import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
+import { EnvStatus, formatEnvStatus } from './env-checker.js';
+import { TodoItem, formatTodos } from './todo-scanner.js';
+import { HealthStatus, formatHealthStatus } from './health-checker.js';
+import { FolderAnalysis, formatFolderAnalysis } from './folder-analyzer.js';
+import type { ProjectMemory } from '../types/memory.js';
 
+/** Maximum number of frameworks to display in summary. */
+const MAX_SUMMARY_FRAMEWORKS = 4;
+/** Maximum number of frameworks to display in minimal context. */
+const MAX_MINIMAL_FRAMEWORKS = 3;
+
+/** All gathered project context data. */
 export interface GatheredContext {
-  stack: DetectedStack;
+  stack: StackInfo;
   git: GitContext;
   memory: ProjectMemory;
-  environment: EnvironmentContext;
-  recentActivity: RecentActivity;
-  todos: TodoScanResult;
-  health: ProjectHealth;
-  folderStructure: FolderStructure;
+  environment: EnvStatus;
+  todos: TodoItem[];
+  health: HealthStatus;
+  folderStructure: FolderAnalysis;
 }
 
+/** Formatted context output with summary and issue tracking. */
 export interface FormattedContext {
   full: string;
   summary: string;
@@ -32,9 +38,7 @@ export interface FormattedContext {
   issueCount: number;
 }
 
-/**
- * Format all gathered context into a readable string
- */
+/** Format all gathered context into a readable string. */
 export function formatContext(ctx: GatheredContext): FormattedContext {
   const sections: string[] = [];
   let issueCount = 0;
@@ -42,14 +46,14 @@ export function formatContext(ctx: GatheredContext): FormattedContext {
   sections.push('# Project Context');
   sections.push('');
 
-  const stackFormatted = formatStack(ctx.stack);
+  const stackFormatted = formatStackInfo(ctx.stack);
   if (stackFormatted) {
     sections.push('## Tech Stack');
     sections.push(stackFormatted);
     sections.push('');
   }
 
-  const structureFormatted = formatFolderStructure(ctx.folderStructure);
+  const structureFormatted = formatFolderAnalysis(ctx.folderStructure);
   if (structureFormatted) {
     sections.push('## Architecture');
     sections.push(structureFormatted);
@@ -63,20 +67,20 @@ export function formatContext(ctx: GatheredContext): FormattedContext {
     sections.push('');
   }
 
-  const healthFormatted = formatProjectHealth(ctx.health);
+  const healthFormatted = formatHealthStatus(ctx.health);
   if (healthFormatted) {
     sections.push('## Project Health');
     sections.push(healthFormatted);
-    issueCount += ctx.health.warnings.length;
+    // Count warnings and errors from health checks
+    issueCount += ctx.health.checks.filter(c => c.status === 'warning' || c.status === 'error').length;
     sections.push('');
   }
 
-  const envFormatted = formatEnvironment(ctx.environment);
+  const envFormatted = formatEnvStatus(ctx.environment);
   if (envFormatted) {
     sections.push('## Environment');
     sections.push(envFormatted);
     issueCount += ctx.environment.missingVars.length;
-    issueCount += ctx.environment.sensitiveVarsExposed.length;
     sections.push('');
   }
 
@@ -84,18 +88,11 @@ export function formatContext(ctx: GatheredContext): FormattedContext {
   if (todosFormatted) {
     sections.push('## Code TODOs');
     sections.push(todosFormatted);
-    issueCount += ctx.todos.items.filter((i) => i.priority === 'high').length;
+    issueCount += ctx.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
     sections.push('');
   }
 
-  const activityFormatted = formatRecentActivity(ctx.recentActivity);
-  if (activityFormatted) {
-    sections.push('## Recent Activity');
-    sections.push(activityFormatted);
-    sections.push('');
-  }
-
-  const memoryFormatted = formatMemory(ctx.memory);
+  const memoryFormatted = formatMemoryContext(ctx.memory);
   if (memoryFormatted) {
     sections.push('## Project Memory');
     sections.push(memoryFormatted);
@@ -105,19 +102,14 @@ export function formatContext(ctx: GatheredContext): FormattedContext {
   // Generate summary
   const summaryParts: string[] = [];
 
-  const allTech = [
-    ...ctx.stack.frameworks,
-    ...ctx.stack.databases,
-    ...ctx.stack.styling.slice(0, 1),
-  ].slice(0, 4);
+  const allTech = ctx.stack.frameworks.slice(0, MAX_SUMMARY_FRAMEWORKS);
   if (allTech.length > 0) {
     summaryParts.push(allTech.join(' + '));
   }
 
-  if (ctx.git.isGitRepo && ctx.git.branch) {
-    const changes = ctx.git.uncommittedChanges + ctx.git.untrackedFiles;
-    if (changes > 0) {
-      summaryParts.push(`${changes} uncommitted changes`);
+  if (ctx.git.isRepo && ctx.git.branch) {
+    if (ctx.git.uncommittedFileCount > 0) {
+      summaryParts.push(`${ctx.git.uncommittedFileCount} uncommitted changes`);
     }
   }
 
@@ -135,27 +127,27 @@ export function formatContext(ctx: GatheredContext): FormattedContext {
   };
 }
 
-/**
- * Create a minimal context string for low-overhead scenarios
- */
+/** Create a minimal context string for low-overhead scenarios. */
 export function formatMinimalContext(ctx: GatheredContext): string {
   const parts: string[] = [];
 
-  const tech = [...ctx.stack.frameworks, ...ctx.stack.databases].slice(0, 3);
+  const tech = ctx.stack.frameworks.slice(0, MAX_MINIMAL_FRAMEWORKS);
   if (tech.length > 0) {
     parts.push(`Stack: ${tech.join(', ')}`);
   }
 
-  if (ctx.git.isGitRepo && ctx.git.branch) {
+  if (ctx.git.isRepo && ctx.git.branch) {
     parts.push(`Branch: ${ctx.git.branch}`);
   }
 
-  if (ctx.health.warnings.length > 0) {
-    parts.push(`${ctx.health.warnings.length} health warning(s)`);
+  const healthWarnings = ctx.health.checks.filter(c => c.status === 'warning' || c.status === 'error');
+  if (healthWarnings.length > 0) {
+    parts.push(`${healthWarnings.length} health warning(s)`);
   }
 
-  if (ctx.todos.items.filter((i) => i.priority === 'high').length > 0) {
-    parts.push(`${ctx.todos.items.filter((i) => i.priority === 'high').length} high-priority TODO(s)`);
+  const highPriorityTodos = ctx.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
+  if (highPriorityTodos > 0) {
+    parts.push(`${highPriorityTodos} high-priority TODO(s)`);
   }
 
   return parts.join(' | ');

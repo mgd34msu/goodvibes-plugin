@@ -15,6 +15,7 @@ import {
   HookResponse,
 } from './shared.js';
 
+/** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
   return {
     continue: true,
@@ -22,6 +23,7 @@ function createResponse(systemMessage?: string): HookResponse {
   };
 }
 
+/** Main entry point for notification hook. Handles validation, test, and build error notifications. */
 async function main(): Promise<void> {
   try {
     debug('Notification hook starting');

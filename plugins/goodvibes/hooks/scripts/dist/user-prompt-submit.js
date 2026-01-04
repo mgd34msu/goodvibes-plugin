@@ -5,12 +5,14 @@
  * Can add context or validate prompts.
  */
 import { respond, readHookInput, debug, logError, } from './shared.js';
+/** Creates a hook response with optional system message. */
 function createResponse(systemMessage) {
     return {
         continue: true,
         systemMessage,
     };
 }
+/** Main entry point for user-prompt-submit hook. Can add context or validate prompts. */
 async function main() {
     try {
         debug('UserPromptSubmit hook starting');

@@ -7,6 +7,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+/** Folder structure analysis results. */
 export interface FolderStructure {
   pattern: ArchitecturePattern;
   confidence: 'high' | 'medium' | 'low';
@@ -16,6 +17,7 @@ export interface FolderStructure {
   depth: number;
 }
 
+/** Recognized architecture patterns for project organization. */
 export type ArchitecturePattern =
   | 'next-app-router'
   | 'next-pages-router'
@@ -27,6 +29,7 @@ export type ArchitecturePattern =
   | 'flat'
   | 'unknown';
 
+/** Flags indicating presence of common special directories. */
 export interface SpecialDirectories {
   hasComponents: boolean;
   hasPages: boolean;
@@ -44,6 +47,15 @@ const LAYER_INDICATORS = ['controllers', 'services', 'repositories', 'models', '
 const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
 const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];
 const DDD_INDICATORS = ['domain', 'infrastructure', 'application', 'aggregates', 'entities', 'value-objects'];
+
+/** Minimum indicator matches for pattern detection. */
+const MIN_INDICATOR_MATCH = 2;
+/** Minimum matches for high confidence pattern detection. */
+const HIGH_CONFIDENCE_THRESHOLD = 3;
+/** Maximum folder depth to traverse. */
+const DEFAULT_MAX_DEPTH = 5;
+/** Minimum top-level directories before considering structure flat. */
+const FLAT_STRUCTURE_THRESHOLD = 3;
 
 /**
  * Get immediate subdirectories of a path
@@ -99,20 +111,20 @@ function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): 
 
   // Check for Atomic Design
   const atomicCount = hasIndicators(allDirs, ATOMIC_INDICATORS);
-  if (atomicCount >= 2) {
-    return { pattern: 'atomic-design', confidence: atomicCount >= 3 ? 'high' : 'medium' };
+  if (atomicCount >= MIN_INDICATOR_MATCH) {
+    return { pattern: 'atomic-design', confidence: atomicCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
   }
 
   // Check for Domain-Driven Design
   const dddCount = hasIndicators(allDirs, DDD_INDICATORS);
-  if (dddCount >= 2) {
-    return { pattern: 'domain-driven', confidence: dddCount >= 3 ? 'high' : 'medium' };
+  if (dddCount >= MIN_INDICATOR_MATCH) {
+    return { pattern: 'domain-driven', confidence: dddCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
   }
 
   // Check for Layer-based
   const layerCount = hasIndicators(allDirs, LAYER_INDICATORS);
-  if (layerCount >= 2) {
-    return { pattern: 'layer-based', confidence: layerCount >= 3 ? 'high' : 'medium' };
+  if (layerCount >= MIN_INDICATOR_MATCH) {
+    return { pattern: 'layer-based', confidence: layerCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
   }
 
   // Check for Feature-based
@@ -127,7 +139,7 @@ function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): 
   }
 
   // Flat structure
-  if (topLevelDirs.length < 3) {
+  if (topLevelDirs.length < FLAT_STRUCTURE_THRESHOLD) {
     return { pattern: 'flat', confidence: 'low' };
   }
 
@@ -155,7 +167,7 @@ function checkSpecialDirs(dirs: string[]): SpecialDirectories {
 /**
  * Calculate approximate folder depth
  */
-function calculateDepth(cwd: string, maxDepth: number = 5): number {
+function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): number {
   let maxFound = 0;
 
   function walk(dir: string, currentDepth: number): void {

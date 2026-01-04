@@ -14,6 +14,8 @@ const LOCKFILES = {
     'pnpm-lock.yaml': 'pnpm',
     'bun.lockb': 'bun',
 };
+/** Maximum number of suggestions to return. */
+const MAX_SUGGESTIONS = 3;
 /**
  * Check for node_modules and lockfiles
  */
@@ -118,11 +120,9 @@ function generateSuggestions(health) {
     if (!scripts.includes('typecheck') && !scripts.includes('tsc') && health.typescript?.hasConfig) {
         suggestions.push('Add a `typecheck` script (e.g., `tsc --noEmit`) for CI');
     }
-    return suggestions.slice(0, 3);
+    return suggestions.slice(0, MAX_SUGGESTIONS);
 }
-/**
- * Check overall project health
- */
+/** Check overall project health including dependencies and TypeScript config. */
 export async function checkProjectHealth(cwd) {
     const { hasNodeModules, lockfiles, packageManager } = checkDependencies(cwd);
     const typescript = checkTypeScript(cwd);
@@ -141,9 +141,7 @@ export async function checkProjectHealth(cwd) {
     health.suggestions = generateSuggestions(health);
     return health;
 }
-/**
- * Format project health for display
- */
+/** Format project health status for display in context output. */
 export function formatProjectHealth(health) {
     const sections = [];
     if (health.packageManager) {

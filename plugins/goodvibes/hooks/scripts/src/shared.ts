@@ -5,13 +5,26 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Timeout in ms for waiting on stdin input before using defaults. */
+const STDIN_TIMEOUT_MS = 100;
+
+/** Maximum length for transcript summary text. */
+const TRANSCRIPT_SUMMARY_MAX_LENGTH = 500;
+
+/** Maximum number of keywords to extract from text. */
+const MAX_EXTRACTED_KEYWORDS = 50;
+
 // Environment - using official Claude Code environment variable names
 export const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), '..');
 export const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 export const CACHE_DIR = path.join(PLUGIN_ROOT, '.cache');
 export const ANALYTICS_FILE = path.join(CACHE_DIR, 'analytics.json');
 
-// Hook input from stdin (provided by Claude Code)
+/** Hook input from stdin (provided by Claude Code). */
 export interface HookInput {
   session_id: string;
   transcript_path: string;
@@ -22,7 +35,7 @@ export interface HookInput {
   tool_input?: Record<string, unknown>;
 }
 
-// Hook-specific output for PreToolUse/PermissionRequest
+/** Hook-specific output for PreToolUse/PermissionRequest events. */
 export interface HookSpecificOutput {
   hookEventName: string;
   permissionDecision?: 'allow' | 'deny' | 'ask';
@@ -30,7 +43,7 @@ export interface HookSpecificOutput {
   updatedInput?: Record<string, unknown>;
 }
 
-// Hook response types (official Claude Code schema)
+/** Hook response type (official Claude Code schema). */
 export interface HookResponse {
   continue?: boolean;
   stopReason?: string;
@@ -39,7 +52,7 @@ export interface HookResponse {
   hookSpecificOutput?: HookSpecificOutput;
 }
 
-// Analytics types
+/** Represents a single tool usage event for analytics. */
 export interface ToolUsage {
   tool: string;
   timestamp: string;
@@ -48,12 +61,14 @@ export interface ToolUsage {
   args?: Record<string, unknown>;
 }
 
+/** Represents a tool failure event for analytics. */
 export interface ToolFailure {
   tool: string;
   error: string;
   timestamp: string;
 }
 
+/** Represents a subagent spawn event for analytics. */
 export interface SubagentSpawn {
   type: string;
   task: string;
@@ -62,6 +77,7 @@ export interface SubagentSpawn {
   success?: boolean;
 }
 
+/** Aggregated analytics for a session. */
 export interface SessionAnalytics {
   session_id: string;
   started_at: string;
@@ -93,7 +109,7 @@ export async function readHookInput(): Promise<HookInput> {
       }
     });
     process.stdin.on('error', reject);
-    // Handle case where no stdin is provided (timeout after 100ms)
+    // Handle case where no stdin is provided (timeout after configured delay)
     setTimeout(() => {
       if (!data) {
         resolve({
@@ -104,7 +120,7 @@ export async function readHookInput(): Promise<HookInput> {
           hook_event_name: 'unknown',
         });
       }
-    }, 100);
+    }, STDIN_TIMEOUT_MS);
   });
 }
 
@@ -205,12 +221,15 @@ export function saveAnalytics(analytics: SessionAnalytics): void {
 }
 
 /**
- * Check if a command is available
+ * Check if a command is available (cross-platform)
  */
 export function commandExists(cmd: string): boolean {
   try {
     const { execSync } = require('child_process');
-    execSync(`where ${cmd}`, { stdio: 'ignore' });
+    // Use 'where' on Windows, 'which' on Unix/Mac
+    const isWindows = process.platform === 'win32';
+    const checkCmd = isWindows ? `where ${cmd}` : `which ${cmd}`;
+    execSync(checkCmd, { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -270,4 +289,274 @@ export function logToolUsage(usage: ToolUsage): void {
 
   analytics.tool_usage.push(usage);
   saveAnalytics(analytics);
+}
+
+// =============================================================================
+// Lazy .goodvibes Directory Creation
+// =============================================================================
+
+/**
+ * Ensure .goodvibes directory exists with all required subdirectories
+ */
+export async function ensureGoodVibesDir(cwd: string): Promise<string> {
+  const goodvibesDir = path.join(cwd, '.goodvibes');
+
+  if (!fs.existsSync(goodvibesDir)) {
+    fs.mkdirSync(goodvibesDir, { recursive: true });
+    fs.mkdirSync(path.join(goodvibesDir, 'memory'), { recursive: true });
+    fs.mkdirSync(path.join(goodvibesDir, 'state'), { recursive: true });
+    fs.mkdirSync(path.join(goodvibesDir, 'logs'), { recursive: true });
+    fs.mkdirSync(path.join(goodvibesDir, 'telemetry'), { recursive: true });
+
+    // Add security-hardened gitignore
+    await ensureSecureGitignore(cwd);
+  }
+
+  return goodvibesDir;
+}
+
+// =============================================================================
+// Security-Hardened Gitignore Updater
+// =============================================================================
+
+const SECURITY_GITIGNORE_ENTRIES: Record<string, string[]> = {
+  'GoodVibes plugin state': ['.goodvibes/'],
+  'Environment files': ['.env', '.env.local', '.env.*.local', '*.env'],
+  'Secret files': ['*.pem', '*.key', 'credentials.json', 'secrets.json', 'service-account*.json'],
+  'Cloud credentials': ['.aws/', '.gcp/', 'kubeconfig'],
+  'Database files': ['*.db', '*.sqlite', '*.sqlite3', 'prisma/*.db'],
+  'Log files': ['*.log', 'logs/'],
+};
+
+/**
+ * Ensure .gitignore contains security-critical entries
+ */
+export async function ensureSecureGitignore(cwd: string): Promise<void> {
+  const gitignorePath = path.join(cwd, '.gitignore');
+  let content = '';
+
+  if (fs.existsSync(gitignorePath)) {
+    content = fs.readFileSync(gitignorePath, 'utf-8');
+  }
+
+  const entriesToAdd: string[] = [];
+
+  for (const [section, patterns] of Object.entries(SECURITY_GITIGNORE_ENTRIES)) {
+    const missing = patterns.filter(p => !content.includes(p));
+    if (missing.length > 0) {
+      entriesToAdd.push(`\n# ${section}`);
+      entriesToAdd.push(...missing);
+    }
+  }
+
+  if (entriesToAdd.length > 0) {
+    const newContent = content.trimEnd() + '\n' + entriesToAdd.join('\n') + '\n';
+    fs.writeFileSync(gitignorePath, newContent);
+  }
+}
+
+// =============================================================================
+// Master Keyword List for Telemetry
+// =============================================================================
+
+/** Keyword categories for telemetry and stack detection. */
+export const KEYWORD_CATEGORIES: Record<string, string[]> = {
+  frameworks_frontend: ['react', 'nextjs', 'next.js', 'vue', 'nuxt', 'svelte', 'sveltekit', 'angular', 'solid', 'solidjs', 'qwik', 'astro', 'remix', 'gatsby'],
+  frameworks_backend: ['express', 'fastify', 'hono', 'koa', 'nest', 'nestjs'],
+  languages: ['typescript', 'javascript', 'python', 'rust', 'go', 'golang'],
+  databases: ['postgresql', 'postgres', 'mysql', 'sqlite', 'mongodb', 'redis', 'supabase', 'firebase', 'turso'],
+  orms: ['prisma', 'drizzle', 'typeorm', 'sequelize', 'knex', 'kysely'],
+  api: ['rest', 'graphql', 'trpc', 'grpc', 'websocket', 'socket.io'],
+  auth: ['clerk', 'nextauth', 'auth.js', 'lucia', 'auth0', 'jwt', 'oauth'],
+  ui: ['tailwind', 'tailwindcss', 'shadcn', 'radix', 'chakra', 'mantine', 'mui'],
+  state: ['zustand', 'redux', 'jotai', 'recoil', 'mobx', 'valtio'],
+  testing: ['vitest', 'jest', 'playwright', 'cypress', 'testing-library'],
+  build: ['vite', 'webpack', 'esbuild', 'rollup', 'turbopack', 'bun'],
+  devops: ['docker', 'kubernetes', 'vercel', 'netlify', 'cloudflare', 'aws', 'railway'],
+  ai: ['openai', 'anthropic', 'claude', 'gpt', 'llm', 'langchain', 'vercel-ai'],
+};
+
+/** Flat list of all keywords across all categories. */
+export const ALL_KEYWORDS = Object.values(KEYWORD_CATEGORIES).flat();
+
+/**
+ * Extract known keywords from text
+ */
+export function extractKeywords(text: string): string[] {
+  const found = new Set<string>();
+  const lowerText = text.toLowerCase();
+
+  for (const keyword of ALL_KEYWORDS) {
+    const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (regex.test(lowerText)) {
+      found.add(keyword);
+    }
+  }
+
+  return Array.from(found).slice(0, MAX_EXTRACTED_KEYWORDS);
+}
+
+// =============================================================================
+// Transcript Parsing Utility
+// =============================================================================
+
+/** Parsed transcript data containing tools used and files modified. */
+export interface TranscriptData {
+  toolsUsed: string[];
+  filesModified: string[];
+  summary: string;
+}
+
+/**
+ * Parse a Claude Code transcript file to extract tools used and files modified
+ */
+export function parseTranscript(transcriptPath: string): TranscriptData {
+  const toolsUsed = new Set<string>();
+  const filesModified: string[] = [];
+  let lastAssistantMessage = '';
+
+  try {
+    const content = fs.readFileSync(transcriptPath, 'utf-8');
+    const lines = content.split('\n').filter(Boolean);
+
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+
+        if (event.type === 'tool_use') {
+          toolsUsed.add(event.name);
+          if (['Write', 'Edit'].includes(event.name) && event.input?.file_path) {
+            filesModified.push(event.input.file_path);
+          }
+        }
+
+        if (event.role === 'assistant' && event.content) {
+          lastAssistantMessage = typeof event.content === 'string'
+            ? event.content
+            : JSON.stringify(event.content);
+        }
+      } catch {
+        // Skip malformed lines
+      }
+    }
+  } catch {
+    // Return empty data if transcript cannot be read
+  }
+
+  return {
+    toolsUsed: Array.from(toolsUsed),
+    filesModified: [...new Set(filesModified)],
+    summary: lastAssistantMessage.slice(0, TRANSCRIPT_SUMMARY_MAX_LENGTH),
+  };
+}
+
+// =============================================================================
+// Checkpoint and Quality Gate Conditions
+// =============================================================================
+
+/** Triggers that determine when quality checkpoints should run. */
+export const CHECKPOINT_TRIGGERS = {
+  fileCountThreshold: 5,
+  afterAgentComplete: true,
+  afterMajorChange: true,
+};
+
+/** Default quality gate checks with auto-fix commands. */
+export const QUALITY_GATES = [
+  { name: 'TypeScript', check: 'npx tsc --noEmit', autoFix: null, blocking: true },
+  { name: 'ESLint', check: 'npx eslint . --max-warnings=0', autoFix: 'npx eslint . --fix', blocking: true },
+  { name: 'Prettier', check: 'npx prettier --check .', autoFix: 'npx prettier --write .', blocking: false },
+  { name: 'Tests', check: 'npm test', autoFix: null, blocking: true },
+];
+
+// =============================================================================
+// Config Loader
+// =============================================================================
+
+/**
+ * Shared configuration for GoodVibes hooks (telemetry, quality, memory, checkpoints).
+ * Note: This is separate from the automation config in ./types/config.ts which
+ * handles build/test/git automation settings.
+ */
+export interface SharedConfig {
+  telemetry?: {
+    enabled?: boolean;
+    anonymize?: boolean;
+  };
+  quality?: {
+    gates?: Array<{
+      name: string;
+      check: string;
+      autoFix: string | null;
+      blocking: boolean;
+    }>;
+    autoFix?: boolean;
+  };
+  memory?: {
+    enabled?: boolean;
+    maxEntries?: number;
+  };
+  checkpoints?: {
+    enabled?: boolean;
+    triggers?: typeof CHECKPOINT_TRIGGERS;
+  };
+}
+
+/**
+ * Get default shared configuration
+ */
+export function getDefaultSharedConfig(): SharedConfig {
+  return {
+    telemetry: {
+      enabled: true,
+      anonymize: true,
+    },
+    quality: {
+      gates: QUALITY_GATES,
+      autoFix: true,
+    },
+    memory: {
+      enabled: true,
+      maxEntries: 100,
+    },
+    checkpoints: {
+      enabled: true,
+      triggers: CHECKPOINT_TRIGGERS,
+    },
+  };
+}
+
+/**
+ * Deep merge two objects
+ */
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(result[key] as object, source[key] as object) as T[typeof key];
+    } else if (source[key] !== undefined) {
+      result[key] = source[key] as T[typeof key];
+    }
+  }
+  return result;
+}
+
+/**
+ * Load shared configuration from .goodvibes/settings.json
+ */
+export function loadSharedConfig(cwd: string): SharedConfig {
+  const configPath = path.join(cwd, '.goodvibes', 'settings.json');
+  const defaults = getDefaultSharedConfig();
+
+  if (!fs.existsSync(configPath)) {
+    return defaults;
+  }
+
+  try {
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const userConfig = JSON.parse(content);
+    return deepMerge(defaults, userConfig.goodvibes || userConfig);
+  } catch {
+    return defaults;
+  }
 }

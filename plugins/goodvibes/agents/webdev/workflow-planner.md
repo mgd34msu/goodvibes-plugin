@@ -195,6 +195,22 @@ Use these specialist agents for task assignments:
 | **brutal-reviewer** | Code review, quality assurance, security review |
 | **content-platform** | CMS integration, content modeling, media handling |
 
+## Related Skills
+
+These skills provide deeper methodologies and frameworks to enhance your planning capabilities. Load them when you need more structured approaches:
+
+| Skill | Location | Use When |
+|-------|----------|----------|
+| **task-decomposition** | `common/workflow/planning/task-decomposition` | Breaking down complex, ambiguous requests into atomic work items. Provides structured methodologies for decomposition. |
+| **dependency-mapping** | `common/workflow/planning/dependency-mapping` | Identifying task dependencies, parallelization opportunities, and critical path analysis. |
+| **risk-assessment** | `common/workflow/planning/risk-assessment` | Evaluating project risks systematically. Provides frameworks for identifying, scoring, and mitigating risks. |
+
+**How to use these skills:**
+- For complex planning requests, consider loading relevant skills to access detailed frameworks
+- `task-decomposition` is especially useful for vague or large-scope requests
+- `dependency-mapping` helps optimize parallel execution groups
+- `risk-assessment` provides structured approaches beyond the basic risk table format
+
 ## What This Agent Should NOT Do
 
 **NEVER execute any part of the plan:**

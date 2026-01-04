@@ -1,26 +1,16 @@
 /**
  * TODO Scanner
  *
- * Scans source files for TODO, FIXME, HACK, and similar comments.
+ * Scans source files for TODO, FIXME, BUG, HACK, and XXX comments.
  */
+/** A TODO comment found in source code. */
 export interface TodoItem {
-    type: 'TODO' | 'FIXME' | 'HACK' | 'XXX' | 'BUG' | 'NOTE';
-    text: string;
+    type: string;
     file: string;
     line: number;
-    priority: 'high' | 'medium' | 'low';
+    text: string;
 }
-export interface TodoScanResult {
-    items: TodoItem[];
-    totalCount: number;
-    byType: Record<string, number>;
-    byFile: Record<string, number>;
-}
-/**
- * Scan project for TODO comments
- */
-export declare function scanTodos(cwd: string): Promise<TodoScanResult>;
-/**
- * Format TODO scan results for display
- */
-export declare function formatTodos(result: TodoScanResult): string | null;
+/** Scan project for TODO, FIXME, BUG, HACK, XXX comments. */
+export declare function scanTodos(cwd: string, limit?: number): TodoItem[];
+/** Format TODO items for display in context output. */
+export declare function formatTodos(todos: TodoItem[]): string;

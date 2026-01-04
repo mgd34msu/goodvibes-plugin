@@ -13,6 +13,7 @@ import {
   HookResponse,
 } from './shared.js';
 
+/** Creates a hook response with permission decision. */
 function createResponse(decision: 'allow' | 'deny' | 'ask' = 'allow'): HookResponse {
   return {
     continue: true,
@@ -23,6 +24,7 @@ function createResponse(decision: 'allow' | 'deny' | 'ask' = 'allow'): HookRespo
   };
 }
 
+/** Main entry point for permission-request hook. Auto-approves GoodVibes MCP tool permissions. */
 async function main(): Promise<void> {
   try {
     debug('PermissionRequest hook starting');

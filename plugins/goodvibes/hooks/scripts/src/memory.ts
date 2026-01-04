@@ -18,6 +18,7 @@ import { debug, logError } from './shared.js';
 // Types
 // ============================================================================
 
+/** Represents an architectural decision record. */
 export interface Decision {
   title: string;
   date: string;
@@ -27,6 +28,7 @@ export interface Decision {
   context?: string;
 }
 
+/** Represents a project-specific code pattern. */
 export interface Pattern {
   name: string;
   date: string;
@@ -35,6 +37,7 @@ export interface Pattern {
   files?: string[];
 }
 
+/** Represents a failed approach to avoid repeating. */
 export interface Failure {
   approach: string;
   date: string;
@@ -43,6 +46,7 @@ export interface Failure {
   suggestion?: string;
 }
 
+/** Represents a user preference setting. */
 export interface Preference {
   key: string;
   value: string;
@@ -50,6 +54,7 @@ export interface Preference {
   notes?: string;
 }
 
+/** Container for all project memory data. */
 export interface ProjectMemory {
   decisions: Decision[];
   patterns: Pattern[];

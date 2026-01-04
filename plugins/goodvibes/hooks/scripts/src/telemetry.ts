@@ -22,10 +22,17 @@ const STATE_DIR = path.join(GOODVIBES_DIR, 'state');
 const TELEMETRY_DIR = path.join(GOODVIBES_DIR, 'telemetry');
 const ACTIVE_AGENTS_FILE = path.join(STATE_DIR, 'active-agents.json');
 
+/** Maximum age in ms for stale agent cleanup (24 hours). */
+const STALE_AGENT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** Maximum length for truncated output text. */
+const MAX_OUTPUT_LENGTH = 500;
+
 // ============================================================================
 // Types
 // ============================================================================
 
+/** Represents an active agent entry being tracked for telemetry. */
 export interface ActiveAgentEntry {
   agent_id: string;
   agent_type: string;
@@ -38,11 +45,13 @@ export interface ActiveAgentEntry {
   task_description?: string;
 }
 
+/** State containing all currently active agents. */
 export interface ActiveAgentsState {
   agents: Record<string, ActiveAgentEntry>;
   last_updated: string;
 }
 
+/** Parsed transcript data extracted from session logs. */
 export interface ParsedTranscript {
   files_modified: string[];
   tools_used: string[];
@@ -51,6 +60,7 @@ export interface ParsedTranscript {
   success_indicators: string[];
 }
 
+/** Complete telemetry record for a subagent completion event. */
 export interface TelemetryRecord {
   type: 'subagent_complete';
   agent_id: string;
@@ -71,6 +81,7 @@ export interface TelemetryRecord {
   final_summary?: string;
 }
 
+/** Git branch and commit information. */
 export interface GitInfo {
   branch?: string;
   commit?: string;
@@ -80,6 +91,7 @@ export interface GitInfo {
 // Keyword Categories
 // ============================================================================
 
+/** Keyword categories for classifying agent tasks and transcript content. */
 export const KEYWORD_CATEGORIES: Record<string, string[]> = {
   // Frameworks
   frameworks: [
@@ -302,18 +314,15 @@ export function popActiveAgent(agentId: string): ActiveAgentEntry | null {
   return null;
 }
 
-/**
- * Clean up stale agents (older than 24 hours)
- */
+/** Removes agent entries older than 24 hours. Returns count of removed entries. */
 export function cleanupStaleAgents(): number {
   const state = loadActiveAgents();
   const now = Date.now();
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
   let removed = 0;
 
   for (const [agentId, entry] of Object.entries(state.agents)) {
     const startedAt = new Date(entry.started_at).getTime();
-    if (now - startedAt > maxAge) {
+    if (now - startedAt > STALE_AGENT_MAX_AGE_MS) {
       delete state.agents[agentId];
       removed++;
     }
@@ -481,8 +490,8 @@ function extractLastOutput(content: string): string | undefined {
   }
 
   // Truncate if too long
-  if (lastOutput && lastOutput.length > 500) {
-    lastOutput = lastOutput.substring(0, 500) + '...';
+  if (lastOutput && lastOutput.length > MAX_OUTPUT_LENGTH) {
+    lastOutput = lastOutput.substring(0, MAX_OUTPUT_LENGTH) + '...';
   }
 
   return lastOutput;

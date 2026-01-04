@@ -7,6 +7,7 @@
  * - Keyword extraction for categorization
  * - JSONL telemetry record writing
  */
+/** Represents an active agent entry being tracked for telemetry. */
 export interface ActiveAgentEntry {
     agent_id: string;
     agent_type: string;
@@ -18,10 +19,12 @@ export interface ActiveAgentEntry {
     git_commit?: string;
     task_description?: string;
 }
+/** State containing all currently active agents. */
 export interface ActiveAgentsState {
     agents: Record<string, ActiveAgentEntry>;
     last_updated: string;
 }
+/** Parsed transcript data extracted from session logs. */
 export interface ParsedTranscript {
     files_modified: string[];
     tools_used: string[];
@@ -29,6 +32,7 @@ export interface ParsedTranscript {
     error_count: number;
     success_indicators: string[];
 }
+/** Complete telemetry record for a subagent completion event. */
 export interface TelemetryRecord {
     type: 'subagent_complete';
     agent_id: string;
@@ -48,10 +52,12 @@ export interface TelemetryRecord {
     success: boolean;
     final_summary?: string;
 }
+/** Git branch and commit information. */
 export interface GitInfo {
     branch?: string;
     commit?: string;
 }
+/** Keyword categories for classifying agent tasks and transcript content. */
 export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /**
  * Ensure .goodvibes directories exist with lazy creation
@@ -81,9 +87,7 @@ export declare function registerActiveAgent(entry: ActiveAgentEntry): void;
  * Look up and remove an active agent entry
  */
 export declare function popActiveAgent(agentId: string): ActiveAgentEntry | null;
-/**
- * Clean up stale agents (older than 24 hours)
- */
+/** Removes agent entries older than 24 hours. Returns count of removed entries. */
 export declare function cleanupStaleAgents(): number;
 /**
  * Parse a transcript file to extract useful information

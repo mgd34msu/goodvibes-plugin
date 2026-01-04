@@ -1,124 +1,45 @@
 /**
- * Empty Project Detection
+ * Empty Project Detector
  *
- * Detects if a project is essentially empty (only boilerplate files)
- * to provide appropriate scaffolding context.
+ * Detects if the project directory is empty or contains only scaffolding files.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Files that don't count as "real" project content
-const BOILERPLATE_FILES = new Set([
+const SCAFFOLDING_ONLY = [
   'readme.md',
-  'readme.txt',
   'readme',
   'license',
   'license.md',
-  'license.txt',
   '.gitignore',
-  '.gitattributes',
-  '.editorconfig',
-  '.npmrc',
-  '.nvmrc',
-  '.node-version',
-  '.prettierrc',
-  '.prettierrc.json',
-  '.prettierignore',
-  '.eslintrc',
-  '.eslintrc.json',
-  '.eslintrc.js',
-  '.eslintignore',
-  'changelog.md',
-  'contributing.md',
-  'code_of_conduct.md',
-]);
-
-// Directories that don't count as "real" project content
-const BOILERPLATE_DIRS = new Set([
   '.git',
-  '.github',
-  '.vscode',
-  '.idea',
-  'node_modules',
-  '.goodvibes',
-]);
+];
 
-export interface EmptyProjectResult {
-  isEmpty: boolean;
-  filesFound: string[];
-  reason?: string;
-}
-
-/**
- * Check if a project directory is essentially empty
- * Returns true if only README/.gitignore/LICENSE or genuinely empty
- */
-export function isEmptyProject(cwd: string): EmptyProjectResult {
+/** Check if the project directory is empty or contains only scaffolding files. */
+export async function isEmptyProject(cwd: string): Promise<boolean> {
   try {
-    const entries = fs.readdirSync(cwd, { withFileTypes: true });
-    const meaningfulFiles: string[] = [];
+    const files = fs.readdirSync(cwd);
+    const meaningfulFiles = files.filter(f => {
+      const lower = f.toLowerCase();
+      return !SCAFFOLDING_ONLY.includes(lower) && !f.startsWith('.');
+    });
 
-    for (const entry of entries) {
-      const lowerName = entry.name.toLowerCase();
-
-      if (entry.isDirectory()) {
-        // Check if it's a meaningful directory
-        if (!BOILERPLATE_DIRS.has(lowerName)) {
-          // Check if directory has any content
-          const dirPath = path.join(cwd, entry.name);
-          try {
-            const dirContents = fs.readdirSync(dirPath);
-            if (dirContents.length > 0) {
-              meaningfulFiles.push(entry.name + '/');
-            }
-          } catch {
-            // Can't read directory, assume it's meaningful
-            meaningfulFiles.push(entry.name + '/');
-          }
-        }
-      } else if (entry.isFile()) {
-        // Check if it's a meaningful file
-        if (!BOILERPLATE_FILES.has(lowerName)) {
-          meaningfulFiles.push(entry.name);
-        }
-      }
-    }
-
-    const isEmpty = meaningfulFiles.length === 0;
-
-    return {
-      isEmpty,
-      filesFound: meaningfulFiles,
-      reason: isEmpty
-        ? 'Only boilerplate files found (README, LICENSE, .gitignore, etc.)'
-        : `Found ${meaningfulFiles.length} meaningful file(s)/folder(s)`,
-    };
-  } catch (error) {
-    // If we can't read the directory, assume it's not empty
-    return {
-      isEmpty: false,
-      filesFound: [],
-      reason: `Could not read directory: ${error instanceof Error ? error.message : String(error)}`,
-    };
+    return meaningfulFiles.length === 0;
+  } catch {
+    return true;
   }
 }
 
-/**
- * Generate context message for empty projects
- */
-export function getEmptyProjectContext(): string {
-  return `## Project Status: Empty/New Project
+/** Format empty project context with scaffolding suggestions. */
+export function formatEmptyProjectContext(): string {
+  return `[GoodVibes SessionStart]
+Status: New project (empty directory)
 
-This appears to be a new or empty project. Ready to help you scaffold!
-
-### Quick Start Options:
+Ready to scaffold. Common starting points:
 - "Create a Next.js app with TypeScript and Tailwind"
-- "Set up an Express API with Prisma"
-- "Initialize a React component library"
-- "Create a CLI tool with TypeScript"
+- "Set up a Node.js API with Express and Prisma"
+- "Initialize a React library with Vite"
 
-### Available Scaffolding:
-Use \`scaffold_project\` tool to generate project structure from templates.
-Use \`list_templates\` to see available project templates.`;
+I'll detect your stack automatically as you build.`;
 }
