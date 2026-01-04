@@ -28,3 +28,7 @@ coverage/
 
 # GoodVibes local state
 .goodvibes/
+
+# goodvibes update planning docs
+new-vibe.md
+implementation-plan.md
