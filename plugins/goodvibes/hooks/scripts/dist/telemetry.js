@@ -125,8 +125,8 @@ export function getGitInfo(cwd) {
         }).trim();
         result.branch = branch;
     }
-    catch {
-        // Not a git repository or git not available
+    catch (error) {
+        debug('Git branch unavailable:', error instanceof Error ? error.message : 'unknown');
     }
     try {
         // Get current commit (short hash)
@@ -137,8 +137,8 @@ export function getGitInfo(cwd) {
         }).trim();
         result.commit = commit;
     }
-    catch {
-        // Ignore errors
+    catch (error) {
+        debug('Git commit unavailable:', error instanceof Error ? error.message : 'unknown');
     }
     return result;
 }
@@ -183,9 +183,14 @@ export function loadActiveAgents() {
  * Save active agents state to file
  */
 export function saveActiveAgents(state) {
-    ensureGoodVibesDirs();
-    state.last_updated = new Date().toISOString();
-    fs.writeFileSync(ACTIVE_AGENTS_FILE, JSON.stringify(state, null, 2));
+    try {
+        ensureGoodVibesDirs();
+        state.last_updated = new Date().toISOString();
+        fs.writeFileSync(ACTIVE_AGENTS_FILE, JSON.stringify(state, null, 2));
+    }
+    catch (error) {
+        logError('saveActiveAgents', error);
+    }
 }
 /**
  * Register a new active agent
@@ -258,8 +263,9 @@ export function parseTranscript(transcriptPath) {
                 const entry = JSON.parse(line);
                 processTranscriptEntry(entry, result);
             }
-            catch {
+            catch (parseError) {
                 // Not JSON, try to parse as plain text
+                debug('Line not JSON, parsing as plain text');
                 processPlainTextLine(line, result);
             }
         }
