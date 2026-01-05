@@ -668,7 +668,7 @@ describe('automation-runners', () => {
   describe('maybeCreateCheckpoint', () => {
     it('should skip checkpoint when automation is disabled', async () => {
       const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../checkpoint-manager.js');
+      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -688,7 +688,7 @@ describe('automation-runners', () => {
 
     it('should skip checkpoint when autoCheckpoint is disabled', async () => {
       const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../checkpoint-manager.js');
+      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -711,7 +711,7 @@ describe('automation-runners', () => {
 
     it('should create checkpoint when both automation and autoCheckpoint are enabled', async () => {
       const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../checkpoint-manager.js');
+      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
 
       const checkpointResult = {
         created: true,
@@ -737,7 +737,7 @@ describe('automation-runners', () => {
 
     it('should return result when checkpoint is not created', async () => {
       const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../checkpoint-manager.js');
+      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
 
       const checkpointResult = {
         created: false,
@@ -758,7 +758,7 @@ describe('automation-runners', () => {
   describe('maybeCreateBranch', () => {
     it('should skip branch creation when automation is disabled', async () => {
       const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../git-branch-manager.js');
+      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -777,7 +777,7 @@ describe('automation-runners', () => {
 
     it('should skip branch creation when autoFeatureBranch is disabled', async () => {
       const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../git-branch-manager.js');
+      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -800,7 +800,7 @@ describe('automation-runners', () => {
 
     it('should create branch when both automation and autoFeatureBranch are enabled', async () => {
       const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../git-branch-manager.js');
+      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
 
       const branchResult = {
         created: true,
@@ -818,7 +818,7 @@ describe('automation-runners', () => {
 
     it('should return result when branch is not created', async () => {
       const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../git-branch-manager.js');
+      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
 
       const branchResult = {
         created: false,

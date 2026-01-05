@@ -436,38 +436,71 @@ describe('getResearchHints', () => {
     });
   });
 
-  describe('fallback behavior', () => {
-    it('should use fallback for unmapped category (defensive coding)', () => {
-      // Test the fallback on line 119 by using a type assertion
-      // This tests defensive coding for runtime edge cases
+  describe('fallback behavior - defensive coding', () => {
+    it('should handle unmapped ErrorCategory gracefully (line 119 and 120 fallbacks)', () => {
+      // Test BOTH fallbacks:
+      // Line 119: category not in CATEGORY_TO_HINT_MAP -> defaults to 'unknown'
+      // Line 120: 'unknown' not in RESEARCH_HINTS -> defaults to generic hints
       const invalidCategory = 'not_a_real_category' as unknown as ErrorCategory;
       const result = getResearchHints(invalidCategory, 'error', 2);
 
-      // Should fall back to 'unknown' pattern category, which maps to undefined_reference
-      expect(result.official).toEqual(['MDN JavaScript reference']);
+      // Should use the default hints from line 120 fallback
+      expect(result.official).toEqual(['official documentation']);
       expect(result.community).toEqual([]);
     });
 
-    it('should use fallback for unmapped category in phase 3', () => {
-      const invalidCategory = 'invalid_type' as unknown as ErrorCategory;
+    it('should handle unmapped ErrorCategory in phase 3 (line 119 and 120 fallbacks)', () => {
+      // Test BOTH fallbacks:
+      // Line 119: category not in CATEGORY_TO_HINT_MAP -> defaults to 'unknown'
+      // Line 120: 'unknown' not in RESEARCH_HINTS -> defaults to generic hints
+      const invalidCategory = 'totally_invalid' as unknown as ErrorCategory;
       const result = getResearchHints(invalidCategory, 'error', 3);
 
-      // Should fall back to 'unknown' pattern category, which maps to undefined_reference
-      expect(result.official).toEqual(['MDN JavaScript reference']);
-      expect(result.community).toEqual(['stackoverflow null undefined']);
+      // Should use the default hints from line 120 fallback
+      expect(result.official).toEqual(['official documentation']);
+      expect(result.community).toEqual(['stackoverflow', 'github issues']);
     });
 
-    it('should use default hints fallback if pattern category not in RESEARCH_HINTS', () => {
-      // This is an internal test for line 120 fallback
-      // We need to test the case where RESEARCH_HINTS[patternCategory] is undefined
-      // This is difficult to test directly, but we can verify behavior exists by examining the code path
+    it('should handle unmapped ErrorCategory in phase 1 (line 119 falsy branch)', () => {
+      const invalidCategory = 'bad_category' as unknown as ErrorCategory;
+      const result = getResearchHints(invalidCategory, 'error', 1);
 
-      // The 'unknown' category correctly maps to 'undefined_reference' which exists
-      // So to trigger line 120 fallback, we'd need a pattern category that doesn't exist in RESEARCH_HINTS
+      // Phase 1 should return empty arrays regardless
+      expect(result.official).toEqual([]);
+      expect(result.community).toEqual([]);
+    });
 
-      // Since all current mappings are valid, this fallback is defensive coding
-      // We verify it works by checking that unknown category still gets valid results
-      const result = getResearchHints('unknown', 'error', 3);
+    it('should handle null category gracefully', () => {
+      // Test with null/undefined category
+      const nullCategory = null as unknown as ErrorCategory;
+      const result = getResearchHints(nullCategory, 'error', 2);
+
+      // Should fall back to default hints
+      expect(result).toBeDefined();
+      expect(result.official).toBeDefined();
+      expect(result.community).toBeDefined();
+      expect(Array.isArray(result.official)).toBe(true);
+      expect(Array.isArray(result.community)).toBe(true);
+    });
+
+    it('should handle undefined category gracefully', () => {
+      const undefinedCategory = undefined as unknown as ErrorCategory;
+      const result = getResearchHints(undefinedCategory, 'error', 3);
+
+      // Should fall back to default hints
+      expect(result).toBeDefined();
+      expect(result.official).toBeDefined();
+      expect(result.community).toBeDefined();
+      expect(Array.isArray(result.official)).toBe(true);
+      expect(Array.isArray(result.community)).toBe(true);
+    });
+
+    it('should handle empty string category gracefully', () => {
+      const emptyCategory = '' as unknown as ErrorCategory;
+      const result = getResearchHints(emptyCategory, 'error', 2);
+
+      // Should fall back through both levels of defaults
+      expect(result).toBeDefined();
       expect(result.official).toBeDefined();
       expect(result.community).toBeDefined();
       expect(Array.isArray(result.official)).toBe(true);

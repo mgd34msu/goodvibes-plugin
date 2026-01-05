@@ -9,6 +9,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// Force the module to be loaded by importing everything
+import * as EnvChecker from '../../context/env-checker.js';
 import { checkEnvironment, formatEnvStatus } from '../../context/env-checker.js';
 import type { EnvStatus } from '../../context/env-checker.js';
 import * as fs from 'fs/promises';
@@ -30,6 +32,24 @@ describe('env-checker (Backwards Compatibility Module)', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('Module exports verification', () => {
+    it('should export checkEnvironment function', () => {
+      expect(EnvChecker.checkEnvironment).toBeDefined();
+      expect(typeof EnvChecker.checkEnvironment).toBe('function');
+    });
+
+    it('should export formatEnvStatus function', () => {
+      expect(EnvChecker.formatEnvStatus).toBeDefined();
+      expect(typeof EnvChecker.formatEnvStatus).toBe('function');
+    });
+
+    it('should have exactly the expected exports', () => {
+      const exports = Object.keys(EnvChecker);
+      expect(exports).toContain('checkEnvironment');
+      expect(exports).toContain('formatEnvStatus');
+    });
   });
 
   describe('checkEnvironment (re-exported from checkEnvStatus)', () => {

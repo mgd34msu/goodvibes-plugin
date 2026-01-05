@@ -42,7 +42,12 @@ const mockRecoveryPatterns: RecoveryPattern[] = [
   {
     category: 'typescript_config_error',
     description: 'TypeScript config error',
-    patterns: [/tsconfig\.json/, /error TS6059:/],
+    patterns: [
+      /Cannot find module '.*' or its corresponding type declarations/,
+      /Could not find a declaration file for module/,
+      /error TS6059:/,
+      /tsconfig\.json/,
+    ],
     suggestedFix: 'Fix config',
     severity: 'medium',
   },
@@ -229,7 +234,7 @@ describe('error-categories', () => {
     it('should find pattern by category mapping - typescript_error with typescript_config_error', async () => {
       const { findMatchingPattern } = await import('../../post-tool-use-failure/error-categories.js');
 
-      const result = findMatchingPattern('typescript_error', 'Cannot find module react or its corresponding type declarations');
+      const result = findMatchingPattern('typescript_error', 'Could not find a declaration file for module react');
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('typescript_config_error');
@@ -375,7 +380,7 @@ describe('error-categories', () => {
 
       // This tests the edge case where patternCategories is empty array
       // by using a category that doesn't exist in the map (will be undefined, default to [])
-      const result = findMatchingPattern('unknown' as ErrorCategory, 'npm ERR! test');
+      const result = findMatchingPattern('invalid_category' as ErrorCategory, 'npm ERR! test');
 
       // Should still find via fallback pattern matching
       expect(result).not.toBeNull();

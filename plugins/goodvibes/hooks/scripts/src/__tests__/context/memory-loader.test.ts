@@ -342,10 +342,10 @@ describe('memory-loader', () => {
     it('should format decisions correctly', () => {
       const memory: ProjectMemory = {
         decisions: [
-          { date: '2024-01-01', description: 'Use TypeScript' },
-          { date: '2024-01-02', description: 'Use React', rationale: 'Component reusability' },
-          { date: '2024-01-03', description: 'Use Vite', rationale: 'Fast builds' },
-          { date: '2024-01-04', description: 'Old decision (should not appear)' },
+          { date: '2024-01-01', description: 'Old decision (should not appear)' },
+          { date: '2024-01-02', description: 'Use TypeScript' },
+          { date: '2024-01-03', description: 'Use React', rationale: 'Component reusability' },
+          { date: '2024-01-04', description: 'Use Vite', rationale: 'Fast builds' },
         ],
         patterns: [],
         failures: [],
@@ -356,6 +356,7 @@ describe('memory-loader', () => {
       const result = formatMemory(memory);
 
       expect(result).toContain('**Recent Decisions:**');
+      expect(result).toContain('- Use TypeScript');
       expect(result).toContain('- Use React (Component reusability)');
       expect(result).toContain('- Use Vite (Fast builds)');
       // Should only show last 3 decisions

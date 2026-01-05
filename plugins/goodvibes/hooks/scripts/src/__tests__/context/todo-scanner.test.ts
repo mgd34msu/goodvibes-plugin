@@ -715,6 +715,27 @@ describe('todo-scanner', () => {
       expect(results).toHaveLength(1);
       expect(results[0].line).toBe(2);
     });
+
+    it('should handle entries that are neither directories nor files', async () => {
+      const mockCwd = '/test/project';
+
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+        if (dirPath === mockCwd) {
+          return [
+            { name: 'symlink', isDirectory: () => false, isFile: () => false }, // Symlink or special file
+            { name: 'file1.ts', isDirectory: () => false, isFile: () => true },
+          ] as any;
+        }
+        return [] as any;
+      });
+
+      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Regular file\n');
+
+      const results = await scanTodos(mockCwd);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe('file1.ts');
+    });
   });
 
   describe('formatTodos', () => {

@@ -1,22 +1,23 @@
 
 > goodvibes-hooks@1.0.0 test
-> vitest run --coverage --run src/automation/git-operations.ts
+> vitest run --coverage --run shared/transcript
 
 
 [1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/buzzkill/Documents/vibeplug/plugins/goodvibes/hooks/scripts[39m
       [2mCoverage enabled with [22m[33mv8[39m
 
-[31mNo test files found, exiting with code 1
-[39m
-[2mfilter: [22m[33msrc/automation/git-operations.ts[39m
-[2minclude: [22m[33msrc/__tests__/**/*.test.ts[39m
-[2mexclude:  [22m[33m**/node_modules/**[2m, [22m**/.git/**[39m
+ [32m✓[39m src/__tests__/shared/transcript.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m34 passed[39m[22m[90m (34)[39m
+[2m   Start at [22m 14:56:31
+[2m   Duration [22m 606ms[2m (transform 68ms, setup 0ms, import 63ms, tests 40ms, environment 0ms)[22m
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 -------------------|---------|----------|---------|---------|-------------------
 File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
 -------------------|---------|----------|---------|---------|-------------------
-All files          |       0 |        0 |       0 |       0 |                   
+All files          |    0.63 |     0.72 |    0.24 |    0.65 |                   
  src               |       0 |        0 |       0 |       0 |                   
   memory.ts        |       0 |        0 |       0 |       0 |                   
   notification.ts  |       0 |        0 |       0 |       0 | 20-47             
@@ -98,7 +99,7 @@ All files          |       0 |        0 |       0 |       0 |
   ...h-recovery.ts |       0 |        0 |       0 |       0 | 25-119            
   index.ts         |       0 |        0 |       0 |       0 |                   
   ...-formatter.ts |       0 |        0 |       0 |       0 | 11-56             
- src/shared        |       0 |        0 |       0 |       0 |                   
+ src/shared        |     8.4 |      9.6 |    2.22 |    8.59 |                   
   analytics.ts     |       0 |        0 |       0 |       0 | 72-182            
   config.ts        |       0 |        0 |       0 |       0 | 16-161            
   constants.ts     |       0 |        0 |     100 |       0 | 10-16             
@@ -110,7 +111,7 @@ All files          |       0 |        0 |       0 |       0 |
   keywords.ts      |       0 |        0 |       0 |       0 | 20-258            
   logging.ts       |       0 |        0 |       0 |       0 | 28-64             
   ...y-patterns.ts |       0 |      100 |     100 |       0 | 12                
-  transcript.ts    |       0 |        0 |       0 |       0 | 11-70             
+  transcript.ts    |     100 |      100 |     100 |     100 |                   
  ...subagent-start |       0 |        0 |       0 |       0 |                   
   ...-injection.ts |       0 |        0 |       0 |       0 | 18-41             
   index.ts         |       0 |        0 |       0 |       0 |                   
@@ -132,7 +133,7 @@ All files          |       0 |        0 |       0 |       0 |
   state.ts         |       0 |      100 |       0 |       0 | 153               
   telemetry.ts     |       0 |        0 |       0 |       0 |                   
 -------------------|---------|----------|---------|---------|-------------------
-ERROR: Coverage for lines (0%) does not meet global threshold (70%)
-ERROR: Coverage for functions (0%) does not meet global threshold (70%)
-ERROR: Coverage for statements (0%) does not meet global threshold (70%)
-ERROR: Coverage for branches (0%) does not meet global threshold (60%)
+ERROR: Coverage for lines (0.65%) does not meet global threshold (70%)
+ERROR: Coverage for functions (0.24%) does not meet global threshold (70%)
+ERROR: Coverage for statements (0.63%) does not meet global threshold (70%)
+ERROR: Coverage for branches (0.72%) does not meet global threshold (60%)

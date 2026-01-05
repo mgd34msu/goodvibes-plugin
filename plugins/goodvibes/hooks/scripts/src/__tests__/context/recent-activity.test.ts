@@ -146,22 +146,11 @@ describe('recent-activity', () => {
   });
 
   describe('getRecentlyModifiedFiles', () => {
-    beforeEach(() => {
-      // Set up as git repo
-      mockedExecSync.mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('rev-parse --is-inside-work-tree')) {
-          return Buffer.from('true\n');
-        }
-        return Buffer.from('');
-      });
-    });
-
     it('should parse modified files with M status', async () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tfile1.ts\nM\tfile2.ts\n');
         }
         return Buffer.from('');
@@ -177,7 +166,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('A\tnewfile.ts\nA\tanother.ts\n');
         }
         return Buffer.from('');
@@ -193,7 +182,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('D\toldfile.ts\nD\tlegacy.ts\n');
         }
         return Buffer.from('');
@@ -208,7 +197,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tmodified.ts\nA\tadded.ts\nD\tdeleted.ts\n');
         }
         return Buffer.from('');
@@ -227,7 +216,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tfile.ts\nM\tfile.ts\nA\tfile.ts\n');
         }
         return Buffer.from('');
@@ -243,7 +232,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           // More deletes than modifies
           return Buffer.from('D\tfile.ts\nD\tfile.ts\nM\tfile.ts\n');
         }
@@ -259,7 +248,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('A\tfile.ts\nA\tfile.ts\nM\tfile.ts\n');
         }
         return Buffer.from('');
@@ -274,7 +263,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('A\tfile.ts\nM\tfile.ts\nD\tfile.ts\n');
         }
         return Buffer.from('');
@@ -289,7 +278,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tfile1.ts\nM\tfile2.ts\nM\tfile2.ts\nM\tfile2.ts\nM\tfile3.ts\nM\tfile3.ts\n');
         }
         return Buffer.from('');
@@ -307,7 +296,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           // Generate 15 files
           const files = Array.from({ length: 15 }, (_, i) => `M\tfile${i}.ts`).join('\n');
           return Buffer.from(files + '\n');
@@ -324,7 +313,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('\n\nM\tfile.ts\n\n\nA\tfile2.ts\n\n');
         }
         return Buffer.from('');
@@ -339,7 +328,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tfile.ts\nInvalid line\nA\tfile2.ts\nNo tab here\n');
         }
         return Buffer.from('');
@@ -384,7 +373,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           const files = Array.from({ length: 10 }, () => 'node_modules/package/file.js\n').join('');
           return Buffer.from(files);
         }
@@ -400,7 +389,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           const files = Array.from({ length: 10 }, () => 'dist/bundle.js\n').join('');
           return Buffer.from(files);
         }
@@ -416,7 +405,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           const files = Array.from({ length: 10 }, () => 'package-lock.json\n').join('') +
                         Array.from({ length: 10 }, () => 'yarn.lock\n').join('');
           return Buffer.from(files);
@@ -433,7 +422,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           const files = Array.from({ length: 10 }, () => 'config.json\n').join('');
           return Buffer.from(files);
         }
@@ -449,7 +438,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           const files = Array.from({ length: 10 }, () => 'README.md\n').join('');
           return Buffer.from(files);
         }
@@ -465,7 +454,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           // File appears 3 times (min threshold is 3)
           return Buffer.from('file.ts\n\nfile.ts\n\nfile.ts\n');
         }
@@ -482,7 +471,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           // File appears only 2 times (below threshold)
           return Buffer.from('file.ts\n\nfile.ts\n');
         }
@@ -498,7 +487,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           const output =
             Array.from({ length: 3 }, () => 'file1.ts\n').join('') + '\n' +
             Array.from({ length: 5 }, () => 'file2.ts\n').join('') + '\n' +
@@ -520,7 +509,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           // Generate 8 files each with 10 changes
           const output = Array.from({ length: 8 }, (_, i) =>
             Array.from({ length: 10 }, () => `file${i}.ts\n`).join('')
@@ -539,7 +528,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-only')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-only')) {
           return Buffer.from('\n\nfile.ts\n\n\nfile.ts\n\nfile.ts\n\n');
         }
         return Buffer.from('');
@@ -911,7 +900,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from(`M\t${longPath}\n`);
         }
         return Buffer.from('');
@@ -926,7 +915,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tfile with spaces.ts\nA\tfile-with-dashes.ts\nD\tfile_with_underscores.ts\n');
         }
         return Buffer.from('');
@@ -943,7 +932,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--format=')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--format=')) {
           return Buffer.from('abc|Fix: bug with "quotes" & <tags>|John|1h\n');
         }
         return Buffer.from('');
@@ -958,7 +947,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--format=')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--format=')) {
           return Buffer.from('abc|Fix bug|José García-Pérez|1h\n');
         }
         return Buffer.from('');
@@ -973,7 +962,7 @@ describe('recent-activity', () => {
       mockedExecSync.mockImplementation((cmd: string | Buffer) => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('rev-parse')) return Buffer.from('true\n');
-        if (cmdStr.includes('--name-status')) {
+        if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
           return Buffer.from('M\tsrc\\components\\Button.tsx\n');
         }
         return Buffer.from('');

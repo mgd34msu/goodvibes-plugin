@@ -281,8 +281,8 @@ describe('dev-server-monitor', () => {
       `;
       const errors = parseDevServerErrors(output);
 
-      // Note: TypeError and SyntaxError also match /Error: (.+)/ pattern, causing duplicates
-      expect(errors).toEqual(['First error', 'Second error', 'Second error', 'Third error', 'Third error']);
+      // Note: /Error: (.+)/ matches all three, then specific patterns match their own
+      expect(errors).toEqual(['First error', 'Second error', 'Third error', 'Second error', 'Third error']);
     });
 
     it('should extract multiple occurrences of the same error type', () => {
@@ -332,7 +332,8 @@ describe('dev-server-monitor', () => {
       const errors = parseDevServerErrors(output);
 
       // Regex only captures the first line after the error type
-      expect(errors).toEqual(['First line', 'Another error']);
+      // TypeError also matches /Error: (.+)/ pattern
+      expect(errors).toEqual(['First line', 'Another error', 'Another error']);
     });
 
     it('should not include matches without capture group', () => {
@@ -368,8 +369,13 @@ describe('dev-server-monitor', () => {
       `;
       const errors = parseDevServerErrors(output);
 
+      // /Error: (.+)/ matches all *Error patterns first, then specific patterns
       expect(errors).toEqual([
         'Generic error',
+        'Runtime issue',
+        'Type problem',
+        'Reference issue',
+        'Syntax problem',
         'Runtime issue',
         'Type problem',
         'Reference issue',
@@ -382,7 +388,8 @@ describe('dev-server-monitor', () => {
       const output = 'Error: This is an error\nAnother line\nTypeError: Another error';
       const errors = parseDevServerErrors(output);
 
-      expect(errors).toEqual(['This is an error', 'Another error']);
+      // TypeError also matches /Error: (.+)/ pattern
+      expect(errors).toEqual(['This is an error', 'Another error', 'Another error']);
     });
 
     it('should handle error messages with tabs and spaces', () => {

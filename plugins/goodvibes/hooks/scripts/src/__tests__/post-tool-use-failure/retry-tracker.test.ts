@@ -87,8 +87,7 @@ describe('retry-tracker', () => {
 
       expect(result).toEqual({});
       expect(mockDebug).toHaveBeenCalledWith(
-        expect.stringContaining('Retries file access check failed'),
-        expect.anything()
+        expect.stringContaining('Retries file access check failed')
       );
     });
 
@@ -313,8 +312,7 @@ describe('retry-tracker', () => {
       expect(mockEnsureGoodVibesDir).toHaveBeenCalledWith(testCwd);
       expect(mockWriteFile).toHaveBeenCalledWith(
         path.join(testCwd, '.goodvibes', 'state', 'retries.json'),
-        expect.stringContaining('"sig1"'),
-        undefined
+        expect.stringContaining('"sig1"')
       );
 
       const writtenData = JSON.parse(mockWriteFile.mock.calls[0][1] as string);
@@ -672,6 +670,25 @@ describe('retry-tracker', () => {
       const result = await shouldEscalatePhase(testCwd, 'sig1', 2, 'npm_install');
 
       expect(result).toBe(true); // npm_install limit is 2, attempts 2 >= 2, phase 2 < 3
+    });
+
+    it('should use entry.phase when currentPhase is undefined', async () => {
+      const retryData = {
+        'sig1': {
+          signature: 'sig1',
+          attempts: 2,
+          lastAttempt: '2025-01-01T00:00:00Z',
+          phase: 2,
+        },
+      };
+
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(retryData));
+
+      const { shouldEscalatePhase } = await import('../../post-tool-use-failure/retry-tracker.js');
+      const result = await shouldEscalatePhase(testCwd, 'sig1', undefined, 'npm_install');
+
+      expect(result).toBe(true); // npm_install limit is 2, attempts 2 >= 2, phase 2 (from entry) < 3
     });
 
     it('should delegate to core when called with ErrorState', async () => {

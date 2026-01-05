@@ -615,6 +615,537 @@ describe('git-operations', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('getCurrentBranch', () => {
+    it('should return current branch name', async () => {
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: 'feature/test\n', stderr: '' });
+        }),
+        spawn: vi.fn(),
+      }));
+
+      const { getCurrentBranch } = await import('../automation/git-operations.js');
+      const result = await getCurrentBranch('/test/project');
+
+      expect(result).toBe('feature/test');
+    });
+
+    it('should return null on detached HEAD', async () => {
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(new Error('not on a branch'), { stdout: '', stderr: '' });
+        }),
+        spawn: vi.fn(),
+      }));
+
+      const { getCurrentBranch } = await import('../automation/git-operations.js');
+      const result = await getCurrentBranch('/test/project');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getUncommittedFiles', () => {
+    it('should return list of modified files', async () => {
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          // Git porcelain format: XY<space>filename where X=index status, Y=worktree status
+          // ' M' = unmodified in index, modified in worktree
+          // '??' = untracked
+          callback(null, { stdout: ' M src/file1.ts\n?? src/file2.ts', stderr: '' });
+        }),
+        spawn: vi.fn(),
+      }));
+
+      const { getUncommittedFiles } = await import('../automation/git-operations.js');
+      const result = await getUncommittedFiles('/test/project');
+
+      // slice(3) removes first 3 chars: X, Y, and space
+      expect(result).toEqual(['src/file1.ts', 'src/file2.ts']);
+    });
+
+    it('should return empty array when no changes', async () => {
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: '', stderr: '' });
+        }),
+        spawn: vi.fn(),
+      }));
+
+      const { getUncommittedFiles } = await import('../automation/git-operations.js');
+      const result = await getUncommittedFiles('/test/project');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when git command fails', async () => {
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(new Error('not a git repo'), { stdout: '', stderr: '' });
+        }),
+        spawn: vi.fn(),
+      }));
+
+      const { getUncommittedFiles } = await import('../automation/git-operations.js');
+      const result = await getUncommittedFiles('/test/project');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('createCheckpoint', () => {
+    it('should return false when no uncommitted changes', async () => {
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: '', stderr: '' });
+        }),
+        spawn: vi.fn(),
+      }));
+
+      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const result = await createCheckpoint('/test/project', 'test checkpoint');
+
+      expect(result).toBe(false);
+    });
+
+    it('should create checkpoint when there are changes', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
+      }));
+
+      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const result = await createCheckpoint('/test/project', 'test checkpoint');
+
+      expect(result).toBe(true);
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'git',
+        ['commit', '-m', expect.stringContaining('checkpoint: test checkpoint')],
+        expect.any(Object)
+      );
+    });
+
+    it('should return false when commit fails', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(1), 0); // Exit code 1 = failure
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
+      }));
+
+      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const result = await createCheckpoint('/test/project', 'test checkpoint');
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle spawn error event', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'error') {
+            setTimeout(() => handler(new Error('spawn error')), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
+      }));
+
+      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const result = await createCheckpoint('/test/project', 'test checkpoint');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('createFeatureBranch', () => {
+    it('should create and checkout feature branch with sanitized name', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await createFeatureBranch('/test/project', 'Add User Authentication');
+
+      expect(result).toBe(true);
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'git',
+        ['checkout', '-b', 'feature/add-user-authentication'],
+        expect.any(Object)
+      );
+    });
+
+    it('should normalize branch name with special characters', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      await createFeatureBranch('/test/project', 'Fix: Bug #123 & Issue!');
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'git',
+        ['checkout', '-b', 'feature/fix-bug-123-issue'],
+        expect.any(Object)
+      );
+    });
+
+    it('should return false when branch creation fails', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(1), 0); // Exit code 1 = failure
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await createFeatureBranch('/test/project', 'test-feature');
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle spawn error event', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'error') {
+            setTimeout(() => handler(new Error('spawn error')), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await createFeatureBranch('/test/project', 'test-feature');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('mergeFeatureBranch', () => {
+    it('should merge feature branch into main and delete it', async () => {
+      let callCount = 0;
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+
+      expect(result).toBe(true);
+      // Should be called 3 times: checkout, merge, delete
+      expect(mockSpawn).toHaveBeenCalledTimes(3);
+      expect(mockSpawn).toHaveBeenNthCalledWith(1, 'git', ['checkout', 'main'], expect.any(Object));
+      expect(mockSpawn).toHaveBeenNthCalledWith(2, 'git', ['merge', 'feature/test', '--no-ff', '-m', 'Merge feature/test'], expect.any(Object));
+      expect(mockSpawn).toHaveBeenNthCalledWith(3, 'git', ['branch', '-d', 'feature/test'], expect.any(Object));
+    });
+
+    it('should sanitize branch names to prevent injection', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
+      await mergeFeatureBranch('/test/project', 'feature/test; rm -rf /', 'main; whoami');
+
+      // Verify shell metacharacters are removed
+      expect(mockSpawn).toHaveBeenNthCalledWith(1, 'git', ['checkout', expect.stringMatching(/^main\s+whoami$/)], expect.any(Object));
+      expect(mockSpawn).toHaveBeenNthCalledWith(2, 'git', ['merge', expect.stringMatching(/^featuretest\s+rm\s+-rf\s+$/), '--no-ff', '-m', expect.any(String)], expect.any(Object));
+    });
+
+    it('should return false when checkout fails', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(1), 0); // Checkout fails
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+
+      expect(result).toBe(false);
+      // Should only call checkout, not merge or delete
+      expect(mockSpawn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return false when merge fails', async () => {
+      let callCount = 0;
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            callCount++;
+            const code = callCount === 1 ? 0 : 1; // Checkout succeeds, merge fails
+            setTimeout(() => handler(code), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+
+      expect(result).toBe(false);
+      // Should call checkout and merge, not delete
+      expect(mockSpawn).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return false when branch deletion fails', async () => {
+      let callCount = 0;
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            callCount++;
+            const code = callCount <= 2 ? 0 : 1; // Checkout and merge succeed, delete fails
+            setTimeout(() => handler(code), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+
+      expect(result).toBe(false);
+      // All three operations should be called
+      expect(mockSpawn).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle spawn error event', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'error') {
+            setTimeout(() => handler(new Error('spawn error')), 0);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('spawnAsync timeout and error handling', () => {
+    it('should handle timeout in createCheckpoint', async () => {
+      const mockSpawn = vi.fn().mockImplementation(() => {
+        const child = {
+          stdout: { on: vi.fn() },
+          stderr: { on: vi.fn() },
+          on: vi.fn(),
+          kill: vi.fn(),
+        };
+
+        // Don't trigger close event, simulating a hang
+        return child;
+      });
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
+          callback(null, { stdout: ' M file.ts\n', stderr: '' });
+        }),
+        spawn: mockSpawn,
+      }));
+
+      const { createCheckpoint } = await import('../automation/git-operations.js');
+
+      // This should timeout and return false
+      const result = await createCheckpoint('/test/project', 'test checkpoint');
+
+      expect(result).toBe(false);
+    });
+
+    it('should collect stdout data in spawnAsync', async () => {
+      let onDataCallback: ((data: Buffer) => void) | null = null;
+
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: {
+          on: vi.fn().mockImplementation((event: string, handler: (data: Buffer) => void) => {
+            if (event === 'data') {
+              onDataCallback = handler;
+              setTimeout(() => handler(Buffer.from('stdout data')), 0);
+            }
+          })
+        },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 10);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      await createFeatureBranch('/test/project', 'test');
+
+      expect(onDataCallback).toBeTruthy();
+    });
+
+    it('should collect stderr data in spawnAsync', async () => {
+      let onDataCallback: ((data: Buffer) => void) | null = null;
+
+      const mockSpawn = vi.fn().mockImplementation(() => ({
+        stdout: { on: vi.fn() },
+        stderr: {
+          on: vi.fn().mockImplementation((event: string, handler: (data: Buffer) => void) => {
+            if (event === 'data') {
+              onDataCallback = handler;
+              setTimeout(() => handler(Buffer.from('stderr data')), 0);
+            }
+          })
+        },
+        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+          if (event === 'close') {
+            setTimeout(() => handler(0), 10);
+          }
+        }),
+        kill: vi.fn(),
+      }));
+
+      vi.doMock('child_process', () => ({
+        exec: vi.fn(),
+        spawn: mockSpawn,
+      }));
+
+      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      await createFeatureBranch('/test/project', 'test');
+
+      expect(onDataCallback).toBeTruthy();
+    });
+  });
 });
 
 // ============================================

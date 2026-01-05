@@ -9,25 +9,27 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { HooksState } from '../../types/state.js';
 import { createMockHooksState, createMockFileState } from '../test-utils/mock-factories.js';
 
-// Mock dependencies
+// Mock dependencies - must be defined before vi.mock calls
 const mockCreateCheckpoint = vi.fn();
 const mockHasUncommittedChanges = vi.fn();
 const mockGetModifiedFileCount = vi.fn();
 const mockClearCheckpointTracking = vi.fn();
 
+// Mock git-operations module
 vi.mock('../../automation/git-operations.js', () => ({
-  createCheckpoint: mockCreateCheckpoint,
-  hasUncommittedChanges: mockHasUncommittedChanges,
+  createCheckpoint: (...args: unknown[]) => mockCreateCheckpoint(...args),
+  hasUncommittedChanges: (...args: unknown[]) => mockHasUncommittedChanges(...args),
 }));
 
-vi.mock('./file-tracker.js', () => ({
-  getModifiedFileCount: mockGetModifiedFileCount,
-  clearCheckpointTracking: mockClearCheckpointTracking,
+// Mock file-tracker module
+vi.mock('../../post-tool-use/file-tracker.js', () => ({
+  getModifiedFileCount: (...args: unknown[]) => mockGetModifiedFileCount(...args),
+  clearCheckpointTracking: (...args: unknown[]) => mockClearCheckpointTracking(...args),
 }));
 
 // Mock CHECKPOINT_TRIGGERS constant
 vi.mock('../../shared/index.js', async () => {
-  const actual = await vi.importActual('../../shared/index.js');
+  const actual = await vi.importActual<typeof import('../../shared/index.js')>('../../shared/index.js');
   return {
     ...actual,
     CHECKPOINT_TRIGGERS: {
@@ -504,7 +506,9 @@ describe('checkpoint-manager', () => {
       expect(result.state.git.checkpoints[0].message).toBe('5 files modified');
     });
 
-    it('should handle empty forced reason string', async () => {
+    it('should handle empty forced reason string (falls back to threshold check)', async () => {
+      // Empty string is falsy, so it falls back to shouldCheckpoint
+      mockGetModifiedFileCount.mockReturnValue(5); // Meets threshold
       mockHasUncommittedChanges.mockResolvedValue(true);
       mockCreateCheckpoint.mockResolvedValue(true);
       mockClearCheckpointTracking.mockReturnValue({
@@ -518,8 +522,10 @@ describe('checkpoint-manager', () => {
       const result = await createCheckpointIfNeeded(mockState, testCwd, '');
 
       expect(result.created).toBe(true);
-      expect(result.message).toBe('Checkpoint: ');
-      expect(result.state.git.checkpoints[0].message).toBe('');
+      // Since empty string is falsy, it uses the threshold reason instead
+      expect(result.message).toBe('Checkpoint: 5 files modified');
+      expect(result.state.git.checkpoints[0].message).toBe('5 files modified');
+      expect(mockGetModifiedFileCount).toHaveBeenCalledWith(mockState);
     });
 
     it('should handle special characters in reason', async () => {

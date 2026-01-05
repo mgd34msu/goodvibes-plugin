@@ -717,6 +717,7 @@ describe('MCP Handlers', () => {
         validations_run: 2,
       };
       vi.mocked(loadAnalytics).mockResolvedValue(analytics);
+      vi.mocked(logToolUsage).mockResolvedValue(undefined);
 
       const input: HookInput = {
         hook_name: 'post_tool_use',
@@ -732,14 +733,14 @@ describe('MCP Handlers', () => {
       await handleCheckTypes(input);
 
       expect(loadAnalytics).toHaveBeenCalled();
-      // The analytics object is modified in place, so check what was saved
-      expect(saveAnalytics).toHaveBeenCalledWith(analytics);
-      expect(analytics.issues_found).toBe(8); // 5 + 3
       expect(logToolUsage).toHaveBeenCalledWith({
         tool: 'check_types',
         timestamp: expect.any(String),
         success: true,
       });
+      // The analytics object is modified in place, so check what was saved
+      expect(saveAnalytics).toHaveBeenCalledWith(analytics);
+      expect(analytics.issues_found).toBe(8); // 5 + 3
       expect(createResponse).toHaveBeenCalledWith('TypeScript: 3 type error(s) found.');
       expect(respond).toHaveBeenCalled();
     });
@@ -747,11 +748,12 @@ describe('MCP Handlers', () => {
     it('should handle no type errors', async () => {
       const analytics = {
         session_id: 'test-session',
-        skills_recommended: [],
+        skills_recommended: [] as string[],
         issues_found: 5,
         validations_run: 2,
       };
       vi.mocked(loadAnalytics).mockResolvedValue(analytics);
+      vi.mocked(logToolUsage).mockResolvedValue(undefined);
 
       const input: HookInput = {
         hook_name: 'post_tool_use',
@@ -763,13 +765,15 @@ describe('MCP Handlers', () => {
       await handleCheckTypes(input);
 
       expect(loadAnalytics).toHaveBeenCalled();
-      expect(saveAnalytics).not.toHaveBeenCalled();
+      // Empty array is truthy, so saveAnalytics IS called with 0 additional errors
+      expect(saveAnalytics).toHaveBeenCalledWith(analytics);
+      expect(analytics.issues_found).toBe(5); // 5 + 0
       expect(logToolUsage).toHaveBeenCalledWith({
         tool: 'check_types',
         timestamp: expect.any(String),
         success: true,
       });
-      expect(createResponse).toHaveBeenCalledWith();
+      expect(createResponse).toHaveBeenCalledWith('TypeScript: 0 type error(s) found.');
       expect(respond).toHaveBeenCalled();
     });
 

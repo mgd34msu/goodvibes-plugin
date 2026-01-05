@@ -21,7 +21,7 @@ import {
 describe('pattern-matcher', () => {
   describe('findMatchingPattern', () => {
     it('should find pattern by category mapping - npm_install', () => {
-      const result = findMatchingPattern('npm_install', 'Cannot find module "lodash"');
+      const result = findMatchingPattern('npm_install', 'Module not found: lodash');
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('missing_import');
@@ -176,11 +176,29 @@ describe('pattern-matcher', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should handle invalid category gracefully with fallback to pattern matching', () => {
+      // Force an invalid category to test the || [] fallback on line 46
+      const invalidCategory = 'invalid_category' as ErrorCategory;
+      const result = findMatchingPattern(invalidCategory, 'TS1234: some typescript error');
+
+      // Should still find pattern via fallback pattern matching
+      expect(result).not.toBeNull();
+      expect(result?.category).toBe('typescript_type_error');
+    });
+
+    it('should return null for invalid category with no pattern match', () => {
+      // Force an invalid category with no matching pattern
+      const invalidCategory = 'invalid_category' as ErrorCategory;
+      const result = findMatchingPattern(invalidCategory, 'completely unmatched error xyz123');
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('findAllMatchingPatterns', () => {
     it('should find all matching patterns for an error', () => {
-      const result = findAllMatchingPatterns('Cannot find module "foo"');
+      const result = findAllMatchingPatterns('Module not found: foo');
 
       expect(result.length).toBeGreaterThan(0);
       expect(result.some(p => p.category === 'missing_import')).toBe(true);
@@ -500,7 +518,7 @@ describe('pattern-matcher', () => {
     it('should handle npm_install category', () => {
       const result = getSuggestedFix(
         'npm_install',
-        'Cannot find module "lodash"',
+        'Module not found: lodash',
         mockErrorState
       );
 

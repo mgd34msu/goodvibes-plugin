@@ -25648,9 +25648,13 @@ var LRUCache = class {
   /**
    * Creates a new LRU cache with the specified maximum size.
    *
-   * @param maxSize - Maximum number of entries before eviction starts
+   * @param maxSize - Maximum number of entries before eviction starts (must be >= 1)
+   * @throws Error if maxSize is less than 1
    */
   constructor(maxSize) {
+    if (maxSize < 1) {
+      throw new Error("LRUCache maxSize must be at least 1");
+    }
     this.maxSize = maxSize;
   }
   /**
@@ -25678,7 +25682,9 @@ var LRUCache = class {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey !== void 0) {
+        this.cache.delete(firstKey);
+      }
     }
     this.cache.set(key, value);
   }
@@ -25697,7 +25703,10 @@ var LRUCache = class {
     this.cache.clear();
   }
 };
-var CACHE_TTL_MS = 15 * 60 * 1e3;
+var CACHE_TTL_MS = parseInt(
+  process.env.GOODVIBES_CACHE_TTL_MS ?? String(15 * 60 * 1e3),
+  10
+);
 var MAX_CACHE_SIZE = 100;
 var npmCache = new LRUCache(MAX_CACHE_SIZE);
 var githubReadmeCache = new LRUCache(MAX_CACHE_SIZE);
