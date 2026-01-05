@@ -76,7 +76,7 @@ export async function appendDecision(
     await ensureMemoryDir(cwd);
     await writeDecision(cwd, decision);
     debug(`Appended decision: ${decision.title}`);
-  } catch (error) {
+  } catch (error: unknown) {
     logError('appendDecision', error);
     throw error;
   }
@@ -91,7 +91,7 @@ export async function appendPattern(
     await ensureMemoryDir(cwd);
     await writePattern(cwd, pattern);
     debug(`Appended pattern: ${pattern.name}`);
-  } catch (error) {
+  } catch (error: unknown) {
     logError('appendPattern', error);
     throw error;
   }
@@ -106,7 +106,7 @@ export async function appendFailure(
     await ensureMemoryDir(cwd);
     await writeFailure(cwd, failure);
     debug(`Appended failure: ${failure.approach}`);
-  } catch (error) {
+  } catch (error: unknown) {
     logError('appendFailure', error);
     throw error;
   }
@@ -121,7 +121,7 @@ export async function appendPreference(
     await ensureMemoryDir(cwd);
     await writePreference(cwd, preference);
     debug(`Appended preference: ${preference.key}`);
-  } catch (error) {
+  } catch (error: unknown) {
     logError('appendPreference', error);
     throw error;
   }

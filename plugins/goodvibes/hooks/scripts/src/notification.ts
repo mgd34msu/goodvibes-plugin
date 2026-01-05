@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     // For now, just acknowledge
     respond(createResponse());
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('Notification main', error);
     respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
   }

@@ -6,25 +6,9 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared.js';
+import { debug, fileExistsAsync as fileExists } from '../shared.js';
 import type { ActiveAgentEntry } from './agents.js';
 import type { ParsedTranscript } from './transcript.js';
-
-// ============================================================================
-// File System Helpers
-// ============================================================================
-
-/**
- * Check if a file or directory exists (async replacement for existsSync)
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ============================================================================
 // Types

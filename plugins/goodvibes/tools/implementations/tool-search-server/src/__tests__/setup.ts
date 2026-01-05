@@ -6,6 +6,9 @@
  */
 
 import { vi, beforeEach, afterEach } from 'vitest';
+
+/** Test constant for password values in fixtures to avoid hardcoding secrets */
+export const TEST_PASSWORD = 'test-password-placeholder';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -243,7 +246,7 @@ export const sampleTypeScriptWithIssues = `
 import React from 'react';
 
 // TODO: Fix this later
-const password = "hardcoded123";
+const password = "${TEST_PASSWORD}";
 
 export function MyComponent() {
   const data: any = {};

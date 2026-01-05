@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryFailure } from '../types/memory.js';
 import { debug } from '../shared/logging.js';
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
 const FAILURES_HEADER = `# Failed Approaches
 
@@ -15,21 +16,6 @@ Reference this to avoid repeating unsuccessful strategies.
 ---
 
 `;
-
-/**
- * Checks if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Reads all known failures from the memory file.
@@ -140,7 +126,7 @@ function parseFailures(content: string): MemoryFailure[] {
           suggestion: suggestion.trim() || undefined,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debug('Skipping malformed failure entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }

@@ -13,15 +13,17 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
+  CallToolResult,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import Fuse from 'fuse.js';
 
 // Local imports
-import { Registry, RegistryEntry, ToolResponse } from './types.js';
+import { Registry, RegistryEntry } from './types.js';
 import { PLUGIN_ROOT } from './config.js';
 import { TOOL_SCHEMAS } from './tool-schemas.js';
 import { loadRegistry, createIndex } from './utils.js';
+import { logInfo, logError } from './logging.js';
 
 // Handler imports - all extracted to separate modules
 import {
@@ -83,9 +85,17 @@ interface HandlerContext {
 }
 
 /**
+ * Tool response type matching what handlers return
+ */
+interface ToolHandlerResponse {
+  content: Array<{ type: string; text: string }>;
+  isError?: boolean;
+}
+
+/**
  * Type for tool handler functions
  */
-type ToolHandler = (ctx: HandlerContext, args: unknown) => ToolResponse | Promise<ToolResponse>;
+type ToolHandler = (ctx: HandlerContext, args: unknown) => ToolHandlerResponse | Promise<ToolHandlerResponse>;
 
 /**
  * Registry mapping tool names to their handler functions.
@@ -176,20 +186,20 @@ class GoodVibesServer {
   /**
    * Initialize search indexes
    */
-  private initializeIndexes(): void {
-    console.error('Initializing indexes from:', PLUGIN_ROOT);
+  private async initializeIndexes(): Promise<void> {
+    logInfo('Initializing indexes from', PLUGIN_ROOT);
 
-    this.skillsRegistry = loadRegistry('skills/_registry.yaml');
+    this.skillsRegistry = await loadRegistry('skills/_registry.yaml');
     this.skillsIndex = createIndex(this.skillsRegistry);
-    console.error(`Skills index: ${this.skillsRegistry?.search_index?.length || 0} entries`);
+    logInfo('Skills index loaded', { entries: this.skillsRegistry?.search_index?.length || 0 });
 
-    const agentsRegistry = loadRegistry('agents/_registry.yaml');
+    const agentsRegistry = await loadRegistry('agents/_registry.yaml');
     this.agentsIndex = createIndex(agentsRegistry);
-    console.error(`Agents index: ${agentsRegistry?.search_index?.length || 0} entries`);
+    logInfo('Agents index loaded', { entries: agentsRegistry?.search_index?.length || 0 });
 
-    const toolsRegistry = loadRegistry('tools/_registry.yaml');
+    const toolsRegistry = await loadRegistry('tools/_registry.yaml');
     this.toolsIndex = createIndex(toolsRegistry);
-    console.error(`Tools index: ${toolsRegistry?.search_index?.length || 0} entries`);
+    logInfo('Tools index loaded', { entries: toolsRegistry?.search_index?.length || 0 });
   }
 
   /**
@@ -222,11 +232,13 @@ class GoodVibesServer {
         if (!handler) {
           throw new Error(`Unknown tool: ${name}`);
         }
-        return await handler(this.getHandlerContext(), args);
+        const result = await handler(this.getHandlerContext(), args);
+        // Cast to CallToolResult - handlers return compatible structure
+        return result as unknown as CallToolResult;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {
-          content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ error: message }) }],
           isError: true,
         };
       }
@@ -237,18 +249,18 @@ class GoodVibesServer {
    * Start the server
    */
   async run(): Promise<void> {
-    this.initializeIndexes();
+    await this.initializeIndexes();
 
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
 
-    console.error(`GoodVibes MCP Server v2.1.0 running with ${TOOL_SCHEMAS.length} tools`);
+    logInfo(`GoodVibes MCP Server v2.1.0 running`, { tools: TOOL_SCHEMAS.length });
   }
 }
 
 // Main entry point
 const server = new GoodVibesServer();
 server.run().catch((error) => {
-  console.error('Server error:', error);
+  logError('Server failed to start', error);
   process.exit(1);
 });

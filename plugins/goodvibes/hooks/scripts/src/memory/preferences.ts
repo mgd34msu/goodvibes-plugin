@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryPreference } from '../types/memory.js';
 import { debug } from '../shared/logging.js';
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
 const PREFERENCES_HEADER = `# User Preferences
 
@@ -15,21 +16,6 @@ These preferences guide agent behavior and decision-making.
 ---
 
 `;
-
-/**
- * Checks if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Reads all user preferences from the memory file.
@@ -131,7 +117,7 @@ function parsePreferences(content: string): MemoryPreference[] {
           notes: notes.trim() || undefined,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debug('Skipping malformed preference entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }

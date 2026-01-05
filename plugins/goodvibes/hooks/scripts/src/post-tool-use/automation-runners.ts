@@ -88,7 +88,7 @@ export async function maybeRunTests(
     }
 
     return { ran: true, result };
-  } catch (error) {
+  } catch (error: unknown) {
     logError('maybeRunTests', error);
     return { ran: false, result: null };
   }
@@ -141,7 +141,7 @@ export async function maybeRunBuild(
     });
 
     return { ran: true, result };
-  } catch (error) {
+  } catch (error: unknown) {
     logError('maybeRunBuild', error);
     return { ran: false, result: null };
   }

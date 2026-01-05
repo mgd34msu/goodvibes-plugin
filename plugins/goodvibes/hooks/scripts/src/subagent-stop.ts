@@ -241,7 +241,7 @@ async function main(): Promise<void> {
       },
     }));
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('SubagentStop main', error);
     respond(createResponse());
   }

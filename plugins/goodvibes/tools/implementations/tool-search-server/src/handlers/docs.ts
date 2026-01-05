@@ -1,5 +1,10 @@
 /**
  * Documentation fetching handlers
+ *
+ * Provides handlers for fetching library documentation from npm,
+ * GitHub, and official documentation sources with caching support.
+ *
+ * @module handlers/docs
  */
 
 import { ToolResponse } from '../types.js';
@@ -7,31 +12,49 @@ import { fetchUrl } from '../utils.js';
 import { fetchNpmReadme } from './npm.js';
 
 /**
- * Cache entry with TTL tracking
+ * Cache entry with TTL tracking for documentation responses
+ *
+ * @template T - The type of data stored in the cache
  */
 interface CacheEntry<T> {
+  /** The cached data */
   data: T;
+  /** Unix timestamp when the data was cached */
   timestamp: number;
 }
 
 /**
- * In-memory cache for documentation fetches
- * TTL: 15 minutes (900000ms)
+ * In-memory cache TTL in milliseconds (15 minutes)
  */
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
+/** Cache for npm package data */
 const npmCache = new Map<string, CacheEntry<Awaited<ReturnType<typeof fetchNpmReadme>>>>();
+
+/** Cache for GitHub README content */
 const githubReadmeCache = new Map<string, CacheEntry<string | null>>();
 
 /**
- * Generate cache key from library name and version
+ * Generates a cache key from library name and version.
+ *
+ * @param library - The library/package name
+ * @param version - Optional version string (defaults to 'latest')
+ * @returns A normalized cache key in format 'library@version'
+ *
+ * @example
+ * getCacheKey('react', '18.2.0'); // Returns: 'react@18.2.0'
+ * getCacheKey('lodash');          // Returns: 'lodash@latest'
  */
 function getCacheKey(library: string, version?: string): string {
   return `${library.toLowerCase()}@${version || 'latest'}`;
 }
 
 /**
- * Check if a cache entry is still valid
+ * Checks if a cache entry is still valid based on TTL.
+ *
+ * @template T - The type of data in the cache entry
+ * @param entry - The cache entry to validate, or undefined if not cached
+ * @returns True if the entry exists and is within TTL, false otherwise
  */
 function isCacheValid<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
   if (!entry) return false;
@@ -39,7 +62,15 @@ function isCacheValid<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<
 }
 
 /**
- * Get cached npm data or fetch and cache it
+ * Retrieves npm package data from cache or fetches and caches it.
+ *
+ * @param library - The npm package name to look up
+ * @param version - Optional version string
+ * @returns Object containing the data and whether it was a cache hit
+ *
+ * @example
+ * const { data, cacheHit } = await getCachedNpmData('react', '18.2.0');
+ * if (cacheHit) console.log('Served from cache');
  */
 async function getCachedNpmData(
   library: string,
@@ -58,7 +89,18 @@ async function getCachedNpmData(
 }
 
 /**
- * Get cached GitHub README or fetch and cache it
+ * Retrieves GitHub README content from cache or fetches and caches it.
+ *
+ * @param url - The raw GitHub URL to fetch the README from
+ * @param library - The library name (used for cache key)
+ * @param version - Optional version string (used for cache key)
+ * @returns Object containing the README content (or null) and cache hit status
+ *
+ * @example
+ * const { data, cacheHit } = await getCachedGithubReadme(
+ *   'https://raw.githubusercontent.com/pmndrs/zustand/main/readme.md',
+ *   'zustand'
+ * );
  */
 async function getCachedGithubReadme(
   url: string,
@@ -77,22 +119,41 @@ async function getCachedGithubReadme(
   return { data, cacheHit: false };
 }
 
+/**
+ * Arguments for the fetch_docs MCP tool
+ */
 export interface FetchDocsArgs {
+  /** The npm package or library name to fetch docs for */
   library: string;
+  /** Optional specific topic to search for within the docs */
   topic?: string;
+  /** Optional version to fetch docs for (defaults to 'latest') */
   version?: string;
 }
 
+/**
+ * Documentation source configuration
+ */
 interface DocsSource {
+  /** Primary documentation URL */
   url: string;
+  /** Optional raw API endpoint (e.g., GitHub raw README) */
   api?: string;
+  /** Optional function to generate topic-specific search URLs */
   searchUrl?: (topic: string) => string;
+  /** Source type for determining fetch strategy */
   type: 'npm' | 'github' | 'website';
 }
 
+/**
+ * API reference entry for a library
+ */
 interface ApiReference {
+  /** Name of the API (e.g., 'useState', 'useEffect') */
   name: string;
+  /** Brief description of what the API does */
   description: string;
+  /** Optional URL to the documentation for this API */
   url?: string;
 }
 
@@ -165,7 +226,22 @@ const LIBRARY_APIS: Record<string, ApiReference[]> = {
 };
 
 /**
- * Get common API references for known libraries
+ * Gets common API references for known libraries.
+ *
+ * Returns a list of commonly-used API references for popular libraries,
+ * optionally filtered by a specific topic.
+ *
+ * @param library - The library name to get references for
+ * @param topic - Optional topic to filter references by
+ * @returns Array of API references with names, descriptions, and URLs
+ *
+ * @example
+ * getCommonApiReferences('react', 'state');
+ * // Returns: [{ name: 'useState', description: 'State hook...', url: '...' }]
+ *
+ * @example
+ * getCommonApiReferences('prisma');
+ * // Returns top 5 Prisma API references
  */
 export function getCommonApiReferences(library: string, topic?: string): ApiReference[] {
   const refs: ApiReference[] = [];
@@ -191,7 +267,28 @@ export function getCommonApiReferences(library: string, topic?: string): ApiRefe
 }
 
 /**
- * Handle fetch_docs tool call
+ * Handles the fetch_docs MCP tool call.
+ *
+ * Fetches documentation for a specified library from multiple sources:
+ * - npm registry (README, description, repository links)
+ * - GitHub raw READMEs (for libraries with known GitHub sources)
+ * - Known documentation URLs for popular libraries
+ *
+ * Results are cached for 15 minutes to improve performance.
+ *
+ * @param args - The fetch_docs tool arguments
+ * @param args.library - The npm package or library name
+ * @param args.topic - Optional specific topic to search for
+ * @param args.version - Optional version (defaults to 'latest')
+ * @returns MCP tool response with documentation content and API references
+ *
+ * @example
+ * await handleFetchDocs({ library: 'react', topic: 'hooks' });
+ * // Returns: { library: 'react', content: '...', api_reference: [...], ... }
+ *
+ * @example
+ * await handleFetchDocs({ library: 'prisma', version: '5.0.0' });
+ * // Returns Prisma 5.0.0 documentation
  */
 export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse> {
   const library = args.library.toLowerCase();

@@ -7,18 +7,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-
-/**
- * Helper to check if a file exists using async fs.access.
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { fileExistsAsync as fileExists } from './file-utils.js';
 
 /** Security-critical gitignore entries grouped by category. */
 export const SECURITY_GITIGNORE_ENTRIES: Record<string, string[]> = {

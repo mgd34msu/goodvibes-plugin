@@ -5,6 +5,7 @@
 import Fuse from 'fuse.js';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -19,14 +20,16 @@ const execAsync = promisify(exec);
 /**
  * Load registry from YAML file
  */
-export function loadRegistry(registryPath: string): Registry | null {
+export async function loadRegistry(registryPath: string): Promise<Registry | null> {
   try {
     const fullPath = path.join(PLUGIN_ROOT, registryPath);
-    if (!fs.existsSync(fullPath)) {
+    try {
+      await fsPromises.access(fullPath);
+    } catch {
       console.error(`Registry not found: ${fullPath}`);
       return null;
     }
-    const content = fs.readFileSync(fullPath, 'utf-8');
+    const content = await fsPromises.readFile(fullPath, 'utf-8');
     return yaml.load(content) as Registry;
   } catch (error) {
     console.error(`Error loading registry ${registryPath}:`, error);
@@ -64,10 +67,14 @@ export function search(
 /**
  * Safely read JSON file
  */
-export function readJsonFile(filePath: string): Record<string, unknown> | null {
+export async function readJsonFile(filePath: string): Promise<Record<string, unknown> | null> {
   try {
-    if (!fs.existsSync(filePath)) return null;
-    const content = fs.readFileSync(filePath, 'utf-8');
+    try {
+      await fsPromises.access(filePath);
+    } catch {
+      return null;
+    }
+    const content = await fsPromises.readFile(filePath, 'utf-8');
     return JSON.parse(content);
   } catch {
     return null;
@@ -98,10 +105,19 @@ export async function safeExec(
 /**
  * Detect package manager in use
  */
-export function detectPackageManager(projectPath: string): string {
-  if (fs.existsSync(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (fs.existsSync(path.join(projectPath, 'yarn.lock'))) return 'yarn';
-  if (fs.existsSync(path.join(projectPath, 'bun.lockb'))) return 'bun';
+export async function detectPackageManager(projectPath: string): Promise<string> {
+  const checkFile = async (file: string): Promise<boolean> => {
+    try {
+      await fsPromises.access(path.join(projectPath, file));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  if (await checkFile('pnpm-lock.yaml')) return 'pnpm';
+  if (await checkFile('yarn.lock')) return 'yarn';
+  if (await checkFile('bun.lockb')) return 'bun';
   return 'npm';
 }
 
@@ -149,14 +165,14 @@ export function error(message: string): { content: Array<{ type: string; text: s
 /**
  * Parse skill metadata from YAML frontmatter
  */
-export function parseSkillMetadata(skillPath: string): {
+export async function parseSkillMetadata(skillPath: string): Promise<{
   requires?: string[];
   complements?: string[];
   conflicts?: string[];
   category?: string;
   technologies?: string[];
   difficulty?: string;
-} {
+}> {
   const attempts = [
     path.join(PLUGIN_ROOT, 'skills', skillPath, 'SKILL.md'),
     path.join(PLUGIN_ROOT, 'skills', skillPath + '.md'),
@@ -164,54 +180,54 @@ export function parseSkillMetadata(skillPath: string): {
   ];
 
   for (const filePath of attempts) {
-    if (fs.existsSync(filePath)) {
-      try {
-        const content = fs.readFileSync(filePath, 'utf-8');
+    try {
+      await fsPromises.access(filePath);
+      const content = await fsPromises.readFile(filePath, 'utf-8');
 
-        // Parse YAML frontmatter
-        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-        if (frontmatterMatch) {
-          const frontmatter = yaml.load(frontmatterMatch[1]) as Record<string, unknown>;
-          return {
-            requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : undefined,
-            complements: Array.isArray(frontmatter.complements) ? frontmatter.complements :
-                        Array.isArray(frontmatter.related) ? frontmatter.related : undefined,
-            conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : undefined,
-            category: typeof frontmatter.category === 'string' ? frontmatter.category : undefined,
-            technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies :
-                         Array.isArray(frontmatter.tech) ? frontmatter.tech : undefined,
-            difficulty: typeof frontmatter.difficulty === 'string' ? frontmatter.difficulty : undefined,
-          };
-        }
-
-        // Try to extract metadata from content if no frontmatter
-        const metadata: {
-          requires?: string[];
-          complements?: string[];
-          technologies?: string[];
-        } = {};
-
-        // Look for "Requires:" or "Prerequisites:" sections
-        const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (requiresMatch) {
-          metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
-        }
-
-        // Look for "Related:" or "See also:" sections
-        const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (relatedMatch) {
-          metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
-        }
-
-        // Extract technologies from content
-        const techKeywords = ['react', 'next', 'nextjs', 'prisma', 'drizzle', 'tailwind', 'typescript', 'node', 'express', 'vite', 'vitest', 'jest', 'zustand', 'zod', 'trpc'];
-        const contentLower = content.toLowerCase();
-        metadata.technologies = techKeywords.filter(t => contentLower.includes(t));
-
-        return metadata;
-      } catch {
-        return {};
+      // Parse YAML frontmatter
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const frontmatter = yaml.load(frontmatterMatch[1]) as Record<string, unknown>;
+        return {
+          requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : undefined,
+          complements: Array.isArray(frontmatter.complements) ? frontmatter.complements :
+                      Array.isArray(frontmatter.related) ? frontmatter.related : undefined,
+          conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : undefined,
+          category: typeof frontmatter.category === 'string' ? frontmatter.category : undefined,
+          technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies :
+                       Array.isArray(frontmatter.tech) ? frontmatter.tech : undefined,
+          difficulty: typeof frontmatter.difficulty === 'string' ? frontmatter.difficulty : undefined,
+        };
       }
+
+      // Try to extract metadata from content if no frontmatter
+      const metadata: {
+        requires?: string[];
+        complements?: string[];
+        technologies?: string[];
+      } = {};
+
+      // Look for "Requires:" or "Prerequisites:" sections
+      const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (requiresMatch) {
+        metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
+      }
+
+      // Look for "Related:" or "See also:" sections
+      const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (relatedMatch) {
+        metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
+      }
+
+      // Extract technologies from content
+      const techKeywords = ['react', 'next', 'nextjs', 'prisma', 'drizzle', 'tailwind', 'typescript', 'node', 'express', 'vite', 'vitest', 'jest', 'zustand', 'zod', 'trpc'];
+      const contentLower = content.toLowerCase();
+      metadata.technologies = techKeywords.filter(t => contentLower.includes(t));
+
+      return metadata;
+    } catch {
+      // File doesn't exist or read error, try next path
+      continue;
     }
   }
 
@@ -245,11 +261,11 @@ export function extractFunctionBody(content: string, startIndex: number): string
 /**
  * Extract validation patterns from skill content
  */
-export function extractSkillPatterns(skillPath: string): {
+export async function extractSkillPatterns(skillPath: string): Promise<{
   required_imports?: string[];
   must_include?: string[];
   must_not_include?: string[];
-} {
+}> {
   const patterns: {
     required_imports?: string[];
     must_include?: string[];
@@ -263,48 +279,48 @@ export function extractSkillPatterns(skillPath: string): {
   ];
 
   for (const filePath of attempts) {
-    if (fs.existsSync(filePath)) {
-      try {
-        const content = fs.readFileSync(filePath, 'utf-8');
+    try {
+      await fsPromises.access(filePath);
+      const content = await fsPromises.readFile(filePath, 'utf-8');
 
-        // Look for Required imports section
-        const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (importsMatch) {
-          patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(m =>
-            m.replace(/^-\s*/, '').replace(/[`'"]/g, '').trim()
-          );
-        }
+      // Look for Required imports section
+      const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (importsMatch) {
+        patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(m =>
+          m.replace(/^-\s*/, '').replace(/[`'"]/g, '').trim()
+        );
+      }
 
-        // Look for code block patterns that should be included
-        const codeBlocks = content.match(/```(?:typescript|javascript|tsx|jsx)?\n([\s\S]*?)```/g);
-        if (codeBlocks && codeBlocks.length > 0) {
-          for (const block of codeBlocks.slice(0, 3)) {
-            const code = block.replace(/```\w*\n?/g, '');
-            const imports = code.match(/import\s+.*from\s+['"]([^'"]+)['"]/g);
-            if (imports) {
-              patterns.required_imports = patterns.required_imports || [];
-              for (const imp of imports) {
-                const pkg = imp.match(/from\s+['"]([^'"]+)['"]/)?.[1];
-                if (pkg && !pkg.startsWith('.') && !patterns.required_imports.includes(pkg)) {
-                  patterns.required_imports.push(pkg);
-                }
+      // Look for code block patterns that should be included
+      const codeBlocks = content.match(/```(?:typescript|javascript|tsx|jsx)?\n([\s\S]*?)```/g);
+      if (codeBlocks && codeBlocks.length > 0) {
+        for (const block of codeBlocks.slice(0, 3)) {
+          const code = block.replace(/```\w*\n?/g, '');
+          const imports = code.match(/import\s+.*from\s+['"]([^'"]+)['"]/g);
+          if (imports) {
+            patterns.required_imports = patterns.required_imports || [];
+            for (const imp of imports) {
+              const pkg = imp.match(/from\s+['"]([^'"]+)['"]/)?.[1];
+              if (pkg && !pkg.startsWith('.') && !patterns.required_imports.includes(pkg)) {
+                patterns.required_imports.push(pkg);
               }
             }
           }
         }
-
-        // Look for "Avoid" or "Don't" patterns
-        const avoidMatch = content.match(/(?:Avoid|Don't|Do not|Never):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (avoidMatch) {
-          patterns.must_not_include = avoidMatch[1].match(/-\s*(.+)/g)?.map(m =>
-            m.replace(/^-\s*/, '').replace(/[`'"]/g, '').trim()
-          );
-        }
-
-        return patterns;
-      } catch {
-        return patterns;
       }
+
+      // Look for "Avoid" or "Don't" patterns
+      const avoidMatch = content.match(/(?:Avoid|Don't|Do not|Never):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (avoidMatch) {
+        patterns.must_not_include = avoidMatch[1].match(/-\s*(.+)/g)?.map(m =>
+          m.replace(/^-\s*/, '').replace(/[`'"]/g, '').trim()
+        );
+      }
+
+      return patterns;
+    } catch {
+      // File doesn't exist or read error, try next path
+      continue;
     }
   }
 

@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryPattern } from '../types/memory.js';
 import { debug } from '../shared/logging.js';
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
@@ -15,21 +16,6 @@ These patterns help maintain consistency across the codebase.
 ---
 
 `;
-
-/**
- * Checks if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Reads all established patterns from the memory file.

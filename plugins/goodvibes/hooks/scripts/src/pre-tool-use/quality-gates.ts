@@ -2,20 +2,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug, logError } from '../shared/logging.js';
-
-/**
- * Helper function to check if a file exists using async fs.access.
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
 /** Configuration for a quality gate check */
 export interface QualityGate {

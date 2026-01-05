@@ -1,5 +1,10 @@
 /**
  * NPM package handlers
+ *
+ * Provides handlers for fetching npm package information, checking
+ * package versions, and comparing installed vs latest versions.
+ *
+ * @module handlers/npm
  */
 
 import * as path from 'path';
@@ -7,14 +12,34 @@ import { PackageInfo, ToolResponse } from '../types.js';
 import { PROJECT_ROOT } from '../config.js';
 import { readJsonFile, safeExec } from '../utils.js';
 
+/**
+ * Arguments for the check_versions MCP tool
+ */
 export interface CheckVersionsArgs {
+  /** Specific packages to check (defaults to first 20 from package.json) */
   packages?: string[];
+  /** Whether to fetch latest versions from npm registry */
   check_latest?: boolean;
+  /** Path to project directory (defaults to PROJECT_ROOT) */
   path?: string;
 }
 
 /**
- * Fetch package info from npm registry
+ * Fetches package version information from the npm registry.
+ *
+ * Uses `npm view` command to get the latest version and dist-tags
+ * for a specified package.
+ *
+ * @param packageName - The npm package name to look up
+ * @returns Object with latest and wanted versions, or null if lookup fails
+ *
+ * @example
+ * const info = await fetchNpmPackageInfo('react');
+ * // Returns: { latest: '18.2.0', wanted: '18.2.0' }
+ *
+ * @example
+ * const info = await fetchNpmPackageInfo('nonexistent-package');
+ * // Returns: null
  */
 export async function fetchNpmPackageInfo(
   packageName: string
@@ -47,7 +72,22 @@ export async function fetchNpmPackageInfo(
 }
 
 /**
- * Fetch npm package README and metadata
+ * Fetches npm package README and metadata.
+ *
+ * Uses `npm view` command to retrieve the package README, description,
+ * repository URL, and homepage from the npm registry.
+ *
+ * @param packageName - The npm package name to fetch README for
+ * @returns Object with readme, description, repository, and homepage, or null on failure
+ *
+ * @example
+ * const data = await fetchNpmReadme('lodash');
+ * // Returns: {
+ * //   readme: '# Lodash...',
+ * //   description: 'Lodash modular utilities',
+ * //   repository: 'https://github.com/lodash/lodash',
+ * //   homepage: 'https://lodash.com/'
+ * // }
  */
 export async function fetchNpmReadme(
   packageName: string
@@ -81,11 +121,33 @@ export async function fetchNpmReadme(
 }
 
 /**
- * Handle check_versions tool call
+ * Handles the check_versions MCP tool call.
+ *
+ * Reads package.json to get installed dependency versions and optionally
+ * checks against npm registry for latest versions. Identifies outdated
+ * packages and potential breaking changes (major version bumps).
+ *
+ * @param args - The check_versions tool arguments
+ * @param args.packages - Specific packages to check (defaults to first 20)
+ * @param args.check_latest - Whether to fetch latest versions from npm
+ * @param args.path - Project path containing package.json
+ * @returns MCP tool response with package version information and summary
+ * @throws Error if package.json is not found
+ *
+ * @example
+ * await handleCheckVersions({ check_latest: true });
+ * // Returns: {
+ * //   packages: [{ name: 'react', installed: '^18.0.0', latest: '18.2.0', outdated: true }],
+ * //   summary: { total: 10, outdated: 3, major_updates: 1, up_to_date: 7 }
+ * // }
+ *
+ * @example
+ * await handleCheckVersions({ packages: ['react', 'next'], check_latest: true });
+ * // Checks only specified packages
  */
 export async function handleCheckVersions(args: CheckVersionsArgs): Promise<ToolResponse> {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
-  const pkg = readJsonFile(path.join(projectPath, 'package.json')) as Record<string, Record<string, string>> | null;
+  const pkg = await readJsonFile(path.join(projectPath, 'package.json')) as Record<string, Record<string, string>> | null;
 
   if (!pkg) {
     throw new Error('package.json not found');

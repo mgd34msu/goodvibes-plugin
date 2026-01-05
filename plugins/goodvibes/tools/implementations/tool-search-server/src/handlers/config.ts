@@ -1,5 +1,10 @@
 /**
  * Configuration reading handlers
+ *
+ * Provides handlers for reading and parsing various configuration files
+ * commonly used in modern web development projects.
+ *
+ * @module handlers/config
  */
 
 import * as fs from 'fs';
@@ -7,14 +12,23 @@ import * as path from 'path';
 import { ToolResponse } from '../types.js';
 import { PROJECT_ROOT } from '../config.js';
 
+/**
+ * Arguments for the read_config MCP tool
+ */
 export interface ReadConfigArgs {
+  /** Configuration type to read (e.g., 'tsconfig', 'eslint', 'prettier') */
   config: string;
+  /** Project path to read config from (defaults to PROJECT_ROOT) */
   path?: string;
+  /** Whether to resolve extends/references in config files (not yet implemented) */
   resolve_extends?: boolean;
 }
 
 /**
- * Known configuration file paths by config type
+ * Known configuration file paths by config type.
+ *
+ * Maps configuration type names to arrays of possible file paths
+ * to check, in order of preference.
  */
 const CONFIG_PATHS: Record<string, string[]> = {
   'package.json': ['package.json'],
@@ -29,7 +43,33 @@ const CONFIG_PATHS: Record<string, string[]> = {
 };
 
 /**
- * Handle read_config tool call
+ * Handles the read_config MCP tool call.
+ *
+ * Reads and parses configuration files from a project. Supports multiple
+ * configuration types including package.json, tsconfig, ESLint, Prettier,
+ * Tailwind, Next.js, Vite, Prisma, and environment files.
+ *
+ * @param args - The read_config tool arguments
+ * @param args.config - Configuration type to read (e.g., 'tsconfig', 'eslint')
+ * @param args.path - Project path (defaults to PROJECT_ROOT)
+ * @param args.resolve_extends - Whether to resolve extended configs (not implemented)
+ * @returns MCP tool response with config content and metadata
+ * @throws Error if the specified config file is not found
+ *
+ * @example
+ * handleReadConfig({ config: 'tsconfig' });
+ * // Returns: {
+ * //   config_type: 'tsconfig',
+ * //   file_path: 'tsconfig.json',
+ * //   format: 'json',
+ * //   content: { compilerOptions: {...} },
+ * //   extends: [],
+ * //   env_vars: []
+ * // }
+ *
+ * @example
+ * handleReadConfig({ config: 'tailwind', path: './packages/ui' });
+ * // Reads tailwind config from a subdirectory
  */
 export function handleReadConfig(args: ReadConfigArgs): ToolResponse {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');

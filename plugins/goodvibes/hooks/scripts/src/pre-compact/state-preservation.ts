@@ -36,7 +36,7 @@ export async function createPreCompactCheckpoint(cwd: string): Promise<void> {
     } else {
       debug('Pre-compact checkpoint skipped', { reason: result.message });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     logError('createPreCompactCheckpoint', error);
     // Don't throw - checkpoint failure shouldn't block compaction
   }
@@ -72,7 +72,7 @@ ${summary}
 
     await fs.writeFile(summaryPath, content, 'utf-8');
     debug('Saved session summary', { path: summaryPath });
-  } catch (error) {
+  } catch (error: unknown) {
     logError('saveSessionSummary', error);
     // Don't throw - summary failure shouldn't block compaction
   }

@@ -57,7 +57,7 @@ export async function handleDetectStack(input: HookInput): Promise<void> {
     });
 
     respond(createResponse('Stack detected. Consider using recommend_skills for relevant skill suggestions.'));
-  } catch (error) {
+  } catch (error: unknown) {
     logError('handleDetectStack', error);
     respond(createResponse(`Error caching stack: ${error instanceof Error ? error.message : String(error)}`));
   }
@@ -97,7 +97,7 @@ export async function handleRecommendSkills(input: HookInput): Promise<void> {
     });
 
     respond(createResponse());
-  } catch (error) {
+  } catch (error: unknown) {
     debug('handler failed', { error: String(error) });
     respond(createResponse());
   }
@@ -156,7 +156,7 @@ export async function handleValidateImplementation(input: HookInput): Promise<vo
     });
 
     respond(createResponse());
-  } catch (error) {
+  } catch (error: unknown) {
     debug('handler failed', { error: String(error) });
     respond(createResponse());
   }
@@ -190,7 +190,7 @@ export async function handleRunSmokeTest(input: HookInput): Promise<void> {
     }
 
     respond(createResponse());
-  } catch (error) {
+  } catch (error: unknown) {
     debug('handler failed', { error: String(error) });
     respond(createResponse());
   }
@@ -227,7 +227,7 @@ export async function handleCheckTypes(input: HookInput): Promise<void> {
     }
 
     respond(createResponse());
-  } catch (error) {
+  } catch (error: unknown) {
     debug('handler failed', { error: String(error) });
     respond(createResponse());
   }

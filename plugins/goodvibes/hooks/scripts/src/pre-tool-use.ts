@@ -276,7 +276,7 @@ async function main(): Promise<void> {
         debug(`Unknown tool '${toolName}', allowing by default`);
         respond(allowTool('PreToolUse'));
     }
-  } catch (error) {
+  } catch (error: unknown) {
     logError('PreToolUse main', error);
     // On error, allow the tool to proceed but log the issue
     respond(allowTool('PreToolUse', `Hook error: ${error instanceof Error ? error.message : String(error)}`));

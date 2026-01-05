@@ -88,7 +88,7 @@ export async function execGit(command: string, cwd: string): Promise<string | nu
   try {
     const { stdout } = await execAsync(command, { cwd, encoding: 'utf-8', timeout: 30000 });
     return stdout.trim();
-  } catch (error) {
+  } catch (error: unknown) {
     debug('execGit failed', { command, error: String(error) });
     return null;
   }
@@ -206,7 +206,7 @@ export async function createCheckpoint(cwd: string, message: string): Promise<bo
     // Use spawnAsync with array args to avoid shell injection
     const result = await spawnAsync('git', ['commit', '-m', commitMessage], { cwd, timeout: 30000 });
     return result.code === 0;
-  } catch (error) {
+  } catch (error: unknown) {
     debug('createCheckpoint failed', { error: String(error) });
     return false;
   }
@@ -234,7 +234,7 @@ export async function createFeatureBranch(cwd: string, name: string): Promise<bo
     // Use spawnAsync with array args to avoid shell injection
     const result = await spawnAsync('git', ['checkout', '-b', branchName], { cwd, timeout: 30000 });
     return result.code === 0;
-  } catch (error) {
+  } catch (error: unknown) {
     debug('createFeatureBranch failed', { error: String(error) });
     return false;
   }
@@ -269,7 +269,7 @@ export async function mergeFeatureBranch(cwd: string, featureBranch: string, mai
 
     const deleteBranch = await spawnAsync('git', ['branch', '-d', safeFeature], { cwd, timeout: 30000 });
     return deleteBranch.code === 0;
-  } catch (error) {
+  } catch (error: unknown) {
     debug('mergeFeatureBranch failed', { error: String(error) });
     return false;
   }

@@ -10,25 +10,10 @@ import * as path from 'path';
 import { debug, logError } from '../shared.js';
 import { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
 import { getGoodVibesDir, getMemoryDir } from './paths.js';
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
-// ============================================================================
-// Async File Helpers
-// ============================================================================
-
-/**
- * Checks if a file or directory exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if path exists, false otherwise
- */
-export async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Re-export fileExists for backwards compatibility
+export { fileExists };
 
 // ============================================================================
 // Directory Management (Lazy Creation)
@@ -55,7 +40,7 @@ export async function ensureGoodVibesDir(cwd: string): Promise<void> {
       await fs.mkdir(goodVibesDir, { recursive: true });
       debug(`Created .goodvibes directory at ${goodVibesDir}`);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     logError('ensureGoodVibesDir:mkdir', error);
     throw new Error(`Failed to create .goodvibes directory: ${error}`);
   }
@@ -85,7 +70,7 @@ export async function ensureMemoryDir(cwd: string): Promise<void> {
       await fs.mkdir(memoryDir, { recursive: true });
       debug(`Created memory directory at ${memoryDir}`);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     logError('ensureMemoryDir:mkdir', error);
     throw new Error(`Failed to create memory directory: ${error}`);
   }
@@ -147,7 +132,7 @@ export async function ensureSecurityGitignore(cwd: string): Promise<void> {
     );
 
     debug(`Added ${patternsToAdd.length} security patterns to .gitignore`);
-  } catch (error) {
+  } catch (error: unknown) {
     logError('ensureSecurityGitignore', error);
     // Don't throw - gitignore is non-critical
   }

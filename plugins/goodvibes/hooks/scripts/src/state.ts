@@ -6,20 +6,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { HooksState } from './types/state.js';
 import { createDefaultState } from './types/state.js';
-import { ensureGoodVibesDir } from './shared.js';
+import { ensureGoodVibesDir, fileExistsAsync as fileExists } from './shared.js';
 import { debug } from './shared/logging.js';
-
-/**
- * Helper to check if a file exists using async fs.access.
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /** Relative path to the state file within .goodvibes directory. */
 const STATE_FILE = 'state/hooks-state.json';
@@ -49,7 +37,7 @@ export async function loadState(cwd: string): Promise<HooksState> {
     const content = await fs.readFile(statePath, 'utf-8');
     const state = JSON.parse(content) as HooksState;
     return state;
-  } catch (error) {
+  } catch (error: unknown) {
     debug('Failed to load state, using defaults', error);
     return createDefaultState();
   }
@@ -85,7 +73,7 @@ export async function saveState(cwd: string, state: HooksState): Promise<void> {
     const tempPath = statePath + '.tmp';
     await fs.writeFile(tempPath, JSON.stringify(state, null, 2));
     await fs.rename(tempPath, statePath);
-  } catch (error) {
+  } catch (error: unknown) {
     debug('Failed to save state', error);
   }
 }

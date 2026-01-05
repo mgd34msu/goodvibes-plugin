@@ -1,14 +1,56 @@
 /**
  * Context gathering handlers
+ *
+ * Provides MCP tools for detecting project technology stacks and
+ * scanning for code patterns and conventions.
+ *
+ * @module handlers/context
  */
 
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { StackInfo } from '../types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../config.js';
 import { success, readJsonFile, detectPackageManager } from '../utils.js';
 
-export function handleDetectStack(args: { path?: string; deep?: boolean }) {
+/**
+ * Helper to check if a file exists asynchronously.
+ *
+ * @param filePath - The path to check
+ * @returns Promise resolving to true if file exists, false otherwise
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fsPromises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Handles the detect_stack MCP tool call.
+ *
+ * Analyzes a project's package.json and configuration files to detect
+ * the technology stack including frameworks, libraries, and tooling.
+ *
+ * @param args - The detect_stack tool arguments
+ * @param args.path - Project path to analyze (defaults to PROJECT_ROOT)
+ * @param args.deep - Whether to perform deep analysis (not yet implemented)
+ * @returns MCP tool response with detected stack information
+ *
+ * @example
+ * handleDetectStack({});
+ * // Returns: {
+ * //   frontend: { framework: 'next', ui_library: 'react', styling: 'tailwind' },
+ * //   backend: { runtime: 'node', framework: 'next-api', orm: 'prisma' },
+ * //   build: { package_manager: 'pnpm', typescript: true, bundler: 'turbopack' },
+ * //   detected_configs: ['next.config.js', 'tailwind.config.ts', 'prisma/schema.prisma'],
+ * //   recommended_skills: ['webdev/meta-frameworks/nextjs', 'webdev/databases-orms/prisma']
+ * // }
+ */
+export async function handleDetectStack(args: { path?: string; deep?: boolean }) {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
   const stack: StackInfo = {
     frontend: {},
@@ -18,7 +60,7 @@ export function handleDetectStack(args: { path?: string; deep?: boolean }) {
     recommended_skills: [],
   };
 
-  const pkg = readJsonFile(path.join(projectPath, 'package.json')) as Record<string, Record<string, string>> | null;
+  const pkg = await readJsonFile(path.join(projectPath, 'package.json')) as Record<string, Record<string, string>> | null;
   const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
 
   // Detect frontend
@@ -55,8 +97,8 @@ export function handleDetectStack(args: { path?: string; deep?: boolean }) {
   else if (deps?.['typeorm']) { stack.backend.orm = 'typeorm'; }
 
   // Detect build
-  stack.build.package_manager = detectPackageManager(projectPath);
-  stack.build.typescript = !!deps?.['typescript'] || fs.existsSync(path.join(projectPath, 'tsconfig.json'));
+  stack.build.package_manager = await detectPackageManager(projectPath);
+  stack.build.typescript = !!deps?.['typescript'] || await fileExists(path.join(projectPath, 'tsconfig.json'));
 
   if (deps?.['vite']) { stack.build.bundler = 'vite'; stack.recommended_skills.push('webdev/build-tools/vite'); }
   else if (deps?.['turbo']) { stack.build.bundler = 'turbopack'; }
@@ -76,7 +118,7 @@ export function handleDetectStack(args: { path?: string; deep?: boolean }) {
   ];
 
   for (const config of configFiles) {
-    if (fs.existsSync(path.join(projectPath, config))) {
+    if (await fileExists(path.join(projectPath, config))) {
       stack.detected_configs.push(config);
     }
   }
@@ -84,7 +126,32 @@ export function handleDetectStack(args: { path?: string; deep?: boolean }) {
   return success(stack);
 }
 
-export function handleScanPatterns(args: { path?: string; pattern_types?: string[] }) {
+/**
+ * Handles the scan_patterns MCP tool call.
+ *
+ * Scans a project directory for code patterns and conventions including:
+ * - Naming conventions (components, files, functions, variables)
+ * - Project structure (barrel exports, colocation)
+ * - Architecture patterns (layers, state management location)
+ * - Testing setup (framework, location, naming)
+ * - Styling approach (utility-first, CSS-in-JS)
+ *
+ * @param args - The scan_patterns tool arguments
+ * @param args.path - Path to scan (defaults to 'src')
+ * @param args.pattern_types - Specific pattern types to scan (not implemented)
+ * @returns MCP tool response with detected patterns
+ *
+ * @example
+ * handleScanPatterns({ path: 'src' });
+ * // Returns: {
+ * //   naming: { components: 'PascalCase', files: 'kebab-case', ... },
+ * //   structure: { barrel_exports: true, colocation: false },
+ * //   architecture: { layers: ['components', 'lib', 'hooks'], ... },
+ * //   testing: { framework: 'vitest', location: '__tests__' },
+ * //   styling: { approach: 'utility-first', class_naming: 'tailwind' }
+ * // }
+ */
+export async function handleScanPatterns(args: { path?: string; pattern_types?: string[] }) {
   const scanPath = path.resolve(PROJECT_ROOT, args.path || 'src');
 
   const patterns = {
@@ -115,29 +182,29 @@ export function handleScanPatterns(args: { path?: string; pattern_types?: string
     },
   };
 
-  if (fs.existsSync(scanPath)) {
+  if (await fileExists(scanPath)) {
     // Check for barrel exports
-    if (fs.existsSync(path.join(scanPath, 'index.ts')) || fs.existsSync(path.join(scanPath, 'index.js'))) {
+    if (await fileExists(path.join(scanPath, 'index.ts')) || await fileExists(path.join(scanPath, 'index.js'))) {
       patterns.structure.barrel_exports = true;
     }
 
     // Check for common folders
-    if (fs.existsSync(path.join(scanPath, 'components'))) patterns.architecture.layers.push('components');
-    if (fs.existsSync(path.join(scanPath, 'lib'))) patterns.architecture.layers.push('lib');
-    if (fs.existsSync(path.join(scanPath, 'utils'))) patterns.architecture.layers.push('utils');
-    if (fs.existsSync(path.join(scanPath, 'hooks'))) patterns.architecture.layers.push('hooks');
-    if (fs.existsSync(path.join(scanPath, 'services'))) patterns.architecture.layers.push('services');
+    if (await fileExists(path.join(scanPath, 'components'))) patterns.architecture.layers.push('components');
+    if (await fileExists(path.join(scanPath, 'lib'))) patterns.architecture.layers.push('lib');
+    if (await fileExists(path.join(scanPath, 'utils'))) patterns.architecture.layers.push('utils');
+    if (await fileExists(path.join(scanPath, 'hooks'))) patterns.architecture.layers.push('hooks');
+    if (await fileExists(path.join(scanPath, 'services'))) patterns.architecture.layers.push('services');
 
     // Check for test files
     const projectRoot = path.resolve(scanPath, '..');
-    if (fs.existsSync(path.join(projectRoot, '__tests__'))) {
+    if (await fileExists(path.join(projectRoot, '__tests__'))) {
       patterns.testing.location = '__tests__';
-    } else if (fs.existsSync(path.join(projectRoot, 'tests'))) {
+    } else if (await fileExists(path.join(projectRoot, 'tests'))) {
       patterns.testing.location = 'tests';
     }
 
     // Check for test framework
-    const pkg = readJsonFile(path.join(projectRoot, 'package.json')) as Record<string, Record<string, string>> | null;
+    const pkg = await readJsonFile(path.join(projectRoot, 'package.json')) as Record<string, Record<string, string>> | null;
     const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
     if (deps?.['vitest']) patterns.testing.framework = 'vitest';
     else if (deps?.['jest']) patterns.testing.framework = 'jest';

@@ -1,36 +1,85 @@
 /**
  * Skill dependencies handler
+ *
+ * Provides the skill_dependencies MCP tool for analyzing skill relationships,
+ * including required dependencies, optional complements, and conflicts.
+ *
+ * @module handlers/dependencies
  */
 
 import Fuse from 'fuse.js';
 import { RegistryEntry, Registry, ToolResponse } from '../types.js';
 import { search, parseSkillMetadata } from '../utils.js';
 
+/**
+ * Arguments for the skill_dependencies MCP tool
+ */
 export interface SkillDependenciesArgs {
+  /** The skill name or path to analyze */
   skill: string;
+  /** How deep to traverse the dependency tree (default: 2) */
   depth?: number;
+  /** Whether to include optional/complementary skills (default: true) */
   include_optional?: boolean;
 }
 
+/**
+ * Information about a dependency relationship
+ */
 interface DependencyInfo {
+  /** Name of the dependent skill */
   skill: string;
+  /** Path to the skill file */
   path: string;
+  /** Reason for the dependency relationship */
   reason: string;
 }
 
+/**
+ * Information about a skill that depends on the target
+ */
 interface DependentInfo {
+  /** Name of the depending skill */
   skill: string;
+  /** Path to the skill file */
   path: string;
 }
 
 /**
- * Handle skill_dependencies tool call
+ * Handles the skill_dependencies MCP tool call.
+ *
+ * Analyzes a skill's dependency graph including:
+ * - Required dependencies (must be loaded together)
+ * - Optional/complementary skills (enhance functionality)
+ * - Conflicting skills (should not be used together)
+ * - Reverse dependencies (skills that depend on this one)
+ * - Suggested skill bundle for common use cases
+ *
+ * @param skillsIndex - The Fuse.js index for searching skills
+ * @param skillsRegistry - The full skills registry for reverse lookups
+ * @param args - The skill_dependencies tool arguments
+ * @param args.skill - Skill name or path to analyze
+ * @param args.depth - Dependency tree depth (default: 2)
+ * @param args.include_optional - Include optional skills (default: true)
+ * @returns MCP tool response with dependency analysis
+ * @throws Error if the specified skill is not found
+ *
+ * @example
+ * handleSkillDependencies(index, registry, { skill: 'prisma', depth: 2 });
+ * // Returns: {
+ * //   skill: 'prisma',
+ * //   path: 'webdev/databases-orms/prisma',
+ * //   dependencies: { required: [...], optional: [...], conflicts: [] },
+ * //   dependents: [...],
+ * //   suggested_bundle: ['prisma', 'typescript', 'zod'],
+ * //   analysis: { has_prerequisites: true, ... }
+ * // }
  */
-export function handleSkillDependencies(
+export async function handleSkillDependencies(
   skillsIndex: Fuse<RegistryEntry> | null,
   skillsRegistry: Registry | null,
   args: SkillDependenciesArgs
-): ToolResponse {
+): Promise<ToolResponse> {
   // Search for the skill
   const results = search(skillsIndex, args.skill, 1);
   if (results.length === 0) {
@@ -42,7 +91,7 @@ export function handleSkillDependencies(
   const includeOptional = args.include_optional !== false;
 
   // Load and parse the skill file to get actual dependencies
-  const skillMetadata = parseSkillMetadata(skill.path);
+  const skillMetadata = await parseSkillMetadata(skill.path);
 
   // Build dependency tree
   const required: DependencyInfo[] = [];
@@ -63,7 +112,7 @@ export function handleSkillDependencies(
 
         // Recursively get nested dependencies if depth allows
         if (depth > 1) {
-          const nestedMeta = parseSkillMetadata(reqResult[0].path);
+          const nestedMeta = await parseSkillMetadata(reqResult[0].path);
           if (nestedMeta.requires) {
             for (const nested of nestedMeta.requires.slice(0, 3)) {
               const nestedResult = search(skillsIndex, nested, 1);
@@ -113,7 +162,7 @@ export function handleSkillDependencies(
   if (skillsRegistry?.search_index) {
     for (const entry of skillsRegistry.search_index) {
       if (entry.path === skill.path) continue;
-      const entryMeta = parseSkillMetadata(entry.path);
+      const entryMeta = await parseSkillMetadata(entry.path);
       if (entryMeta.requires?.some(r =>
         r.toLowerCase().includes(skill.name.toLowerCase()) ||
         skill.path.includes(r)

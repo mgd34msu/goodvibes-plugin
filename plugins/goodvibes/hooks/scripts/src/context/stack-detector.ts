@@ -15,6 +15,42 @@ const stackCache = new Map<string, { result: StackInfo; timestamp: number }>();
 /** Cache TTL in milliseconds (5 minutes) */
 const CACHE_TTL = 5 * 60 * 1000;
 
+/** Maximum number of entries to keep in cache (LRU-style cleanup) */
+const MAX_CACHE_ENTRIES = 50;
+
+/**
+ * Clear expired entries from the stack cache.
+ * Also enforces maximum cache size by removing oldest entries.
+ */
+export function clearStackCache(): void {
+  stackCache.clear();
+}
+
+/**
+ * Remove expired entries and enforce LRU-style size limit.
+ * Called internally before adding new cache entries.
+ */
+function pruneCache(): void {
+  const now = Date.now();
+
+  // Remove expired entries
+  for (const [key, value] of stackCache.entries()) {
+    if (now - value.timestamp >= CACHE_TTL) {
+      stackCache.delete(key);
+    }
+  }
+
+  // If still over limit, remove oldest entries
+  if (stackCache.size >= MAX_CACHE_ENTRIES) {
+    const entries = Array.from(stackCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = entries.slice(0, stackCache.size - MAX_CACHE_ENTRIES + 1);
+    for (const [key] of toRemove) {
+      stackCache.delete(key);
+    }
+  }
+}
+
 const STACK_INDICATORS: Record<string, string> = {
   'next.config': 'Next.js',
   'nuxt.config': 'Nuxt',
@@ -103,6 +139,9 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
   }
 
   const result = { frameworks, packageManager, hasTypeScript, isStrict };
+
+  // Prune cache before adding new entry
+  pruneCache();
 
   // Store in cache
   stackCache.set(cwd, { result, timestamp: now });

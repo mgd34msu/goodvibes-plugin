@@ -266,7 +266,7 @@ async function main(): Promise<void> {
 
     respond(createResponse(additionalContext));
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('PostToolUseFailure main', error);
     respond(createResponse());
   }

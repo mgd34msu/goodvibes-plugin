@@ -5,27 +5,11 @@
  */
 
 import * as fs from 'fs/promises';
-import { debug, logError } from '../shared.js';
+import { debug, logError, fileExistsAsync as fileExists } from '../shared.js';
 import {
   TRANSCRIPT_KEYWORD_CATEGORIES,
   extractTranscriptKeywords,
 } from '../shared/keywords.js';
-
-// ============================================================================
-// File System Helpers
-// ============================================================================
-
-/**
- * Check if a file exists (async replacement for existsSync)
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ============================================================================
 // Constants

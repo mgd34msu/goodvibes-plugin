@@ -1,5 +1,10 @@
 /**
  * Plugin status handler
+ *
+ * Provides the plugin_status MCP tool for checking the health and
+ * configuration of the GoodVibes plugin installation.
+ *
+ * @module handlers/status
  */
 
 import * as fs from 'fs';
@@ -10,6 +15,29 @@ import { PluginStatus, Registry } from '../types.js';
 import { PLUGIN_ROOT, HOOK_SCRIPT_MAP } from '../config.js';
 import { success } from '../utils.js';
 
+/**
+ * Handles the plugin_status MCP tool call.
+ *
+ * Performs a comprehensive health check of the GoodVibes plugin by:
+ * - Verifying the plugin manifest exists and is valid JSON
+ * - Checking all registry files (agents, skills, tools) exist and are valid YAML
+ * - Validating hooks configuration and ensuring all hook scripts exist
+ * - Reporting any issues found during the checks
+ *
+ * @returns MCP tool response with detailed plugin status information
+ *
+ * @example
+ * handlePluginStatus();
+ * // Returns: {
+ * //   version: '1.0.0',
+ * //   status: 'healthy',  // or 'degraded' or 'error'
+ * //   issues: [],
+ * //   manifest: { exists: true, valid: true, version: '1.0.0' },
+ * //   registries: { agents: { exists: true, count: 5 }, ... },
+ * //   hooks: { config_exists: true, config_valid: true, events: [...] },
+ * //   mcp_server: { running: true }
+ * // }
+ */
 export function handlePluginStatus() {
   const status: PluginStatus = {
     version: '1.0.0',

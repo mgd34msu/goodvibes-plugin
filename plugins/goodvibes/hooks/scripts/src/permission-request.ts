@@ -43,7 +43,7 @@ async function main(): Promise<void> {
       respond(createResponse('ask'));
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('PermissionRequest main', error);
     respond(createResponse('ask'));
   }

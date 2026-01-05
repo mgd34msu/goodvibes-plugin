@@ -19,18 +19,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-
-/**
- * Check if a file or directory exists (async).
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
 /** Comprehensive project health analysis results. */
 export interface ProjectHealth {

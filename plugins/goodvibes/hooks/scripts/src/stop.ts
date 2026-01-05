@@ -18,19 +18,8 @@ import {
   logError,
   CACHE_DIR,
   HookResponse,
+  fileExistsAsync as fileExists,
 } from './shared.js';
-
-/**
- * Helper to check if a file exists using async fs.access.
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {

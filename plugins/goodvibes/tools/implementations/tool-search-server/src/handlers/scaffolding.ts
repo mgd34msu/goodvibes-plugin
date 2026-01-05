@@ -1,5 +1,10 @@
 /**
  * Scaffolding handlers
+ *
+ * Provides MCP tools for scaffolding new projects from templates
+ * and listing available project templates.
+ *
+ * @module handlers/scaffolding
  */
 
 import * as fs from 'fs';
@@ -9,40 +14,78 @@ import { ToolResponse } from '../types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../config.js';
 import { safeExec, detectPackageManager } from '../utils.js';
 
+/**
+ * Arguments for the scaffold_project MCP tool
+ */
 export interface ScaffoldProjectArgs {
+  /** Template name to use (e.g., 'next-saas', 'react-component') */
   template: string;
+  /** Output directory for the scaffolded project */
   output_dir: string;
+  /** Variables to substitute in template files */
   variables?: Record<string, string>;
+  /** Whether to run npm/pnpm/yarn install after scaffolding (default: true) */
   run_install?: boolean;
+  /** Whether to initialize a git repository (default: true) */
   run_git_init?: boolean;
 }
 
+/**
+ * Arguments for the list_templates MCP tool
+ */
 export interface ListTemplatesArgs {
+  /** Filter templates by category (e.g., 'minimal', 'full') */
   category?: string;
 }
 
+/**
+ * Template configuration from template.yaml
+ */
 interface TemplateConfig {
+  /** Template display name */
   name: string;
+  /** Skills recommended for working with this template */
   required_skills?: string[];
+  /** Variables that can be substituted in template files */
   variables?: Array<{ name: string; default?: string }>;
+  /** Commands to run after project creation */
   post_create?: Array<{ command: string; description: string }>;
 }
 
+/**
+ * Template entry from the registry
+ */
 interface TemplateEntry {
+  /** Template name */
   name: string;
+  /** Path to template directory */
   path: string;
+  /** Template description */
   description: string;
+  /** Template category */
   category: string;
+  /** Technologies included in the template */
   stack: string[];
+  /** Template complexity level */
   complexity: string;
 }
 
+/**
+ * Template registry structure
+ */
 interface TemplateRegistry {
+  /** List of available templates */
   templates: TemplateEntry[];
 }
 
 /**
- * Copy files recursively with variable substitution
+ * Copies files recursively with Handlebars-style variable substitution.
+ *
+ * @param src - Source directory path
+ * @param dest - Destination directory path
+ * @param variables - Variables to substitute in file contents
+ * @param createdFiles - Array to track created file paths
+ * @param outputPath - Base output path for relative path calculation
  */
 async function copyFilesRecursive(
   src: string,
@@ -140,7 +183,7 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
   const postCreateResults: Array<{ command: string; success: boolean; output: string }> = [];
 
   if (args.run_install !== false) {
-    const pm = detectPackageManager(outputPath);
+    const pm = await detectPackageManager(outputPath);
     const installCmd = pm === 'npm' ? 'npm install' : `${pm} install`;
     const result = await safeExec(installCmd, outputPath, 120000);
     postCreateResults.push({

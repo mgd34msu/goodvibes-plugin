@@ -144,7 +144,7 @@ async function main(): Promise<void> {
     const systemMessage = combineMessages(automationMessages);
 
     respond(createResponse(systemMessage));
-  } catch (error) {
+  } catch (error: unknown) {
     logError('PostToolUse main', error);
     respond(createResponse(`Hook error: ${error instanceof Error ? error.message : String(error)}`));
   }

@@ -86,7 +86,7 @@ export async function loadRetries(cwd: string): Promise<RetryData> {
       return parsed;
     }
     return {};
-  } catch (error) {
+  } catch (error: unknown) {
     debug('loadRetries failed', { error: String(error) });
     return {};
   }
@@ -132,7 +132,7 @@ export async function saveRetry(
   }
   try {
     await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-  } catch (error) {
+  } catch (error: unknown) {
     debug('saveRetry failed', { error: String(error) });
   }
 }
@@ -227,7 +227,7 @@ export async function clearRetry(cwd: string, signature: string): Promise<void> 
     delete retries[signature];
     try {
       await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-    } catch (error) {
+    } catch (error: unknown) {
       debug('writeRetryData failed', { error: String(error) });
     }
   }
@@ -251,7 +251,7 @@ export async function pruneOldRetries(cwd: string, maxAgeHours: number = DEFAULT
   if (changed) {
     try {
       await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-    } catch (error) {
+    } catch (error: unknown) {
       debug('writeRetryData failed', { error: String(error) });
     }
   }

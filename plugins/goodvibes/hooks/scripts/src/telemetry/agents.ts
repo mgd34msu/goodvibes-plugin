@@ -7,23 +7,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import { debug, logError } from '../shared.js';
-
-// ============================================================================
-// File System Helpers
-// ============================================================================
-
-/**
- * Check if a file exists (async replacement for existsSync)
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { debug, logError, fileExistsAsync as fileExists } from '../shared.js';
 
 // ============================================================================
 // Constants and Paths

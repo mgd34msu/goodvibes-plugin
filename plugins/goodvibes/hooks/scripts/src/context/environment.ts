@@ -15,6 +15,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
 
 // =============================================================================
 // Types
@@ -118,18 +119,6 @@ function parseEnvVars(content: string): string[] {
  */
 function isSensitiveVar(varName: string): boolean {
   return SENSITIVE_PATTERNS.some((pattern) => pattern.test(varName));
-}
-
-/**
- * Check if a file exists (async version).
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // =============================================================================

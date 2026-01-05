@@ -1,24 +1,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
-import { ensureGoodVibesDir, parseTranscript, extractKeywords } from '../shared.js';
+import { ensureGoodVibesDir, parseTranscript, extractKeywords, fileExistsAsync as fileExists } from '../shared.js';
 import { debug } from '../shared/logging.js';
-
-// ============================================================================
-// File System Helpers
-// ============================================================================
-
-/**
- * Check if a file exists (async replacement for existsSync)
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
