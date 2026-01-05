@@ -78,7 +78,7 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
           message: 'TypeScript strict mode is off',
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // tsconfig.json might have comments or invalid JSON, which is fine
       debug('health-checker: Failed to parse tsconfig.json', error);
     }

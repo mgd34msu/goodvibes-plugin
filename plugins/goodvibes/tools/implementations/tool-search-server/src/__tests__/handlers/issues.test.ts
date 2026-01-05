@@ -44,7 +44,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as unknown as fs.Stats);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Handle edge case\nconst x = 1;');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -59,7 +59,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'api.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// BUG: Race condition here\nconst x = 1;');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -73,7 +73,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'service.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// TODO: URGENT fix before release\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -86,7 +86,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'utils.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// TODO: Refactor this later\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -100,7 +100,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'config.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// NOTE: This is intentional\n');
 
       const result = handleProjectIssues({ path: '/test', include_low_priority: true });
@@ -113,7 +113,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'handler.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('line1\nline2\n// FIXME: Fix this\nline4');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -150,7 +150,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'handler.test.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Test fixture\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -390,7 +390,7 @@ describe('handleProjectIssues', () => {
       });
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Issue 1\n// FIXME: Issue 2\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -406,7 +406,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'broken.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
         throw new Error('Permission denied');
       });
@@ -445,7 +445,7 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'big.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
 
       // Create content with 15 TODOs
       const todos = Array.from({ length: 15 }, (_, i) => `// TODO: Task ${i + 1}`).join('\n');
@@ -486,7 +486,7 @@ describe('handleProjectIssues', () => {
       } as unknown as fs.Stats);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'code.ts', isDirectory: () => false, isFile: () => true },
-      ] as unknown as fs.Dirent<Buffer>[]);
+      ] as unknown as fs.Dirent<any>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('/* FIXME: This spans\n   multiple lines */');
 
       const result = handleProjectIssues({ path: '/test' });

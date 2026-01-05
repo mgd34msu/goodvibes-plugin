@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import Fuse from 'fuse.js';
@@ -42,8 +42,11 @@ import {
   sampleSkillContent,
 } from './setup.js';
 
-// Mock the fs module
-vi.mock('fs');
+// Mock the fs/promises module
+vi.mock('fs/promises', () => ({
+  access: vi.fn(),
+  readFile: vi.fn(),
+}));
 vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));

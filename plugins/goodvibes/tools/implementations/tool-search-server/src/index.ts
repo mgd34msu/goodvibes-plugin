@@ -73,6 +73,7 @@ import {
   type ListTemplatesArgs,
   type ProjectIssuesArgs,
 } from './handlers/index.js';
+/** * Inline argument types for handlers that do not export their args type */interface SearchSkillsArgs {  query: string;  category?: string;  limit?: number;}interface SearchArgs {  query: string;  limit?: number;}interface RecommendSkillsArgs {  task: string;  max_results?: number;}interface GetContentArgs {  path: string;}interface DetectStackArgs {  path?: string;  deep?: boolean;}interface ScanPatternsArgs {  path?: string;  pattern_types?: string[];}/** * Union type of all possible tool arguments. * This allows safe type assertions from the union to specific arg types * without needing double-casting. */type ToolArgs =  | SearchSkillsArgs  | SearchArgs  | RecommendSkillsArgs  | GetContentArgs  | SkillDependenciesArgs  | DetectStackArgs  | CheckVersionsArgs  | ScanPatternsArgs  | FetchDocsArgs  | GetSchemaArgs  | ReadConfigArgs  | ValidateImplementationArgs  | RunSmokeTestArgs  | CheckTypesArgs  | ScaffoldProjectArgs  | ListTemplatesArgs  | ProjectIssuesArgs  | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
  * Context object passed to tool handlers providing access to indexes and registries
@@ -95,7 +96,7 @@ interface ToolHandlerResponse {
 /**
  * Type for tool handler functions
  */
-type ToolHandler = (ctx: HandlerContext, args: unknown) => ToolHandlerResponse | Promise<ToolHandlerResponse>;
+type ToolHandler = (ctx: HandlerContext, args: ToolArgs) => ToolHandlerResponse | Promise<ToolHandlerResponse>;
 
 /**
  * Registry mapping tool names to their handler functions.
@@ -104,29 +105,29 @@ type ToolHandler = (ctx: HandlerContext, args: unknown) => ToolHandlerResponse |
 const TOOL_HANDLERS: Record<string, ToolHandler> = {
   // Search tools
   search_skills: (ctx, args) =>
-    handleSearchSkills(ctx.skillsIndex, args as { query: string; category?: string; limit?: number }),
+    handleSearchSkills(ctx.skillsIndex, args as SearchSkillsArgs),
   search_agents: (ctx, args) =>
-    handleSearchAgents(ctx.agentsIndex, args as { query: string; limit?: number }),
+    handleSearchAgents(ctx.agentsIndex, args as SearchArgs),
   search_tools: (ctx, args) =>
-    handleSearchTools(ctx.toolsIndex, args as { query: string; limit?: number }),
+    handleSearchTools(ctx.toolsIndex, args as SearchArgs),
   recommend_skills: (ctx, args) =>
-    handleRecommendSkills(ctx.skillsIndex, args as { task: string; max_results?: number }),
+    handleRecommendSkills(ctx.skillsIndex, args as RecommendSkillsArgs),
 
   // Content retrieval
   get_skill_content: (_ctx, args) =>
-    handleGetSkillContent(args as { path: string }),
+    handleGetSkillContent(args as GetContentArgs),
   get_agent_content: (_ctx, args) =>
-    handleGetAgentContent(args as { path: string }),
+    handleGetAgentContent(args as GetContentArgs),
   skill_dependencies: (ctx, args) =>
     handleSkillDependencies(ctx.skillsIndex, ctx.skillsRegistry, args as SkillDependenciesArgs),
 
   // Context gathering
   detect_stack: (_ctx, args) =>
-    handleDetectStack(args as { path?: string; deep?: boolean }),
+    handleDetectStack(args as DetectStackArgs),
   check_versions: (_ctx, args) =>
     handleCheckVersions(args as CheckVersionsArgs),
   scan_patterns: (_ctx, args) =>
-    handleScanPatterns(args as { path?: string; pattern_types?: string[] }),
+    handleScanPatterns(args as ScanPatternsArgs),
 
   // Live data
   fetch_docs: (_ctx, args) =>
@@ -232,7 +233,7 @@ class GoodVibesServer {
         if (!handler) {
           throw new Error(`Unknown tool: ${name}`);
         }
-        const result = await handler(this.getHandlerContext(), args);
+        const result = await handler(this.getHandlerContext(), args as ToolArgs);
         // Cast to CallToolResult - handlers return compatible structure
         return result as CallToolResult;
       } catch (error) {

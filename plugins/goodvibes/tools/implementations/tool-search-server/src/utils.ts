@@ -283,8 +283,11 @@ export async function extractSkillPatterns(skillPath: string): Promise<{
   ];
 
   for (const filePath of attempts) {
+    if (!(await fileExists(filePath))) {
+      continue;
+    }
+
     try {
-      await fsPromises.access(filePath);
       const content = await fsPromises.readFile(filePath, 'utf-8');
 
       // Look for Required imports section
@@ -323,7 +326,7 @@ export async function extractSkillPatterns(skillPath: string): Promise<{
 
       return patterns;
     } catch {
-      // File doesn't exist or read error, try next path
+      // Read or parse error, try next path
       continue;
     }
   }

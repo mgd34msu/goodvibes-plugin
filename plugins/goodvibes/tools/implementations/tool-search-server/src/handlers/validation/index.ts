@@ -1,5 +1,10 @@
 /**
  * Validation handlers - refactored into focused modules
+ *
+ * Provides MCP tools for validating code implementation against best practices,
+ * security patterns, TypeScript conventions, and skill-specific patterns.
+ *
+ * @module handlers/validation
  */
 
 import * as fsPromises from 'fs/promises';
@@ -21,7 +26,35 @@ import { runSkillPatternChecks } from './skill-pattern-checks.js';
 export { ValidateImplementationArgs, CheckTypesArgs } from './types.js';
 
 /**
- * Handle validate_implementation tool call
+ * Handles the validate_implementation MCP tool call.
+ *
+ * Validates source files against multiple check categories:
+ * - security: Checks for common security issues
+ * - structure: Validates file and code structure
+ * - errors: Checks error handling patterns
+ * - typescript: TypeScript-specific checks
+ * - naming: Validates naming conventions
+ * - best-practices: General best practice checks
+ * - skill-patterns: Skill-specific pattern matching
+ *
+ * @param args - The validate_implementation tool arguments
+ * @param args.files - Files to validate
+ * @param args.checks - Check categories to run (default: ['all'])
+ * @param args.skill - Optional skill to match patterns against
+ * @returns MCP tool response with validation results and score
+ *
+ * @example
+ * await handleValidateImplementation({
+ *   files: ['src/api/users.ts'],
+ *   checks: ['security', 'typescript']
+ * });
+ * // Returns: {
+ * //   valid: false,
+ * //   score: 75,
+ * //   grade: 'C',
+ * //   issues: [{ severity: 'error', rule: 'security/sql-injection', ... }],
+ * //   summary: { errors: 1, warnings: 2, files_checked: 1 }
+ * // }
  */
 export async function handleValidateImplementation(args: ValidateImplementationArgs): Promise<ToolResponse> {
   const issues: ValidationIssue[] = [];
@@ -131,7 +164,28 @@ export async function handleValidateImplementation(args: ValidateImplementationA
 }
 
 /**
- * Handle check_types tool call
+ * Handles the check_types MCP tool call.
+ *
+ * Runs TypeScript type checking on the project or specific files using
+ * `tsc --noEmit`. Parses TypeScript error output and returns structured results.
+ *
+ * @param args - The check_types tool arguments
+ * @param args.files - Specific files to check (defaults to all)
+ * @param args.strict - Whether to run with --strict flag
+ * @param args.include_suggestions - Whether to include fix suggestions
+ * @returns MCP tool response with type errors and summary
+ *
+ * @example
+ * await handleCheckTypes({ strict: true });
+ * // Returns: {
+ * //   valid: false,
+ * //   errors: [{ file: 'src/api.ts', line: 42, code: 'TS2345', message: '...' }],
+ * //   summary: { files_checked: 'all', errors: 3, warnings: 0 }
+ * // }
+ *
+ * @example
+ * await handleCheckTypes({ files: ['src/utils.ts'], include_suggestions: true });
+ * // Type checks only the specified file with suggestions
  */
 export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolResponse> {
   const filesArg = args.files?.length ? args.files.join(' ') : '';

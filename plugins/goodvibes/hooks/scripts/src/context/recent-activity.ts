@@ -71,7 +71,7 @@ function gitExec(cwd: string, args: string): string | null {
       maxBuffer: GIT_MAX_BUFFER,
       timeout: 30000,
     }).trim();
-  } catch (error) {
+  } catch (error: unknown) {
     // Git command failed - log for debugging but return null as this is expected
     debug(`recent-activity: Git command failed: git ${args}`, error);
     return null;

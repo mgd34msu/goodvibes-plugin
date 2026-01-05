@@ -26,7 +26,7 @@ export interface GitContext {
 function execGit(command: string, cwd: string): string | null {
   try {
     return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
-  } catch (error) {
+  } catch (error: unknown) {
     // Git command failed - this is expected for some operations (e.g., no upstream)
     debug(`git-context: Git command failed: ${command}`, error);
     return null;
@@ -37,8 +37,7 @@ async function directoryExists(dirPath: string): Promise<boolean> {
   try {
     await fs.access(dirPath);
     return true;
-  } catch (error) {
-
+  } catch (error: unknown) {
     debug('git-context failed', { error: String(error) });
     return false;
   }
