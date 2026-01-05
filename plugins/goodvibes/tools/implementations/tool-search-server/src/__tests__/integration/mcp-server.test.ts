@@ -331,7 +331,8 @@ describe('MCP Server Integration', () => {
 
       const successResponse = success({ data: 'test' });
 
-      expect(successResponse.isError).toBeUndefined();
+      // Success responses do not include isError property (only error responses do)
+      expect('isError' in successResponse).toBe(false);
       expect(successResponse.content).toHaveLength(1);
       expect(successResponse.content[0].type).toBe('text');
     });

@@ -9,7 +9,7 @@
  * - run_smoke_test: Reports test failures
  * - check_types: Reports type errors
  */
-import { HookInput } from '../shared.js';
+import { HookInput } from '../shared/index.js';
 /**
  * Handles detect_stack tool results, caching stack info.
  * Writes the detected stack configuration to .goodvibes/detected-stack.json

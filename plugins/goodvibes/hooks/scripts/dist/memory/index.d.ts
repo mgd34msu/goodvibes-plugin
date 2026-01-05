@@ -4,7 +4,8 @@
  */
 export { GOODVIBES_DIR, MEMORY_DIR, MEMORY_FILES, getGoodVibesDir, getMemoryDir, getMemoryFilePath, } from './paths.js';
 export type { MemoryFileType } from './paths.js';
-export { fileExists, ensureGoodVibesDir, ensureMemoryDir, ensureSecurityGitignore, } from './directories.js';
+export { fileExists, ensureMemoryDir, ensureSecurityGitignore, } from './directories.js';
+export { ensureGoodVibesDir } from '../shared/index.js';
 export { readDecisions, writeDecision } from './decisions.js';
 export { readPatterns, writePattern } from './patterns.js';
 export { readFailures, writeFailure } from './failures.js';

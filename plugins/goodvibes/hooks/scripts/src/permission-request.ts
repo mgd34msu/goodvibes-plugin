@@ -10,22 +10,11 @@ import {
   readHookInput,
   debug,
   logError,
-  HookResponse,
-} from './shared.js';
-
-/** Creates a hook response with permission decision. */
-function createResponse(decision: 'allow' | 'deny' | 'ask' = 'allow'): HookResponse {
-  return {
-    continue: true,
-    hookSpecificOutput: {
-      hookEventName: 'PermissionRequest',
-      permissionDecision: decision,
-    },
-  };
-}
+  createPermissionResponse,
+} from './shared/index.js';
 
 /** Main entry point for permission-request hook. Auto-approves GoodVibes MCP tool permissions. */
-async function main(): Promise<void> {
+async function runPermissionRequestHook(): Promise<void> {
   try {
     debug('PermissionRequest hook starting');
 
@@ -37,16 +26,16 @@ async function main(): Promise<void> {
     // Auto-approve GoodVibes MCP tool permissions
     if (input.tool_name?.includes('goodvibes')) {
       debug('Auto-approving GoodVibes tool permission');
-      respond(createResponse('allow'));
+      respond(createPermissionResponse('allow'));
     } else {
       // Let user decide for non-GoodVibes tools
-      respond(createResponse('ask'));
+      respond(createPermissionResponse('ask'));
     }
 
   } catch (error: unknown) {
     logError('PermissionRequest main', error);
-    respond(createResponse('ask'));
+    respond(createPermissionResponse('ask'));
   }
 }
 
-main();
+runPermissionRequestHook();

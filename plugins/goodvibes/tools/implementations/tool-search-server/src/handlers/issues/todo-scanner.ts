@@ -77,7 +77,7 @@ export function scanFile(filePath: string, relativePath: string): TodoItem[] {
     }
 
     return items;
-  } catch (err) {
+  } catch (err: unknown) {
     // Log but continue - file may be unreadable or deleted during scan
     console.error(`[issues] Failed to scan file ${filePath}:`, err instanceof Error ? err.message : err);
     return [];
@@ -114,7 +114,7 @@ export function scanDirectory(dir: string, baseDir: string, items: TodoItem[], m
         }
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     // Log but continue - directory may be inaccessible
     console.error(`[issues] Failed to read directory ${dir}:`, err instanceof Error ? err.message : err);
   }

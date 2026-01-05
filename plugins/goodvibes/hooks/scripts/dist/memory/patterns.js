@@ -4,6 +4,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+import { fileExists } from '../shared/file-utils.js';
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
 This file documents code patterns specific to this project.
@@ -12,21 +13,6 @@ These patterns help maintain consistency across the codebase.
 ---
 
 `;
-/**
- * Checks if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 /**
  * Reads all established patterns from the memory file.
  *

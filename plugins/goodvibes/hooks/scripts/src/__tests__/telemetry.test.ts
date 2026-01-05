@@ -45,8 +45,8 @@ vi.mock('child_process', () => ({
 }));
 
 // Mock the shared module to prevent actual logging during tests
-vi.mock('../shared.js', async () => {
-  const actual = await vi.importActual('../shared.js');
+vi.mock('../shared/index.js', async () => {
+  const actual = await vi.importActual('../shared/index.js');
   return {
     ...actual,
     debug: vi.fn(),

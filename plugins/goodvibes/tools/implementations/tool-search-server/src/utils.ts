@@ -19,6 +19,14 @@ const execAsync = promisify(exec);
 /**
  * Check if a file exists asynchronously.
  *
+ * This is the canonical file existence check function for the MCP server.
+ * It follows the same API as the hooks package's fileExists function.
+ *
+ * Note: This implementation is separate from the hooks package because:
+ * - The MCP server is bundled independently with esbuild
+ * - It has minimal dependencies and should remain self-contained
+ * - Sharing would require creating a separate npm package
+ *
  * @param filePath - Absolute path to the file
  * @returns Promise resolving to true if file exists
  */
@@ -43,7 +51,7 @@ export async function loadRegistry(registryPath: string): Promise<Registry | nul
     }
     const content = await fsPromises.readFile(fullPath, 'utf-8');
     return yaml.load(content) as Registry;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error loading registry ${registryPath}:`, error);
     return null;
   }

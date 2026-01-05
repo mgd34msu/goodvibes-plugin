@@ -4,6 +4,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+import { fileExists } from '../shared/file-utils.js';
 const DECISIONS_HEADER = `# Architectural Decisions
 
 This file records architectural decisions made for this project.
@@ -12,21 +13,6 @@ Each decision includes the date, alternatives considered, rationale, and the age
 ---
 
 `;
-/**
- * Checks if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 /**
  * Reads all project decisions from the memory file.
  *

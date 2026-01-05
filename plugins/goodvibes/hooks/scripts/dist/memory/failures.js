@@ -4,6 +4,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+import { fileExists } from '../shared/file-utils.js';
 const FAILURES_HEADER = `# Failed Approaches
 
 This file records approaches that were tried and failed.
@@ -12,21 +13,6 @@ Reference this to avoid repeating unsuccessful strategies.
 ---
 
 `;
-/**
- * Checks if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 /**
  * Reads all known failures from the memory file.
  *

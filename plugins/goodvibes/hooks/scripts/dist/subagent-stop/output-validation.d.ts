@@ -9,4 +9,6 @@ export interface ValidationResult {
     errors: string[];
 }
 /** Validates agent output by checking type errors in modified files */
-export declare function validateAgentOutput(cwd: string, transcriptPath: string, state: HooksState): Promise<ValidationResult>;
+export declare function validateAgentOutput(cwd: string, transcriptPath: string, state: HooksState): Promise<ValidationResult & {
+    state: HooksState;
+}>;

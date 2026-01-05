@@ -18,18 +18,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-/**
- * Check if a file or directory exists (async).
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { fileExists } from '../shared/file-utils.js';
 const LOCKFILES = {
     'package-lock.json': 'npm',
     'yarn.lock': 'yarn',

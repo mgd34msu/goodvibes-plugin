@@ -80,10 +80,11 @@ describe('memory', () => {
       expect(fs.existsSync(gitignorePath)).toBe(true);
 
       const content = fs.readFileSync(gitignorePath, 'utf-8');
+      // Verify key security patterns from SECURITY_GITIGNORE_ENTRIES
       expect(content).toContain('.env');
       expect(content).toContain('.goodvibes/');
       expect(content).toContain('*.key');
-      expect(content).toContain('*.tfstate');
+      expect(content).toContain('*.pem');
     });
 
     it('should append to existing .gitignore without duplicating patterns', async () => {

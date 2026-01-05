@@ -28,7 +28,7 @@ export function checkEnvironment(cwd: string): EnvironmentIssue[] {
           const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
           if (match) definedVars.push(match[1]);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[issues] Failed to read ${envFile}:`, err instanceof Error ? err.message : err);
       }
     }
@@ -47,7 +47,7 @@ export function checkEnvironment(cwd: string): EnvironmentIssue[] {
           const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
           if (match) exampleVars.push(match[1]);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[issues] Failed to read ${exampleFile}:`, err instanceof Error ? err.message : err);
       }
       break;
@@ -99,7 +99,7 @@ export function checkEnvironment(cwd: string): EnvironmentIssue[] {
           }
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`[issues] Failed to read .gitignore:`, err instanceof Error ? err.message : err);
     }
   }

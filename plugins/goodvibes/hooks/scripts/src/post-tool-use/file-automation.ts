@@ -5,7 +5,7 @@
  * for Edit and Write tools.
  */
 
-import { debug, HookInput } from '../shared.js';
+import { debug, HookInput } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
 import type { GoodVibesConfig } from '../types/config.js';
 
@@ -38,10 +38,10 @@ export {
  * @param state - The current hooks session state to update with file tracking
  * @param input - The hook input containing tool_input with file_path
  * @param toolName - The name of the tool ('Edit' or 'Write')
- * @returns Object with `tracked` boolean and `filePath` string or null if no path found
+ * @returns Object with `tracked` boolean, `filePath` string or null if no path found, and updated state
  *
  * @example
- * const { tracked, filePath } = handleFileModification(state, input, 'Edit');
+ * const { tracked, filePath, state: newState } = handleFileModification(state, input, 'Edit');
  * if (tracked) {
  *   console.log('Tracked modification to:', filePath);
  * }
@@ -50,23 +50,24 @@ export function handleFileModification(
   state: HooksState,
   input: HookInput,
   toolName: string
-): { tracked: boolean; filePath: string | null } {
+): { tracked: boolean; filePath: string | null; state: HooksState } {
   const toolInput = input.tool_input as Record<string, unknown> | undefined;
   const filePath = toolInput?.file_path as string | undefined;
 
   if (!filePath) {
-    return { tracked: false, filePath: null };
+    return { tracked: false, filePath: null, state };
   }
 
+  let newState: HooksState;
   if (toolName === 'Write') {
-    trackFileCreation(state, filePath);
+    newState = trackFileCreation(state, filePath);
     debug(`Tracked file creation: ${filePath}`);
   } else {
-    trackFileModification(state, filePath);
+    newState = trackFileModification(state, filePath);
     debug(`Tracked file modification: ${filePath}`);
   }
 
-  return { tracked: true, filePath };
+  return { tracked: true, filePath, state: newState };
 }
 
 /**
@@ -78,10 +79,10 @@ export function handleFileModification(
  * @param config - GoodVibes configuration with automation settings
  * @param input - The hook input containing tool_input with file_path and cwd
  * @param toolName - The name of the tool ('Edit' or 'Write')
- * @returns AutomationMessages object with array of messages from automation results
+ * @returns Object with array of messages from automation results and updated state
  *
  * @example
- * const { messages } = await processFileAutomation(state, config, input, 'Edit');
+ * const { messages, state: newState } = await processFileAutomation(state, config, input, 'Edit');
  * if (messages.length > 0) {
  *   console.log('Automation results:', messages.join(', '));
  * }
@@ -91,18 +92,21 @@ export async function processFileAutomation(
   config: GoodVibesConfig,
   input: HookInput,
   toolName: string
-): Promise<AutomationMessages> {
+): Promise<AutomationMessages & { state: HooksState }> {
   const messages: string[] = [];
   const cwd = input.cwd;
 
   // Track file modification
-  const { tracked, filePath } = handleFileModification(state, input, toolName);
-  if (!tracked || !filePath) {
-    return { messages };
+  const trackResult = handleFileModification(state, input, toolName);
+  if (!trackResult.tracked || !trackResult.filePath) {
+    return { messages, state };
   }
 
+  state = trackResult.state;
+
   // Run tests for modified file
-  const testResult = await maybeRunTests(state, config, filePath, cwd);
+  const testResult = await maybeRunTests(state, config, trackResult.filePath, cwd);
+  state = testResult.state;
   if (testResult.ran && testResult.result) {
     if (!testResult.result.passed) {
       messages.push(`Tests failed: ${testResult.result.summary}`);
@@ -111,6 +115,7 @@ export async function processFileAutomation(
 
   // Check if build should run
   const buildResult = await maybeRunBuild(state, config, cwd);
+  state = buildResult.state;
   if (buildResult.ran && buildResult.result) {
     if (!buildResult.result.passed) {
       messages.push(`Build check: ${buildResult.result.summary}`);
@@ -119,6 +124,7 @@ export async function processFileAutomation(
 
   // Check if checkpoint should be created
   const checkpoint = await maybeCreateCheckpoint(state, config, cwd);
+  state = checkpoint.state;
   if (checkpoint.created) {
     messages.push(checkpoint.message);
   }
@@ -129,5 +135,5 @@ export async function processFileAutomation(
     messages.push(`Created feature branch: ${branch.branchName}`);
   }
 
-  return { messages };
+  return { messages, state };
 }

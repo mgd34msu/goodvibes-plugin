@@ -20,7 +20,7 @@ import {
   debug,
   logError,
   HookResponse,
-} from './shared.js';
+} from './shared/index.js';
 
 import {
   cleanupStaleAgents,
@@ -74,7 +74,7 @@ function createResponse(options?: {
 }
 
 /** Main entry point for subagent-start hook. Captures telemetry and injects project context. */
-async function main(): Promise<void> {
+async function runSubagentStartHook(): Promise<void> {
   try {
     debug('SubagentStart hook starting');
 
@@ -208,10 +208,10 @@ async function main(): Promise<void> {
       additionalContext,
     }));
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('SubagentStart main', error);
     respond(createResponse());
   }
 }
 
-main();
+runSubagentStartHook();

@@ -14,7 +14,7 @@
  * - Remove tracking entry
  * - Return validation results in output
  */
-import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared.js';
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared/index.js';
 import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './subagent-stop/telemetry.js';
 import { validateAgentOutput } from './subagent-stop/output-validation.js';
 import { verifyAgentTests } from './subagent-stop/test-verification.js';
@@ -33,7 +33,7 @@ function createResponse(options) {
     return response;
 }
 /** Main entry point for subagent-stop hook. Correlates with start, validates output, writes telemetry. */
-async function main() {
+async function runSubagentStopHook() {
     try {
         debug('SubagentStop hook starting');
         const rawInput = await readHookInput();
@@ -51,7 +51,7 @@ async function main() {
             transcript_path: transcriptPath,
         });
         // Load state for validation and test tracking
-        const state = await loadState(cwd);
+        let state = await loadState(cwd);
         // Initialize output results
         let validationResult;
         let testResult;
@@ -70,7 +70,9 @@ async function main() {
             durationMs = Date.now() - startedAt;
             // Validate agent output (type check if TS files modified)
             if (transcriptPath) {
-                validationResult = await validateAgentOutput(cwd, transcriptPath, state);
+                const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+                validationResult = validationOutput;
+                state = validationOutput.state;
                 debug('Validation result', {
                     valid: validationResult.valid,
                     filesModified: validationResult.filesModified.length,
@@ -124,7 +126,9 @@ async function main() {
             });
             // Even without a tracking entry, we can still validate if transcript exists
             if (transcriptPath) {
-                validationResult = await validateAgentOutput(cwd, transcriptPath, state);
+                const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+                validationResult = validationOutput;
+                state = validationOutput.state;
                 if (validationResult.filesModified.length > 0) {
                     testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
                 }
@@ -161,4 +165,4 @@ async function main() {
         respond(createResponse());
     }
 }
-main();
+runSubagentStopHook();

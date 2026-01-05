@@ -14,25 +14,17 @@ import {
   debug,
   logError,
   CACHE_DIR,
-  HookResponse,
+  createResponse,
   parseTranscript,
-  fileExistsAsync,
+  fileExists,
   SessionAnalytics,
-} from './shared.js';
+} from './shared/index.js';
 import { loadState } from './state.js';
 import {
   createPreCompactCheckpoint,
   saveSessionSummary,
   getFilesModifiedThisSession,
 } from './pre-compact/index.js';
-
-/** Creates a hook response with optional system message. */
-function createResponse(systemMessage?: string): HookResponse {
-  return {
-    continue: true,
-    systemMessage,
-  };
-}
 
 /**
  * Generate a session summary from analytics and state
@@ -78,7 +70,7 @@ function generateSessionSummary(
 }
 
 /** Main entry point for pre-compact hook. Saves session context before compression. */
-async function main(): Promise<void> {
+async function runPreCompactHook(): Promise<void> {
   try {
     debug('PreCompact hook starting');
 
@@ -99,7 +91,7 @@ async function main(): Promise<void> {
 
     // Parse transcript for additional context
     let transcriptSummary = '';
-    if (input.transcript_path && (await fileExistsAsync(input.transcript_path))) {
+    if (input.transcript_path && (await fileExists(input.transcript_path))) {
       const transcriptData = await parseTranscript(input.transcript_path);
       transcriptSummary = transcriptData.summary;
     }
@@ -127,4 +119,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+runPreCompactHook();

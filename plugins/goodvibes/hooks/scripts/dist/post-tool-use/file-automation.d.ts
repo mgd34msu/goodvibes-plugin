@@ -4,7 +4,7 @@
  * Handles file modification tracking and orchestrates automation
  * for Edit and Write tools.
  */
-import { HookInput } from '../shared.js';
+import { HookInput } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
 import type { GoodVibesConfig } from '../types/config.js';
 import type { AutomationMessages } from './response.js';
@@ -17,10 +17,10 @@ export { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch,
  * @param state - The current hooks session state to update with file tracking
  * @param input - The hook input containing tool_input with file_path
  * @param toolName - The name of the tool ('Edit' or 'Write')
- * @returns Object with `tracked` boolean and `filePath` string or null if no path found
+ * @returns Object with `tracked` boolean, `filePath` string or null if no path found, and updated state
  *
  * @example
- * const { tracked, filePath } = handleFileModification(state, input, 'Edit');
+ * const { tracked, filePath, state: newState } = handleFileModification(state, input, 'Edit');
  * if (tracked) {
  *   console.log('Tracked modification to:', filePath);
  * }
@@ -28,6 +28,7 @@ export { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch,
 export declare function handleFileModification(state: HooksState, input: HookInput, toolName: string): {
     tracked: boolean;
     filePath: string | null;
+    state: HooksState;
 };
 /**
  * Process automation for file-modifying tools (Edit, Write).
@@ -38,12 +39,14 @@ export declare function handleFileModification(state: HooksState, input: HookInp
  * @param config - GoodVibes configuration with automation settings
  * @param input - The hook input containing tool_input with file_path and cwd
  * @param toolName - The name of the tool ('Edit' or 'Write')
- * @returns AutomationMessages object with array of messages from automation results
+ * @returns Object with array of messages from automation results and updated state
  *
  * @example
- * const { messages } = await processFileAutomation(state, config, input, 'Edit');
+ * const { messages, state: newState } = await processFileAutomation(state, config, input, 'Edit');
  * if (messages.length > 0) {
  *   console.log('Automation results:', messages.join(', '));
  * }
  */
-export declare function processFileAutomation(state: HooksState, config: GoodVibesConfig, input: HookInput, toolName: string): Promise<AutomationMessages>;
+export declare function processFileAutomation(state: HooksState, config: GoodVibesConfig, input: HookInput, toolName: string): Promise<AutomationMessages & {
+    state: HooksState;
+}>;

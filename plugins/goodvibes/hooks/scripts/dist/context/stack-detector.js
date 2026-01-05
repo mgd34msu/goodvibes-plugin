@@ -5,12 +5,43 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { LOCKFILES, fileExistsAsync } from '../shared.js';
+import { LOCKFILES, fileExists } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 /** Module-level cache for stack detection results */
 const stackCache = new Map();
 /** Cache TTL in milliseconds (5 minutes) */
 const CACHE_TTL = 5 * 60 * 1000;
+/** Maximum number of entries to keep in cache (LRU-style cleanup) */
+const MAX_CACHE_ENTRIES = 50;
+/**
+ * Clear expired entries from the stack cache.
+ * Also enforces maximum cache size by removing oldest entries.
+ */
+export function clearStackCache() {
+    stackCache.clear();
+}
+/**
+ * Remove expired entries and enforce LRU-style size limit.
+ * Called internally before adding new cache entries.
+ */
+function pruneCache() {
+    const now = Date.now();
+    // Remove expired entries
+    for (const [key, value] of stackCache.entries()) {
+        if (now - value.timestamp >= CACHE_TTL) {
+            stackCache.delete(key);
+        }
+    }
+    // If still over limit, remove oldest entries
+    if (stackCache.size >= MAX_CACHE_ENTRIES) {
+        const entries = Array.from(stackCache.entries())
+            .sort((a, b) => a[1].timestamp - b[1].timestamp);
+        const toRemove = entries.slice(0, stackCache.size - MAX_CACHE_ENTRIES + 1);
+        for (const [key] of toRemove) {
+            stackCache.delete(key);
+        }
+    }
+}
 const STACK_INDICATORS = {
     'next.config': 'Next.js',
     'nuxt.config': 'Nuxt',
@@ -52,10 +83,10 @@ export async function detectStack(cwd) {
     for (const [indicator, name] of Object.entries(STACK_INDICATORS)) {
         const checkPath = path.join(cwd, indicator);
         const checks = await Promise.all([
-            fileExistsAsync(checkPath),
-            fileExistsAsync(checkPath + '.js'),
-            fileExistsAsync(checkPath + '.ts'),
-            fileExistsAsync(checkPath + '.mjs'),
+            fileExists(checkPath),
+            fileExists(checkPath + '.js'),
+            fileExists(checkPath + '.ts'),
+            fileExists(checkPath + '.mjs'),
         ]);
         if (checks.some(exists => exists)) {
             frameworks.push(name);
@@ -65,14 +96,14 @@ export async function detectStack(cwd) {
     }
     // Check lockfiles for package manager
     for (const lockfile of LOCKFILES) {
-        if (await fileExistsAsync(path.join(cwd, lockfile))) {
+        if (await fileExists(path.join(cwd, lockfile))) {
             packageManager = LOCKFILE_TO_PM[lockfile];
             break;
         }
     }
     // Check tsconfig for strict mode
     const tsconfigPath = path.join(cwd, 'tsconfig.json');
-    if (await fileExistsAsync(tsconfigPath)) {
+    if (await fileExists(tsconfigPath)) {
         try {
             const content = await fs.readFile(tsconfigPath, 'utf-8');
             const config = JSON.parse(content);
@@ -84,6 +115,8 @@ export async function detectStack(cwd) {
         }
     }
     const result = { frameworks, packageManager, hasTypeScript, isStrict };
+    // Prune cache before adding new entry
+    pruneCache();
     // Store in cache
     stackCache.set(cwd, { result, timestamp: now });
     return result;

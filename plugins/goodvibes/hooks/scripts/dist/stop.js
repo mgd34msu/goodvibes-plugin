@@ -8,30 +8,11 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, } from './shared.js';
-/**
- * Helper to check if a file exists using async fs.access.
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
-/** Creates a hook response with optional system message. */
-function createResponse(systemMessage) {
-    return {
-        continue: true,
-        systemMessage,
-    };
-}
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, createResponse, fileExists, } from './shared/index.js';
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
 /** Main entry point for stop hook. Finalizes analytics and cleans up temp files. */
-async function main() {
+async function runStopHook() {
     try {
         debug('Stop hook starting');
         // Read hook input from stdin
@@ -79,7 +60,7 @@ async function main() {
     }
     catch (error) {
         logError('Stop main', error);
-        respond(createResponse(`Cleanup error: ${error instanceof Error ? error.message : String(error)}`));
+        respond(createResponse({ systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}` }));
     }
 }
-main();
+runStopHook();

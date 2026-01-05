@@ -59,11 +59,11 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
             ? event.content
             : JSON.stringify(event.content);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         debug('parseTranscript line parse failed', { error: String(error) });
       }
     }
-  } catch (error) {
+  } catch (error: unknown) {
     debug('parseTranscript read failed', { error: String(error) });
   }
 

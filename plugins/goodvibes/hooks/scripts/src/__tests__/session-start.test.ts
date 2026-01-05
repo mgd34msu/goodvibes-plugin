@@ -78,7 +78,7 @@ describe('session-start hook', () => {
     it('should return valid when all registries exist', async () => {
       mockAccess.mockResolvedValue(undefined);
 
-      const { validateRegistries } = await import('../shared.js');
+      const { validateRegistries } = await import('../shared/index.js');
       const result = await validateRegistries();
 
       expect(result.valid).toBe(true);
@@ -88,7 +88,7 @@ describe('session-start hook', () => {
     it('should return invalid when registries are missing', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
-      const { validateRegistries } = await import('../shared.js');
+      const { validateRegistries } = await import('../shared/index.js');
       const result = await validateRegistries();
 
       expect(result.valid).toBe(false);
@@ -104,7 +104,7 @@ describe('session-start hook', () => {
         return Promise.reject(new Error('ENOENT'));
       });
 
-      const { validateRegistries } = await import('../shared.js');
+      const { validateRegistries } = await import('../shared/index.js');
       const result = await validateRegistries();
 
       expect(result.missing.some(m => m.includes('agents'))).toBe(true);
@@ -117,7 +117,7 @@ describe('session-start hook', () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockMkdir.mockResolvedValue(undefined);
 
-      const { ensureCacheDir } = await import('../shared.js');
+      const { ensureCacheDir } = await import('../shared/index.js');
       await ensureCacheDir();
 
       expect(mockMkdir).toHaveBeenCalled();
@@ -126,7 +126,7 @@ describe('session-start hook', () => {
     it('should not create cache directory if it already exists', async () => {
       mockAccess.mockResolvedValue(undefined);
 
-      const { ensureCacheDir } = await import('../shared.js');
+      const { ensureCacheDir } = await import('../shared/index.js');
       await ensureCacheDir();
 
       expect(mockMkdir).not.toHaveBeenCalled();
@@ -147,7 +147,7 @@ describe('session-start hook', () => {
       mockAccess.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveAnalytics } = await import('../shared.js');
+      const { saveAnalytics } = await import('../shared/index.js');
       await saveAnalytics(mockAnalytics);
 
       expect(mockWriteFile).toHaveBeenCalled();
@@ -168,7 +168,7 @@ describe('session-start hook', () => {
       mockAccess.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveAnalytics } = await import('../shared.js');
+      const { saveAnalytics } = await import('../shared/index.js');
       await saveAnalytics(mockAnalytics);
 
       const writeCall = mockWriteFile.mock.calls[0];
@@ -180,7 +180,7 @@ describe('session-start hook', () => {
 
   describe('response format', () => {
     it('should create response with continue true', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('SessionStart', 'Test message');
 
       expect(response.continue).toBe(true);
@@ -188,7 +188,7 @@ describe('session-start hook', () => {
     });
 
     it('should include hookSpecificOutput', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('SessionStart', 'Test message');
 
       expect(response.hookSpecificOutput).toBeDefined();

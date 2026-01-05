@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { loadSharedConfig } from '../shared.js';
+import { loadSharedConfig } from '../shared/index.js';
 import { getDefaultConfig as getAutomationConfig } from '../types/config.js';
 /** Builds context for a subagent based on agent type and project */
 export async function buildSubagentContext(cwd, agentType, _sessionId) {

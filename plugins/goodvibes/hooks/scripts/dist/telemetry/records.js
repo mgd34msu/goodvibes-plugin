@@ -5,22 +5,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared.js';
-// ============================================================================
-// File System Helpers
-// ============================================================================
-/**
- * Check if a file or directory exists (async replacement for existsSync)
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { debug, fileExists } from '../shared/index.js';
 // ============================================================================
 // Directory Management
 // ============================================================================
@@ -36,7 +21,7 @@ export async function ensureGoodVibesDirs(goodVibesDir, stateDir, telemetryDir) 
     for (const dir of dirs) {
         if (!(await fileExists(dir))) {
             await fs.mkdir(dir, { recursive: true });
-            debug('Created directory: ' + dir);
+            debug(`Created directory: ${dir}`);
         }
     }
 }
@@ -49,12 +34,12 @@ export async function ensureGoodVibesDirs(goodVibesDir, stateDir, telemetryDir) 
 export async function writeTelemetryRecord(telemetryDir, record) {
     // Get current month for filename (YYYY-MM)
     const now = new Date();
-    const yearMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-    const telemetryFile = path.join(telemetryDir, yearMonth + '.jsonl');
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const telemetryFile = path.join(telemetryDir, `${yearMonth}.jsonl`);
     // Append record as a single line of JSON
-    const line = JSON.stringify(record) + '\n';
+    const line = `${JSON.stringify(record)}\n`;
     await fs.appendFile(telemetryFile, line);
-    debug('Wrote telemetry record to ' + telemetryFile);
+    debug(`Wrote telemetry record to ${telemetryFile}`);
 }
 /**
  * Create a telemetry record from agent start entry and stop data

@@ -25,11 +25,15 @@ import {
 import type { TelemetryTracking, TelemetryEntry } from '../types/telemetry.js';
 
 // Mock dependencies
-vi.mock('../shared.js', () => ({
-  ensureGoodVibesDir: vi.fn(),
-  parseTranscript: vi.fn(),
-  extractKeywords: vi.fn(),
-}));
+vi.mock('../shared/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../shared/index.js')>();
+  return {
+    ...actual,
+    ensureGoodVibesDir: vi.fn(),
+    parseTranscript: vi.fn(),
+    extractKeywords: vi.fn(),
+  };
+});
 
 describe('subagent-stop', () => {
   let testDir: string;
@@ -47,7 +51,7 @@ describe('subagent-stop', () => {
 
   describe('saveAgentTracking', () => {
     it('should save tracking data to file', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const trackingDir = path.join(testDir, '.goodvibes');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -77,7 +81,7 @@ describe('subagent-stop', () => {
     });
 
     it('should include optional git information', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const trackingDir = path.join(testDir, '.goodvibes');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -108,7 +112,7 @@ describe('subagent-stop', () => {
     });
 
     it('should append to existing tracking data', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const trackingDir = path.join(testDir, '.goodvibes');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -148,7 +152,7 @@ describe('subagent-stop', () => {
     });
 
     it('should overwrite existing agent tracking', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const trackingDir = path.join(testDir, '.goodvibes');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -187,7 +191,7 @@ describe('subagent-stop', () => {
     });
 
     it('should handle corrupted tracking file gracefully', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
@@ -221,7 +225,7 @@ describe('subagent-stop', () => {
 
   describe('getAgentTracking', () => {
     it('should retrieve existing tracking data', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const trackingDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -249,7 +253,7 @@ describe('subagent-stop', () => {
     });
 
     it('should return null for non-existent agent', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
@@ -283,7 +287,7 @@ describe('subagent-stop', () => {
 
   describe('removeAgentTracking', () => {
     it('should remove specific agent from tracking', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const trackingDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -323,7 +327,7 @@ describe('subagent-stop', () => {
     });
 
     it('should handle removing non-existent agent gracefully', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
         const goodvibesDir = path.join(cwd, '.goodvibes');
@@ -341,7 +345,7 @@ describe('subagent-stop', () => {
 
   describe('writeTelemetryEntry', () => {
     it('should write entry to monthly JSONL file', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const telemetryDir = path.join(testDir, '.goodvibes', 'telemetry');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -384,7 +388,7 @@ describe('subagent-stop', () => {
     });
 
     it('should append multiple entries to same file', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const telemetryDir = path.join(testDir, '.goodvibes', 'telemetry');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -433,7 +437,7 @@ describe('subagent-stop', () => {
 
   describe('buildTelemetryEntry', () => {
     it('should build complete telemetry entry', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: ['Write', 'Bash'],
@@ -466,7 +470,7 @@ describe('subagent-stop', () => {
     });
 
     it('should calculate duration correctly', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: [],
@@ -491,7 +495,7 @@ describe('subagent-stop', () => {
     });
 
     it('should add agent name as first keyword', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: [],
@@ -516,7 +520,7 @@ describe('subagent-stop', () => {
     });
 
     it('should not duplicate agent name in keywords', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: [],
@@ -542,7 +546,7 @@ describe('subagent-stop', () => {
     });
 
     it('should handle failed status', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: [],
@@ -567,7 +571,7 @@ describe('subagent-stop', () => {
     });
 
     it('should include git information', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: [],
@@ -595,7 +599,7 @@ describe('subagent-stop', () => {
     });
 
     it('should extract keywords from transcript summary', async () => {
-      const { parseTranscript, extractKeywords } = await import('../shared.js');
+      const { parseTranscript, extractKeywords } = await import('../shared/index.js');
 
       vi.mocked(parseTranscript).mockReturnValue({
         toolsUsed: [],

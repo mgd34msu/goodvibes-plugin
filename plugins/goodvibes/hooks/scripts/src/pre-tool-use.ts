@@ -24,11 +24,11 @@ import {
   readHookInput,
   allowTool,
   blockTool,
-  fileExists,
+  fileExistsRelative,
   debug,
   logError,
   HookInput,
-} from './shared.js';
+} from './shared/index.js';
 import { loadState } from './state.js';
 import { getDefaultConfig } from './types/config.js';
 import {
@@ -173,7 +173,7 @@ async function handleBashTool(input: HookInput): Promise<void> {
 
 /** Validates prerequisites for detect_stack tool. */
 async function validateDetectStack(_input: HookInput): Promise<void> {
-  if (!(await fileExists('package.json'))) {
+  if (!(await fileExistsRelative('package.json'))) {
     respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
     return;
   }
@@ -189,7 +189,7 @@ async function validateGetSchema(_input: HookInput): Promise<void> {
     'drizzle/schema.ts',
   ];
 
-  const results = await Promise.all(schemaFiles.map(f => fileExists(f)));
+  const results = await Promise.all(schemaFiles.map(f => fileExistsRelative(f)));
   const found = results.some(Boolean);
 
   if (!found) {
@@ -203,16 +203,16 @@ async function validateGetSchema(_input: HookInput): Promise<void> {
 /** Validates prerequisites for run_smoke_test tool. */
 async function validateRunSmokeTest(_input: HookInput): Promise<void> {
   // Check if package.json exists
-  if (!(await fileExists('package.json'))) {
+  if (!(await fileExistsRelative('package.json'))) {
     respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
     return;
   }
 
   // Check for package manager
   const [hasPnpm, hasYarn, hasNpm] = await Promise.all([
-    fileExists('pnpm-lock.yaml'),
-    fileExists('yarn.lock'),
-    fileExists('package-lock.json'),
+    fileExistsRelative('pnpm-lock.yaml'),
+    fileExistsRelative('yarn.lock'),
+    fileExistsRelative('package-lock.json'),
   ]);
 
   if (!hasPnpm && !hasYarn && !hasNpm) {
@@ -226,7 +226,7 @@ async function validateRunSmokeTest(_input: HookInput): Promise<void> {
 /** Validates prerequisites for check_types tool. */
 async function validateCheckTypes(_input: HookInput): Promise<void> {
   // Check for TypeScript config
-  if (!(await fileExists('tsconfig.json'))) {
+  if (!(await fileExistsRelative('tsconfig.json'))) {
     respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
     return;
   }
@@ -241,7 +241,7 @@ async function validateImplementation(_input: HookInput): Promise<void> {
 }
 
 /** Main entry point for pre-tool-use hook. Validates tool prerequisites and runs quality gates. */
-async function main(): Promise<void> {
+async function runPreToolUseHook(): Promise<void> {
   try {
     const input = await readHookInput();
     debug('PreToolUse hook received input', { tool_name: input.tool_name, cwd: input.cwd });
@@ -283,4 +283,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+runPreToolUseHook();

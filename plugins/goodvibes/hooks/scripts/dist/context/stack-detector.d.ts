@@ -3,6 +3,11 @@
  *
  * Detects frameworks, package manager, and TypeScript configuration.
  */
+/**
+ * Clear expired entries from the stack cache.
+ * Also enforces maximum cache size by removing oldest entries.
+ */
+export declare function clearStackCache(): void;
 /** Detected technology stack information. */
 export interface StackInfo {
     frameworks: string[];

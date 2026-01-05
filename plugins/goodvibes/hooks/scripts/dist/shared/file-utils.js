@@ -12,49 +12,63 @@ import { debug } from './logging.js';
 // File Existence Utilities
 // =============================================================================
 /**
- * Checks if a file exists relative to the project root.
+ * Checks if a file exists at the given absolute path.
  *
- * Resolves the path relative to PROJECT_ROOT and checks for existence.
+ * This is the canonical file existence check function. All code should use
+ * this function for checking file existence with absolute paths.
  *
- * @param filePath - The file path relative to PROJECT_ROOT
+ * @param filePath - Absolute path to the file
  * @returns Promise resolving to true if the file exists, false otherwise
  *
  * @example
- * if (await fileExists('package.json')) {
+ * const pkgPath = path.join(cwd, 'package.json');
+ * if (await fileExists(pkgPath)) {
  *   console.log('This is a Node.js project');
  * }
  *
  * @example
- * if (await fileExists('tsconfig.json')) {
+ * const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
+ * if (await fileExists(tsconfigPath)) {
  *   console.log('TypeScript is configured');
  * }
  */
 export async function fileExists(filePath) {
     try {
-        await fs.access(path.resolve(PROJECT_ROOT, filePath));
+        await fs.access(filePath);
         return true;
     }
-    catch {
+    catch (error) {
+        debug(`File access check failed for ${filePath}: ${error}`);
         return false;
     }
 }
 /**
- * Check if a file exists (async version with absolute path support).
+ * Checks if a file exists relative to a base directory.
  *
- * This is the shared async implementation used by context modules
- * (env-checker, health-checker, stack-detector) to avoid duplicate code.
+ * This is a convenience wrapper around {@link fileExists} for checking
+ * files relative to a base directory (defaults to PROJECT_ROOT).
  *
- * @param filePath - Absolute path to the file
- * @returns Promise resolving to true if file exists
+ * Use this when you have relative paths and want to check against PROJECT_ROOT.
+ * For absolute paths, use {@link fileExists} directly.
+ *
+ * @param filePath - The file path relative to the base directory
+ * @param baseDir - The base directory to resolve against (defaults to PROJECT_ROOT)
+ * @returns Promise resolving to true if the file exists, false otherwise
+ *
+ * @example
+ * // Check relative to PROJECT_ROOT
+ * if (await fileExistsRelative('package.json')) {
+ *   console.log('This is a Node.js project');
+ * }
+ *
+ * @example
+ * // Check relative to custom directory
+ * if (await fileExistsRelative('src/index.ts', '/path/to/project')) {
+ *   console.log('Source file found');
+ * }
  */
-export async function fileExistsAsync(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
+export async function fileExistsRelative(filePath, baseDir = PROJECT_ROOT) {
+    return fileExists(path.resolve(baseDir, filePath));
 }
 // =============================================================================
 // Command Utilities
@@ -120,7 +134,7 @@ export async function validateRegistries() {
     ];
     const missing = [];
     for (const reg of registries) {
-        if (!(await fileExistsAsync(path.join(PLUGIN_ROOT, reg)))) {
+        if (!(await fileExists(path.join(PLUGIN_ROOT, reg)))) {
             missing.push(reg);
         }
     }
@@ -153,7 +167,7 @@ export async function validateRegistries() {
  */
 export async function ensureGoodVibesDir(cwd) {
     const goodvibesDir = path.join(cwd, '.goodvibes');
-    if (!(await fileExistsAsync(goodvibesDir))) {
+    if (!(await fileExists(goodvibesDir))) {
         await fs.mkdir(goodvibesDir, { recursive: true });
         await fs.mkdir(path.join(goodvibesDir, 'memory'), { recursive: true });
         await fs.mkdir(path.join(goodvibesDir, 'state'), { recursive: true });

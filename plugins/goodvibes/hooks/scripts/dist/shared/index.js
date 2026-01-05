@@ -4,12 +4,12 @@
  * Central export point for all shared hook utilities.
  * This is the canonical barrel file - all imports should come from here.
  */
-export { readHookInput, allowTool, blockTool, respond } from './hook-io.js';
+export { readHookInput, allowTool, blockTool, formatResponse, respond, createResponse, createPermissionResponse, } from './hook-io.js';
 // =============================================================================
 // Logging
 // =============================================================================
 export { debug, logError } from './logging.js';
-export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './config.js';
+export { STDIN_TIMEOUT_MS, CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './config.js';
 // =============================================================================
 // Gitignore Management
 // =============================================================================
@@ -26,7 +26,7 @@ export { ensureCacheDir, loadAnalytics, saveAnalytics, getSessionId, logToolUsag
 // =============================================================================
 // File Utilities
 // =============================================================================
-export { fileExists, fileExistsAsync, commandExists, validateRegistries, ensureGoodVibesDir, extractErrorOutput, } from './file-utils.js';
+export { fileExists, fileExistsRelative, commandExists, validateRegistries, ensureGoodVibesDir, extractErrorOutput, } from './file-utils.js';
 export { parseTranscript } from './transcript.js';
 // =============================================================================
 // Keywords

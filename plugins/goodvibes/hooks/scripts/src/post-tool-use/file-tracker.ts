@@ -7,11 +7,12 @@ import type { HooksState } from '../types/state.js';
  *
  * @param state - The current hooks session state to update
  * @param filePath - Absolute path to the modified file
+ * @returns A new HooksState object with updated file tracking
  *
  * @example
- * trackFileModification(state, '/project/src/utils.ts');
+ * const newState = trackFileModification(state, '/project/src/utils.ts');
  */
-export function trackFileModification(state: HooksState, filePath: string): void {
+export function trackFileModification(state: HooksState, filePath: string): HooksState {
   // Use Set for O(1) lookups, then convert to array
   const modifiedSession = new Set(state.files.modifiedThisSession);
   const modifiedCheckpoint = new Set(state.files.modifiedSinceCheckpoint);
@@ -19,8 +20,14 @@ export function trackFileModification(state: HooksState, filePath: string): void
   modifiedSession.add(filePath);
   modifiedCheckpoint.add(filePath);
 
-  state.files.modifiedThisSession = Array.from(modifiedSession);
-  state.files.modifiedSinceCheckpoint = Array.from(modifiedCheckpoint);
+  return {
+    ...state,
+    files: {
+      ...state.files,
+      modifiedThisSession: Array.from(modifiedSession),
+      modifiedSinceCheckpoint: Array.from(modifiedCheckpoint),
+    },
+  };
 }
 
 /**
@@ -30,17 +37,26 @@ export function trackFileModification(state: HooksState, filePath: string): void
  *
  * @param state - The current hooks session state to update
  * @param filePath - Absolute path to the newly created file
+ * @returns A new HooksState object with updated file tracking
  *
  * @example
- * trackFileCreation(state, '/project/src/newFile.ts');
+ * const newState = trackFileCreation(state, '/project/src/newFile.ts');
  */
-export function trackFileCreation(state: HooksState, filePath: string): void {
+export function trackFileCreation(state: HooksState, filePath: string): HooksState {
   // Use Set for O(1) lookups, then convert to array
   const created = new Set(state.files.createdThisSession);
   created.add(filePath);
-  state.files.createdThisSession = Array.from(created);
 
-  trackFileModification(state, filePath);
+  // First update the created files list, then track as modification
+  const stateWithCreated = {
+    ...state,
+    files: {
+      ...state.files,
+      createdThisSession: Array.from(created),
+    },
+  };
+
+  return trackFileModification(stateWithCreated, filePath);
 }
 
 /**
@@ -48,13 +64,20 @@ export function trackFileCreation(state: HooksState, filePath: string): void {
  * Called after a successful checkpoint to reset the tracking counter.
  *
  * @param state - The current hooks session state to update
+ * @returns A new HooksState object with cleared checkpoint tracking
  *
  * @example
  * // After creating a checkpoint
- * clearCheckpointTracking(state);
+ * const newState = clearCheckpointTracking(state);
  */
-export function clearCheckpointTracking(state: HooksState): void {
-  state.files.modifiedSinceCheckpoint = [];
+export function clearCheckpointTracking(state: HooksState): HooksState {
+  return {
+    ...state,
+    files: {
+      ...state.files,
+      modifiedSinceCheckpoint: [],
+    },
+  };
 }
 
 /**

@@ -17,10 +17,12 @@ export type { MemoryFileType } from './paths.js';
 // Directory management
 export {
   fileExists,
-  ensureGoodVibesDir,
   ensureMemoryDir,
   ensureSecurityGitignore,
 } from './directories.js';
+
+// Re-export ensureGoodVibesDir from shared (canonical implementation)
+export { ensureGoodVibesDir } from '../shared/index.js';
 
 // CRUD modules
 export { readDecisions, writeDecision } from './decisions.js';
@@ -60,7 +62,7 @@ export type Preference = MemoryPreference;
 export { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
 
 // Backward compatibility wrappers
-import { debug, logError } from '../shared.js';
+import { debug, logError } from '../shared/index.js';
 import { ensureMemoryDir } from './directories.js';
 import { writeDecision } from './decisions.js';
 import { writePattern } from './patterns.js';

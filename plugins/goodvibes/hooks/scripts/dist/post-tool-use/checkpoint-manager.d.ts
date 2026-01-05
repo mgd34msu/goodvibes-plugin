@@ -29,7 +29,7 @@ export declare function shouldCheckpoint(state: HooksState, _cwd: string): Check
  * @param state - The current hooks session state to update with checkpoint info
  * @param cwd - Current working directory (git repository root)
  * @param forcedReason - Optional reason to force checkpoint creation regardless of threshold
- * @returns Object with `created` boolean and `message` describing the result
+ * @returns Object with `created` boolean, `message` describing the result, and updated state
  *
  * @example
  * // Conditional checkpoint based on thresholds
@@ -42,4 +42,5 @@ export declare function shouldCheckpoint(state: HooksState, _cwd: string): Check
 export declare function createCheckpointIfNeeded(state: HooksState, cwd: string, forcedReason?: string): Promise<{
     created: boolean;
     message: string;
+    state: HooksState;
 }>;

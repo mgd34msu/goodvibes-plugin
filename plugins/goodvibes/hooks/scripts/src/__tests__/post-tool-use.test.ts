@@ -41,7 +41,7 @@ describe('post-tool-use hook utilities', () => {
     it('should return null if analytics file does not exist', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
-      const { loadAnalytics } = await import('../shared.js');
+      const { loadAnalytics } = await import('../shared/index.js');
       const result = await loadAnalytics();
 
       expect(result).toBeNull();
@@ -60,7 +60,7 @@ describe('post-tool-use hook utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
-      const { loadAnalytics } = await import('../shared.js');
+      const { loadAnalytics } = await import('../shared/index.js');
       const result = await loadAnalytics();
 
       expect(result).toEqual(mockAnalytics);
@@ -70,7 +70,7 @@ describe('post-tool-use hook utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue('invalid json');
 
-      const { loadAnalytics } = await import('../shared.js');
+      const { loadAnalytics } = await import('../shared/index.js');
       const result = await loadAnalytics();
 
       expect(result).toBeNull();
@@ -91,7 +91,7 @@ describe('post-tool-use hook utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveAnalytics } = await import('../shared.js');
+      const { saveAnalytics } = await import('../shared/index.js');
       await saveAnalytics(mockAnalytics);
 
       expect(mockWriteFile).toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('post-tool-use hook utilities', () => {
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveAnalytics } = await import('../shared.js');
+      const { saveAnalytics } = await import('../shared/index.js');
       await saveAnalytics(mockAnalytics);
 
       expect(mockMkdir).toHaveBeenCalled();
@@ -133,7 +133,7 @@ describe('post-tool-use hook utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { logToolUsage } = await import('../shared.js');
+      const { logToolUsage } = await import('../shared/index.js');
       await logToolUsage({
         tool: 'search_skills',
         timestamp: new Date().toISOString(),
@@ -152,7 +152,7 @@ describe('post-tool-use hook utilities', () => {
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { logToolUsage } = await import('../shared.js');
+      const { logToolUsage } = await import('../shared/index.js');
       await logToolUsage({
         tool: 'detect_stack',
         timestamp: new Date().toISOString(),
@@ -184,7 +184,7 @@ describe('post-tool-use hook utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { logToolUsage } = await import('../shared.js');
+      const { logToolUsage } = await import('../shared/index.js');
       await logToolUsage({
         tool: 'detect_stack',
         timestamp: new Date().toISOString(),
@@ -210,7 +210,7 @@ describe('post-tool-use hook utilities', () => {
         issues_found: 0,
       }));
 
-      const { ensureCacheDir, CACHE_DIR } = await import('../shared.js');
+      const { ensureCacheDir, CACHE_DIR } = await import('../shared/index.js');
       await ensureCacheDir();
 
       // Simulate caching detected stack
@@ -236,7 +236,7 @@ describe('post-tool-use hook utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { loadAnalytics, saveAnalytics } = await import('../shared.js');
+      const { loadAnalytics, saveAnalytics } = await import('../shared/index.js');
       const analytics = await loadAnalytics();
 
       if (analytics) {
@@ -266,7 +266,7 @@ describe('post-tool-use hook utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { loadAnalytics, saveAnalytics } = await import('../shared.js');
+      const { loadAnalytics, saveAnalytics } = await import('../shared/index.js');
       const analytics = await loadAnalytics();
 
       if (analytics) {
@@ -293,7 +293,7 @@ describe('post-tool-use hook utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { loadAnalytics, saveAnalytics } = await import('../shared.js');
+      const { loadAnalytics, saveAnalytics } = await import('../shared/index.js');
       const analytics = await loadAnalytics();
 
       if (analytics) {
@@ -323,7 +323,7 @@ describe('post-tool-use hook utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { loadAnalytics, saveAnalytics } = await import('../shared.js');
+      const { loadAnalytics, saveAnalytics } = await import('../shared/index.js');
       const analytics = await loadAnalytics();
 
       if (analytics) {
@@ -355,7 +355,7 @@ describe('post-tool-use hook utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
-      const { getSessionId } = await import('../shared.js');
+      const { getSessionId } = await import('../shared/index.js');
       const result = await getSessionId();
 
       expect(result).toBe('existing-session-123');
@@ -364,7 +364,7 @@ describe('post-tool-use hook utilities', () => {
     it('should generate new session ID if no analytics exist', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
-      const { getSessionId } = await import('../shared.js');
+      const { getSessionId } = await import('../shared/index.js');
       const result = await getSessionId();
 
       expect(result).toMatch(/^session_\d+$/);

@@ -33,11 +33,11 @@ vi.mock('../automation/git-operations.js', () => ({
   hasUncommittedChanges: vi.fn(),
 }));
 
-vi.mock('../shared.js', () => ({
+vi.mock('../shared/index.js', () => ({
   ensureGoodVibesDir: vi.fn(),
   debug: vi.fn(),
   logError: vi.fn(),
-  fileExistsAsync: vi.fn().mockResolvedValue(false),
+  fileExists: vi.fn().mockResolvedValue(false),
 }));
 
 describe('pre-compact', () => {
@@ -145,7 +145,7 @@ describe('pre-compact', () => {
 
   describe('saveSessionSummary', () => {
     it('should save summary to markdown file', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -170,7 +170,7 @@ describe('pre-compact', () => {
     });
 
     it('should include timestamp in summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -190,7 +190,7 @@ describe('pre-compact', () => {
     });
 
     it('should handle empty summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -210,7 +210,7 @@ describe('pre-compact', () => {
     });
 
     it('should overwrite previous summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -231,7 +231,7 @@ describe('pre-compact', () => {
     });
 
     it('should handle file system errors gracefully', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
 
       vi.mocked(ensureGoodVibesDir).mockRejectedValue(new Error('File system error'));
 
@@ -240,7 +240,7 @@ describe('pre-compact', () => {
     });
 
     it('should create state directory if it does not exist', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -255,7 +255,7 @@ describe('pre-compact', () => {
     });
 
     it('should include markdown formatting in summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
@@ -277,7 +277,7 @@ describe('pre-compact', () => {
     });
 
     it('should include footer message', async () => {
-      const { ensureGoodVibesDir } = await import('../shared.js');
+      const { ensureGoodVibesDir } = await import('../shared/index.js');
       const stateDir = path.join(testDir, '.goodvibes', 'state');
 
       vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {

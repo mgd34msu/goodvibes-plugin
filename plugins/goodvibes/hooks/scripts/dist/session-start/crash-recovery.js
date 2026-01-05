@@ -1,12 +1,12 @@
 import * as path from 'path';
 import { loadState } from '../state.js';
 import { hasUncommittedChanges, getUncommittedFiles } from '../automation/git-operations.js';
-import { fileExistsAsync } from '../shared.js';
+import { fileExists } from '../shared/index.js';
 /** Checks if crash recovery is needed based on previous session state */
 export async function checkCrashRecovery(cwd) {
     const stateFile = path.join(cwd, '.goodvibes', 'state', 'hooks-state.json');
     // No previous state means no crash recovery needed
-    if (!(await fileExistsAsync(stateFile))) {
+    if (!(await fileExists(stateFile))) {
         return {
             needsRecovery: false,
             previousFeature: null,

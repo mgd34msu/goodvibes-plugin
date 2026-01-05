@@ -5,7 +5,7 @@
  */
 
 import * as fs from 'fs/promises';
-import { debug, logError, fileExistsAsync as fileExists } from '../shared.js';
+import { debug, logError, fileExists } from '../shared/index.js';
 import {
   TRANSCRIPT_KEYWORD_CATEGORIES,
   extractTranscriptKeywords,
@@ -92,7 +92,7 @@ export async function parseTranscript(transcriptPath: string): Promise<ParsedTra
       result.final_output = lastOutput;
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('parseTranscript', error);
   }
 

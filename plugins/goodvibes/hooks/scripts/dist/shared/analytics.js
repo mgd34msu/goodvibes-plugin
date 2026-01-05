@@ -6,21 +6,7 @@
 import * as fs from 'fs/promises';
 import { CACHE_DIR, ANALYTICS_FILE } from './constants.js';
 import { debug } from './logging.js';
-// =============================================================================
-// File Helpers
-// =============================================================================
-/**
- * Helper to check if a file exists using async fs.access.
- */
-async function fileExistsHelper(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { fileExists } from './file-utils.js';
 // =============================================================================
 // Cache and Analytics Management
 // =============================================================================
@@ -36,7 +22,7 @@ async function fileExistsHelper(filePath) {
  * await fs.writeFile(path.join(CACHE_DIR, 'data.json'), JSON.stringify(data));
  */
 export async function ensureCacheDir() {
-    if (!(await fileExistsHelper(CACHE_DIR))) {
+    if (!(await fileExists(CACHE_DIR))) {
         await fs.mkdir(CACHE_DIR, { recursive: true });
     }
 }
@@ -57,7 +43,7 @@ export async function ensureCacheDir() {
  */
 export async function loadAnalytics() {
     await ensureCacheDir();
-    if (await fileExistsHelper(ANALYTICS_FILE)) {
+    if (await fileExists(ANALYTICS_FILE)) {
         try {
             const content = await fs.readFile(ANALYTICS_FILE, 'utf-8');
             return JSON.parse(content);

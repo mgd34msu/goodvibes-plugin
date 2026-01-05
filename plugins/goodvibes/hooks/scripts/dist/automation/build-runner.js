@@ -5,23 +5,8 @@
  * parsing output to extract structured error information.
  */
 import { execSync } from 'child_process';
-import * as fs from 'fs/promises';
 import * as path from 'path';
-import { extractErrorOutput } from '../shared.js';
-/**
- * Helper function to check if a file exists using async fs.access.
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { extractErrorOutput, fileExists } from '../shared/index.js';
 /** Build commands mapped by framework type. */
 export const BUILD_COMMANDS = {
     next: 'npm run build',

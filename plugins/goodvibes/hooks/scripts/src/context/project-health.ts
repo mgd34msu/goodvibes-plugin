@@ -19,7 +19,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 /** Comprehensive project health analysis results. */
 export interface ProjectHealth {
@@ -103,7 +103,7 @@ async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
       noImplicitAny: compilerOptions.noImplicitAny === true || compilerOptions.strict === true,
       target: compilerOptions.target || null,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     debug('project-health failed', { error: String(error) });
     return {
       hasConfig: true,
@@ -129,7 +129,7 @@ async function getScripts(cwd: string): Promise<string[]> {
     const content = await fs.readFile(packageJsonPath, 'utf-8');
     const packageJson = JSON.parse(content);
     return Object.keys(packageJson.scripts || {});
-  } catch (error) {
+  } catch (error: unknown) {
     debug('project-health failed', { error: String(error) });
     return [];
   }

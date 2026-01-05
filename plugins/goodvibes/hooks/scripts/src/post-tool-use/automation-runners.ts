@@ -5,7 +5,7 @@
  * Each function checks configuration before executing automation.
  */
 
-import { debug, logError } from '../shared.js';
+import { debug, logError } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
 import type { GoodVibesConfig } from '../types/config.js';
 
@@ -26,16 +26,16 @@ import { updateTestState, updateBuildState } from '../state.js';
 /**
  * Run tests for modified files if test automation is enabled in config.
  * Skips test files themselves and files with no associated tests.
- * Updates session state with test results on completion.
+ * Returns updated state with test results on completion.
  *
  * @param state - The current hooks session state to update with results
  * @param config - GoodVibes configuration containing automation settings
  * @param filePath - Absolute path to the modified file to find tests for
  * @param cwd - Current working directory for running tests
- * @returns Object with `ran` boolean indicating if tests executed, and `result` containing test output or null
+ * @returns Object with `ran` boolean, `result` containing test output or null, and `state` with updated test results
  *
  * @example
- * const { ran, result } = await maybeRunTests(state, config, '/src/utils.ts', '/project');
+ * const { ran, result, state: newState } = await maybeRunTests(state, config, '/src/utils.ts', '/project');
  * if (ran && result && !result.passed) {
  *   console.log('Tests failed:', result.summary);
  * }
@@ -45,21 +45,21 @@ export async function maybeRunTests(
   config: GoodVibesConfig,
   filePath: string,
   cwd: string
-): Promise<{ ran: boolean; result: TestResult | null }> {
+): Promise<{ ran: boolean; result: TestResult | null; state: HooksState }> {
   if (!config.automation.enabled || !config.automation.testing.runAfterFileChange) {
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 
   // Skip if file is a test file itself
   if (filePath.includes('.test.') || filePath.includes('.spec.')) {
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 
   // Find tests for this file
   const testFiles = findTestsForFile(filePath);
   if (testFiles.length === 0) {
     debug(`No tests found for: ${filePath}`);
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 
   debug(`Running tests for: ${filePath}`, { testFiles });
@@ -69,13 +69,13 @@ export async function maybeRunTests(
 
     // Update state with test results
     if (result.passed) {
-      updateTestState(state, {
+      state = updateTestState(state, {
         lastQuickRun: new Date().toISOString(),
         passingFiles: [...new Set([...state.tests.passingFiles, ...testFiles])],
         failingFiles: state.tests.failingFiles.filter((f) => !testFiles.includes(f)),
       });
     } else {
-      updateTestState(state, {
+      state = updateTestState(state, {
         lastQuickRun: new Date().toISOString(),
         failingFiles: [...new Set([...state.tests.failingFiles, ...testFiles])],
         passingFiles: state.tests.passingFiles.filter((f) => !testFiles.includes(f)),
@@ -87,25 +87,25 @@ export async function maybeRunTests(
       });
     }
 
-    return { ran: true, result };
+    return { ran: true, result, state };
   } catch (error: unknown) {
     logError('maybeRunTests', error);
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 }
 
 /**
  * Run TypeScript type checking if the file modification threshold is reached.
  * Tracks the number of modified files since last build and triggers when threshold exceeded.
- * Updates session state with build status and any errors found.
+ * Returns updated state with build status and any errors found.
  *
  * @param state - The current hooks session state containing modification counts
  * @param config - GoodVibes configuration with automation.building.runAfterFileThreshold
  * @param cwd - Current working directory for running the type checker
- * @returns Object with `ran` boolean indicating if build executed, and `result` containing build output or null
+ * @returns Object with `ran` boolean, `result` containing build output or null, and `state` with updated build results
  *
  * @example
- * const { ran, result } = await maybeRunBuild(state, config, '/project');
+ * const { ran, result, state: newState } = await maybeRunBuild(state, config, '/project');
  * if (ran && result && !result.passed) {
  *   console.log('Build errors:', result.errors);
  * }
@@ -114,9 +114,9 @@ export async function maybeRunBuild(
   state: HooksState,
   config: GoodVibesConfig,
   cwd: string
-): Promise<{ ran: boolean; result: BuildResult | null }> {
+): Promise<{ ran: boolean; result: BuildResult | null; state: HooksState }> {
   if (!config.automation.enabled) {
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 
   const modifiedCount = getModifiedFileCount(state);
@@ -124,7 +124,7 @@ export async function maybeRunBuild(
 
   if (modifiedCount < threshold) {
     debug(`Build skipped: ${modifiedCount} files modified (threshold: ${threshold})`);
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 
   debug(`Running typecheck after ${modifiedCount} file modifications`);
@@ -133,17 +133,17 @@ export async function maybeRunBuild(
     const result = await runTypeCheck(cwd);
 
     // Update build state
-    updateBuildState(state, {
+    state = updateBuildState(state, {
       lastRun: new Date().toISOString(),
       status: result.passed ? 'passing' : 'failing',
       errors: result.errors,
       fixAttempts: result.passed ? 0 : state.build.fixAttempts + 1,
     });
 
-    return { ran: true, result };
+    return { ran: true, result, state };
   } catch (error: unknown) {
     logError('maybeRunBuild', error);
-    return { ran: false, result: null };
+    return { ran: false, result: null, state };
   }
 }
 
@@ -155,10 +155,10 @@ export async function maybeRunBuild(
  * @param state - The current hooks session state with file tracking data
  * @param config - GoodVibes configuration with automation.git.autoCheckpoint setting
  * @param cwd - Current working directory (git repository root)
- * @returns Object with `created` boolean and `message` describing the checkpoint or empty string
+ * @returns Object with `created` boolean, `message` describing the checkpoint or empty string, and updated state
  *
  * @example
- * const { created, message } = await maybeCreateCheckpoint(state, config, '/project');
+ * const { created, message, state: newState } = await maybeCreateCheckpoint(state, config, '/project');
  * if (created) {
  *   console.log('Checkpoint created:', message);
  * }
@@ -167,9 +167,9 @@ export async function maybeCreateCheckpoint(
   state: HooksState,
   config: GoodVibesConfig,
   cwd: string
-): Promise<{ created: boolean; message: string }> {
+): Promise<{ created: boolean; message: string; state: HooksState }> {
   if (!config.automation.enabled || !config.automation.git.autoCheckpoint) {
-    return { created: false, message: '' };
+    return { created: false, message: '', state };
   }
 
   return await createCheckpointIfNeeded(state, cwd);

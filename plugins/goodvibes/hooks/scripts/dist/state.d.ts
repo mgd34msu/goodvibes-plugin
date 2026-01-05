@@ -35,82 +35,90 @@ export declare function saveState(cwd: string, state: HooksState): Promise<void>
 /**
  * Updates session-related state with partial data.
  *
- * Merges the provided updates into the session state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated session properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial session state properties to merge
+ * @returns A new HooksState object with updated session
  *
  * @example
- * updateSessionState(state, { id: 'new-id', startedAt: new Date().toISOString() });
+ * const newState = updateSessionState(state, { id: 'new-id', startedAt: new Date().toISOString() });
  */
-export declare function updateSessionState(state: HooksState, updates: Partial<HooksState['session']>): void;
+export declare function updateSessionState(state: HooksState, updates: Partial<HooksState['session']>): HooksState;
 /**
  * Updates test-related state with partial data.
  *
- * Merges the provided updates into the tests state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated tests properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial tests state properties to merge
+ * @returns A new HooksState object with updated tests
  *
  * @example
- * updateTestState(state, { lastRun: new Date().toISOString(), passing: true });
+ * const newState = updateTestState(state, { lastRun: new Date().toISOString(), passing: true });
  */
-export declare function updateTestState(state: HooksState, updates: Partial<HooksState['tests']>): void;
+export declare function updateTestState(state: HooksState, updates: Partial<HooksState['tests']>): HooksState;
 /**
  * Updates build-related state with partial data.
  *
- * Merges the provided updates into the build state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated build properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial build state properties to merge
+ * @returns A new HooksState object with updated build
  *
  * @example
- * updateBuildState(state, { lastRun: new Date().toISOString(), passing: true });
+ * const newState = updateBuildState(state, { lastRun: new Date().toISOString(), passing: true });
  */
-export declare function updateBuildState(state: HooksState, updates: Partial<HooksState['build']>): void;
+export declare function updateBuildState(state: HooksState, updates: Partial<HooksState['build']>): HooksState;
 /**
  * Updates git-related state with partial data.
  *
- * Merges the provided updates into the git state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated git properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial git state properties to merge
+ * @returns A new HooksState object with updated git
  *
  * @example
- * updateGitState(state, { currentBranch: 'feature/new-feature', isRepo: true });
+ * const newState = updateGitState(state, { currentBranch: 'feature/new-feature', isRepo: true });
  */
-export declare function updateGitState(state: HooksState, updates: Partial<HooksState['git']>): void;
+export declare function updateGitState(state: HooksState, updates: Partial<HooksState['git']>): HooksState;
 /**
  * Tracks an error by its signature for retry management.
  *
  * Records an error state keyed by a unique signature string. This allows
  * the system to track error occurrences and manage retry attempts.
+ * Returns a new state object with the updated errors.
  *
  * @param state - The HooksState object to update
  * @param signature - A unique identifier for the error (e.g., hash of error message)
  * @param errorState - The error state object containing retry count and details
+ * @returns A new HooksState object with updated errors
  *
  * @example
- * trackError(state, 'build-failed-abc123', { count: 1, lastSeen: Date.now() });
+ * const newState = trackError(state, 'build-failed-abc123', { count: 1, lastSeen: Date.now() });
  */
-export declare function trackError(state: HooksState, signature: string, errorState: HooksState['errors'][string]): void;
+export declare function trackError(state: HooksState, signature: string, errorState: HooksState['errors'][string]): HooksState;
 /**
  * Removes a tracked error by its signature.
  *
  * Deletes the error state entry for the given signature, typically called
  * when an error has been resolved or retries have been exhausted.
+ * Returns a new state object without the specified error.
  *
  * @param state - The HooksState object to update
  * @param signature - The unique identifier of the error to remove
+ * @returns A new HooksState object without the specified error
  *
  * @example
- * clearError(state, 'build-failed-abc123');
+ * const newState = clearError(state, 'build-failed-abc123');
  */
-export declare function clearError(state: HooksState, signature: string): void;
+export declare function clearError(state: HooksState, signature: string): HooksState;
 /**
  * Retrieves error state by signature, if it exists.
  *
@@ -133,14 +141,16 @@ export declare function getErrorState(state: HooksState, signature: string): Hoo
  *
  * Sets up the session state with a new ID and timestamp, and resets
  * the file tracking arrays for the new session.
+ * Returns a new state object with initialized session.
  *
  * @param state - The HooksState object to initialize
  * @param sessionId - The unique identifier for the new session
+ * @returns A new HooksState object with initialized session
  *
  * @example
- * initializeSession(state, 'session-2024-01-04-abc123');
+ * const newState = initializeSession(state, 'session-2024-01-04-abc123');
  */
-export declare function initializeSession(state: HooksState, sessionId: string): void;
+export declare function initializeSession(state: HooksState, sessionId: string): HooksState;
 /**
  * Resets state for a new session while preserving git and error history.
  *

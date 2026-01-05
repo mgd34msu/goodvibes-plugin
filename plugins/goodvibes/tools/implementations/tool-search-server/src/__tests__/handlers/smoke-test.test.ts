@@ -32,7 +32,7 @@ vi.mock('../../utils.js', async (importOriginal) => {
   return {
     ...actual as object,
     safeExec: vi.fn(),
-    detectPackageManager: vi.fn().mockReturnValue('npm'),
+    detectPackageManager: vi.fn().mockResolvedValue('npm'),
   };
 });
 
@@ -196,7 +196,7 @@ describe('smoke-test handler', () => {
     describe('package manager detection', () => {
       it('should use npm run for npm', async () => {
         const { safeExec, detectPackageManager } = await import('../../utils.js');
-        vi.mocked(detectPackageManager).mockReturnValue('npm');
+        vi.mocked(detectPackageManager).mockResolvedValue('npm');
         vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
 
         await handleRunSmokeTest({ type: 'lint' });
@@ -210,7 +210,7 @@ describe('smoke-test handler', () => {
 
       it('should use pnpm for pnpm', async () => {
         const { safeExec, detectPackageManager } = await import('../../utils.js');
-        vi.mocked(detectPackageManager).mockReturnValue('pnpm');
+        vi.mocked(detectPackageManager).mockResolvedValue('pnpm');
         vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
 
         await handleRunSmokeTest({ type: 'lint' });
@@ -224,7 +224,7 @@ describe('smoke-test handler', () => {
 
       it('should use yarn for yarn', async () => {
         const { safeExec, detectPackageManager } = await import('../../utils.js');
-        vi.mocked(detectPackageManager).mockReturnValue('yarn');
+        vi.mocked(detectPackageManager).mockResolvedValue('yarn');
         vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
 
         await handleRunSmokeTest({ type: 'lint' });

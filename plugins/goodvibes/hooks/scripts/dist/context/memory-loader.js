@@ -7,18 +7,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-/**
- * Check if a file or directory exists (async).
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { fileExists } from '../shared/file-utils.js';
 /**
  * Check if a path is a directory (async).
  */
@@ -27,7 +16,8 @@ async function isDirectory(filePath) {
         const stat = await fs.stat(filePath);
         return stat.isDirectory();
     }
-    catch {
+    catch (error) {
+        debug(`Directory check failed for ${filePath}: ${error}`);
         return false;
     }
 }

@@ -23,7 +23,7 @@ import {
   debug,
   logError,
   HookResponse,
-} from './shared.js';
+} from './shared/index.js';
 
 import {
   getAgentTracking,
@@ -87,7 +87,7 @@ function createResponse(options?: {
 }
 
 /** Main entry point for subagent-stop hook. Correlates with start, validates output, writes telemetry. */
-async function main(): Promise<void> {
+async function runSubagentStopHook(): Promise<void> {
   try {
     debug('SubagentStop hook starting');
 
@@ -109,7 +109,7 @@ async function main(): Promise<void> {
     });
 
     // Load state for validation and test tracking
-    const state = await loadState(cwd);
+    let state = await loadState(cwd);
 
     // Initialize output results
     let validationResult: ValidationResult | undefined;
@@ -133,7 +133,9 @@ async function main(): Promise<void> {
 
       // Validate agent output (type check if TS files modified)
       if (transcriptPath) {
-        validationResult = await validateAgentOutput(cwd, transcriptPath, state);
+        const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+        validationResult = validationOutput;
+        state = validationOutput.state;
         debug('Validation result', {
           valid: validationResult.valid,
           filesModified: validationResult.filesModified.length,
@@ -202,7 +204,9 @@ async function main(): Promise<void> {
 
       // Even without a tracking entry, we can still validate if transcript exists
       if (transcriptPath) {
-        validationResult = await validateAgentOutput(cwd, transcriptPath, state);
+        const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+        validationResult = validationOutput;
+        state = validationOutput.state;
 
         if (validationResult.filesModified.length > 0) {
           testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
@@ -247,4 +251,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+runSubagentStopHook();

@@ -51,10 +51,10 @@ describe('handlePluginStatus', () => {
 
   describe('manifest checking', () => {
     it('should detect existing valid manifest', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         return String(p).includes('plugin.json');
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         if (String(p).includes('plugin.json')) {
           return JSON.stringify(samplePluginManifest);
         }
@@ -81,10 +81,10 @@ describe('handlePluginStatus', () => {
     });
 
     it('should handle invalid manifest JSON', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         return String(p).includes('plugin.json');
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         if (String(p).includes('plugin.json')) {
           return 'invalid json {';
         }
@@ -103,7 +103,7 @@ describe('handlePluginStatus', () => {
   describe('registry checking', () => {
     it('should check all three registries', () => {
       const existsCalls: string[] = [];
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         existsCalls.push(String(p));
         return false;
       });
@@ -117,11 +117,11 @@ describe('handlePluginStatus', () => {
     });
 
     it('should detect existing registries and count entries', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         const pathStr = String(p);
         return pathStr.includes('_registry.yaml');
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         const pathStr = String(p);
         // Use platform-independent matching
         if (pathStr.includes('skills') && pathStr.includes('_registry.yaml')) {
@@ -161,7 +161,7 @@ describe('handlePluginStatus', () => {
     });
 
     it('should handle invalid registry YAML', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         const pathStr = String(p);
         // Platform-independent matching
         return pathStr.includes('skills') && pathStr.includes('_registry.yaml');
@@ -179,10 +179,10 @@ describe('handlePluginStatus', () => {
 
   describe('hooks checking', () => {
     it('should detect existing hooks config', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         return String(p).includes('hooks.json');
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         if (String(p).includes('hooks.json')) {
           return JSON.stringify(sampleHooksJson);
         }
@@ -197,7 +197,7 @@ describe('handlePluginStatus', () => {
     });
 
     it('should check hook script existence', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         const pathStr = String(p);
         if (pathStr.includes('hooks.json')) return true;
         if (pathStr.includes('session-start.js')) return true;
@@ -205,7 +205,7 @@ describe('handlePluginStatus', () => {
         if (pathStr.includes('post-tool-use.js')) return true;
         return false;
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         if (String(p).includes('hooks.json')) {
           return JSON.stringify(sampleHooksJson);
         }
@@ -225,10 +225,10 @@ describe('handlePluginStatus', () => {
     });
 
     it('should report missing hook scripts as issues', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         return String(p).includes('hooks.json');
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         if (String(p).includes('hooks.json')) {
           return JSON.stringify(sampleHooksJson);
         }
@@ -253,7 +253,7 @@ describe('handlePluginStatus', () => {
     });
 
     it('should handle invalid hooks config JSON', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         return String(p).includes('hooks.json');
       });
       vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
@@ -270,7 +270,7 @@ describe('handlePluginStatus', () => {
   describe('overall status determination', () => {
     it('should be healthy when no issues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         const pathStr = String(p);
         if (pathStr.includes('plugin.json')) {
           return JSON.stringify(samplePluginManifest);
@@ -294,11 +294,11 @@ describe('handlePluginStatus', () => {
     it('should be degraded when 1-3 issues', () => {
       // Setup: manifest exists and valid, all registries exist with valid content,
       // but hooks.json is missing (1 issue only)
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
         const pathStr = String(p);
         return pathStr.includes('plugin.json') || pathStr.includes('_registry.yaml');
       });
-      vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
         if (String(p).includes('plugin.json')) {
           return JSON.stringify(samplePluginManifest);
         }

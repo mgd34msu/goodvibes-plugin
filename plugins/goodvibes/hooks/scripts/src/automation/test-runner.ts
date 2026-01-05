@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import { extractErrorOutput } from '../shared.js';
+import { extractErrorOutput } from '../shared/index.js';
 
 /** Number of lines to include after a test failure match for context. */
 const FAILURE_CONTEXT_LINES = 5;

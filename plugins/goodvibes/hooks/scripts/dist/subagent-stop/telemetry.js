@@ -1,22 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ensureGoodVibesDir, parseTranscript, extractKeywords } from '../shared.js';
+import { ensureGoodVibesDir, parseTranscript, extractKeywords, fileExists } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
-// ============================================================================
-// File System Helpers
-// ============================================================================
-/**
- * Check if a file exists (async replacement for existsSync)
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 /** Persists agent tracking data to disk */

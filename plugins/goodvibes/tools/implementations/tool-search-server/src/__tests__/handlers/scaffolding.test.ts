@@ -31,7 +31,7 @@ vi.mock('../../utils.js', async (importOriginal) => {
   return {
     ...actual as object,
     safeExec: vi.fn().mockResolvedValue({ stdout: 'success', stderr: '', error: undefined }),
-    detectPackageManager: vi.fn().mockReturnValue('npm'),
+    detectPackageManager: vi.fn().mockResolvedValue('npm'),
   };
 });
 
@@ -41,7 +41,7 @@ describe('scaffolding handlers', () => {
     // Re-setup mocks after clearing
     const utils = await import('../../utils.js');
     vi.mocked(utils.safeExec).mockResolvedValue({ stdout: 'success', stderr: '', error: undefined });
-    vi.mocked(utils.detectPackageManager).mockReturnValue('npm');
+    vi.mocked(utils.detectPackageManager).mockResolvedValue('npm');
   });
 
   afterEach(() => {
@@ -290,7 +290,7 @@ describe('scaffolding handlers', () => {
 
     it('should use correct package manager for install', async () => {
       const { safeExec, detectPackageManager } = await import('../../utils.js');
-      vi.mocked(detectPackageManager).mockReturnValue('pnpm');
+      vi.mocked(detectPackageManager).mockResolvedValue('pnpm');
 
       await handleScaffoldProject({
         template: 'next-app',

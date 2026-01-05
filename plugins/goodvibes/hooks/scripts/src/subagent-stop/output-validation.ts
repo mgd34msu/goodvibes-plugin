@@ -1,5 +1,5 @@
 import type { HooksState } from '../types/state.js';
-import { parseTranscript } from '../shared.js';
+import { parseTranscript } from '../shared/index.js';
 import { runTypeCheck } from '../automation/build-runner.js';
 import { trackFileModification } from '../post-tool-use/file-tracker.js';
 
@@ -18,13 +18,14 @@ export async function validateAgentOutput(
   cwd: string,
   transcriptPath: string,
   state: HooksState
-): Promise<ValidationResult> {
+): Promise<ValidationResult & { state: HooksState }> {
   const transcriptData = await parseTranscript(transcriptPath);
   const errors: string[] = [];
 
   // Track all files modified by the agent
+  let updatedState = state;
   for (const file of transcriptData.filesModified) {
-    trackFileModification(state, file);
+    updatedState = trackFileModification(updatedState, file);
   }
 
   // Run type check if TypeScript files were modified
@@ -40,5 +41,6 @@ export async function validateAgentOutput(
     valid: errors.length === 0,
     filesModified: transcriptData.filesModified,
     errors,
+    state: updatedState,
   };
 }

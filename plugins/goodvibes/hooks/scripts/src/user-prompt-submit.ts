@@ -10,19 +10,11 @@ import {
   readHookInput,
   debug,
   logError,
-  HookResponse,
-} from './shared.js';
-
-/** Creates a hook response with optional system message. */
-function createResponse(systemMessage?: string): HookResponse {
-  return {
-    continue: true,
-    systemMessage,
-  };
-}
+  createResponse,
+} from './shared/index.js';
 
 /** Main entry point for user-prompt-submit hook. Can add context or validate prompts. */
-async function main(): Promise<void> {
+async function runUserPromptSubmitHook(): Promise<void> {
   try {
     debug('UserPromptSubmit hook starting');
 
@@ -35,10 +27,10 @@ async function main(): Promise<void> {
     // For now, just continue
     respond(createResponse());
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('UserPromptSubmit main', error);
     respond(createResponse());
   }
 }
 
-main();
+runUserPromptSubmitHook();

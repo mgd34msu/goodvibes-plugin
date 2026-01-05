@@ -8,8 +8,23 @@
 // =============================================================================
 // Hook I/O
 // =============================================================================
-export type { HookInput, HookResponse, HookSpecificOutput } from './hook-io.js';
-export { readHookInput, allowTool, blockTool, respond } from './hook-io.js';
+export type {
+  HookInput,
+  HookResponse,
+  HookSpecificOutput,
+  CreateResponseOptions,
+  ExtendedHookResponse,
+  PermissionDecision,
+} from './hook-io.js';
+export {
+  readHookInput,
+  allowTool,
+  blockTool,
+  formatResponse,
+  respond,
+  createResponse,
+  createPermissionResponse,
+} from './hook-io.js';
 
 // =============================================================================
 // Logging
@@ -20,7 +35,7 @@ export { debug, logError } from './logging.js';
 // Configuration
 // =============================================================================
 export type { SharedConfig } from './config.js';
-export { CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './config.js';
+export { STDIN_TIMEOUT_MS, CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './config.js';
 
 // =============================================================================
 // Gitignore Management
@@ -48,7 +63,7 @@ export { ensureCacheDir, loadAnalytics, saveAnalytics, getSessionId, logToolUsag
 // =============================================================================
 export {
   fileExists,
-  fileExistsAsync,
+  fileExistsRelative,
   commandExists,
   validateRegistries,
   ensureGoodVibesDir,

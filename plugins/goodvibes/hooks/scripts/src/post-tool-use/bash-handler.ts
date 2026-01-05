@@ -6,7 +6,7 @@
  * - Parse and record dev server errors
  */
 
-import { debug, HookInput } from '../shared.js';
+import { debug, HookInput } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
 
 import {

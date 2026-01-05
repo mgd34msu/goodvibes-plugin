@@ -3,6 +3,11 @@
  *
  * Shared configuration loading and default settings for GoodVibes hooks.
  */
+/**
+ * Timeout in milliseconds for waiting on stdin input before using defaults.
+ * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
+ */
+export declare const STDIN_TIMEOUT_MS: number;
 /** Triggers that determine when quality checkpoints should run. */
 export declare const CHECKPOINT_TRIGGERS: {
     fileCountThreshold: number;

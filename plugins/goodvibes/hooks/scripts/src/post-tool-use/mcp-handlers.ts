@@ -22,7 +22,7 @@ import {
   logError,
   CACHE_DIR,
   HookInput,
-} from '../shared.js';
+} from '../shared/index.js';
 import { createResponse } from './response.js';
 
 /**

@@ -16,13 +16,16 @@ import {
   readHookInput,
   debug,
   logError,
-} from './shared.js';
+} from './shared/index.js';
 
 // State management
 import { loadState, saveState } from './state.js';
 
 // Configuration
 import { getDefaultConfig, type GoodVibesConfig } from './types/config.js';
+import { fileExists } from './shared/file-utils.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 // Response utilities
 import { createResponse, combineMessages } from './post-tool-use/response.js';
@@ -44,20 +47,48 @@ import {
 } from './post-tool-use/mcp-handlers.js';
 
 /**
- * Load automation configuration (from types/config.ts)
+ * Deep merge two objects
+ */
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(result[key] as object, source[key] as object) as T[typeof key];
+    } else if (source[key] !== undefined) {
+      result[key] = source[key] as T[typeof key];
+    }
+  }
+  return result;
+}
+
+/**
+ * Load automation configuration from .goodvibes/automation.json if it exists,
+ * otherwise return default config from types/config.ts.
  * This provides build/test/git automation settings.
  */
-function loadAutomationConfig(_cwd: string): GoodVibesConfig {
-  // Return the default automation config
-  // In the future, this could load from .goodvibes/automation.json
-  return getDefaultConfig();
+async function loadAutomationConfig(cwd: string): Promise<GoodVibesConfig> {
+  const configPath = path.join(cwd, '.goodvibes', 'automation.json');
+  const defaults = getDefaultConfig();
+
+  if (!(await fileExists(configPath))) {
+    return defaults;
+  }
+
+  try {
+    const content = await fs.readFile(configPath, 'utf-8');
+    const userConfig = JSON.parse(content);
+    return deepMerge(defaults, userConfig);
+  } catch (error: unknown) {
+    debug('loadAutomationConfig failed', { error: String(error) });
+    return defaults;
+  }
 }
 
 /**
  * Main entry point for post-tool-use hook.
  * Processes tool results and triggers automation.
  */
-async function main(): Promise<void> {
+async function runPostToolUseHook(): Promise<void> {
   try {
     const input = await readHookInput();
     debug('PostToolUse hook received input', { tool_name: input.tool_name });
@@ -65,8 +96,8 @@ async function main(): Promise<void> {
     const cwd = input.cwd;
 
     // Load state and config
-    const state = await loadState(cwd);
-    const config = loadAutomationConfig(cwd);
+    let state = await loadState(cwd);
+    const config = await loadAutomationConfig(cwd);
 
     // Extract tool name (handle both MCP and built-in tools)
     // MCP tools: "mcp__goodvibes-tools__detect_stack" -> "detect_stack"
@@ -85,6 +116,7 @@ async function main(): Promise<void> {
       case 'Edit':
       case 'Write': {
         const result = await processFileAutomation(state, config, input, toolName);
+        state = result.state;
         automationMessages = result.messages;
         break;
       }
@@ -150,4 +182,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+runPostToolUseHook();

@@ -6,11 +6,12 @@ import type { HooksState } from '../types/state.js';
  *
  * @param state - The current hooks session state to update
  * @param filePath - Absolute path to the modified file
+ * @returns A new HooksState object with updated file tracking
  *
  * @example
- * trackFileModification(state, '/project/src/utils.ts');
+ * const newState = trackFileModification(state, '/project/src/utils.ts');
  */
-export declare function trackFileModification(state: HooksState, filePath: string): void;
+export declare function trackFileModification(state: HooksState, filePath: string): HooksState;
 /**
  * Records a new file creation in the session state.
  * Adds to createdThisSession list and also tracks as a modification.
@@ -18,22 +19,24 @@ export declare function trackFileModification(state: HooksState, filePath: strin
  *
  * @param state - The current hooks session state to update
  * @param filePath - Absolute path to the newly created file
+ * @returns A new HooksState object with updated file tracking
  *
  * @example
- * trackFileCreation(state, '/project/src/newFile.ts');
+ * const newState = trackFileCreation(state, '/project/src/newFile.ts');
  */
-export declare function trackFileCreation(state: HooksState, filePath: string): void;
+export declare function trackFileCreation(state: HooksState, filePath: string): HooksState;
 /**
  * Clears the list of files modified since the last checkpoint.
  * Called after a successful checkpoint to reset the tracking counter.
  *
  * @param state - The current hooks session state to update
+ * @returns A new HooksState object with cleared checkpoint tracking
  *
  * @example
  * // After creating a checkpoint
- * clearCheckpointTracking(state);
+ * const newState = clearCheckpointTracking(state);
  */
-export declare function clearCheckpointTracking(state: HooksState): void;
+export declare function clearCheckpointTracking(state: HooksState): HooksState;
 /**
  * Returns the count of files modified since the last checkpoint.
  * Used to determine if threshold has been reached for creating checkpoints or running builds.

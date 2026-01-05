@@ -77,46 +77,43 @@ describe('utils', () => {
   });
 
   describe('loadRegistry', () => {
-    it('should load and parse a valid YAML registry', () => {
-      const mockPath = '/mock/plugin/root/skills/_registry.yaml';
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleSkillsRegistry));
+    it('should load and parse a valid YAML registry', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(yaml.dump(sampleSkillsRegistry));
 
-      const result = loadRegistry('skills/_registry.yaml');
+      const result = await loadRegistry('skills/_registry.yaml');
 
       expect(result).toBeDefined();
       expect(result?.version).toBe('1.0.0');
       expect(result?.search_index).toHaveLength(5);
     });
 
-    it('should return null when registry file does not exist', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    it('should return null when registry file does not exist', async () => {
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
 
-      const result = loadRegistry('nonexistent/_registry.yaml');
+      const result = await loadRegistry('nonexistent/_registry.yaml');
 
       expect(result).toBeNull();
     });
 
-    it('should return null and log error for invalid YAML', () => {
+    it('should return null and log error for invalid YAML', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue('invalid: yaml: content: [');
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue('invalid: yaml: content: [');
 
-      const result = loadRegistry('skills/_registry.yaml');
+      const result = await loadRegistry('skills/_registry.yaml');
 
       expect(result).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
 
-    it('should handle read errors gracefully', () => {
+    it('should handle read errors gracefully', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockImplementation(() => {
-        throw new Error('Read error');
-      });
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Read error'));
 
-      const result = loadRegistry('skills/_registry.yaml');
+      const result = await loadRegistry('skills/_registry.yaml');
 
       expect(result).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -201,39 +198,37 @@ describe('utils', () => {
   });
 
   describe('readJsonFile', () => {
-    it('should parse valid JSON file', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(samplePackageJson));
+    it('should parse valid JSON file', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(JSON.stringify(samplePackageJson));
 
-      const result = readJsonFile('/path/to/package.json');
+      const result = await readJsonFile('/path/to/package.json');
 
       expect(result).toEqual(samplePackageJson);
     });
 
-    it('should return null for non-existent file', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    it('should return null for non-existent file', async () => {
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
 
-      const result = readJsonFile('/path/to/nonexistent.json');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null for invalid JSON', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue('invalid json {');
-
-      const result = readJsonFile('/path/to/invalid.json');
+      const result = await readJsonFile('/path/to/nonexistent.json');
 
       expect(result).toBeNull();
     });
 
-    it('should return null on read error', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockImplementation(() => {
-        throw new Error('Read error');
-      });
+    it('should return null for invalid JSON', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue('invalid json {');
 
-      const result = readJsonFile('/path/to/error.json');
+      const result = await readJsonFile('/path/to/invalid.json');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null on read error', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Read error'));
+
+      const result = await readJsonFile('/path/to/error.json');
 
       expect(result).toBeNull();
     });
@@ -264,48 +259,51 @@ describe('utils', () => {
   });
 
   describe('detectPackageManager', () => {
-    it('should detect pnpm by lock file', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
-        return String(p).includes('pnpm-lock.yaml');
+    it('should detect pnpm by lock file', async () => {
+      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+        if (String(p).includes('pnpm-lock.yaml')) return Promise.resolve();
+        return Promise.reject(new Error('ENOENT'));
       });
 
-      const result = detectPackageManager('/project');
+      const result = await detectPackageManager('/project');
 
       expect(result).toBe('pnpm');
     });
 
-    it('should detect yarn by lock file', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
-        return String(p).includes('yarn.lock');
+    it('should detect yarn by lock file', async () => {
+      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+        if (String(p).includes('yarn.lock')) return Promise.resolve();
+        return Promise.reject(new Error('ENOENT'));
       });
 
-      const result = detectPackageManager('/project');
+      const result = await detectPackageManager('/project');
 
       expect(result).toBe('yarn');
     });
 
-    it('should detect bun by lock file', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
-        return String(p).includes('bun.lockb');
+    it('should detect bun by lock file', async () => {
+      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+        if (String(p).includes('bun.lockb')) return Promise.resolve();
+        return Promise.reject(new Error('ENOENT'));
       });
 
-      const result = detectPackageManager('/project');
+      const result = await detectPackageManager('/project');
 
       expect(result).toBe('bun');
     });
 
-    it('should default to npm when no lock file found', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    it('should default to npm when no lock file found', async () => {
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
 
-      const result = detectPackageManager('/project');
+      const result = await detectPackageManager('/project');
 
       expect(result).toBe('npm');
     });
 
-    it('should prioritize pnpm over other package managers', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true); // All lock files exist
+    it('should prioritize pnpm over other package managers', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined); // All lock files exist
 
-      const result = detectPackageManager('/project');
+      const result = await detectPackageManager('/project');
 
       expect(result).toBe('pnpm');
     });
@@ -364,16 +362,17 @@ describe('utils', () => {
 
   describe('parseSkillMetadata', () => {
     beforeEach(() => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
     });
 
-    it('should parse YAML frontmatter from skill file', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
-        return String(p).includes('SKILL.md');
+    it('should parse YAML frontmatter from skill file', async () => {
+      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+        if (String(p).includes('SKILL.md')) return Promise.resolve();
+        return Promise.reject(new Error('ENOENT'));
       });
-      vi.mocked(fs.readFileSync).mockReturnValue(sampleSkillContent);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(sampleSkillContent);
 
-      const result = parseSkillMetadata('testing/react-testing');
+      const result = await parseSkillMetadata('testing/react-testing');
 
       expect(result.category).toBe('testing');
       expect(result.technologies).toContain('react');
@@ -382,41 +381,39 @@ describe('utils', () => {
       expect(result.difficulty).toBe('intermediate');
     });
 
-    it('should return empty object when skill file not found', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    it('should return empty object when skill file not found', async () => {
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
 
-      const result = parseSkillMetadata('nonexistent/skill');
+      const result = await parseSkillMetadata('nonexistent/skill');
 
       expect(result).toEqual({});
     });
 
-    it('should try multiple file paths', () => {
+    it('should try multiple file paths', async () => {
       const checkCalls: string[] = [];
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
         checkCalls.push(String(p));
-        return false;
+        return Promise.reject(new Error('ENOENT'));
       });
 
-      parseSkillMetadata('some/skill');
+      await parseSkillMetadata('some/skill');
 
       expect(checkCalls.length).toBeGreaterThanOrEqual(2);
       expect(checkCalls.some(c => c.includes('SKILL.md'))).toBe(true);
     });
 
-    it('should handle file read errors gracefully', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockImplementation(() => {
-        throw new Error('Read error');
-      });
+    it('should handle file read errors gracefully', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Read error'));
 
-      const result = parseSkillMetadata('error/skill');
+      const result = await parseSkillMetadata('error/skill');
 
       expect(result).toEqual({});
     });
 
-    it('should extract metadata from content when no frontmatter', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(`
+    it('should extract metadata from content when no frontmatter', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(`
 # React Testing
 
 Prerequisites:
@@ -430,21 +427,21 @@ Related:
 This skill covers react testing with vitest.
 `);
 
-      const result = parseSkillMetadata('testing/react');
+      const result = await parseSkillMetadata('testing/react');
 
       expect(result.requires).toContain('react-basics');
       expect(result.complements).toContain('jest-advanced');
     });
 
-    it('should extract technology keywords from content', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(`
+    it('should extract technology keywords from content', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(`
 # Next.js with Prisma
 
 Build apps with Next.js and Prisma ORM using TypeScript.
 `);
 
-      const result = parseSkillMetadata('frameworks/nextjs-prisma');
+      const result = await parseSkillMetadata('frameworks/nextjs-prisma');
 
       expect(result.technologies).toContain('next');
       expect(result.technologies).toContain('prisma');
@@ -506,40 +503,40 @@ async function nested() {
 
   describe('extractSkillPatterns', () => {
     beforeEach(() => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
     });
 
-    it('should extract required imports from skill content', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(sampleSkillContent);
+    it('should extract required imports from skill content', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(sampleSkillContent);
 
-      const result = extractSkillPatterns('testing/react');
+      const result = await extractSkillPatterns('testing/react');
 
       expect(result.required_imports).toBeDefined();
       expect(result.required_imports).toContain('@testing-library/react');
     });
 
-    it('should extract must not include patterns', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(sampleSkillContent);
+    it('should extract must not include patterns', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(sampleSkillContent);
 
-      const result = extractSkillPatterns('testing/react');
+      const result = await extractSkillPatterns('testing/react');
 
       expect(result.must_not_include).toBeDefined();
       expect(result.must_not_include).toContain('Testing implementation details');
     });
 
-    it('should return empty object when skill not found', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    it('should return empty object when skill not found', async () => {
+      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
 
-      const result = extractSkillPatterns('nonexistent/skill');
+      const result = await extractSkillPatterns('nonexistent/skill');
 
       expect(result).toEqual({});
     });
 
-    it('should extract imports from code blocks', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(`
+    it('should extract imports from code blocks', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(`
 # Test Skill
 
 \`\`\`typescript
@@ -548,15 +545,15 @@ import { expect } from 'vitest';
 \`\`\`
 `);
 
-      const result = extractSkillPatterns('testing/example');
+      const result = await extractSkillPatterns('testing/example');
 
       expect(result.required_imports).toContain('@testing-library/react');
       expect(result.required_imports).toContain('vitest');
     });
 
-    it('should not include relative imports', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(`
+    it('should not include relative imports', async () => {
+      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(`
 \`\`\`typescript
 import { Component } from './components';
 import { helper } from '../utils';
@@ -564,7 +561,7 @@ import { external } from 'external-package';
 \`\`\`
 `);
 
-      const result = extractSkillPatterns('test/skill');
+      const result = await extractSkillPatterns('test/skill');
 
       expect(result.required_imports).not.toContain('./components');
       expect(result.required_imports).not.toContain('../utils');

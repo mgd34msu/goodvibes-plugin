@@ -15,7 +15,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 // =============================================================================
 // Types
@@ -51,9 +51,7 @@ export interface EnvironmentContext {
 /** Common sensitive variable patterns for security detection. */
 const SENSITIVE_PATTERNS = [
   /api[_-]?key/i,
-  /secret/i,
-  /password/i,
-  /token/i,
+  /secret|password|token/i,
   /private[_-]?key/i,
   /credentials/i,
   /auth/i,

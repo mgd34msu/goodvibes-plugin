@@ -412,11 +412,11 @@ describe('state management', () => {
   });
 
   describe('trackError', () => {
-    it('should add error state by signature', async () => {
+    it('should return new state with added error immutably', async () => {
       const { trackError } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
       const errorState = {
         signature: 'test-error-sig',
         category: 'typescript_error',
@@ -430,21 +430,23 @@ describe('state management', () => {
         fixStrategiesAttempted: [],
       };
 
-      trackError(state, 'test-error-sig', errorState);
+      const newState = trackError(originalState, 'test-error-sig', errorState);
 
-      expect(state.errors['test-error-sig']).toBeDefined();
-      expect(state.errors['test-error-sig'].signature).toBe('test-error-sig');
-      expect(state.errors['test-error-sig'].phase).toBe(1);
+      expect(newState.errors['test-error-sig']).toBeDefined();
+      expect(newState.errors['test-error-sig'].signature).toBe('test-error-sig');
+      expect(newState.errors['test-error-sig'].phase).toBe(1);
+      expect(originalState.errors['test-error-sig']).toBeUndefined(); // original unchanged
+      expect(newState).not.toBe(originalState); // different object reference
     });
 
-    it('should update existing error state', async () => {
+    it('should update existing error state immutably', async () => {
       const { trackError } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
       // First error
-      trackError(state, 'error-1', {
+      state = trackError(state, 'error-1', {
         signature: 'error-1',
         category: 'build_failure',
         phase: 1,
@@ -457,8 +459,10 @@ describe('state management', () => {
         fixStrategiesAttempted: [],
       });
 
+      const stateAfterFirstError = state;
+
       // Update with escalated phase
-      trackError(state, 'error-1', {
+      state = trackError(state, 'error-1', {
         signature: 'error-1',
         category: 'build_failure',
         phase: 2,
@@ -481,15 +485,17 @@ describe('state management', () => {
       expect(state.errors['error-1'].phase).toBe(2);
       expect(state.errors['error-1'].totalAttempts).toBe(4);
       expect(state.errors['error-1'].officialDocsSearched).toHaveLength(1);
+      expect(stateAfterFirstError.errors['error-1'].phase).toBe(1); // previous state unchanged
+      expect(state).not.toBe(stateAfterFirstError); // different object reference
     });
 
-    it('should track multiple independent errors', async () => {
+    it('should track multiple independent errors immutably', async () => {
       const { trackError } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackError(state, 'error-a', {
+      state = trackError(state, 'error-a', {
         signature: 'error-a',
         category: 'typescript_error',
         phase: 1,
@@ -502,7 +508,7 @@ describe('state management', () => {
         fixStrategiesAttempted: [],
       });
 
-      trackError(state, 'error-b', {
+      state = trackError(state, 'error-b', {
         signature: 'error-b',
         category: 'test_failure',
         phase: 2,
@@ -526,7 +532,7 @@ describe('state management', () => {
       const { trackError, getErrorState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
       const errorState = {
         signature: 'get-error-sig',
         category: 'npm_install',
@@ -540,7 +546,7 @@ describe('state management', () => {
         fixStrategiesAttempted: [],
       };
 
-      trackError(state, 'get-error-sig', errorState);
+      state = trackError(state, 'get-error-sig', errorState);
 
       const retrieved = getErrorState(state, 'get-error-sig');
 
@@ -563,13 +569,13 @@ describe('state management', () => {
   });
 
   describe('clearError', () => {
-    it('should remove tracked error by signature', async () => {
+    it('should return new state with error removed immutably', async () => {
       const { trackError, clearError, getErrorState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackError(state, 'to-clear', {
+      state = trackError(state, 'to-clear', {
         signature: 'to-clear',
         category: 'api_error',
         phase: 1,
@@ -584,9 +590,12 @@ describe('state management', () => {
 
       expect(getErrorState(state, 'to-clear')).toBeDefined();
 
-      clearError(state, 'to-clear');
+      const stateAfterTracking = state;
+      state = clearError(state, 'to-clear');
 
       expect(getErrorState(state, 'to-clear')).toBeUndefined();
+      expect(getErrorState(stateAfterTracking, 'to-clear')).toBeDefined(); // original still has error
+      expect(state).not.toBe(stateAfterTracking); // different object reference
     });
   });
 });
@@ -599,9 +608,9 @@ describe('file tracking (from file-tracker)', () => {
 
       const state = createDefaultState();
 
-      trackFileModification(state, 'src/component.ts');
+      const newState = trackFileModification(state, 'src/component.ts');
 
-      expect(state.files.modifiedThisSession).toContain('src/component.ts');
+      expect(newState.files.modifiedThisSession).toContain('src/component.ts');
     });
 
     it('should add file to modifiedSinceCheckpoint', async () => {
@@ -610,19 +619,19 @@ describe('file tracking (from file-tracker)', () => {
 
       const state = createDefaultState();
 
-      trackFileModification(state, 'src/utils.ts');
+      const newState = trackFileModification(state, 'src/utils.ts');
 
-      expect(state.files.modifiedSinceCheckpoint).toContain('src/utils.ts');
+      expect(newState.files.modifiedSinceCheckpoint).toContain('src/utils.ts');
     });
 
     it('should not duplicate files when tracking same file twice', async () => {
       const { trackFileModification } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackFileModification(state, 'src/duplicate.ts');
-      trackFileModification(state, 'src/duplicate.ts');
+      state = trackFileModification(state, 'src/duplicate.ts');
+      state = trackFileModification(state, 'src/duplicate.ts');
 
       expect(
         state.files.modifiedThisSession.filter((f) => f === 'src/duplicate.ts')
@@ -636,11 +645,11 @@ describe('file tracking (from file-tracker)', () => {
       const { trackFileModification } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackFileModification(state, 'src/file1.ts');
-      trackFileModification(state, 'src/file2.ts');
-      trackFileModification(state, 'src/file3.ts');
+      state = trackFileModification(state, 'src/file1.ts');
+      state = trackFileModification(state, 'src/file2.ts');
+      state = trackFileModification(state, 'src/file3.ts');
 
       expect(state.files.modifiedThisSession).toHaveLength(3);
       expect(state.files.modifiedSinceCheckpoint).toHaveLength(3);
@@ -654,9 +663,9 @@ describe('file tracking (from file-tracker)', () => {
 
       const state = createDefaultState();
 
-      trackFileCreation(state, 'src/new-file.ts');
+      const newState = trackFileCreation(state, 'src/new-file.ts');
 
-      expect(state.files.createdThisSession).toContain('src/new-file.ts');
+      expect(newState.files.createdThisSession).toContain('src/new-file.ts');
     });
 
     it('should also track created file as modified', async () => {
@@ -665,21 +674,21 @@ describe('file tracking (from file-tracker)', () => {
 
       const state = createDefaultState();
 
-      trackFileCreation(state, 'src/created.ts');
+      const newState = trackFileCreation(state, 'src/created.ts');
 
-      expect(state.files.createdThisSession).toContain('src/created.ts');
-      expect(state.files.modifiedThisSession).toContain('src/created.ts');
-      expect(state.files.modifiedSinceCheckpoint).toContain('src/created.ts');
+      expect(newState.files.createdThisSession).toContain('src/created.ts');
+      expect(newState.files.modifiedThisSession).toContain('src/created.ts');
+      expect(newState.files.modifiedSinceCheckpoint).toContain('src/created.ts');
     });
 
     it('should not duplicate files when tracking same creation twice', async () => {
       const { trackFileCreation } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackFileCreation(state, 'src/dup-create.ts');
-      trackFileCreation(state, 'src/dup-create.ts');
+      state = trackFileCreation(state, 'src/dup-create.ts');
+      state = trackFileCreation(state, 'src/dup-create.ts');
 
       expect(
         state.files.createdThisSession.filter((f) => f === 'src/dup-create.ts')
@@ -690,11 +699,11 @@ describe('file tracking (from file-tracker)', () => {
       const { trackFileCreation } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackFileCreation(state, 'src/new1.ts');
-      trackFileCreation(state, 'src/new2.ts');
-      trackFileCreation(state, 'src/new3.ts');
+      state = trackFileCreation(state, 'src/new1.ts');
+      state = trackFileCreation(state, 'src/new2.ts');
+      state = trackFileCreation(state, 'src/new3.ts');
 
       expect(state.files.createdThisSession).toHaveLength(3);
     });
@@ -708,14 +717,14 @@ describe('file tracking (from file-tracker)', () => {
       } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackFileModification(state, 'file1.ts');
-      trackFileModification(state, 'file2.ts');
+      state = trackFileModification(state, 'file1.ts');
+      state = trackFileModification(state, 'file2.ts');
 
       expect(state.files.modifiedSinceCheckpoint).toHaveLength(2);
 
-      clearCheckpointTracking(state);
+      state = clearCheckpointTracking(state);
 
       expect(state.files.modifiedSinceCheckpoint).toHaveLength(0);
     });
@@ -727,12 +736,12 @@ describe('file tracking (from file-tracker)', () => {
       } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
-      trackFileModification(state, 'file1.ts');
-      trackFileModification(state, 'file2.ts');
+      state = trackFileModification(state, 'file1.ts');
+      state = trackFileModification(state, 'file2.ts');
 
-      clearCheckpointTracking(state);
+      state = clearCheckpointTracking(state);
 
       expect(state.files.modifiedThisSession).toHaveLength(2);
     });
@@ -746,14 +755,14 @@ describe('file tracking (from file-tracker)', () => {
       } = await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      let state = createDefaultState();
 
       expect(getModifiedFileCount(state)).toBe(0);
 
-      trackFileModification(state, 'file1.ts');
+      state = trackFileModification(state, 'file1.ts');
       expect(getModifiedFileCount(state)).toBe(1);
 
-      trackFileModification(state, 'file2.ts');
+      state = trackFileModification(state, 'file2.ts');
       expect(getModifiedFileCount(state)).toBe(2);
     });
   });
@@ -761,36 +770,39 @@ describe('file tracking (from file-tracker)', () => {
 
 describe('session management', () => {
   describe('initializeSession', () => {
-    it('should set session id and clear session files', async () => {
+    it('should return new state with session id and cleared session files', async () => {
       const { initializeSession } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
-      state.files.modifiedThisSession = ['old-file.ts'];
-      state.files.createdThisSession = ['old-created.ts'];
+      const originalState = createDefaultState();
+      originalState.files.modifiedThisSession = ['old-file.ts'];
+      originalState.files.createdThisSession = ['old-created.ts'];
 
-      initializeSession(state, 'new-session-id');
+      const newState = initializeSession(originalState, 'new-session-id');
 
-      expect(state.session.id).toBe('new-session-id');
-      expect(state.session.startedAt).toBeDefined();
-      expect(state.files.modifiedThisSession).toEqual([]);
-      expect(state.files.createdThisSession).toEqual([]);
+      expect(newState.session.id).toBe('new-session-id');
+      expect(newState.session.startedAt).toBeDefined();
+      expect(newState.files.modifiedThisSession).toEqual([]);
+      expect(newState.files.createdThisSession).toEqual([]);
+      expect(originalState.session.id).toBe(''); // original unchanged
+      expect(originalState.files.modifiedThisSession).toEqual(['old-file.ts']); // original unchanged
+      expect(newState).not.toBe(originalState); // different object reference
     });
 
-    it('should set startedAt timestamp', async () => {
+    it('should set startedAt timestamp immutably', async () => {
       const { initializeSession } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
       const beforeInit = new Date().toISOString();
 
-      initializeSession(state, 'test-session');
+      const newState = initializeSession(originalState, 'test-session');
 
       const afterInit = new Date().toISOString();
 
-      expect(state.session.startedAt).toBeDefined();
-      expect(state.session.startedAt >= beforeInit).toBe(true);
-      expect(state.session.startedAt <= afterInit).toBe(true);
+      expect(newState.session.startedAt).toBeDefined();
+      expect(newState.session.startedAt >= beforeInit).toBe(true);
+      expect(newState.session.startedAt <= afterInit).toBe(true);
     });
   });
 
@@ -835,8 +847,8 @@ describe('session management', () => {
       const { resetForNewSession, trackError } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
-      trackError(state, 'persistent-error', {
+      let state = createDefaultState();
+      state = trackError(state, 'persistent-error', {
         signature: 'persistent-error',
         category: 'typescript_error',
         phase: 2,
@@ -880,85 +892,100 @@ describe('session management', () => {
 
 describe('update state helpers', () => {
   describe('updateSessionState', () => {
-    it('should update session with partial data', async () => {
+    it('should return new state with updated session data', async () => {
       const { updateSessionState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
+      const originalMode = originalState.session.mode;
 
-      updateSessionState(state, { mode: 'vibecoding' });
+      const newState = updateSessionState(originalState, { mode: 'vibecoding' });
 
-      expect(state.session.mode).toBe('vibecoding');
-      expect(state.session.id).toBe(''); // unchanged
+      expect(newState.session.mode).toBe('vibecoding');
+      expect(newState.session.id).toBe(''); // unchanged
+      expect(originalState.session.mode).toBe(originalMode); // original unchanged
+      expect(newState).not.toBe(originalState); // different object reference
     });
 
-    it('should update multiple session fields', async () => {
+    it('should update multiple session fields immutably', async () => {
       const { updateSessionState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
+      const originalMode = originalState.session.mode;
 
-      updateSessionState(state, {
+      const newState = updateSessionState(originalState, {
         mode: 'justvibes',
         featureDescription: 'Testing feature',
       });
 
-      expect(state.session.mode).toBe('justvibes');
-      expect(state.session.featureDescription).toBe('Testing feature');
+      expect(newState.session.mode).toBe('justvibes');
+      expect(newState.session.featureDescription).toBe('Testing feature');
+      expect(originalState.session.mode).toBe(originalMode); // original unchanged
+      expect(originalState.session.featureDescription).toBe(null); // original unchanged
     });
   });
 
   describe('updateTestState', () => {
-    it('should update test state with partial data', async () => {
+    it('should return new state with updated test data immutably', async () => {
       const { updateTestState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
+      const originalPassingFiles = originalState.tests.passingFiles;
 
-      updateTestState(state, {
+      const newState = updateTestState(originalState, {
         passingFiles: ['test1.ts', 'test2.ts'],
         lastFullRun: '2025-01-03T00:00:00Z',
       });
 
-      expect(state.tests.passingFiles).toEqual(['test1.ts', 'test2.ts']);
-      expect(state.tests.lastFullRun).toBe('2025-01-03T00:00:00Z');
-      expect(state.tests.failingFiles).toEqual([]); // unchanged
+      expect(newState.tests.passingFiles).toEqual(['test1.ts', 'test2.ts']);
+      expect(newState.tests.lastFullRun).toBe('2025-01-03T00:00:00Z');
+      expect(newState.tests.failingFiles).toEqual([]); // unchanged
+      expect(originalState.tests.passingFiles).toBe(originalPassingFiles); // original unchanged
+      expect(newState).not.toBe(originalState); // different object reference
     });
   });
 
   describe('updateBuildState', () => {
-    it('should update build state with partial data', async () => {
+    it('should return new state with updated build data immutably', async () => {
       const { updateBuildState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
+      const originalStatus = originalState.build.status;
 
-      updateBuildState(state, {
+      const newState = updateBuildState(originalState, {
         status: 'passing',
         lastRun: '2025-01-03T00:00:00Z',
       });
 
-      expect(state.build.status).toBe('passing');
-      expect(state.build.lastRun).toBe('2025-01-03T00:00:00Z');
-      expect(state.build.fixAttempts).toBe(0); // unchanged
+      expect(newState.build.status).toBe('passing');
+      expect(newState.build.lastRun).toBe('2025-01-03T00:00:00Z');
+      expect(newState.build.fixAttempts).toBe(0); // unchanged
+      expect(originalState.build.status).toBe(originalStatus); // original unchanged
+      expect(newState).not.toBe(originalState); // different object reference
     });
   });
 
   describe('updateGitState', () => {
-    it('should update git state with partial data', async () => {
+    it('should return new state with updated git data immutably', async () => {
       const { updateGitState } = await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
-      const state = createDefaultState();
+      const originalState = createDefaultState();
+      const originalBranch = originalState.git.currentBranch;
 
-      updateGitState(state, {
+      const newState = updateGitState(originalState, {
         currentBranch: 'feature/new-feature',
         featureBranch: 'feature/new-feature',
       });
 
-      expect(state.git.currentBranch).toBe('feature/new-feature');
-      expect(state.git.featureBranch).toBe('feature/new-feature');
-      expect(state.git.mainBranch).toBe('main'); // unchanged
+      expect(newState.git.currentBranch).toBe('feature/new-feature');
+      expect(newState.git.featureBranch).toBe('feature/new-feature');
+      expect(newState.git.mainBranch).toBe('main'); // unchanged
+      expect(originalState.git.currentBranch).toBe(originalBranch); // original unchanged
+      expect(newState).not.toBe(originalState); // different object reference
     });
   });
 });

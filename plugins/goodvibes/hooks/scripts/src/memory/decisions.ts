@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryDecision } from '../types/memory.js';
 import { debug } from '../shared/logging.js';
-import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 const DECISIONS_HEADER = `# Architectural Decisions
 
@@ -127,7 +127,7 @@ function parseDecisions(content: string): MemoryDecision[] {
           context: context.trim() || undefined,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debug('Skipping malformed decision entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }

@@ -4,34 +4,53 @@
  * File system utilities including existence checks and command detection.
  */
 /**
- * Checks if a file exists relative to the project root.
+ * Checks if a file exists at the given absolute path.
  *
- * Resolves the path relative to PROJECT_ROOT and checks for existence.
+ * This is the canonical file existence check function. All code should use
+ * this function for checking file existence with absolute paths.
  *
- * @param filePath - The file path relative to PROJECT_ROOT
+ * @param filePath - Absolute path to the file
  * @returns Promise resolving to true if the file exists, false otherwise
  *
  * @example
- * if (await fileExists('package.json')) {
+ * const pkgPath = path.join(cwd, 'package.json');
+ * if (await fileExists(pkgPath)) {
  *   console.log('This is a Node.js project');
  * }
  *
  * @example
- * if (await fileExists('tsconfig.json')) {
+ * const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
+ * if (await fileExists(tsconfigPath)) {
  *   console.log('TypeScript is configured');
  * }
  */
 export declare function fileExists(filePath: string): Promise<boolean>;
 /**
- * Check if a file exists (async version with absolute path support).
+ * Checks if a file exists relative to a base directory.
  *
- * This is the shared async implementation used by context modules
- * (env-checker, health-checker, stack-detector) to avoid duplicate code.
+ * This is a convenience wrapper around {@link fileExists} for checking
+ * files relative to a base directory (defaults to PROJECT_ROOT).
  *
- * @param filePath - Absolute path to the file
- * @returns Promise resolving to true if file exists
+ * Use this when you have relative paths and want to check against PROJECT_ROOT.
+ * For absolute paths, use {@link fileExists} directly.
+ *
+ * @param filePath - The file path relative to the base directory
+ * @param baseDir - The base directory to resolve against (defaults to PROJECT_ROOT)
+ * @returns Promise resolving to true if the file exists, false otherwise
+ *
+ * @example
+ * // Check relative to PROJECT_ROOT
+ * if (await fileExistsRelative('package.json')) {
+ *   console.log('This is a Node.js project');
+ * }
+ *
+ * @example
+ * // Check relative to custom directory
+ * if (await fileExistsRelative('src/index.ts', '/path/to/project')) {
+ *   console.log('Source file found');
+ * }
  */
-export declare function fileExistsAsync(filePath: string): Promise<boolean>;
+export declare function fileExistsRelative(filePath: string, baseDir?: string): Promise<boolean>;
 /**
  * Checks if a command-line tool is available on the system.
  *

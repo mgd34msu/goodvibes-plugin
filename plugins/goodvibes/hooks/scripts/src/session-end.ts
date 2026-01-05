@@ -16,7 +16,7 @@ import {
   logError,
   CACHE_DIR,
   HookResponse,
-} from './shared.js';
+} from './shared/index.js';
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
@@ -30,7 +30,7 @@ function createResponse(systemMessage?: string): HookResponse {
 const MS_PER_MINUTE = 60000;
 
 /** Main entry point for session-end hook. Finalizes analytics and saves session summary. */
-async function main(): Promise<void> {
+async function runSessionEndHook(): Promise<void> {
   try {
     debug('SessionEnd hook starting');
 
@@ -71,10 +71,10 @@ async function main(): Promise<void> {
 
     respond(createResponse());
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('SessionEnd main', error);
     respond(createResponse());
   }
 }
 
-main();
+runSessionEndHook();

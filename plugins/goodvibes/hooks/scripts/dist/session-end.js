@@ -6,7 +6,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, } from './shared.js';
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, } from './shared/index.js';
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage) {
     return {
@@ -17,7 +17,7 @@ function createResponse(systemMessage) {
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
 /** Main entry point for session-end hook. Finalizes analytics and saves session summary. */
-async function main() {
+async function runSessionEndHook() {
     try {
         debug('SessionEnd hook starting');
         const input = await readHookInput();
@@ -55,4 +55,4 @@ async function main() {
         respond(createResponse());
     }
 }
-main();
+runSessionEndHook();

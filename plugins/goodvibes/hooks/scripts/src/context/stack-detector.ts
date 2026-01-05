@@ -6,7 +6,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { LOCKFILES, fileExistsAsync } from '../shared.js';
+import { LOCKFILES, fileExists } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 
 /** Module-level cache for stack detection results */
@@ -105,10 +105,10 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
   for (const [indicator, name] of Object.entries(STACK_INDICATORS)) {
     const checkPath = path.join(cwd, indicator);
     const checks = await Promise.all([
-      fileExistsAsync(checkPath),
-      fileExistsAsync(checkPath + '.js'),
-      fileExistsAsync(checkPath + '.ts'),
-      fileExistsAsync(checkPath + '.mjs'),
+      fileExists(checkPath),
+      fileExists(checkPath + '.js'),
+      fileExists(checkPath + '.ts'),
+      fileExists(checkPath + '.mjs'),
     ]);
 
     if (checks.some(exists => exists)) {
@@ -119,7 +119,7 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
 
   // Check lockfiles for package manager
   for (const lockfile of LOCKFILES) {
-    if (await fileExistsAsync(path.join(cwd, lockfile))) {
+    if (await fileExists(path.join(cwd, lockfile))) {
       packageManager = LOCKFILE_TO_PM[lockfile];
       break;
     }
@@ -127,7 +127,7 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
 
   // Check tsconfig for strict mode
   const tsconfigPath = path.join(cwd, 'tsconfig.json');
-  if (await fileExistsAsync(tsconfigPath)) {
+  if (await fileExists(tsconfigPath)) {
     try {
       const content = await fs.readFile(tsconfigPath, 'utf-8');
       const config = JSON.parse(content);

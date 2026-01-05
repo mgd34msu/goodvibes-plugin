@@ -11,7 +11,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { respond, loadAnalytics, saveAnalytics, logToolUsage, ensureCacheDir, debug, logError, CACHE_DIR, } from '../shared.js';
+import { respond, loadAnalytics, saveAnalytics, logToolUsage, ensureCacheDir, debug, logError, CACHE_DIR, } from '../shared/index.js';
 import { createResponse } from './response.js';
 /**
  * Handles detect_stack tool results, caching stack info.

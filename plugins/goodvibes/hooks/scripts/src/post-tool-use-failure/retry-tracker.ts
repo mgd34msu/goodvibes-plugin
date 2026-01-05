@@ -7,7 +7,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared.js';
+import { ensureGoodVibesDir } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 import { PHASE_RETRY_LIMITS, type ErrorCategory, type ErrorState } from '../types/errors.js';
 import type { HooksState } from '../types/state.js';
@@ -76,7 +76,8 @@ export async function loadRetries(cwd: string): Promise<RetryData> {
   const retriesPath = getRetriesPath(cwd);
   try {
     await fs.access(retriesPath);
-  } catch {
+  } catch (error) {
+    debug(`Retries file access check failed for ${retriesPath}: ${error}`);
     return {};
   }
   try {

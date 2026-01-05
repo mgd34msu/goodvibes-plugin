@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildSubagentContext } from '../subagent-start/context-injection.js';
 
 // Mock dependencies
-vi.mock('../shared.js', () => ({
+vi.mock('../shared/index.js', () => ({
   loadSharedConfig: vi.fn(() => Promise.resolve({
     telemetry: {
       enabled: true,

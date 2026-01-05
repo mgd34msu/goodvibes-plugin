@@ -6,7 +6,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug, fileExistsAsync as fileExists } from '../shared.js';
+import { debug, fileExists } from '../shared/index.js';
 import type { ActiveAgentEntry } from './agents.js';
 import type { ParsedTranscript } from './transcript.js';
 
@@ -51,7 +51,7 @@ export async function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string
   for (const dir of dirs) {
     if (!(await fileExists(dir))) {
       await fs.mkdir(dir, { recursive: true });
-      debug('Created directory: ' + dir);
+      debug(`Created directory: ${dir}`);
     }
   }
 }
@@ -66,14 +66,14 @@ export async function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string
 export async function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): Promise<void> {
   // Get current month for filename (YYYY-MM)
   const now = new Date();
-  const yearMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  const telemetryFile = path.join(telemetryDir, yearMonth + '.jsonl');
+  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const telemetryFile = path.join(telemetryDir, `${yearMonth}.jsonl`);
 
   // Append record as a single line of JSON
-  const line = JSON.stringify(record) + '\n';
+  const line = `${JSON.stringify(record)}\n`;
   await fs.appendFile(telemetryFile, line);
 
-  debug('Wrote telemetry record to ' + telemetryFile);
+  debug(`Wrote telemetry record to ${telemetryFile}`);
 }
 
 /**

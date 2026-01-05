@@ -4,23 +4,8 @@
  * Provides transcript parsing, keyword extraction, and content analysis.
  */
 import * as fs from 'fs/promises';
-import { debug, logError } from '../shared.js';
+import { debug, logError, fileExists } from '../shared/index.js';
 import { TRANSCRIPT_KEYWORD_CATEGORIES, extractTranscriptKeywords, } from '../shared/keywords.js';
-// ============================================================================
-// File System Helpers
-// ============================================================================
-/**
- * Check if a file exists (async replacement for existsSync)
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 // ============================================================================
 // Constants
 // ============================================================================

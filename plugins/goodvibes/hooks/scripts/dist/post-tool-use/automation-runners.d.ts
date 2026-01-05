@@ -11,16 +11,16 @@ import { type BuildResult } from '../automation/build-runner.js';
 /**
  * Run tests for modified files if test automation is enabled in config.
  * Skips test files themselves and files with no associated tests.
- * Updates session state with test results on completion.
+ * Returns updated state with test results on completion.
  *
  * @param state - The current hooks session state to update with results
  * @param config - GoodVibes configuration containing automation settings
  * @param filePath - Absolute path to the modified file to find tests for
  * @param cwd - Current working directory for running tests
- * @returns Object with `ran` boolean indicating if tests executed, and `result` containing test output or null
+ * @returns Object with `ran` boolean, `result` containing test output or null, and `state` with updated test results
  *
  * @example
- * const { ran, result } = await maybeRunTests(state, config, '/src/utils.ts', '/project');
+ * const { ran, result, state: newState } = await maybeRunTests(state, config, '/src/utils.ts', '/project');
  * if (ran && result && !result.passed) {
  *   console.log('Tests failed:', result.summary);
  * }
@@ -28,19 +28,20 @@ import { type BuildResult } from '../automation/build-runner.js';
 export declare function maybeRunTests(state: HooksState, config: GoodVibesConfig, filePath: string, cwd: string): Promise<{
     ran: boolean;
     result: TestResult | null;
+    state: HooksState;
 }>;
 /**
  * Run TypeScript type checking if the file modification threshold is reached.
  * Tracks the number of modified files since last build and triggers when threshold exceeded.
- * Updates session state with build status and any errors found.
+ * Returns updated state with build status and any errors found.
  *
  * @param state - The current hooks session state containing modification counts
  * @param config - GoodVibes configuration with automation.building.runAfterFileThreshold
  * @param cwd - Current working directory for running the type checker
- * @returns Object with `ran` boolean indicating if build executed, and `result` containing build output or null
+ * @returns Object with `ran` boolean, `result` containing build output or null, and `state` with updated build results
  *
  * @example
- * const { ran, result } = await maybeRunBuild(state, config, '/project');
+ * const { ran, result, state: newState } = await maybeRunBuild(state, config, '/project');
  * if (ran && result && !result.passed) {
  *   console.log('Build errors:', result.errors);
  * }
@@ -48,6 +49,7 @@ export declare function maybeRunTests(state: HooksState, config: GoodVibesConfig
 export declare function maybeRunBuild(state: HooksState, config: GoodVibesConfig, cwd: string): Promise<{
     ran: boolean;
     result: BuildResult | null;
+    state: HooksState;
 }>;
 /**
  * Check if a git checkpoint should be created and create it if conditions are met.
@@ -57,10 +59,10 @@ export declare function maybeRunBuild(state: HooksState, config: GoodVibesConfig
  * @param state - The current hooks session state with file tracking data
  * @param config - GoodVibes configuration with automation.git.autoCheckpoint setting
  * @param cwd - Current working directory (git repository root)
- * @returns Object with `created` boolean and `message` describing the checkpoint or empty string
+ * @returns Object with `created` boolean, `message` describing the checkpoint or empty string, and updated state
  *
  * @example
- * const { created, message } = await maybeCreateCheckpoint(state, config, '/project');
+ * const { created, message, state: newState } = await maybeCreateCheckpoint(state, config, '/project');
  * if (created) {
  *   console.log('Checkpoint created:', message);
  * }
@@ -68,6 +70,7 @@ export declare function maybeRunBuild(state: HooksState, config: GoodVibesConfig
 export declare function maybeCreateCheckpoint(state: HooksState, config: GoodVibesConfig, cwd: string): Promise<{
     created: boolean;
     message: string;
+    state: HooksState;
 }>;
 /**
  * Check if a feature branch should be created and create it if conditions are met.

@@ -38,7 +38,7 @@ vi.mock('../../utils.js', async (importOriginal) => {
         relevance: Math.round((1 - (r.score || 0)) * 100) / 100,
       }));
     },
-    parseSkillMetadata: vi.fn().mockReturnValue({}),
+    parseSkillMetadata: vi.fn().mockResolvedValue({}),
   };
 });
 
@@ -67,9 +67,9 @@ describe('dependencies handler', () => {
     describe('basic functionality', () => {
       it('should find skill by name', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -78,19 +78,19 @@ describe('dependencies handler', () => {
         expect(data.path).toBe('testing/react-testing');
       });
 
-      it('should throw error when skill not found', () => {
-        expect(() => {
+      it('should throw error when skill not found', async () => {
+        await expect(
           handleSkillDependencies(skillsIndex, skillsRegistry, {
             skill: 'Nonexistent Skill XYZ',
-          });
-        }).toThrow('Skill not found: Nonexistent Skill XYZ');
+          })
+        ).rejects.toThrow('Skill not found: Nonexistent Skill XYZ');
       });
 
       it('should return proper response structure', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Prisma',
         });
         const data = JSON.parse(result.content[0].text);
@@ -108,11 +108,11 @@ describe('dependencies handler', () => {
     describe('required dependencies', () => {
       it('should find required dependencies from metadata', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           requires: ['react-basics', 'testing-fundamentals'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -122,11 +122,11 @@ describe('dependencies handler', () => {
 
       it('should include reason for required dependencies', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           requires: ['React Testing'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Next.js',
         });
         const data = JSON.parse(result.content[0].text);
@@ -143,11 +143,11 @@ describe('dependencies handler', () => {
         // 2. Nested dependency metadata (Next.js) - has requires
         // 3+ Additional calls for reverse dependency lookup - return empty
         vi.mocked(parseSkillMetadata)
-          .mockReturnValueOnce({ requires: ['Next.js'] })
-          .mockReturnValueOnce({ requires: ['React Testing'] })
-          .mockReturnValue({}); // Default for remaining calls
+          .mockResolvedValueOnce({ requires: ['Next.js'] })
+          .mockResolvedValueOnce({ requires: ['React Testing'] })
+          .mockResolvedValue({}); // Default for remaining calls
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Tailwind',
           depth: 2,
         });
@@ -160,11 +160,11 @@ describe('dependencies handler', () => {
     describe('optional dependencies', () => {
       it('should find optional/complementary dependencies', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           complements: ['jest-advanced', 'cypress-e2e'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
           include_optional: true,
         });
@@ -175,11 +175,11 @@ describe('dependencies handler', () => {
 
       it('should exclude optional when include_optional is false', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           complements: ['jest-advanced'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
           include_optional: false,
         });
@@ -194,9 +194,9 @@ describe('dependencies handler', () => {
 
       it('should add related skills in same category as optional', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -212,11 +212,11 @@ describe('dependencies handler', () => {
     describe('conflicts', () => {
       it('should detect conflicting skills', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           conflicts: ['incompatible-skill'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Prisma',
         });
         const data = JSON.parse(result.content[0].text);
@@ -226,11 +226,11 @@ describe('dependencies handler', () => {
 
       it('should include reason for conflicts', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           conflicts: ['Zustand'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -246,12 +246,12 @@ describe('dependencies handler', () => {
         const { parseSkillMetadata } = await import('../../utils.js');
         vi.mocked(parseSkillMetadata).mockImplementation((path: string) => {
           if (path === 'testing/react-testing') {
-            return {};
+            return Promise.resolve({});
           }
-          return { requires: ['React Testing'] };
+          return Promise.resolve({ requires: ['React Testing'] });
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -262,11 +262,11 @@ describe('dependencies handler', () => {
 
       it('should limit dependents to 5', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           requires: ['Prisma'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Prisma',
         });
         const data = JSON.parse(result.content[0].text);
@@ -278,9 +278,9 @@ describe('dependencies handler', () => {
     describe('suggested bundle', () => {
       it('should include the skill itself in suggested bundle', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Tailwind',
         });
         const data = JSON.parse(result.content[0].text);
@@ -290,11 +290,11 @@ describe('dependencies handler', () => {
 
       it('should include required dependencies in bundle', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           requires: ['React Testing'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Next.js',
         });
         const data = JSON.parse(result.content[0].text);
@@ -306,11 +306,11 @@ describe('dependencies handler', () => {
     describe('metadata', () => {
       it('should include category in metadata', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           category: 'testing',
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -320,9 +320,9 @@ describe('dependencies handler', () => {
 
       it('should derive category from path if not in metadata', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -333,11 +333,11 @@ describe('dependencies handler', () => {
 
       it('should include technologies in metadata', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           technologies: ['react', 'vitest', 'testing-library'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -348,11 +348,11 @@ describe('dependencies handler', () => {
 
       it('should include difficulty in metadata', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           difficulty: 'intermediate',
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -364,11 +364,11 @@ describe('dependencies handler', () => {
     describe('analysis', () => {
       it('should indicate if skill has prerequisites', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           requires: ['some-skill'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -378,11 +378,11 @@ describe('dependencies handler', () => {
 
       it('should indicate if skill has conflicts', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           conflicts: ['some-skill'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Prisma',
         });
         const data = JSON.parse(result.content[0].text);
@@ -392,12 +392,12 @@ describe('dependencies handler', () => {
 
       it('should calculate dependency count', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
           requires: ['a', 'b'],
           complements: ['c', 'd', 'e'],
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -408,11 +408,11 @@ describe('dependencies handler', () => {
       it('should indicate if skill is foundational', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
         vi.mocked(parseSkillMetadata).mockImplementation((path: string) => {
-          if (path.includes('react-testing')) return {};
-          return { requires: ['React Testing'] };
+          if (path.includes('react-testing')) return Promise.resolve({});
+          return Promise.resolve({ requires: ['React Testing'] });
         });
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'React Testing',
         });
         const data = JSON.parse(result.content[0].text);
@@ -424,9 +424,9 @@ describe('dependencies handler', () => {
     describe('depth parameter', () => {
       it('should use default depth of 2', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        handleSkillDependencies(skillsIndex, skillsRegistry, {
+        await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Prisma',
         });
 
@@ -436,9 +436,9 @@ describe('dependencies handler', () => {
 
       it('should respect custom depth', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        handleSkillDependencies(skillsIndex, skillsRegistry, {
+        await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Prisma',
           depth: 1,
         });
@@ -451,9 +451,9 @@ describe('dependencies handler', () => {
     describe('response format', () => {
       it('should return properly formatted response', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Tailwind',
         });
 
@@ -464,9 +464,9 @@ describe('dependencies handler', () => {
 
       it('should return valid JSON', async () => {
         const { parseSkillMetadata } = await import('../../utils.js');
-        vi.mocked(parseSkillMetadata).mockReturnValue({});
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
 
-        const result = handleSkillDependencies(skillsIndex, skillsRegistry, {
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
           skill: 'Zustand',
         });
 

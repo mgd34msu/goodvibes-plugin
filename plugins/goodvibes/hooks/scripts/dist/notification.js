@@ -6,7 +6,7 @@
  * - Test failures
  * - Build errors
  */
-import { respond, readHookInput, debug, logError, } from './shared.js';
+import { respond, readHookInput, debug, logError, } from './shared/index.js';
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage) {
     return {
@@ -15,7 +15,7 @@ function createResponse(systemMessage) {
     };
 }
 /** Main entry point for notification hook. Handles validation, test, and build error notifications. */
-async function main() {
+async function runNotificationHook() {
     try {
         debug('Notification hook starting');
         const input = await readHookInput();
@@ -32,4 +32,4 @@ async function main() {
         respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
-main();
+runNotificationHook();

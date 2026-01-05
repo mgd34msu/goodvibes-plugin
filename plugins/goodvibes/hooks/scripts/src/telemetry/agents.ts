@@ -7,7 +7,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import { debug, logError, fileExistsAsync as fileExists } from '../shared.js';
+import { debug, logError, fileExists } from '../shared/index.js';
 
 // ============================================================================
 // Constants and Paths
@@ -75,7 +75,7 @@ export function getGitInfo(cwd: string): GitInfo {
       timeout: 30000,
     }).trim();
     result.branch = branch;
-  } catch (error) {
+  } catch (error: unknown) {
     debug('Git branch unavailable:', error instanceof Error ? error.message : 'unknown');
   }
 
@@ -88,7 +88,7 @@ export function getGitInfo(cwd: string): GitInfo {
       timeout: 30000,
     }).trim();
     result.commit = commit;
-  } catch (error) {
+  } catch (error: unknown) {
     debug('Git commit unavailable:', error instanceof Error ? error.message : 'unknown');
   }
 
@@ -125,7 +125,7 @@ export async function loadActiveAgents(activeAgentsFile: string): Promise<Active
     try {
       const content = await fs.readFile(activeAgentsFile, 'utf-8');
       return JSON.parse(content);
-    } catch (error) {
+    } catch (error: unknown) {
       logError('loadActiveAgents', error);
     }
   }
@@ -143,7 +143,7 @@ export async function saveActiveAgents(activeAgentsFile: string, state: ActiveAg
   try {
     state.last_updated = new Date().toISOString();
     await fs.writeFile(activeAgentsFile, JSON.stringify(state, null, 2));
-  } catch (error) {
+  } catch (error: unknown) {
     logError('saveActiveAgents', error);
   }
 }

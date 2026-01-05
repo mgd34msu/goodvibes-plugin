@@ -15,9 +15,9 @@ import {
   saveAnalytics,
   debug,
   logError,
-  HookResponse,
+  createResponse,
   PROJECT_ROOT,
-} from './shared.js';
+} from './shared/index.js';
 import { loadState, saveState, trackError, getErrorState } from './state.js';
 import {
   generateErrorSignature,
@@ -43,14 +43,6 @@ import {
 import { writeFailure } from './memory/failures.js';
 import type { ErrorCategory } from './types/errors.js';
 import type { MemoryFailure } from './types/memory.js';
-
-/** Creates a hook response with optional additional context for fix guidance. */
-function createResponse(additionalContext?: string): HookResponse {
-  return {
-    continue: true,
-    systemMessage: additionalContext,
-  };
-}
 
 /**
  * Build research hints message based on phase
@@ -84,17 +76,27 @@ function buildResearchHintsMessage(
   return parts.join('\n');
 }
 
+/**
+ * Type guard to check if a value is a record object
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** Main entry point for post-tool-use-failure hook. Implements progressive fix loop with research hints. */
-async function main(): Promise<void> {
+async function runPostToolUseFailureHook(): Promise<void> {
   try {
     debug('PostToolUseFailure hook starting');
 
     const input = await readHookInput();
     const cwd = input.cwd || PROJECT_ROOT;
     const toolName = input.tool_name || 'unknown';
+
     // Extract error message safely - the error field is passed by Claude Code but not in our type
-    const rawInput = input as unknown as Record<string, unknown>;
-    const errorMessage = typeof rawInput.error === 'string' ? rawInput.error : 'Unknown error';
+    let errorMessage = 'Unknown error';
+    if (isRecord(input)) {
+      errorMessage = typeof input.error === 'string' ? input.error : 'Unknown error';
+    }
 
     const ERROR_PREVIEW_LENGTH = 200;
     debug('PostToolUseFailure received input', {
@@ -103,7 +105,7 @@ async function main(): Promise<void> {
     });
 
     // Step 1: Load state
-    const state = await loadState(cwd);
+    let state = await loadState(cwd);
 
     // Step 2: Generate error signature (using fix-loop version for state tracking)
     const signature = generateErrorSignature(toolName, errorMessage);
@@ -170,7 +172,7 @@ async function main(): Promise<void> {
       attemptsThisPhase: errorState.attemptsThisPhase + 1,
       totalAttempts: errorState.totalAttempts + 1,
     };
-    trackError(state, signature, errorState);
+    state = trackError(state, signature, errorState);
     await saveRetry(cwd, retrySignature, errorState.phase);
 
     // Step 9: Check if all phases exhausted
@@ -264,7 +266,7 @@ async function main(): Promise<void> {
 
     const additionalContext = responseParts.join('\n');
 
-    respond(createResponse(additionalContext));
+    respond(createResponse({ systemMessage: additionalContext }));
 
   } catch (error: unknown) {
     logError('PostToolUseFailure main', error);
@@ -272,4 +274,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+runPostToolUseFailureHook();

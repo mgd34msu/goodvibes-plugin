@@ -23,14 +23,14 @@ export declare function execGit(command: string, cwd: string): Promise<string | 
  * Checks if a directory is a git repository by looking for a .git directory.
  *
  * @param cwd - The directory path to check
- * @returns True if the directory contains a .git folder, false otherwise
+ * @returns Promise resolving to true if the directory contains a .git folder, false otherwise
  *
  * @example
- * if (isGitRepo('/my-project')) {
+ * if (await isGitRepo('/my-project')) {
  *   console.log('This is a git repository');
  * }
  */
-export declare function isGitRepo(cwd: string): boolean;
+export declare function isGitRepo(cwd: string): Promise<boolean>;
 /**
  * Detects the main branch name for the repository.
  * Checks for 'main' first, then 'master', defaulting to 'main'.

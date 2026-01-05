@@ -167,7 +167,7 @@ describe('npm handlers', () => {
   describe('handleCheckVersions', () => {
     it('should read package.json and check versions', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
       const result = await handleCheckVersions({});
       const data = JSON.parse(result.content[0].text);
@@ -178,14 +178,14 @@ describe('npm handlers', () => {
 
     it('should throw error when package.json not found', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(null);
+      vi.mocked(readJsonFile).mockResolvedValue(null);
 
       await expect(handleCheckVersions({})).rejects.toThrow('package.json not found');
     });
 
     it('should check specific packages when provided', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
       const result = await handleCheckVersions({
         packages: ['react', 'next'],
@@ -203,7 +203,7 @@ describe('npm handlers', () => {
       for (let i = 0; i < 30; i++) {
         manyDeps[`package-${i}`] = '^1.0.0';
       }
-      vi.mocked(readJsonFile).mockReturnValue({
+      vi.mocked(readJsonFile).mockResolvedValue({
         dependencies: manyDeps,
       });
 
@@ -215,7 +215,7 @@ describe('npm handlers', () => {
 
     it('should include installed version', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
       const result = await handleCheckVersions({
         packages: ['react'],
@@ -227,7 +227,7 @@ describe('npm handlers', () => {
 
     it('should mark as not installed when package not in dependencies', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
       const result = await handleCheckVersions({
         packages: ['not-installed-pkg'],
@@ -239,7 +239,7 @@ describe('npm handlers', () => {
 
     it('should check latest versions when check_latest is true', async () => {
       const { readJsonFile, safeExec } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
       vi.mocked(safeExec)
         .mockResolvedValueOnce({ stdout: '18.3.0', stderr: '' })
         .mockResolvedValueOnce({ stdout: '{"latest": "18.3.0"}', stderr: '' });
@@ -255,7 +255,7 @@ describe('npm handlers', () => {
 
     it('should detect outdated packages', async () => {
       const { readJsonFile, safeExec } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue({
+      vi.mocked(readJsonFile).mockResolvedValue({
         dependencies: { react: '^18.0.0' },
       });
       vi.mocked(safeExec)
@@ -273,7 +273,7 @@ describe('npm handlers', () => {
 
     it('should detect breaking changes (major version bump)', async () => {
       const { readJsonFile, safeExec } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue({
+      vi.mocked(readJsonFile).mockResolvedValue({
         dependencies: { next: '^13.0.0' },
       });
       vi.mocked(safeExec)
@@ -291,7 +291,7 @@ describe('npm handlers', () => {
 
     it('should include summary in response', async () => {
       const { readJsonFile, safeExec } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
       vi.mocked(safeExec)
         .mockResolvedValue({ stdout: '1.0.0', stderr: '' });
 
@@ -310,7 +310,7 @@ describe('npm handlers', () => {
 
     it('should use custom path when provided', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
       await handleCheckVersions({ path: 'custom/project/path' });
 
@@ -321,7 +321,7 @@ describe('npm handlers', () => {
 
     it('should continue when npm lookup fails', async () => {
       const { readJsonFile, safeExec } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+      vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
       vi.mocked(safeExec).mockRejectedValue(new Error('Network error'));
 
       const result = await handleCheckVersions({
@@ -336,7 +336,7 @@ describe('npm handlers', () => {
 
     it('should merge dependencies and devDependencies', async () => {
       const { readJsonFile } = await import('../../utils.js');
-      vi.mocked(readJsonFile).mockReturnValue({
+      vi.mocked(readJsonFile).mockResolvedValue({
         dependencies: { react: '^18.0.0' },
         devDependencies: { vitest: '^1.0.0' },
       });
@@ -353,7 +353,7 @@ describe('npm handlers', () => {
     describe('response format', () => {
       it('should return properly formatted response', async () => {
         const { readJsonFile } = await import('../../utils.js');
-        vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+        vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
         const result = await handleCheckVersions({});
 
@@ -364,7 +364,7 @@ describe('npm handlers', () => {
 
       it('should return valid JSON', async () => {
         const { readJsonFile } = await import('../../utils.js');
-        vi.mocked(readJsonFile).mockReturnValue(samplePackageJson);
+        vi.mocked(readJsonFile).mockResolvedValue(samplePackageJson);
 
         const result = await handleCheckVersions({});
 

@@ -6,18 +6,12 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from './logging.js';
+import { fileExists } from './file-utils.js';
 /**
- * Helper to check if a file exists using async fs.access.
+ * Timeout in milliseconds for waiting on stdin input before using defaults.
+ * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
  */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+export const STDIN_TIMEOUT_MS = parseInt(process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? '100', 10);
 /** Triggers that determine when quality checkpoints should run. */
 export const CHECKPOINT_TRIGGERS = {
     fileCountThreshold: 5,

@@ -1,0 +1,33 @@
+
+> goodvibes-hooks@1.0.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/buzzkill/Documents/vibeplug/plugins/goodvibes/hooks/scripts[39m
+
+ [32m✓[39m src/__tests__/shared.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 340[2mms[22m[39m
+ [32m✓[39m src/__tests__/hook-io.test.ts [2m([22m[2m47 tests[22m[2m)[22m[33m 373[2mms[22m[39m
+ [32m✓[39m src/__tests__/git-guards.test.ts [2m([22m[2m49 tests[22m[2m)[22m[32m 265[2mms[22m[39m
+ [32m✓[39m src/__tests__/subagent-stop.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+ [32m✓[39m src/__tests__/quality-gates.test.ts [2m([22m[2m51 tests[22m[2m)[22m[33m 424[2mms[22m[39m
+ [32m✓[39m src/__tests__/context-builder.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 265[2mms[22m[39m
+ [32m✓[39m src/__tests__/session-start.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32m✓[39m src/__tests__/automation.test.ts [2m([22m[2m66 tests[22m[2m)[22m[33m 528[2mms[22m[39m
+ [32m✓[39m src/__tests__/memory.test.ts [2m([22m[2m32 tests[22m[2m)[22m[33m 482[2mms[22m[39m
+ [32m✓[39m src/__tests__/integration/memory-persistence.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 509[2mms[22m[39m
+ [32m✓[39m src/__tests__/pre-tool-use.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 192[2mms[22m[39m
+ [32m✓[39m src/__tests__/post-tool-use.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 108[2mms[22m[39m
+ [32m✓[39m src/__tests__/telemetry.test.ts [2m([22m[2m60 tests[22m[2m)[22m[32m 171[2mms[22m[39m
+ [32m✓[39m src/__tests__/context.test.ts [2m([22m[2m62 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m src/__tests__/state.test.ts [2m([22m[2m36 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+ [32m✓[39m src/__tests__/pre-compact.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m src/__tests__/integration/hook-workflow.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m src/__tests__/crash-recovery.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/__tests__/subagent-start.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/__tests__/response-formatter.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m20 passed[39m[22m[90m (20)[39m
+[2m      Tests [22m [1m[32m674 passed[39m[22m[90m (674)[39m
+[2m   Start at [22m 12:17:57
+[2m   Duration [22m 1.81s[2m (transform 2.61s, setup 0ms, import 2.79s, tests 4.19s, environment 3ms)[22m
+

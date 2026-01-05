@@ -56,7 +56,7 @@ export function checkHealth(cwd: string): { warnings: HealthWarning[]; suggestio
           message: 'TypeScript strict mode is not enabled. Consider enabling for better type safety.',
         });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`[issues] Failed to parse tsconfig.json:`, err instanceof Error ? err.message : err);
     }
   }
@@ -75,7 +75,7 @@ export function checkHealth(cwd: string): { warnings: HealthWarning[]; suggestio
       if (!scripts.includes('test') && !scripts.includes('jest') && !scripts.includes('vitest')) {
         suggestions.push('Add a `test` script for automated testing');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`[issues] Failed to parse package.json:`, err instanceof Error ? err.message : err);
     }
   }

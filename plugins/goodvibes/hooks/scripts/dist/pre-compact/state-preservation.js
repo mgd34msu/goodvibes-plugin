@@ -8,7 +8,7 @@ import * as path from 'path';
 import { loadState, saveState } from '../state.js';
 import { createCheckpointIfNeeded } from '../post-tool-use/checkpoint-manager.js';
 import { hasUncommittedChanges } from '../automation/git-operations.js';
-import { ensureGoodVibesDir, debug, logError, fileExistsAsync } from '../shared.js';
+import { ensureGoodVibesDir, debug, logError, fileExists } from '../shared/index.js';
 /**
  * Creates a checkpoint commit before context compaction if there are uncommitted changes.
  * This ensures work is not lost during the compaction process.
@@ -42,7 +42,7 @@ export async function saveSessionSummary(cwd, summary) {
     try {
         await ensureGoodVibesDir(cwd);
         const stateDir = path.join(cwd, '.goodvibes', 'state');
-        if (!(await fileExistsAsync(stateDir))) {
+        if (!(await fileExists(stateDir))) {
             await fs.mkdir(stateDir, { recursive: true });
         }
         const summaryPath = path.join(stateDir, 'last-session-summary.md');

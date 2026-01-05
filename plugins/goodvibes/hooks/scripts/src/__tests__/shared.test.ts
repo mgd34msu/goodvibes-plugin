@@ -27,11 +27,57 @@ describe('shared utilities', () => {
     vi.restoreAllMocks();
   });
 
+  describe('STDIN_TIMEOUT_MS', () => {
+    const originalEnv = process.env.GOODVIBES_STDIN_TIMEOUT_MS;
+
+    afterEach(() => {
+      // Restore original environment variable
+      if (originalEnv !== undefined) {
+        process.env.GOODVIBES_STDIN_TIMEOUT_MS = originalEnv;
+      } else {
+        delete process.env.GOODVIBES_STDIN_TIMEOUT_MS;
+      }
+      vi.resetModules();
+    });
+
+    it('should use default value of 100ms when env var not set', async () => {
+      delete process.env.GOODVIBES_STDIN_TIMEOUT_MS;
+      vi.resetModules();
+
+      const { STDIN_TIMEOUT_MS } = await import('../shared/index.js');
+      expect(STDIN_TIMEOUT_MS).toBe(100);
+    });
+
+    it('should use custom value from GOODVIBES_STDIN_TIMEOUT_MS env var', async () => {
+      process.env.GOODVIBES_STDIN_TIMEOUT_MS = '500';
+      vi.resetModules();
+
+      const { STDIN_TIMEOUT_MS } = await import('../shared/index.js');
+      expect(STDIN_TIMEOUT_MS).toBe(500);
+    });
+
+    it('should handle custom timeout of 0', async () => {
+      process.env.GOODVIBES_STDIN_TIMEOUT_MS = '0';
+      vi.resetModules();
+
+      const { STDIN_TIMEOUT_MS } = await import('../shared/index.js');
+      expect(STDIN_TIMEOUT_MS).toBe(0);
+    });
+
+    it('should handle large timeout values', async () => {
+      process.env.GOODVIBES_STDIN_TIMEOUT_MS = '10000';
+      vi.resetModules();
+
+      const { STDIN_TIMEOUT_MS } = await import('../shared/index.js');
+      expect(STDIN_TIMEOUT_MS).toBe(10000);
+    });
+  });
+
   describe('validateRegistries', () => {
     it('should return valid when all registries exist', async () => {
       mockAccess.mockResolvedValue(undefined);
 
-      const { validateRegistries } = await import('../shared.js');
+      const { validateRegistries } = await import('../shared/index.js');
       const result = await validateRegistries();
 
       expect(result.valid).toBe(true);
@@ -41,7 +87,7 @@ describe('shared utilities', () => {
     it('should return invalid when registries are missing', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
-      const { validateRegistries } = await import('../shared.js');
+      const { validateRegistries } = await import('../shared/index.js');
       const result = await validateRegistries();
 
       expect(result.valid).toBe(false);
@@ -54,7 +100,7 @@ describe('shared utilities', () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockMkdir.mockResolvedValue(undefined);
 
-      const { ensureCacheDir } = await import('../shared.js');
+      const { ensureCacheDir } = await import('../shared/index.js');
       await ensureCacheDir();
 
       expect(mockMkdir).toHaveBeenCalled();
@@ -63,7 +109,7 @@ describe('shared utilities', () => {
     it('should not create cache directory if it already exists', async () => {
       mockAccess.mockResolvedValue(undefined);
 
-      const { ensureCacheDir } = await import('../shared.js');
+      const { ensureCacheDir } = await import('../shared/index.js');
       await ensureCacheDir();
 
       expect(mockMkdir).not.toHaveBeenCalled();
@@ -81,7 +127,7 @@ describe('shared utilities', () => {
         return Promise.resolve(undefined);
       });
 
-      const { loadAnalytics } = await import('../shared.js');
+      const { loadAnalytics } = await import('../shared/index.js');
       const result = await loadAnalytics();
 
       expect(result).toBeNull();
@@ -100,7 +146,7 @@ describe('shared utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
-      const { loadAnalytics } = await import('../shared.js');
+      const { loadAnalytics } = await import('../shared/index.js');
       const result = await loadAnalytics();
 
       expect(result).toEqual(mockAnalytics);
@@ -110,7 +156,7 @@ describe('shared utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue('invalid json');
 
-      const { loadAnalytics } = await import('../shared.js');
+      const { loadAnalytics } = await import('../shared/index.js');
       const result = await loadAnalytics();
 
       expect(result).toBeNull();
@@ -131,7 +177,7 @@ describe('shared utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveAnalytics } = await import('../shared.js');
+      const { saveAnalytics } = await import('../shared/index.js');
       await saveAnalytics(mockAnalytics);
 
       expect(mockWriteFile).toHaveBeenCalled();
@@ -140,7 +186,7 @@ describe('shared utilities', () => {
 
   describe('allowTool', () => {
     it('should return a response allowing the tool', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const result = allowTool('PreToolUse', 'Tool allowed');
 
       expect(result.continue).toBe(true);
@@ -151,7 +197,7 @@ describe('shared utilities', () => {
 
   describe('blockTool', () => {
     it('should return a response blocking the tool', async () => {
-      const { blockTool } = await import('../shared.js');
+      const { blockTool } = await import('../shared/index.js');
       const result = blockTool('PreToolUse', 'Tool blocked for security');
 
       expect(result.continue).toBe(false);
@@ -164,7 +210,7 @@ describe('shared utilities', () => {
     it('should return true if file exists', async () => {
       mockAccess.mockResolvedValue(undefined);
 
-      const { fileExists } = await import('../shared.js');
+      const { fileExists } = await import('../shared/index.js');
       const result = await fileExists('test.txt');
 
       expect(result).toBe(true);
@@ -173,7 +219,7 @@ describe('shared utilities', () => {
     it('should return false if file does not exist', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
-      const { fileExists } = await import('../shared.js');
+      const { fileExists } = await import('../shared/index.js');
       const result = await fileExists('nonexistent.txt');
 
       expect(result).toBe(false);
@@ -194,7 +240,7 @@ describe('shared utilities', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
 
-      const { getSessionId } = await import('../shared.js');
+      const { getSessionId } = await import('../shared/index.js');
       const result = await getSessionId();
 
       expect(result).toBe('existing-session-123');
@@ -204,7 +250,7 @@ describe('shared utilities', () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockMkdir.mockResolvedValue(undefined);
 
-      const { getSessionId } = await import('../shared.js');
+      const { getSessionId } = await import('../shared/index.js');
       const result = await getSessionId();
 
       expect(result).toMatch(/^session_\d+$/);
@@ -226,7 +272,7 @@ describe('shared utilities', () => {
       mockReadFile.mockResolvedValue(JSON.stringify(mockAnalytics));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { logToolUsage } = await import('../shared.js');
+      const { logToolUsage } = await import('../shared/index.js');
       await logToolUsage({
         tool: 'search_skills',
         timestamp: new Date().toISOString(),

@@ -69,7 +69,7 @@ function parseWindowsNetstat(output: string, ports: number[]): Map<number, strin
           if (match) {
             processName = match[1].replace('.exe', '');
           }
-        } catch (error) {
+        } catch (error: unknown) {
           debug('parseWindowsNetstat tasklist failed', { error: String(error) });
         }
       }
@@ -157,7 +157,7 @@ function checkPortsWindows(ports: number[]): Map<number, string> {
       windowsHide: true,
     });
     return parseWindowsNetstat(output, ports);
-  } catch (error) {
+  } catch (error: unknown) {
     debug("checkPortsWindows failed", { error: String(error) });
     return new Map();
   }
@@ -175,7 +175,7 @@ function checkPortsUnix(ports: number[]): Map<number, string> {
       timeout: COMMAND_TIMEOUT,
     });
     return parseUnixLsof(output, ports);
-  } catch (error) {
+  } catch (error: unknown) {
     debug('checkPortsUnix lsof failed', { error: String(error) });
     // Fall back to netstat
     try {
@@ -184,7 +184,7 @@ function checkPortsUnix(ports: number[]): Map<number, string> {
         timeout: COMMAND_TIMEOUT,
       });
       return parseUnixNetstat(output, ports);
-    } catch (error) {
+    } catch (error: unknown) {
       debug("checkPortsUnix netstat failed", { error: String(error) });
       return new Map();
     }

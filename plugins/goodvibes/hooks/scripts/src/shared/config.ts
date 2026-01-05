@@ -7,7 +7,16 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from './logging.js';
-import { fileExistsAsync as fileExists } from './file-utils.js';
+import { fileExists } from './file-utils.js';
+
+/**
+ * Timeout in milliseconds for waiting on stdin input before using defaults.
+ * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
+ */
+export const STDIN_TIMEOUT_MS = parseInt(
+  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? '100',
+  10
+);
 
 /** Triggers that determine when quality checkpoints should run. */
 export const CHECKPOINT_TRIGGERS = {
@@ -147,7 +156,7 @@ export async function loadSharedConfig(cwd: string): Promise<SharedConfig> {
     const content = await fs.readFile(configPath, 'utf-8');
     const userConfig = JSON.parse(content);
     return deepMerge(defaults, userConfig.goodvibes || userConfig);
-  } catch (error) {
+  } catch (error: unknown) {
     debug('loadSharedConfig failed', { error: String(error) });
     return defaults;
   }

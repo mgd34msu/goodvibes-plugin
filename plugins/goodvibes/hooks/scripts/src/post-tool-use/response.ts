@@ -4,7 +4,7 @@
  * Common response creation and message handling.
  */
 
-import type { HookResponse } from '../shared.js';
+import type { HookResponse } from '../shared/index.js';
 
 /**
  * Interface for collecting automation messages.

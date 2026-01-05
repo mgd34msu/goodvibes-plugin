@@ -24,15 +24,104 @@ interface CacheEntry<T> {
 }
 
 /**
- * In-memory cache TTL in milliseconds (15 minutes)
+ * LRU (Least Recently Used) cache implementation with max size limit
+ *
+ * @template K - The type of cache keys
+ * @template V - The type of cache values
  */
-const CACHE_TTL_MS = 15 * 60 * 1000;
+class LRUCache<K, V> {
+  private cache = new Map<K, V>();
+  private readonly maxSize: number;
 
-/** Cache for npm package data */
-const npmCache = new Map<string, CacheEntry<Awaited<ReturnType<typeof fetchNpmReadme>>>>();
+  /**
+   * Creates a new LRU cache with the specified maximum size.
+   *
+   * @param maxSize - Maximum number of entries before eviction starts
+   */
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+  }
 
-/** Cache for GitHub README content */
-const githubReadmeCache = new Map<string, CacheEntry<string | null>>();
+  /**
+   * Retrieves a value from the cache and marks it as recently used.
+   *
+   * @param key - The cache key to look up
+   * @returns The cached value or undefined if not found
+   */
+  get(key: K): V | undefined {
+    const value = this.cache.get(key);
+    if (value !== undefined) {
+      // Move to end (most recently used) by deleting and re-inserting
+      this.cache.delete(key);
+      this.cache.set(key, value);
+    }
+    return value;
+  }
+
+  /**
+   * Stores a value in the cache, evicting the least recently used entry if at capacity.
+   *
+   * @param key - The cache key
+   * @param value - The value to cache
+   */
+  set(key: K, value: V): void {
+    // If key exists, delete it first to update position
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxSize) {
+      // Delete oldest (first item) when at capacity
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    this.cache.set(key, value);
+  }
+
+  /**
+   * Returns the current number of entries in the cache.
+   *
+   * @returns The cache size
+   */
+  get size(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * Clears all entries from the cache.
+   */
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+/**
+ * Cache TTL in milliseconds.
+ * Can be overridden via GOODVIBES_CACHE_TTL_MS environment variable.
+ * Default: 15 minutes (900000ms)
+ */
+const CACHE_TTL_MS = parseInt(
+  process.env.GOODVIBES_CACHE_TTL_MS ?? String(15 * 60 * 1000),
+  10
+);
+
+/**
+ * Maximum number of entries in each cache before LRU eviction
+ */
+const MAX_CACHE_SIZE = 100;
+
+/** LRU cache for npm package data (max 100 entries) */
+const npmCache = new LRUCache<string, CacheEntry<Awaited<ReturnType<typeof fetchNpmReadme>>>>(MAX_CACHE_SIZE);
+
+/** LRU cache for GitHub README content (max 100 entries) */
+const githubReadmeCache = new LRUCache<string, CacheEntry<string | null>>(MAX_CACHE_SIZE);
+
+/**
+ * Clears all caches. Useful for testing.
+ * @internal
+ */
+export function clearDocsCaches(): void {
+  npmCache.clear();
+  githubReadmeCache.clear();
+}
 
 /**
  * Generates a cache key from library name and version.
@@ -347,7 +436,7 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
         });
       }
     }
-  } catch (error) {
+  } catch (error: unknown) {
     npmFetchError = error instanceof Error ? error : new Error(String(error));
   }
 
@@ -364,7 +453,7 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
         result.readme = readmeContent.slice(0, 10000); // Limit size
         result.content = `Documentation fetched from GitHub README. See ${source.url} for full docs.`;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Log error but continue - GitHub readme is optional enhancement
       const githubError = error instanceof Error ? error.message : String(error);
       result.content = result.content || `Note: Could not fetch GitHub README (${githubError}). Using npm data.`;

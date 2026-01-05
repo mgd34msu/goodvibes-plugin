@@ -2,20 +2,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug, logError } from '../shared/logging.js';
-/**
- * Helper function to check if a file exists using async fs.access.
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { fileExists } from '../shared/file-utils.js';
 /** Default quality gates for TypeScript projects */
 export const QUALITY_GATES = [
     {
@@ -65,6 +52,7 @@ async function toolExists(tool, cwd) {
         const scriptName = tool.replace('npm ', '').replace('run ', '');
         return !!pkg.scripts?.[scriptName];
     }
+    // For other commands (e.g., system tools), assume they exist and let execution fail if not
     return true;
 }
 /**
@@ -90,6 +78,7 @@ function runCheck(command, cwd) {
  * attempting auto-fixes where available if a gate fails.
  *
  * @param cwd - The current working directory (project root)
+ * @param gates - Optional array of gates to run (defaults to QUALITY_GATES)
  * @returns A promise resolving to an object containing:
  *   - allPassed: Whether all gates passed or were auto-fixed
  *   - blocking: Whether any blocking gate failed
@@ -101,11 +90,11 @@ function runCheck(command, cwd) {
  *   console.error('Blocking quality gates failed');
  * }
  */
-export async function runQualityGates(cwd) {
+export async function runQualityGates(cwd, gates = QUALITY_GATES) {
     const results = [];
     let allPassed = true;
     let hasBlockingFailure = false;
-    for (const gate of QUALITY_GATES) {
+    for (const gate of gates) {
         // Check if tool exists
         const checkTool = gate.check.split(' ')[0] + ' ' + gate.check.split(' ')[1];
         if (!(await toolExists(checkTool, cwd))) {

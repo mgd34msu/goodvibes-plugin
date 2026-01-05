@@ -8,26 +8,10 @@
  */
 
 import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { StackInfo } from '../types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../config.js';
-import { success, readJsonFile, detectPackageManager } from '../utils.js';
-
-/**
- * Helper to check if a file exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if file exists, false otherwise
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fsPromises.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { success, readJsonFile, detectPackageManager, fileExists } from '../utils.js';
 
 /**
  * Handles the detect_stack MCP tool call.

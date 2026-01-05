@@ -5,7 +5,7 @@
  * - Detect dev server commands
  * - Parse and record dev server errors
  */
-import { HookInput } from '../shared.js';
+import { HookInput } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
 /**
  * Handle Bash tool results for dev server detection and error parsing.

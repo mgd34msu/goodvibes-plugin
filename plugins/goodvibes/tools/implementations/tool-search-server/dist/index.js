@@ -3221,8 +3221,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path13) {
-      let input = path13;
+    function removeDotSegments(path20) {
+      let input = path20;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3421,8 +3421,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path13, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path13 && path13 !== "/" ? path13 : void 0;
+        const [path20, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path20 && path20 !== "/" ? path20 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6775,12 +6775,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs10, exportName) {
+    function addFormats(ajv, list, fs13, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs10[f]);
+        ajv.addFormat(f, fs13[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7147,8 +7147,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path13, errorMaps, issueData } = params;
-  const fullPath = [...path13, ...issueData.path || []];
+  const { data, path: path20, errorMaps, issueData } = params;
+  const fullPath = [...path20, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7263,11 +7263,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path13, key) {
+  constructor(parent, value, path20, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path13;
+    this._path = path20;
     this._key = key;
   }
   get path() {
@@ -10911,10 +10911,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path13) {
-  if (!path13)
+function getElementAtPath(obj, path20) {
+  if (!path20)
     return obj;
-  return path13.reduce((acc, key) => acc?.[key], obj);
+  return path20.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11297,11 +11297,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path13, issues) {
+function prefixIssues(path20, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path13);
+    iss.path.unshift(path20);
     return iss;
   });
 }
@@ -21020,14 +21020,14 @@ var KeyStore = class {
   }
 };
 function createKey(key) {
-  let path13 = null;
+  let path20 = null;
   let id = null;
   let src = null;
   let weight = 1;
   let getFn = null;
   if (isString(key) || isArray(key)) {
     src = key;
-    path13 = createKeyPath(key);
+    path20 = createKeyPath(key);
     id = createKeyId(key);
   } else {
     if (!hasOwn.call(key, "name")) {
@@ -21041,11 +21041,11 @@ function createKey(key) {
         throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
       }
     }
-    path13 = createKeyPath(name);
+    path20 = createKeyPath(name);
     id = createKeyId(name);
     getFn = key.getFn;
   }
-  return { path: path13, id, weight, src, getFn };
+  return { path: path20, id, weight, src, getFn };
 }
 function createKeyPath(key) {
   return isArray(key) ? key : key.split(".");
@@ -21053,34 +21053,34 @@ function createKeyPath(key) {
 function createKeyId(key) {
   return isArray(key) ? key.join(".") : key;
 }
-function get(obj, path13) {
+function get(obj, path20) {
   let list = [];
   let arr = false;
-  const deepGet = (obj2, path14, index) => {
+  const deepGet = (obj2, path21, index) => {
     if (!isDefined(obj2)) {
       return;
     }
-    if (!path14[index]) {
+    if (!path21[index]) {
       list.push(obj2);
     } else {
-      let key = path14[index];
+      let key = path21[index];
       const value = obj2[key];
       if (!isDefined(value)) {
         return;
       }
-      if (index === path14.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
+      if (index === path21.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
         list.push(toString(value));
       } else if (isArray(value)) {
         arr = true;
         for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path14, index + 1);
+          deepGet(value[i], path21, index + 1);
         }
-      } else if (path14.length) {
-        deepGet(value, path14, index + 1);
+      } else if (path21.length) {
+        deepGet(value, path21, index + 1);
       }
     }
   };
-  deepGet(obj, isString(path13) ? path13.split(".") : path13, 0);
+  deepGet(obj, isString(path20) ? path20.split(".") : path20, 0);
   return arr ? list : list[0];
 }
 var MatchOptions = {
@@ -24855,21 +24855,29 @@ var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
 // src/utils.ts
-import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as path2 from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as https from "https";
 import * as http from "http";
 var execAsync = promisify(exec);
-function loadRegistry(registryPath) {
+async function fileExists(filePath) {
+  try {
+    await fsPromises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function loadRegistry(registryPath) {
   try {
     const fullPath = path2.join(PLUGIN_ROOT, registryPath);
-    if (!fs.existsSync(fullPath)) {
+    if (!await fileExists(fullPath)) {
       console.error(`Registry not found: ${fullPath}`);
       return null;
     }
-    const content = fs.readFileSync(fullPath, "utf-8");
+    const content = await fsPromises.readFile(fullPath, "utf-8");
     return load(content);
   } catch (error2) {
     console.error(`Error loading registry ${registryPath}:`, error2);
@@ -24890,10 +24898,12 @@ function search2(index, query, limit = 5) {
     relevance: Math.round((1 - (r.score || 0)) * 100) / 100
   }));
 }
-function readJsonFile(filePath) {
+async function readJsonFile(filePath) {
   try {
-    if (!fs.existsSync(filePath)) return null;
-    const content = fs.readFileSync(filePath, "utf-8");
+    if (!await fileExists(filePath)) {
+      return null;
+    }
+    const content = await fsPromises.readFile(filePath, "utf-8");
     return JSON.parse(content);
   } catch {
     return null;
@@ -24903,19 +24913,19 @@ async function safeExec(command, cwd, timeout = 3e4) {
   try {
     const { stdout, stderr } = await execAsync(command, { cwd, timeout });
     return { stdout: stdout.trim(), stderr: stderr.trim() };
-  } catch (error2) {
-    const err = error2;
+  } catch (caughtError) {
+    const execError = caughtError;
     return {
-      stdout: err.stdout || "",
-      stderr: err.stderr || "",
-      error: err.message || "Command failed"
+      stdout: execError.stdout || "",
+      stderr: execError.stderr || "",
+      error: execError.message || "Command failed"
     };
   }
 }
-function detectPackageManager(projectPath) {
-  if (fs.existsSync(path2.join(projectPath, "pnpm-lock.yaml"))) return "pnpm";
-  if (fs.existsSync(path2.join(projectPath, "yarn.lock"))) return "yarn";
-  if (fs.existsSync(path2.join(projectPath, "bun.lockb"))) return "bun";
+async function detectPackageManager(projectPath) {
+  if (await fileExists(path2.join(projectPath, "pnpm-lock.yaml"))) return "pnpm";
+  if (await fileExists(path2.join(projectPath, "yarn.lock"))) return "yarn";
+  if (await fileExists(path2.join(projectPath, "bun.lockb"))) return "bun";
   return "npm";
 }
 function fetchUrl(url2) {
@@ -24943,44 +24953,45 @@ function success2(data) {
     }]
   };
 }
-function parseSkillMetadata(skillPath) {
+async function parseSkillMetadata(skillPath) {
   const attempts = [
     path2.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
     path2.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
     path2.join(PLUGIN_ROOT, "skills", skillPath)
   ];
   for (const filePath of attempts) {
-    if (fs.existsSync(filePath)) {
-      try {
-        const content = fs.readFileSync(filePath, "utf-8");
-        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-        if (frontmatterMatch) {
-          const frontmatter = load(frontmatterMatch[1]);
-          return {
-            requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : void 0,
-            complements: Array.isArray(frontmatter.complements) ? frontmatter.complements : Array.isArray(frontmatter.related) ? frontmatter.related : void 0,
-            conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : void 0,
-            category: typeof frontmatter.category === "string" ? frontmatter.category : void 0,
-            technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies : Array.isArray(frontmatter.tech) ? frontmatter.tech : void 0,
-            difficulty: typeof frontmatter.difficulty === "string" ? frontmatter.difficulty : void 0
-          };
-        }
-        const metadata = {};
-        const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (requiresMatch) {
-          metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map((m) => m.replace(/^-\s*/, "").trim()) || [];
-        }
-        const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (relatedMatch) {
-          metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map((m) => m.replace(/^-\s*/, "").trim()) || [];
-        }
-        const techKeywords = ["react", "next", "nextjs", "prisma", "drizzle", "tailwind", "typescript", "node", "express", "vite", "vitest", "jest", "zustand", "zod", "trpc"];
-        const contentLower = content.toLowerCase();
-        metadata.technologies = techKeywords.filter((t) => contentLower.includes(t));
-        return metadata;
-      } catch {
-        return {};
+    if (!await fileExists(filePath)) {
+      continue;
+    }
+    try {
+      const content = await fsPromises.readFile(filePath, "utf-8");
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const frontmatter = load(frontmatterMatch[1]);
+        return {
+          requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : void 0,
+          complements: Array.isArray(frontmatter.complements) ? frontmatter.complements : Array.isArray(frontmatter.related) ? frontmatter.related : void 0,
+          conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : void 0,
+          category: typeof frontmatter.category === "string" ? frontmatter.category : void 0,
+          technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies : Array.isArray(frontmatter.tech) ? frontmatter.tech : void 0,
+          difficulty: typeof frontmatter.difficulty === "string" ? frontmatter.difficulty : void 0
+        };
       }
+      const metadata = {};
+      const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (requiresMatch) {
+        metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map((m) => m.replace(/^-\s*/, "").trim()) || [];
+      }
+      const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (relatedMatch) {
+        metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map((m) => m.replace(/^-\s*/, "").trim()) || [];
+      }
+      const techKeywords = ["react", "next", "nextjs", "prisma", "drizzle", "tailwind", "typescript", "node", "express", "vite", "vitest", "jest", "zustand", "zod", "trpc"];
+      const contentLower = content.toLowerCase();
+      metadata.technologies = techKeywords.filter((t) => contentLower.includes(t));
+      return metadata;
+    } catch {
+      continue;
     }
   }
   return {};
@@ -25003,7 +25014,7 @@ function extractFunctionBody(content, startIndex) {
   }
   return content.substring(startIndex, endIndex);
 }
-function extractSkillPatterns(skillPath) {
+async function extractSkillPatterns(skillPath) {
   const patterns = {};
   const attempts = [
     path2.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
@@ -25011,48 +25022,71 @@ function extractSkillPatterns(skillPath) {
     path2.join(PLUGIN_ROOT, "skills", skillPath)
   ];
   for (const filePath of attempts) {
-    if (fs.existsSync(filePath)) {
-      try {
-        const content = fs.readFileSync(filePath, "utf-8");
-        const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (importsMatch) {
-          patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(
-            (m) => m.replace(/^-\s*/, "").replace(/[`'"]/g, "").trim()
-          );
-        }
-        const codeBlocks = content.match(/```(?:typescript|javascript|tsx|jsx)?\n([\s\S]*?)```/g);
-        if (codeBlocks && codeBlocks.length > 0) {
-          for (const block of codeBlocks.slice(0, 3)) {
-            const code = block.replace(/```\w*\n?/g, "");
-            const imports = code.match(/import\s+.*from\s+['"]([^'"]+)['"]/g);
-            if (imports) {
-              patterns.required_imports = patterns.required_imports || [];
-              for (const imp of imports) {
-                const pkg = imp.match(/from\s+['"]([^'"]+)['"]/)?.[1];
-                if (pkg && !pkg.startsWith(".") && !patterns.required_imports.includes(pkg)) {
-                  patterns.required_imports.push(pkg);
-                }
+    if (!await fileExists(filePath)) {
+      continue;
+    }
+    try {
+      const content = await fsPromises.readFile(filePath, "utf-8");
+      const importsMatch = content.match(/(?:Required imports|Must import):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (importsMatch) {
+        patterns.required_imports = importsMatch[1].match(/-\s*(.+)/g)?.map(
+          (m) => m.replace(/^-\s*/, "").replace(/[`'"]/g, "").trim()
+        );
+      }
+      const codeBlocks = content.match(/```(?:typescript|javascript|tsx|jsx)?\n([\s\S]*?)```/g);
+      if (codeBlocks && codeBlocks.length > 0) {
+        for (const block of codeBlocks.slice(0, 3)) {
+          const code = block.replace(/```\w*\n?/g, "");
+          const imports = code.match(/import\s+.*from\s+['"]([^'"]+)['"]/g);
+          if (imports) {
+            patterns.required_imports = patterns.required_imports || [];
+            for (const imp of imports) {
+              const pkg = imp.match(/from\s+['"]([^'"]+)['"]/)?.[1];
+              if (pkg && !pkg.startsWith(".") && !patterns.required_imports.includes(pkg)) {
+                patterns.required_imports.push(pkg);
               }
             }
           }
         }
-        const avoidMatch = content.match(/(?:Avoid|Don't|Do not|Never):\s*\n((?:\s*-\s*.+\n)+)/i);
-        if (avoidMatch) {
-          patterns.must_not_include = avoidMatch[1].match(/-\s*(.+)/g)?.map(
-            (m) => m.replace(/^-\s*/, "").replace(/[`'"]/g, "").trim()
-          );
-        }
-        return patterns;
-      } catch {
-        return patterns;
       }
+      const avoidMatch = content.match(/(?:Avoid|Don't|Do not|Never):\s*\n((?:\s*-\s*.+\n)+)/i);
+      if (avoidMatch) {
+        patterns.must_not_include = avoidMatch[1].match(/-\s*(.+)/g)?.map(
+          (m) => m.replace(/^-\s*/, "").replace(/[`'"]/g, "").trim()
+        );
+      }
+      return patterns;
+    } catch {
+      continue;
     }
   }
   return patterns;
 }
 
+// src/logging.ts
+function logInfo(message, data) {
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  if (data !== void 0) {
+    console.error(`[GoodVibes ${timestamp2}] ${message}:`, data);
+  } else {
+    console.error(`[GoodVibes ${timestamp2}] ${message}`);
+  }
+}
+function logError(message, error2) {
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  if (error2 !== void 0) {
+    const errorMessage = error2 instanceof Error ? error2.message : String(error2);
+    console.error(`[GoodVibes ${timestamp2}] ERROR: ${message}:`, errorMessage);
+    if (error2 instanceof Error && error2.stack) {
+      console.error(error2.stack);
+    }
+  } else {
+    console.error(`[GoodVibes ${timestamp2}] ERROR: ${message}`);
+  }
+}
+
 // src/handlers/status.ts
-import * as fs2 from "fs";
+import * as fs from "fs";
 import * as path3 from "path";
 function handlePluginStatus() {
   const status = {
@@ -25073,10 +25107,10 @@ function handlePluginStatus() {
     mcp_server: { running: true }
   };
   const manifestPath = path3.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
-  if (fs2.existsSync(manifestPath)) {
+  if (fs.existsSync(manifestPath)) {
     status.manifest.exists = true;
     try {
-      const manifest = JSON.parse(fs2.readFileSync(manifestPath, "utf-8"));
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
       status.manifest.valid = true;
       status.manifest.version = manifest.version;
       status.version = manifest.version || "1.0.0";
@@ -25093,10 +25127,10 @@ function handlePluginStatus() {
   ];
   for (const check2 of registryChecks) {
     const regPath = path3.join(PLUGIN_ROOT, check2.path);
-    if (fs2.existsSync(regPath)) {
+    if (fs.existsSync(regPath)) {
       status.registries[check2.key].exists = true;
       try {
-        const reg = load(fs2.readFileSync(regPath, "utf-8"));
+        const reg = load(fs.readFileSync(regPath, "utf-8"));
         status.registries[check2.key].count = reg?.search_index?.length || 0;
       } catch {
         status.issues.push(`${check2.key} registry exists but is invalid`);
@@ -25106,16 +25140,16 @@ function handlePluginStatus() {
     }
   }
   const hooksPath = path3.join(PLUGIN_ROOT, "hooks", "hooks.json");
-  if (fs2.existsSync(hooksPath)) {
+  if (fs.existsSync(hooksPath)) {
     status.hooks.config_exists = true;
     try {
-      const hooksConfig = JSON.parse(fs2.readFileSync(hooksPath, "utf-8"));
+      const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, "utf-8"));
       status.hooks.config_valid = true;
       const hookEvents = Object.keys(hooksConfig.hooks || {});
       for (const event of hookEvents) {
         const scriptName = HOOK_SCRIPT_MAP[event] || `${event.toLowerCase()}.js`;
         const scriptPath = path3.join(PLUGIN_ROOT, "hooks", "scripts", "dist", scriptName);
-        const exists = fs2.existsSync(scriptPath);
+        const exists = fs.existsSync(scriptPath);
         status.hooks.events.push({ name: event, script: scriptName, exists });
         if (!exists) {
           status.issues.push(`Hook script missing: ${scriptName}`);
@@ -25189,7 +25223,7 @@ function handleRecommendSkills(skillsIndex, args) {
 }
 
 // src/handlers/content.ts
-import * as fs3 from "fs";
+import * as fs2 from "fs";
 import * as path4 from "path";
 async function handleGetSkillContent(args) {
   const attempts = [
@@ -25198,8 +25232,8 @@ async function handleGetSkillContent(args) {
     path4.join(PLUGIN_ROOT, "skills", args.path)
   ];
   for (const skillPath of attempts) {
-    if (fs3.existsSync(skillPath)) {
-      const content = await fs3.promises.readFile(skillPath, "utf-8");
+    if (fs2.existsSync(skillPath)) {
+      const content = await fs2.promises.readFile(skillPath, "utf-8");
       return { content: [{ type: "text", text: content }] };
     }
   }
@@ -25212,8 +25246,8 @@ async function handleGetAgentContent(args) {
     path4.join(PLUGIN_ROOT, "agents", args.path, "index.md")
   ];
   for (const agentPath of attempts) {
-    if (fs3.existsSync(agentPath)) {
-      const content = await fs3.promises.readFile(agentPath, "utf-8");
+    if (fs2.existsSync(agentPath)) {
+      const content = await fs2.promises.readFile(agentPath, "utf-8");
       return { content: [{ type: "text", text: content }] };
     }
   }
@@ -25221,9 +25255,8 @@ async function handleGetAgentContent(args) {
 }
 
 // src/handlers/context.ts
-import * as fs4 from "fs";
 import * as path5 from "path";
-function handleDetectStack(args) {
+async function handleDetectStack(args) {
   const projectPath = path5.resolve(PROJECT_ROOT, args.path || ".");
   const stack = {
     frontend: {},
@@ -25232,7 +25265,7 @@ function handleDetectStack(args) {
     detected_configs: [],
     recommended_skills: []
   };
-  const pkg = readJsonFile(path5.join(projectPath, "package.json"));
+  const pkg = await readJsonFile(path5.join(projectPath, "package.json"));
   const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
   if (deps?.["next"]) {
     stack.frontend.framework = "next";
@@ -25289,8 +25322,8 @@ function handleDetectStack(args) {
   } else if (deps?.["typeorm"]) {
     stack.backend.orm = "typeorm";
   }
-  stack.build.package_manager = detectPackageManager(projectPath);
-  stack.build.typescript = !!deps?.["typescript"] || fs4.existsSync(path5.join(projectPath, "tsconfig.json"));
+  stack.build.package_manager = await detectPackageManager(projectPath);
+  stack.build.typescript = !!deps?.["typescript"] || await fileExists(path5.join(projectPath, "tsconfig.json"));
   if (deps?.["vite"]) {
     stack.build.bundler = "vite";
     stack.recommended_skills.push("webdev/build-tools/vite");
@@ -25319,13 +25352,13 @@ function handleDetectStack(args) {
     "drizzle.config.ts"
   ];
   for (const config2 of configFiles) {
-    if (fs4.existsSync(path5.join(projectPath, config2))) {
+    if (await fileExists(path5.join(projectPath, config2))) {
       stack.detected_configs.push(config2);
     }
   }
   return success2(stack);
 }
-function handleScanPatterns(args) {
+async function handleScanPatterns(args) {
   const scanPath = path5.resolve(PROJECT_ROOT, args.path || "src");
   const patterns = {
     naming: {
@@ -25354,22 +25387,22 @@ function handleScanPatterns(args) {
       class_naming: "unknown"
     }
   };
-  if (fs4.existsSync(scanPath)) {
-    if (fs4.existsSync(path5.join(scanPath, "index.ts")) || fs4.existsSync(path5.join(scanPath, "index.js"))) {
+  if (await fileExists(scanPath)) {
+    if (await fileExists(path5.join(scanPath, "index.ts")) || await fileExists(path5.join(scanPath, "index.js"))) {
       patterns.structure.barrel_exports = true;
     }
-    if (fs4.existsSync(path5.join(scanPath, "components"))) patterns.architecture.layers.push("components");
-    if (fs4.existsSync(path5.join(scanPath, "lib"))) patterns.architecture.layers.push("lib");
-    if (fs4.existsSync(path5.join(scanPath, "utils"))) patterns.architecture.layers.push("utils");
-    if (fs4.existsSync(path5.join(scanPath, "hooks"))) patterns.architecture.layers.push("hooks");
-    if (fs4.existsSync(path5.join(scanPath, "services"))) patterns.architecture.layers.push("services");
+    if (await fileExists(path5.join(scanPath, "components"))) patterns.architecture.layers.push("components");
+    if (await fileExists(path5.join(scanPath, "lib"))) patterns.architecture.layers.push("lib");
+    if (await fileExists(path5.join(scanPath, "utils"))) patterns.architecture.layers.push("utils");
+    if (await fileExists(path5.join(scanPath, "hooks"))) patterns.architecture.layers.push("hooks");
+    if (await fileExists(path5.join(scanPath, "services"))) patterns.architecture.layers.push("services");
     const projectRoot = path5.resolve(scanPath, "..");
-    if (fs4.existsSync(path5.join(projectRoot, "__tests__"))) {
+    if (await fileExists(path5.join(projectRoot, "__tests__"))) {
       patterns.testing.location = "__tests__";
-    } else if (fs4.existsSync(path5.join(projectRoot, "tests"))) {
+    } else if (await fileExists(path5.join(projectRoot, "tests"))) {
       patterns.testing.location = "tests";
     }
-    const pkg = readJsonFile(path5.join(projectRoot, "package.json"));
+    const pkg = await readJsonFile(path5.join(projectRoot, "package.json"));
     const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
     if (deps?.["vitest"]) patterns.testing.framework = "vitest";
     else if (deps?.["jest"]) patterns.testing.framework = "jest";
@@ -25385,7 +25418,7 @@ function handleScanPatterns(args) {
 }
 
 // src/handlers/dependencies.ts
-function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
+async function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
   const results = search2(skillsIndex, args.skill, 1);
   if (results.length === 0) {
     throw new Error(`Skill not found: ${args.skill}`);
@@ -25393,7 +25426,7 @@ function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
   const skill = results[0];
   const depth = args.depth || 2;
   const includeOptional = args.include_optional !== false;
-  const skillMetadata = parseSkillMetadata(skill.path);
+  const skillMetadata = await parseSkillMetadata(skill.path);
   const required2 = [];
   const optional2 = [];
   const conflicts = [];
@@ -25408,7 +25441,7 @@ function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
           reason: "Listed as required dependency"
         });
         if (depth > 1) {
-          const nestedMeta = parseSkillMetadata(reqResult[0].path);
+          const nestedMeta = await parseSkillMetadata(reqResult[0].path);
           if (nestedMeta.requires) {
             for (const nested of nestedMeta.requires.slice(0, 3)) {
               const nestedResult = search2(skillsIndex, nested, 1);
@@ -25452,7 +25485,7 @@ function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
   if (skillsRegistry?.search_index) {
     for (const entry of skillsRegistry.search_index) {
       if (entry.path === skill.path) continue;
-      const entryMeta = parseSkillMetadata(entry.path);
+      const entryMeta = await parseSkillMetadata(entry.path);
       if (entryMeta.requires?.some(
         (r) => r.toLowerCase().includes(skill.name.toLowerCase()) || skill.path.includes(r)
       )) {
@@ -25556,7 +25589,7 @@ async function fetchNpmReadme(packageName) {
 }
 async function handleCheckVersions(args) {
   const projectPath = path6.resolve(PROJECT_ROOT, args.path || ".");
-  const pkg = readJsonFile(path6.join(projectPath, "package.json"));
+  const pkg = await readJsonFile(path6.join(projectPath, "package.json"));
   if (!pkg) {
     throw new Error("package.json not found");
   }
@@ -25609,9 +25642,65 @@ async function handleCheckVersions(args) {
 }
 
 // src/handlers/docs.ts
+var LRUCache = class {
+  cache = /* @__PURE__ */ new Map();
+  maxSize;
+  /**
+   * Creates a new LRU cache with the specified maximum size.
+   *
+   * @param maxSize - Maximum number of entries before eviction starts
+   */
+  constructor(maxSize) {
+    this.maxSize = maxSize;
+  }
+  /**
+   * Retrieves a value from the cache and marks it as recently used.
+   *
+   * @param key - The cache key to look up
+   * @returns The cached value or undefined if not found
+   */
+  get(key) {
+    const value = this.cache.get(key);
+    if (value !== void 0) {
+      this.cache.delete(key);
+      this.cache.set(key, value);
+    }
+    return value;
+  }
+  /**
+   * Stores a value in the cache, evicting the least recently used entry if at capacity.
+   *
+   * @param key - The cache key
+   * @param value - The value to cache
+   */
+  set(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    this.cache.set(key, value);
+  }
+  /**
+   * Returns the current number of entries in the cache.
+   *
+   * @returns The cache size
+   */
+  get size() {
+    return this.cache.size;
+  }
+  /**
+   * Clears all entries from the cache.
+   */
+  clear() {
+    this.cache.clear();
+  }
+};
 var CACHE_TTL_MS = 15 * 60 * 1e3;
-var npmCache = /* @__PURE__ */ new Map();
-var githubReadmeCache = /* @__PURE__ */ new Map();
+var MAX_CACHE_SIZE = 100;
+var npmCache = new LRUCache(MAX_CACHE_SIZE);
+var githubReadmeCache = new LRUCache(MAX_CACHE_SIZE);
 function getCacheKey(library, version2) {
   return `${library.toLowerCase()}@${version2 || "latest"}`;
 }
@@ -25801,15 +25890,18 @@ async function handleFetchDocs(args) {
   };
 }
 
-// src/handlers/schema.ts
-import * as fs5 from "fs";
+// src/handlers/schema/index.ts
+import * as path11 from "path";
+
+// src/handlers/schema/prisma-parser.ts
+import * as fs3 from "fs";
 import * as path7 from "path";
 function parsePrismaSchema(projectPath, filterTables) {
   const schemaPath = path7.join(projectPath, "prisma", "schema.prisma");
-  if (!fs5.existsSync(schemaPath)) {
+  if (!fs3.existsSync(schemaPath)) {
     throw new Error("Prisma schema not found at prisma/schema.prisma");
   }
-  const content = fs5.readFileSync(schemaPath, "utf-8");
+  const content = fs3.readFileSync(schemaPath, "utf-8");
   const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
   const tables = [];
   let match;
@@ -25862,16 +25954,20 @@ function parsePrismaSchema(projectPath, filterTables) {
     }]
   };
 }
+
+// src/handlers/schema/drizzle-parser.ts
+import * as fs4 from "fs";
+import * as path8 from "path";
 function parseDrizzleSchema(projectPath, filterTables) {
   const schemaPaths = [
-    path7.join(projectPath, "drizzle", "schema.ts"),
-    path7.join(projectPath, "src", "db", "schema.ts"),
-    path7.join(projectPath, "src", "schema.ts"),
-    path7.join(projectPath, "db", "schema.ts")
+    path8.join(projectPath, "drizzle", "schema.ts"),
+    path8.join(projectPath, "src", "db", "schema.ts"),
+    path8.join(projectPath, "src", "schema.ts"),
+    path8.join(projectPath, "db", "schema.ts")
   ];
   let schemaPath = null;
   for (const p of schemaPaths) {
-    if (fs5.existsSync(p)) {
+    if (fs4.existsSync(p)) {
       schemaPath = p;
       break;
     }
@@ -25879,7 +25975,7 @@ function parseDrizzleSchema(projectPath, filterTables) {
   if (!schemaPath) {
     throw new Error("Drizzle schema not found. Checked: drizzle/schema.ts, src/db/schema.ts, src/schema.ts, db/schema.ts");
   }
-  const content = fs5.readFileSync(schemaPath, "utf-8");
+  const content = fs4.readFileSync(schemaPath, "utf-8");
   const tables = [];
   const tableRegex = /export\s+const\s+(\w+)\s*=\s*(?:pgTable|mysqlTable|sqliteTable)\s*\(\s*['"](\w+)['"]\s*,\s*\{([^}]+)\}/g;
   let match;
@@ -25940,12 +26036,16 @@ function parseDrizzleSchema(projectPath, filterTables) {
     }]
   };
 }
+
+// src/handlers/schema/typeorm-parser.ts
+import * as fs5 from "fs";
+import * as path9 from "path";
 function parseTypeORMSchema(projectPath, filterTables) {
   const entityPaths = [
-    path7.join(projectPath, "src", "entities"),
-    path7.join(projectPath, "src", "entity"),
-    path7.join(projectPath, "entities"),
-    path7.join(projectPath, "entity")
+    path9.join(projectPath, "src", "entities"),
+    path9.join(projectPath, "src", "entity"),
+    path9.join(projectPath, "entities"),
+    path9.join(projectPath, "entity")
   ];
   let entityDir = null;
   for (const p of entityPaths) {
@@ -25960,7 +26060,7 @@ function parseTypeORMSchema(projectPath, filterTables) {
   const tables = [];
   const entityFiles = fs5.readdirSync(entityDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"));
   for (const file2 of entityFiles) {
-    const content = fs5.readFileSync(path7.join(entityDir, file2), "utf-8");
+    const content = fs5.readFileSync(path9.join(entityDir, file2), "utf-8");
     const entityMatch = content.match(/@Entity\s*\(\s*['"]?(\w+)?['"]?\s*\)/);
     if (!entityMatch) continue;
     const classMatch = content.match(/class\s+(\w+)/);
@@ -26007,38 +26107,42 @@ function parseTypeORMSchema(projectPath, filterTables) {
     }]
   };
 }
+
+// src/handlers/schema/sql-parser.ts
+import * as fs6 from "fs";
+import * as path10 from "path";
 function parseSQLSchema(projectPath, filterTables) {
   const sqlPaths = [
-    path7.join(projectPath, "schema.sql"),
-    path7.join(projectPath, "db", "schema.sql"),
-    path7.join(projectPath, "sql", "schema.sql"),
-    path7.join(projectPath, "database", "schema.sql"),
-    path7.join(projectPath, "migrations", "schema.sql")
+    path10.join(projectPath, "schema.sql"),
+    path10.join(projectPath, "db", "schema.sql"),
+    path10.join(projectPath, "sql", "schema.sql"),
+    path10.join(projectPath, "database", "schema.sql"),
+    path10.join(projectPath, "migrations", "schema.sql")
   ];
   let sqlPath = null;
   for (const p of sqlPaths) {
-    if (fs5.existsSync(p)) {
+    if (fs6.existsSync(p)) {
       sqlPath = p;
       break;
     }
   }
   if (!sqlPath) {
     const findSql = (dir) => {
-      if (!fs5.existsSync(dir)) return null;
-      const files = fs5.readdirSync(dir);
+      if (!fs6.existsSync(dir)) return null;
+      const files = fs6.readdirSync(dir);
       for (const f of files) {
         if (f.endsWith(".sql") && !f.includes("migration")) {
-          return path7.join(dir, f);
+          return path10.join(dir, f);
         }
       }
       return null;
     };
-    sqlPath = findSql(projectPath) || findSql(path7.join(projectPath, "db")) || findSql(path7.join(projectPath, "sql"));
+    sqlPath = findSql(projectPath) || findSql(path10.join(projectPath, "db")) || findSql(path10.join(projectPath, "sql"));
   }
   if (!sqlPath) {
     throw new Error("SQL schema not found. Checked: schema.sql, db/schema.sql, sql/schema.sql, database/schema.sql");
   }
-  const content = fs5.readFileSync(sqlPath, "utf-8");
+  const content = fs6.readFileSync(sqlPath, "utf-8");
   const tables = [];
   const tableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?(\w+)[`"']?\s*\(([^;]+)\)/gi;
   let match;
@@ -26091,8 +26195,10 @@ function parseSQLSchema(projectPath, filterTables) {
     }]
   };
 }
+
+// src/handlers/schema/index.ts
 function handleGetSchema(args) {
-  const projectPath = path7.resolve(PROJECT_ROOT, args.path || ".");
+  const projectPath = path11.resolve(PROJECT_ROOT, args.path || ".");
   switch (args.source) {
     case "prisma":
       return parsePrismaSchema(projectPath, args.tables);
@@ -26108,8 +26214,8 @@ function handleGetSchema(args) {
 }
 
 // src/handlers/config.ts
-import * as fs6 from "fs";
-import * as path8 from "path";
+import * as fs7 from "fs";
+import * as path12 from "path";
 var CONFIG_PATHS = {
   "package.json": ["package.json"],
   "tsconfig": ["tsconfig.json"],
@@ -26122,12 +26228,12 @@ var CONFIG_PATHS = {
   "env": [".env", ".env.local", ".env.example"]
 };
 function handleReadConfig(args) {
-  const projectPath = path8.resolve(PROJECT_ROOT, args.path || ".");
+  const projectPath = path12.resolve(PROJECT_ROOT, args.path || ".");
   const filesToTry = args.config === "custom" && args.path ? [args.path] : CONFIG_PATHS[args.config] || [args.config];
   for (const file2 of filesToTry) {
-    const filePath = path8.join(projectPath, file2);
-    if (fs6.existsSync(filePath)) {
-      const content = fs6.readFileSync(filePath, "utf-8");
+    const filePath = path12.join(projectPath, file2);
+    if (fs7.existsSync(filePath)) {
+      const content = fs7.readFileSync(filePath, "utf-8");
       let parsed = null;
       try {
         if (file2.endsWith(".json")) {
@@ -26154,8 +26260,8 @@ function handleReadConfig(args) {
 }
 
 // src/handlers/validation/index.ts
-import * as fs7 from "fs";
-import * as path10 from "path";
+import * as fsPromises2 from "fs/promises";
+import * as path14 from "path";
 
 // src/handlers/validation/security-checks.ts
 var SECRET_PATTERNS = [
@@ -26236,7 +26342,7 @@ function runSecurityChecks(ctx) {
 }
 
 // src/handlers/validation/structure-checks.ts
-import * as path9 from "path";
+import * as path13 from "path";
 function runStructureChecks(ctx) {
   const issues = [];
   const hasExport = ctx.content.includes("export default") || ctx.content.includes("export {") || ctx.content.includes("export const") || ctx.content.includes("export function") || ctx.content.includes("export class") || ctx.content.includes("export type") || ctx.content.includes("export interface");
@@ -26251,7 +26357,7 @@ function runStructureChecks(ctx) {
     });
   }
   if (ctx.isReact) {
-    const componentName = path9.basename(ctx.file, ctx.ext);
+    const componentName = path13.basename(ctx.file, ctx.ext);
     const pascalCase = /^[A-Z][a-zA-Z0-9]*$/.test(componentName);
     if (!pascalCase && !ctx.file.includes("index") && !ctx.file.includes("use")) {
       issues.push({
@@ -26568,12 +26674,12 @@ async function handleValidateImplementation(args) {
   const runAll = checks.includes("all");
   let skillPatterns = {};
   if (args.skill) {
-    parseSkillMetadata(args.skill);
-    skillPatterns = extractSkillPatterns(args.skill);
+    await parseSkillMetadata(args.skill);
+    skillPatterns = await extractSkillPatterns(args.skill);
   }
   for (const file2 of args.files) {
-    const filePath = path10.resolve(PROJECT_ROOT, file2);
-    if (!fs7.existsSync(filePath)) {
+    const filePath = path14.resolve(PROJECT_ROOT, file2);
+    if (!await fileExists(filePath)) {
       issues.push({
         severity: "error",
         file: file2,
@@ -26584,9 +26690,9 @@ async function handleValidateImplementation(args) {
       });
       continue;
     }
-    const content = fs7.readFileSync(filePath, "utf-8");
+    const content = await fsPromises2.readFile(filePath, "utf-8");
     const lines = content.split("\n");
-    const ext = path10.extname(file2);
+    const ext = path14.extname(file2);
     const isTypeScript = ext === ".ts" || ext === ".tsx";
     const isReact = ext === ".tsx" || ext === ".jsx" || content.includes("import React") || content.includes("from 'react'");
     const ctx = { content, lines, file: file2, ext, isTypeScript, isReact };
@@ -26685,7 +26791,7 @@ async function handleRunSmokeTest(args) {
   const testType = args.type || "all";
   const timeout = (args.timeout || 30) * 1e3;
   const tests = [];
-  const pm = detectPackageManager(PROJECT_ROOT);
+  const pm = await detectPackageManager(PROJECT_ROOT);
   const runCmd = pm === "npm" ? "npm run" : pm;
   if (testType === "all" || testType === "typecheck") {
     const start = Date.now();
@@ -26741,16 +26847,16 @@ async function handleRunSmokeTest(args) {
 
 // src/handlers/scaffolding.ts
 import * as fs8 from "fs";
-import * as path11 from "path";
+import * as path15 from "path";
 async function copyFilesRecursive(src, dest, variables, createdFiles, outputPath) {
   const entries = await fs8.promises.readdir(src, { withFileTypes: true });
   for (const entry of entries) {
-    const srcPath = path11.join(src, entry.name);
+    const srcPath = path15.join(src, entry.name);
     let destName = entry.name;
     if (destName.endsWith(".hbs")) {
       destName = destName.slice(0, -4);
     }
-    const destPath = path11.join(dest, destName);
+    const destPath = path15.join(dest, destName);
     if (entry.isDirectory()) {
       await fs8.promises.mkdir(destPath, { recursive: true });
       await copyFilesRecursive(srcPath, destPath, variables, createdFiles, outputPath);
@@ -26761,16 +26867,16 @@ async function copyFilesRecursive(src, dest, variables, createdFiles, outputPath
         content = content.replace(regex, value);
       }
       await fs8.promises.writeFile(destPath, content);
-      createdFiles.push(path11.relative(outputPath, destPath));
+      createdFiles.push(path15.relative(outputPath, destPath));
     }
   }
 }
 async function handleScaffoldProject(args) {
-  const templatePath = path11.join(PLUGIN_ROOT, "templates");
+  const templatePath = path15.join(PLUGIN_ROOT, "templates");
   const templateDirs = ["minimal", "full"];
   let templateDir = null;
   for (const category of templateDirs) {
-    const candidatePath = path11.join(templatePath, category, args.template);
+    const candidatePath = path15.join(templatePath, category, args.template);
     if (fs8.existsSync(candidatePath)) {
       templateDir = candidatePath;
       break;
@@ -26779,7 +26885,7 @@ async function handleScaffoldProject(args) {
   if (!templateDir) {
     throw new Error(`Template not found: ${args.template}`);
   }
-  const templateYamlPath = path11.join(templateDir, "template.yaml");
+  const templateYamlPath = path15.join(templateDir, "template.yaml");
   if (!fs8.existsSync(templateYamlPath)) {
     throw new Error(`Template config not found: ${args.template}/template.yaml`);
   }
@@ -26791,18 +26897,18 @@ async function handleScaffoldProject(args) {
     }
   }
   Object.assign(variables, args.variables || {});
-  const outputPath = path11.resolve(PROJECT_ROOT, args.output_dir);
+  const outputPath = path15.resolve(PROJECT_ROOT, args.output_dir);
   if (!fs8.existsSync(outputPath)) {
     await fs8.promises.mkdir(outputPath, { recursive: true });
   }
-  const filesDir = path11.join(templateDir, "files");
+  const filesDir = path15.join(templateDir, "files");
   const createdFiles = [];
   if (fs8.existsSync(filesDir)) {
     await copyFilesRecursive(filesDir, outputPath, variables, createdFiles, outputPath);
   }
   const postCreateResults = [];
   if (args.run_install !== false) {
-    const pm = detectPackageManager(outputPath);
+    const pm = await detectPackageManager(outputPath);
     const installCmd = pm === "npm" ? "npm install" : `${pm} install`;
     const result = await safeExec(installCmd, outputPath, 12e4);
     postCreateResults.push({
@@ -26845,8 +26951,8 @@ async function handleScaffoldProject(args) {
   };
 }
 async function handleListTemplates(args) {
-  const templatePath = path11.join(PLUGIN_ROOT, "templates");
-  const registryPath = path11.join(templatePath, "_registry.yaml");
+  const templatePath = path15.join(PLUGIN_ROOT, "templates");
+  const registryPath = path15.join(templatePath, "_registry.yaml");
   if (!fs8.existsSync(registryPath)) {
     throw new Error("Template registry not found");
   }
@@ -26867,9 +26973,15 @@ async function handleListTemplates(args) {
   };
 }
 
-// src/handlers/issues.ts
+// src/handlers/issues/index.ts
+import * as fs12 from "fs";
+import * as path19 from "path";
+
+// src/handlers/issues/todo-scanner.ts
 import * as fs9 from "fs";
-import * as path12 from "path";
+import * as path16 from "path";
+
+// src/handlers/issues/constants.ts
 var SCAN_EXTENSIONS = /* @__PURE__ */ new Set([
   ".ts",
   ".tsx",
@@ -26949,6 +27061,8 @@ var ICONS = {
 };
 var ENV_FILES = [".env", ".env.local", ".env.development", ".env.production"];
 var ENV_EXAMPLE_FILES = [".env.example", ".env.sample", ".env.template"];
+
+// src/handlers/issues/todo-scanner.ts
 function isTestFile(filename) {
   return TEST_FILE_PATTERNS.some((pattern) => pattern.test(filename));
 }
@@ -27001,14 +27115,14 @@ function scanDirectory(dir, baseDir, items, maxFiles = 500) {
     const entries = fs9.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (filesScanned >= maxFiles) break;
-      const fullPath = path12.join(dir, entry.name);
-      const relativePath = path12.relative(baseDir, fullPath);
+      const fullPath = path16.join(dir, entry.name);
+      const relativePath = path16.relative(baseDir, fullPath);
       if (entry.isDirectory()) {
         if (!SKIP_DIRS.has(entry.name)) {
           scanDirectory(fullPath, baseDir, items, maxFiles - filesScanned);
         }
       } else if (entry.isFile()) {
-        const ext = path12.extname(entry.name).toLowerCase();
+        const ext = path16.extname(entry.name).toLowerCase();
         if (SCAN_EXTENSIONS.has(ext) && !isTestFile(entry.name)) {
           filesScanned++;
           const fileItems = scanFile(fullPath, relativePath);
@@ -27020,14 +27134,18 @@ function scanDirectory(dir, baseDir, items, maxFiles = 500) {
     console.error(`[issues] Failed to read directory ${dir}:`, err instanceof Error ? err.message : err);
   }
 }
+
+// src/handlers/issues/health-checker.ts
+import * as fs10 from "fs";
+import * as path17 from "path";
 function checkHealth(cwd) {
   const warnings = [];
   const suggestions = [];
-  const hasNodeModules = fs9.existsSync(path12.join(cwd, "node_modules"));
+  const hasNodeModules = fs10.existsSync(path17.join(cwd, "node_modules"));
   const lockfiles = [];
   let packageManager = null;
   for (const [file2, manager] of Object.entries(LOCKFILES)) {
-    if (fs9.existsSync(path12.join(cwd, file2))) {
+    if (fs10.existsSync(path17.join(cwd, file2))) {
       lockfiles.push(file2);
       if (!packageManager) packageManager = manager;
     }
@@ -27044,10 +27162,10 @@ function checkHealth(cwd) {
       message: `Multiple lockfiles found (${lockfiles.join(", ")}). This can cause inconsistent installs.`
     });
   }
-  const tsconfigPath = path12.join(cwd, "tsconfig.json");
-  if (fs9.existsSync(tsconfigPath)) {
+  const tsconfigPath = path17.join(cwd, "tsconfig.json");
+  if (fs10.existsSync(tsconfigPath)) {
     try {
-      const content = fs9.readFileSync(tsconfigPath, "utf-8");
+      const content = fs10.readFileSync(tsconfigPath, "utf-8");
       const jsonContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "");
       const tsconfig = JSON.parse(jsonContent);
       const compilerOptions = tsconfig.compilerOptions || {};
@@ -27061,10 +27179,10 @@ function checkHealth(cwd) {
       console.error(`[issues] Failed to parse tsconfig.json:`, err instanceof Error ? err.message : err);
     }
   }
-  const packageJsonPath = path12.join(cwd, "package.json");
-  if (fs9.existsSync(packageJsonPath)) {
+  const packageJsonPath = path17.join(cwd, "package.json");
+  if (fs10.existsSync(packageJsonPath)) {
     try {
-      const content = fs9.readFileSync(packageJsonPath, "utf-8");
+      const content = fs10.readFileSync(packageJsonPath, "utf-8");
       const packageJson = JSON.parse(content);
       const scripts = Object.keys(packageJson.scripts || {});
       if (!scripts.includes("lint") && !scripts.includes("eslint")) {
@@ -27079,16 +27197,20 @@ function checkHealth(cwd) {
   }
   return { warnings, suggestions: suggestions.slice(0, 3) };
 }
+
+// src/handlers/issues/environment-checker.ts
+import * as fs11 from "fs";
+import * as path18 from "path";
 function checkEnvironment(cwd) {
   const issues = [];
   const envFiles = [];
   let definedVars = [];
   for (const envFile of ENV_FILES) {
-    const filePath = path12.join(cwd, envFile);
-    if (fs9.existsSync(filePath)) {
+    const filePath = path18.join(cwd, envFile);
+    if (fs11.existsSync(filePath)) {
       envFiles.push(envFile);
       try {
-        const content = fs9.readFileSync(filePath, "utf-8");
+        const content = fs11.readFileSync(filePath, "utf-8");
         for (const line of content.split("\n")) {
           const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
           if (match) definedVars.push(match[1]);
@@ -27101,10 +27223,10 @@ function checkEnvironment(cwd) {
   definedVars = [...new Set(definedVars)];
   let exampleVars = [];
   for (const exampleFile of ENV_EXAMPLE_FILES) {
-    const filePath = path12.join(cwd, exampleFile);
-    if (fs9.existsSync(filePath)) {
+    const filePath = path18.join(cwd, exampleFile);
+    if (fs11.existsSync(filePath)) {
       try {
-        const content = fs9.readFileSync(filePath, "utf-8");
+        const content = fs11.readFileSync(filePath, "utf-8");
         for (const line of content.split("\n")) {
           const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
           if (match) exampleVars.push(match[1]);
@@ -27122,10 +27244,10 @@ function checkEnvironment(cwd) {
       message: `Missing env var: ${varName} (defined in .env.example but not set)`
     });
   }
-  const gitignorePath = path12.join(cwd, ".gitignore");
-  if (fs9.existsSync(gitignorePath) && envFiles.length > 0) {
+  const gitignorePath = path18.join(cwd, ".gitignore");
+  if (fs11.existsSync(gitignorePath) && envFiles.length > 0) {
     try {
-      const gitignore = fs9.readFileSync(gitignorePath, "utf-8");
+      const gitignore = fs11.readFileSync(gitignorePath, "utf-8");
       const patterns = gitignore.split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("#"));
       for (const envFile of envFiles) {
         if (envFile === ".env.example") continue;
@@ -27152,6 +27274,8 @@ function checkEnvironment(cwd) {
   }
   return issues;
 }
+
+// src/handlers/issues/formatter.ts
 function formatIssues(result) {
   const sections = [];
   sections.push(`## Project Issues (${result.total_issues} total)
@@ -27206,14 +27330,16 @@ function formatIssues(result) {
   }
   return sections.join("\n");
 }
+
+// src/handlers/issues/index.ts
 function handleProjectIssues(args) {
-  const cwd = args.path ? path12.resolve(args.path) : process.cwd();
-  if (!fs9.existsSync(cwd)) {
+  const cwd = args.path ? path19.resolve(args.path) : process.cwd();
+  if (!fs12.existsSync(cwd)) {
     return success2(`## Project Issues
 
 Error: Path does not exist: ${cwd}`);
   }
-  const stats = fs9.statSync(cwd);
+  const stats = fs12.statSync(cwd);
   if (!stats.isDirectory()) {
     return success2(`## Project Issues
 
@@ -27249,6 +27375,39 @@ Error: Path is not a directory: ${cwd}`);
 }
 
 // src/index.ts
+var TOOL_HANDLERS = {
+  // Search tools
+  search_skills: (ctx, args) => handleSearchSkills(ctx.skillsIndex, args),
+  search_agents: (ctx, args) => handleSearchAgents(ctx.agentsIndex, args),
+  search_tools: (ctx, args) => handleSearchTools(ctx.toolsIndex, args),
+  recommend_skills: (ctx, args) => handleRecommendSkills(ctx.skillsIndex, args),
+  // Content retrieval
+  get_skill_content: (_ctx, args) => handleGetSkillContent(args),
+  get_agent_content: (_ctx, args) => handleGetAgentContent(args),
+  skill_dependencies: (ctx, args) => handleSkillDependencies(
+    ctx.skillsIndex,
+    ctx.skillsRegistry,
+    args
+  ),
+  // Context gathering
+  detect_stack: (_ctx, args) => handleDetectStack(args),
+  check_versions: (_ctx, args) => handleCheckVersions(args),
+  scan_patterns: (_ctx, args) => handleScanPatterns(args),
+  // Live data
+  fetch_docs: (_ctx, args) => handleFetchDocs(args),
+  get_schema: (_ctx, args) => handleGetSchema(args),
+  read_config: (_ctx, args) => handleReadConfig(args),
+  // Validation
+  validate_implementation: (_ctx, args) => handleValidateImplementation(args),
+  run_smoke_test: (_ctx, args) => handleRunSmokeTest(args),
+  check_types: (_ctx, args) => handleCheckTypes(args),
+  // Scaffolding
+  scaffold_project: (_ctx, args) => handleScaffoldProject(args),
+  list_templates: (_ctx, args) => handleListTemplates(args),
+  // Status and issues
+  plugin_status: () => handlePluginStatus(),
+  project_issues: (_ctx, args) => handleProjectIssues(args)
+};
 var GoodVibesServer = class {
   server;
   skillsIndex = null;
@@ -27272,17 +27431,34 @@ var GoodVibesServer = class {
   /**
    * Initialize search indexes
    */
-  initializeIndexes() {
-    console.error("Initializing indexes from:", PLUGIN_ROOT);
-    this.skillsRegistry = loadRegistry("skills/_registry.yaml");
+  async initializeIndexes() {
+    logInfo("Initializing indexes from", PLUGIN_ROOT);
+    this.skillsRegistry = await loadRegistry("skills/_registry.yaml");
     this.skillsIndex = createIndex2(this.skillsRegistry);
-    console.error(`Skills index: ${this.skillsRegistry?.search_index?.length || 0} entries`);
-    const agentsRegistry = loadRegistry("agents/_registry.yaml");
+    logInfo("Skills index loaded", {
+      entries: this.skillsRegistry?.search_index?.length || 0
+    });
+    const agentsRegistry = await loadRegistry("agents/_registry.yaml");
     this.agentsIndex = createIndex2(agentsRegistry);
-    console.error(`Agents index: ${agentsRegistry?.search_index?.length || 0} entries`);
-    const toolsRegistry = loadRegistry("tools/_registry.yaml");
+    logInfo("Agents index loaded", {
+      entries: agentsRegistry?.search_index?.length || 0
+    });
+    const toolsRegistry = await loadRegistry("tools/_registry.yaml");
     this.toolsIndex = createIndex2(toolsRegistry);
-    console.error(`Tools index: ${toolsRegistry?.search_index?.length || 0} entries`);
+    logInfo("Tools index loaded", {
+      entries: toolsRegistry?.search_index?.length || 0
+    });
+  }
+  /**
+   * Build handler context from current instance state
+   */
+  getHandlerContext() {
+    return {
+      skillsIndex: this.skillsIndex,
+      agentsIndex: this.agentsIndex,
+      toolsIndex: this.toolsIndex,
+      skillsRegistry: this.skillsRegistry
+    };
   }
   /**
    * Setup request handlers
@@ -27294,60 +27470,21 @@ var GoodVibesServer = class {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       try {
-        switch (name) {
-          // Search tools
-          case "search_skills":
-            return handleSearchSkills(this.skillsIndex, args);
-          case "search_agents":
-            return handleSearchAgents(this.agentsIndex, args);
-          case "search_tools":
-            return handleSearchTools(this.toolsIndex, args);
-          case "recommend_skills":
-            return handleRecommendSkills(this.skillsIndex, args);
-          // Content retrieval
-          case "get_skill_content":
-            return handleGetSkillContent(args);
-          case "get_agent_content":
-            return handleGetAgentContent(args);
-          case "skill_dependencies":
-            return handleSkillDependencies(this.skillsIndex, this.skillsRegistry, args);
-          // Context gathering
-          case "detect_stack":
-            return handleDetectStack(args);
-          case "check_versions":
-            return handleCheckVersions(args);
-          case "scan_patterns":
-            return handleScanPatterns(args);
-          // Live data
-          case "fetch_docs":
-            return handleFetchDocs(args);
-          case "get_schema":
-            return handleGetSchema(args);
-          case "read_config":
-            return handleReadConfig(args);
-          // Validation
-          case "validate_implementation":
-            return handleValidateImplementation(args);
-          case "run_smoke_test":
-            return handleRunSmokeTest(args);
-          case "check_types":
-            return handleCheckTypes(args);
-          // Scaffolding
-          case "scaffold_project":
-            return handleScaffoldProject(args);
-          case "list_templates":
-            return handleListTemplates(args);
-          case "plugin_status":
-            return handlePluginStatus();
-          case "project_issues":
-            return handleProjectIssues(args);
-          default:
-            throw new Error(`Unknown tool: ${name}`);
+        const handler = TOOL_HANDLERS[name];
+        if (!handler) {
+          throw new Error(`Unknown tool: ${name}`);
         }
+        const result = await handler(
+          this.getHandlerContext(),
+          args
+        );
+        return result;
       } catch (error2) {
         const message = error2 instanceof Error ? error2.message : "Unknown error";
         return {
-          content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+          content: [
+            { type: "text", text: JSON.stringify({ error: message }) }
+          ],
           isError: true
         };
       }
@@ -27357,15 +27494,17 @@ var GoodVibesServer = class {
    * Start the server
    */
   async run() {
-    this.initializeIndexes();
+    await this.initializeIndexes();
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error(`GoodVibes MCP Server v2.1.0 running with ${TOOL_SCHEMAS.length} tools`);
+    logInfo(`GoodVibes MCP Server v2.1.0 running`, {
+      tools: TOOL_SCHEMAS.length
+    });
   }
 };
 var server = new GoodVibesServer();
 server.run().catch((error2) => {
-  console.error("Server error:", error2);
+  logError("Server failed to start", error2);
   process.exit(1);
 });
 /*! Bundled license information:

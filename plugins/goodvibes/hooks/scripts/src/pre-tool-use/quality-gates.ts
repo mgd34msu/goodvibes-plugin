@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug, logError } from '../shared/logging.js';
-import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 /** Configuration for a quality gate check */
 export interface QualityGate {
@@ -75,6 +75,7 @@ async function toolExists(tool: string, cwd: string): Promise<boolean> {
     const scriptName = tool.replace('npm ', '').replace('run ', '');
     return !!pkg.scripts?.[scriptName];
   }
+  // For other commands (e.g., system tools), assume they exist and let execution fail if not
   return true;
 }
 
@@ -89,7 +90,7 @@ function runCheck(command: string, cwd: string): boolean {
   try {
     execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
     return true;
-  } catch (error) {
+  } catch (error: unknown) {
     debug(`Quality gate check failed: ${command} - ${error}`);
     return false;
   }
@@ -101,6 +102,7 @@ function runCheck(command: string, cwd: string): boolean {
  * attempting auto-fixes where available if a gate fails.
  *
  * @param cwd - The current working directory (project root)
+ * @param gates - Optional array of gates to run (defaults to QUALITY_GATES)
  * @returns A promise resolving to an object containing:
  *   - allPassed: Whether all gates passed or were auto-fixed
  *   - blocking: Whether any blocking gate failed
@@ -112,7 +114,10 @@ function runCheck(command: string, cwd: string): boolean {
  *   console.error('Blocking quality gates failed');
  * }
  */
-export async function runQualityGates(cwd: string): Promise<{
+export async function runQualityGates(
+  cwd: string,
+  gates: QualityGate[] = QUALITY_GATES
+): Promise<{
   allPassed: boolean;
   blocking: boolean;
   results: GateResult[];
@@ -121,7 +126,7 @@ export async function runQualityGates(cwd: string): Promise<{
   let allPassed = true;
   let hasBlockingFailure = false;
 
-  for (const gate of QUALITY_GATES) {
+  for (const gate of gates) {
     // Check if tool exists
     const checkTool = gate.check.split(' ')[0] + ' ' + gate.check.split(' ')[1];
     if (!(await toolExists(checkTool, cwd))) {
@@ -147,7 +152,7 @@ export async function runQualityGates(cwd: string): Promise<{
           allPassed = false;
           if (gate.blocking) hasBlockingFailure = true;
         }
-      } catch (error) {
+      } catch (error: unknown) {
         logError(`Auto-fix for ${gate.name}`, error);
         results.push({ gate: gate.name, status: 'failed', message: 'Auto-fix failed' });
         allPassed = false;

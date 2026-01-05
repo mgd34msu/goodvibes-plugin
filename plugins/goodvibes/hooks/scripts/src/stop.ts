@@ -17,23 +17,15 @@ import {
   debug,
   logError,
   CACHE_DIR,
-  HookResponse,
-  fileExistsAsync as fileExists,
-} from './shared.js';
-
-/** Creates a hook response with optional system message. */
-function createResponse(systemMessage?: string): HookResponse {
-  return {
-    continue: true,
-    systemMessage,
-  };
-}
+  createResponse,
+  fileExists,
+} from './shared/index.js';
 
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
 
 /** Main entry point for stop hook. Finalizes analytics and cleans up temp files. */
-async function main(): Promise<void> {
+async function runStopHook(): Promise<void> {
   try {
     debug('Stop hook starting');
 
@@ -88,10 +80,10 @@ async function main(): Promise<void> {
     // Respond with success
     respond(createResponse());
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('Stop main', error);
-    respond(createResponse(`Cleanup error: ${error instanceof Error ? error.message : String(error)}`));
+    respond(createResponse({ systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}` }));
   }
 }
 
-main();
+runStopHook();

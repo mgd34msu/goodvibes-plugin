@@ -4,20 +4,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createDefaultState } from './types/state.js';
-import { ensureGoodVibesDir } from './shared.js';
+import { ensureGoodVibesDir, fileExists } from './shared/index.js';
 import { debug } from './shared/logging.js';
-/**
- * Helper to check if a file exists using async fs.access.
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
 /** Relative path to the state file within .goodvibes directory. */
 const STATE_FILE = 'state/hooks-state.json';
 /**
@@ -85,93 +73,123 @@ export async function saveState(cwd, state) {
 /**
  * Updates session-related state with partial data.
  *
- * Merges the provided updates into the session state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated session properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial session state properties to merge
+ * @returns A new HooksState object with updated session
  *
  * @example
- * updateSessionState(state, { id: 'new-id', startedAt: new Date().toISOString() });
+ * const newState = updateSessionState(state, { id: 'new-id', startedAt: new Date().toISOString() });
  */
 export function updateSessionState(state, updates) {
-    state.session = { ...state.session, ...updates };
+    return {
+        ...state,
+        session: { ...state.session, ...updates },
+    };
 }
 /**
  * Updates test-related state with partial data.
  *
- * Merges the provided updates into the tests state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated tests properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial tests state properties to merge
+ * @returns A new HooksState object with updated tests
  *
  * @example
- * updateTestState(state, { lastRun: new Date().toISOString(), passing: true });
+ * const newState = updateTestState(state, { lastRun: new Date().toISOString(), passing: true });
  */
 export function updateTestState(state, updates) {
-    state.tests = { ...state.tests, ...updates };
+    return {
+        ...state,
+        tests: { ...state.tests, ...updates },
+    };
 }
 /**
  * Updates build-related state with partial data.
  *
- * Merges the provided updates into the build state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated build properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial build state properties to merge
+ * @returns A new HooksState object with updated build
  *
  * @example
- * updateBuildState(state, { lastRun: new Date().toISOString(), passing: true });
+ * const newState = updateBuildState(state, { lastRun: new Date().toISOString(), passing: true });
  */
 export function updateBuildState(state, updates) {
-    state.build = { ...state.build, ...updates };
+    return {
+        ...state,
+        build: { ...state.build, ...updates },
+    };
 }
 /**
  * Updates git-related state with partial data.
  *
- * Merges the provided updates into the git state object.
- * This mutates the state object directly.
+ * Returns a new state object with the updated git properties.
+ * Does not mutate the original state.
  *
  * @param state - The HooksState object to update
  * @param updates - Partial git state properties to merge
+ * @returns A new HooksState object with updated git
  *
  * @example
- * updateGitState(state, { currentBranch: 'feature/new-feature', isRepo: true });
+ * const newState = updateGitState(state, { currentBranch: 'feature/new-feature', isRepo: true });
  */
 export function updateGitState(state, updates) {
-    state.git = { ...state.git, ...updates };
+    return {
+        ...state,
+        git: { ...state.git, ...updates },
+    };
 }
 /**
  * Tracks an error by its signature for retry management.
  *
  * Records an error state keyed by a unique signature string. This allows
  * the system to track error occurrences and manage retry attempts.
+ * Returns a new state object with the updated errors.
  *
  * @param state - The HooksState object to update
  * @param signature - A unique identifier for the error (e.g., hash of error message)
  * @param errorState - The error state object containing retry count and details
+ * @returns A new HooksState object with updated errors
  *
  * @example
- * trackError(state, 'build-failed-abc123', { count: 1, lastSeen: Date.now() });
+ * const newState = trackError(state, 'build-failed-abc123', { count: 1, lastSeen: Date.now() });
  */
 export function trackError(state, signature, errorState) {
-    state.errors[signature] = errorState;
+    return {
+        ...state,
+        errors: {
+            ...state.errors,
+            [signature]: errorState,
+        },
+    };
 }
 /**
  * Removes a tracked error by its signature.
  *
  * Deletes the error state entry for the given signature, typically called
  * when an error has been resolved or retries have been exhausted.
+ * Returns a new state object without the specified error.
  *
  * @param state - The HooksState object to update
  * @param signature - The unique identifier of the error to remove
+ * @returns A new HooksState object without the specified error
  *
  * @example
- * clearError(state, 'build-failed-abc123');
+ * const newState = clearError(state, 'build-failed-abc123');
  */
 export function clearError(state, signature) {
-    delete state.errors[signature];
+    const { [signature]: _, ...remainingErrors } = state.errors;
+    return {
+        ...state,
+        errors: remainingErrors,
+    };
 }
 /**
  * Retrieves error state by signature, if it exists.
@@ -197,18 +215,29 @@ export function getErrorState(state, signature) {
  *
  * Sets up the session state with a new ID and timestamp, and resets
  * the file tracking arrays for the new session.
+ * Returns a new state object with initialized session.
  *
  * @param state - The HooksState object to initialize
  * @param sessionId - The unique identifier for the new session
+ * @returns A new HooksState object with initialized session
  *
  * @example
- * initializeSession(state, 'session-2024-01-04-abc123');
+ * const newState = initializeSession(state, 'session-2024-01-04-abc123');
  */
 export function initializeSession(state, sessionId) {
-    state.session.id = sessionId;
-    state.session.startedAt = new Date().toISOString();
-    state.files.modifiedThisSession = [];
-    state.files.createdThisSession = [];
+    return {
+        ...state,
+        session: {
+            ...state.session,
+            id: sessionId,
+            startedAt: new Date().toISOString(),
+        },
+        files: {
+            ...state.files,
+            modifiedThisSession: [],
+            createdThisSession: [],
+        },
+    };
 }
 /**
  * Resets state for a new session while preserving git and error history.
@@ -225,8 +254,9 @@ export function initializeSession(state, sessionId) {
  */
 export function resetForNewSession(state) {
     const newState = createDefaultState();
-    // Preserve some state across sessions
-    newState.git = state.git;
-    newState.errors = state.errors;
-    return newState;
+    return {
+        ...newState,
+        git: { ...state.git },
+        errors: { ...state.errors },
+    };
 }

@@ -26,6 +26,7 @@ export declare const QUALITY_GATES: QualityGate[];
  * attempting auto-fixes where available if a gate fails.
  *
  * @param cwd - The current working directory (project root)
+ * @param gates - Optional array of gates to run (defaults to QUALITY_GATES)
  * @returns A promise resolving to an object containing:
  *   - allPassed: Whether all gates passed or were auto-fixed
  *   - blocking: Whether any blocking gate failed
@@ -37,7 +38,7 @@ export declare const QUALITY_GATES: QualityGate[];
  *   console.error('Blocking quality gates failed');
  * }
  */
-export declare function runQualityGates(cwd: string): Promise<{
+export declare function runQualityGates(cwd: string, gates?: QualityGate[]): Promise<{
     allPassed: boolean;
     blocking: boolean;
     results: GateResult[];

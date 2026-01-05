@@ -13,7 +13,7 @@ import {
   debug,
   logError,
   HookResponse,
-} from './shared.js';
+} from './shared/index.js';
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
@@ -24,7 +24,7 @@ function createResponse(systemMessage?: string): HookResponse {
 }
 
 /** Main entry point for notification hook. Handles validation, test, and build error notifications. */
-async function main(): Promise<void> {
+async function runNotificationHook(): Promise<void> {
   try {
     debug('Notification hook starting');
 
@@ -44,4 +44,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+runNotificationHook();

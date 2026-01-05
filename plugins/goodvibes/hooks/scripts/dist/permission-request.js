@@ -4,19 +4,9 @@
  * Handles permission dialogs for MCP tools.
  * Auto-approves GoodVibes MCP tool permissions.
  */
-import { respond, readHookInput, debug, logError, } from './shared.js';
-/** Creates a hook response with permission decision. */
-function createResponse(decision = 'allow') {
-    return {
-        continue: true,
-        hookSpecificOutput: {
-            hookEventName: 'PermissionRequest',
-            permissionDecision: decision,
-        },
-    };
-}
+import { respond, readHookInput, debug, logError, createPermissionResponse, } from './shared/index.js';
 /** Main entry point for permission-request hook. Auto-approves GoodVibes MCP tool permissions. */
-async function main() {
+async function runPermissionRequestHook() {
     try {
         debug('PermissionRequest hook starting');
         const input = await readHookInput();
@@ -26,16 +16,16 @@ async function main() {
         // Auto-approve GoodVibes MCP tool permissions
         if (input.tool_name?.includes('goodvibes')) {
             debug('Auto-approving GoodVibes tool permission');
-            respond(createResponse('allow'));
+            respond(createPermissionResponse('allow'));
         }
         else {
             // Let user decide for non-GoodVibes tools
-            respond(createResponse('ask'));
+            respond(createPermissionResponse('ask'));
         }
     }
     catch (error) {
         logError('PermissionRequest main', error);
-        respond(createResponse('ask'));
+        respond(createPermissionResponse('ask'));
     }
 }
-main();
+runPermissionRequestHook();

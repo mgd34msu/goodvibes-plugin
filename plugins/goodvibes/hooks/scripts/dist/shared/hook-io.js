@@ -3,8 +3,7 @@
  *
  * Functions for reading hook input from stdin and responding with hook output.
  */
-/** Timeout in ms for waiting on stdin input before using defaults. */
-const STDIN_TIMEOUT_MS = 100;
+import { STDIN_TIMEOUT_MS } from './config.js';
 /**
  * Type guard to validate hook input structure at runtime
  */
@@ -20,10 +19,10 @@ function isValidHookInput(value) {
  * Reads and parses hook input from stdin provided by Claude Code.
  *
  * Waits for JSON input on stdin, parses it, and validates the structure.
- * If no input is received within the timeout period, returns default values.
+ * If no input is received within the timeout period, rejects with an error.
  *
  * @returns A promise that resolves to the parsed hook input
- * @throws Error if the JSON is malformed or doesn't match the HookInput structure
+ * @throws Error if the JSON is malformed, doesn't match the HookInput structure, or timeout occurs
  *
  * @example
  * const input = await readHookInput();
@@ -54,13 +53,7 @@ export async function readHookInput() {
         // Handle case where no stdin is provided (timeout after configured delay)
         setTimeout(() => {
             if (!data) {
-                resolve({
-                    session_id: '',
-                    transcript_path: '',
-                    cwd: process.cwd(),
-                    permission_mode: 'default',
-                    hook_event_name: 'unknown',
-                });
+                reject(new Error('Hook input timeout: no data received within configured timeout'));
             }
         }, STDIN_TIMEOUT_MS);
     });
@@ -122,7 +115,33 @@ export function blockTool(hookEventName, reason) {
     };
 }
 /**
+ * Formats a hook response as JSON string (pure function).
+ *
+ * This is a pure formatting function that converts a HookResponse object
+ * to its JSON string representation. Use this when you need to format
+ * a response without side effects (no console output or process exit).
+ *
+ * @param response - The HookResponse object to format
+ * @returns JSON string representation of the response
+ *
+ * @example
+ * const jsonString = formatResponse(allowTool('PreToolUse'));
+ * // Returns: '{"continue":true,"hookSpecificOutput":{...}}'
+ *
+ * @example
+ * // Use in tests or where you need formatted output without exiting
+ * const formatted = formatResponse(createResponse({ systemMessage: 'Test' }));
+ * console.log(formatted);
+ */
+export function formatResponse(response) {
+    return JSON.stringify(response);
+}
+/**
  * Outputs the hook response as JSON to stdout and exits the process.
+ *
+ * @deprecated Use formatResponse() for formatting and handle process exit
+ * in entry point hooks. This function will be removed in a future version.
+ * Prefer: console.log(formatResponse(response)); process.exit(code);
  *
  * This is the final call in any hook script. It serializes the response
  * to JSON and exits with the appropriate code:
@@ -141,6 +160,78 @@ export function blockTool(hookEventName, reason) {
  * respond(blockTool('PreToolUse', 'Operation not permitted'), true);
  */
 export function respond(response, block = false) {
-    console.log(JSON.stringify(response));
+    console.log(formatResponse(response));
     process.exit(block ? 2 : 0);
+}
+/**
+ * Creates a standard hook response that allows the hook to continue.
+ *
+ * This is a unified utility for creating hook responses across all hook types.
+ * Use this for hooks that don't need permission decisions (session-start,
+ * pre-compact, user-prompt-submit, post-tool-use-failure, stop, etc.).
+ *
+ * @param options - Optional configuration for the response
+ * @returns A HookResponse object with continue=true
+ *
+ * @example
+ * // Simple continue response
+ * respond(createResponse());
+ *
+ * @example
+ * // With a system message
+ * respond(createResponse({ systemMessage: 'Plugin initialized' }));
+ *
+ * @example
+ * // With additional context (for session-start)
+ * respond(createResponse({
+ *   systemMessage: 'GoodVibes ready',
+ *   additionalContext: projectContextString
+ * }));
+ */
+export function createResponse(options = {}) {
+    const response = {
+        continue: true,
+    };
+    if (options.systemMessage !== undefined) {
+        response.systemMessage = options.systemMessage;
+    }
+    if (options.additionalContext !== undefined) {
+        response.additionalContext = options.additionalContext;
+    }
+    return response;
+}
+/**
+ * Creates a hook response for permission request hooks.
+ *
+ * Use this for the permission-request hook which needs to return
+ * a hookSpecificOutput with the permission decision.
+ *
+ * @param decision - The permission decision ('allow', 'deny', or 'ask')
+ * @param reason - Optional reason for the decision (useful for 'deny')
+ * @returns A HookResponse object with the permission decision
+ *
+ * @example
+ * // Auto-approve a tool
+ * respond(createPermissionResponse('allow'));
+ *
+ * @example
+ * // Let user decide
+ * respond(createPermissionResponse('ask'));
+ *
+ * @example
+ * // Deny with reason
+ * respond(createPermissionResponse('deny', 'Tool not permitted'));
+ */
+export function createPermissionResponse(decision = 'allow', reason) {
+    const response = {
+        continue: true,
+        hookSpecificOutput: {
+            hookEventName: 'PermissionRequest',
+            permissionDecision: decision,
+        },
+    };
+    if (reason && response.hookSpecificOutput) {
+        response.hookSpecificOutput.permissionDecisionReason = reason;
+    }
+    return response;
 }

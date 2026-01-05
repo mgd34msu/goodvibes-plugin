@@ -1,5 +1,5 @@
 import { createCheckpoint as gitCheckpoint, hasUncommittedChanges } from '../automation/git-operations.js';
-import { CHECKPOINT_TRIGGERS } from '../shared.js';
+import { CHECKPOINT_TRIGGERS } from '../shared/index.js';
 import { clearCheckpointTracking, getModifiedFileCount } from './file-tracker.js';
 /**
  * Determines if a checkpoint should be created based on file modification count.
@@ -31,7 +31,7 @@ export function shouldCheckpoint(state, _cwd) {
  * @param state - The current hooks session state to update with checkpoint info
  * @param cwd - Current working directory (git repository root)
  * @param forcedReason - Optional reason to force checkpoint creation regardless of threshold
- * @returns Object with `created` boolean and `message` describing the result
+ * @returns Object with `created` boolean, `message` describing the result, and updated state
  *
  * @example
  * // Conditional checkpoint based on thresholds
@@ -46,21 +46,30 @@ export async function createCheckpointIfNeeded(state, cwd, forcedReason) {
         ? { triggered: true, reason: forcedReason }
         : shouldCheckpoint(state, cwd);
     if (!trigger.triggered) {
-        return { created: false, message: '' };
+        return { created: false, message: '', state };
     }
     if (!(await hasUncommittedChanges(cwd))) {
-        return { created: false, message: 'No changes to checkpoint' };
+        return { created: false, message: 'No changes to checkpoint', state };
     }
     const success = await gitCheckpoint(cwd, trigger.reason);
     if (success) {
-        // Update state
-        clearCheckpointTracking(state);
-        state.git.checkpoints.unshift({
-            hash: '', // Would need to get from git
-            message: trigger.reason,
-            timestamp: new Date().toISOString(),
-        });
-        return { created: true, message: `Checkpoint: ${trigger.reason}` };
+        // Update state immutably
+        const updatedState = clearCheckpointTracking(state);
+        const finalState = {
+            ...updatedState,
+            git: {
+                ...updatedState.git,
+                checkpoints: [
+                    {
+                        hash: '', // Would need to get from git
+                        message: trigger.reason,
+                        timestamp: new Date().toISOString(),
+                    },
+                    ...updatedState.git.checkpoints,
+                ],
+            },
+        };
+        return { created: true, message: `Checkpoint: ${trigger.reason}`, state: finalState };
     }
-    return { created: false, message: 'Checkpoint failed' };
+    return { created: false, message: 'Checkpoint failed', state };
 }

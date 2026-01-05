@@ -8,7 +8,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { extractErrorOutput, fileExistsAsync as fileExists } from '../shared.js';
+import { extractErrorOutput, fileExists } from '../shared/index.js';
 
 /** Result of a build or type check operation. */
 export interface BuildResult {

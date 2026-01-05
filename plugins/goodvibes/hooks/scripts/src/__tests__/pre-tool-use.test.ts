@@ -36,7 +36,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists } = await import('../shared.js');
+      const { fileExists } = await import('../shared/index.js');
       const result = await fileExists('package.json');
 
       expect(result).toBe(true);
@@ -50,7 +50,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists } = await import('../shared.js');
+      const { fileExists } = await import('../shared/index.js');
       const result = await fileExists('nonexistent.json');
 
       expect(result).toBe(false);
@@ -65,7 +65,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists } = await import('../shared.js');
+      const { fileExists } = await import('../shared/index.js');
       await fileExists('src/index.ts');
 
       expect(mockAccess).toHaveBeenCalled();
@@ -76,28 +76,28 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('allowTool', () => {
     it('should return continue true', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('PreToolUse');
 
       expect(response.continue).toBe(true);
     });
 
     it('should include system message when provided', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('PreToolUse', 'Tool allowed with warning');
 
       expect(response.systemMessage).toBe('Tool allowed with warning');
     });
 
     it('should set permissionDecision to allow', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('PreToolUse');
 
       expect(response.hookSpecificOutput?.permissionDecision).toBe('allow');
     });
 
     it('should include hookEventName', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('PreToolUse');
 
       expect(response.hookSpecificOutput?.hookEventName).toBe('PreToolUse');
@@ -106,28 +106,28 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('blockTool', () => {
     it('should return continue false', async () => {
-      const { blockTool } = await import('../shared.js');
+      const { blockTool } = await import('../shared/index.js');
       const response = blockTool('PreToolUse', 'Not allowed');
 
       expect(response.continue).toBe(false);
     });
 
     it('should set permissionDecision to deny', async () => {
-      const { blockTool } = await import('../shared.js');
+      const { blockTool } = await import('../shared/index.js');
       const response = blockTool('PreToolUse', 'Not allowed');
 
       expect(response.hookSpecificOutput?.permissionDecision).toBe('deny');
     });
 
     it('should include reason in permissionDecisionReason', async () => {
-      const { blockTool } = await import('../shared.js');
+      const { blockTool } = await import('../shared/index.js');
       const response = blockTool('PreToolUse', 'Missing configuration');
 
       expect(response.hookSpecificOutput?.permissionDecisionReason).toBe('Missing configuration');
     });
 
     it('should include hookEventName', async () => {
-      const { blockTool } = await import('../shared.js');
+      const { blockTool } = await import('../shared/index.js');
       const response = blockTool('PreToolUse', 'Not allowed');
 
       expect(response.hookSpecificOutput?.hookEventName).toBe('PreToolUse');
@@ -143,7 +143,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, blockTool } = await import('../shared.js');
+      const { fileExists, blockTool } = await import('../shared/index.js');
       const hasPackageJson = await fileExists('package.json');
 
       expect(hasPackageJson).toBe(false);
@@ -159,7 +159,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasPackageJson = await fileExists('package.json');
 
       expect(hasPackageJson).toBe(true);
@@ -180,7 +180,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasPrisma = await fileExists('prisma/schema.prisma');
 
       expect(hasPrisma).toBe(true);
@@ -199,7 +199,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasDrizzle = await fileExists('drizzle.config.ts');
 
       expect(hasDrizzle).toBe(true);
@@ -215,7 +215,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasSchema = await fileExists('prisma/schema.prisma') ||
                         await fileExists('drizzle.config.ts') ||
                         await fileExists('drizzle/schema.ts');
@@ -236,7 +236,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, blockTool } = await import('../shared.js');
+      const { fileExists, blockTool } = await import('../shared/index.js');
       const hasPackageJson = await fileExists('package.json');
 
       expect(hasPackageJson).toBe(false);
@@ -255,7 +255,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasLockfile = await fileExists('package-lock.json');
 
       expect(hasLockfile).toBe(true);
@@ -274,7 +274,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasLockfile = await fileExists('pnpm-lock.yaml');
 
       expect(hasLockfile).toBe(true);
@@ -293,7 +293,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasLockfile = await fileExists('yarn.lock');
 
       expect(hasLockfile).toBe(true);
@@ -312,7 +312,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasLockfile = await fileExists('pnpm-lock.yaml') ||
                           await fileExists('yarn.lock') ||
                           await fileExists('package-lock.json');
@@ -333,7 +333,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, blockTool } = await import('../shared.js');
+      const { fileExists, blockTool } = await import('../shared/index.js');
       const hasTsConfig = await fileExists('tsconfig.json');
 
       expect(hasTsConfig).toBe(false);
@@ -349,7 +349,7 @@ describe('pre-tool-use hook utilities', () => {
         writeFile: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const { fileExists, allowTool } = await import('../shared.js');
+      const { fileExists, allowTool } = await import('../shared/index.js');
       const hasTsConfig = await fileExists('tsconfig.json');
 
       expect(hasTsConfig).toBe(true);
@@ -360,7 +360,7 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('validate_implementation logic', () => {
     it('should allow by default', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('PreToolUse');
 
       expect(response.continue).toBe(true);
@@ -369,7 +369,7 @@ describe('pre-tool-use hook utilities', () => {
 
   describe('unknown tool handling', () => {
     it('should allow unknown tools by default', async () => {
-      const { allowTool } = await import('../shared.js');
+      const { allowTool } = await import('../shared/index.js');
       const response = allowTool('PreToolUse');
 
       expect(response.continue).toBe(true);

@@ -6,18 +6,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-/**
- * Check if a file or directory exists (async).
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { fileExists } from '../shared/file-utils.js';
 const LAYER_INDICATORS = ['controllers', 'services', 'repositories', 'models', 'middleware', 'routes'];
 const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
 const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];

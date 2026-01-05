@@ -5,7 +5,7 @@
  * - Detect dev server commands
  * - Parse and record dev server errors
  */
-import { debug } from '../shared.js';
+import { debug } from '../shared/index.js';
 import { isDevServerCommand, registerDevServer, parseDevServerErrors, recordDevServerError, } from './dev-server-monitor.js';
 /**
  * Handle Bash tool results for dev server detection and error parsing.

@@ -6,7 +6,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 /** Folder structure analysis results. */
 export interface FolderAnalysis {
@@ -22,37 +22,50 @@ export async function analyzeFolderStructure(cwd: string): Promise<FolderAnalysi
   const srcDir = hasSrcDir ? 'src' : '.';
   const srcPath = path.join(cwd, srcDir);
 
-  // Detect architecture pattern
-  let pattern = 'unknown';
-  if (await fileExists(path.join(srcPath, 'features'))) {
-    pattern = 'feature-based';
-  } else if (await fileExists(path.join(srcPath, 'modules'))) {
-    pattern = 'module-based';
-  } else {
-    const [hasComponents, hasHooks, hasUtils] = await Promise.all([
-      fileExists(path.join(srcPath, 'components')),
-      fileExists(path.join(srcPath, 'hooks')),
-      fileExists(path.join(srcPath, 'utils')),
-    ]);
-    if (hasComponents && hasHooks && hasUtils) {
-      pattern = 'layer-based';
-    }
-  }
-
-  // Detect routing
-  let routing: string | null = null;
-  if (await fileExists(path.join(srcPath, 'app'))) {
-    routing = 'App Router';
-  } else if (await fileExists(path.join(srcPath, 'pages'))) {
-    routing = 'Pages Router';
-  }
-
-  // Check for API layer
-  const [hasApiInSrc, hasServerInSrc, hasApiRoot] = await Promise.all([
+  // Parallelize all file existence checks
+  const [
+    hasFeatures,
+    hasModules,
+    hasComponents,
+    hasHooks,
+    hasUtils,
+    hasApp,
+    hasPages,
+    hasApiInSrc,
+    hasServerInSrc,
+    hasApiRoot,
+  ] = await Promise.all([
+    fileExists(path.join(srcPath, 'features')),
+    fileExists(path.join(srcPath, 'modules')),
+    fileExists(path.join(srcPath, 'components')),
+    fileExists(path.join(srcPath, 'hooks')),
+    fileExists(path.join(srcPath, 'utils')),
+    fileExists(path.join(srcPath, 'app')),
+    fileExists(path.join(srcPath, 'pages')),
     fileExists(path.join(srcPath, 'api')),
     fileExists(path.join(srcPath, 'server')),
     fileExists(path.join(cwd, 'api')),
   ]);
+
+  // Detect architecture pattern
+  let pattern = 'unknown';
+  if (hasFeatures) {
+    pattern = 'feature-based';
+  } else if (hasModules) {
+    pattern = 'module-based';
+  } else if (hasComponents && hasHooks && hasUtils) {
+    pattern = 'layer-based';
+  }
+
+  // Detect routing
+  let routing: string | null = null;
+  if (hasApp) {
+    routing = 'App Router';
+  } else if (hasPages) {
+    routing = 'Pages Router';
+  }
+
+  // Check for API layer
   const hasApi = hasApiInSrc || hasServerInSrc || hasApiRoot;
 
   return { srcDir, pattern, routing, hasApi };

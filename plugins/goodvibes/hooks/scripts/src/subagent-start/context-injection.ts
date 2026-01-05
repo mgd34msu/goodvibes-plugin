@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { loadSharedConfig } from '../shared.js';
+import { loadSharedConfig } from '../shared/index.js';
 import { getDefaultConfig as getAutomationConfig } from '../types/config.js';
 
 /** Context to inject into a subagent session */

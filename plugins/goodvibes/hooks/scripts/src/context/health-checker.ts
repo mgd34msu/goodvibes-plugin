@@ -14,7 +14,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { LOCKFILES, fileExistsAsync } from '../shared.js';
+import { LOCKFILES, fileExists } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 
 /** Result of a single health check. */
@@ -40,8 +40,8 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
   const checks: HealthCheck[] = [];
 
   // Check node_modules
-  const hasNodeModules = await fileExistsAsync(path.join(cwd, 'node_modules'));
-  const hasPackageJson = await fileExistsAsync(path.join(cwd, 'package.json'));
+  const hasNodeModules = await fileExists(path.join(cwd, 'node_modules'));
+  const hasPackageJson = await fileExists(path.join(cwd, 'package.json'));
 
   if (hasPackageJson && !hasNodeModules) {
     checks.push({
@@ -53,7 +53,7 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
 
   // Check for multiple lockfiles
   const lockfileChecks = await Promise.all(
-    LOCKFILES.map(async (f) => ({ file: f, exists: await fileExistsAsync(path.join(cwd, f)) }))
+    LOCKFILES.map(async (f) => ({ file: f, exists: await fileExists(path.join(cwd, f)) }))
   );
   const foundLockfiles = lockfileChecks.filter(({ exists }) => exists).map(({ file }) => file);
 
@@ -67,7 +67,7 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
 
   // Check TypeScript strict mode
   const tsconfigPath = path.join(cwd, 'tsconfig.json');
-  if (await fileExistsAsync(tsconfigPath)) {
+  if (await fileExists(tsconfigPath)) {
     try {
       const content = await fs.readFile(tsconfigPath, 'utf-8');
       const config = JSON.parse(content);

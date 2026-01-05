@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 
 import {
   handleValidateImplementation,
@@ -35,7 +35,7 @@ interface ValidationIssue {
 }
 
 // Mock modules
-vi.mock('fs');
+vi.mock('fs/promises');
 vi.mock('../../config.js', () => ({
   PLUGIN_ROOT: '/mock/plugin/root',
   PROJECT_ROOT: '/mock/project/root',
@@ -48,6 +48,7 @@ vi.mock('../../utils.js', async (importOriginal) => {
     parseSkillMetadata: vi.fn().mockReturnValue({}),
     extractSkillPatterns: vi.fn().mockReturnValue({}),
     extractFunctionBody: (actual as any).extractFunctionBody,
+    fileExists: vi.fn().mockResolvedValue(true),
   };
 });
 
@@ -61,9 +62,16 @@ describe('validation handlers', () => {
   });
 
   describe('handleValidateImplementation', () => {
+    beforeEach(async () => {
+      // Default: files exist
+      const { fileExists } = await import('../../utils.js');
+      vi.mocked(fileExists).mockResolvedValue(true);
+    });
+
     describe('file existence checks', () => {
       it('should report error for non-existent file', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(false);
+        const { fileExists } = await import('../../utils.js');
+        vi.mocked(fileExists).mockResolvedValue(false);
 
         const result = await handleValidateImplementation({
           files: ['nonexistent.ts'],
@@ -75,10 +83,11 @@ describe('validation handlers', () => {
       });
 
       it('should continue checking other files after missing file', async () => {
-        vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+        const { fileExists } = await import('../../utils.js');
+        vi.mocked(fileExists).mockImplementation(async (p: string) => {
           return String(p).includes('existing');
         });
-        vi.mocked(fs.readFileSync).mockReturnValue(sampleCleanTypeScript);
+        vi.mocked(fsPromises.readFile).mockResolvedValue(sampleCleanTypeScript);
 
         const result = await handleValidateImplementation({
           files: ['missing.ts', 'existing.ts'],
@@ -91,8 +100,7 @@ describe('validation handlers', () => {
 
     describe('security checks', () => {
       it('should detect hardcoded passwords', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const password = "secret123";');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const password = "secret123";');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],
@@ -104,8 +112,7 @@ describe('validation handlers', () => {
       });
 
       it('should detect hardcoded API keys', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const apiKey = "sk_live_abc123";');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const apiKey = "sk_live_abc123";');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],
@@ -117,8 +124,7 @@ describe('validation handlers', () => {
       });
 
       it('should not flag environment variables', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const apiKey = process.env.API_KEY;');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const apiKey = process.env.API_KEY;');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],
@@ -130,8 +136,7 @@ describe('validation handlers', () => {
       });
 
       it('should detect eval usage', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const result = eval(userInput);');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const result = eval(userInput);');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],
@@ -143,8 +148,7 @@ describe('validation handlers', () => {
       });
 
       it('should detect innerHTML usage', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('element.innerHTML = userContent;');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('element.innerHTML = userContent;');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],
@@ -156,8 +160,7 @@ describe('validation handlers', () => {
       });
 
       it('should detect dangerouslySetInnerHTML', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('<div dangerouslySetInnerHTML={{ __html: content }} />');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('<div dangerouslySetInnerHTML={{ __html: content }} />');
 
         const result = await handleValidateImplementation({
           files: ['test.tsx'],
@@ -169,8 +172,7 @@ describe('validation handlers', () => {
       });
 
       it('should detect SQL injection risk', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('db.query(`SELECT * FROM users WHERE id = ${userId}`);');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('db.query(`SELECT * FROM users WHERE id = ${userId}`);');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],
@@ -184,8 +186,7 @@ describe('validation handlers', () => {
 
     describe('structure checks', () => {
       it('should warn about missing exports', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const internal = 42;');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const internal = 42;');
 
         const result = await handleValidateImplementation({
           files: ['module.ts'],
@@ -197,8 +198,7 @@ describe('validation handlers', () => {
       });
 
       it('should not warn about missing exports in index files', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('// barrel export file');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('// barrel export file');
 
         const result = await handleValidateImplementation({
           files: ['index.ts'],
@@ -210,8 +210,7 @@ describe('validation handlers', () => {
       });
 
       it('should warn about non-PascalCase React component files', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue("import React from 'react';\nexport const Component = () => <div />;");
+        vi.mocked(fsPromises.readFile).mockResolvedValue("import React from 'react';\nexport const Component = () => <div />;");
 
         const result = await handleValidateImplementation({
           files: ['myComponent.tsx'],
@@ -223,9 +222,8 @@ describe('validation handlers', () => {
       });
 
       it('should detect conditional hook usage', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
         // The hook check looks for patterns like "if (...useState" or "&& useState" on the same line
-        vi.mocked(fs.readFileSync).mockReturnValue(`
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
 import React from 'react';
 export function Component() {
   if (condition && useState()) {
@@ -245,8 +243,7 @@ export function Component() {
       });
 
       it('should warn about large files', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('line\n'.repeat(600));
+        vi.mocked(fsPromises.readFile).mockResolvedValue('line\n'.repeat(600));
 
         const result = await handleValidateImplementation({
           files: ['large.ts'],
@@ -260,8 +257,7 @@ export function Component() {
 
     describe('error handling checks', () => {
       it('should warn about async functions without try/catch', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(`
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
 export async function fetchData() {
   const response = await fetch('/api');
   return response.json();
@@ -278,8 +274,7 @@ export async function fetchData() {
       });
 
       it('should not warn about async functions with try/catch', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(sampleCleanTypeScript);
+        vi.mocked(fsPromises.readFile).mockResolvedValue(sampleCleanTypeScript);
 
         const result = await handleValidateImplementation({
           files: ['api.ts'],
@@ -291,8 +286,7 @@ export async function fetchData() {
       });
 
       it('should warn about empty catch blocks', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(`
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
 try { doSomething(); } catch (e) {}
 `);
 
@@ -308,8 +302,7 @@ try { doSomething(); } catch (e) {}
 
     describe('TypeScript checks', () => {
       it('should warn about using any type', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const data: any = {};');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const data: any = {};');
 
         const result = await handleValidateImplementation({
           files: ['data.ts'],
@@ -321,8 +314,7 @@ try { doSomething(); } catch (e) {}
       });
 
       it('should warn about @ts-ignore without explanation', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(`
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
 // @ts-ignore
 const x = something();
 `);
@@ -337,8 +329,7 @@ const x = something();
       });
 
       it('should warn about excessive non-null assertions', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(`
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
 const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
 `);
 
@@ -354,10 +345,9 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
 
     describe('naming conventions', () => {
       it('should suggest camelCase for functions', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
         // The naming check triggers for function names that are NOT camelCase AND NOT PascalCase
         // "my_function" contains underscore so it doesn't match either pattern
-        vi.mocked(fs.readFileSync).mockReturnValue('function my_invalid_function() {}');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('function my_invalid_function() {}');
 
         const result = await handleValidateImplementation({
           files: ['naming.ts'],
@@ -371,8 +361,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
 
     describe('best practices', () => {
       it('should detect console.log', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('console.log("debug");');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('console.log("debug");');
 
         const result = await handleValidateImplementation({
           files: ['debug.ts'],
@@ -384,8 +373,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
       });
 
       it('should detect TODO comments', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('// TODO: Fix this later');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('// TODO: Fix this later');
 
         const result = await handleValidateImplementation({
           files: ['todo.ts'],
@@ -399,8 +387,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
 
     describe('summary and scoring', () => {
       it('should calculate score based on issues', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(sampleTypeScriptWithIssues);
+        vi.mocked(fsPromises.readFile).mockResolvedValue(sampleTypeScriptWithIssues);
 
         const result = await handleValidateImplementation({
           files: ['issues.ts'],
@@ -412,8 +399,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
       });
 
       it('should assign grades based on score', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue(sampleCleanTypeScript);
+        vi.mocked(fsPromises.readFile).mockResolvedValue(sampleCleanTypeScript);
 
         const result = await handleValidateImplementation({
           files: ['clean.tsx'],
@@ -424,8 +410,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
       });
 
       it('should report valid as false when errors exist', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('eval(userInput);');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('eval(userInput);');
 
         const result = await handleValidateImplementation({
           files: ['eval.ts'],
@@ -437,8 +422,7 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
       });
 
       it('should report checks_run in summary', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockReturnValue('const x = 1;');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const x = 1;');
 
         const result = await handleValidateImplementation({
           files: ['test.ts'],

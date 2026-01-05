@@ -11,7 +11,7 @@
  * - Stores entry to .goodvibes/state/agent-tracking.json
  * - Returns additionalContext with project reminders
  */
-import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared.js';
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared/index.js';
 import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from './telemetry.js';
 import { saveAgentTracking } from './subagent-stop/telemetry.js';
 import { buildSubagentContext } from './subagent-start/context-injection.js';
@@ -30,7 +30,7 @@ function createResponse(options) {
     return response;
 }
 /** Main entry point for subagent-start hook. Captures telemetry and injects project context. */
-async function main() {
+async function runSubagentStartHook() {
     try {
         debug('SubagentStart hook starting');
         const rawInput = await readHookInput();
@@ -151,4 +151,4 @@ async function main() {
         respond(createResponse());
     }
 }
-main();
+runSubagentStartHook();

@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryFailure } from '../types/memory.js';
 import { debug } from '../shared/logging.js';
-import { fileExistsAsync as fileExists } from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 const FAILURES_HEADER = `# Failed Approaches
 

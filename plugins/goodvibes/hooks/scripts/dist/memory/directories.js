@@ -6,58 +6,17 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug, logError } from '../shared.js';
+import { debug, logError, ensureGoodVibesDir } from '../shared/index.js';
 import { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
-import { getGoodVibesDir, getMemoryDir } from './paths.js';
-// ============================================================================
-// Async File Helpers
-// ============================================================================
-/**
- * Checks if a file or directory exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if path exists, false otherwise
- */
-export async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+import { getMemoryDir } from './paths.js';
+import { fileExists } from '../shared/file-utils.js';
+// Re-export fileExists for backwards compatibility
+export { fileExists };
+// Re-export ensureGoodVibesDir from shared for backwards compatibility
+export { ensureGoodVibesDir };
 // ============================================================================
 // Directory Management (Lazy Creation)
 // ============================================================================
-/**
- * Ensure the .goodvibes directory exists (lazy creation).
- *
- * Creates the .goodvibes directory if it doesn't exist, and ensures
- * that comprehensive security patterns are added to .gitignore to
- * prevent sensitive data from being committed.
- *
- * @param cwd - The current working directory (project root)
- * @throws Error if the directory cannot be created
- *
- * @example
- * await ensureGoodVibesDir('/path/to/project');
- */
-export async function ensureGoodVibesDir(cwd) {
-    const goodVibesDir = getGoodVibesDir(cwd);
-    try {
-        if (!(await fileExists(goodVibesDir))) {
-            await fs.mkdir(goodVibesDir, { recursive: true });
-            debug(`Created .goodvibes directory at ${goodVibesDir}`);
-        }
-    }
-    catch (error) {
-        logError('ensureGoodVibesDir:mkdir', error);
-        throw new Error(`Failed to create .goodvibes directory: ${error}`);
-    }
-    // Ensure security-hardened .gitignore
-    await ensureSecurityGitignore(cwd);
-}
 /**
  * Ensure the memory directory exists (lazy creation).
  *

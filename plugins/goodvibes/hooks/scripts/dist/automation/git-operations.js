@@ -6,9 +6,9 @@
  */
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
-import * as fs from 'fs';
 import * as path from 'path';
-import { debug } from '../shared.js';
+import { debug } from '../shared/index.js';
+import { fileExists } from '../shared/file-utils.js';
 const execAsync = promisify(exec);
 /**
  * Promisified spawn that returns a promise resolving to exit code.
@@ -85,15 +85,15 @@ export async function execGit(command, cwd) {
  * Checks if a directory is a git repository by looking for a .git directory.
  *
  * @param cwd - The directory path to check
- * @returns True if the directory contains a .git folder, false otherwise
+ * @returns Promise resolving to true if the directory contains a .git folder, false otherwise
  *
  * @example
- * if (isGitRepo('/my-project')) {
+ * if (await isGitRepo('/my-project')) {
  *   console.log('This is a git repository');
  * }
  */
-export function isGitRepo(cwd) {
-    return fs.existsSync(path.join(cwd, '.git'));
+export async function isGitRepo(cwd) {
+    return fileExists(path.join(cwd, '.git'));
 }
 /**
  * Detects the main branch name for the repository.

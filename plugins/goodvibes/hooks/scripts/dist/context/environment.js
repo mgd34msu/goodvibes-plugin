@@ -14,15 +14,14 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
+import { fileExists } from '../shared/file-utils.js';
 // =============================================================================
 // Constants
 // =============================================================================
 /** Common sensitive variable patterns for security detection. */
 const SENSITIVE_PATTERNS = [
     /api[_-]?key/i,
-    /secret/i,
-    /password/i,
-    /token/i,
+    /secret|password|token/i,
     /private[_-]?key/i,
     /credentials/i,
     /auth/i,
@@ -81,18 +80,6 @@ function parseEnvVars(content) {
  */
 function isSensitiveVar(varName) {
     return SENSITIVE_PATTERNS.some((pattern) => pattern.test(varName));
-}
-/**
- * Check if a file exists (async version).
- */
-async function fileExists(filePath) {
-    try {
-        await fs.access(filePath);
-        return true;
-    }
-    catch {
-        return false;
-    }
 }
 // =============================================================================
 // Quick Check API (EnvStatus)

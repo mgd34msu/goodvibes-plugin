@@ -6,7 +6,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared.js';
+import { ensureGoodVibesDir } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 import { PHASE_RETRY_LIMITS } from '../types/errors.js';
 import { generateErrorSignature as generateErrorSignatureCore, shouldEscalatePhase as shouldEscalatePhaseCore, escalatePhase as escalatePhaseCore, hasExhaustedRetries as hasExhaustedRetriesCore, getPhaseDescription as getPhaseDescriptionCore, getRemainingAttemptsInPhase, MAX_PHASE, } from '../shared/error-handling-core.js';
@@ -43,7 +43,8 @@ export async function loadRetries(cwd) {
     try {
         await fs.access(retriesPath);
     }
-    catch {
+    catch (error) {
+        debug(`Retries file access check failed for ${retriesPath}: ${error}`);
         return {};
     }
     try {

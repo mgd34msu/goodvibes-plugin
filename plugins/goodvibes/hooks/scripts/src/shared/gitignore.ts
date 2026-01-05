@@ -7,7 +7,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { fileExistsAsync as fileExists } from './file-utils.js';
+import { fileExists } from './file-utils.js';
 
 /** Security-critical gitignore entries grouped by category. */
 export const SECURITY_GITIGNORE_ENTRIES: Record<string, string[]> = {

@@ -373,23 +373,23 @@ describe('git-operations', () => {
 
   describe('isGitRepo', () => {
     it('should return true when .git directory exists', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(true),
+      vi.doMock('../shared/file-utils.js', () => ({
+        fileExists: vi.fn().mockResolvedValue(true),
       }));
 
       const { isGitRepo } = await import('../automation/git-operations.js');
-      const result = isGitRepo('/test/project');
+      const result = await isGitRepo('/test/project');
 
       expect(result).toBe(true);
     });
 
     it('should return false when .git directory does not exist', async () => {
-      vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
+      vi.doMock('../shared/file-utils.js', () => ({
+        fileExists: vi.fn().mockResolvedValue(false),
       }));
 
       const { isGitRepo } = await import('../automation/git-operations.js');
-      const result = isGitRepo('/test/project');
+      const result = await isGitRepo('/test/project');
 
       expect(result).toBe(false);
     });
@@ -713,6 +713,14 @@ describe('build-runner', () => {
         access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
+      // Mock shared module for extractErrorOutput
+      vi.doMock('../shared/index.js', () => ({
+        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+          return error.stdout?.toString() || error.stderr?.toString() || error.message;
+        }),
+        fileExists: vi.fn().mockResolvedValue(false),
+      }));
+
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
           const error = new Error('Build failed') as Error & { stdout?: Buffer; stderr?: Buffer };
@@ -737,6 +745,14 @@ describe('build-runner', () => {
     it('should parse multiple TypeScript errors', async () => {
       vi.doMock('fs/promises', () => ({
         access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+      }));
+
+      // Mock shared module for extractErrorOutput
+      vi.doMock('../shared/index.js', () => ({
+        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+          return error.stdout?.toString() || error.stderr?.toString() || error.message;
+        }),
+        fileExists: vi.fn().mockResolvedValue(false),
       }));
 
       const tsErrors = `src/a.ts(5,3): error TS2322: Type 'string' is not assignable
@@ -765,6 +781,14 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
     it('should return empty errors for non-TypeScript output', async () => {
       vi.doMock('fs/promises', () => ({
         access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+      }));
+
+      // Mock shared module for extractErrorOutput
+      vi.doMock('../shared/index.js', () => ({
+        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+          return error.stdout?.toString() || error.stderr?.toString() || error.message;
+        }),
+        fileExists: vi.fn().mockResolvedValue(false),
       }));
 
       vi.doMock('child_process', () => ({
@@ -891,6 +915,13 @@ describe('test-runner', () => {
   Expected: true
   Received: false`;
 
+      // Mock shared module for extractErrorOutput
+      vi.doMock('../shared/index.js', () => ({
+        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+          return error.stdout?.toString() || error.stderr?.toString() || error.message;
+        }),
+      }));
+
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
           const error = new Error('Tests failed') as Error & { stdout?: Buffer; stderr?: Buffer };
@@ -913,6 +944,13 @@ describe('test-runner', () => {
   Error in test a
 FAIL src/b.test.tsx
   Error in test b`;
+
+      // Mock shared module for extractErrorOutput
+      vi.doMock('../shared/index.js', () => ({
+        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+          return error.stdout?.toString() || error.stderr?.toString() || error.message;
+        }),
+      }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
@@ -941,6 +979,13 @@ FAIL src/b.test.tsx
   line 4
   line 5
   line 6`;
+
+      // Mock shared module for extractErrorOutput
+      vi.doMock('../shared/index.js', () => ({
+        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+          return error.stdout?.toString() || error.stderr?.toString() || error.message;
+        }),
+      }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {

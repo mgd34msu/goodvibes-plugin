@@ -7,7 +7,7 @@
 import * as fs from 'fs/promises';
 import { CACHE_DIR, ANALYTICS_FILE } from './constants.js';
 import { debug } from './logging.js';
-import { fileExistsAsync } from './file-utils.js';
+import {fileExists} from './file-utils.js';
 
 // =============================================================================
 // Analytics Types
@@ -69,7 +69,7 @@ export interface SessionAnalytics {
  * await fs.writeFile(path.join(CACHE_DIR, 'data.json'), JSON.stringify(data));
  */
 export async function ensureCacheDir(): Promise<void> {
-  if (!(await fileExistsAsync(CACHE_DIR))) {
+  if (!(await fileExists(CACHE_DIR))) {
     await fs.mkdir(CACHE_DIR, { recursive: true });
   }
 }
@@ -91,11 +91,11 @@ export async function ensureCacheDir(): Promise<void> {
  */
 export async function loadAnalytics(): Promise<SessionAnalytics | null> {
   await ensureCacheDir();
-  if (await fileExistsAsync(ANALYTICS_FILE)) {
+  if (await fileExists(ANALYTICS_FILE)) {
     try {
       const content = await fs.readFile(ANALYTICS_FILE, 'utf-8');
       return JSON.parse(content);
-    } catch (error) {
+    } catch (error: unknown) {
       debug('loadAnalytics failed', { error: String(error) });
       return null;
     }

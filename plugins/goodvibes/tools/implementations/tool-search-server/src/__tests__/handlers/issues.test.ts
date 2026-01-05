@@ -129,14 +129,14 @@ describe('handleProjectIssues', () => {
           return [
             { name: 'node_modules', isDirectory: () => true, isFile: () => false },
             { name: 'src', isDirectory: () => true, isFile: () => false },
-          ];
+          ] as unknown as fs.Dirent<any>[];
         }
         if (String(dir).includes('node_modules')) {
           return [
             { name: 'lib.ts', isDirectory: () => false, isFile: () => true },
-          ];
+          ] as unknown as fs.Dirent<any>[];
         }
-        return [];
+        return [] as unknown as fs.Dirent<any>[];
       });
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Should not appear\n');
 
@@ -173,10 +173,10 @@ describe('handleProjectIssues', () => {
           // First call is the root - return only __tests__ directory
           return [
             { name: '__tests__', isDirectory: () => true, isFile: () => false },
-          ];
+          ] as unknown as fs.Dirent<any>[];
         }
         // Any subsequent call should not happen (since __tests__ should be skipped)
-        return [];
+        return [] as unknown as fs.Dirent<any>[];
       });
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Test\n');
 

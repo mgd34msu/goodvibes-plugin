@@ -4,27 +4,10 @@
  * Handles lazy creation of the .goodvibes and memory directories,
  * as well as security-hardened .gitignore management.
  */
-/**
- * Checks if a file or directory exists asynchronously.
- *
- * @param filePath - The path to check
- * @returns Promise resolving to true if path exists, false otherwise
- */
-export declare function fileExists(filePath: string): Promise<boolean>;
-/**
- * Ensure the .goodvibes directory exists (lazy creation).
- *
- * Creates the .goodvibes directory if it doesn't exist, and ensures
- * that comprehensive security patterns are added to .gitignore to
- * prevent sensitive data from being committed.
- *
- * @param cwd - The current working directory (project root)
- * @throws Error if the directory cannot be created
- *
- * @example
- * await ensureGoodVibesDir('/path/to/project');
- */
-export declare function ensureGoodVibesDir(cwd: string): Promise<void>;
+import { ensureGoodVibesDir } from '../shared/index.js';
+import { fileExists } from '../shared/file-utils.js';
+export { fileExists };
+export { ensureGoodVibesDir };
 /**
  * Ensure the memory directory exists (lazy creation).
  *
