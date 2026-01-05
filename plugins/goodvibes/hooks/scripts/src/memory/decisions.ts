@@ -2,11 +2,9 @@
  * Decisions memory module - stores architectural decisions with rationale.
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryDecision } from '../types/memory.js';
-import { debug } from '../shared/logging.js';
-import { fileExists } from '../shared/file-utils.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
 
 const DECISIONS_HEADER = `# Architectural Decisions
 
@@ -35,12 +33,25 @@ Each decision includes the date, alternatives considered, rationale, and the age
 export async function readDecisions(cwd: string): Promise<MemoryDecision[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
 
-  if (!(await fileExists(filePath))) {
-    return [];
-  }
-
-  const content = await fs.readFile(filePath, 'utf-8');
-  return parseDecisions(content);
+  return parseMemoryFile<MemoryDecision>(filePath, {
+    primaryField: 'title',
+    fields: {
+      date: 'inline',
+      agent: 'inline',
+      alternatives: 'list',
+      rationale: 'text',
+      context: 'text',
+    },
+    validate: (entry) => !!(entry.title && entry.date && entry.rationale),
+    transform: (entry) => ({
+      title: entry.title!,
+      date: entry.date!,
+      alternatives: entry.alternatives || [],
+      rationale: entry.rationale!,
+      agent: entry.agent,
+      context: entry.context,
+    }),
+  });
 }
 
 /**
@@ -63,77 +74,10 @@ export async function readDecisions(cwd: string): Promise<MemoryDecision[]> {
 export async function writeDecision(cwd: string, decision: MemoryDecision): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
 
-  // Ensure file exists with header
-  if (!(await fileExists(filePath))) {
-    const dir = path.dirname(filePath);
-    if (!(await fileExists(dir))) {
-      await fs.mkdir(dir, { recursive: true });
-    }
-    await fs.writeFile(filePath, DECISIONS_HEADER);
-  }
+  await ensureMemoryFile(filePath, DECISIONS_HEADER);
 
   const entry = formatDecision(decision);
-  await fs.appendFile(filePath, entry);
-}
-
-function parseDecisions(content: string): MemoryDecision[] {
-  const decisions: MemoryDecision[] = [];
-  const blocks = content.split(/\n## /).slice(1);
-
-  for (const block of blocks) {
-    try {
-      const lines = block.split('\n');
-      const title = lines[0]?.trim() || '';
-
-      let date = '';
-      let alternatives: string[] = [];
-      let rationale = '';
-      let agent = '';
-      let context = '';
-
-      let currentSection = '';
-      for (const line of lines.slice(1)) {
-        // Skip separator lines
-        if (line.trim() === '---') {
-          continue;
-        }
-
-        if (line.startsWith('**Date:**')) {
-          date = line.replace('**Date:**', '').trim();
-        } else if (line.startsWith('**Agent:**')) {
-          agent = line.replace('**Agent:**', '').trim();
-        } else if (line.startsWith('**Alternatives:**')) {
-          currentSection = 'alternatives';
-        } else if (line.startsWith('**Rationale:**')) {
-          currentSection = 'rationale';
-        } else if (line.startsWith('**Context:**')) {
-          currentSection = 'context';
-        } else if (line.startsWith('- ') && currentSection === 'alternatives') {
-          alternatives.push(line.replace('- ', '').trim());
-        } else if (currentSection === 'rationale' && line.trim()) {
-          rationale += line.trim() + ' ';
-        } else if (currentSection === 'context' && line.trim()) {
-          context += line.trim() + ' ';
-        }
-      }
-
-      if (title && date && rationale) {
-        decisions.push({
-          title,
-          date,
-          alternatives,
-          rationale: rationale.trim(),
-          agent: agent || undefined,
-          context: context.trim() || undefined,
-        });
-      }
-    } catch (error: unknown) {
-      debug('Skipping malformed decision entry', { error: String(error), block: block.substring(0, 100) });
-      continue;
-    }
-  }
-
-  return decisions;
+  await appendMemoryEntry(filePath, entry);
 }
 
 function formatDecision(decision: MemoryDecision): string {

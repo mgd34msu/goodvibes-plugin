@@ -114,7 +114,7 @@ describe('MCP Server Integration', () => {
 
       // Import and test loadRegistry
       const registryContent = fs.readFileSync('/mock/path', 'utf-8');
-      const registry = yaml.load(registryContent) as any;
+      const registry = yaml.load(registryContent) as { version: string; search_index: unknown[] };
 
       expect(registry.version).toBe('1.0.0');
       expect(registry.search_index.length).toBe(5);
@@ -125,7 +125,7 @@ describe('MCP Server Integration', () => {
       vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleAgentsRegistry));
 
       const registryContent = fs.readFileSync('/mock/path', 'utf-8');
-      const registry = yaml.load(registryContent) as any;
+      const registry = yaml.load(registryContent) as { version: string; search_index: unknown[] };
 
       expect(registry.version).toBe('1.0.0');
       expect(registry.search_index.length).toBe(2);
@@ -136,7 +136,7 @@ describe('MCP Server Integration', () => {
       vi.mocked(fs.readFileSync).mockReturnValue(yaml.dump(sampleToolsRegistry));
 
       const registryContent = fs.readFileSync('/mock/path', 'utf-8');
-      const registry = yaml.load(registryContent) as any;
+      const registry = yaml.load(registryContent) as { version: string; search_index: unknown[] };
 
       expect(registry.version).toBe('1.0.0');
       expect(registry.search_index.length).toBe(2);

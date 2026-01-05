@@ -18,20 +18,49 @@ const CACHE_TTL = 5 * 60 * 1000;
 /** Maximum number of entries to keep in cache (LRU-style cleanup) */
 const MAX_CACHE_ENTRIES = 50;
 
+/** Minimum interval between pruning operations (60 seconds) */
+const PRUNE_INTERVAL = 60 * 1000;
+
+/** Threshold size to trigger pruning (prune only when cache exceeds this) */
+const PRUNE_THRESHOLD = 40;
+
+/** Last time cache was pruned */
+let lastPruneTime = 0;
+
 /**
  * Clear expired entries from the stack cache.
  * Also enforces maximum cache size by removing oldest entries.
  */
 export function clearStackCache(): void {
   stackCache.clear();
+  lastPruneTime = 0;
 }
 
 /**
  * Remove expired entries and enforce LRU-style size limit.
- * Called internally before adding new cache entries.
+ * Optimized to only run:
+ * - Every 60 seconds (minimum interval)
+ * - When cache size exceeds threshold (40 entries)
+ * - When cache exceeds maximum size (50 entries) - always prune
  */
 function pruneCache(): void {
   const now = Date.now();
+  const timeSinceLastPrune = now - lastPruneTime;
+
+  // Skip pruning if:
+  // 1. Last pruned within the interval AND
+  // 2. Cache size is below threshold AND
+  // 3. Cache size is below maximum
+  if (
+    timeSinceLastPrune < PRUNE_INTERVAL &&
+    stackCache.size < PRUNE_THRESHOLD &&
+    stackCache.size < MAX_CACHE_ENTRIES
+  ) {
+    return;
+  }
+
+  // Update last prune time
+  lastPruneTime = now;
 
   // Remove expired entries
   for (const [key, value] of stackCache.entries()) {

@@ -248,7 +248,8 @@ class User {
         vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
           return String(p).includes('entities') || String(p).includes('entity');
         });
-        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts'] as any);
+        // @ts-expect-error - Vitest mock type inference issue with Node.js fs.Dirent generic parameter
+        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts']);
         vi.mocked(fs.readFileSync).mockReturnValue(sampleTypeORMEntity);
 
         const result = handleGetSchema({ source: 'typeorm' });
@@ -260,7 +261,8 @@ class User {
 
       it('should parse columns from decorators', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts'] as any);
+        // @ts-expect-error - Vitest mock type inference issue with Node.js fs.Dirent generic parameter
+        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts']);
         vi.mocked(fs.readFileSync).mockReturnValue(sampleTypeORMEntity);
 
         const result = handleGetSchema({ source: 'typeorm' });

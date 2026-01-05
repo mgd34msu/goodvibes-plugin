@@ -132,12 +132,11 @@ export async function validateRegistries() {
         'agents/_registry.yaml',
         'tools/_registry.yaml',
     ];
-    const missing = [];
-    for (const reg of registries) {
-        if (!(await fileExists(path.join(PLUGIN_ROOT, reg)))) {
-            missing.push(reg);
-        }
-    }
+    const results = await Promise.all(registries.map(async (reg) => ({
+        reg,
+        exists: await fileExists(path.join(PLUGIN_ROOT, reg))
+    })));
+    const missing = results.filter(r => !r.exists).map(r => r.reg);
     return { valid: missing.length === 0, missing };
 }
 // =============================================================================

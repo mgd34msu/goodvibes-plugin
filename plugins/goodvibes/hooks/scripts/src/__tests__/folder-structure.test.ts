@@ -34,22 +34,22 @@ describe('folder-structure', () => {
   describe('analyzeFolderStructure', () => {
     it('should detect Next.js App Router pattern with high confidence', async () => {
       // Mock file system
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'app', isDirectory: () => true },
             { name: 'public', isDirectory: () => true },
             { name: 'node_modules', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
         if (p === path.join(mockCwd, 'app')) {
           return [
             { name: '(auth)', isDirectory: () => true },
             { name: 'api', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(true);
@@ -62,20 +62,20 @@ describe('folder-structure', () => {
     });
 
     it('should detect Next.js App Router with page files', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any, options?: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike, options?: unknown) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'app', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
         if (p === path.join(mockCwd, 'app')) {
-          if (options?.withFileTypes) {
-            return [] as any;
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            return [] as fs.Dirent[];
           }
-          return ['page.tsx', 'layout.tsx'] as any;
+          return ['page.tsx', 'layout.tsx'] as string[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(true);
@@ -87,15 +87,15 @@ describe('folder-structure', () => {
     });
 
     it('should detect Next.js Pages Router pattern', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'pages', isDirectory: () => true },
             { name: 'public', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -108,7 +108,7 @@ describe('folder-structure', () => {
     });
 
     it('should detect Atomic Design pattern', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
@@ -116,9 +116,9 @@ describe('folder-structure', () => {
             { name: 'molecules', isDirectory: () => true },
             { name: 'organisms', isDirectory: () => true },
             { name: 'templates', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -130,15 +130,15 @@ describe('folder-structure', () => {
     });
 
     it('should detect Atomic Design with medium confidence', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'atoms', isDirectory: () => true },
             { name: 'molecules', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -150,7 +150,7 @@ describe('folder-structure', () => {
     });
 
     it('should detect Domain-Driven Design pattern', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
@@ -158,9 +158,9 @@ describe('folder-structure', () => {
             { name: 'infrastructure', isDirectory: () => true },
             { name: 'application', isDirectory: () => true },
             { name: 'entities', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -172,7 +172,7 @@ describe('folder-structure', () => {
     });
 
     it('should detect Layer-based pattern', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
@@ -180,9 +180,9 @@ describe('folder-structure', () => {
             { name: 'services', isDirectory: () => true },
             { name: 'repositories', isDirectory: () => true },
             { name: 'models', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -194,15 +194,15 @@ describe('folder-structure', () => {
     });
 
     it('should detect Feature-based pattern', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'features', isDirectory: () => true },
             { name: 'utils', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -214,15 +214,15 @@ describe('folder-structure', () => {
     });
 
     it('should detect Component-based pattern', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'components', isDirectory: () => true },
             { name: 'utils', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -234,15 +234,15 @@ describe('folder-structure', () => {
     });
 
     it('should detect Flat structure', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'index.ts', isDirectory: () => false },
             { name: 'utils.ts', isDirectory: () => false },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -260,7 +260,7 @@ describe('folder-structure', () => {
           { name: 'another-folder', isDirectory: () => true },
           { name: 'random-stuff', isDirectory: () => true },
           { name: 'more-things', isDirectory: () => true },
-        ] as any;
+        ] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -272,20 +272,20 @@ describe('folder-structure', () => {
     });
 
     it('should detect src directory', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'src', isDirectory: () => true },
             { name: 'node_modules', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
         if (p === path.join(mockCwd, 'src')) {
           return [
             { name: 'components', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(true);
@@ -296,7 +296,7 @@ describe('folder-structure', () => {
     });
 
     it('should identify special directories', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
@@ -309,9 +309,9 @@ describe('folder-structure', () => {
             { name: 'services', isDirectory: () => true },
             { name: 'types', isDirectory: () => true },
             { name: '__tests__', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -333,7 +333,7 @@ describe('folder-structure', () => {
       vi.mocked(fs.readdir).mockImplementation(async () => {
         return [
           { name: 'helpers', isDirectory: () => true },
-        ] as any;
+        ] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -347,7 +347,7 @@ describe('folder-structure', () => {
       vi.mocked(fs.readdir).mockImplementation(async () => {
         return [
           { name: 'interfaces', isDirectory: () => true },
-        ] as any;
+        ] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -361,7 +361,7 @@ describe('folder-structure', () => {
       vi.mocked(fs.readdir).mockImplementation(async () => {
         return [
           { name: 'tests', isDirectory: () => true },
-        ] as any;
+        ] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -377,7 +377,7 @@ describe('folder-structure', () => {
           { name: '.git', isDirectory: () => true },
           { name: '.vscode', isDirectory: () => true },
           { name: 'components', isDirectory: () => true },
-        ] as any;
+        ] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -396,7 +396,7 @@ describe('folder-structure', () => {
           { name: 'dist', isDirectory: () => true },
           { name: 'build', isDirectory: () => true },
           { name: 'src', isDirectory: () => true },
-        ] as any;
+        ] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -410,24 +410,24 @@ describe('folder-structure', () => {
     });
 
     it('should calculate folder depth', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'level1', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
         if (p.includes('level1') && !p.includes('level2')) {
           return [
             { name: 'level2', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
         if (p.includes('level2') && !p.includes('level3')) {
           return [
             { name: 'level3', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -448,14 +448,14 @@ describe('folder-structure', () => {
     });
 
     it('should handle app directory that does not exist', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
           return [
             { name: 'app', isDirectory: () => true },
-          ] as any;
+          ] as fs.Dirent[];
         }
-        return [] as any;
+        return [] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);

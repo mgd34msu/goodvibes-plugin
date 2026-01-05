@@ -3,11 +3,13 @@
  *
  * Ensures .gitignore contains security-critical entries to prevent
  * accidental commits of sensitive files.
+ *
+ * Note: This module intentionally does NOT import from file-utils.ts
+ * to avoid circular dependencies (file-utils imports ensureSecureGitignore).
  */
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { fileExists } from './file-utils.js';
 
 /** Security-critical gitignore entries grouped by category. */
 export const SECURITY_GITIGNORE_ENTRIES: Record<string, string[]> = {
@@ -44,8 +46,12 @@ export async function ensureSecureGitignore(cwd: string): Promise<void> {
   const gitignorePath = path.join(cwd, '.gitignore');
   let content = '';
 
-  if (await fileExists(gitignorePath)) {
+  // Inline file existence check to avoid circular dependency with file-utils.ts
+  try {
+    await fs.access(gitignorePath);
     content = await fs.readFile(gitignorePath, 'utf-8');
+  } catch {
+    // File doesn't exist, will create new one
   }
 
   const entriesToAdd: string[] = [];

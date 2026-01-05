@@ -111,34 +111,80 @@ function processTranscriptEntry(
   entry: Record<string, unknown>,
   result: ParsedTranscript
 ): void {
-  // Check for tool usage
-  if (entry.type === 'tool_use' || entry.tool_name || entry.name) {
-    const toolName = (entry.tool_name || entry.name) as string;
-    if (toolName) {
-      result.tools_used.push(toolName);
+  processToolUsage(entry, result);
+  processErrors(entry, result);
+  processSuccessIndicators(entry, result);
+}
 
-      // Check for file modifications
-      if (toolName === 'Write' || toolName === 'Edit' || toolName === 'write_file' || toolName === 'edit_file') {
-        const input = entry.tool_input || entry.input || entry.parameters;
-        if (input && typeof input === 'object') {
-          const inputObj = input as Record<string, unknown>;
-          const filePath = inputObj.file_path || inputObj.path || inputObj.file;
-          if (typeof filePath === 'string') {
-            result.files_modified.push(filePath);
-          }
-        }
-      }
+/**
+ * Extract and process tool usage from a transcript entry
+ */
+function processToolUsage(
+  entry: Record<string, unknown>,
+  result: ParsedTranscript
+): void {
+  const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
+  if (!isToolUse) return;
+
+  const toolName = (entry.tool_name || entry.name) as string;
+  if (!toolName) return;
+
+  result.tools_used.push(toolName);
+
+  // Check for file modifications
+  const isFileModificationTool =
+    toolName === 'Write' ||
+    toolName === 'Edit' ||
+    toolName === 'write_file' ||
+    toolName === 'edit_file';
+
+  if (isFileModificationTool) {
+    const filePath = extractFilePathFromEntry(entry);
+    if (filePath) {
+      result.files_modified.push(filePath);
     }
   }
+}
 
-  // Check for errors
+/**
+ * Extract file path from a tool entry
+ */
+function extractFilePathFromEntry(entry: Record<string, unknown>): string | null {
+  const input = entry.tool_input || entry.input || entry.parameters;
+  if (!input || typeof input !== 'object') return null;
+
+  const inputObj = input as Record<string, unknown>;
+  const filePath = inputObj.file_path || inputObj.path || inputObj.file;
+
+  return typeof filePath === 'string' ? filePath : null;
+}
+
+/**
+ * Process error indicators from a transcript entry
+ */
+function processErrors(
+  entry: Record<string, unknown>,
+  result: ParsedTranscript
+): void {
   if (entry.type === 'error' || entry.error) {
     result.error_count++;
   }
+}
 
-  // Check for success indicators
+/**
+ * Process success indicators from a transcript entry
+ */
+function processSuccessIndicators(
+  entry: Record<string, unknown>,
+  result: ParsedTranscript
+): void {
   const text = String(entry.content || entry.text || entry.message || '').toLowerCase();
-  if (text.includes('successfully') || text.includes('completed') || text.includes('done')) {
+  const hasSuccessIndicator =
+    text.includes('successfully') ||
+    text.includes('completed') ||
+    text.includes('done');
+
+  if (hasSuccessIndicator) {
     result.success_indicators.push(text.substring(0, 100));
   }
 }

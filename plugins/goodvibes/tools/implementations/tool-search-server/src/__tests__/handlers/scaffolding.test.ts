@@ -143,13 +143,19 @@ describe('scaffolding handlers', () => {
         return '{"name": "{{projectName}}", "author": "{{author}}"}';
       });
       // Mock readdir to return only files (no directories to avoid recursion)
-      vi.mocked(fs.promises.readdir).mockResolvedValue([
-        {
-          name: 'package.json.hbs',
-          isDirectory: () => false,
-          isFile: () => true,
-        },
-      ] as any);
+      const mockDirent = {
+        name: 'package.json.hbs',
+        isDirectory: () => false,
+        isFile: () => true,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+        isSymbolicLink: () => false,
+        parentPath: '',
+      };
+      // @ts-expect-error - Vitest mock type inference issue with Node.js fs.Dirent generic parameter
+      vi.mocked(fs.promises.readdir).mockResolvedValue([mockDirent]);
       vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
       vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
     });

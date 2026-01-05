@@ -33,9 +33,10 @@ describe('port-checker', () => {
 `;
       const tasklistOutput = '"node.exe","1234","Console","1","12,345 K"';
 
-      vi.mocked(execSync).mockImplementation((cmd: any) => {
-        if (cmd.includes('netstat')) return netstatOutput;
-        if (cmd.includes('tasklist')) return tasklistOutput;
+      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('netstat')) return netstatOutput;
+        if (cmdStr.includes('tasklist')) return tasklistOutput;
         return '';
       });
 
@@ -54,9 +55,10 @@ describe('port-checker', () => {
   TCP    [::]:3000              [::]:0                 LISTENING       1234
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: any) => {
-        if (cmd.includes('netstat')) return netstatOutput;
-        if (cmd.includes('tasklist')) return '"node.exe","1234","Console","1","12,345 K"';
+      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('netstat')) return netstatOutput;
+        if (cmdStr.includes('tasklist')) return '"node.exe","1234","Console","1","12,345 K"';
         return '';
       });
 
@@ -71,9 +73,10 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: any) => {
-        if (cmd.includes('netstat')) return netstatOutput;
-        if (cmd.includes('tasklist')) throw new Error('Tasklist failed');
+      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('netstat')) return netstatOutput;
+        if (cmdStr.includes('tasklist')) throw new Error('Tasklist failed');
         return '';
       });
 
@@ -164,8 +167,9 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN
 tcp6       0      0 :::8080                 :::*                    LISTEN
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: any) => {
-        if (cmd.includes('lsof')) throw new Error('lsof not found');
+      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('lsof')) throw new Error('lsof not found');
         return netstatOutput;
       });
 
@@ -184,8 +188,9 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      
 tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: any) => {
-        if (cmd.includes('lsof')) throw new Error('lsof not found');
+      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('lsof')) throw new Error('lsof not found');
         return netstatOutput;
       });
 
@@ -213,8 +218,9 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               ESTABLISHED
 tcp        0      0 0.0.0.0:8080            0.0.0.0:*               TIME_WAIT
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: any) => {
-        if (cmd.includes('lsof')) throw new Error('lsof not found');
+      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('lsof')) throw new Error('lsof not found');
         return netstatOutput;
       });
 

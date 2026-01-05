@@ -2,11 +2,9 @@
  * Failures memory module - stores failed approaches to avoid repeating.
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryFailure } from '../types/memory.js';
-import { debug } from '../shared/logging.js';
-import { fileExists } from '../shared/file-utils.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
 
 const FAILURES_HEADER = `# Failed Approaches
 
@@ -35,12 +33,23 @@ Reference this to avoid repeating unsuccessful strategies.
 export async function readFailures(cwd: string): Promise<MemoryFailure[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
 
-  if (!(await fileExists(filePath))) {
-    return [];
-  }
-
-  const content = await fs.readFile(filePath, 'utf-8');
-  return parseFailures(content);
+  return parseMemoryFile<MemoryFailure>(filePath, {
+    primaryField: 'approach',
+    fields: {
+      date: 'inline',
+      reason: 'text',
+      context: 'text',
+      suggestion: 'text',
+    },
+    validate: (entry) => !!(entry.approach && entry.date && entry.reason),
+    transform: (entry) => ({
+      approach: entry.approach!,
+      date: entry.date!,
+      reason: entry.reason!,
+      context: entry.context,
+      suggestion: entry.suggestion,
+    }),
+  });
 }
 
 /**
@@ -65,74 +74,10 @@ export async function readFailures(cwd: string): Promise<MemoryFailure[]> {
 export async function writeFailure(cwd: string, failure: MemoryFailure): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
 
-  // Ensure file exists with header
-  if (!(await fileExists(filePath))) {
-    const dir = path.dirname(filePath);
-    if (!(await fileExists(dir))) {
-      await fs.mkdir(dir, { recursive: true });
-    }
-    await fs.writeFile(filePath, FAILURES_HEADER);
-  }
+  await ensureMemoryFile(filePath, FAILURES_HEADER);
 
   const entry = formatFailure(failure);
-  await fs.appendFile(filePath, entry);
-}
-
-function parseFailures(content: string): MemoryFailure[] {
-  const failures: MemoryFailure[] = [];
-  const blocks = content.split(/\n## /).slice(1);
-
-  for (const block of blocks) {
-    try {
-      const lines = block.split('\n');
-      const approach = lines[0]?.trim() || '';
-
-      let date = '';
-      let reason = '';
-      let context = '';
-      let suggestion = '';
-
-      let currentSection = '';
-
-      for (const line of lines.slice(1)) {
-        // Skip separator lines
-        if (line.trim() === '---') {
-          continue;
-        }
-
-        if (line.startsWith('**Date:**')) {
-          date = line.replace('**Date:**', '').trim();
-        } else if (line.startsWith('**Reason:**')) {
-          currentSection = 'reason';
-        } else if (line.startsWith('**Context:**')) {
-          currentSection = 'context';
-        } else if (line.startsWith('**Suggestion:**')) {
-          currentSection = 'suggestion';
-        } else if (currentSection === 'reason' && line.trim()) {
-          reason += line.trim() + ' ';
-        } else if (currentSection === 'context' && line.trim()) {
-          context += line.trim() + ' ';
-        } else if (currentSection === 'suggestion' && line.trim()) {
-          suggestion += line.trim() + ' ';
-        }
-      }
-
-      if (approach && date && reason) {
-        failures.push({
-          approach,
-          date,
-          reason: reason.trim(),
-          context: context.trim() || undefined,
-          suggestion: suggestion.trim() || undefined,
-        });
-      }
-    } catch (error: unknown) {
-      debug('Skipping malformed failure entry', { error: String(error), block: block.substring(0, 100) });
-      continue;
-    }
-  }
-
-  return failures;
+  await appendMemoryEntry(filePath, entry);
 }
 
 function formatFailure(failure: MemoryFailure): string {

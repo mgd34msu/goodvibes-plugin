@@ -84,11 +84,12 @@ describe('folder-analyzer', () => {
     });
 
     it('should detect App Router', async () => {
-      let callCount = 0;
-      vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        callCount++;
-        if (callCount === 1) return true; // Has src dir
-        return path.includes('/app');
+      vi.mocked(fileExists).mockImplementation(async (filePath: string) => {
+        // Check for src directory (matches /src or \src but not /src/)
+        if ((filePath.includes('/src') || filePath.includes('\\src')) &&
+            !filePath.includes('/src/') && !filePath.includes('\\src\\')) return true;
+        // Check for app directory (handles both Unix and Windows paths)
+        return filePath.includes('/app') || filePath.includes('\\app');
       });
 
       const result = await analyzeFolderStructure(mockCwd);
@@ -97,12 +98,13 @@ describe('folder-analyzer', () => {
     });
 
     it('should detect Pages Router', async () => {
-      let callCount = 0;
-      vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        callCount++;
-        if (callCount === 1) return true; // Has src dir
-        if (path.includes('/app')) return false;
-        return path.includes('/pages');
+      vi.mocked(fileExists).mockImplementation(async (filePath: string) => {
+        // Check for src directory (matches /src or \src but not /src/)
+        if ((filePath.includes('/src') || filePath.includes('\\src')) &&
+            !filePath.includes('/src/') && !filePath.includes('\\src\\')) return true;
+        // Check for pages directory (handles both Unix and Windows paths)
+        if (filePath.includes('/app') || filePath.includes('\\app')) return false;
+        return filePath.includes('/pages') || filePath.includes('\\pages');
       });
 
       const result = await analyzeFolderStructure(mockCwd);

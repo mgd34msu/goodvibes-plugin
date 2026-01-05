@@ -2,11 +2,9 @@
  * Patterns memory module - stores project-specific code patterns.
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryPattern } from '../types/memory.js';
-import { debug } from '../shared/logging.js';
-import { fileExists } from '../shared/file-utils.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
 
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
@@ -35,12 +33,23 @@ These patterns help maintain consistency across the codebase.
 export async function readPatterns(cwd: string): Promise<MemoryPattern[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
 
-  if (!(await fileExists(filePath))) {
-    return [];
-  }
-
-  const content = await fs.readFile(filePath, 'utf-8');
-  return parsePatterns(content);
+  return parseMemoryFile<MemoryPattern>(filePath, {
+    primaryField: 'name',
+    fields: {
+      date: 'inline',
+      description: 'text',
+      example: 'code',
+      files: 'list',
+    },
+    validate: (entry) => !!(entry.name && entry.date && entry.description),
+    transform: (entry) => ({
+      name: entry.name!,
+      date: entry.date!,
+      description: entry.description!,
+      example: entry.example,
+      files: entry.files,
+    }),
+  });
 }
 
 /**
@@ -65,88 +74,10 @@ export async function readPatterns(cwd: string): Promise<MemoryPattern[]> {
 export async function writePattern(cwd: string, pattern: MemoryPattern): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
 
-  // Ensure file exists with header
-  if (!(await fileExists(filePath))) {
-    const dir = path.dirname(filePath);
-    if (!(await fileExists(dir))) {
-      await fs.mkdir(dir, { recursive: true });
-    }
-    await fs.writeFile(filePath, PATTERNS_HEADER);
-  }
+  await ensureMemoryFile(filePath, PATTERNS_HEADER);
 
   const entry = formatPattern(pattern);
-  await fs.appendFile(filePath, entry);
-}
-
-function parsePatterns(content: string): MemoryPattern[] {
-  const patterns: MemoryPattern[] = [];
-  const blocks = content.split(/\n## /).slice(1);
-
-  for (const block of blocks) {
-    try {
-      const lines = block.split('\n');
-      const name = lines[0]?.trim() || '';
-
-      let date = '';
-      let description = '';
-      let example = '';
-      let files: string[] = [];
-
-      let currentSection = '';
-      let inCodeBlock = false;
-
-      for (const line of lines.slice(1)) {
-        // Skip separator lines (but only outside code blocks)
-        if (!inCodeBlock && line.trim() === '---') {
-          continue;
-        }
-
-        if (line.startsWith('```')) {
-          inCodeBlock = !inCodeBlock;
-          if (inCodeBlock && currentSection === 'example') {
-            example += line + '\n';
-          } else if (!inCodeBlock && currentSection === 'example') {
-            example += line + '\n';
-          }
-          continue;
-        }
-
-        if (inCodeBlock && currentSection === 'example') {
-          example += line + '\n';
-          continue;
-        }
-
-        if (line.startsWith('**Date:**')) {
-          date = line.replace('**Date:**', '').trim();
-        } else if (line.startsWith('**Description:**')) {
-          currentSection = 'description';
-        } else if (line.startsWith('**Example:**')) {
-          currentSection = 'example';
-        } else if (line.startsWith('**Files:**')) {
-          currentSection = 'files';
-        } else if (line.startsWith('- ') && currentSection === 'files') {
-          files.push(line.replace('- ', '').trim());
-        } else if (currentSection === 'description' && line.trim()) {
-          description += line.trim() + ' ';
-        }
-      }
-
-      if (name && date && description) {
-        patterns.push({
-          name,
-          date,
-          description: description.trim(),
-          example: example.trim() || undefined,
-          files: files.length > 0 ? files : undefined,
-        });
-      }
-    } catch (error: unknown) {
-      debug('Skipping malformed pattern entry', { error: String(error), block: block.substring(0, 100) });
-      continue;
-    }
-  }
-
-  return patterns;
+  await appendMemoryEntry(filePath, entry);
 }
 
 function formatPattern(pattern: MemoryPattern): string {

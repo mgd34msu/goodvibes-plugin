@@ -42,12 +42,20 @@ vi.mock('../../config.js', () => ({
 }));
 vi.mock('../../utils.js', async (importOriginal) => {
   const actual = await importOriginal();
+  interface UtilsModule {
+    safeExec: (cmd: string) => Promise<{ stdout: string; stderr: string; error?: Error }>;
+    parseSkillMetadata: (content: string) => Record<string, unknown>;
+    extractSkillPatterns: (content: string) => Record<string, unknown>;
+    extractFunctionBody: (content: string) => string;
+    fileExists: (path: string) => Promise<boolean>;
+  }
+
   return {
     ...actual as object,
     safeExec: vi.fn().mockResolvedValue({ stdout: '', stderr: '', error: undefined }),
     parseSkillMetadata: vi.fn().mockReturnValue({}),
     extractSkillPatterns: vi.fn().mockReturnValue({}),
-    extractFunctionBody: (actual as any).extractFunctionBody,
+    extractFunctionBody: (actual as UtilsModule).extractFunctionBody,
     fileExists: vi.fn().mockResolvedValue(true),
   };
 });

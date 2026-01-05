@@ -20,7 +20,7 @@ vi.mock('fs/promises', async () => {
 vi.mock('child_process');
 
 // Import modules under test
-import { detectStack, formatStackInfo, StackInfo } from '../context/stack-detector';
+import { detectStack, formatStackInfo, clearStackCache, StackInfo } from '../context/stack-detector';
 import { getGitContext, formatGitContext, GitContext } from '../context/git-context';
 import { checkProjectHealth, formatHealthStatus, HealthStatus } from '../context/health-checker';
 import { checkEnvironment, formatEnvStatus, EnvStatus } from '../context/env-checker';
@@ -212,6 +212,109 @@ describe('stack-detector', () => {
     });
   });
 
+  describe('cache pruning optimization', () => {
+    beforeEach(() => {
+      // Clear cache before each test
+      vi.clearAllMocks();
+      clearStackCache();
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+      mockedFsPromises.readFile.mockRejectedValue(new Error('ENOENT'));
+    });
+
+    it('should cache detection results', async () => {
+      let callCount = 0;
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
+        callCount++;
+        const pathStr = p.toString();
+        if (pathStr.endsWith('next.config.js')) return undefined;
+        throw new Error('ENOENT');
+      });
+
+      // First call - should hit filesystem
+      const result1 = await detectStack('/test/project-cache-1');
+      const firstCallCount = callCount;
+
+      // Second call with same path - should use cache
+      const result2 = await detectStack('/test/project-cache-1');
+      const secondCallCount = callCount;
+
+      expect(result1).toEqual(result2);
+      expect(secondCallCount).toBe(firstCallCount); // No additional filesystem calls
+    });
+
+    it('should not prune cache when below threshold and within interval', async () => {
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+
+      // Add 20 entries (below PRUNE_THRESHOLD of 40)
+      for (let i = 0; i < 20; i++) {
+        await detectStack(`/test/project-${i}`);
+      }
+
+      // All 20 entries should still be in cache (no pruning occurred)
+      // Verify by checking cache hits
+      const callCount1 = mockedFsPromises.access.mock.calls.length;
+      await detectStack('/test/project-0'); // Should hit cache
+      const callCount2 = mockedFsPromises.access.mock.calls.length;
+
+      expect(callCount2).toBe(callCount1); // No new filesystem calls
+    });
+
+    it('should prune cache when exceeding threshold', async () => {
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+
+      // Add 45 entries (exceeds PRUNE_THRESHOLD of 40 and approaches MAX of 50)
+      for (let i = 0; i < 45; i++) {
+        await detectStack(`/test/project-threshold-${i}`);
+      }
+
+      // Cache should have been pruned when it hit the threshold
+      // Verify cache is still functional
+      const callCount1 = mockedFsPromises.access.mock.calls.length;
+      await detectStack('/test/project-threshold-44'); // Recent entry should still be cached
+      const callCount2 = mockedFsPromises.access.mock.calls.length;
+
+      expect(callCount2).toBe(callCount1); // No new filesystem calls for recent entry
+    });
+
+    it('should prune cache when exceeding maximum size', async () => {
+      mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
+
+      // Add more than MAX_CACHE_ENTRIES (50)
+      for (let i = 0; i < 55; i++) {
+        await detectStack(`/test/project-max-${i}`);
+      }
+
+      // Cache should have been pruned to stay under max
+      // Most recent entries should still be cached
+      const callCount1 = mockedFsPromises.access.mock.calls.length;
+      await detectStack('/test/project-max-54'); // Last entry should be cached
+      const callCount2 = mockedFsPromises.access.mock.calls.length;
+
+      expect(callCount2).toBe(callCount1); // No new filesystem calls
+    });
+
+    it('should clear cache when clearStackCache is called', async () => {
+      mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
+        const pathStr = p.toString();
+        if (pathStr.endsWith('next.config.js')) return undefined;
+        throw new Error('ENOENT');
+      });
+
+      // Add entry to cache
+      await detectStack('/test/project-clear');
+
+      // Clear cache
+      clearStackCache();
+
+      // Should not use cache after clearing
+      const callCount1 = mockedFsPromises.access.mock.calls.length;
+      await detectStack('/test/project-clear');
+      const callCount2 = mockedFsPromises.access.mock.calls.length;
+
+      expect(callCount2).toBeGreaterThan(callCount1); // New filesystem calls
+    });
+  });
+
   describe('formatStackInfo', () => {
     it('should format complete stack info', () => {
       const info: StackInfo = {
@@ -270,8 +373,11 @@ describe('stack-detector', () => {
     });
 
     it('should return empty string for null/undefined input', () => {
-      expect(formatStackInfo(null as unknown as StackInfo)).toBe('');
-      expect(formatStackInfo(undefined as unknown as StackInfo)).toBe('');
+      // Test runtime handling of invalid input (e.g., from external sources)
+      // @ts-expect-error - Testing null input handling for runtime safety
+      expect(formatStackInfo(null)).toBe('');
+      // @ts-expect-error - Testing undefined input handling for runtime safety
+      expect(formatStackInfo(undefined)).toBe('');
     });
 
     it('should handle partial stack info', () => {

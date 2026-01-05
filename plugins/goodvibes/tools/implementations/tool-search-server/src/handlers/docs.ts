@@ -36,9 +36,13 @@ class LRUCache<K, V> {
   /**
    * Creates a new LRU cache with the specified maximum size.
    *
-   * @param maxSize - Maximum number of entries before eviction starts
+   * @param maxSize - Maximum number of entries before eviction starts (must be >= 1)
+   * @throws Error if maxSize is less than 1
    */
   constructor(maxSize: number) {
+    if (maxSize < 1) {
+      throw new Error('LRUCache maxSize must be at least 1');
+    }
     this.maxSize = maxSize;
   }
 
@@ -71,7 +75,10 @@ class LRUCache<K, V> {
     } else if (this.cache.size >= this.maxSize) {
       // Delete oldest (first item) when at capacity
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      // TypeScript doesn't know size >= maxSize >= 1 guarantees a value exists
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
     }
     this.cache.set(key, value);
   }

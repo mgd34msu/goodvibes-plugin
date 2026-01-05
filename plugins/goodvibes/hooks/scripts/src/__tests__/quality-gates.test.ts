@@ -1062,8 +1062,8 @@ describe('quality-gates', () => {
     it('should handle timeout errors in check execution', async () => {
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Command timed out');
-          (error as any).code = 'ETIMEDOUT';
+          const error = new Error('Command timed out') as NodeJS.ErrnoException;
+          error.code = 'ETIMEDOUT';
           throw error;
         }),
       }));

@@ -77,31 +77,61 @@ export async function parseTranscript(transcriptPath) {
  * Process a single transcript entry (JSON format)
  */
 function processTranscriptEntry(entry, result) {
-    // Check for tool usage
-    if (entry.type === 'tool_use' || entry.tool_name || entry.name) {
-        const toolName = (entry.tool_name || entry.name);
-        if (toolName) {
-            result.tools_used.push(toolName);
-            // Check for file modifications
-            if (toolName === 'Write' || toolName === 'Edit' || toolName === 'write_file' || toolName === 'edit_file') {
-                const input = entry.tool_input || entry.input || entry.parameters;
-                if (input && typeof input === 'object') {
-                    const inputObj = input;
-                    const filePath = inputObj.file_path || inputObj.path || inputObj.file;
-                    if (typeof filePath === 'string') {
-                        result.files_modified.push(filePath);
-                    }
-                }
-            }
+    processToolUsage(entry, result);
+    processErrors(entry, result);
+    processSuccessIndicators(entry, result);
+}
+/**
+ * Extract and process tool usage from a transcript entry
+ */
+function processToolUsage(entry, result) {
+    const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
+    if (!isToolUse)
+        return;
+    const toolName = (entry.tool_name || entry.name);
+    if (!toolName)
+        return;
+    result.tools_used.push(toolName);
+    // Check for file modifications
+    const isFileModificationTool = toolName === 'Write' ||
+        toolName === 'Edit' ||
+        toolName === 'write_file' ||
+        toolName === 'edit_file';
+    if (isFileModificationTool) {
+        const filePath = extractFilePathFromEntry(entry);
+        if (filePath) {
+            result.files_modified.push(filePath);
         }
     }
-    // Check for errors
+}
+/**
+ * Extract file path from a tool entry
+ */
+function extractFilePathFromEntry(entry) {
+    const input = entry.tool_input || entry.input || entry.parameters;
+    if (!input || typeof input !== 'object')
+        return null;
+    const inputObj = input;
+    const filePath = inputObj.file_path || inputObj.path || inputObj.file;
+    return typeof filePath === 'string' ? filePath : null;
+}
+/**
+ * Process error indicators from a transcript entry
+ */
+function processErrors(entry, result) {
     if (entry.type === 'error' || entry.error) {
         result.error_count++;
     }
-    // Check for success indicators
+}
+/**
+ * Process success indicators from a transcript entry
+ */
+function processSuccessIndicators(entry, result) {
     const text = String(entry.content || entry.text || entry.message || '').toLowerCase();
-    if (text.includes('successfully') || text.includes('completed') || text.includes('done')) {
+    const hasSuccessIndicator = text.includes('successfully') ||
+        text.includes('completed') ||
+        text.includes('done');
+    if (hasSuccessIndicator) {
         result.success_indicators.push(text.substring(0, 100));
     }
 }

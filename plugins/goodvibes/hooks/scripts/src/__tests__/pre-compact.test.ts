@@ -392,7 +392,7 @@ describe('pre-compact', () => {
         session_id: 'test-session',
         started_at: new Date().toISOString(),
         git: { branch: 'main' },
-        files: {} as any, // Missing arrays
+        files: {} as HooksState['files'], // Missing arrays but properly typed
         automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
       };
 

@@ -2,11 +2,9 @@
  * Preferences memory module - stores user preferences for the project.
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MemoryPreference } from '../types/memory.js';
-import { debug } from '../shared/logging.js';
-import { fileExists } from '../shared/file-utils.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
 
 const PREFERENCES_HEADER = `# User Preferences
 
@@ -35,12 +33,21 @@ These preferences guide agent behavior and decision-making.
 export async function readPreferences(cwd: string): Promise<MemoryPreference[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
 
-  if (!(await fileExists(filePath))) {
-    return [];
-  }
-
-  const content = await fs.readFile(filePath, 'utf-8');
-  return parsePreferences(content);
+  return parseMemoryFile<MemoryPreference>(filePath, {
+    primaryField: 'key',
+    fields: {
+      value: 'inline',
+      date: 'inline',
+      notes: 'text',
+    },
+    validate: (entry) => !!(entry.key && entry.value && entry.date),
+    transform: (entry) => ({
+      key: entry.key!,
+      value: entry.value!,
+      date: entry.date!,
+      notes: entry.notes,
+    }),
+  });
 }
 
 /**
@@ -64,66 +71,10 @@ export async function readPreferences(cwd: string): Promise<MemoryPreference[]> 
 export async function writePreference(cwd: string, preference: MemoryPreference): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
 
-  // Ensure file exists with header
-  if (!(await fileExists(filePath))) {
-    const dir = path.dirname(filePath);
-    if (!(await fileExists(dir))) {
-      await fs.mkdir(dir, { recursive: true });
-    }
-    await fs.writeFile(filePath, PREFERENCES_HEADER);
-  }
+  await ensureMemoryFile(filePath, PREFERENCES_HEADER);
 
   const entry = formatPreference(preference);
-  await fs.appendFile(filePath, entry);
-}
-
-function parsePreferences(content: string): MemoryPreference[] {
-  const preferences: MemoryPreference[] = [];
-  const blocks = content.split(/\n## /).slice(1);
-
-  for (const block of blocks) {
-    try {
-      const lines = block.split('\n');
-      const key = lines[0]?.trim() || '';
-
-      let value = '';
-      let date = '';
-      let notes = '';
-
-      let currentSection = '';
-
-      for (const line of lines.slice(1)) {
-        // Skip separator lines
-        if (line.trim() === '---') {
-          continue;
-        }
-
-        if (line.startsWith('**Value:**')) {
-          value = line.replace('**Value:**', '').trim();
-        } else if (line.startsWith('**Date:**')) {
-          date = line.replace('**Date:**', '').trim();
-        } else if (line.startsWith('**Notes:**')) {
-          currentSection = 'notes';
-        } else if (currentSection === 'notes' && line.trim()) {
-          notes += line.trim() + ' ';
-        }
-      }
-
-      if (key && value && date) {
-        preferences.push({
-          key,
-          value,
-          date,
-          notes: notes.trim() || undefined,
-        });
-      }
-    } catch (error: unknown) {
-      debug('Skipping malformed preference entry', { error: String(error), block: block.substring(0, 100) });
-      continue;
-    }
-  }
-
-  return preferences;
+  await appendMemoryEntry(filePath, entry);
 }
 
 function formatPreference(preference: MemoryPreference): string {
