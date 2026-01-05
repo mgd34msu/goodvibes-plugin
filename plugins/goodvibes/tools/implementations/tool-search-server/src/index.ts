@@ -118,7 +118,7 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   get_agent_content: (_ctx, args) =>
     handleGetAgentContent(args as { path: string }),
   skill_dependencies: (ctx, args) =>
-    handleSkillDependencies(ctx.skillsIndex, ctx.skillsRegistry, args as unknown as SkillDependenciesArgs),
+    handleSkillDependencies(ctx.skillsIndex, ctx.skillsRegistry, args as SkillDependenciesArgs),
 
   // Context gathering
   detect_stack: (_ctx, args) =>
@@ -130,15 +130,15 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
 
   // Live data
   fetch_docs: (_ctx, args) =>
-    handleFetchDocs(args as unknown as FetchDocsArgs),
+    handleFetchDocs(args as FetchDocsArgs),
   get_schema: (_ctx, args) =>
-    handleGetSchema(args as unknown as GetSchemaArgs),
+    handleGetSchema(args as GetSchemaArgs),
   read_config: (_ctx, args) =>
-    handleReadConfig(args as unknown as ReadConfigArgs),
+    handleReadConfig(args as ReadConfigArgs),
 
   // Validation
   validate_implementation: (_ctx, args) =>
-    handleValidateImplementation(args as unknown as ValidateImplementationArgs),
+    handleValidateImplementation(args as ValidateImplementationArgs),
   run_smoke_test: (_ctx, args) =>
     handleRunSmokeTest(args as RunSmokeTestArgs),
   check_types: (_ctx, args) =>
@@ -146,7 +146,7 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
 
   // Scaffolding
   scaffold_project: (_ctx, args) =>
-    handleScaffoldProject(args as unknown as ScaffoldProjectArgs),
+    handleScaffoldProject(args as ScaffoldProjectArgs),
   list_templates: (_ctx, args) =>
     handleListTemplates(args as ListTemplatesArgs),
 
@@ -234,7 +234,7 @@ class GoodVibesServer {
         }
         const result = await handler(this.getHandlerContext(), args);
         // Cast to CallToolResult - handlers return compatible structure
-        return result as unknown as CallToolResult;
+        return result as CallToolResult;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {

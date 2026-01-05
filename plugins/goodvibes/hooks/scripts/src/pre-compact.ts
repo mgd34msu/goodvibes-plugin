@@ -121,7 +121,7 @@ async function main(): Promise<void> {
 
     respond(createResponse());
 
-  } catch (error) {
+  } catch (error: unknown) {
     logError('PreCompact main', error);
     respond(createResponse());
   }

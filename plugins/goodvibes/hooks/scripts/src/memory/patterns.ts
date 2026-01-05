@@ -140,7 +140,7 @@ function parsePatterns(content: string): MemoryPattern[] {
           files: files.length > 0 ? files : undefined,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debug('Skipping malformed pattern entry', { error: String(error), block: block.substring(0, 100) });
       continue;
     }

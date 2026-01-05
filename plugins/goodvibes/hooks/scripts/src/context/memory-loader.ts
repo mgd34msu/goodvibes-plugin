@@ -81,7 +81,7 @@ async function loadJsonFile<T>(cwd: string, filename: string): Promise<T | null>
       const content = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(content) as T;
     }
-  } catch (error) {
+  } catch (error: unknown) {
     debug('memory-loader failed', { error: String(error) });
   }
   return null;
@@ -107,7 +107,7 @@ async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
         }
       }
     }
-  } catch (error) {
+  } catch (error: unknown) {
     debug('memory-loader failed', { error: String(error) });
   }
 

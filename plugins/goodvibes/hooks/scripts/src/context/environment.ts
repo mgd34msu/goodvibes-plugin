@@ -87,7 +87,7 @@ async function parseEnvFile(filePath: string): Promise<string[]> {
 
     const content = await fs.readFile(filePath, 'utf-8');
     return parseEnvVars(content);
-  } catch (error) {
+  } catch (error: unknown) {
     debug('parseEnvFile failed', { error: String(error) });
     return [];
   }

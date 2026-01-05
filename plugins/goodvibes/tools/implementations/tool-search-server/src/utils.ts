@@ -4,7 +4,6 @@
 
 import Fuse from 'fuse.js';
 import * as yaml from 'js-yaml';
-import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -18,14 +17,27 @@ import { PLUGIN_ROOT, FUSE_OPTIONS } from './config.js';
 const execAsync = promisify(exec);
 
 /**
+ * Check if a file exists asynchronously.
+ *
+ * @param filePath - Absolute path to the file
+ * @returns Promise resolving to true if file exists
+ */
+export async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fsPromises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Load registry from YAML file
  */
 export async function loadRegistry(registryPath: string): Promise<Registry | null> {
   try {
     const fullPath = path.join(PLUGIN_ROOT, registryPath);
-    try {
-      await fsPromises.access(fullPath);
-    } catch {
+    if (!(await fileExists(fullPath))) {
       console.error(`Registry not found: ${fullPath}`);
       return null;
     }
@@ -69,9 +81,7 @@ export function search(
  */
 export async function readJsonFile(filePath: string): Promise<Record<string, unknown> | null> {
   try {
-    try {
-      await fsPromises.access(filePath);
-    } catch {
+    if (!(await fileExists(filePath))) {
       return null;
     }
     const content = await fsPromises.readFile(filePath, 'utf-8');
@@ -92,12 +102,12 @@ export async function safeExec(
   try {
     const { stdout, stderr } = await execAsync(command, { cwd, timeout });
     return { stdout: stdout.trim(), stderr: stderr.trim() };
-  } catch (error: unknown) {
-    const err = error as { stdout?: string; stderr?: string; message?: string };
+  } catch (caughtError: unknown) {
+    const execError = caughtError as { stdout?: string; stderr?: string; message?: string };
     return {
-      stdout: err.stdout || '',
-      stderr: err.stderr || '',
-      error: err.message || 'Command failed',
+      stdout: execError.stdout || '',
+      stderr: execError.stderr || '',
+      error: execError.message || 'Command failed',
     };
   }
 }
@@ -106,18 +116,9 @@ export async function safeExec(
  * Detect package manager in use
  */
 export async function detectPackageManager(projectPath: string): Promise<string> {
-  const checkFile = async (file: string): Promise<boolean> => {
-    try {
-      await fsPromises.access(path.join(projectPath, file));
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  if (await checkFile('pnpm-lock.yaml')) return 'pnpm';
-  if (await checkFile('yarn.lock')) return 'yarn';
-  if (await checkFile('bun.lockb')) return 'bun';
+  if (await fileExists(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (await fileExists(path.join(projectPath, 'yarn.lock'))) return 'yarn';
+  if (await fileExists(path.join(projectPath, 'bun.lockb'))) return 'bun';
   return 'npm';
 }
 
@@ -180,8 +181,11 @@ export async function parseSkillMetadata(skillPath: string): Promise<{
   ];
 
   for (const filePath of attempts) {
+    if (!(await fileExists(filePath))) {
+      continue;
+    }
+
     try {
-      await fsPromises.access(filePath);
       const content = await fsPromises.readFile(filePath, 'utf-8');
 
       // Parse YAML frontmatter
@@ -226,7 +230,7 @@ export async function parseSkillMetadata(skillPath: string): Promise<{
 
       return metadata;
     } catch {
-      // File doesn't exist or read error, try next path
+      // Read or parse error, try next path
       continue;
     }
   }

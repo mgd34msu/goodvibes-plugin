@@ -126,7 +126,32 @@ async function copyFilesRecursive(
 }
 
 /**
- * Handle scaffold_project tool call
+ * Handles the scaffold_project MCP tool call.
+ *
+ * Creates a new project from a template by copying template files,
+ * substituting variables, and optionally running install and git init.
+ *
+ * @param args - The scaffold_project tool arguments
+ * @param args.template - Template name to use
+ * @param args.output_dir - Output directory for the new project
+ * @param args.variables - Variables to substitute in templates
+ * @param args.run_install - Whether to run package install (default: true)
+ * @param args.run_git_init - Whether to initialize git (default: true)
+ * @returns MCP tool response with scaffolding results
+ * @throws Error if template is not found
+ *
+ * @example
+ * await handleScaffoldProject({
+ *   template: 'next-saas',
+ *   output_dir: './my-app',
+ *   variables: { projectName: 'My App', author: 'John' }
+ * });
+ * // Returns: {
+ * //   success: true,
+ * //   template: 'next-saas',
+ * //   created_files: ['package.json', 'src/app/page.tsx', ...],
+ * //   next_steps: ['cd ./my-app', 'npm run dev']
+ * // }
  */
 export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<ToolResponse> {
   const templatePath = path.join(PLUGIN_ROOT, 'templates');
@@ -233,7 +258,27 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
 }
 
 /**
- * Handle list_templates tool call
+ * Handles the list_templates MCP tool call.
+ *
+ * Lists available project templates from the templates registry,
+ * optionally filtered by category.
+ *
+ * @param args - The list_templates tool arguments
+ * @param args.category - Optional category to filter by ('minimal' or 'full')
+ * @returns MCP tool response with available templates
+ * @throws Error if template registry is not found
+ *
+ * @example
+ * await handleListTemplates({});
+ * // Returns: {
+ * //   templates: [{ name: 'next-saas', category: 'full', ... }, ...],
+ * //   total: 5,
+ * //   categories: ['minimal', 'full']
+ * // }
+ *
+ * @example
+ * await handleListTemplates({ category: 'minimal' });
+ * // Returns only templates in the 'minimal' category
  */
 export async function handleListTemplates(args: ListTemplatesArgs): Promise<ToolResponse> {
   const templatePath = path.join(PLUGIN_ROOT, 'templates');

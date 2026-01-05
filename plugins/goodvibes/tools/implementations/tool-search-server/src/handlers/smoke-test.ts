@@ -70,7 +70,7 @@ export async function handleRunSmokeTest(args: RunSmokeTestArgs): Promise<ToolRe
   const timeout = (args.timeout || 30) * 1000;
   const tests: TestResult[] = [];
 
-  const pm = detectPackageManager(PROJECT_ROOT);
+  const pm = await detectPackageManager(PROJECT_ROOT);
   const runCmd = pm === 'npm' ? 'npm run' : pm;
 
   // Type check

@@ -27,7 +27,7 @@ export async function isEmptyProject(cwd: string): Promise<boolean> {
     });
 
     return meaningfulFiles.length === 0;
-  } catch (error) {
+  } catch (error: unknown) {
     // If we can't read the directory, treat it as empty
     debug('empty-project: Failed to read directory', error);
     return true;

@@ -26,7 +26,26 @@ import { formatIssues } from './formatter.js';
 export type { ProjectIssuesArgs } from './types.js';
 
 /**
- * Main handler
+ * Handles the project_issues MCP tool call.
+ *
+ * Scans the project for actionable issues including:
+ * - High-priority TODOs (FIXME, BUG) with file:line locations
+ * - Medium and low priority TODOs
+ * - Health warnings (missing deps, multiple lockfiles, etc.)
+ * - Environment issues (missing vars, exposed secrets)
+ *
+ * @param args - The project_issues tool arguments
+ * @param args.path - Project root path to scan (defaults to cwd)
+ * @param args.include_low_priority - Whether to include low-priority TODOs
+ * @returns MCP tool response with formatted issues report
+ *
+ * @example
+ * handleProjectIssues({});
+ * // Returns formatted markdown report with all issues
+ *
+ * @example
+ * handleProjectIssues({ path: './packages/api', include_low_priority: true });
+ * // Scans specific directory including low-priority items
  */
 export function handleProjectIssues(args: ProjectIssuesArgs) {
   const cwd = args.path ? path.resolve(args.path) : process.cwd();

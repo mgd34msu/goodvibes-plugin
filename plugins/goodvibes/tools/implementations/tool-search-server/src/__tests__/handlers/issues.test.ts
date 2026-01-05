@@ -43,8 +43,8 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as unknown as fs.Stats);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'app.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'app.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Handle edge case\nconst x = 1;');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -58,8 +58,8 @@ describe('handleProjectIssues', () => {
     it('should detect BUG as high priority', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'api.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'api.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// BUG: Race condition here\nconst x = 1;');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -72,8 +72,8 @@ describe('handleProjectIssues', () => {
     it('should detect TODO with urgent keyword as high priority', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'service.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'service.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// TODO: URGENT fix before release\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -85,8 +85,8 @@ describe('handleProjectIssues', () => {
     it('should detect regular TODO as medium priority', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'utils.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'utils.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// TODO: Refactor this later\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -99,8 +99,8 @@ describe('handleProjectIssues', () => {
     it('should detect NOTE as low priority', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'config.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'config.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// NOTE: This is intentional\n');
 
       const result = handleProjectIssues({ path: '/test', include_low_priority: true });
@@ -112,8 +112,8 @@ describe('handleProjectIssues', () => {
     it('should include file:line location', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'handler.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'handler.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('line1\nline2\n// FIXME: Fix this\nline4');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -127,13 +127,13 @@ describe('handleProjectIssues', () => {
       vi.mocked(fs.readdirSync).mockImplementation((dir) => {
         if (String(dir) === '/test') {
           return [
-            { name: 'node_modules', isDirectory: () => true, isFile: () => false } as unknown as fs.Dirent,
-            { name: 'src', isDirectory: () => true, isFile: () => false } as unknown as fs.Dirent,
+            { name: 'node_modules', isDirectory: () => true, isFile: () => false },
+            { name: 'src', isDirectory: () => true, isFile: () => false },
           ];
         }
         if (String(dir).includes('node_modules')) {
           return [
-            { name: 'lib.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
+            { name: 'lib.ts', isDirectory: () => false, isFile: () => true },
           ];
         }
         return [];
@@ -149,8 +149,8 @@ describe('handleProjectIssues', () => {
     it('should skip test files', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'handler.test.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'handler.test.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Test fixture\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -172,7 +172,7 @@ describe('handleProjectIssues', () => {
         if (scanCount === 1) {
           // First call is the root - return only __tests__ directory
           return [
-            { name: '__tests__', isDirectory: () => true, isFile: () => false } as unknown as fs.Dirent,
+            { name: '__tests__', isDirectory: () => true, isFile: () => false },
           ];
         }
         // Any subsequent call should not happen (since __tests__ should be skipped)
@@ -389,8 +389,8 @@ describe('handleProjectIssues', () => {
         return isTestPath(pathStr) || pathStr.includes('package-lock.json');
       });
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'app.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'app.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Issue 1\n// FIXME: Issue 2\n');
 
       const result = handleProjectIssues({ path: '/test' });
@@ -405,8 +405,8 @@ describe('handleProjectIssues', () => {
     it('should handle read errors gracefully', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'broken.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'broken.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
         throw new Error('Permission denied');
       });
@@ -444,8 +444,8 @@ describe('handleProjectIssues', () => {
     it('should limit medium-priority TODOs when include_low_priority is false', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'big.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'big.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
 
       // Create content with 15 TODOs
       const todos = Array.from({ length: 15 }, (_, i) => `// TODO: Task ${i + 1}`).join('\n');
@@ -485,8 +485,8 @@ describe('handleProjectIssues', () => {
         isDirectory: () => true,
       } as unknown as fs.Stats);
       vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: 'code.ts', isDirectory: () => false, isFile: () => true } as unknown as fs.Dirent,
-      ]);
+        { name: 'code.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent<Buffer>[]);
       vi.mocked(fs.readFileSync).mockReturnValue('/* FIXME: This spans\n   multiple lines */');
 
       const result = handleProjectIssues({ path: '/test' });

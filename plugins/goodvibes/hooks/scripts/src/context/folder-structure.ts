@@ -66,7 +66,7 @@ async function getSubdirs(dirPath: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name.toLowerCase());
-  } catch (error) {
+  } catch (error: unknown) {
     debug('folder-structure failed', { error: String(error) });
     return [];
   }
@@ -101,7 +101,7 @@ async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: strin
         if (files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))) {
           return { pattern: 'next-app-router', confidence: 'high' };
         }
-      } catch (error) {
+      } catch (error: unknown) {
         debug('folder-structure failed', { error: String(error) });
       }
     }
@@ -184,7 +184,7 @@ async function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH)
           await walk(path.join(dir, entry.name), currentDepth + 1);
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debug('folder-structure failed', { error: String(error) });
     }
   }

@@ -2,11 +2,11 @@
  * Validation handlers - refactored into focused modules
  */
 
-import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { ToolResponse } from '../../types.js';
 import { PROJECT_ROOT } from '../../config.js';
-import { safeExec, parseSkillMetadata, extractSkillPatterns } from '../../utils.js';
+import { safeExec, parseSkillMetadata, extractSkillPatterns, fileExists } from '../../utils.js';
 
 import { ValidationIssue, ValidationContext, SkillPatterns, ValidateImplementationArgs, CheckTypesArgs } from './types.js';
 import { runSecurityChecks } from './security-checks.js';
@@ -33,14 +33,14 @@ export async function handleValidateImplementation(args: ValidateImplementationA
   let skillPatterns: SkillPatterns = {};
 
   if (args.skill) {
-    parseSkillMetadata(args.skill);
-    skillPatterns = extractSkillPatterns(args.skill);
+    await parseSkillMetadata(args.skill);
+    skillPatterns = await extractSkillPatterns(args.skill);
   }
 
   for (const file of args.files) {
     const filePath = path.resolve(PROJECT_ROOT, file);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       issues.push({
         severity: 'error',
         file,
@@ -52,7 +52,7 @@ export async function handleValidateImplementation(args: ValidateImplementationA
       continue;
     }
 
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await fsPromises.readFile(filePath, 'utf-8');
     const lines = content.split('\n');
     const ext = path.extname(file);
     const isTypeScript = ext === '.ts' || ext === '.tsx';
