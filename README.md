@@ -20,8 +20,6 @@ A comprehensive automation plugin that supercharges Claude Code with intelligent
 - [Memory System](#memory-system)
 - [Directory Structure](#directory-structure)
 - [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
 
 ---
 
@@ -319,7 +317,7 @@ Autonomous orchestration mode with rapid agent delegation:
 - Proactively spawns specialist agents
 - Ships enterprise-grade code (no mocks, no placeholders)
 - Automatic agent chaining for complete workflows
-- Context window management (keeps agents under 175k tokens)
+- Context window management (keeps main context window clean)
 
 ### JustVibes
 
@@ -537,83 +535,11 @@ npm run validate
 
 ---
 
-## Contributing
-
-Contributions are welcome! Here's how to get started:
-
-### Adding a New Skill
-
-1. Create a new markdown file in the appropriate `skills/` subdirectory
-2. Follow the skill template structure:
-   ```markdown
-   ---
-   name: skill-name
-   description: What this skill does
-   triggers:
-     - keyword1
-     - keyword2
-   ---
-
-   # Skill Name
-
-   ## When to Use
-   ...
-
-   ## Prerequisites
-   ...
-
-   ## Implementation
-   ...
-
-   ## Examples
-   ...
-   ```
-3. Run `npm run build:registries` to update the registry
-4. Test with `/goodvibes:search skills <your-skill>`
-
-### Adding a New Agent
-
-1. Create a new markdown file in `agents/` or `agents/webdev/`
-2. Follow the agent template in `agents/factory.md`
-3. Run `npm run build:registries`
-4. Test agent spawning
-
-### Adding a New MCP Tool
-
-1. Create a YAML definition in `tools/definitions/`
-2. Implement the tool in `tools/implementations/tool-search-server/`
-3. Run `npm run build:registries && npm run build:server`
-4. Test with `mcp-cli call goodvibes-tools/<tool-name>`
-
-### Code Style
-
-- TypeScript for all implementations
-- ESLint + Prettier for formatting
-- Comprehensive error handling
-- No placeholder or mock code
-
-### Pull Request Process
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `npm test`
-5. Run validation: `npm run validate`
-6. Submit a pull request
-
----
-
 ## Resources
 
-- **Repository**: https://github.com/mgd34msu/goodvibes.sh
+- **Repository**: https://github.com/mgd34msu/goodvibes-plugin
 - **Website**: https://goodvibes.sh
-- **Issues**: https://github.com/mgd34msu/goodvibes.sh/issues
-
----
-
-## License
-
-MIT License - see LICENSE file for details.
+- **Issues**: https://github.com/mgd34msu/goodvibes-plugin/issues
 
 ---
 
