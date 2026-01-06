@@ -519,7 +519,7 @@ describe('retry-tracker', () => {
       };
 
       const { saveRetry } = await import('../../post-tool-use-failure/retry-tracker.js');
-      await saveRetry(testCwd, 'sig1', errorState as any);
+      await saveRetry(testCwd, 'sig1', errorState);
 
       const writtenData = JSON.parse(mockWriteFile.mock.calls[0][1] as string);
       expect(writtenData.sig1.phase).toBe(1); // Defaults to 1 when cwd string + ErrorState
@@ -716,7 +716,7 @@ describe('retry-tracker', () => {
 
     it('should return false when called with invalid type', async () => {
       const { shouldEscalatePhase } = await import('../../post-tool-use-failure/retry-tracker.js');
-      const result = await shouldEscalatePhase(123 as any);
+      const result = await shouldEscalatePhase(123);
 
       expect(result).toBe(false);
     });
@@ -845,7 +845,7 @@ describe('retry-tracker', () => {
 
     it('should return false when called with invalid type', async () => {
       const { hasExhaustedRetries } = await import('../../post-tool-use-failure/retry-tracker.js');
-      const result = await hasExhaustedRetries(123 as any);
+      const result = await hasExhaustedRetries(123);
 
       expect(result).toBe(false);
     });
@@ -936,7 +936,7 @@ describe('retry-tracker', () => {
 
     it('should return category limit for invalid type', async () => {
       const { getRemainingAttempts } = await import('../../post-tool-use-failure/retry-tracker.js');
-      const result = await getRemainingAttempts(123 as any, undefined, 'npm_install');
+      const result = await getRemainingAttempts(123, undefined, 'npm_install');
 
       expect(result).toBe(2); // npm_install limit from PHASE_RETRY_LIMITS
     });

@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleBashTool } from '../../post-tool-use/bash-handler.js';
 import type { HooksState } from '../../types/state.js';
 import type { HookInput } from '../../shared/index.js';
+import { createMockBashToolInput } from '../test-utils/mock-factories/index.js';
 
 // Mock the dev-server-monitor module
 vi.mock('../../post-tool-use/dev-server-monitor.js', () => ({
@@ -606,7 +607,7 @@ describe('handleBashTool', () => {
     });
 
     it('should handle command as non-string type', () => {
-      mockInput.tool_input = { command: 123 as any };
+      mockInput.tool_input = createMockBashToolInput(123);
 
       // Type coercion will occur, but function should handle gracefully
       const result = handleBashTool(mockState, mockInput);
@@ -624,7 +625,7 @@ describe('handleBashTool', () => {
 
       mockInput.tool_input = {
         command: 'npm test',
-        output: 123 as any,
+        output: 123,
       };
 
       const result = handleBashTool(mockState, mockInput);

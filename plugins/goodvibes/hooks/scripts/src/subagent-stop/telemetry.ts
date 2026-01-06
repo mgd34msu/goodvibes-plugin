@@ -1,3 +1,14 @@
+/**
+ * Subagent Telemetry
+ *
+ * Persists and retrieves agent tracking data for telemetry analysis.
+ * Records agent sessions, keywords, and outcomes to disk for monitoring
+ * agent performance and identifying improvement opportunities.
+ *
+ * @module subagent-stop/telemetry
+ * @see {@link ../types/telemetry} for telemetry data structures
+ */
+
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';

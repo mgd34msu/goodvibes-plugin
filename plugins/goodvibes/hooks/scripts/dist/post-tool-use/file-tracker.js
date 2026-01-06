@@ -1,4 +1,14 @@
 /**
+ * File Tracker
+ *
+ * Tracks file modifications and creations across the session to trigger automation.
+ * Maintains separate lists for session-level tracking (all modifications) and
+ * checkpoint-level tracking (modifications since last checkpoint commit).
+ *
+ * @module post-tool-use/file-tracker
+ * @see {@link ./checkpoint-manager} for checkpoint threshold logic
+ */
+/**
  * Records a file modification in the session state.
  * Adds the file path to both modifiedThisSession and modifiedSinceCheckpoint lists.
  * Uses Set internally for O(1) deduplication.

@@ -8,6 +8,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
 
+/**
+ * List of files considered scaffolding-only that don't indicate a real project.
+ * These are typically README, LICENSE, and git configuration files.
+ */
 const SCAFFOLDING_ONLY = [
   'readme.md',
   'readme',
@@ -17,7 +21,18 @@ const SCAFFOLDING_ONLY = [
   '.git',
 ];
 
-/** Check if the project directory is empty or contains only scaffolding files. */
+/**
+ * Check if the project directory is empty or contains only scaffolding files.
+ * A project is considered empty if it has no files other than README, LICENSE, .gitignore, etc.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to true if the project is empty, false otherwise
+ *
+ * @example
+ * if (await isEmptyProject('/my-project')) {
+ *   console.log('New empty project detected');
+ * }
+ */
 export async function isEmptyProject(cwd: string): Promise<boolean> {
   try {
     const files = await fs.readdir(cwd);
@@ -34,7 +49,16 @@ export async function isEmptyProject(cwd: string): Promise<boolean> {
   }
 }
 
-/** Format empty project context with scaffolding suggestions. */
+/**
+ * Format empty project context with scaffolding suggestions.
+ * Returns a helpful message for users starting a new project with common frameworks.
+ *
+ * @returns A formatted string with new project scaffolding suggestions
+ *
+ * @example
+ * const message = formatEmptyProjectContext();
+ * // Returns help text with Next.js, Node.js API, and React library suggestions
+ */
 export function formatEmptyProjectContext(): string {
   return `[GoodVibes SessionStart]
 Status: New project (empty directory)

@@ -1,3 +1,13 @@
+/**
+ * Subagent Context Injection
+ *
+ * Builds context for subagent sessions based on agent type and project configuration.
+ * Provides agent-specific reminders and guidelines (e.g., write-local for backend,
+ * test quality for test engineers, scoring for reviewers).
+ *
+ * @module subagent-start/context-injection
+ * @see {@link ../session-start/context-injection} for main session context
+ */
 import * as path from 'path';
 import { loadSharedConfig } from '../shared/index.js';
 import { getDefaultConfig as getAutomationConfig } from '../types/config.js';

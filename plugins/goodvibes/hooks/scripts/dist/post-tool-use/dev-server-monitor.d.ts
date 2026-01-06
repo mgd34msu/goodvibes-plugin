@@ -1,3 +1,13 @@
+/**
+ * Dev Server Monitor
+ *
+ * Detects and tracks development server processes (npm run dev, next dev, vite, etc.)
+ * Monitors server output for errors and maintains server state across hook executions.
+ * Enables automatic recovery suggestions when dev servers encounter runtime errors.
+ *
+ * @module post-tool-use/dev-server-monitor
+ * @see {@link ../post-tool-use} for bash command processing
+ */
 import type { HooksState } from '../types/state.js';
 /**
  * Checks if a command matches known dev server command patterns.

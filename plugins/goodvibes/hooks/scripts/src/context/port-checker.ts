@@ -15,12 +15,21 @@ export interface PortInfo {
   process?: string;
 }
 
-/** Common development server ports to check. */
+/**
+ * Common development server ports to check.
+ * Includes ports for Next.js, Vite, Express, and other popular frameworks.
+ */
 export const COMMON_DEV_PORTS = [3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888];
 
-/** Timeout for netstat/lsof commands in milliseconds. */
+/**
+ * Timeout for netstat/lsof commands in milliseconds.
+ * Used for Unix-like systems port checking.
+ */
 const COMMAND_TIMEOUT = 10000;
-/** Timeout for tasklist command on Windows in milliseconds. */
+/**
+ * Timeout for tasklist command on Windows in milliseconds.
+ * Used when looking up process names by PID.
+ */
 const TASKLIST_TIMEOUT = 5000;
 
 // =============================================================================
@@ -28,7 +37,13 @@ const TASKLIST_TIMEOUT = 5000;
 // =============================================================================
 
 /**
- * Parse Windows netstat output to extract listening ports
+ * Parse Windows netstat output to extract listening ports.
+ * Extracts port numbers and associated process IDs from netstat output,
+ * then attempts to resolve process names using tasklist.
+ *
+ * @param output - Raw netstat command output
+ * @param ports - Array of port numbers to look for
+ * @returns Map of port numbers to process names
  */
 function parseWindowsNetstat(output: string, ports: number[]): Map<number, string> {
   const portMap = new Map<number, string>();
@@ -82,7 +97,12 @@ function parseWindowsNetstat(output: string, ports: number[]): Map<number, strin
 }
 
 /**
- * Parse Unix lsof output to extract listening ports
+ * Parse Unix lsof output to extract listening ports.
+ * Extracts port numbers and process names from lsof command output.
+ *
+ * @param output - Raw lsof command output
+ * @param ports - Array of port numbers to look for
+ * @returns Map of port numbers to process names
  */
 function parseUnixLsof(output: string, ports: number[]): Map<number, string> {
   const portMap = new Map<number, string>();
@@ -112,7 +132,12 @@ function parseUnixLsof(output: string, ports: number[]): Map<number, string> {
 }
 
 /**
- * Parse Unix netstat output to extract listening ports
+ * Parse Unix netstat output to extract listening ports.
+ * Fallback parser when lsof is not available on Unix-like systems.
+ *
+ * @param output - Raw netstat command output
+ * @param ports - Array of port numbers to look for
+ * @returns Map of port numbers to process names (may be 'unknown' if -p not available)
  */
 function parseUnixNetstat(output: string, ports: number[]): Map<number, string> {
   const portMap = new Map<number, string>();
@@ -147,7 +172,11 @@ function parseUnixNetstat(output: string, ports: number[]): Map<number, string> 
 // =============================================================================
 
 /**
- * Check ports on Windows using netstat
+ * Check ports on Windows using netstat.
+ * Uses netstat -ano to get listening ports with PIDs, then tasklist to resolve names.
+ *
+ * @param ports - Array of port numbers to check
+ * @returns Map of active port numbers to process names
  */
 function checkPortsWindows(ports: number[]): Map<number, string> {
   try {

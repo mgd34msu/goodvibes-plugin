@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { loadMemory, formatMemory, ProjectMemory, Decision, Pattern, Failure, Preferences } from '../../context/memory-loader.js';
+import { createMockStats, createMockReaddirStrings } from '../test-utils/mock-factories.js';
 
 // Mock dependencies
 vi.mock('fs/promises');
@@ -76,36 +77,40 @@ describe('memory-loader', () => {
       });
 
       // Mock reading JSON files
-      mockedFsPromises.readFile.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('decisions.json')) return JSON.stringify(decisions);
-        if (filePath.endsWith('patterns.json')) return JSON.stringify(patterns);
-        if (filePath.endsWith('failures.json')) return JSON.stringify(failures);
-        if (filePath.endsWith('preferences.json')) return JSON.stringify(preferences);
+      mockedFsPromises.readFile.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('decisions.json')) return JSON.stringify(decisions);
+        if (pathStr.endsWith('patterns.json')) return JSON.stringify(patterns);
+        if (pathStr.endsWith('failures.json')) return JSON.stringify(failures);
+        if (pathStr.endsWith('preferences.json')) return JSON.stringify(preferences);
         throw new Error('File not found');
       });
 
       // Mock context directory
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => true } as any;
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: true });
         }
         throw new Error('ENOENT');
       });
 
-      mockedFsPromises.readdir.mockImplementation(async (dirPath: any) => {
-        if (dirPath.endsWith('context')) {
-          return ['note1.md', 'note2.txt'] as any;
+      mockedFsPromises.readdir.mockImplementation(async (dirPath: string | Buffer | URL) => {
+        const pathStr = dirPath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockReaddirStrings(['note1.md', 'note2.txt']);
         }
-        return [] as any;
+        return [];
       });
 
-      mockedFsPromises.readFile.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('decisions.json')) return JSON.stringify(decisions);
-        if (filePath.endsWith('patterns.json')) return JSON.stringify(patterns);
-        if (filePath.endsWith('failures.json')) return JSON.stringify(failures);
-        if (filePath.endsWith('preferences.json')) return JSON.stringify(preferences);
-        if (filePath.endsWith('note1.md')) return 'Custom context 1';
-        if (filePath.endsWith('note2.txt')) return 'Custom context 2';
+      mockedFsPromises.readFile.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('decisions.json')) return JSON.stringify(decisions);
+        if (pathStr.endsWith('patterns.json')) return JSON.stringify(patterns);
+        if (pathStr.endsWith('failures.json')) return JSON.stringify(failures);
+        if (pathStr.endsWith('preferences.json')) return JSON.stringify(preferences);
+        if (pathStr.endsWith('note1.md')) return 'Custom context 1';
+        if (pathStr.endsWith('note2.txt')) return 'Custom context 2';
         throw new Error('File not found');
       });
 
@@ -128,14 +133,15 @@ describe('memory-loader', () => {
       });
 
       // Mock context directory
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => true } as any;
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: true });
         }
         throw new Error('ENOENT');
       });
 
-      mockedFsPromises.readdir.mockResolvedValue([] as any);
+      mockedFsPromises.readdir.mockResolvedValue([]);
 
       const result = await loadMemory(testCwd);
 
@@ -156,7 +162,7 @@ describe('memory-loader', () => {
       });
 
       // Mock invalid JSON
-      mockedFsPromises.readFile.mockResolvedValue('{ invalid json' as any);
+      mockedFsPromises.readFile.mockResolvedValue('{ invalid json');
 
       const result = await loadMemory(testCwd);
 
@@ -185,17 +191,19 @@ describe('memory-loader', () => {
         return false;
       });
 
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => true } as any;
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: true });
         }
         throw new Error('ENOENT');
       });
 
-      mockedFsPromises.readdir.mockResolvedValue(['empty.md', 'content.txt'] as any);
-      mockedFsPromises.readFile.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('empty.md')) return '   \n  \t  ' as any; // Whitespace only
-        if (filePath.endsWith('content.txt')) return 'Real content' as any;
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings(['empty.md', 'content.txt']));
+      mockedFsPromises.readFile.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('empty.md')) return '   \n  \t  '; // Whitespace only
+        if (pathStr.endsWith('content.txt')) return 'Real content';
         throw new Error('File not found');
       });
 
@@ -212,24 +220,26 @@ describe('memory-loader', () => {
         return false;
       });
 
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => true } as any;
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: true });
         }
         throw new Error('ENOENT');
       });
 
-      mockedFsPromises.readdir.mockResolvedValue([
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
         'note.md',
         'readme.txt',
         'script.js',
         'config.json',
         'image.png',
-      ] as any);
+      ]));
 
-      mockedFsPromises.readFile.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('note.md')) return 'Markdown content' as any;
-        if (filePath.endsWith('readme.txt')) return 'Text content' as any;
+      mockedFsPromises.readFile.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('note.md')) return 'Markdown content';
+        if (pathStr.endsWith('readme.txt')) return 'Text content';
         throw new Error('Should not read this file');
       });
 
@@ -247,9 +257,10 @@ describe('memory-loader', () => {
         return false;
       });
 
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => false } as any; // Not a directory
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: false }); // Not a directory
         }
         throw new Error('ENOENT');
       });
@@ -266,9 +277,10 @@ describe('memory-loader', () => {
         return false;
       });
 
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => true } as any;
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: true });
         }
         throw new Error('ENOENT');
       });
@@ -303,17 +315,19 @@ describe('memory-loader', () => {
         return false;
       });
 
-      mockedFsPromises.stat.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('context')) {
-          return { isDirectory: () => true } as any;
+      mockedFsPromises.stat.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('context')) {
+          return createMockStats({ isDirectory: true });
         }
         throw new Error('ENOENT');
       });
 
-      mockedFsPromises.readdir.mockResolvedValue(['good.md', 'bad.md'] as any);
-      mockedFsPromises.readFile.mockImplementation(async (filePath: any) => {
-        if (filePath.endsWith('good.md')) return 'Good content' as any;
-        if (filePath.endsWith('bad.md')) throw new Error('Read error');
+      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings(['good.md', 'bad.md']));
+      mockedFsPromises.readFile.mockImplementation(async (filePath: string | Buffer | URL) => {
+        const pathStr = filePath.toString();
+        if (pathStr.endsWith('good.md')) return 'Good content';
+        if (pathStr.endsWith('bad.md')) throw new Error('Read error');
         throw new Error('Unexpected file');
       });
 

@@ -12,7 +12,6 @@ export {
   getMemoryDir,
   getMemoryFilePath,
 } from './paths.js';
-/** Memory file type enumeration for different memory categories */
 export type { MemoryFileType } from './paths.js';
 
 // Directory management

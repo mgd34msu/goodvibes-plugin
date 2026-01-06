@@ -1,3 +1,13 @@
+/**
+ * Fix Loop
+ *
+ * Error categorization and fix loop orchestration for automated error recovery.
+ * Builds context messages with error details, documentation, and previously attempted fixes
+ * to guide the AI through multi-phase error resolution strategies.
+ *
+ * @module automation/fix-loop
+ * @see {@link ../post-tool-use-failure} for error pattern matching and recovery
+ */
 import type { ErrorState, ErrorCategory } from '../types/errors.js';
 import { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries } from '../shared/error-handling-core.js';
 export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries };

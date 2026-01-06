@@ -1,3 +1,14 @@
+/**
+ * Output Validation
+ *
+ * Validates agent output by running type checks on modified files.
+ * Tracks file modifications and ensures no type errors were introduced
+ * by the agent's work before allowing session termination.
+ *
+ * @module subagent-stop/output-validation
+ * @see {@link ../automation/build-runner} for type checking
+ * @see {@link ../post-tool-use/file-tracker} for file tracking
+ */
 import { parseTranscript } from '../shared/index.js';
 import { runTypeCheck } from '../automation/build-runner.js';
 import { trackFileModification } from '../post-tool-use/file-tracker.js';

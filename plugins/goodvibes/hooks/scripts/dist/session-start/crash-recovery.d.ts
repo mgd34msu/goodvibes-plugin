@@ -1,3 +1,14 @@
+/**
+ * Crash Recovery
+ *
+ * Detects and reports on interrupted sessions by analyzing previous state.
+ * Identifies uncommitted changes, pending features, and last checkpoints
+ * to help resume work after a crash or unexpected session termination.
+ *
+ * @module session-start/crash-recovery
+ * @see {@link ../state} for state persistence
+ * @see {@link ../automation/git-operations} for git status
+ */
 import type { HooksState } from '../types/state.js';
 /** Information about a potential crash recovery scenario */
 export interface RecoveryInfo {

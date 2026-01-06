@@ -1,3 +1,14 @@
+/**
+ * Test Verification
+ *
+ * Runs tests for files modified by an agent to verify correctness.
+ * Finds relevant test files, executes them, and updates state with results.
+ * Ensures agent changes don't break existing functionality.
+ *
+ * @module subagent-stop/test-verification
+ * @see {@link ../automation/test-runner} for test execution
+ */
+
 import { findTestsForFile, runTests } from '../automation/test-runner.js';
 import type { HooksState } from '../types/state.js';
 

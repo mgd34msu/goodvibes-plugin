@@ -1,3 +1,15 @@
+/**
+ * Checkpoint Manager
+ *
+ * Determines when to create git checkpoint commits based on file modification thresholds
+ * and orchestrates checkpoint creation with state management. Checkpoints are automatic
+ * commits that preserve work-in-progress without requiring full feature completion.
+ *
+ * @module post-tool-use/checkpoint-manager
+ * @see {@link ./file-tracker} for file modification tracking
+ * @see {@link ../automation/git-operations} for git commit operations
+ */
+
 import type { HooksState } from '../types/state.js';
 import { createCheckpoint as gitCheckpoint, hasUncommittedChanges } from '../automation/git-operations.js';
 import { CHECKPOINT_TRIGGERS } from '../shared/index.js';

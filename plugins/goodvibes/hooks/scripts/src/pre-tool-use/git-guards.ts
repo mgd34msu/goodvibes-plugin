@@ -1,3 +1,14 @@
+/**
+ * Git Guards
+ *
+ * Safety checks for git operations to prevent destructive commands on protected branches.
+ * Blocks dangerous operations like force push to main, hard reset on main,
+ * and provides warnings for risky operations like rebasing.
+ *
+ * @module pre-tool-use/git-guards
+ * @see {@link ../automation/git-operations} for git command execution
+ */
+
 import type { HooksState } from '../types/state.js';
 import { getCurrentBranch, hasUncommittedChanges } from '../automation/git-operations.js';
 

@@ -1,3 +1,14 @@
+/**
+ * Git Branch Manager
+ *
+ * Automates feature branch creation and merging based on session state.
+ * Creates feature branches when the first file is created on main branch,
+ * and merges branches back to main when tests/builds pass and feature is complete.
+ *
+ * @module post-tool-use/git-branch-manager
+ * @see {@link ../automation/git-operations} for git command execution
+ * @see {@link ./file-tracker} for file creation tracking
+ */
 import type { HooksState } from '../types/state.js';
 /**
  * Determines if a feature branch should be created based on current state.

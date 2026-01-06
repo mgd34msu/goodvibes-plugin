@@ -1,3 +1,14 @@
+/**
+ * File Tracker
+ *
+ * Tracks file modifications and creations across the session to trigger automation.
+ * Maintains separate lists for session-level tracking (all modifications) and
+ * checkpoint-level tracking (modifications since last checkpoint commit).
+ *
+ * @module post-tool-use/file-tracker
+ * @see {@link ./checkpoint-manager} for checkpoint threshold logic
+ */
+
 import type { HooksState } from '../types/state.js';
 
 /**

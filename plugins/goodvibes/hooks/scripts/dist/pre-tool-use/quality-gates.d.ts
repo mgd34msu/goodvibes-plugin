@@ -1,3 +1,14 @@
+/**
+ * Quality Gates
+ *
+ * Pre-commit and pre-push quality checks for TypeScript projects.
+ * Runs linting, type checking, formatting, and tests before allowing operations.
+ * Supports auto-fix for some checks to maintain code quality standards.
+ *
+ * @module pre-tool-use/quality-gates
+ * @see {@link ../automation/test-runner} for test execution
+ * @see {@link ../automation/build-runner} for type checking
+ */
 /** Configuration for a quality gate check */
 export interface QualityGate {
     /** Display name of the gate */

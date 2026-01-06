@@ -470,7 +470,7 @@ describe('escalatePhase', () => {
     // This covers the MAX_PHASE check at line 140
     const invalidState = {
       ...createErrorState(),
-      phase: 4 as any, // Force an invalid phase value
+      phase: 4, // Force an invalid phase value
     };
 
     const result = escalatePhase(invalidState as ErrorState);
@@ -483,7 +483,7 @@ describe('escalatePhase', () => {
     // When phase is -1, nextPhase becomes 0, which is not 1, 2, or 3
     const invalidState = {
       ...createErrorState(),
-      phase: -1 as any, // Force an invalid negative phase value
+      phase: -1, // Force an invalid negative phase value
     };
 
     const result = escalatePhase(invalidState as ErrorState);
@@ -496,7 +496,7 @@ describe('escalatePhase', () => {
     // Test the nextPhase === 1 branch by starting from phase 0
     const state = {
       ...createErrorState(),
-      phase: 0 as any, // Type assertion to bypass TypeScript check
+      phase: 0, // Type assertion to bypass TypeScript check
     };
     const escalated = escalatePhase(state as ErrorState);
     expect(escalated.phase).toBe(1);

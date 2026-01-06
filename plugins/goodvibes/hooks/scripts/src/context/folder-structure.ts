@@ -60,7 +60,11 @@ const DEFAULT_MAX_DEPTH = 5;
 const FLAT_STRUCTURE_THRESHOLD = 3;
 
 /**
- * Get immediate subdirectories of a path
+ * Get immediate subdirectories of a path.
+ * Only returns directories, not files, and converts names to lowercase.
+ *
+ * @param dirPath - The directory path to scan
+ * @returns Promise resolving to an array of lowercase subdirectory names
  */
 async function getSubdirs(dirPath: string): Promise<string[]> {
   try {
@@ -73,14 +77,25 @@ async function getSubdirs(dirPath: string): Promise<string[]> {
 }
 
 /**
- * Check if any indicators are present
+ * Check if any indicators are present.
+ * Counts how many indicator directories exist in the given directory list.
+ *
+ * @param dirs - Array of directory names to check
+ * @param indicators - Array of indicator patterns to look for
+ * @returns Count of matching indicators found
  */
 function hasIndicators(dirs: string[], indicators: string[]): number {
   return dirs.filter((d) => indicators.includes(d)).length;
 }
 
 /**
- * Detect the architecture pattern
+ * Detect the architecture pattern.
+ * Analyzes directory structure to determine the architecture pattern used in the project.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param topLevelDirs - Array of top-level directory names
+ * @param srcDirs - Array of subdirectories within src/ if it exists
+ * @returns Promise resolving to an object with pattern name and confidence level
  */
 async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): Promise<{ pattern: ArchitecturePattern; confidence: 'high' | 'medium' | 'low' }> {
   const allDirs = [...topLevelDirs, ...srcDirs];
@@ -150,7 +165,11 @@ async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: strin
 }
 
 /**
- * Check for special directories
+ * Check for special directories.
+ * Identifies presence of commonly used directories like components, pages, hooks, etc.
+ *
+ * @param dirs - Array of directory names to check
+ * @returns Object with boolean flags for each special directory type
  */
 function checkSpecialDirs(dirs: string[]): SpecialDirectories {
   return {
@@ -168,7 +187,12 @@ function checkSpecialDirs(dirs: string[]): SpecialDirectories {
 }
 
 /**
- * Calculate approximate folder depth
+ * Calculate approximate folder depth.
+ * Recursively walks the directory tree to find the maximum nesting level.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param maxDepth - Maximum depth to traverse (default: 5)
+ * @returns Promise resolving to the maximum folder depth found
  */
 async function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): Promise<number> {
   let maxFound = 0;
@@ -194,7 +218,17 @@ async function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH)
 }
 
 /**
- * Analyze the folder structure of a project
+ * Analyze the folder structure of a project.
+ * Performs comprehensive analysis to detect architecture pattern, special directories, and folder depth.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to a FolderStructure object with pattern, confidence, and directory information
+ *
+ * @example
+ * const structure = await analyzeFolderStructure('/my-next-app');
+ * if (structure.pattern === 'next-app-router') {
+ *   console.log('Next.js App Router detected');
+ * }
  */
 export async function analyzeFolderStructure(cwd: string): Promise<FolderStructure> {
   const allTopLevelDirs = await getSubdirs(cwd);
@@ -222,7 +256,11 @@ export async function analyzeFolderStructure(cwd: string): Promise<FolderStructu
 }
 
 /**
- * Get human-readable pattern name
+ * Get human-readable pattern name.
+ * Converts architecture pattern enum to a display-friendly string.
+ *
+ * @param pattern - The architecture pattern to format
+ * @returns Human-readable name for the pattern
  */
 function getPatternName(pattern: ArchitecturePattern): string {
   const names: Record<ArchitecturePattern, string> = {
@@ -240,7 +278,15 @@ function getPatternName(pattern: ArchitecturePattern): string {
 }
 
 /**
- * Format folder structure for display
+ * Format folder structure for display.
+ * Generates a human-readable summary of the project architecture.
+ *
+ * @param structure - The FolderStructure object to format
+ * @returns Formatted string with architecture pattern and key directories, or null if no data
+ *
+ * @example
+ * const formatted = formatFolderStructure(structure);
+ * // Returns: "Architecture: Next.js App Router (high confidence)\nKey Dirs: app/, components/, lib/"
  */
 export function formatFolderStructure(structure: FolderStructure): string | null {
   const sections: string[] = [];
