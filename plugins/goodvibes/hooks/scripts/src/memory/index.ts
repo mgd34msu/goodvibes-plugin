@@ -51,12 +51,20 @@ import type {
   ProjectMemory,
 } from '../types/memory.js';
 
+/** Aggregated project memory containing all memory types */
 export type { ProjectMemory };
 
 // Type aliases for backward compatibility
+/** Architectural decision record type alias */
 export type Decision = MemoryDecision;
+
+/** Code pattern record type alias */
 export type Pattern = MemoryPattern;
+
+/** Failed approach record type alias */
 export type Failure = MemoryFailure;
+
+/** User preference record type alias */
 export type Preference = MemoryPreference;
 
 // Re-export security patterns for backward compatibility

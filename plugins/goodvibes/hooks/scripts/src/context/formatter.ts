@@ -14,9 +14,15 @@ import { HealthStatus, formatHealthStatus } from './health-checker.js';
 import { FolderAnalysis, formatFolderAnalysis } from './folder-analyzer.js';
 import type { ProjectMemory } from '../types/memory.js';
 
-/** Maximum number of frameworks to display in summary. */
+/**
+ * Maximum number of frameworks to display in summary.
+ * Prevents summary from becoming too long with many frameworks.
+ */
 const MAX_SUMMARY_FRAMEWORKS = 4;
-/** Maximum number of frameworks to display in minimal context. */
+/**
+ * Maximum number of frameworks to display in minimal context.
+ * Keeps minimal context very concise.
+ */
 const MAX_MINIMAL_FRAMEWORKS = 3;
 
 /** All gathered project context data. */
@@ -38,7 +44,18 @@ export interface FormattedContext {
   issueCount: number;
 }
 
-/** Format all gathered context into a readable string. */
+/**
+ * Format all gathered context into a readable string.
+ * Combines stack, architecture, git, health, environment, todos, and memory into sections.
+ *
+ * @param context - The GatheredContext object with all project context data
+ * @returns FormattedContext with full formatted string, summary, and issue tracking
+ *
+ * @example
+ * const formatted = formatContext(context);
+ * console.log(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
+ * console.log(formatted.full); // Full multi-section report
+ */
 export function formatContext(context: GatheredContext): FormattedContext {
   const sections: string[] = [];
   let issueCount = 0;
@@ -127,7 +144,17 @@ export function formatContext(context: GatheredContext): FormattedContext {
   };
 }
 
-/** Create a minimal context string for low-overhead scenarios. */
+/**
+ * Create a minimal context string for low-overhead scenarios.
+ * Generates a one-line summary with stack, branch, and critical issues only.
+ *
+ * @param context - The GatheredContext object with all project context data
+ * @returns Compact single-line summary string
+ *
+ * @example
+ * const minimal = formatMinimalContext(context);
+ * // Returns: "Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)"
+ */
 export function formatMinimalContext(context: GatheredContext): string {
   const parts: string[] = [];
 

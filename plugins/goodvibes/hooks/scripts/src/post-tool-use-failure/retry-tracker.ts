@@ -72,6 +72,12 @@ function getRetriesPath(cwd: string): string {
   return path.join(cwd, '.goodvibes', 'state', 'retries.json');
 }
 
+/**
+ * Loads retry tracking data from disk.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to retry data map or empty object if file doesn't exist
+ */
 export async function loadRetries(cwd: string): Promise<RetryData> {
   const retriesPath = getRetriesPath(cwd);
   try {
@@ -93,6 +99,14 @@ export async function loadRetries(cwd: string): Promise<RetryData> {
   }
 }
 
+/**
+ * Saves a retry attempt to disk, incrementing the count and updating phase.
+ *
+ * @param stateOrCwd - Either HooksState or directory path
+ * @param signature - Unique error signature
+ * @param errorStateOrPhase - Error state object or phase number
+ * @returns Promise that resolves when retry is saved
+ */
 export async function saveRetry(
   stateOrCwd: HooksState | string,
   signature: string,
@@ -138,16 +152,39 @@ export async function saveRetry(
   }
 }
 
+/**
+ * Gets the number of retry attempts for an error signature.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param signature - Unique error signature
+ * @returns Promise resolving to retry count or 0 if not found
+ */
 export async function getRetryCount(cwd: string, signature: string): Promise<number> {
   const retries = await loadRetries(cwd);
   return retries[signature]?.attempts ?? 0;
 }
 
+/**
+ * Gets the current fix phase for an error signature.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param signature - Unique error signature
+ * @returns Promise resolving to phase number (1-3) or 1 if not found
+ */
 export async function getCurrentPhase(cwd: string, signature: string): Promise<number> {
   const retries = await loadRetries(cwd);
   return retries[signature]?.phase ?? 1;
 }
 
+/**
+ * Determines if the error should escalate to the next fix phase.
+ *
+ * @param cwdOrErrorState - Either directory path or error state object
+ * @param signature - Unique error signature (required if cwdOrErrorState is a path)
+ * @param currentPhase - Current phase number (optional)
+ * @param category - Error category for retry limit lookup
+ * @returns Promise resolving to true if phase should escalate
+ */
 export async function shouldEscalatePhase(
   cwdOrErrorState: string | ErrorState,
   signature?: string,
@@ -169,10 +206,24 @@ export async function shouldEscalatePhase(
   return false;
 }
 
+/**
+ * Escalates error state to the next phase.
+ *
+ * @param errorState - The current error state
+ * @returns New error state with incremented phase
+ */
 export function escalatePhase(errorState: ErrorState): ErrorState {
   return escalatePhaseCore(errorState);
 }
 
+/**
+ * Checks if all retry attempts have been exhausted across all phases.
+ *
+ * @param cwdOrErrorState - Either directory path or error state object
+ * @param signature - Unique error signature (required if cwdOrErrorState is a path)
+ * @param category - Error category for retry limit lookup
+ * @returns Promise resolving to true if all retries exhausted
+ */
 export async function hasExhaustedRetries(
   cwdOrErrorState: string | ErrorState,
   signature?: string,
@@ -193,10 +244,24 @@ export async function hasExhaustedRetries(
   return false;
 }
 
+/**
+ * Gets a human-readable description of a fix phase.
+ *
+ * @param phase - The phase number (1-3)
+ * @returns Description string for the phase
+ */
 export function getPhaseDescription(phase: number): string {
   return getPhaseDescriptionCore(phase);
 }
 
+/**
+ * Gets the number of remaining retry attempts in the current phase.
+ *
+ * @param cwdOrErrorState - Either directory path or error state object
+ * @param signature - Unique error signature (required if cwdOrErrorState is a path)
+ * @param category - Error category for retry limit lookup
+ * @returns Promise resolving to number of remaining attempts
+ */
 export async function getRemainingAttempts(
   cwdOrErrorState: string | ErrorState,
   signature?: string,
@@ -217,10 +282,24 @@ export async function getRemainingAttempts(
   return PHASE_RETRY_LIMITS[category];
 }
 
+/**
+ * Generates a unique signature for an error based on its message and tool.
+ *
+ * @param error - The error message
+ * @param toolName - The name of the tool that failed (optional)
+ * @returns Unique error signature string
+ */
 export function generateErrorSignature(error: string, toolName?: string): string {
   return generateErrorSignatureCore(error, toolName);
 }
 
+/**
+ * Clears retry tracking data for a specific error signature.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param signature - Unique error signature to clear
+ * @returns Promise that resolves when retry is cleared
+ */
 export async function clearRetry(cwd: string, signature: string): Promise<void> {
   const retriesPath = getRetriesPath(cwd);
   const retries = await loadRetries(cwd);
@@ -236,6 +315,13 @@ export async function clearRetry(cwd: string, signature: string): Promise<void> 
 
 const DEFAULT_MAX_AGE_HOURS = 24;
 
+/**
+ * Removes retry tracking data older than specified hours.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param maxAgeHours - Maximum age in hours before pruning (default: 24)
+ * @returns Promise that resolves when old retries are pruned
+ */
 export async function pruneOldRetries(cwd: string, maxAgeHours: number = DEFAULT_MAX_AGE_HOURS): Promise<void> {
   const retriesPath = getRetriesPath(cwd);
   const retries = await loadRetries(cwd);
@@ -258,6 +344,12 @@ export async function pruneOldRetries(cwd: string, maxAgeHours: number = DEFAULT
   }
 }
 
+/**
+ * Gets statistics about retry tracking data.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to retry statistics object
+ */
 export async function getRetryStats(cwd: string): Promise<{
   totalSignatures: number;
   totalAttempts: number;

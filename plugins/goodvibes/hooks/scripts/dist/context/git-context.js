@@ -7,8 +7,19 @@ import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debug } from '../shared/logging.js';
-/** Constant for detached HEAD state. */
+/**
+ * Constant for detached HEAD state.
+ * Used when formatting git context for a repository in detached HEAD mode.
+ */
 const GIT_DETACHED_HEAD = 'detached';
+/**
+ * Execute a git command and return its output.
+ * Handles errors gracefully by returning null on failure.
+ *
+ * @param command - The git command to execute
+ * @param cwd - The current working directory (repository root)
+ * @returns The trimmed command output, or null if the command failed
+ */
 function execGit(command, cwd) {
     try {
         return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
@@ -19,6 +30,12 @@ function execGit(command, cwd) {
         return null;
     }
 }
+/**
+ * Check if a directory exists asynchronously.
+ *
+ * @param dirPath - The directory path to check
+ * @returns Promise resolving to true if directory exists, false otherwise
+ */
 async function directoryExists(dirPath) {
     try {
         await fs.access(dirPath);
@@ -29,7 +46,19 @@ async function directoryExists(dirPath) {
         return false;
     }
 }
-/** Retrieve git context for the project directory. */
+/**
+ * Retrieve git context for the project directory.
+ * Gathers comprehensive git repository information including branch, status, commits, and remote tracking.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to a GitContext object with repository status
+ *
+ * @example
+ * const context = await getGitContext('/my-repo');
+ * if (context.isRepo && context.hasUncommittedChanges) {
+ *   console.log(`${context.uncommittedFileCount} uncommitted files`);
+ * }
+ */
 export async function getGitContext(cwd) {
     const gitDir = path.join(cwd, '.git');
     const isRepo = await directoryExists(gitDir);
@@ -66,7 +95,17 @@ export async function getGitContext(cwd) {
         aheadBehind,
     };
 }
-/** Format git context for display in context output. */
+/**
+ * Format git context for display in context output.
+ * Creates a human-readable summary of the repository status.
+ *
+ * @param context - The GitContext object to format
+ * @returns Formatted string with branch, uncommitted changes, and last commit info
+ *
+ * @example
+ * const formatted = formatGitContext(context);
+ * // Returns: "Git: main branch, 3 uncommitted files, 2 ahead\nLast: \"fix: bug\" (2 hours ago)"
+ */
 export function formatGitContext(context) {
     if (!context.isRepo)
         return 'Git: Not a git repository';

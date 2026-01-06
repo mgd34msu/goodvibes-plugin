@@ -1,7 +1,19 @@
 /**
  * Type definitions for GoodVibes automation configuration.
  */
-/** Returns the default configuration with sensible defaults. */
+/**
+ * Returns the default configuration with sensible defaults.
+ *
+ * Provides a complete configuration object with all automation features enabled
+ * and reasonable threshold values for testing, building, and git operations.
+ *
+ * @returns A GoodVibesConfig object with all sections populated with default values
+ *
+ * @example
+ * const config = getDefaultConfig();
+ * console.log(config.automation.mode); // 'default'
+ * console.log(config.automation.testing.maxRetries); // 3
+ */
 export function getDefaultConfig() {
     return {
         automation: {

@@ -28,7 +28,28 @@ export interface FormattedContext {
     hasIssues: boolean;
     issueCount: number;
 }
-/** Format all gathered context into a readable string. */
+/**
+ * Format all gathered context into a readable string.
+ * Combines stack, architecture, git, health, environment, todos, and memory into sections.
+ *
+ * @param context - The GatheredContext object with all project context data
+ * @returns FormattedContext with full formatted string, summary, and issue tracking
+ *
+ * @example
+ * const formatted = formatContext(context);
+ * console.log(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
+ * console.log(formatted.full); // Full multi-section report
+ */
 export declare function formatContext(context: GatheredContext): FormattedContext;
-/** Create a minimal context string for low-overhead scenarios. */
+/**
+ * Create a minimal context string for low-overhead scenarios.
+ * Generates a one-line summary with stack, branch, and critical issues only.
+ *
+ * @param context - The GatheredContext object with all project context data
+ * @returns Compact single-line summary string
+ *
+ * @example
+ * const minimal = formatMinimalContext(context);
+ * // Returns: "Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)"
+ */
 export declare function formatMinimalContext(context: GatheredContext): string;

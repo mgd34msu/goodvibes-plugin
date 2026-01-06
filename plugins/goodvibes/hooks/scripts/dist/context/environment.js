@@ -14,7 +14,10 @@ import { fileExists } from '../shared/file-utils.js';
 // =============================================================================
 // Constants
 // =============================================================================
-/** Common sensitive variable patterns for security detection. */
+/**
+ * Common sensitive variable patterns for security detection.
+ * Used to identify environment variables that should not be committed.
+ */
 const SENSITIVE_PATTERNS = [
     /api[_-]?key/i,
     /secret|password|token/i,
@@ -22,7 +25,10 @@ const SENSITIVE_PATTERNS = [
     /credentials/i,
     /auth/i,
 ];
-/** All env file variants to check for. */
+/**
+ * All env file variants to check for.
+ * Includes development, production, test, and local variants.
+ */
 const ENV_FILES = [
     '.env',
     '.env.local',
@@ -33,13 +39,20 @@ const ENV_FILES = [
     '.env.test',
     '.env.test.local',
 ];
-/** Example/template env files to check for required variables. */
+/**
+ * Example/template env files to check for required variables.
+ * These files document the required environment variables.
+ */
 const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
 // =============================================================================
 // Internal Helpers
 // =============================================================================
 /**
  * Parse an env file and extract variable names (async version).
+ * Reads the file and extracts all environment variable names.
+ *
+ * @param filePath - The absolute path to the .env file
+ * @returns Promise resolving to array of variable names
  */
 async function parseEnvFile(filePath) {
     try {
@@ -55,6 +68,10 @@ async function parseEnvFile(filePath) {
 }
 /**
  * Parse env content and extract variable names.
+ * Handles comments and various env file formats.
+ *
+ * @param content - The raw content of an env file
+ * @returns Array of environment variable names
  */
 function parseEnvVars(content) {
     const vars = [];
@@ -73,6 +90,10 @@ function parseEnvVars(content) {
 }
 /**
  * Check if a variable name looks sensitive.
+ * Matches against common patterns for API keys, secrets, tokens, etc.
+ *
+ * @param varName - The environment variable name to check
+ * @returns True if the variable name matches sensitive patterns, false otherwise
  */
 function isSensitiveVar(varName) {
     return SENSITIVE_PATTERNS.some((pattern) => pattern.test(varName));

@@ -7,25 +7,55 @@
 import { execSync } from 'child_process';
 import { debug } from '../shared/logging.js';
 
-/** Maximum buffer size for git command output (10MB). */
+/**
+ * Maximum buffer size for git command output (10MB).
+ * Prevents memory issues when processing large git histories.
+ */
 const GIT_MAX_BUFFER = 10 * 1024 * 1024;
-/** Default number of days to look back for recent changes. */
+/**
+ * Default number of days to look back for recent changes.
+ * Used to determine what counts as "recent" file modifications.
+ */
 const DEFAULT_DAYS_LOOKBACK = 7;
-/** Default number of commits to analyze for hotspots. */
+/**
+ * Default number of commits to analyze for hotspots.
+ * More commits provide better hotspot accuracy but slower processing.
+ */
 const DEFAULT_COMMITS_FOR_HOTSPOTS = 50;
-/** Default number of recent commits to retrieve. */
+/**
+ * Default number of recent commits to retrieve.
+ * Displayed in the recent activity summary.
+ */
 const DEFAULT_RECENT_COMMITS = 5;
-/** Maximum recently modified files to return. */
+/**
+ * Maximum recently modified files to return.
+ * Limits the number of files in the recent changes list.
+ */
 const MAX_RECENT_FILES = 10;
-/** Maximum hotspots to return. */
+/**
+ * Maximum hotspots to return.
+ * Limits the number of frequently-changed files reported.
+ */
 const MAX_HOTSPOTS = 5;
-/** Minimum hotspot threshold multiplier. */
+/**
+ * Minimum hotspot threshold multiplier.
+ * Files changed in at least this fraction of commits are considered hotspots.
+ */
 const HOTSPOT_THRESHOLD_MULTIPLIER = 0.1;
-/** Minimum absolute hotspot threshold. */
+/**
+ * Minimum absolute hotspot threshold.
+ * Files must be changed at least this many times to be a hotspot.
+ */
 const MIN_HOTSPOT_THRESHOLD = 3;
-/** Maximum recent commits to display in formatted output. */
+/**
+ * Maximum recent commits to display in formatted output.
+ * Prevents overwhelming output with too many commits.
+ */
 const MAX_DISPLAY_COMMITS = 3;
-/** Maximum recently modified files to display. */
+/**
+ * Maximum recently modified files to display.
+ * Limits files shown in formatted output.
+ */
 const MAX_DISPLAY_FILES = 5;
 
 /** Aggregated recent git activity for the project. */
@@ -60,7 +90,12 @@ export interface RecentCommit {
 }
 
 /**
- * Execute a git command and return output
+ * Execute a git command and return output.
+ * Handles errors gracefully by returning null on command failure.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param args - Git command arguments (e.g., "log --oneline")
+ * @returns The trimmed command output, or null if the command failed
  */
 function gitExec(cwd: string, args: string): string | null {
   try {
@@ -79,7 +114,11 @@ function gitExec(cwd: string, args: string): string | null {
 }
 
 /**
- * Check if directory is a git repository
+ * Check if directory is a git repository.
+ * Uses git rev-parse to verify the directory is within a git working tree.
+ *
+ * @param cwd - The directory path to check
+ * @returns True if the directory is inside a git repository, false otherwise
  */
 function isGitRepo(cwd: string): boolean {
   const result = gitExec(cwd, 'rev-parse --is-inside-work-tree');
@@ -87,7 +126,12 @@ function isGitRepo(cwd: string): boolean {
 }
 
 /**
- * Get files changed in recent commits
+ * Get files changed in recent commits.
+ * Analyzes git log to find files modified in the specified time period.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param days - Number of days to look back (default: 7)
+ * @returns Array of FileChange objects sorted by frequency of changes
  */
 function getRecentlyModifiedFiles(cwd: string, days: number = DEFAULT_DAYS_LOOKBACK): FileChange[] {
   const since = new Date();
@@ -143,7 +187,12 @@ function getRecentlyModifiedFiles(cwd: string, days: number = DEFAULT_DAYS_LOOKB
 }
 
 /**
- * Identify hotspots (frequently changed files)
+ * Identify hotspots (frequently changed files).
+ * Files that change often may indicate instability or active development areas.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param commits - Number of recent commits to analyze (default: 50)
+ * @returns Array of Hotspot objects for files that changed frequently
  */
 function getHotspots(cwd: string, commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS): Hotspot[] {
   const result = gitExec(cwd, `log -${commits} --name-only --pretty=format:""`);
@@ -185,7 +234,12 @@ function getHotspots(cwd: string, commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS
 }
 
 /**
- * Get recent commits summary
+ * Get recent commits summary.
+ * Retrieves abbreviated commit information for display in context.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @param count - Number of recent commits to retrieve (default: 5)
+ * @returns Array of RecentCommit objects with hash, message, author, and date
  */
 function getRecentCommits(cwd: string, count: number = DEFAULT_RECENT_COMMITS): RecentCommit[] {
   const format = '%h|%s|%an|%ar';
@@ -213,7 +267,19 @@ function getRecentCommits(cwd: string, count: number = DEFAULT_RECENT_COMMITS): 
   return commits.slice(0, count);
 }
 
-/** Gather all recent git activity context for the project. */
+/**
+ * Gather all recent git activity context for the project.
+ * Analyzes git history to identify recently modified files, hotspots, and commits.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to RecentActivity with all git activity data
+ *
+ * @example
+ * const activity = await getRecentActivity('/my-repo');
+ * if (activity.hotspots.length > 0) {
+ *   console.log('Frequently changed files:', activity.hotspots);
+ * }
+ */
 export async function getRecentActivity(cwd: string): Promise<RecentActivity> {
   if (!isGitRepo(cwd)) {
     return {
@@ -236,7 +302,17 @@ export async function getRecentActivity(cwd: string): Promise<RecentActivity> {
   };
 }
 
-/** Format recent activity for display in context output. */
+/**
+ * Format recent activity for display in context output.
+ * Creates a human-readable summary of recent commits, hotspots, and file changes.
+ *
+ * @param activity - The RecentActivity object to format
+ * @returns Formatted string with commits, hotspots, and recent files, or null if no activity
+ *
+ * @example
+ * const formatted = formatRecentActivity(activity);
+ * // Returns formatted sections with recent commits, hotspots, and modified files
+ */
 export function formatRecentActivity(activity: RecentActivity): string | null {
   const sections: string[] = [];
 

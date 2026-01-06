@@ -5,7 +5,19 @@
  */
 import * as path from 'path';
 import { fileExists } from '../shared/file-utils.js';
-/** Analyze folder structure to detect architecture patterns. */
+/**
+ * Analyze folder structure to detect architecture patterns.
+ * Identifies project organization patterns like feature-based, layer-based, and routing type.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to FolderAnalysis with structure details
+ *
+ * @example
+ * const analysis = await analyzeFolderStructure('/my-project');
+ * if (analysis.routing === 'App Router') {
+ *   console.log('Using Next.js App Router');
+ * }
+ */
 export async function analyzeFolderStructure(cwd) {
     const hasSrcDir = await fileExists(path.join(cwd, 'src'));
     const srcDir = hasSrcDir ? 'src' : '.';
@@ -46,7 +58,17 @@ export async function analyzeFolderStructure(cwd) {
     const hasApi = hasApiInSrc || hasServerInSrc || hasApiRoot;
     return { srcDir, pattern, routing, hasApi };
 }
-/** Format folder analysis for display in context output. */
+/**
+ * Format folder analysis for display in context output.
+ * Creates a concise summary of the project structure and architecture.
+ *
+ * @param analysis - The FolderAnalysis object to format
+ * @returns Formatted string with structure pattern, routing type, and API presence
+ *
+ * @example
+ * const formatted = formatFolderAnalysis(analysis);
+ * // Returns: "Structure: feature-based, App Router, has API layer"
+ */
 export function formatFolderAnalysis(analysis) {
     const parts = [];
     if (analysis.pattern !== 'unknown') {

@@ -6,17 +6,32 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import { debug } from '../shared/logging.js';
-/** Common development server ports to check. */
+/**
+ * Common development server ports to check.
+ * Includes ports for Next.js, Vite, Express, and other popular frameworks.
+ */
 export const COMMON_DEV_PORTS = [3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888];
-/** Timeout for netstat/lsof commands in milliseconds. */
+/**
+ * Timeout for netstat/lsof commands in milliseconds.
+ * Used for Unix-like systems port checking.
+ */
 const COMMAND_TIMEOUT = 10000;
-/** Timeout for tasklist command on Windows in milliseconds. */
+/**
+ * Timeout for tasklist command on Windows in milliseconds.
+ * Used when looking up process names by PID.
+ */
 const TASKLIST_TIMEOUT = 5000;
 // =============================================================================
 // Platform-Specific Parsing Functions
 // =============================================================================
 /**
- * Parse Windows netstat output to extract listening ports
+ * Parse Windows netstat output to extract listening ports.
+ * Extracts port numbers and associated process IDs from netstat output,
+ * then attempts to resolve process names using tasklist.
+ *
+ * @param output - Raw netstat command output
+ * @param ports - Array of port numbers to look for
+ * @returns Map of port numbers to process names
  */
 function parseWindowsNetstat(output, ports) {
     const portMap = new Map();
@@ -65,7 +80,12 @@ function parseWindowsNetstat(output, ports) {
     return portMap;
 }
 /**
- * Parse Unix lsof output to extract listening ports
+ * Parse Unix lsof output to extract listening ports.
+ * Extracts port numbers and process names from lsof command output.
+ *
+ * @param output - Raw lsof command output
+ * @param ports - Array of port numbers to look for
+ * @returns Map of port numbers to process names
  */
 function parseUnixLsof(output, ports) {
     const portMap = new Map();
@@ -91,7 +111,12 @@ function parseUnixLsof(output, ports) {
     return portMap;
 }
 /**
- * Parse Unix netstat output to extract listening ports
+ * Parse Unix netstat output to extract listening ports.
+ * Fallback parser when lsof is not available on Unix-like systems.
+ *
+ * @param output - Raw netstat command output
+ * @param ports - Array of port numbers to look for
+ * @returns Map of port numbers to process names (may be 'unknown' if -p not available)
  */
 function parseUnixNetstat(output, ports) {
     const portMap = new Map();
@@ -122,7 +147,11 @@ function parseUnixNetstat(output, ports) {
 // Platform-Specific Port Detection
 // =============================================================================
 /**
- * Check ports on Windows using netstat
+ * Check ports on Windows using netstat.
+ * Uses netstat -ano to get listening ports with PIDs, then tasklist to resolve names.
+ *
+ * @param ports - Array of port numbers to check
+ * @returns Map of active port numbers to process names
  */
 function checkPortsWindows(ports) {
     try {
@@ -139,7 +168,11 @@ function checkPortsWindows(ports) {
     }
 }
 /**
- * Check ports on Unix-like systems (Linux, macOS) using lsof or netstat
+ * Check ports on Unix-like systems (Linux, macOS) using lsof or netstat.
+ * Tries lsof first for better process name resolution, falls back to netstat.
+ *
+ * @param ports - Array of port numbers to check
+ * @returns Map of active port numbers to process names
  */
 function checkPortsUnix(ports) {
     // Try lsof first (more reliable for process names)
@@ -167,7 +200,18 @@ function checkPortsUnix(ports) {
         }
     }
 }
-/** Check which common development ports are in use. */
+/**
+ * Check which common development ports are in use.
+ * Platform-agnostic function that detects the OS and uses appropriate method.
+ *
+ * @param _cwd - The current working directory (unused but kept for API consistency)
+ * @returns Promise resolving to an array of PortInfo objects for all common dev ports
+ *
+ * @example
+ * const ports = await checkPorts('/my-project');
+ * const activePorts = ports.filter(p => p.inUse);
+ * activePorts.forEach(p => console.log(`Port ${p.port}: ${p.process}`));
+ */
 export async function checkPorts(_cwd) {
     const platform = os.platform();
     let activePortsMap;
@@ -183,7 +227,17 @@ export async function checkPorts(_cwd) {
         process: activePortsMap.get(port),
     }));
 }
-/** Format port status for display in context output. */
+/**
+ * Format port status for display in context output.
+ * Creates a human-readable summary of active development server ports.
+ *
+ * @param ports - Array of PortInfo objects to format
+ * @returns Formatted string with active port numbers and process names
+ *
+ * @example
+ * const formatted = formatPortStatus(ports);
+ * // Returns: "Active ports: 3000 (node), 5173 (vite)"
+ */
 export function formatPortStatus(ports) {
     const activePorts = ports.filter(p => p.inUse);
     if (activePorts.length === 0) {

@@ -25,10 +25,17 @@ const LOCKFILES = {
     'pnpm-lock.yaml': 'pnpm',
     'bun.lockb': 'bun',
 };
-/** Maximum number of suggestions to return. */
+/**
+ * Maximum number of suggestions to return.
+ * Limits improvement suggestions to avoid overwhelming output.
+ */
 const MAX_SUGGESTIONS = 3;
 /**
- * Check for node_modules and lockfiles
+ * Check for node_modules and lockfiles.
+ * Determines which package manager is in use and dependency installation status.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to dependency status including lockfiles and package manager
  */
 async function checkDependencies(cwd) {
     const hasNodeModules = await fileExists(path.join(cwd, 'node_modules'));
@@ -44,7 +51,11 @@ async function checkDependencies(cwd) {
     return { hasNodeModules, lockfiles, packageManager };
 }
 /**
- * Check TypeScript configuration
+ * Check TypeScript configuration.
+ * Parses tsconfig.json to determine strict mode settings and compiler target.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to TypeScriptHealth object, or null if no tsconfig.json
  */
 async function checkTypeScript(cwd) {
     const tsconfigPath = path.join(cwd, 'tsconfig.json');
@@ -76,7 +87,11 @@ async function checkTypeScript(cwd) {
     }
 }
 /**
- * Get available npm scripts
+ * Get available npm scripts.
+ * Extracts script names from package.json for health analysis.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to array of script names, or empty array if no package.json
  */
 async function getScripts(cwd) {
     const packageJsonPath = path.join(cwd, 'package.json');
@@ -94,7 +109,11 @@ async function getScripts(cwd) {
     }
 }
 /**
- * Generate health warnings based on findings
+ * Generate health warnings based on findings.
+ * Creates warning messages for missing dependencies, multiple lockfiles, and loose TypeScript settings.
+ *
+ * @param health - Partial ProjectHealth object with health check results
+ * @returns Array of HealthWarning objects with type and message
  */
 function generateWarnings(health) {
     const warnings = [];
@@ -119,7 +138,11 @@ function generateWarnings(health) {
     return warnings;
 }
 /**
- * Generate improvement suggestions
+ * Generate improvement suggestions.
+ * Recommends adding missing scripts for linting, testing, and type-checking.
+ *
+ * @param health - Partial ProjectHealth object with scripts and TypeScript status
+ * @returns Array of suggestion strings, limited to MAX_SUGGESTIONS
  */
 function generateSuggestions(health) {
     const suggestions = [];
@@ -138,9 +161,18 @@ function generateSuggestions(health) {
 }
 /**
  * Check overall project health with comprehensive analysis.
- *
- * This performs full analysis including TypeScript details and suggestions.
+ * Performs full analysis including TypeScript details and suggestions.
  * For lightweight status checks, use checkProjectHealth from health-checker.ts.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to ProjectHealth with comprehensive health analysis
+ *
+ * @example
+ * const health = await checkProjectHealth('/my-project');
+ * if (health.hasMultipleLockfiles) {
+ *   console.warn('Multiple package manager lockfiles detected');
+ * }
+ * console.log('Available scripts:', health.scripts);
  */
 export async function checkProjectHealth(cwd) {
     const [{ hasNodeModules, lockfiles, packageManager }, typescript, scripts] = await Promise.all([
@@ -162,7 +194,17 @@ export async function checkProjectHealth(cwd) {
     health.suggestions = generateSuggestions(health);
     return health;
 }
-/** Format project health status for display in context output. */
+/**
+ * Format project health status for display in context output.
+ * Creates a comprehensive health report with package manager, TypeScript, scripts, and issues.
+ *
+ * @param health - The ProjectHealth object to format
+ * @returns Formatted string with health details, or null if no relevant information
+ *
+ * @example
+ * const formatted = formatProjectHealth(health);
+ * // Returns multi-section report with package manager, TypeScript, scripts, warnings, and suggestions
+ */
 export function formatProjectHealth(health) {
     const sections = [];
     if (health.packageManager) {

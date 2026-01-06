@@ -30,7 +30,29 @@ export interface RecentCommit {
     date: string;
     filesChanged: number;
 }
-/** Gather all recent git activity context for the project. */
+/**
+ * Gather all recent git activity context for the project.
+ * Analyzes git history to identify recently modified files, hotspots, and commits.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to RecentActivity with all git activity data
+ *
+ * @example
+ * const activity = await getRecentActivity('/my-repo');
+ * if (activity.hotspots.length > 0) {
+ *   console.log('Frequently changed files:', activity.hotspots);
+ * }
+ */
 export declare function getRecentActivity(cwd: string): Promise<RecentActivity>;
-/** Format recent activity for display in context output. */
+/**
+ * Format recent activity for display in context output.
+ * Creates a human-readable summary of recent commits, hotspots, and file changes.
+ *
+ * @param activity - The RecentActivity object to format
+ * @returns Formatted string with commits, hotspots, and recent files, or null if no activity
+ *
+ * @example
+ * const formatted = formatRecentActivity(activity);
+ * // Returns formatted sections with recent commits, hotspots, and modified files
+ */
 export declare function formatRecentActivity(activity: RecentActivity): string | null;

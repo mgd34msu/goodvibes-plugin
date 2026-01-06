@@ -586,7 +586,7 @@ describe('folder-structure', () => {
 
     describe('Special directories detection', () => {
       it('should detect all special directories', async () => {
-        const mockEntries = [
+        const topLevelEntries = [
           { name: 'components', isDirectory: () => true },
           { name: 'pages', isDirectory: () => true },
           { name: 'app', isDirectory: () => true },
@@ -599,7 +599,12 @@ describe('folder-structure', () => {
           { name: '__tests__', isDirectory: () => true },
         ] as unknown as fs.Dirent[];
 
-        vi.mocked(fs.readdir).mockResolvedValue(mockEntries);
+        // Mock to return top-level entries for cwd, empty arrays for subdirectories
+        // This prevents infinite recursion in calculateDepth
+        vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
+          if (dirPath === mockCwd) return topLevelEntries;
+          return [];
+        });
         vi.mocked(fileExists).mockResolvedValue(false);
 
         const result = await analyzeFolderStructure(mockCwd);

@@ -3,8 +3,10 @@
  * Contains RECOVERY_PATTERNS constant and related types for pattern matching.
  */
 
+/** Error severity level for categorizing error impact */
 export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
 
+/** Recovery pattern definition for error matching and fix suggestions */
 export interface RecoveryPattern {
   category: string;
   description: string;

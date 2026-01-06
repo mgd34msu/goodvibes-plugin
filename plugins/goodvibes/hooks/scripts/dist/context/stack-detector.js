@@ -7,21 +7,44 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { LOCKFILES, fileExists } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
-/** Module-level cache for stack detection results */
+/**
+ * Module-level cache for stack detection results.
+ * Stores StackInfo objects with timestamps to avoid repeated filesystem checks.
+ */
 const stackCache = new Map();
-/** Cache TTL in milliseconds (5 minutes) */
+/**
+ * Cache TTL in milliseconds (5 minutes).
+ * Cached stack detection results expire after this duration.
+ */
 const CACHE_TTL = 5 * 60 * 1000;
-/** Maximum number of entries to keep in cache (LRU-style cleanup) */
+/**
+ * Maximum number of entries to keep in cache (LRU-style cleanup).
+ * Prevents unbounded cache growth in long-running processes.
+ */
 const MAX_CACHE_ENTRIES = 50;
-/** Minimum interval between pruning operations (60 seconds) */
+/**
+ * Minimum interval between pruning operations (60 seconds).
+ * Prevents excessive pruning overhead.
+ */
 const PRUNE_INTERVAL = 60 * 1000;
-/** Threshold size to trigger pruning (prune only when cache exceeds this) */
+/**
+ * Threshold size to trigger pruning (prune only when cache exceeds this).
+ * Pruning is skipped until cache reaches this size.
+ */
 const PRUNE_THRESHOLD = 40;
-/** Last time cache was pruned */
+/**
+ * Last time cache was pruned.
+ * Tracked to enforce minimum interval between pruning operations.
+ */
 let lastPruneTime = 0;
 /**
  * Clear expired entries from the stack cache.
  * Also enforces maximum cache size by removing oldest entries.
+ * Useful for testing or when you need to force re-detection of the stack.
+ *
+ * @example
+ * clearStackCache();
+ * const freshStack = await detectStack('/my-project'); // Will re-scan filesystem
  */
 export function clearStackCache() {
     stackCache.clear();
@@ -89,7 +112,22 @@ const LOCKFILE_TO_PM = {
     'package-lock.json': 'npm',
     'bun.lockb': 'bun',
 };
-/** Detect the technology stack used in the project. */
+/**
+ * Detect the technology stack used in the project.
+ * Checks for framework config files, package manager lockfiles, and TypeScript configuration.
+ * Results are cached to improve performance on repeated calls.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to StackInfo with detected frameworks and tools
+ *
+ * @example
+ * const stack = await detectStack('/my-project');
+ * if (stack.frameworks.includes('Next.js')) {
+ *   console.log('Next.js project detected');
+ * }
+ * console.log(`Package manager: ${stack.packageManager}`);
+ * console.log(`TypeScript strict mode: ${stack.isStrict}`);
+ */
 export async function detectStack(cwd) {
     // Check cache first
     const cached = stackCache.get(cwd);
@@ -143,7 +181,17 @@ export async function detectStack(cwd) {
     stackCache.set(cwd, { result, timestamp: now });
     return result;
 }
-/** Format stack information for display in context output. */
+/**
+ * Format stack information for display in context output.
+ * Creates a human-readable summary of detected technologies.
+ *
+ * @param info - The StackInfo object to format
+ * @returns Formatted string with stack details, or empty string if no data
+ *
+ * @example
+ * const formatted = formatStackInfo(stack);
+ * // Returns: "Stack: Next.js, TypeScript, Tailwind CSS\nTypeScript: strict\nPackage Manager: pnpm"
+ */
 export function formatStackInfo(info) {
     if (!info || typeof info !== 'object') {
         return '';

@@ -39,7 +39,29 @@ export interface Preferences {
     avoidPatterns?: string[];
     preferredLibraries?: Record<string, string>;
 }
-/** Load all project memory from the .goodvibes/memory directory. */
+/**
+ * Load all project memory from the .goodvibes/memory directory.
+ * Aggregates decisions, patterns, failures, preferences, and custom context.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to ProjectMemory with all persisted context
+ *
+ * @example
+ * const memory = await loadMemory('/my-project');
+ * if (memory.decisions.length > 0) {
+ *   console.log('Found project decisions:', memory.decisions);
+ * }
+ */
 export declare function loadMemory(cwd: string): Promise<ProjectMemory>;
-/** Format project memory for display in context output. */
+/**
+ * Format project memory for display in context output.
+ * Creates sections for decisions, patterns, failures, preferences, and custom context.
+ *
+ * @param memory - The ProjectMemory object to format
+ * @returns Formatted string with memory sections, or null if no memory exists
+ *
+ * @example
+ * const formatted = formatMemory(memory);
+ * // Returns formatted sections with recent decisions, patterns, failures, and preferences
+ */
 export declare function formatMemory(memory: ProjectMemory): string | null;

@@ -13,6 +13,11 @@ const execAsync = promisify(exec);
 /**
  * Promisified spawn that returns a promise resolving to exit code.
  * Used for commands where we need to pass arguments as an array to avoid shell injection.
+ *
+ * @param command - The command to execute
+ * @param args - Array of arguments to pass to the command
+ * @param options - Execution options including working directory and optional timeout
+ * @returns Promise resolving to an object with exit code, stdout, and stderr
  */
 function spawnAsync(command, args, options) {
     return new Promise((resolve) => {

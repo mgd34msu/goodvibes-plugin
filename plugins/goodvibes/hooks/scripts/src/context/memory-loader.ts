@@ -12,6 +12,10 @@ import { fileExists } from '../shared/file-utils.js';
 
 /**
  * Check if a path is a directory (async).
+ * Used to filter out non-directory paths when loading memory files.
+ *
+ * @param filePath - The file path to check
+ * @returns Promise resolving to true if the path is a directory, false otherwise
  */
 async function isDirectory(filePath: string): Promise<boolean> {
   try {
@@ -65,15 +69,29 @@ export interface Preferences {
 
 const MEMORY_DIR = '.goodvibes/memory';
 
-/** Number of recent decisions to display. */
+/**
+ * Number of recent decisions to display.
+ * Limits decision history in formatted output to keep it concise.
+ */
 const RECENT_DECISIONS_LIMIT = 3;
-/** Maximum patterns to display. */
+/**
+ * Maximum patterns to display.
+ * Limits pattern list in formatted output.
+ */
 const MAX_PATTERNS_DISPLAY = 5;
-/** Number of recent failures to display. */
+/**
+ * Number of recent failures to display.
+ * Shows only the most recent failures to avoid overwhelming output.
+ */
 const RECENT_FAILURES_LIMIT = 2;
 
 /**
- * Load a JSON file from the memory directory
+ * Load a JSON file from the memory directory.
+ * Safely handles missing files by returning null.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param filename - The JSON file name to load (relative to .goodvibes/memory/)
+ * @returns Promise resolving to parsed JSON object, or null if file doesn't exist or parse fails
  */
 async function loadJsonFile<T>(cwd: string, filename: string): Promise<T | null> {
   const filePath = path.join(cwd, MEMORY_DIR, filename);
@@ -89,7 +107,12 @@ async function loadJsonFile<T>(cwd: string, filename: string): Promise<T | null>
 }
 
 /**
- * Load text files from a subdirectory
+ * Load text files from a subdirectory.
+ * Reads all .md and .txt files from the specified memory subdirectory.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param subdir - The subdirectory name (relative to .goodvibes/memory/)
+ * @returns Promise resolving to array of file contents as strings
  */
 async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
   const dirPath = path.join(cwd, MEMORY_DIR, subdir);
@@ -115,7 +138,19 @@ async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
   return results;
 }
 
-/** Load all project memory from the .goodvibes/memory directory. */
+/**
+ * Load all project memory from the .goodvibes/memory directory.
+ * Aggregates decisions, patterns, failures, preferences, and custom context.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to ProjectMemory with all persisted context
+ *
+ * @example
+ * const memory = await loadMemory('/my-project');
+ * if (memory.decisions.length > 0) {
+ *   console.log('Found project decisions:', memory.decisions);
+ * }
+ */
 export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   const memoryPath = path.join(cwd, MEMORY_DIR);
 
@@ -148,7 +183,17 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   };
 }
 
-/** Format project memory for display in context output. */
+/**
+ * Format project memory for display in context output.
+ * Creates sections for decisions, patterns, failures, preferences, and custom context.
+ *
+ * @param memory - The ProjectMemory object to format
+ * @returns Formatted string with memory sections, or null if no memory exists
+ *
+ * @example
+ * const formatted = formatMemory(memory);
+ * // Returns formatted sections with recent decisions, patterns, failures, and preferences
+ */
 export function formatMemory(memory: ProjectMemory): string | null {
   const sections: string[] = [];
 

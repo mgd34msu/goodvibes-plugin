@@ -193,7 +193,11 @@ function checkPortsWindows(ports: number[]): Map<number, string> {
 }
 
 /**
- * Check ports on Unix-like systems (Linux, macOS) using lsof or netstat
+ * Check ports on Unix-like systems (Linux, macOS) using lsof or netstat.
+ * Tries lsof first for better process name resolution, falls back to netstat.
+ *
+ * @param ports - Array of port numbers to check
+ * @returns Map of active port numbers to process names
  */
 function checkPortsUnix(ports: number[]): Map<number, string> {
   // Try lsof first (more reliable for process names)
@@ -220,7 +224,18 @@ function checkPortsUnix(ports: number[]): Map<number, string> {
   }
 }
 
-/** Check which common development ports are in use. */
+/**
+ * Check which common development ports are in use.
+ * Platform-agnostic function that detects the OS and uses appropriate method.
+ *
+ * @param _cwd - The current working directory (unused but kept for API consistency)
+ * @returns Promise resolving to an array of PortInfo objects for all common dev ports
+ *
+ * @example
+ * const ports = await checkPorts('/my-project');
+ * const activePorts = ports.filter(p => p.inUse);
+ * activePorts.forEach(p => console.log(`Port ${p.port}: ${p.process}`));
+ */
 export async function checkPorts(_cwd: string): Promise<PortInfo[]> {
   const platform = os.platform();
   let activePortsMap: Map<number, string>;
@@ -238,7 +253,17 @@ export async function checkPorts(_cwd: string): Promise<PortInfo[]> {
   }));
 }
 
-/** Format port status for display in context output. */
+/**
+ * Format port status for display in context output.
+ * Creates a human-readable summary of active development server ports.
+ *
+ * @param ports - Array of PortInfo objects to format
+ * @returns Formatted string with active port numbers and process names
+ *
+ * @example
+ * const formatted = formatPortStatus(ports);
+ * // Returns: "Active ports: 3000 (node), 5173 (vite)"
+ */
 export function formatPortStatus(ports: PortInfo[]): string {
   const activePorts = ports.filter(p => p.inUse);
 

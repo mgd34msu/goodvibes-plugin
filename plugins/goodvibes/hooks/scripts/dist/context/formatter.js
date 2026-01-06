@@ -11,11 +11,28 @@ import { formatEnvStatus } from './environment.js';
 import { formatTodos } from './todo-scanner.js';
 import { formatHealthStatus } from './health-checker.js';
 import { formatFolderAnalysis } from './folder-analyzer.js';
-/** Maximum number of frameworks to display in summary. */
+/**
+ * Maximum number of frameworks to display in summary.
+ * Prevents summary from becoming too long with many frameworks.
+ */
 const MAX_SUMMARY_FRAMEWORKS = 4;
-/** Maximum number of frameworks to display in minimal context. */
+/**
+ * Maximum number of frameworks to display in minimal context.
+ * Keeps minimal context very concise.
+ */
 const MAX_MINIMAL_FRAMEWORKS = 3;
-/** Format all gathered context into a readable string. */
+/**
+ * Format all gathered context into a readable string.
+ * Combines stack, architecture, git, health, environment, todos, and memory into sections.
+ *
+ * @param context - The GatheredContext object with all project context data
+ * @returns FormattedContext with full formatted string, summary, and issue tracking
+ *
+ * @example
+ * const formatted = formatContext(context);
+ * console.log(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
+ * console.log(formatted.full); // Full multi-section report
+ */
 export function formatContext(context) {
     const sections = [];
     let issueCount = 0;
@@ -89,7 +106,17 @@ export function formatContext(context) {
         issueCount,
     };
 }
-/** Create a minimal context string for low-overhead scenarios. */
+/**
+ * Create a minimal context string for low-overhead scenarios.
+ * Generates a one-line summary with stack, branch, and critical issues only.
+ *
+ * @param context - The GatheredContext object with all project context data
+ * @returns Compact single-line summary string
+ *
+ * @example
+ * const minimal = formatMinimalContext(context);
+ * // Returns: "Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)"
+ */
 export function formatMinimalContext(context) {
     const parts = [];
     const tech = context.stack.frameworks.slice(0, MAX_MINIMAL_FRAMEWORKS);

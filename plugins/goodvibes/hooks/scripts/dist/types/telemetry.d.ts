@@ -1,7 +1,10 @@
 /**
  * Type definitions for telemetry data.
  */
-/** Complete telemetry entry for a subagent completion event. */
+/**
+ * Complete telemetry entry for a subagent completion event.
+ * Captures all metadata about an agent's execution including duration, files modified, and tools used.
+ */
 export interface TelemetryEntry {
     event: 'subagent_complete';
     agent_id: string;
@@ -20,7 +23,10 @@ export interface TelemetryEntry {
     tools_used: string[];
     summary: string;
 }
-/** Tracking data for an active agent session. */
+/**
+ * Tracking data for an active agent session.
+ * Lighter weight version of TelemetryEntry used while an agent is still running.
+ */
 export interface TelemetryTracking {
     agent_id: string;
     agent_type: string;

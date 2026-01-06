@@ -1,7 +1,10 @@
 /**
  * Type definitions for error tracking and recovery.
  */
-/** Retry limits per error category before escalating to next phase. */
+/**
+ * Retry limits per error category before escalating to next phase.
+ * Different error types get different retry budgets based on their complexity.
+ */
 export const PHASE_RETRY_LIMITS = {
     npm_install: 2,
     typescript_error: 3,
