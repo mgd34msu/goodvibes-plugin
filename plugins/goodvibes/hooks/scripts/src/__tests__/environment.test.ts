@@ -17,7 +17,6 @@ import * as fileUtils from '../shared/file-utils.js';
 import {
   checkEnvStatus,
   analyzeEnvironment,
-  checkEnvironment,
   formatEnvStatus,
   formatEnvironment,
   type EnvStatus,
@@ -635,20 +634,6 @@ describe('environment.ts', () => {
 
       expect(result.definedVars).toEqual([]);
       expect(result.envFiles).toEqual([]);
-    });
-  });
-
-  describe('checkEnvironment (alias)', () => {
-    it('should be an alias for analyzeEnvironment', async () => {
-      mockedFileUtils.fileExists.mockImplementation(async (path: string) => {
-        return path.endsWith('.env');
-      });
-      mockedFs.readFile.mockResolvedValue('TEST_VAR=value');
-
-      const result = await checkEnvironment('/test/project');
-
-      expect(result.envFiles).toContain('.env');
-      expect(result.definedVars).toContain('TEST_VAR');
     });
   });
 

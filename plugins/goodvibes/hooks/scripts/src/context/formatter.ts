@@ -8,7 +8,7 @@
 import { StackInfo, formatStackInfo } from './stack-detector.js';
 import { GitContext, formatGitContext } from './git-context.js';
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
-import { EnvStatus, formatEnvStatus } from './env-checker.js';
+import { EnvStatus, formatEnvStatus } from './environment.js';
 import { TodoItem, formatTodos } from './todo-scanner.js';
 import { HealthStatus, formatHealthStatus } from './health-checker.js';
 import { FolderAnalysis, formatFolderAnalysis } from './folder-analyzer.js';

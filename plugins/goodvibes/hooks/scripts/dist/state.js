@@ -71,6 +71,27 @@ export async function saveState(cwd, state) {
     }
 }
 /**
+ * Generic helper to update a nested state property.
+ *
+ * Returns a new state object with the updated nested property.
+ * Does not mutate the original state.
+ *
+ * @internal
+ * @param state - The HooksState object to update
+ * @param key - The key of the nested state property to update
+ * @param updates - Partial updates to merge into the nested property
+ * @returns A new HooksState object with the updated nested property
+ *
+ * @example
+ * const newState = updateNestedState(state, 'session', { id: 'new-id' });
+ */
+function updateNestedState(state, key, updates) {
+    return {
+        ...state,
+        [key]: { ...state[key], ...updates },
+    };
+}
+/**
  * Updates session-related state with partial data.
  *
  * Returns a new state object with the updated session properties.
@@ -84,10 +105,7 @@ export async function saveState(cwd, state) {
  * const newState = updateSessionState(state, { id: 'new-id', startedAt: new Date().toISOString() });
  */
 export function updateSessionState(state, updates) {
-    return {
-        ...state,
-        session: { ...state.session, ...updates },
-    };
+    return updateNestedState(state, 'session', updates);
 }
 /**
  * Updates test-related state with partial data.
@@ -103,10 +121,7 @@ export function updateSessionState(state, updates) {
  * const newState = updateTestState(state, { lastRun: new Date().toISOString(), passing: true });
  */
 export function updateTestState(state, updates) {
-    return {
-        ...state,
-        tests: { ...state.tests, ...updates },
-    };
+    return updateNestedState(state, 'tests', updates);
 }
 /**
  * Updates build-related state with partial data.
@@ -122,10 +137,7 @@ export function updateTestState(state, updates) {
  * const newState = updateBuildState(state, { lastRun: new Date().toISOString(), passing: true });
  */
 export function updateBuildState(state, updates) {
-    return {
-        ...state,
-        build: { ...state.build, ...updates },
-    };
+    return updateNestedState(state, 'build', updates);
 }
 /**
  * Updates git-related state with partial data.
@@ -141,10 +153,7 @@ export function updateBuildState(state, updates) {
  * const newState = updateGitState(state, { currentBranch: 'feature/new-feature', isRepo: true });
  */
 export function updateGitState(state, updates) {
-    return {
-        ...state,
-        git: { ...state.git, ...updates },
-    };
+    return updateNestedState(state, 'git', updates);
 }
 /**
  * Tracks an error by its signature for retry management.

@@ -119,6 +119,80 @@ export function createMockDirentsWithTypes(
   return items.map((item) => createMockDirent(item.name, item));
 }
 
+/**
+ * Creates a mock readdir result for directory listings with file types.
+ * Use this when mocking `fs.promises.readdir()` called with `{ withFileTypes: true }`.
+ *
+ * @param entries - Array of file/directory entries
+ * @returns Array of properly typed Dirent objects
+ *
+ * @example
+ * vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
+ *   if (dirPath === '/test/project') {
+ *     return createMockReaddirResult([
+ *       { name: 'src', type: 'directory' },
+ *       { name: 'file.ts', type: 'file' },
+ *     ]);
+ *   }
+ *   return [];
+ * });
+ */
+export function createMockReaddirResult(
+  entries: Array<{ name: string; type: 'file' | 'directory' }>
+): Dirent[] {
+  return entries.map(entry => createMockDirent(entry.name, {
+    isFile: entry.type === 'file',
+    isDirectory: entry.type === 'directory',
+  }));
+}
+
+/**
+ * Creates a mock fs.Stats object for stat operations.
+ *
+ * @param options - Stats options (isDirectory, isFile, etc.)
+ * @returns A properly typed Stats object
+ *
+ * @example
+ * vi.mocked(fs.stat).mockResolvedValue(createMockStats({ isDirectory: true }));
+ */
+export function createMockStats(options?: {
+  isFile?: boolean;
+  isDirectory?: boolean;
+  size?: number;
+  mtime?: Date;
+}): import('fs').Stats {
+  const isFile = options?.isFile ?? !options?.isDirectory;
+  const isDirectory = options?.isDirectory ?? false;
+
+  return {
+    isFile: () => isFile,
+    isDirectory: () => isDirectory,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isSymbolicLink: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    dev: 0,
+    ino: 0,
+    mode: 0,
+    nlink: 1,
+    uid: 0,
+    gid: 0,
+    rdev: 0,
+    size: options?.size ?? 0,
+    blksize: 4096,
+    blocks: 0,
+    atimeMs: Date.now(),
+    mtimeMs: Date.now(),
+    ctimeMs: Date.now(),
+    birthtimeMs: Date.now(),
+    atime: new Date(),
+    mtime: options?.mtime ?? new Date(),
+    ctime: new Date(),
+    birthtime: new Date(),
+  } as import('fs').Stats;
+}
+
 // ============================================================================
 // Buffer Mocks for Git Commands
 // ============================================================================

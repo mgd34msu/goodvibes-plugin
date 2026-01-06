@@ -42,85 +42,72 @@ export function createFailedContextResult(startTime) {
         needsRecovery: false,
     };
 }
+/** Formats the header section */
+function formatHeader() {
+    return [
+        '[GoodVibes SessionStart]',
+        '='.repeat(SECTION_SEPARATOR_LENGTH),
+        '',
+    ];
+}
+/** Formats an optional section with header */
+function formatOptionalSection(header, content) {
+    if (!content)
+        return [];
+    return [`## ${header}`, '', content, ''];
+}
+/** Formats the recovery section if needed */
+function formatRecoverySection(recoveryInfo) {
+    if (!recoveryInfo.needsRecovery)
+        return [];
+    const recoveryStr = formatRecoveryContext(recoveryInfo);
+    return recoveryStr ? [recoveryStr, ''] : [];
+}
+/** Formats the project overview section */
+function formatProjectOverviewSection(stackInfo, folderAnalysis) {
+    const parts = ['## Project Overview', ''];
+    const stackStr = formatStackInfo(stackInfo);
+    if (stackStr)
+        parts.push(stackStr);
+    const folderStr = formatFolderAnalysis(folderAnalysis);
+    if (folderStr)
+        parts.push(folderStr);
+    parts.push('');
+    return parts;
+}
+/** Formats the git status section */
+function formatGitSection(gitContext) {
+    const parts = ['## Git Status', ''];
+    const gitStr = formatGitContext(gitContext);
+    if (gitStr)
+        parts.push(gitStr);
+    parts.push('');
+    return parts;
+}
+/** Helper for conditional port status */
+function formatPortStatusIfActive(portStatus) {
+    const portStr = formatPortStatus(portStatus);
+    return portStr && portStr !== 'No dev servers detected' ? portStr : null;
+}
+/** Helper for conditional health status */
+function formatHealthIfWarning(healthStatus) {
+    const healthStr = formatHealthStatus(healthStatus);
+    return healthStr && healthStr !== 'Health: All good' ? healthStr : null;
+}
 /** Formats the context sections into a single string */
 function formatContextSections(recoveryInfo, stackInfo, folderAnalysis, gitContext, envStatus, portStatus, memory, todos, healthStatus) {
-    const contextParts = [];
-    // Header
-    contextParts.push('[GoodVibes SessionStart]');
-    contextParts.push('='.repeat(SECTION_SEPARATOR_LENGTH));
-    contextParts.push('');
-    // Recovery section (if needed)
-    if (recoveryInfo.needsRecovery) {
-        const recoveryStr = formatRecoveryContext(recoveryInfo);
-        if (recoveryStr) {
-            contextParts.push(recoveryStr);
-            contextParts.push('');
-        }
-    }
-    // Project Overview section
-    contextParts.push('## Project Overview');
-    contextParts.push('');
-    // Stack info
-    const stackStr = formatStackInfo(stackInfo);
-    if (stackStr) {
-        contextParts.push(stackStr);
-    }
-    // Folder structure
-    const folderStr = formatFolderAnalysis(folderAnalysis);
-    if (folderStr) {
-        contextParts.push(folderStr);
-    }
-    contextParts.push('');
-    // Git section
-    contextParts.push('## Git Status');
-    contextParts.push('');
-    const gitStr = formatGitContext(gitContext);
-    if (gitStr) {
-        contextParts.push(gitStr);
-    }
-    contextParts.push('');
-    // Environment section
-    const envStr = formatEnvStatus(envStatus);
-    if (envStr) {
-        contextParts.push('## Environment');
-        contextParts.push('');
-        contextParts.push(envStr);
-        contextParts.push('');
-    }
-    // Dev Server / Ports section
-    const portStr = formatPortStatus(portStatus);
-    if (portStr && portStr !== 'No dev servers detected') {
-        contextParts.push('## Dev Servers');
-        contextParts.push('');
-        contextParts.push(portStr);
-        contextParts.push('');
-    }
-    // Memory section (decisions, patterns, failures)
-    const memoryStr = formatMemoryContext(memory);
-    if (memoryStr) {
-        contextParts.push('## Project Memory');
-        contextParts.push('');
-        contextParts.push(memoryStr);
-        contextParts.push('');
-    }
-    // Task comments section (TODO/FIXME/etc)
-    const todoStr = formatTodos(todos);
-    if (todoStr) {
-        contextParts.push('## Code TODOs');
-        contextParts.push('');
-        contextParts.push(todoStr);
-        contextParts.push('');
-    }
-    // Health section
-    const healthStr = formatHealthStatus(healthStatus);
-    if (healthStr && healthStr !== 'Health: All good') {
-        contextParts.push('## Health Checks');
-        contextParts.push('');
-        contextParts.push(healthStr);
-        contextParts.push('');
-    }
-    // Footer
-    contextParts.push('='.repeat(SECTION_SEPARATOR_LENGTH));
+    const contextParts = [
+        ...formatHeader(),
+        ...formatRecoverySection(recoveryInfo),
+        ...formatProjectOverviewSection(stackInfo, folderAnalysis),
+        ...formatGitSection(gitContext),
+        ...formatOptionalSection('Environment', formatEnvStatus(envStatus)),
+        ...formatOptionalSection('Dev Servers', formatPortStatusIfActive(portStatus)),
+        ...formatOptionalSection('Project Memory', formatMemoryContext(memory)),
+        ...formatOptionalSection('Code TODOs', formatTodos(todos)),
+        ...formatOptionalSection('Health Checks', formatHealthIfWarning(healthStatus)),
+        '='.repeat(SECTION_SEPARATOR_LENGTH),
+    ];
     return contextParts.join('\n');
 }
 /** Builds the summary string from gathered context */

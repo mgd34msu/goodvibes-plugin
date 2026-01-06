@@ -139,10 +139,6 @@ export function formatResponse(response) {
 /**
  * Outputs the hook response as JSON to stdout and exits the process.
  *
- * @deprecated Use formatResponse() for formatting and handle process exit
- * in entry point hooks. This function will be removed in a future version.
- * Prefer: console.log(formatResponse(response)); process.exit(code);
- *
  * This is the final call in any hook script. It serializes the response
  * to JSON and exits with the appropriate code:
  * - Exit 0: Success (tool proceeds or is allowed)

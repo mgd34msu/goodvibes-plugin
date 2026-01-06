@@ -36,14 +36,14 @@ export declare function handleGitCommand(input: HookInput, command: string): Pro
  */
 export declare function handleBashTool(input: HookInput): Promise<void>;
 /** Validates prerequisites for detect_stack tool. */
-export declare function validateDetectStack(_input: HookInput): Promise<void>;
+export declare function validateDetectStack(input: HookInput): Promise<void>;
 /** Validates prerequisites for get_schema tool. */
-export declare function validateGetSchema(_input: HookInput): Promise<void>;
+export declare function validateGetSchema(input: HookInput): Promise<void>;
 /** Validates prerequisites for run_smoke_test tool. */
-export declare function validateRunSmokeTest(_input: HookInput): Promise<void>;
+export declare function validateRunSmokeTest(input: HookInput): Promise<void>;
 /** Validates prerequisites for check_types tool. */
-export declare function validateCheckTypes(_input: HookInput): Promise<void>;
+export declare function validateCheckTypes(input: HookInput): Promise<void>;
 /** Validates prerequisites for validate_implementation tool. */
-export declare function validateImplementation(_input: HookInput): Promise<void>;
+export declare function validateImplementation(input: HookInput): Promise<void>;
 /** Main entry point for pre-tool-use hook. Validates tool prerequisites and runs quality gates. */
 export declare function runPreToolUseHook(): Promise<void>;

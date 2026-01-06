@@ -17,7 +17,7 @@ async function isDirectory(filePath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(filePath);
     return stat.isDirectory();
-  } catch (error) {
+  } catch (error: unknown) {
     debug(`Directory check failed for ${filePath}: ${error}`);
     return false;
   }

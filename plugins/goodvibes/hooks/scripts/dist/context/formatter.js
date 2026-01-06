@@ -7,7 +7,7 @@
 import { formatStackInfo } from './stack-detector.js';
 import { formatGitContext } from './git-context.js';
 import { formatMemoryContext } from '../memory/index.js';
-import { formatEnvStatus } from './env-checker.js';
+import { formatEnvStatus } from './environment.js';
 import { formatTodos } from './todo-scanner.js';
 import { formatHealthStatus } from './health-checker.js';
 import { formatFolderAnalysis } from './folder-analyzer.js';

@@ -6,10 +6,6 @@
  * **Two APIs:**
  * - `checkEnvStatus()` - Quick check returning {@link EnvStatus} (basic presence/missing vars)
  * - `analyzeEnvironment()` - Comprehensive analysis returning {@link EnvironmentContext}
- *
- * **Backwards Compatibility:**
- * - `checkEnvironment()` is an alias for `analyzeEnvironment()` (comprehensive)
- * - env-checker.ts re-exports `checkEnvStatus` as `checkEnvironment` for existing consumers
  */
 
 import * as fs from 'fs/promises';
@@ -190,28 +186,45 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
   const envFiles: string[] = [];
   let definedVars: string[] = [];
 
-  // Check which env files exist
-  for (const envFile of ENV_FILES) {
-    const filePath = path.join(cwd, envFile);
-    if (await fileExists(filePath)) {
-      envFiles.push(envFile);
-      const vars = await parseEnvFile(filePath);
-      definedVars = [...definedVars, ...vars];
+  // Check which env files exist (parallel)
+  const fileChecks = await Promise.all(
+    ENV_FILES.map(async (envFile) => {
+      const filePath = path.join(cwd, envFile);
+      const exists = await fileExists(filePath);
+      if (exists) {
+        const vars = await parseEnvFile(filePath);
+        return { envFile, vars };
+      }
+      return null;
+    })
+  );
+
+  for (const result of fileChecks) {
+    if (result) {
+      envFiles.push(result.envFile);
+      definedVars = [...definedVars, ...result.vars];
     }
   }
 
   // Deduplicate
   definedVars = [...new Set(definedVars)];
 
-  // Check for .env.example
+  // Check for .env.example (parallel check, sequential processing)
   let hasEnvExample = false;
   let exampleVars: string[] = [];
 
-  for (const exampleFile of ENV_EXAMPLE_FILES) {
-    const filePath = path.join(cwd, exampleFile);
-    if (await fileExists(filePath)) {
+  const exampleChecks = await Promise.all(
+    ENV_EXAMPLE_FILES.map(async (exampleFile) => {
+      const filePath = path.join(cwd, exampleFile);
+      const exists = await fileExists(filePath);
+      return { exampleFile, filePath, exists };
+    })
+  );
+
+  for (const check of exampleChecks) {
+    if (check.exists) {
       hasEnvExample = true;
-      exampleVars = await parseEnvFile(filePath);
+      exampleVars = await parseEnvFile(check.filePath);
       break;
     }
   }
@@ -249,17 +262,6 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
     definedVars,
     sensitiveVarsExposed: [...new Set(sensitiveVarsExposed)],
   };
-}
-
-/**
- * Check environment configuration (comprehensive).
- *
- * @deprecated Use {@link analyzeEnvironment} for clarity. This is an alias for backwards compatibility.
- * @param cwd - Working directory to analyze
- * @returns Promise resolving to EnvironmentContext
- */
-export async function checkEnvironment(cwd: string): Promise<EnvironmentContext> {
-  return analyzeEnvironment(cwd);
 }
 
 // =============================================================================

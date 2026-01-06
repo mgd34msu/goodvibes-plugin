@@ -23,7 +23,7 @@ vi.mock('child_process');
 import { detectStack, formatStackInfo, clearStackCache, StackInfo } from '../context/stack-detector';
 import { getGitContext, formatGitContext, GitContext } from '../context/git-context';
 import { checkProjectHealth, formatHealthStatus, HealthStatus } from '../context/health-checker';
-import { checkEnvironment, formatEnvStatus, EnvStatus } from '../context/env-checker';
+import { checkEnvStatus as checkEnvironment, formatEnvStatus, EnvStatus } from '../context/environment';
 import { isEmptyProject, formatEmptyProjectContext } from '../context/empty-project';
 import * as fsPromises from 'fs/promises';
 

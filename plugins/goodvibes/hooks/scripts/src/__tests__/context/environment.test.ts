@@ -655,37 +655,6 @@ describe('environment.ts', () => {
     });
   });
 
-  // =============================================================================
-  // checkEnvironment Tests (Backwards Compatibility Alias)
-  // =============================================================================
-
-  describe('checkEnvironment (backwards compatibility)', () => {
-    it('should be an alias for analyzeEnvironment', async () => {
-      vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        return false;
-      });
-
-      vi.mocked(fs.readFile).mockResolvedValue('VAR=value\n');
-
-      const analyzeResult = await analyzeEnvironment(mockCwd);
-      const checkResult = await checkEnvironment(mockCwd);
-
-      expect(checkResult).toEqual(analyzeResult);
-    });
-
-    it('should return EnvironmentContext structure', async () => {
-      vi.mocked(fileExists).mockResolvedValue(false);
-
-      const result = await checkEnvironment(mockCwd);
-
-      expect(result).toHaveProperty('envFiles');
-      expect(result).toHaveProperty('hasEnvExample');
-      expect(result).toHaveProperty('missingVars');
-      expect(result).toHaveProperty('definedVars');
-      expect(result).toHaveProperty('sensitiveVarsExposed');
-    });
-  });
 
   // =============================================================================
   // formatEnvStatus Tests

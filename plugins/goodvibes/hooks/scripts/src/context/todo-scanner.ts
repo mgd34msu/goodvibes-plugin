@@ -6,6 +6,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { debug } from '../shared/logging.js';
 
 /** A TODO comment found in source code. */
 export interface TodoItem {
@@ -47,8 +48,10 @@ async function getFiles(dir: string, extensions: string[], skipDirs: string[]): 
         }
       }
     }
-  } catch (_error) {
+  } catch (error: unknown) {
     // Skip directories we can't read (permission errors, etc.)
+    // Intentionally silent - this is expected for permission-denied directories
+    debug('Directory scan skipped', { error: String(error) });
   }
 
   return files;
@@ -80,8 +83,10 @@ async function scanFile(filePath: string, patterns: readonly string[]): Promise<
         }
       }
     }
-  } catch (_error) {
+  } catch (error: unknown) {
     // Skip files we can't read
+    // Intentionally silent - this is expected for permission-denied files
+    debug('File scan skipped', { error: String(error) });
   }
 
   return results;

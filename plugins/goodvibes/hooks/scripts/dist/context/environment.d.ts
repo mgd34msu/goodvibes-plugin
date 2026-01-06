@@ -6,10 +6,6 @@
  * **Two APIs:**
  * - `checkEnvStatus()` - Quick check returning {@link EnvStatus} (basic presence/missing vars)
  * - `analyzeEnvironment()` - Comprehensive analysis returning {@link EnvironmentContext}
- *
- * **Backwards Compatibility:**
- * - `checkEnvironment()` is an alias for `analyzeEnvironment()` (comprehensive)
- * - env-checker.ts re-exports `checkEnvStatus` as `checkEnvironment` for existing consumers
  */
 /**
  * Lightweight environment status for quick checks.
@@ -55,14 +51,6 @@ export declare function checkEnvStatus(cwd: string): Promise<EnvStatus>;
  * @returns Promise resolving to EnvironmentContext
  */
 export declare function analyzeEnvironment(cwd: string): Promise<EnvironmentContext>;
-/**
- * Check environment configuration (comprehensive).
- *
- * @deprecated Use {@link analyzeEnvironment} for clarity. This is an alias for backwards compatibility.
- * @param cwd - Working directory to analyze
- * @returns Promise resolving to EnvironmentContext
- */
-export declare function checkEnvironment(cwd: string): Promise<EnvironmentContext>;
 /**
  * Format EnvStatus for display in context output.
  *

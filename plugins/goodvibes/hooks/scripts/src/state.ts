@@ -79,6 +79,32 @@ export async function saveState(cwd: string, state: HooksState): Promise<void> {
 }
 
 /**
+ * Generic helper to update a nested state property.
+ *
+ * Returns a new state object with the updated nested property.
+ * Does not mutate the original state.
+ *
+ * @internal
+ * @param state - The HooksState object to update
+ * @param key - The key of the nested state property to update
+ * @param updates - Partial updates to merge into the nested property
+ * @returns A new HooksState object with the updated nested property
+ *
+ * @example
+ * const newState = updateNestedState(state, 'session', { id: 'new-id' });
+ */
+function updateNestedState<K extends keyof HooksState>(
+  state: HooksState,
+  key: K,
+  updates: Partial<HooksState[K]>
+): HooksState {
+  return {
+    ...state,
+    [key]: { ...state[key], ...updates },
+  };
+}
+
+/**
  * Updates session-related state with partial data.
  *
  * Returns a new state object with the updated session properties.
@@ -95,10 +121,7 @@ export function updateSessionState(
   state: HooksState,
   updates: Partial<HooksState['session']>
 ): HooksState {
-  return {
-    ...state,
-    session: { ...state.session, ...updates },
-  };
+  return updateNestedState(state, 'session', updates);
 }
 
 /**
@@ -118,10 +141,7 @@ export function updateTestState(
   state: HooksState,
   updates: Partial<HooksState['tests']>
 ): HooksState {
-  return {
-    ...state,
-    tests: { ...state.tests, ...updates },
-  };
+  return updateNestedState(state, 'tests', updates);
 }
 
 /**
@@ -141,10 +161,7 @@ export function updateBuildState(
   state: HooksState,
   updates: Partial<HooksState['build']>
 ): HooksState {
-  return {
-    ...state,
-    build: { ...state.build, ...updates },
-  };
+  return updateNestedState(state, 'build', updates);
 }
 
 /**
@@ -164,10 +181,7 @@ export function updateGitState(
   state: HooksState,
   updates: Partial<HooksState['git']>
 ): HooksState {
-  return {
-    ...state,
-    git: { ...state.git, ...updates },
-  };
+  return updateNestedState(state, 'git', updates);
 }
 
 /**

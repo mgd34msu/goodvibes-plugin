@@ -6,7 +6,7 @@
  */
 import { StackInfo } from './stack-detector.js';
 import { GitContext } from './git-context.js';
-import { EnvStatus } from './env-checker.js';
+import { EnvStatus } from './environment.js';
 import { TodoItem } from './todo-scanner.js';
 import { HealthStatus } from './health-checker.js';
 import { FolderAnalysis } from './folder-analyzer.js';

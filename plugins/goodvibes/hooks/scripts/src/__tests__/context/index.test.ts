@@ -19,7 +19,6 @@ import {
   // environment exports (consolidated module)
   checkEnvStatus,
   analyzeEnvironment,
-  checkEnvironment,
   formatEnvStatus,
   formatEnvironment,
   type EnvStatus,
@@ -117,10 +116,6 @@ describe('context/index', () => {
       expect(typeof analyzeEnvironment).toBe('function');
     });
 
-    it('should export checkEnvironment', () => {
-      expect(checkEnvironment).toBeDefined();
-      expect(typeof checkEnvironment).toBe('function');
-    });
 
     it('should export formatEnvStatus', () => {
       expect(formatEnvStatus).toBeDefined();

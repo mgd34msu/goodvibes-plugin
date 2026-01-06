@@ -42,6 +42,7 @@ vi.mock('../shared/index.js', () => ({
     },
   })),
   fileExistsRelative: vi.fn(),
+  fileExists: vi.fn(),
   debug: vi.fn(),
   logError: vi.fn(),
 }));
@@ -108,6 +109,7 @@ describe('pre-tool-use hook', () => {
   let mockAllowTool: Mock;
   let mockBlockTool: Mock;
   let mockFileExistsRelative: Mock;
+  let mockFileExists: Mock;
   let mockDebug: Mock;
   let mockLogError: Mock;
   let mockLoadState: Mock;
@@ -131,6 +133,7 @@ describe('pre-tool-use hook', () => {
     mockAllowTool = sharedModule.allowTool as Mock;
     mockBlockTool = sharedModule.blockTool as Mock;
     mockFileExistsRelative = sharedModule.fileExistsRelative as Mock;
+    mockFileExists = sharedModule.fileExists as Mock;
     mockDebug = sharedModule.debug as Mock;
     mockLogError = sharedModule.logError as Mock;
 
@@ -651,7 +654,7 @@ describe('pre-tool-use hook', () => {
 
   describe('validateDetectStack', () => {
     it('should block when package.json is missing', async () => {
-      mockFileExistsRelative.mockResolvedValue(false);
+      mockFileExists.mockResolvedValue(false);
 
       const { validateDetectStack } = await import('../pre-tool-use.js');
       const input = createHookInput();
@@ -670,7 +673,7 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when package.json exists', async () => {
-      mockFileExistsRelative.mockResolvedValue(true);
+      mockFileExists.mockResolvedValue(true);
 
       const { validateDetectStack } = await import('../pre-tool-use.js');
       const input = createHookInput();
@@ -687,7 +690,7 @@ describe('pre-tool-use hook', () => {
 
   describe('validateGetSchema', () => {
     it('should allow with warning when no schema file found', async () => {
-      mockFileExistsRelative.mockResolvedValue(false);
+      mockFileExists.mockResolvedValue(false);
 
       const { validateGetSchema } = await import('../pre-tool-use.js');
       const input = createHookInput();
@@ -705,8 +708,9 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when prisma schema exists', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'prisma/schema.prisma');
+      mockFileExists.mockImplementation((path: string) => {
+        const normalizedPath = path.replace(/\\/g, '/');
+        return Promise.resolve(normalizedPath.endsWith('prisma/schema.prisma'));
       });
 
       const { validateGetSchema } = await import('../pre-tool-use.js');
@@ -722,8 +726,9 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when drizzle.config.ts exists', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'drizzle.config.ts');
+      mockFileExists.mockImplementation((path: string) => {
+        const normalizedPath = path.replace(/\\/g, '/');
+        return Promise.resolve(normalizedPath.endsWith('drizzle.config.ts'));
       });
 
       const { validateGetSchema } = await import('../pre-tool-use.js');
@@ -739,8 +744,9 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when drizzle/schema.ts exists', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'drizzle/schema.ts');
+      mockFileExists.mockImplementation((path: string) => {
+        const normalizedPath = path.replace(/\\/g, '/');
+        return Promise.resolve(normalizedPath.endsWith('drizzle/schema.ts'));
       });
 
       const { validateGetSchema } = await import('../pre-tool-use.js');
@@ -758,7 +764,7 @@ describe('pre-tool-use hook', () => {
 
   describe('validateRunSmokeTest', () => {
     it('should block when package.json is missing', async () => {
-      mockFileExistsRelative.mockResolvedValue(false);
+      mockFileExists.mockResolvedValue(false);
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
       const input = createHookInput();
@@ -777,8 +783,8 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow with warning when no lockfile found', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'package.json');
+      mockFileExists.mockImplementation((path: string) => {
+        return Promise.resolve(path.endsWith('package.json'));
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -797,8 +803,8 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when pnpm lockfile exists', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'package.json' || path === 'pnpm-lock.yaml');
+      mockFileExists.mockImplementation((path: string) => {
+        return Promise.resolve(path.endsWith('package.json') || path.endsWith('pnpm-lock.yaml'));
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -814,8 +820,8 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when yarn lockfile exists', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'package.json' || path === 'yarn.lock');
+      mockFileExists.mockImplementation((path: string) => {
+        return Promise.resolve(path.endsWith('package.json') || path.endsWith('yarn.lock'));
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -831,8 +837,8 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when npm lockfile exists', async () => {
-      mockFileExistsRelative.mockImplementation((path: string) => {
-        return Promise.resolve(path === 'package.json' || path === 'package-lock.json');
+      mockFileExists.mockImplementation((path: string) => {
+        return Promise.resolve(path.endsWith('package.json') || path.endsWith('package-lock.json'));
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -850,7 +856,7 @@ describe('pre-tool-use hook', () => {
 
   describe('validateCheckTypes', () => {
     it('should block when tsconfig.json is missing', async () => {
-      mockFileExistsRelative.mockResolvedValue(false);
+      mockFileExists.mockResolvedValue(false);
 
       const { validateCheckTypes } = await import('../pre-tool-use.js');
       const input = createHookInput();
@@ -869,7 +875,7 @@ describe('pre-tool-use hook', () => {
     });
 
     it('should allow when tsconfig.json exists', async () => {
-      mockFileExistsRelative.mockResolvedValue(true);
+      mockFileExists.mockResolvedValue(true);
 
       const { validateCheckTypes } = await import('../pre-tool-use.js');
       const input = createHookInput();
@@ -946,7 +952,7 @@ describe('pre-tool-use hook', () => {
       mockReadHookInput.mockResolvedValue(
         createHookInput({ tool_name: 'mcp__goodvibes__detect_stack' })
       );
-      mockFileExistsRelative.mockResolvedValue(true);
+      mockFileExists.mockResolvedValue(true);
 
       const { runPreToolUseHook } = await import('../pre-tool-use.js');
 
@@ -956,7 +962,7 @@ describe('pre-tool-use hook', () => {
         // Expected due to respond throwing
       }
 
-      expect(mockFileExistsRelative).toHaveBeenCalledWith('package.json');
+      expect(mockFileExists).toHaveBeenCalled();
       expect(mockAllowTool).toHaveBeenCalledWith('PreToolUse');
     });
 
@@ -964,7 +970,7 @@ describe('pre-tool-use hook', () => {
       mockReadHookInput.mockResolvedValue(
         createHookInput({ tool_name: 'get_schema' })
       );
-      mockFileExistsRelative.mockResolvedValue(false);
+      mockFileExists.mockResolvedValue(false);
 
       const { runPreToolUseHook } = await import('../pre-tool-use.js');
 
@@ -984,7 +990,7 @@ describe('pre-tool-use hook', () => {
       mockReadHookInput.mockResolvedValue(
         createHookInput({ tool_name: 'run_smoke_test' })
       );
-      mockFileExistsRelative.mockResolvedValue(false);
+      mockFileExists.mockResolvedValue(false);
 
       const { runPreToolUseHook } = await import('../pre-tool-use.js');
 
@@ -1004,7 +1010,7 @@ describe('pre-tool-use hook', () => {
       mockReadHookInput.mockResolvedValue(
         createHookInput({ tool_name: 'check_types' })
       );
-      mockFileExistsRelative.mockResolvedValue(true);
+      mockFileExists.mockResolvedValue(true);
 
       const { runPreToolUseHook } = await import('../pre-tool-use.js');
 
@@ -1014,7 +1020,7 @@ describe('pre-tool-use hook', () => {
         // Expected due to respond throwing
       }
 
-      expect(mockFileExistsRelative).toHaveBeenCalledWith('tsconfig.json');
+      expect(mockFileExists).toHaveBeenCalled();
       expect(mockAllowTool).toHaveBeenCalledWith('PreToolUse');
     });
 

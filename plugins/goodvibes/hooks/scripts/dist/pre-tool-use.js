@@ -18,7 +18,8 @@
  * - Branch protection (prevent force push to main)
  * - Merge readiness checks
  */
-import { respond, readHookInput, allowTool, blockTool, fileExistsRelative, debug, logError, } from './shared/index.js';
+import path from 'node:path';
+import { respond, readHookInput, allowTool, blockTool, fileExists, debug, logError, } from './shared/index.js';
 import { loadState } from './state.js';
 import { getDefaultConfig } from './types/config.js';
 import { runQualityGates, isCommitCommand, formatGateResults, } from './pre-tool-use/quality-gates.js';
@@ -118,22 +119,24 @@ export async function handleBashTool(input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for detect_stack tool. */
-export async function validateDetectStack(_input) {
-    if (!(await fileExistsRelative('package.json'))) {
+export async function validateDetectStack(input) {
+    const cwd = input.cwd || process.cwd();
+    if (!(await fileExists(path.join(cwd, 'package.json')))) {
         respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
         return;
     }
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for get_schema tool. */
-export async function validateGetSchema(_input) {
+export async function validateGetSchema(input) {
+    const cwd = input.cwd || process.cwd();
     // Check for common schema files
     const schemaFiles = [
         'prisma/schema.prisma',
         'drizzle.config.ts',
         'drizzle/schema.ts',
     ];
-    const results = await Promise.all(schemaFiles.map(f => fileExistsRelative(f)));
+    const results = await Promise.all(schemaFiles.map(f => fileExists(path.join(cwd, f))));
     const found = results.some(Boolean);
     if (!found) {
         // Allow but warn
@@ -143,17 +146,18 @@ export async function validateGetSchema(_input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for run_smoke_test tool. */
-export async function validateRunSmokeTest(_input) {
+export async function validateRunSmokeTest(input) {
+    const cwd = input.cwd || process.cwd();
     // Check if package.json exists
-    if (!(await fileExistsRelative('package.json'))) {
+    if (!(await fileExists(path.join(cwd, 'package.json')))) {
         respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
         return;
     }
     // Check for package manager
     const [hasPnpm, hasYarn, hasNpm] = await Promise.all([
-        fileExistsRelative('pnpm-lock.yaml'),
-        fileExistsRelative('yarn.lock'),
-        fileExistsRelative('package-lock.json'),
+        fileExists(path.join(cwd, 'pnpm-lock.yaml')),
+        fileExists(path.join(cwd, 'yarn.lock')),
+        fileExists(path.join(cwd, 'package-lock.json')),
     ]);
     if (!hasPnpm && !hasYarn && !hasNpm) {
         respond(allowTool('PreToolUse', 'No lockfile detected. Install dependencies first.'));
@@ -162,19 +166,28 @@ export async function validateRunSmokeTest(_input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for check_types tool. */
-export async function validateCheckTypes(_input) {
+export async function validateCheckTypes(input) {
+    const cwd = input.cwd || process.cwd();
     // Check for TypeScript config
-    if (!(await fileExistsRelative('tsconfig.json'))) {
+    if (!(await fileExists(path.join(cwd, 'tsconfig.json')))) {
         respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
         return;
     }
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for validate_implementation tool. */
-export async function validateImplementation(_input) {
+export async function validateImplementation(input) {
     // Just allow and let the tool handle validation
     respond(allowTool('PreToolUse'));
 }
+/** Tool validators keyed by tool name */
+const TOOL_VALIDATORS = {
+    detect_stack: validateDetectStack,
+    get_schema: validateGetSchema,
+    run_smoke_test: validateRunSmokeTest,
+    check_types: validateCheckTypes,
+    validate_implementation: validateImplementation,
+};
 /** Main entry point for pre-tool-use hook. Validates tool prerequisites and runs quality gates. */
 export async function runPreToolUseHook() {
     try {
@@ -188,25 +201,13 @@ export async function runPreToolUseHook() {
         // Extract tool name from the full MCP tool name (e.g., "mcp__goodvibes-tools__detect_stack")
         const toolName = input.tool_name?.split('__').pop() || '';
         debug(`Extracted tool name: ${toolName}`);
-        switch (toolName) {
-            case 'detect_stack':
-                await validateDetectStack(input);
-                break;
-            case 'get_schema':
-                await validateGetSchema(input);
-                break;
-            case 'run_smoke_test':
-                await validateRunSmokeTest(input);
-                break;
-            case 'check_types':
-                await validateCheckTypes(input);
-                break;
-            case 'validate_implementation':
-                await validateImplementation(input);
-                break;
-            default:
-                debug(`Unknown tool '${toolName}', allowing by default`);
-                respond(allowTool('PreToolUse'));
+        const validator = TOOL_VALIDATORS[toolName];
+        if (validator) {
+            await validator(input);
+        }
+        else {
+            debug(`Unknown tool '${toolName}', allowing by default`);
+            respond(allowTool('PreToolUse'));
         }
     }
     catch (error) {
