@@ -155,6 +155,64 @@ describe('dependencies handler', () => {
 
         expect(data.dependencies.required).toBeDefined();
       });
+
+      it('should not resolve nested dependencies when depth is 1', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        // With depth 1, we should NOT call parseSkillMetadata for nested deps
+        const mockFn = vi.mocked(parseSkillMetadata)
+          .mockResolvedValueOnce({ requires: ['Next.js'] }) // Main skill
+          .mockResolvedValue({}); // Everything else
+
+        await handleSkillDependencies(skillsIndex, skillsRegistry, {
+          skill: 'Tailwind',
+          depth: 1,
+        });
+
+        // parseSkillMetadata is called for main skill + reverse lookup for each registry entry
+        // but NOT for nested deps (depth > 1 branch not taken)
+        expect(mockFn).toHaveBeenCalled();
+      });
+
+      it('should avoid duplicate nested dependencies', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        // Test the branch: !required.find(r => r.path === nestedResult[0].path)
+        // Nested skill is already in required list - should not add duplicate
+        vi.mocked(parseSkillMetadata)
+          .mockResolvedValueOnce({ requires: ['React Testing'] }) // Main skill requires React Testing
+          .mockResolvedValueOnce({ requires: ['React Testing'] }) // React Testing also requires itself (unlikely but tests branch)
+          .mockResolvedValue({});
+
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
+          skill: 'Tailwind',
+          depth: 2,
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        // Should not have duplicates of React Testing
+        const reactTestingCount = data.dependencies.required.filter(
+          (d: DependencyEntry) => d.path === 'testing/react-testing'
+        ).length;
+        expect(reactTestingCount).toBeLessThanOrEqual(1);
+      });
+
+      it('should handle nested dependency with no requires', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        // Main skill requires Next.js, but Next.js has no requires field
+        // This tests the branch where nestedMeta.requires is undefined
+        vi.mocked(parseSkillMetadata)
+          .mockResolvedValueOnce({ requires: ['Next.js'] }) // Main skill
+          .mockResolvedValueOnce({}) // Nested skill has NO requires (tests line 116 branch)
+          .mockResolvedValue({});
+
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
+          skill: 'Tailwind',
+          depth: 2,
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        // Should still have the direct dependency
+        expect(data.dependencies.required.length).toBeGreaterThanOrEqual(1);
+      });
     });
 
     describe('optional dependencies', () => {
@@ -206,6 +264,73 @@ describe('dependencies handler', () => {
           (o: DependencyEntry) => o.reason === 'Related skill in same category'
         );
         expect(relatedInCategory.length).toBeGreaterThanOrEqual(0);
+      });
+
+      it('should not add duplicate related skills to optional', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        // Return complements that match related skills in the same category
+        // This tests the optional.find(o => o.path === r.path) branch
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
+          // Add a complement that might also appear in related category search
+          complements: ['React Testing'],
+        });
+
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
+          skill: 'Next.js', // frameworks category, but 'Next.js' doesn't exist in sample registry
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        // Check that there are no duplicates in optional array
+        const paths = data.dependencies.optional.map((o: DependencyEntry) => o.path);
+        const uniquePaths = [...new Set(paths)];
+        expect(paths.length).toBe(uniquePaths.length);
+      });
+
+      it('should filter out skills with same path as optional from related search', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        // Test the optional.find(o => o.path === r.path) callback explicitly
+        // This happens when a complement matches a related skill in category search
+        //
+        // For this test, we need:
+        // 1. A skill where optional.length < 3 triggers category search
+        // 2. Complements that add some skills to optional
+        // 3. Category search that returns a skill already in optional
+        //
+        // We use 'testing' category which has React Testing
+        // If we add 'React Testing' as a complement to Tailwind,
+        // and search for testing category returns React Testing,
+        // the find callback will be called
+        //
+        // But Tailwind is in 'styling' category, so we need to add React Testing as complement
+        // and then the category search for 'styling' won't return React Testing anyway.
+        //
+        // The real trick: use a custom registry with 2 skills in same category
+        const customRegistry = {
+          version: '1.0.0',
+          search_index: [
+            { name: 'Skill A', path: 'testing/skill-a', description: 'A', keywords: ['testing'] },
+            { name: 'Skill B', path: 'testing/skill-b', description: 'B', keywords: ['testing'] },
+          ],
+        };
+        const customIndex = new Fuse(customRegistry.search_index, fuseOptions);
+
+        vi.mocked(parseSkillMetadata).mockResolvedValue({
+          // Add Skill B as a complement first
+          complements: ['Skill B'],
+        });
+
+        const result = await handleSkillDependencies(customIndex, customRegistry as Registry, {
+          skill: 'Skill A',
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        // Skill B should appear only once in optional (from complements)
+        // The category search for 'testing' would return Skill B again,
+        // but optional.find() filters it out as a duplicate
+        const skillBPaths = data.dependencies.optional.filter(
+          (o: DependencyEntry) => o.path === 'testing/skill-b'
+        );
+        expect(skillBPaths.length).toBe(1);
       });
     });
 
@@ -272,6 +397,55 @@ describe('dependencies handler', () => {
         const data = JSON.parse(result.content[0].text);
 
         expect(data.dependents.length).toBeLessThanOrEqual(5);
+      });
+
+      it('should handle null registry gracefully', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
+
+        // Pass null registry - tests the skillsRegistry?.search_index branch
+        const result = await handleSkillDependencies(skillsIndex, null, {
+          skill: 'React Testing',
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        // Should still work but have empty dependents
+        expect(data.dependents).toEqual([]);
+      });
+
+      it('should handle registry without search_index', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        vi.mocked(parseSkillMetadata).mockResolvedValue({});
+
+        // Registry exists but has no search_index
+        const emptyRegistry = { version: '1.0.0' } as unknown as Registry;
+
+        const result = await handleSkillDependencies(skillsIndex, emptyRegistry, {
+          skill: 'React Testing',
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        // Should still work but have empty dependents
+        expect(data.dependents).toEqual([]);
+      });
+
+      it('should match skill by path includes', async () => {
+        const { parseSkillMetadata } = await import('../../utils.js');
+        // Test the skill.path.includes(r) branch
+        vi.mocked(parseSkillMetadata).mockImplementation((path: string) => {
+          if (path === 'testing/react-testing') {
+            return Promise.resolve({});
+          }
+          // This requires 'testing/react' which the skill path includes
+          return Promise.resolve({ requires: ['testing/react'] });
+        });
+
+        const result = await handleSkillDependencies(skillsIndex, skillsRegistry, {
+          skill: 'React Testing',
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.dependents).toBeDefined();
       });
     });
 

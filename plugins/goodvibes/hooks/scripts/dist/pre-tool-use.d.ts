@@ -18,4 +18,32 @@
  * - Branch protection (prevent force push to main)
  * - Merge readiness checks
  */
-export {};
+import { HookInput } from './shared/index.js';
+/**
+ * Extract the bash command from tool input
+ */
+export declare function extractBashCommand(input: HookInput): string | null;
+/**
+ * Handle git commit commands with quality gates
+ */
+export declare function handleGitCommit(input: HookInput, command: string): Promise<void>;
+/**
+ * Handle git commands with branch/merge guards
+ */
+export declare function handleGitCommand(input: HookInput, command: string): Promise<void>;
+/**
+ * Handle Bash tool with git command detection
+ */
+export declare function handleBashTool(input: HookInput): Promise<void>;
+/** Validates prerequisites for detect_stack tool. */
+export declare function validateDetectStack(_input: HookInput): Promise<void>;
+/** Validates prerequisites for get_schema tool. */
+export declare function validateGetSchema(_input: HookInput): Promise<void>;
+/** Validates prerequisites for run_smoke_test tool. */
+export declare function validateRunSmokeTest(_input: HookInput): Promise<void>;
+/** Validates prerequisites for check_types tool. */
+export declare function validateCheckTypes(_input: HookInput): Promise<void>;
+/** Validates prerequisites for validate_implementation tool. */
+export declare function validateImplementation(_input: HookInput): Promise<void>;
+/** Main entry point for pre-tool-use hook. Validates tool prerequisites and runs quality gates. */
+export declare function runPreToolUseHook(): Promise<void>;

@@ -311,5 +311,6 @@ export function formatEnvironment(context: EnvironmentContext): string | null {
     lines.push(`**Warning:** Potentially sensitive vars may not be gitignored: ${context.sensitiveVarsExposed.join(', ')}`);
   }
 
-  return lines.length > 0 ? lines.join('\n') : null;
+  // lines always has at least one element here since we return early if envFiles is empty
+  return lines.join('\n');
 }

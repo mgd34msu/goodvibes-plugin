@@ -198,6 +198,58 @@ describe('runSecurityChecks', () => {
 
       expect(issues.filter(i => i.rule === 'security/sql-injection').length).toBe(0);
     });
+
+    it('should warn about SQL query with variable passed directly', () => {
+      // variablePattern matches: query(variableName) without ? or $1 parameterization markers
+      const ctx = createContext('db.query(userQuery)');
+      const issues = runSecurityChecks(ctx);
+
+      const sqlIssue = issues.find(i => i.rule === 'security/sql-injection');
+      expect(sqlIssue).toBeDefined();
+      expect(sqlIssue?.severity).toBe('warning');
+      expect(sqlIssue?.message).toContain('verify parameterization');
+    });
+
+    it('should warn about execute with variable passed directly', () => {
+      const ctx = createContext('db.execute(sqlStatement)');
+      const issues = runSecurityChecks(ctx);
+
+      const sqlIssue = issues.find(i => i.rule === 'security/sql-injection');
+      expect(sqlIssue).toBeDefined();
+      expect(sqlIssue?.severity).toBe('warning');
+    });
+
+    it('should warn about raw sql method with variable', () => {
+      const ctx = createContext('prisma.raw(dynamicQuery)');
+      const issues = runSecurityChecks(ctx);
+
+      const sqlIssue = issues.find(i => i.rule === 'security/sql-injection');
+      expect(sqlIssue).toBeDefined();
+    });
+
+    it('should warn about sql method with variable', () => {
+      const ctx = createContext('pool.sql(queryString)');
+      const issues = runSecurityChecks(ctx);
+
+      const sqlIssue = issues.find(i => i.rule === 'security/sql-injection');
+      expect(sqlIssue).toBeDefined();
+    });
+
+    it('should NOT warn about variable query with parameterization marker ?', () => {
+      const ctx = createContext('db.query(baseQuery, ?)');
+      const issues = runSecurityChecks(ctx);
+
+      // The line contains ?, so variable pattern warning is skipped
+      expect(issues.filter(i => i.rule === 'security/sql-injection').length).toBe(0);
+    });
+
+    it('should NOT warn about variable query with parameterization marker $1', () => {
+      const ctx = createContext('db.query(baseQuery, $1)');
+      const issues = runSecurityChecks(ctx);
+
+      // The line contains $1, so variable pattern warning is skipped
+      expect(issues.filter(i => i.rule === 'security/sql-injection').length).toBe(0);
+    });
   });
 
   describe('issue properties', () => {

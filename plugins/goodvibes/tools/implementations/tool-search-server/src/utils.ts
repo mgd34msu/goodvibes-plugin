@@ -222,13 +222,25 @@ export async function parseSkillMetadata(skillPath: string): Promise<{
       // Look for "Requires:" or "Prerequisites:" sections
       const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
       if (requiresMatch) {
-        metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
+        const items = requiresMatch[1].match(/-\s*(.+)/g);
+        /* istanbul ignore else -- @preserve outer regex guarantees match */
+        if (items) {
+          metadata.requires = items.map(m => m.replace(/^-\s*/, '').trim());
+        } else {
+          metadata.requires = [];
+        }
       }
 
       // Look for "Related:" or "See also:" sections
       const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
       if (relatedMatch) {
-        metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map(m => m.replace(/^-\s*/, '').trim()) || [];
+        const items = relatedMatch[1].match(/-\s*(.+)/g);
+        /* istanbul ignore else -- @preserve outer regex guarantees match */
+        if (items) {
+          metadata.complements = items.map(m => m.replace(/^-\s*/, '').trim());
+        } else {
+          metadata.complements = [];
+        }
       }
 
       // Extract technologies from content

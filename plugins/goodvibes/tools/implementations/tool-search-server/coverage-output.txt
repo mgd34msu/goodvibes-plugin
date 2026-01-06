@@ -1,0 +1,95 @@
+
+> goodvibes-tool-search-server@1.0.0 test
+> vitest run --coverage
+
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/buzzkill/Documents/vibeplug/plugins/goodvibes/tools/implementations/tool-search-server[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [32m✓[39m src/__tests__/handlers/schema-parsers.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/context.test.ts [2m([22m[2m46 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/npm.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/dependencies.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/issues/unit.test.ts [2m([22m[2m46 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/scaffolding.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 62[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/docs.test.ts [2m([22m[2m71 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32m✓[39m src/__tests__/logging.test.ts [2m([22m[2m53 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/issues.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/status.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/search.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/schema.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m src/__tests__/utils.test.ts [2m([22m[2m68 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/content.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation.test.ts [2m([22m[2m36 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m src/__tests__/integration/mcp-server.test.ts [2m([22m[2m30 tests[22m[2m)[22m[33m 463[2mms[22m[39m
+ [32m✓[39m src/__tests__/types.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/schema-facade.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/security-checks.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/structure-checks.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/issues-facade.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/naming-checks.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/typescript-checks.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/config.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/skill-pattern-checks.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/best-practices-checks.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/validation/error-handling-checks.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/__tests__/handlers/smoke-test.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m28 passed[39m[22m[90m (28)[39m
+[2m      Tests [22m [1m[32m872 passed[39m[22m[90m (872)[39m
+[2m   Start at [22m 19:20:36
+[2m   Duration [22m 3.51s[2m (transform 2.42s, setup 0ms, import 4.66s, tests 1.42s, environment 5ms)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.26 |    96.14 |   99.24 |   99.54 |                   
+ src               |     100 |    98.16 |     100 |     100 |                   
+  config.ts        |     100 |      100 |     100 |     100 |                   
+  context.ts       |     100 |      100 |     100 |     100 |                   
+  logging.ts       |     100 |      100 |     100 |     100 |                   
+  tool-schemas.ts  |     100 |      100 |     100 |     100 |                   
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  utils.ts         |     100 |    97.84 |     100 |     100 | 225,231           
+ src/handlers      |   98.79 |    94.27 |   98.07 |   98.86 |                   
+  config.ts        |     100 |       95 |     100 |     100 | 79                
+  content.ts       |     100 |      100 |     100 |     100 |                   
+  context.ts       |   98.05 |    97.77 |     100 |   96.96 | 67,90             
+  dependencies.ts  |   98.24 |    93.18 |      80 |     100 | 114-116,162       
+  docs.ts          |     100 |      100 |     100 |     100 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  issues.ts        |       0 |        0 |       0 |       0 |                   
+  npm.ts           |   97.91 |    88.88 |     100 |   97.82 | 119               
+  scaffolding.ts   |   97.05 |    81.08 |     100 |   97.01 | 111-112           
+  schema.ts        |       0 |        0 |       0 |       0 |                   
+  search.ts        |     100 |    95.34 |     100 |     100 | 37,167            
+  smoke-test.ts    |     100 |      100 |     100 |     100 |                   
+  status.ts        |     100 |       85 |     100 |     100 | 68,106-108        
+  validation.ts    |       0 |        0 |       0 |       0 |                   
+ ...andlers/issues |   99.53 |    99.28 |     100 |     100 |                   
+  constants.ts     |     100 |      100 |     100 |     100 |                   
+  ...nt-checker.ts |    98.3 |    97.36 |     100 |     100 | 78                
+  formatter.ts     |     100 |      100 |     100 |     100 |                   
+  ...th-checker.ts |     100 |      100 |     100 |     100 |                   
+  index.ts         |     100 |      100 |     100 |     100 |                   
+  todo-scanner.ts  |     100 |      100 |     100 |     100 |                   
+  types.ts         |       0 |        0 |       0 |       0 |                   
+ ...andlers/schema |   98.73 |    93.25 |     100 |     100 |                   
+  ...zle-parser.ts |     100 |      100 |     100 |     100 |                   
+  index.ts         |     100 |      100 |     100 |     100 |                   
+  prisma-parser.ts |     100 |    95.23 |     100 |     100 | 39                
+  sql-parser.ts    |   97.82 |    89.65 |     100 |     100 | 62,95             
+  ...orm-parser.ts |   97.14 |    88.23 |     100 |     100 | 36,47             
+  types.ts         |       0 |        0 |       0 |       0 |                   
+ ...ers/validation |     100 |    97.64 |     100 |     100 |                   
+  ...ces-checks.ts |     100 |      100 |     100 |     100 |                   
+  ...ing-checks.ts |     100 |    94.11 |     100 |     100 | 14                
+  index.ts         |     100 |     98.3 |     100 |     100 | 151               
+  naming-checks.ts |     100 |       96 |     100 |     100 | 50                
+  ...ity-checks.ts |     100 |      100 |     100 |     100 |                   
+  ...ern-checks.ts |     100 |    92.85 |     100 |     100 | 53                
+  ...ure-checks.ts |     100 |      100 |     100 |     100 |                   
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  ...ipt-checks.ts |     100 |       90 |     100 |     100 | 15                
+-------------------|---------|----------|---------|---------|-------------------

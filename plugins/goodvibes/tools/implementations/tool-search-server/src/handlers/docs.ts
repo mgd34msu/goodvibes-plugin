@@ -28,8 +28,9 @@ interface CacheEntry<T> {
  *
  * @template K - The type of cache keys
  * @template V - The type of cache values
+ * @internal Exported for testing purposes only
  */
-class LRUCache<K, V> {
+export class LRUCache<K, V> {
   private cache = new Map<K, V>();
   private readonly maxSize: number;
 
@@ -76,6 +77,7 @@ class LRUCache<K, V> {
       // Delete oldest (first item) when at capacity
       const firstKey = this.cache.keys().next().value;
       // TypeScript doesn't know size >= maxSize >= 1 guarantees a value exists
+      /* istanbul ignore next -- @preserve TypeScript guard that is always true when size >= 1 */
       if (firstKey !== undefined) {
         this.cache.delete(firstKey);
       }

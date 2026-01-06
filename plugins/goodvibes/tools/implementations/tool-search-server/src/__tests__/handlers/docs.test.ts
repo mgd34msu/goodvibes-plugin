@@ -13,6 +13,7 @@ import {
   handleFetchDocs,
   getCommonApiReferences,
   clearDocsCaches,
+  LRUCache,
 } from '../../handlers/docs.js';
 
 /** API reference entry for a library */
@@ -467,6 +468,529 @@ describe('docs handlers', () => {
       const invalidValue = 'not-a-number';
       const parsedValue = parseInt(invalidValue, 10);
       expect(Number.isNaN(parsedValue)).toBe(true);
+    });
+  });
+
+  describe('npm cache hit branch coverage', () => {
+    it('should return cached npm data on cache hit', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: 'Cached npm package',
+        readme: 'Cached README',
+        repository: 'https://github.com/cached/test',
+        homepage: 'https://cached.test.com',
+      });
+
+      // First call populates cache
+      const result1 = await handleFetchDocs({ library: 'npm-cache-test' });
+      const data1 = JSON.parse(result1.content[0].text);
+      expect(data1.cache_hit).toBe(false);
+      expect(fetchNpmReadme).toHaveBeenCalledTimes(1);
+
+      // Second call should hit npm cache (line 180)
+      const result2 = await handleFetchDocs({ library: 'npm-cache-test' });
+      const data2 = JSON.parse(result2.content[0].text);
+      expect(data2.cache_hit).toBe(true);
+      // fetchNpmReadme should NOT be called again
+      expect(fetchNpmReadme).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('GitHub cache hit branch coverage', () => {
+    it('should return cached GitHub README on cache hit', async () => {
+      const { fetchUrl } = await import('../../utils.js');
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+
+      vi.mocked(fetchUrl).mockResolvedValue('# Cached GitHub README');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      // First call populates GitHub cache
+      const result1 = await handleFetchDocs({ library: 'zustand' });
+      const data1 = JSON.parse(result1.content[0].text);
+      expect(data1.cache_hit).toBe(false);
+      expect(fetchUrl).toHaveBeenCalledTimes(1);
+
+      // Second call should hit GitHub cache (line 210)
+      const result2 = await handleFetchDocs({ library: 'zustand' });
+      const data2 = JSON.parse(result2.content[0].text);
+      expect(data2.cache_hit).toBe(true);
+      // fetchUrl should NOT be called again
+      expect(fetchUrl).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('searchUrl function coverage for DOCS_SOURCES', () => {
+    it('should use next searchUrl when topic provided and no content found', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'next', topic: 'routing' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should trigger searchUrl for 'next' (line 261)
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.url === 'https://nextjs.org/docs/routing'
+      )).toBe(true);
+    });
+
+    it('should use nextjs searchUrl when topic provided and no content found', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'nextjs', topic: 'api' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should trigger searchUrl for 'nextjs' (line 262)
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.url === 'https://nextjs.org/docs/api'
+      )).toBe(true);
+    });
+
+    it('should use prisma searchUrl when topic provided and no content found', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'prisma', topic: 'relations' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should trigger searchUrl for 'prisma' (line 263)
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.url === 'https://www.prisma.io/docs/concepts/relations'
+      )).toBe(true);
+    });
+
+    it('should use tailwind searchUrl when topic provided and no content found', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'tailwind', topic: 'colors' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should trigger searchUrl for 'tailwind' (line 264)
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.url === 'https://tailwindcss.com/docs/colors'
+      )).toBe(true);
+    });
+
+    it('should use tailwindcss searchUrl when topic provided and no content found', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'tailwindcss', topic: 'spacing' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should trigger searchUrl for 'tailwindcss' (line 265)
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.url === 'https://tailwindcss.com/docs/spacing'
+      )).toBe(true);
+    });
+  });
+
+  describe('npm fetch error handling', () => {
+    it('should handle npm fetch error when error is an Error instance', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      // Throw an Error instance to cover the Error branch in line 448
+      vi.mocked(fetchNpmReadme).mockRejectedValue(new Error('Network failed'));
+
+      const result = await handleFetchDocs({ library: 'error-instance-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should still return a valid response
+      expect(data.library).toBe('error-instance-pkg');
+      expect(data.content).toContain('error-instance-pkg');
+    });
+
+    it('should handle npm fetch error when error is not an Error instance', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      // Throw a string instead of Error to trigger line 447
+      vi.mocked(fetchNpmReadme).mockRejectedValue('string error message');
+
+      const result = await handleFetchDocs({ library: 'error-test-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should still return a valid response
+      expect(data.library).toBe('error-test-pkg');
+      expect(data.content).toContain('error-test-pkg');
+    });
+
+    it('should handle npm fetch error when error is an object without message', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      // Throw an object that is not an Error instance
+      vi.mocked(fetchNpmReadme).mockRejectedValue({ code: 'ERR_NETWORK' });
+
+      const result = await handleFetchDocs({ library: 'object-error-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should still return a valid response
+      expect(data.library).toBe('object-error-pkg');
+    });
+
+    it('should handle npm fetch error when error is null', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockRejectedValue(null);
+
+      const result = await handleFetchDocs({ library: 'null-error-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should still return a valid response
+      expect(data.library).toBe('null-error-pkg');
+    });
+
+    it('should handle npm fetch error when error is undefined', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockRejectedValue(undefined);
+
+      const result = await handleFetchDocs({ library: 'undefined-error-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should still return a valid response
+      expect(data.library).toBe('undefined-error-pkg');
+    });
+  });
+
+  describe('GitHub readme fetch edge cases', () => {
+    it('should handle null GitHub readme content', async () => {
+      const { fetchUrl } = await import('../../utils.js');
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+
+      // Return null from GitHub fetch (line 460 falsy branch)
+      vi.mocked(fetchUrl).mockResolvedValue(null);
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'zustand' });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should still return valid response with fallback content
+      expect(data.library).toBe('zustand');
+    });
+
+    it('should handle empty string GitHub readme content', async () => {
+      const { fetchUrl } = await import('../../utils.js');
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+
+      // Return empty string from GitHub fetch
+      vi.mocked(fetchUrl).mockResolvedValue('');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'zustand' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('zustand');
+    });
+
+    it('should handle GitHub error with Error instance', async () => {
+      const { fetchUrl } = await import('../../utils.js');
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+
+      // Throw an Error instance to cover the Error branch in line 466
+      vi.mocked(fetchUrl).mockRejectedValue(new Error('GitHub unavailable'));
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'zustand' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('zustand');
+      expect(data.content).toContain('GitHub unavailable');
+    });
+
+    it('should handle GitHub error with non-Error value', async () => {
+      const { fetchUrl } = await import('../../utils.js');
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+
+      // Throw a string to cover the non-Error branch in line 466
+      vi.mocked(fetchUrl).mockRejectedValue('Connection refused');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'zustand' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('zustand');
+      expect(data.content).toContain('Connection refused');
+    });
+  });
+
+  describe('fallback content with topic but no searchUrl', () => {
+    it('should handle topic with library that has no searchUrl', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      // typescript has no searchUrl defined in DOCS_SOURCES
+      const result = await handleFetchDocs({ library: 'typescript', topic: 'generics' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('typescript');
+      expect(data.content).toContain('typescript');
+      expect(data.content).toContain('generics');
+      // Should NOT have a topic documentation link since typescript has no searchUrl
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'generics documentation'
+      )).toBe(false);
+    });
+
+    it('should handle topic with unknown library (no DOCS_SOURCE entry)', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue(null);
+
+      const result = await handleFetchDocs({ library: 'unknown-lib', topic: 'feature' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('unknown-lib');
+      expect(data.content).toContain('unknown-lib');
+      expect(data.content).toContain('feature');
+      // Should NOT have a topic documentation link since unknown-lib has no searchUrl
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'feature documentation'
+      )).toBe(false);
+    });
+  });
+
+  describe('npm data with missing fields', () => {
+    it('should handle npm data without description', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: '', // Empty description
+        readme: 'Test README',
+        repository: 'https://github.com/test/test',
+        homepage: 'https://test.com',
+      });
+
+      const result = await handleFetchDocs({ library: 'no-desc-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('no-desc-pkg');
+      // content should be empty string when description is empty
+      expect(data.content).toBe('');
+    });
+
+    it('should handle npm data with null description', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: null as unknown as string,
+        readme: 'Test README',
+        repository: 'https://github.com/test/test',
+        homepage: 'https://test.com',
+      });
+
+      const result = await handleFetchDocs({ library: 'null-desc-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('null-desc-pkg');
+      expect(data.content).toBe('');
+    });
+
+    it('should handle npm data without repository', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: 'Test package',
+        readme: 'Test README',
+        repository: undefined, // No repository
+        homepage: 'https://test.com',
+      });
+
+      const result = await handleFetchDocs({ library: 'no-repo-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('no-repo-pkg');
+      // Should not have Repository in api_reference
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Repository'
+      )).toBe(false);
+      // Should still have Homepage
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Homepage'
+      )).toBe(true);
+    });
+
+    it('should handle npm data without homepage', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: 'Test package',
+        readme: 'Test README',
+        repository: 'https://github.com/test/test',
+        homepage: undefined, // No homepage
+      });
+
+      const result = await handleFetchDocs({ library: 'no-home-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('no-home-pkg');
+      // Should have Repository
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Repository'
+      )).toBe(true);
+      // Should not have Homepage in api_reference
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Homepage'
+      )).toBe(false);
+    });
+
+    it('should handle npm data without repository and homepage', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: 'Test package',
+        readme: 'Test README',
+        repository: undefined,
+        homepage: undefined,
+      });
+
+      const result = await handleFetchDocs({ library: 'no-links-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('no-links-pkg');
+      // Should not have Repository or Homepage
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Repository'
+      )).toBe(false);
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Homepage'
+      )).toBe(false);
+    });
+
+    it('should handle npm data with empty string repository', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: 'Test package',
+        readme: 'Test README',
+        repository: '', // Empty string
+        homepage: 'https://test.com',
+      });
+
+      const result = await handleFetchDocs({ library: 'empty-repo-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('empty-repo-pkg');
+      // Empty string should be falsy, so no Repository
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Repository'
+      )).toBe(false);
+    });
+
+    it('should handle npm data with empty string homepage', async () => {
+      const { fetchNpmReadme } = await import('../../handlers/npm.js');
+      vi.mocked(fetchNpmReadme).mockResolvedValue({
+        description: 'Test package',
+        readme: 'Test README',
+        repository: 'https://github.com/test/test',
+        homepage: '', // Empty string
+      });
+
+      const result = await handleFetchDocs({ library: 'empty-home-pkg' });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.library).toBe('empty-home-pkg');
+      // Empty string should be falsy, so no Homepage
+      expect(data.api_reference.some((r: ApiReference) =>
+        r.name === 'Homepage'
+      )).toBe(false);
+    });
+  });
+
+  describe('LRUCache class', () => {
+    it('should throw error when maxSize is less than 1', () => {
+      expect(() => new LRUCache(0)).toThrow('LRUCache maxSize must be at least 1');
+      expect(() => new LRUCache(-1)).toThrow('LRUCache maxSize must be at least 1');
+    });
+
+    it('should allow maxSize of 1', () => {
+      expect(() => new LRUCache(1)).not.toThrow();
+    });
+
+    it('should update existing key position on set', () => {
+      const cache = new LRUCache<string, number>(3);
+
+      // Add three items
+      cache.set('a', 1);
+      cache.set('b', 2);
+      cache.set('c', 3);
+
+      expect(cache.size).toBe(3);
+
+      // Update 'a' - this should move it to the end (line 74)
+      cache.set('a', 10);
+
+      expect(cache.size).toBe(3);
+      expect(cache.get('a')).toBe(10);
+
+      // Add a fourth item - should evict 'b' (oldest after 'a' was updated)
+      cache.set('d', 4);
+
+      expect(cache.size).toBe(3);
+      expect(cache.get('b')).toBeUndefined(); // 'b' should be evicted
+      expect(cache.get('a')).toBe(10); // 'a' should still exist
+      expect(cache.get('c')).toBe(3);
+      expect(cache.get('d')).toBe(4);
+    });
+
+    it('should return correct size', () => {
+      const cache = new LRUCache<string, number>(5);
+
+      expect(cache.size).toBe(0);
+
+      cache.set('a', 1);
+      expect(cache.size).toBe(1);
+
+      cache.set('b', 2);
+      expect(cache.size).toBe(2);
+
+      cache.set('c', 3);
+      expect(cache.size).toBe(3);
+    });
+
+    it('should clear all entries', () => {
+      const cache = new LRUCache<string, number>(5);
+
+      cache.set('a', 1);
+      cache.set('b', 2);
+      cache.set('c', 3);
+
+      expect(cache.size).toBe(3);
+
+      cache.clear();
+
+      expect(cache.size).toBe(0);
+      expect(cache.get('a')).toBeUndefined();
+      expect(cache.get('b')).toBeUndefined();
+      expect(cache.get('c')).toBeUndefined();
+    });
+
+    it('should return undefined for non-existent key', () => {
+      const cache = new LRUCache<string, number>(3);
+
+      expect(cache.get('nonexistent')).toBeUndefined();
+    });
+
+    it('should move accessed item to end of LRU order', () => {
+      const cache = new LRUCache<string, number>(3);
+
+      cache.set('a', 1);
+      cache.set('b', 2);
+      cache.set('c', 3);
+
+      // Access 'a' - moves it to end
+      cache.get('a');
+
+      // Add 'd' - should evict 'b' (oldest after 'a' was accessed)
+      cache.set('d', 4);
+
+      expect(cache.get('a')).toBe(1); // 'a' should still exist
+      expect(cache.get('b')).toBeUndefined(); // 'b' should be evicted
+    });
+
+    it('should evict oldest item when at capacity', () => {
+      const cache = new LRUCache<string, number>(2);
+
+      cache.set('a', 1);
+      cache.set('b', 2);
+
+      expect(cache.size).toBe(2);
+
+      // Add third item - should evict 'a'
+      cache.set('c', 3);
+
+      expect(cache.size).toBe(2);
+      expect(cache.get('a')).toBeUndefined();
+      expect(cache.get('b')).toBe(2);
+      expect(cache.get('c')).toBe(3);
     });
   });
 });

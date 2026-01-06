@@ -108,14 +108,12 @@ async function runSubagentStartHook() {
         // Add project context
         reminders.push('Project: ' + projectName);
         // Combine context
+        // Note: reminders always has at least one element (project name) so we always append
         let additionalContext;
         if (subagentContext.additionalContext) {
-            additionalContext = subagentContext.additionalContext;
-            if (reminders.length > 0) {
-                additionalContext += '\n\n' + reminders.join('\n');
-            }
+            additionalContext = subagentContext.additionalContext + '\n\n' + reminders.join('\n');
         }
-        else if (reminders.length > 0) {
+        else {
             additionalContext = '[GoodVibes Project Context]\n' + reminders.join('\n');
         }
         // Build system message for GoodVibes agents

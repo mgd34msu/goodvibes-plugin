@@ -98,6 +98,27 @@ describe('handlePluginStatus', () => {
       expect(data.manifest.valid).toBe(false);
       expect(data.issues).toContain('Manifest exists but is invalid JSON');
     });
+
+    it('should use default version when manifest has no version', () => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        return String(p).includes('plugin.json');
+      });
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
+        if (String(p).includes('plugin.json')) {
+          // Manifest without version field
+          return JSON.stringify({ name: 'test-plugin' });
+        }
+        return '';
+      });
+
+      const result = handlePluginStatus();
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.manifest.exists).toBe(true);
+      expect(data.manifest.valid).toBe(true);
+      // manifest.version should be undefined, but status.version should default to '1.0.0'
+      expect(data.version).toBe('1.0.0');
+    });
   });
 
   describe('registry checking', () => {
@@ -264,6 +285,57 @@ describe('handlePluginStatus', () => {
       expect(data.hooks.config_exists).toBe(true);
       expect(data.hooks.config_valid).toBe(false);
       expect(data.issues).toContain('Hooks config exists but is invalid JSON');
+    });
+
+    it('should use lowercase event name when not in HOOK_SCRIPT_MAP', () => {
+      // Test the fallback: HOOK_SCRIPT_MAP[event] || `${event.toLowerCase()}.js`
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        if (pathStr.includes('hooks.json')) return true;
+        // Script exists for the custom hook
+        if (pathStr.includes('customevent.js')) return true;
+        return false;
+      });
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
+        if (String(p).includes('hooks.json')) {
+          // Hook event that is NOT in HOOK_SCRIPT_MAP
+          return JSON.stringify({
+            hooks: {
+              CustomEvent: { command: 'node hooks/scripts/dist/customevent.js' },
+            },
+          });
+        }
+        return '';
+      });
+
+      const result = handlePluginStatus();
+      const data = JSON.parse(result.content[0].text);
+
+      // Should derive script name as 'customevent.js' (lowercase)
+      const customEvent = data.hooks.events.find((e: HookEvent) => e.name === 'CustomEvent');
+      expect(customEvent).toBeDefined();
+      expect(customEvent?.script).toBe('customevent.js');
+      expect(customEvent?.exists).toBe(true);
+    });
+
+    it('should handle hooks config without hooks property', () => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        return String(p).includes('hooks.json');
+      });
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
+        if (String(p).includes('hooks.json')) {
+          // Valid JSON but no hooks property - tests hooksConfig.hooks || {}
+          return JSON.stringify({ version: '1.0.0' });
+        }
+        return '';
+      });
+
+      const result = handlePluginStatus();
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.hooks.config_exists).toBe(true);
+      expect(data.hooks.config_valid).toBe(true);
+      expect(data.hooks.events).toEqual([]);
     });
   });
 

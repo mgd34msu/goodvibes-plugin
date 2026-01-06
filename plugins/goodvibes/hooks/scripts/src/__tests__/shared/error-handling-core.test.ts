@@ -290,6 +290,17 @@ describe('shouldEscalatePhase', () => {
     expect(shouldEscalatePhase(state)).toBe(true);
   });
 
+  it('should use DEFAULT_RETRY_LIMIT fallback for non-existent category', () => {
+    // This tests the || DEFAULT_RETRY_LIMIT branch by using a category
+    // that doesn't exist in PHASE_RETRY_LIMITS
+    const state = createErrorState({
+      category: 'non_existent_category' as ErrorCategory,
+      phase: 1,
+      attemptsThisPhase: 2, // DEFAULT_RETRY_LIMIT is 2
+    });
+    expect(shouldEscalatePhase(state)).toBe(true);
+  });
+
   it('should handle npm_install category with limit 2', () => {
     const state = createErrorState({
       category: 'npm_install',
@@ -456,14 +467,28 @@ describe('escalatePhase', () => {
 
   it('should handle edge case of invalid phase beyond valid range', () => {
     // Test the defensive fallback by creating an invalid state
-    // This covers the "Should never reach here" branch at line 156
+    // This covers the MAX_PHASE check at line 140
     const invalidState = {
       ...createErrorState(),
       phase: 4 as any, // Force an invalid phase value
     };
 
     const result = escalatePhase(invalidState as ErrorState);
-    // Should return the state unchanged due to safety check
+    // Should return the state unchanged due to phase >= MAX_PHASE check
+    expect(result).toBe(invalidState);
+  });
+
+  it('should handle invalid negative phase that results in nextPhase outside valid range', () => {
+    // This covers the fallback return at line 156
+    // When phase is -1, nextPhase becomes 0, which is not 1, 2, or 3
+    const invalidState = {
+      ...createErrorState(),
+      phase: -1 as any, // Force an invalid negative phase value
+    };
+
+    const result = escalatePhase(invalidState as ErrorState);
+    // nextPhase would be 0, which doesn't match 1, 2, or 3
+    // So it falls through to the safety return at line 156
     expect(result).toBe(invalidState);
   });
 
@@ -514,6 +539,17 @@ describe('hasExhaustedRetries', () => {
   it('should use DEFAULT_RETRY_LIMIT for unknown category', () => {
     const state = createErrorState({
       category: 'unknown',
+      phase: 3,
+      attemptsThisPhase: 2, // DEFAULT_RETRY_LIMIT is 2
+    });
+    expect(hasExhaustedRetries(state)).toBe(true);
+  });
+
+  it('should use DEFAULT_RETRY_LIMIT fallback for non-existent category', () => {
+    // This tests the || DEFAULT_RETRY_LIMIT branch by using a category
+    // that doesn't exist in PHASE_RETRY_LIMITS
+    const state = createErrorState({
+      category: 'non_existent_category' as ErrorCategory,
       phase: 3,
       attemptsThisPhase: 2, // DEFAULT_RETRY_LIMIT is 2
     });

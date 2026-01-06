@@ -1,443 +1,500 @@
 /**
- * Unit tests for pre-compact hook
+ * Unit tests for pre-compact.ts hook
  *
  * Tests cover:
- * - Pre-compaction checkpoint creation
- * - Session summary saving
- * - Files modified tracking
- * - Edge cases: no uncommitted changes, no state to preserve
+ * - generateSessionSummary function with various input combinations
+ * - runPreCompactHook main flow with all data present
+ * - Handling when input.cwd is undefined (uses process.cwd())
+ * - Handling when transcript_path is missing or file doesn't exist
+ * - Handling when analytics is null
+ * - Error handling in main catch block
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import {
-  createPreCompactCheckpoint,
-  saveSessionSummary,
-  getFilesModifiedThisSession,
-} from '../pre-compact/state-preservation.js';
-import type { HooksState } from '../types/state.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock dependencies
-vi.mock('../state.js', () => ({
-  loadState: vi.fn(),
-  saveState: vi.fn(),
+// Mock fs/promises module
+const mockWriteFile = vi.fn();
+
+vi.mock('fs/promises', () => ({
+  writeFile: (...args: unknown[]) => mockWriteFile(...args),
 }));
 
-vi.mock('../post-tool-use/checkpoint-manager.js', () => ({
-  createCheckpointIfNeeded: vi.fn(),
+// Mock shared module
+const mockRespond = vi.fn();
+const mockReadHookInput = vi.fn();
+const mockLoadAnalytics = vi.fn();
+const mockDebug = vi.fn();
+const mockLogError = vi.fn();
+const mockCreateResponse = vi.fn((opts) => ({
+  continue: true,
+  systemMessage: opts?.systemMessage,
 }));
-
-vi.mock('../automation/git-operations.js', () => ({
-  hasUncommittedChanges: vi.fn(),
-}));
+const mockParseTranscript = vi.fn();
+const mockFileExists = vi.fn();
+const mockCACHE_DIR = '/mock/cache/dir';
 
 vi.mock('../shared/index.js', () => ({
-  ensureGoodVibesDir: vi.fn(),
-  debug: vi.fn(),
-  logError: vi.fn(),
-  fileExists: vi.fn().mockResolvedValue(false),
+  respond: (...args: unknown[]) => mockRespond(...args),
+  readHookInput: () => mockReadHookInput(),
+  loadAnalytics: () => mockLoadAnalytics(),
+  debug: (...args: unknown[]) => mockDebug(...args),
+  logError: (...args: unknown[]) => mockLogError(...args),
+  createResponse: (...args: unknown[]) => mockCreateResponse(...args),
+  parseTranscript: (...args: unknown[]) => mockParseTranscript(...args),
+  fileExists: (...args: unknown[]) => mockFileExists(...args),
+  CACHE_DIR: mockCACHE_DIR,
 }));
 
-describe('pre-compact', () => {
-  let testDir: string;
+// Mock state module
+const mockLoadState = vi.fn();
+
+vi.mock('../state.js', () => ({
+  loadState: (...args: unknown[]) => mockLoadState(...args),
+}));
+
+// Mock pre-compact/index module
+const mockCreatePreCompactCheckpoint = vi.fn();
+const mockSaveSessionSummary = vi.fn();
+const mockGetFilesModifiedThisSession = vi.fn();
+
+vi.mock('../pre-compact/index.js', () => ({
+  createPreCompactCheckpoint: (...args: unknown[]) => mockCreatePreCompactCheckpoint(...args),
+  saveSessionSummary: (...args: unknown[]) => mockSaveSessionSummary(...args),
+  getFilesModifiedThisSession: (...args: unknown[]) => mockGetFilesModifiedThisSession(...args),
+}));
+
+describe('pre-compact hook', () => {
+  const originalProcessCwd = process.cwd;
 
   beforeEach(() => {
-    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'goodvibes-precompact-test-'));
     vi.clearAllMocks();
+    vi.resetModules();
+
+    // Mock process.cwd
+    process.cwd = vi.fn(() => '/default/cwd');
+
+    // Default mock implementations
+    mockReadHookInput.mockResolvedValue({
+      hook_event_name: 'PreCompact',
+      cwd: '/test/project',
+      transcript_path: '/test/transcript.json',
+    });
+
+    mockLoadState.mockResolvedValue({
+      session_id: 'test-session',
+      started_at: new Date().toISOString(),
+      git: { branch: 'main' },
+      files: { modifiedThisSession: [], createdThisSession: [] },
+      automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
+    });
+
+    mockLoadAnalytics.mockResolvedValue({
+      session_id: 'test-session-123',
+      started_at: '2025-01-15T12:00:00Z',
+      tool_usage: [{ tool: 'Bash', timestamp: '2025-01-15T12:00:00Z', success: true }],
+      skills_recommended: [],
+      validations_run: 5,
+      issues_found: 2,
+    });
+
+    mockGetFilesModifiedThisSession.mockReturnValue([]);
+    mockCreatePreCompactCheckpoint.mockResolvedValue(undefined);
+    mockSaveSessionSummary.mockResolvedValue(undefined);
+    mockFileExists.mockResolvedValue(false);
+    mockParseTranscript.mockResolvedValue({ summary: '' });
+    mockWriteFile.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    process.cwd = originalProcessCwd;
+    vi.resetModules();
   });
 
-  describe('createPreCompactCheckpoint', () => {
-    it('should skip checkpoint when no uncommitted changes', async () => {
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const { createCheckpointIfNeeded } = await import('../post-tool-use/checkpoint-manager.js');
-
-      vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
-
-      await createPreCompactCheckpoint(testDir);
-
-      expect(createCheckpointIfNeeded).not.toHaveBeenCalled();
-    });
-
-    it('should create checkpoint when uncommitted changes exist', async () => {
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const { createCheckpointIfNeeded } = await import('../post-tool-use/checkpoint-manager.js');
-      const { loadState, saveState } = await import('../state.js');
-
-      const mockState: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: { modifiedThisSession: [], createdThisSession: [] },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
-      vi.mocked(loadState).mockResolvedValue(mockState);
-      vi.mocked(createCheckpointIfNeeded).mockResolvedValue({
-        created: true,
-        message: 'Checkpoint created',
+  describe('runPreCompactHook', () => {
+    it('should complete successful hook execution with all data present', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'test-session-123',
+        started_at: '2025-01-15T12:00:00Z',
+        tool_usage: [{ tool: 'Bash', timestamp: '2025-01-15T12:00:00Z', success: true }],
+        skills_recommended: ['typescript', 'react'],
+        validations_run: 5,
+        issues_found: 2,
       });
 
-      await createPreCompactCheckpoint(testDir);
+      mockGetFilesModifiedThisSession.mockReturnValue(['/src/file1.ts', '/src/file2.ts']);
+      mockFileExists.mockResolvedValue(true);
+      mockParseTranscript.mockResolvedValue({ summary: 'Working on feature X' });
 
-      expect(createCheckpointIfNeeded).toHaveBeenCalledWith(
-        mockState,
-        testDir,
-        'pre-compact: saving work before context compaction'
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockRespond).toHaveBeenCalled();
+      });
+
+      // Verify initialization
+      expect(mockDebug).toHaveBeenCalledWith('PreCompact hook starting');
+      expect(mockReadHookInput).toHaveBeenCalled();
+      expect(mockDebug).toHaveBeenCalledWith('PreCompact received input', {
+        hook_event_name: 'PreCompact',
+      });
+
+      // Verify checkpoint creation
+      expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith('/test/project');
+
+      // Verify state and analytics loading
+      expect(mockLoadState).toHaveBeenCalledWith('/test/project');
+      expect(mockLoadAnalytics).toHaveBeenCalled();
+      expect(mockGetFilesModifiedThisSession).toHaveBeenCalled();
+
+      // Verify transcript parsing
+      expect(mockFileExists).toHaveBeenCalledWith('/test/transcript.json');
+      expect(mockParseTranscript).toHaveBeenCalledWith('/test/transcript.json');
+
+      // Verify session summary saving
+      expect(mockSaveSessionSummary).toHaveBeenCalledWith(
+        '/test/project',
+        expect.stringContaining('Session ID: test-session-123')
       );
-      expect(saveState).toHaveBeenCalled();
+
+      // Verify analytics backup was created (use path.join for cross-platform compatibility)
+      expect(mockWriteFile).toHaveBeenCalled();
+      const writeCall = mockWriteFile.mock.calls[0];
+      expect(writeCall[0]).toContain('pre-compact-backup.json');
+      expect(writeCall[1]).toContain('test-session-123');
+
+      // Verify debug log for backup (path format varies by OS)
+      expect(mockDebug).toHaveBeenCalledWith(
+        expect.stringContaining('Saved pre-compact backup to')
+      );
+
+      // Verify response
+      expect(mockCreateResponse).toHaveBeenCalled();
+      expect(mockRespond).toHaveBeenCalled();
     });
 
-    it('should handle checkpoint creation failure gracefully', async () => {
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const { createCheckpointIfNeeded } = await import('../post-tool-use/checkpoint-manager.js');
-      const { loadState } = await import('../state.js');
-
-      const mockState: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: { modifiedThisSession: [], createdThisSession: [] },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
-      vi.mocked(loadState).mockResolvedValue(mockState);
-      vi.mocked(createCheckpointIfNeeded).mockRejectedValue(new Error('Git error'));
-
-      // Should not throw
-      await expect(createPreCompactCheckpoint(testDir)).resolves.toBeUndefined();
-    });
-
-    it('should not save state when checkpoint is skipped', async () => {
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
-      const { createCheckpointIfNeeded } = await import('../post-tool-use/checkpoint-manager.js');
-      const { loadState, saveState } = await import('../state.js');
-
-      const mockState: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: { modifiedThisSession: [], createdThisSession: [] },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
-      vi.mocked(loadState).mockResolvedValue(mockState);
-      vi.mocked(createCheckpointIfNeeded).mockResolvedValue({
-        created: false,
-        message: 'Checkpoint skipped',
+    it('should use process.cwd() when input.cwd is undefined', async () => {
+      mockReadHookInput.mockResolvedValue({
+        hook_event_name: 'PreCompact',
+        cwd: undefined,
+        transcript_path: '/test/transcript.json',
       });
 
-      await createPreCompactCheckpoint(testDir);
+      await import('../pre-compact.js');
 
-      expect(saveState).not.toHaveBeenCalled();
+      await vi.waitFor(() => {
+        expect(mockRespond).toHaveBeenCalled();
+      });
+
+      // Should use process.cwd() (/default/cwd) instead of input.cwd
+      expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith('/default/cwd');
+      expect(mockLoadState).toHaveBeenCalledWith('/default/cwd');
+    });
+
+    it('should skip transcript parsing when transcript_path is not provided', async () => {
+      mockReadHookInput.mockResolvedValue({
+        hook_event_name: 'PreCompact',
+        cwd: '/test/project',
+        transcript_path: undefined,
+      });
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockRespond).toHaveBeenCalled();
+      });
+
+      // Should not attempt to parse transcript
+      expect(mockParseTranscript).not.toHaveBeenCalled();
+    });
+
+    it('should skip transcript parsing when transcript file does not exist', async () => {
+      mockFileExists.mockResolvedValue(false);
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockRespond).toHaveBeenCalled();
+      });
+
+      // Should check file exists but not parse
+      expect(mockFileExists).toHaveBeenCalledWith('/test/transcript.json');
+      expect(mockParseTranscript).not.toHaveBeenCalled();
+    });
+
+    it('should handle null analytics without creating backup', async () => {
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockRespond).toHaveBeenCalled();
+      });
+
+      // Should not write backup file when analytics is null
+      expect(mockWriteFile).not.toHaveBeenCalled();
+
+      // Should still complete successfully
+      expect(mockRespond).toHaveBeenCalled();
+    });
+
+    it('should handle errors in main catch block', async () => {
+      mockReadHookInput.mockRejectedValue(new Error('Input read failed'));
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockRespond).toHaveBeenCalled();
+      });
+
+      // Verify error was logged
+      expect(mockLogError).toHaveBeenCalledWith('PreCompact main', expect.any(Error));
+
+      // Verify response was still sent
+      expect(mockCreateResponse).toHaveBeenCalled();
+      expect(mockRespond).toHaveBeenCalled();
     });
   });
 
-  describe('saveSessionSummary', () => {
-    it('should save summary to markdown file', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        const stateDir = path.join(goodvibesDir, 'state');
-        fs.mkdirSync(stateDir, { recursive: true });
-        return goodvibesDir;
+  describe('generateSessionSummary', () => {
+    it('should generate summary with all analytics data', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'session-abc',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [
+          { tool: 'Bash', timestamp: '2025-01-15T10:00:00Z', success: true },
+          { tool: 'Read', timestamp: '2025-01-15T10:01:00Z', success: true },
+        ],
+        skills_recommended: ['typescript', 'vitest'],
+        validations_run: 10,
+        issues_found: 3,
       });
 
-      const summary = 'Working on implementing new features.\n- Added tests\n- Fixed bugs';
+      mockGetFilesModifiedThisSession.mockReturnValue(['/src/index.ts']);
+      mockFileExists.mockResolvedValue(true);
+      mockParseTranscript.mockResolvedValue({ summary: 'Context summary here' });
 
-      await saveSessionSummary(testDir, summary);
+      await import('../pre-compact.js');
 
-      const summaryPath = path.join(stateDir, 'last-session-summary.md');
-      expect(fs.existsSync(summaryPath)).toBe(true);
-
-      const content = fs.readFileSync(summaryPath, 'utf-8');
-      expect(content).toContain('# Session Summary');
-      expect(content).toContain('Working on implementing new features');
-      expect(content).toContain('Added tests');
-      expect(content).toContain('Fixed bugs');
-    });
-
-    it('should include timestamp in summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        const stateDir = path.join(goodvibesDir, 'state');
-        fs.mkdirSync(stateDir, { recursive: true });
-        return goodvibesDir;
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
       });
 
-      await saveSessionSummary(testDir, 'Test summary');
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
 
-      const summaryPath = path.join(stateDir, 'last-session-summary.md');
-      const content = fs.readFileSync(summaryPath, 'utf-8');
-
-      expect(content).toContain('Generated:');
-      expect(content).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(summary).toContain('Session ID: session-abc');
+      expect(summary).toContain('Started: 2025-01-15T10:00:00Z');
+      expect(summary).toContain('Tools used: 2');
+      expect(summary).toContain('Validations run: 10');
+      expect(summary).toContain('Issues found: 3');
+      expect(summary).toContain('Skills recommended: typescript, vitest');
+      expect(summary).toContain('## Files Modified This Session');
+      expect(summary).toContain('- /src/index.ts');
+      expect(summary).toContain('## Last Context');
+      expect(summary).toContain('Context summary here');
     });
 
-    it('should handle empty summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        const stateDir = path.join(goodvibesDir, 'state');
-        fs.mkdirSync(stateDir, { recursive: true });
-        return goodvibesDir;
+    it('should generate summary without skills when none recommended', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'session-xyz',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
       });
 
-      await saveSessionSummary(testDir, '');
+      mockGetFilesModifiedThisSession.mockReturnValue([]);
 
-      const summaryPath = path.join(stateDir, 'last-session-summary.md');
-      expect(fs.existsSync(summaryPath)).toBe(true);
+      await import('../pre-compact.js');
 
-      const content = fs.readFileSync(summaryPath, 'utf-8');
-      expect(content).toContain('# Session Summary');
-    });
-
-    it('should overwrite previous summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        const stateDir = path.join(goodvibesDir, 'state');
-        fs.mkdirSync(stateDir, { recursive: true });
-        return goodvibesDir;
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
       });
 
-      await saveSessionSummary(testDir, 'First summary');
-      await saveSessionSummary(testDir, 'Second summary');
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
 
-      const summaryPath = path.join(stateDir, 'last-session-summary.md');
-      const content = fs.readFileSync(summaryPath, 'utf-8');
-
-      expect(content).toContain('Second summary');
-      expect(content).not.toContain('First summary');
+      expect(summary).toContain('Session ID: session-xyz');
+      expect(summary).not.toContain('Skills recommended:');
     });
 
-    it('should handle file system errors gracefully', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-
-      vi.mocked(ensureGoodVibesDir).mockRejectedValue(new Error('File system error'));
-
-      // Should not throw
-      await expect(saveSessionSummary(testDir, 'Test')).resolves.toBeUndefined();
-    });
-
-    it('should create state directory if it does not exist', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        fs.mkdirSync(goodvibesDir, { recursive: true });
-        return goodvibesDir;
+    it('should truncate file list when more than 20 files modified', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'session-many-files',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
       });
 
-      await saveSessionSummary(testDir, 'Creating new state dir');
+      // Create 25 files
+      const manyFiles = Array.from({ length: 25 }, (_, i) => `/src/file${i}.ts`);
+      mockGetFilesModifiedThisSession.mockReturnValue(manyFiles);
 
-      expect(fs.existsSync(stateDir)).toBe(true);
-    });
+      await import('../pre-compact.js');
 
-    it('should include markdown formatting in summary', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        const stateDir = path.join(goodvibesDir, 'state');
-        fs.mkdirSync(stateDir, { recursive: true });
-        return goodvibesDir;
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
       });
 
-      const summary = '## Current Work\n\n- Feature A\n- Feature B\n\n```typescript\ncode example\n```';
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
 
-      await saveSessionSummary(testDir, summary);
-
-      const summaryPath = path.join(stateDir, 'last-session-summary.md');
-      const content = fs.readFileSync(summaryPath, 'utf-8');
-
-      expect(content).toContain('## Current Work');
-      expect(content).toContain('```typescript');
+      // Should only list first 20 files
+      expect(summary).toContain('- /src/file0.ts');
+      expect(summary).toContain('- /src/file19.ts');
+      expect(summary).not.toContain('- /src/file20.ts');
+      expect(summary).toContain('- ... and 5 more files');
     });
 
-    it('should include footer message', async () => {
-      const { ensureGoodVibesDir } = await import('../shared/index.js');
-      const stateDir = path.join(testDir, '.goodvibes', 'state');
-
-      vi.mocked(ensureGoodVibesDir).mockImplementation(async (cwd) => {
-        const goodvibesDir = path.join(cwd, '.goodvibes');
-        const stateDir = path.join(goodvibesDir, 'state');
-        fs.mkdirSync(stateDir, { recursive: true });
-        return goodvibesDir;
+    it('should generate summary without files section when no files modified', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'session-no-files',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
       });
 
-      await saveSessionSummary(testDir, 'Summary content');
+      mockGetFilesModifiedThisSession.mockReturnValue([]);
 
-      const summaryPath = path.join(stateDir, 'last-session-summary.md');
-      const content = fs.readFileSync(summaryPath, 'utf-8');
+      await import('../pre-compact.js');
 
-      expect(content).toContain('This summary was automatically saved before context compaction by GoodVibes');
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
+      });
+
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
+
+      expect(summary).not.toContain('## Files Modified This Session');
+    });
+
+    it('should generate summary without context section when transcript summary is empty', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'session-no-context',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
+      });
+
+      mockGetFilesModifiedThisSession.mockReturnValue([]);
+      mockFileExists.mockResolvedValue(true);
+      mockParseTranscript.mockResolvedValue({ summary: '' });
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
+      });
+
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
+
+      expect(summary).not.toContain('## Last Context');
+    });
+
+    it('should generate summary with null analytics', async () => {
+      mockLoadAnalytics.mockResolvedValue(null);
+      mockGetFilesModifiedThisSession.mockReturnValue(['/src/modified.ts']);
+      mockFileExists.mockResolvedValue(true);
+      mockParseTranscript.mockResolvedValue({ summary: 'Some context' });
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
+      });
+
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
+
+      // Should not contain analytics data
+      expect(summary).not.toContain('Session ID:');
+      expect(summary).not.toContain('Started:');
+      expect(summary).not.toContain('Tools used:');
+
+      // But should contain files and context
+      expect(summary).toContain('## Files Modified This Session');
+      expect(summary).toContain('- /src/modified.ts');
+      expect(summary).toContain('## Last Context');
+      expect(summary).toContain('Some context');
+    });
+
+    it('should include files_modified in backup JSON', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'backup-test',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
+      });
+
+      mockGetFilesModifiedThisSession.mockReturnValue(['/src/a.ts', '/src/b.ts']);
+
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockWriteFile).toHaveBeenCalled();
+      });
+
+      const writeCall = mockWriteFile.mock.calls[0];
+      const backupContent = JSON.parse(writeCall[1]);
+
+      expect(backupContent.session_id).toBe('backup-test');
+      expect(backupContent.files_modified).toEqual(['/src/a.ts', '/src/b.ts']);
+      expect(backupContent.compact_at).toBeDefined();
     });
   });
 
-  describe('getFilesModifiedThisSession', () => {
-    it('should return empty array for empty state', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: { modifiedThisSession: [], createdThisSession: [] },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
+  describe('edge cases', () => {
+    it('should handle exactly 20 files without truncation message', async () => {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'session-exact-20',
+        started_at: '2025-01-15T10:00:00Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
+      });
 
-      const files = getFilesModifiedThisSession(state);
+      const exactlyTwentyFiles = Array.from({ length: 20 }, (_, i) => `/src/file${i}.ts`);
+      mockGetFilesModifiedThisSession.mockReturnValue(exactlyTwentyFiles);
 
-      expect(files).toEqual([]);
+      await import('../pre-compact.js');
+
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
+      });
+
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
+
+      expect(summary).toContain('- /src/file19.ts');
+      expect(summary).not.toContain('... and');
     });
 
-    it('should return modified files', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {
-          modifiedThisSession: ['/src/file1.ts', '/src/file2.ts'],
-          createdThisSession: [],
-        },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
+    it('should generate empty summary when all inputs are empty/null', async () => {
+      mockLoadAnalytics.mockResolvedValue(null);
+      mockGetFilesModifiedThisSession.mockReturnValue([]);
 
-      const files = getFilesModifiedThisSession(state);
+      await import('../pre-compact.js');
 
-      expect(files).toContain('/src/file1.ts');
-      expect(files).toContain('/src/file2.ts');
-      expect(files).toHaveLength(2);
-    });
+      await vi.waitFor(() => {
+        expect(mockSaveSessionSummary).toHaveBeenCalled();
+      });
 
-    it('should return created files', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {
-          modifiedThisSession: [],
-          createdThisSession: ['/src/new-file.ts', '/src/another-new.ts'],
-        },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
+      const summaryCall = mockSaveSessionSummary.mock.calls[0];
+      const summary = summaryCall[1];
 
-      const files = getFilesModifiedThisSession(state);
-
-      expect(files).toContain('/src/new-file.ts');
-      expect(files).toContain('/src/another-new.ts');
-      expect(files).toHaveLength(2);
-    });
-
-    it('should combine modified and created files', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {
-          modifiedThisSession: ['/src/existing.ts'],
-          createdThisSession: ['/src/new.ts'],
-        },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      const files = getFilesModifiedThisSession(state);
-
-      expect(files).toContain('/src/existing.ts');
-      expect(files).toContain('/src/new.ts');
-      expect(files).toHaveLength(2);
-    });
-
-    it('should deduplicate files that appear in both lists', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {
-          modifiedThisSession: ['/src/file.ts', '/src/other.ts'],
-          createdThisSession: ['/src/file.ts'], // Duplicate
-        },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      const files = getFilesModifiedThisSession(state);
-
-      expect(files).toHaveLength(2);
-      expect(files).toContain('/src/file.ts');
-      expect(files).toContain('/src/other.ts');
-    });
-
-    it('should handle undefined file arrays', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {} as HooksState['files'], // Missing arrays but properly typed
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      const files = getFilesModifiedThisSession(state);
-
-      expect(files).toEqual([]);
-    });
-
-    it('should maintain file order from state', () => {
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {
-          modifiedThisSession: ['/src/a.ts', '/src/b.ts', '/src/c.ts'],
-          createdThisSession: [],
-        },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      const files = getFilesModifiedThisSession(state);
-
-      expect(files[0]).toBe('/src/a.ts');
-      expect(files[1]).toBe('/src/b.ts');
-      expect(files[2]).toBe('/src/c.ts');
-    });
-
-    it('should handle large file lists', () => {
-      const modifiedFiles = Array.from({ length: 100 }, (_, i) => `/src/file${i}.ts`);
-      const createdFiles = Array.from({ length: 50 }, (_, i) => `/src/new${i}.ts`);
-
-      const state: HooksState = {
-        session_id: 'test-session',
-        started_at: new Date().toISOString(),
-        git: { branch: 'main' },
-        files: {
-          modifiedThisSession: modifiedFiles,
-          createdThisSession: createdFiles,
-        },
-        automation: { checkpointsCreated: 0, testsRun: 0, buildsRun: 0 },
-      };
-
-      const files = getFilesModifiedThisSession(state);
-
-      expect(files).toHaveLength(150);
+      // Summary should be empty string when nothing to report
+      expect(summary).toBe('');
     });
   });
 });

@@ -33,13 +33,15 @@ function spawnAsync(command, args, options) {
                 child.kill('SIGTERM');
                 resolve({ code: null, stdout, stderr: stderr + '\nProcess timed out' });
             }, options.timeout)
-            : null;
+            : /* v8 ignore next -- @preserve defensive: all exported functions always provide timeout */ null;
         child.on('close', (code) => {
+            /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */
             if (timeoutId)
                 clearTimeout(timeoutId);
             resolve({ code, stdout, stderr });
         });
         child.on('error', (err) => {
+            /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */
             if (timeoutId)
                 clearTimeout(timeoutId);
             resolve({ code: null, stdout, stderr: err.message });

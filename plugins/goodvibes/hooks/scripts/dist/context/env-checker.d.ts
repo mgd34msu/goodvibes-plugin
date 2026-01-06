@@ -11,6 +11,15 @@
  *
  * @deprecated Import from './environment.js' instead for new code.
  */
-export type { EnvStatus } from './environment.js';
-export { checkEnvStatus as checkEnvironment } from './environment.js';
-export { formatEnvStatus } from './environment.js';
+import { checkEnvStatus, formatEnvStatus as formatEnvStatusImpl, type EnvStatus } from './environment.js';
+export type { EnvStatus };
+/**
+ * Check environment status (backwards compatible alias for checkEnvStatus).
+ * @deprecated Use checkEnvStatus from './environment.js' instead.
+ */
+export declare const checkEnvironment: typeof checkEnvStatus;
+/**
+ * Format environment status for display.
+ * @deprecated Use formatEnvStatus from './environment.js' instead.
+ */
+export declare const formatEnvStatus: typeof formatEnvStatusImpl;

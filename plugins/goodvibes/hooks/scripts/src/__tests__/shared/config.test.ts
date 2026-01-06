@@ -537,5 +537,44 @@ describe('config', () => {
       expect(config.memory?.enabled).toBe(true);
       expect(config.memory?.maxEntries).toBe(100);
     });
+
+    it('should handle explicit undefined values in user config (else branch of deepMerge)', async () => {
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      // To test the branch where source[key] is explicitly undefined,
+      // we need to mock JSON.parse to return an object with undefined values.
+      // This tests line 110's else branch (when source[key] !== undefined is false)
+      const userConfig = {
+        telemetry: {
+          enabled: false,
+        },
+      };
+      const jsonString = JSON.stringify(userConfig);
+
+      // Store original and create mock that adds undefined property
+      const originalParse = JSON.parse;
+      vi.stubGlobal('JSON', {
+        ...JSON,
+        parse: (text: string) => {
+          const parsed = originalParse(text);
+          // Add an explicit undefined value to test the branch
+          if (parsed.telemetry) {
+            parsed.telemetry.explicitUndefined = undefined;
+          }
+          return parsed;
+        },
+      });
+
+      vi.spyOn(fs, 'readFile').mockResolvedValue(jsonString);
+
+      const config = await loadSharedConfig(mockCwd);
+
+      // The explicitly undefined value should be skipped, keeping defaults
+      expect(config.telemetry?.enabled).toBe(false);
+      expect(config.telemetry?.anonymize).toBe(true);
+
+      // Restore JSON
+      vi.unstubAllGlobals();
+    });
   });
 });

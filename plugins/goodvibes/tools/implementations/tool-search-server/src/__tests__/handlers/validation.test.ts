@@ -441,6 +441,170 @@ const a = obj!.prop!.value!.nested!.deep!.deeper!.data;
         expect(data.summary.checks_run).toContain('security');
         expect(data.summary.checks_run).toContain('structure');
       });
+
+      // Grade calculation tests for all branches (score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F')
+      it('should assign grade A for score >= 90 (clean code)', async () => {
+        // Clean export with no issues = score 100 = grade A
+        vi.mocked(fsPromises.readFile).mockResolvedValue('export const clean = 1;');
+
+        const result = await handleValidateImplementation({
+          files: ['clean.ts'],
+          checks: ['security'], // Only security checks, no issues expected
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.score).toBeGreaterThanOrEqual(90);
+        expect(data.grade).toBe('A');
+      });
+
+      it('should assign grade B for score 80-89 (3 warnings)', async () => {
+        // TypeScript 'any' types trigger warnings (-5 each)
+        // 3 warnings = score 100 - 15 = 85 = grade B
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
+const a: any = 1;
+const b: any = 2;
+const c: any = 3;
+`);
+
+        const result = await handleValidateImplementation({
+          files: ['warnings.ts'],
+          checks: ['typescript'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.score).toBeGreaterThanOrEqual(80);
+        expect(data.score).toBeLessThan(90);
+        expect(data.grade).toBe('B');
+      });
+
+      it('should assign grade C for score 70-79 (5 warnings)', async () => {
+        // TypeScript 'any' types trigger warnings (-5 each)
+        // 5 warnings = score 100 - 25 = 75 = grade C
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
+const a: any = 1;
+const b: any = 2;
+const c: any = 3;
+const d: any = 4;
+const e: any = 5;
+`);
+
+        const result = await handleValidateImplementation({
+          files: ['warnings.ts'],
+          checks: ['typescript'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.score).toBeGreaterThanOrEqual(70);
+        expect(data.score).toBeLessThan(80);
+        expect(data.grade).toBe('C');
+      });
+
+      it('should assign grade D for score 60-69 (7 warnings)', async () => {
+        // TypeScript 'any' types trigger warnings (-5 each)
+        // 7 warnings = score 100 - 35 = 65 = grade D
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
+const a: any = 1;
+const b: any = 2;
+const c: any = 3;
+const d: any = 4;
+const e: any = 5;
+const f: any = 6;
+const g: any = 7;
+`);
+
+        const result = await handleValidateImplementation({
+          files: ['warnings.ts'],
+          checks: ['typescript'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.score).toBeGreaterThanOrEqual(60);
+        expect(data.score).toBeLessThan(70);
+        expect(data.grade).toBe('D');
+      });
+
+      it('should assign grade F for score < 60 (3+ errors or 9+ warnings)', async () => {
+        // 3 errors = score 100 - 60 = 40 = grade F
+        // Use eval 3 times to trigger 3 security errors
+        vi.mocked(fsPromises.readFile).mockResolvedValue(`
+export const x = eval('1');
+export const y = eval('2');
+export const z = eval('3');
+`);
+
+        const result = await handleValidateImplementation({
+          files: ['errors.ts'],
+          checks: ['security'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.score).toBeLessThan(60);
+        expect(data.grade).toBe('F');
+      });
+    });
+
+    describe('skill pattern validation', () => {
+      it('should load skill patterns when skill is specified', async () => {
+        const { parseSkillMetadata, extractSkillPatterns } = await import('../../utils.js');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const x = 1; export default x;');
+        vi.mocked(extractSkillPatterns).mockResolvedValue({
+          required_imports: ['lodash'],
+          forbidden_patterns: ['eval'],
+        });
+
+        const result = await handleValidateImplementation({
+          files: ['test.ts'],
+          skill: 'typescript',
+          checks: ['security'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(parseSkillMetadata).toHaveBeenCalledWith('typescript');
+        expect(extractSkillPatterns).toHaveBeenCalledWith('typescript');
+        expect(data.skill).toBe('typescript');
+      });
+
+      it('should run skill pattern checks when skill is provided', async () => {
+        const { extractSkillPatterns } = await import('../../utils.js');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('const x = 1; export default x;');
+        vi.mocked(extractSkillPatterns).mockResolvedValue({
+          required_imports: ['lodash'],
+        });
+
+        const result = await handleValidateImplementation({
+          files: ['test.ts'],
+          skill: 'react-query',
+          checks: ['security'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.summary.checks_run).toContain('skill-patterns');
+      });
+
+      it('should include skill in response when specified', async () => {
+        const { extractSkillPatterns } = await import('../../utils.js');
+        vi.mocked(fsPromises.readFile).mockResolvedValue('export const x = 1;');
+        vi.mocked(extractSkillPatterns).mockResolvedValue({});
+
+        const result = await handleValidateImplementation({
+          files: ['module.ts'],
+          skill: 'vitest',
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.skill).toBe('vitest');
+      });
+
+      it('should set skill to null when not specified', async () => {
+        vi.mocked(fsPromises.readFile).mockResolvedValue('export const x = 1;');
+
+        const result = await handleValidateImplementation({
+          files: ['module.ts'],
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.skill).toBeNull();
+      });
     });
   });
 

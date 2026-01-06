@@ -46,7 +46,7 @@ import {
 /**
  * Extract the bash command from tool input
  */
-function extractBashCommand(input: HookInput): string | null {
+export function extractBashCommand(input: HookInput): string | null {
   if (input.tool_name !== 'Bash' && !input.tool_name?.endsWith('__Bash')) {
     return null;
   }
@@ -57,7 +57,7 @@ function extractBashCommand(input: HookInput): string | null {
 /**
  * Handle git commit commands with quality gates
  */
-async function handleGitCommit(input: HookInput, command: string): Promise<void> {
+export async function handleGitCommit(input: HookInput, command: string): Promise<void> {
   const cwd = input.cwd || process.cwd();
   const config = getDefaultConfig();
 
@@ -106,7 +106,7 @@ async function handleGitCommit(input: HookInput, command: string): Promise<void>
 /**
  * Handle git commands with branch/merge guards
  */
-async function handleGitCommand(input: HookInput, command: string): Promise<void> {
+export async function handleGitCommand(input: HookInput, command: string): Promise<void> {
   const cwd = input.cwd || process.cwd();
   const state = await loadState(cwd);
 
@@ -147,7 +147,7 @@ async function handleGitCommand(input: HookInput, command: string): Promise<void
 /**
  * Handle Bash tool with git command detection
  */
-async function handleBashTool(input: HookInput): Promise<void> {
+export async function handleBashTool(input: HookInput): Promise<void> {
   const command = extractBashCommand(input);
 
   if (!command) {
@@ -172,7 +172,7 @@ async function handleBashTool(input: HookInput): Promise<void> {
 }
 
 /** Validates prerequisites for detect_stack tool. */
-async function validateDetectStack(_input: HookInput): Promise<void> {
+export async function validateDetectStack(_input: HookInput): Promise<void> {
   if (!(await fileExistsRelative('package.json'))) {
     respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
     return;
@@ -181,7 +181,7 @@ async function validateDetectStack(_input: HookInput): Promise<void> {
 }
 
 /** Validates prerequisites for get_schema tool. */
-async function validateGetSchema(_input: HookInput): Promise<void> {
+export async function validateGetSchema(_input: HookInput): Promise<void> {
   // Check for common schema files
   const schemaFiles = [
     'prisma/schema.prisma',
@@ -201,7 +201,7 @@ async function validateGetSchema(_input: HookInput): Promise<void> {
 }
 
 /** Validates prerequisites for run_smoke_test tool. */
-async function validateRunSmokeTest(_input: HookInput): Promise<void> {
+export async function validateRunSmokeTest(_input: HookInput): Promise<void> {
   // Check if package.json exists
   if (!(await fileExistsRelative('package.json'))) {
     respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
@@ -224,7 +224,7 @@ async function validateRunSmokeTest(_input: HookInput): Promise<void> {
 }
 
 /** Validates prerequisites for check_types tool. */
-async function validateCheckTypes(_input: HookInput): Promise<void> {
+export async function validateCheckTypes(_input: HookInput): Promise<void> {
   // Check for TypeScript config
   if (!(await fileExistsRelative('tsconfig.json'))) {
     respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
@@ -235,13 +235,13 @@ async function validateCheckTypes(_input: HookInput): Promise<void> {
 }
 
 /** Validates prerequisites for validate_implementation tool. */
-async function validateImplementation(_input: HookInput): Promise<void> {
+export async function validateImplementation(_input: HookInput): Promise<void> {
   // Just allow and let the tool handle validation
   respond(allowTool('PreToolUse'));
 }
 
 /** Main entry point for pre-tool-use hook. Validates tool prerequisites and runs quality gates. */
-async function runPreToolUseHook(): Promise<void> {
+export async function runPreToolUseHook(): Promise<void> {
   try {
     const input = await readHookInput();
     debug('PreToolUse hook received input', { tool_name: input.tool_name, cwd: input.cwd });
@@ -283,4 +283,11 @@ async function runPreToolUseHook(): Promise<void> {
   }
 }
 
-runPreToolUseHook();
+// Only run when executed directly, not when imported for testing
+// Check if this module is the main entry point
+/* v8 ignore start -- @preserve: module entry point, not testable in unit tests */
+const isMainModule = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
+if (isMainModule) {
+  runPreToolUseHook();
+}
+/* v8 ignore stop */

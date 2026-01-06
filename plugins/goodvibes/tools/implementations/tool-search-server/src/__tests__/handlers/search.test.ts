@@ -131,6 +131,28 @@ describe('search handlers', () => {
       expect(data.skills[0]).toHaveProperty('description');
       expect(data.skills[0]).toHaveProperty('relevance');
     });
+
+    it('should handle result with undefined score', () => {
+      // Create a mock index that returns results with undefined score
+      const mockIndex = {
+        search: vi.fn().mockReturnValue([
+          {
+            item: {
+              name: 'Test Skill',
+              path: 'test/skill',
+              description: 'A test skill',
+            },
+            // score is intentionally undefined to test || 0 fallback
+          },
+        ]),
+      } as unknown as Fuse<RegistryEntry>;
+
+      const result = handleSearchSkills(mockIndex, { query: 'test' });
+      const data = JSON.parse(result.content[0].text);
+
+      // When score is undefined, relevance should be (1 - 0) * 100 / 100 = 1
+      expect(data.skills[0].relevance).toBe(1);
+    });
   });
 
   describe('handleSearchAgents', () => {
@@ -340,6 +362,15 @@ describe('search handlers', () => {
       });
       const moderateData = JSON.parse(moderateTask.content[0].text);
       expect(['moderate', 'complex']).toContain(moderateData.task_analysis.complexity);
+    });
+
+    it('should classify as complex when more than 10 keywords', () => {
+      // Create a task with more than 10 words longer than 3 characters
+      const complexTask = handleRecommendSkills(skillsIndex, {
+        task: 'implement authentication system database queries user sessions password hashing caching optimization performance monitoring logging testing',
+      });
+      const complexData = JSON.parse(complexTask.content[0].text);
+      expect(complexData.task_analysis.complexity).toBe('complex');
     });
 
     it('should include reason for each recommendation', () => {

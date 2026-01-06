@@ -133,7 +133,7 @@ class User {
     });
 
     it('should throw error for unknown source through facade', () => {
-      const args: GetSchemaArgs = { source: 'unknown' as any };
+      const args: GetSchemaArgs = { source: 'unknown' };
 
       expect(() => {
         handleGetSchema(args);
@@ -380,7 +380,7 @@ class User {
 
   describe('error messages', () => {
     it('should include all supported sources in unknown source error', () => {
-      const args: GetSchemaArgs = { source: 'invalid' as any };
+      const args: GetSchemaArgs = { source: 'invalid' };
 
       try {
         handleGetSchema(args);

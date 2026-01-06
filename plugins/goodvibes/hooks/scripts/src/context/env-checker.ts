@@ -12,12 +12,23 @@
  * @deprecated Import from './environment.js' instead for new code.
  */
 
+import {
+  checkEnvStatus,
+  formatEnvStatus as formatEnvStatusImpl,
+  type EnvStatus,
+} from './environment.js';
+
 // Re-export types
-export type { EnvStatus } from './environment.js';
+export type { EnvStatus };
 
-// Re-export the quick check API as checkEnvironment for backwards compatibility
-// (Original env-checker.ts exported checkEnvironment returning EnvStatus)
-export { checkEnvStatus as checkEnvironment } from './environment.js';
+/**
+ * Check environment status (backwards compatible alias for checkEnvStatus).
+ * @deprecated Use checkEnvStatus from './environment.js' instead.
+ */
+export const checkEnvironment = checkEnvStatus;
 
-// Re-export formatting function
-export { formatEnvStatus } from './environment.js';
+/**
+ * Format environment status for display.
+ * @deprecated Use formatEnvStatus from './environment.js' instead.
+ */
+export const formatEnvStatus = formatEnvStatusImpl;

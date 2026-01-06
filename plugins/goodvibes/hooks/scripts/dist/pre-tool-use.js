@@ -26,7 +26,7 @@ import { checkBranchGuard, checkMergeReadiness, isGitCommand, isMergeCommand, } 
 /**
  * Extract the bash command from tool input
  */
-function extractBashCommand(input) {
+export function extractBashCommand(input) {
     if (input.tool_name !== 'Bash' && !input.tool_name?.endsWith('__Bash')) {
         return null;
     }
@@ -36,7 +36,7 @@ function extractBashCommand(input) {
 /**
  * Handle git commit commands with quality gates
  */
-async function handleGitCommit(input, command) {
+export async function handleGitCommit(input, command) {
     const cwd = input.cwd || process.cwd();
     const config = getDefaultConfig();
     debug('Git commit detected, running quality gates', { command });
@@ -66,7 +66,7 @@ async function handleGitCommit(input, command) {
 /**
  * Handle git commands with branch/merge guards
  */
-async function handleGitCommand(input, command) {
+export async function handleGitCommand(input, command) {
     const cwd = input.cwd || process.cwd();
     const state = await loadState(cwd);
     debug('Git command detected, checking guards', { command });
@@ -98,7 +98,7 @@ async function handleGitCommand(input, command) {
 /**
  * Handle Bash tool with git command detection
  */
-async function handleBashTool(input) {
+export async function handleBashTool(input) {
     const command = extractBashCommand(input);
     if (!command) {
         respond(allowTool('PreToolUse'));
@@ -118,7 +118,7 @@ async function handleBashTool(input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for detect_stack tool. */
-async function validateDetectStack(_input) {
+export async function validateDetectStack(_input) {
     if (!(await fileExistsRelative('package.json'))) {
         respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
         return;
@@ -126,7 +126,7 @@ async function validateDetectStack(_input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for get_schema tool. */
-async function validateGetSchema(_input) {
+export async function validateGetSchema(_input) {
     // Check for common schema files
     const schemaFiles = [
         'prisma/schema.prisma',
@@ -143,7 +143,7 @@ async function validateGetSchema(_input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for run_smoke_test tool. */
-async function validateRunSmokeTest(_input) {
+export async function validateRunSmokeTest(_input) {
     // Check if package.json exists
     if (!(await fileExistsRelative('package.json'))) {
         respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
@@ -162,7 +162,7 @@ async function validateRunSmokeTest(_input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for check_types tool. */
-async function validateCheckTypes(_input) {
+export async function validateCheckTypes(_input) {
     // Check for TypeScript config
     if (!(await fileExistsRelative('tsconfig.json'))) {
         respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
@@ -171,12 +171,12 @@ async function validateCheckTypes(_input) {
     respond(allowTool('PreToolUse'));
 }
 /** Validates prerequisites for validate_implementation tool. */
-async function validateImplementation(_input) {
+export async function validateImplementation(_input) {
     // Just allow and let the tool handle validation
     respond(allowTool('PreToolUse'));
 }
 /** Main entry point for pre-tool-use hook. Validates tool prerequisites and runs quality gates. */
-async function runPreToolUseHook() {
+export async function runPreToolUseHook() {
     try {
         const input = await readHookInput();
         debug('PreToolUse hook received input', { tool_name: input.tool_name, cwd: input.cwd });
@@ -215,4 +215,11 @@ async function runPreToolUseHook() {
         respond(allowTool('PreToolUse', `Hook error: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
-runPreToolUseHook();
+// Only run when executed directly, not when imported for testing
+// Check if this module is the main entry point
+/* v8 ignore start -- @preserve: module entry point, not testable in unit tests */
+const isMainModule = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
+if (isMainModule) {
+    runPreToolUseHook();
+}
+/* v8 ignore stop */

@@ -282,6 +282,24 @@ API_KEY=secret
       });
     });
 
+    describe('unknown config type', () => {
+      it('should use config name directly when not in CONFIG_PATHS', () => {
+        // Test the branch where CONFIG_PATHS[args.config] is undefined
+        // so it falls back to [args.config] as the file path
+        vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+          return String(p).includes('unknown-config.yaml');
+        });
+        vi.mocked(fs.readFileSync).mockReturnValue('key: value');
+
+        const result = handleReadConfig({ config: 'unknown-config.yaml' });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.config_type).toBe('unknown-config.yaml');
+        expect(data.file_path).toBe('unknown-config.yaml');
+        expect(data.format).toBe('text'); // Not .json, .js, or .ts
+      });
+    });
+
     describe('custom path parameter', () => {
       it('should use custom path when provided', () => {
         const checkedPaths: string[] = [];

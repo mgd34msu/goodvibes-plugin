@@ -123,6 +123,7 @@ function generateWarnings(health) {
  */
 function generateSuggestions(health) {
     const suggestions = [];
+    /* v8 ignore next -- @preserve defensive: scripts is always set by checkProjectHealth */
     const scripts = health.scripts || [];
     if (!scripts.includes('lint') && !scripts.includes('eslint')) {
         suggestions.push('Add a `lint` script to catch code issues');

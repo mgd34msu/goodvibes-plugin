@@ -285,5 +285,44 @@ const x = 1;
 
       expect(issues.find(i => i.rule === 'skill/forbidden-pattern')?.line).toBe(1);
     });
+
+    it('should fallback to line 1 when pattern spans multiple lines (lineNum || 1 branch)', () => {
+      // The pattern is in the content but split across lines, so findIndex returns -1
+      // which makes lineNum = 0, triggering the || 1 fallback
+      const content = `const bad = "enzy
+me is here";`;  // "enzyme" spans two lines
+      const ctx = createContext(content);
+      const skillPatterns: SkillPatterns = {
+        must_not_include: ['enzy\nme'],  // Pattern spans newline
+      };
+      const issues = runSkillPatternChecks(ctx, skillPatterns);
+
+      // Pattern is found in content but not on any single line, so line falls back to 1
+      const issue = issues.find(i => i.rule === 'skill/forbidden-pattern');
+      expect(issue).toBeDefined();
+      expect(issue?.line).toBe(1);
+    });
+
+    it('should fallback to line 1 when lines array is empty but pattern exists in content', () => {
+      // Create a context where content has the pattern but lines array is empty
+      const content = 'enzyme is here';
+      const ctx: ValidationContext = {
+        content,
+        lines: [], // Empty lines array
+        file: 'test.ts',
+        ext: '.ts',
+        isTypeScript: true,
+        isReact: false,
+      };
+      const skillPatterns: SkillPatterns = {
+        must_not_include: ['enzyme'],
+      };
+      const issues = runSkillPatternChecks(ctx, skillPatterns);
+
+      // findIndex on empty array returns -1, so lineNum = 0, falls back to 1
+      const issue = issues.find(i => i.rule === 'skill/forbidden-pattern');
+      expect(issue).toBeDefined();
+      expect(issue?.line).toBe(1);
+    });
   });
 });

@@ -101,6 +101,30 @@ describe('npm handlers', () => {
       expect(result?.latest).toBe('5.0.0');
       expect(result?.wanted).toBeUndefined();
     });
+
+    it('should handle dist-tags error response', async () => {
+      const { safeExec } = await import('../../utils.js');
+      vi.mocked(safeExec)
+        .mockResolvedValueOnce({ stdout: '5.0.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '', stderr: 'npm ERR!', error: 'Command failed' });
+
+      const result = await fetchNpmPackageInfo('pkg-with-error');
+
+      expect(result?.latest).toBe('5.0.0');
+      expect(result?.wanted).toBeUndefined();
+    });
+
+    it('should handle dist-tags empty stdout', async () => {
+      const { safeExec } = await import('../../utils.js');
+      vi.mocked(safeExec)
+        .mockResolvedValueOnce({ stdout: '5.0.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+      const result = await fetchNpmPackageInfo('pkg-empty-tags');
+
+      expect(result?.latest).toBe('5.0.0');
+      expect(result?.wanted).toBeUndefined();
+    });
   });
 
   describe('fetchNpmReadme', () => {
@@ -161,6 +185,36 @@ describe('npm handlers', () => {
       const result = await fetchNpmReadme('pkg-with-repo');
 
       expect(result?.repository).toBe('https://github.com/user/repo');
+    });
+
+    it('should return null on JSON parse error', async () => {
+      const { safeExec } = await import('../../utils.js');
+      // Valid output but not valid JSON
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: 'not valid json {{{',
+        stderr: '',
+      });
+
+      const result = await fetchNpmReadme('broken-json-pkg');
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle non-string readme gracefully', async () => {
+      const { safeExec } = await import('../../utils.js');
+      // Readme is not a string - test typeof check branch
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: JSON.stringify({
+          readme: 12345, // number instead of string
+          description: 'Test package',
+        }),
+        stderr: '',
+      });
+
+      const result = await fetchNpmReadme('non-string-readme');
+
+      expect(result?.readme).toBeUndefined();
+      expect(result?.description).toBe('Test package');
     });
   });
 
@@ -287,6 +341,66 @@ describe('npm handlers', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.packages[0].breaking_changes).toBe(true);
+    });
+
+    it('should not mark as outdated when versions match', async () => {
+      const { readJsonFile, safeExec } = await import('../../utils.js');
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: { react: '^18.2.0' },
+      });
+      vi.mocked(safeExec)
+        .mockResolvedValueOnce({ stdout: '18.2.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '{"latest": "18.2.0"}', stderr: '' });
+
+      const result = await handleCheckVersions({
+        packages: ['react'],
+        check_latest: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.packages[0].outdated).toBe(false);
+      expect(data.packages[0].breaking_changes).toBeUndefined();
+    });
+
+    it('should handle version with invalid major number', async () => {
+      const { readJsonFile, safeExec } = await import('../../utils.js');
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: { 'weird-pkg': 'latest' },
+      });
+      vi.mocked(safeExec)
+        .mockResolvedValueOnce({ stdout: '1.0.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '{"latest": "1.0.0"}', stderr: '' });
+
+      const result = await handleCheckVersions({
+        packages: ['weird-pkg'],
+        check_latest: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should handle the case where installed version is 'latest' (not a semver)
+      expect(data.packages[0]).toBeDefined();
+    });
+
+    it('should handle invalid latest version format', async () => {
+      const { readJsonFile, safeExec } = await import('../../utils.js');
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: { 'weird-pkg': '^1.0.0' },
+      });
+      // Return a non-semver latest version
+      vi.mocked(safeExec)
+        .mockResolvedValueOnce({ stdout: 'not-a-version', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '{"latest": "not-a-version"}', stderr: '' });
+
+      const result = await handleCheckVersions({
+        packages: ['weird-pkg'],
+        check_latest: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should handle the case where latest version is not semver - || 0 fallback
+      expect(data.packages[0]).toBeDefined();
+      // parseInt('not-a-version'.split('.')[0]) returns NaN, so || 0 kicks in
+      expect(data.packages[0].breaking_changes).toBeDefined();
     });
 
     it('should include summary in response', async () => {

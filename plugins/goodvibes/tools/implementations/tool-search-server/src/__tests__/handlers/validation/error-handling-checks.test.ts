@@ -238,4 +238,17 @@ export function syncFunction() {
       expect(issues.length).toBe(0);
     });
   });
+
+  describe('edge cases for match.index', () => {
+    it('should handle async function at the very start of content (index 0)', () => {
+      // When the async function starts at index 0, match.index is 0 (falsy)
+      // The code uses `match.index || 0` which should still work correctly
+      const ctx = createContext('async function first() { await doWork(); }');
+      const issues = runErrorHandlingChecks(ctx);
+
+      // Should detect async function without error handling at line 1
+      expect(issues.some(i => i.rule === 'error-handling/async-try-catch')).toBe(true);
+      expect(issues.find(i => i.rule === 'error-handling/async-try-catch')?.line).toBe(1);
+    });
+  });
 });

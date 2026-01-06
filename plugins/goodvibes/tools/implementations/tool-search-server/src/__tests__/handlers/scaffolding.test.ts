@@ -88,6 +88,21 @@ describe('scaffolding handlers', () => {
       await expect(handleListTemplates({})).rejects.toThrow('Template registry not found');
     });
 
+    it('should handle registry without templates array', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump({
+        // Registry exists but has no templates field
+        version: '1.0.0',
+      }));
+
+      const result = await handleListTemplates({});
+      const data = JSON.parse(result.content[0].text);
+
+      // Should default to empty array
+      expect(data.templates).toEqual([]);
+      expect(data.total).toBe(0);
+    });
+
     it('should include template metadata', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.promises.readFile).mockResolvedValue(yaml.dump(sampleTemplateRegistry));
@@ -230,6 +245,68 @@ describe('scaffolding handlers', () => {
       });
 
       expect(writeCalls.every(p => !p.endsWith('.hbs'))).toBe(true);
+    });
+
+    it('should recursively copy directories', async () => {
+      // Setup mocks with a directory entry that contains files
+      const mockFileDirent = {
+        name: 'index.ts',
+        isDirectory: () => false,
+        isFile: () => true,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+        isSymbolicLink: () => false,
+        parentPath: '',
+      };
+      const mockDirDirent = {
+        name: 'src',
+        isDirectory: () => true,
+        isFile: () => false,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+        isSymbolicLink: () => false,
+        parentPath: '',
+      };
+
+      let readdirCallCount = 0;
+      vi.mocked(fs.promises.readdir).mockImplementation(async () => {
+        readdirCallCount++;
+        if (readdirCallCount === 1) {
+          // First call - return directory
+          // @ts-expect-error - Vitest mock type inference issue
+          return [mockDirDirent];
+        }
+        // Second call (inside src dir) - return file
+        // @ts-expect-error - Vitest mock type inference issue
+        return [mockFileDirent];
+      });
+
+      vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
+        if (String(p).includes('template.yaml')) {
+          return yaml.dump(sampleTemplateConfig);
+        }
+        return 'console.log("hello");';
+      });
+
+      const mkdirCalls: string[] = [];
+      vi.mocked(fs.promises.mkdir).mockImplementation(async (p) => {
+        mkdirCalls.push(String(p));
+        return undefined;
+      });
+
+      const result = await handleScaffoldProject({
+        template: 'next-app',
+        output_dir: './test-project',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should have called mkdir for the src subdirectory
+      expect(mkdirCalls.some(p => p.includes('src'))).toBe(true);
+      expect(data.success).toBe(true);
     });
 
     it('should run npm install by default', async () => {
@@ -404,6 +481,94 @@ describe('scaffolding handlers', () => {
 
       expect(data.variables_applied.projectName).toBe('my-app');
       expect(data.variables_applied.author).toBe('Developer');
+    });
+
+    it('should handle template variable without default', async () => {
+      vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
+        if (String(p).includes('template.yaml')) {
+          // Template with variable that has no default
+          return yaml.dump({
+            name: 'test-template',
+            variables: [
+              { name: 'projectName' }, // No default provided
+            ],
+          });
+        }
+        return '{}';
+      });
+
+      const result = await handleScaffoldProject({
+        template: 'next-app',
+        output_dir: './test-project',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should use empty string as fallback when no default
+      expect(data.variables_applied.projectName).toBe('');
+    });
+
+    it('should handle template without files directory', async () => {
+      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+        const pathStr = String(p);
+        // Template exists but files dir doesn't
+        if (pathStr.includes('files')) return false;
+        return (
+          pathStr.includes('next-app') ||
+          pathStr.includes('template.yaml')
+        );
+      });
+
+      const result = await handleScaffoldProject({
+        template: 'next-app',
+        output_dir: './test-project',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should succeed even without files directory
+      expect(data.success).toBe(true);
+      expect(data.created_files).toEqual([]);
+    });
+
+    it('should handle template without required_skills', async () => {
+      vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
+        if (String(p).includes('template.yaml')) {
+          // Template without required_skills field
+          return yaml.dump({
+            name: 'test-template',
+          });
+        }
+        return '{}';
+      });
+
+      const result = await handleScaffoldProject({
+        template: 'next-app',
+        output_dir: './test-project',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should default to empty array
+      expect(data.recommended_skills).toEqual([]);
+    });
+
+    it('should handle template without variables field', async () => {
+      vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
+        if (String(p).includes('template.yaml')) {
+          // Template without variables field
+          return yaml.dump({
+            name: 'test-template',
+            required_skills: ['test-skill'],
+          });
+        }
+        return '{}';
+      });
+
+      const result = await handleScaffoldProject({
+        template: 'next-app',
+        output_dir: './test-project',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
     });
 
     describe('response format', () => {

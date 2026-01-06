@@ -230,5 +230,17 @@ if (user?.name) {
 
       expect(issues.length).toBe(0);
     });
+
+    it('should handle any type at the very start of content (index 0)', () => {
+      // When the : any pattern starts at index 0, match.index is 0 (falsy)
+      // The code uses `match.index || 0` which should still work correctly
+      // Note: `: any` at position 0 means the content starts with `: any`
+      const ctx = createContext(': any = null;');
+      const issues = runTypeScriptChecks(ctx);
+
+      // Should detect 'any' type at line 1
+      expect(issues.some(i => i.rule === 'typescript/no-any')).toBe(true);
+      expect(issues.find(i => i.rule === 'typescript/no-any')?.line).toBe(1);
+    });
   });
 });

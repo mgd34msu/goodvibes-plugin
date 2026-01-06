@@ -21,7 +21,8 @@ export async function buildSubagentContext(cwd, agentType, _sessionId) {
     if (agentType.includes('brutal-reviewer')) {
         contextParts.push('Remember: Be brutally honest. Score out of 10.');
     }
+    // contextParts always has at least 2 elements (project name and mode)
     return {
-        additionalContext: contextParts.length > 0 ? contextParts.join('\n') : null,
+        additionalContext: contextParts.join('\n'),
     };
 }

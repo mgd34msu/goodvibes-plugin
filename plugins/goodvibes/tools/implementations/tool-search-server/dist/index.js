@@ -24980,11 +24980,21 @@ async function parseSkillMetadata(skillPath) {
       const metadata = {};
       const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
       if (requiresMatch) {
-        metadata.requires = requiresMatch[1].match(/-\s*(.+)/g)?.map((m) => m.replace(/^-\s*/, "").trim()) || [];
+        const items = requiresMatch[1].match(/-\s*(.+)/g);
+        if (items) {
+          metadata.requires = items.map((m) => m.replace(/^-\s*/, "").trim());
+        } else {
+          metadata.requires = [];
+        }
       }
       const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
       if (relatedMatch) {
-        metadata.complements = relatedMatch[1].match(/-\s*(.+)/g)?.map((m) => m.replace(/^-\s*/, "").trim()) || [];
+        const items = relatedMatch[1].match(/-\s*(.+)/g);
+        if (items) {
+          metadata.complements = items.map((m) => m.replace(/^-\s*/, "").trim());
+        } else {
+          metadata.complements = [];
+        }
       }
       const techKeywords = ["react", "next", "nextjs", "prisma", "drizzle", "tailwind", "typescript", "node", "express", "vite", "vitest", "jest", "zustand", "zod", "trpc"];
       const contentLower = content.toLowerCase();
@@ -27516,6 +27526,8 @@ server.run().catch((error2) => {
   logError("Server failed to start", error2);
   process.exit(1);
 });
+/* istanbul ignore else -- @preserve outer regex guarantees match */
+/* istanbul ignore next -- @preserve TypeScript guard that is always true when size >= 1 */
 /*! Bundled license information:
 
 js-yaml/dist/js-yaml.mjs:

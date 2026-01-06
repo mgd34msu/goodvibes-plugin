@@ -111,6 +111,7 @@ export function parseDevServerErrors(output: string): string[] {
   for (const pattern of ERROR_PATTERNS) {
     const matches = output.matchAll(new RegExp(pattern, 'g'));
     for (const match of matches) {
+      /* v8 ignore else -- @preserve defensive check: match[1] is always truthy with (.+) patterns */
       if (match[1]) {
         errors.push(match[1]);
       }

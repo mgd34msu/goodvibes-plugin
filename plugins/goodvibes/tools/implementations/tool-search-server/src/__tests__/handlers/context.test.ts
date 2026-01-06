@@ -191,6 +191,18 @@ describe('context handlers', () => {
 
         expect(data.frontend.state_management).toBe('jotai');
       });
+
+      it('should detect Recoil state management', async () => {
+        vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+        vi.mocked(fsPromises.readFile).mockResolvedValue(JSON.stringify({
+          dependencies: { recoil: '^0.7.0' },
+        }));
+
+        const result = await handleDetectStack({});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.frontend.state_management).toBe('recoil');
+      });
     });
 
     describe('backend detection', () => {
@@ -384,6 +396,18 @@ describe('context handlers', () => {
         const data = JSON.parse(result.content[0].text);
 
         expect(data.build.bundler).toBe('webpack');
+      });
+
+      it('should detect esbuild bundler', async () => {
+        vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+        vi.mocked(fsPromises.readFile).mockResolvedValue(JSON.stringify({
+          devDependencies: { esbuild: '^0.20.0' },
+        }));
+
+        const result = await handleDetectStack({});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.build.bundler).toBe('esbuild');
       });
     });
 

@@ -4,8 +4,8 @@ import { getDefaultConfig as getAutomationConfig } from '../types/config.js';
 
 /** Context to inject into a subagent session */
 export interface SubagentContext {
-  /** Additional context string to inject, or null if none */
-  additionalContext: string | null;
+  /** Additional context string to inject (always contains at least project info) */
+  additionalContext: string;
 }
 
 /** Builds context for a subagent based on agent type and project */
@@ -38,7 +38,8 @@ export async function buildSubagentContext(
     contextParts.push('Remember: Be brutally honest. Score out of 10.');
   }
 
+  // contextParts always has at least 2 elements (project name and mode)
   return {
-    additionalContext: contextParts.length > 0 ? contextParts.join('\n') : null,
+    additionalContext: contextParts.join('\n'),
   };
 }

@@ -54,6 +54,29 @@ describe('runNamingChecks', () => {
       expect(issues.filter(i => i.rule === 'naming/camelCase').length).toBe(0);
     });
 
+    it('should warn about invalid PascalCase in non-React file', () => {
+      // Name starts with capital (isPascalCase=true) but contains underscore (isValidPascalCase=false)
+      // File is not React, so this should trigger the "uses PascalCase but file is not React" warning
+      const ctx = createContext('function MyFunction_Bad() {}', 'test.ts');
+      const issues = runNamingChecks(ctx);
+
+      const issue = issues.find(i => i.rule === 'naming/camelCase');
+      expect(issue).toBeDefined();
+      expect(issue?.message).toContain('MyFunction_Bad');
+      expect(issue?.message).toContain('PascalCase');
+    });
+
+    it('should NOT warn about invalid PascalCase in React file', () => {
+      // Same name but in a React file - PascalCase is allowed
+      const ctx = createContext('function MyFunction_Bad() {}', 'test.tsx');
+      const issues = runNamingChecks(ctx);
+
+      // In React files, PascalCase is accepted even if not strictly valid
+      // The check skips when ctx.isReact is true
+      const namingIssues = issues.filter(i => i.rule === 'naming/camelCase' && i.message.includes('PascalCase'));
+      expect(namingIssues.length).toBe(0);
+    });
+
     it('should NOT warn about private functions starting with underscore', () => {
       const ctx = createContext('function _privateHelper() {}');
       const issues = runNamingChecks(ctx);
@@ -207,6 +230,44 @@ class UserService {}
       const issues = runNamingChecks(ctx);
 
       expect(issues.length).toBe(0);
+    });
+
+    it('should handle line fallback when lines array is inconsistent with content', () => {
+      // Create a context where the lines array is manually manipulated to be shorter than expected
+      // This tests the `|| ''` fallback on line 50: `const line = ctx.lines[lineNum - 1] || ''`
+      const content = 'const MY_CONSTANT = new Date();';
+      const ctx: ValidationContext = {
+        content,
+        lines: [], // Empty lines array - will cause lineNum - 1 to be out of bounds
+        file: 'test.ts',
+        ext: '.ts',
+        isTypeScript: true,
+        isReact: false,
+      };
+      const issues = runNamingChecks(ctx);
+
+      // Should still detect the SCREAMING_CASE constant and handle the empty line gracefully
+      // The line check `line.includes('()')` will be false for empty string, so no issue for that check
+      expect(issues).toBeDefined();
+    });
+
+    it('should handle SCREAMING_CASE when line lookup falls back to empty string', () => {
+      // Test the fallback with a truncated lines array that would cause out-of-bounds access
+      const content = `const SOMETHING = 1;
+const MY_FUNC = getSomething();`;
+      const ctx: ValidationContext = {
+        content,
+        lines: ['const SOMETHING = 1;'], // Missing second line
+        file: 'test.ts',
+        ext: '.ts',
+        isTypeScript: true,
+        isReact: false,
+      };
+      const issues = runNamingChecks(ctx);
+
+      // The second SCREAMING_CASE constant is on line 2, but lines[1] is undefined
+      // The code falls back to '' so line.includes('()') returns false
+      expect(issues).toBeDefined();
     });
   });
 });

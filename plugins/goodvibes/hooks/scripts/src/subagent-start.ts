@@ -168,13 +168,11 @@ async function runSubagentStartHook(): Promise<void> {
     reminders.push('Project: ' + projectName);
 
     // Combine context
+    // Note: reminders always has at least one element (project name) so we always append
     let additionalContext: string | undefined;
     if (subagentContext.additionalContext) {
-      additionalContext = subagentContext.additionalContext;
-      if (reminders.length > 0) {
-        additionalContext += '\n\n' + reminders.join('\n');
-      }
-    } else if (reminders.length > 0) {
+      additionalContext = subagentContext.additionalContext + '\n\n' + reminders.join('\n');
+    } else {
       additionalContext = '[GoodVibes Project Context]\n' + reminders.join('\n');
     }
 

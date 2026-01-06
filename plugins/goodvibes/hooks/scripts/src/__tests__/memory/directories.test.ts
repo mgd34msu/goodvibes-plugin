@@ -153,6 +153,26 @@ describe('memory/directories', () => {
       const deepMemoryDir = path.join(deepPath, '.goodvibes', 'memory');
       expect(await fileExists(deepMemoryDir)).toBe(true);
     });
+
+    it('should create memory directory when .goodvibes exists but memory does not', async () => {
+      // Create .goodvibes directory without the memory subdirectory
+      // This simulates the case where ensureGoodVibesDir was not the one creating it
+      const goodvibesDir = path.join(testDir, '.goodvibes');
+      await fs.mkdir(goodvibesDir, { recursive: true });
+      // Create the other subdirectories that ensureGoodVibesDir normally creates
+      await fs.mkdir(path.join(goodvibesDir, 'state'), { recursive: true });
+      await fs.mkdir(path.join(goodvibesDir, 'logs'), { recursive: true });
+      await fs.mkdir(path.join(goodvibesDir, 'telemetry'), { recursive: true });
+      // Do NOT create memory directory
+
+      const memoryDir = path.join(goodvibesDir, 'memory');
+      expect(await fileExists(memoryDir)).toBe(false);
+
+      await ensureMemoryDir(testDir);
+
+      // Now memory directory should exist
+      expect(await fileExists(memoryDir)).toBe(true);
+    });
   });
 
   describe('ensureSecurityGitignore', () => {
