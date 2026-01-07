@@ -78,8 +78,10 @@ const mockCreateFailedContextResult = vi.fn((startTime: number) => ({
 }));
 
 vi.mock('../session-start/context-builder.js', () => ({
-  gatherProjectContext: (...args: unknown[]) => mockGatherProjectContext(...args),
-  createFailedContextResult: (startTime: number) => mockCreateFailedContextResult(startTime),
+  gatherProjectContext: (...args: unknown[]) =>
+    mockGatherProjectContext(...args),
+  createFailedContextResult: (startTime: number) =>
+    mockCreateFailedContextResult(startTime),
 }));
 
 // Mock response-formatter module
@@ -98,7 +100,11 @@ const mockUpdateSessionState = vi.fn((state, updates) => ({
 }));
 const mockInitializeSession = vi.fn((state, sessionId) => ({
   ...state,
-  session: { ...state.session, id: sessionId, startedAt: new Date().toISOString() },
+  session: {
+    ...state.session,
+    id: sessionId,
+    startedAt: new Date().toISOString(),
+  },
   files: { ...state.files, modifiedThisSession: [], createdThisSession: [] },
 }));
 
@@ -196,7 +202,9 @@ describe('session-start hook', () => {
       needsRecovery: false,
     });
 
-    mockBuildSystemMessage.mockReturnValue('GoodVibes plugin v2.1.0 initialized.');
+    mockBuildSystemMessage.mockReturnValue(
+      'GoodVibes plugin v2.1.0 initialized.'
+    );
   });
 
   afterEach(() => {
@@ -222,7 +230,10 @@ describe('session-start hook', () => {
 
       // Verify state loading
       expect(mockLoadState).toHaveBeenCalledWith('/test/project');
-      expect(mockDebug).toHaveBeenCalledWith('State loaded', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'State loaded',
+        expect.any(Object)
+      );
 
       // Verify session initialization
       expect(mockInitializeSession).toHaveBeenCalled();
@@ -231,7 +242,10 @@ describe('session-start hook', () => {
       expect(mockEnsureCacheDir).toHaveBeenCalled();
       expect(mockDebug).toHaveBeenCalledWith('Cache directory ensured');
       expect(mockValidateRegistries).toHaveBeenCalled();
-      expect(mockDebug).toHaveBeenCalledWith('Registry validation', { valid: true, missing: [] });
+      expect(mockDebug).toHaveBeenCalledWith('Registry validation', {
+        valid: true,
+        missing: [],
+      });
 
       // Verify crash recovery check
       expect(mockCheckCrashRecovery).toHaveBeenCalledWith('/test/project');
@@ -260,7 +274,10 @@ describe('session-start hook', () => {
       );
 
       // Verify response
-      expect(mockBuildSystemMessage).toHaveBeenCalledWith('test-session-123', expect.any(Object));
+      expect(mockBuildSystemMessage).toHaveBeenCalledWith(
+        'test-session-123',
+        expect.any(Object)
+      );
       expect(mockCreateResponse).toHaveBeenCalledWith({
         systemMessage: 'GoodVibes plugin v2.1.0 initialized.',
         additionalContext: 'test context',
@@ -285,7 +302,9 @@ describe('session-start hook', () => {
 
       // Should use PROJECT_ROOT (/mock/project/root) instead of input.cwd
       expect(mockLoadState).toHaveBeenCalledWith('/mock/project/root');
-      expect(mockDebug).toHaveBeenCalledWith('Project directory: /mock/project/root');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Project directory: /mock/project/root'
+      );
     });
 
     it('should generate session ID when input.session_id is not provided', async () => {
@@ -370,7 +389,10 @@ describe('session-start hook', () => {
       });
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('State loading', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'State loading',
+        expect.any(Error)
+      );
 
       // Verify createDefaultState was called as fallback
       expect(mockCreateDefaultState).toHaveBeenCalled();
@@ -382,7 +404,9 @@ describe('session-start hook', () => {
 
   describe('performCrashRecoveryCheck error handling', () => {
     it('should return default recovery info when checkCrashRecovery throws', async () => {
-      mockCheckCrashRecovery.mockRejectedValue(new Error('Crash recovery check failed'));
+      mockCheckCrashRecovery.mockRejectedValue(
+        new Error('Crash recovery check failed')
+      );
 
       await import('../session-start.js');
 
@@ -391,7 +415,10 @@ describe('session-start hook', () => {
       });
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('Crash recovery check', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'Crash recovery check',
+        expect.any(Error)
+      );
 
       // Verify hook continued successfully with default recovery info
       expect(mockGatherProjectContext).toHaveBeenCalledWith(
@@ -411,7 +438,9 @@ describe('session-start hook', () => {
 
   describe('gatherContextSafely error handling', () => {
     it('should return failed context result when gatherProjectContext throws', async () => {
-      mockGatherProjectContext.mockRejectedValue(new Error('Context gathering failed'));
+      mockGatherProjectContext.mockRejectedValue(
+        new Error('Context gathering failed')
+      );
 
       await import('../session-start.js');
 
@@ -420,7 +449,10 @@ describe('session-start hook', () => {
       });
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('Context gathering', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'Context gathering',
+        expect.any(Error)
+      );
 
       // Verify createFailedContextResult was called
       expect(mockCreateFailedContextResult).toHaveBeenCalled();
@@ -441,7 +473,10 @@ describe('session-start hook', () => {
       });
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('State saving', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'State saving',
+        expect.any(Error)
+      );
 
       // Verify hook continued successfully (analytics and response still processed)
       expect(mockSaveAnalytics).toHaveBeenCalled();
@@ -460,7 +495,10 @@ describe('session-start hook', () => {
       });
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('SessionStart main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SessionStart main',
+        expect.any(Error)
+      );
 
       // Verify error response was sent
       expect(mockCreateResponse).toHaveBeenCalledWith({
@@ -519,7 +557,9 @@ describe('session-start hook', () => {
         })
       );
 
-      expect(mockDebug).toHaveBeenCalledWith('Analytics initialized for session test-session-123');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Analytics initialized for session test-session-123'
+      );
     });
   });
 
@@ -531,7 +571,9 @@ describe('session-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Project directory: /test/project');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Project directory: /test/project'
+      );
     });
 
     it('should log context gathering start', async () => {
@@ -541,7 +583,9 @@ describe('session-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Gathering project context from: /test/project');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Gathering project context from: /test/project'
+      );
     });
 
     it('should log crash recovery check result', async () => {
@@ -560,7 +604,9 @@ describe('session-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Crash recovery check', { needsRecovery: true });
+      expect(mockDebug).toHaveBeenCalledWith('Crash recovery check', {
+        needsRecovery: true,
+      });
     });
   });
 });

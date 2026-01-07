@@ -11,9 +11,15 @@
  */
 
 import type { HooksState } from '../types/state.js';
-import { createCheckpoint as gitCheckpoint, hasUncommittedChanges } from '../automation/git-operations.js';
+import {
+  createCheckpoint as gitCheckpoint,
+  hasUncommittedChanges,
+} from '../automation/git-operations.js';
 import { CHECKPOINT_TRIGGERS } from '../shared/index.js';
-import { clearCheckpointTracking, getModifiedFileCount } from './file-tracker.js';
+import {
+  clearCheckpointTracking,
+  getModifiedFileCount,
+} from './file-tracker.js';
 
 /** Result of checking whether a checkpoint should be created */
 export interface CheckpointTrigger {
@@ -37,7 +43,10 @@ export interface CheckpointTrigger {
  *   console.log('Checkpoint needed:', trigger.reason);
  * }
  */
-export function shouldCheckpoint(state: HooksState, _cwd: string): CheckpointTrigger {
+export function shouldCheckpoint(
+  state: HooksState,
+  _cwd: string
+): CheckpointTrigger {
   // Check file count threshold
   const fileCount = getModifiedFileCount(state);
   if (fileCount >= CHECKPOINT_TRIGGERS.fileCountThreshold) {
@@ -102,7 +111,11 @@ export async function createCheckpointIfNeeded(
       },
     };
 
-    return { created: true, message: `Checkpoint: ${trigger.reason}`, state: finalState };
+    return {
+      created: true,
+      message: `Checkpoint: ${trigger.reason}`,
+      state: finalState,
+    };
   }
 
   return { created: false, message: 'Checkpoint failed', state };

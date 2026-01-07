@@ -24,11 +24,4 @@ export type Failure = MemoryFailure;
 /** User preference record type alias */
 export type Preference = MemoryPreference;
 export { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
-/** Append a new architectural decision (ensures directory exists). */
-export declare function appendDecision(cwd: string, decision: Decision): Promise<void>;
-/** Append a new code pattern (ensures directory exists). */
-export declare function appendPattern(cwd: string, pattern: Pattern): Promise<void>;
-/** Append a failed approach (ensures directory exists). */
-export declare function appendFailure(cwd: string, failure: Failure): Promise<void>;
-/** Append a user preference (ensures directory exists). */
-export declare function appendPreference(cwd: string, preference: Preference): Promise<void>;
+export { appendDecision, appendPattern, appendFailure, appendPreference, } from './wrappers.js';

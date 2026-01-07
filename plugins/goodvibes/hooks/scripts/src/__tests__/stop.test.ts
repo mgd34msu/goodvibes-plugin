@@ -49,10 +49,12 @@ describe('stop hook', () => {
     mockRespond.mockReturnValue(undefined);
 
     // Default mock for createResponse
-    mockCreateResponse.mockImplementation((opts?: { systemMessage?: string }) => ({
-      continue: true,
-      ...(opts?.systemMessage && { systemMessage: opts.systemMessage }),
-    }));
+    mockCreateResponse.mockImplementation(
+      (opts?: { systemMessage?: string }) => ({
+        continue: true,
+        ...(opts?.systemMessage && { systemMessage: opts.systemMessage }),
+      })
+    );
   });
 
   afterEach(() => {
@@ -96,9 +98,21 @@ describe('stop hook', () => {
         session_id: 'test-session-123',
         started_at: '2025-01-01T00:00:00.000Z',
         tool_usage: [
-          { tool: 'Bash', timestamp: '2025-01-01T00:01:00.000Z', success: true },
-          { tool: 'Read', timestamp: '2025-01-01T00:02:00.000Z', success: true },
-          { tool: 'Bash', timestamp: '2025-01-01T00:03:00.000Z', success: true },
+          {
+            tool: 'Bash',
+            timestamp: '2025-01-01T00:01:00.000Z',
+            success: true,
+          },
+          {
+            tool: 'Read',
+            timestamp: '2025-01-01T00:02:00.000Z',
+            success: true,
+          },
+          {
+            tool: 'Bash',
+            timestamp: '2025-01-01T00:03:00.000Z',
+            success: true,
+          },
         ],
         skills_recommended: ['skill1', 'skill2'],
         validations_run: 5,
@@ -131,7 +145,9 @@ describe('stop hook', () => {
       expect(writeFilePath).toMatch(/session-test-session-123\.json$/);
 
       // Parse the written summary to verify content
-      const writtenSummary = JSON.parse(mockWriteFile.mock.calls[0][1] as string);
+      const writtenSummary = JSON.parse(
+        mockWriteFile.mock.calls[0][1] as string
+      );
       expect(writtenSummary.session_id).toBe('test-session-123');
       expect(writtenSummary.tools_used).toBe(3);
       expect(writtenSummary.unique_tools).toEqual(['Bash', 'Read']);
@@ -169,7 +185,9 @@ describe('stop hook', () => {
       await setupMocksAndImport();
 
       // Verify duration_minutes was calculated
-      const writtenSummary = JSON.parse(mockWriteFile.mock.calls[0][1] as string);
+      const writtenSummary = JSON.parse(
+        mockWriteFile.mock.calls[0][1] as string
+      );
       expect(typeof writtenSummary.duration_minutes).toBe('number');
     });
   });
@@ -212,7 +230,9 @@ describe('stop hook', () => {
       expect(mockUnlink).toHaveBeenCalled();
       const unlinkPath = mockUnlink.mock.calls[0][0] as string;
       expect(unlinkPath).toMatch(/detected-stack\.json$/);
-      expect(mockDebug).toHaveBeenCalledWith('Cleaned up temp file: detected-stack.json');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Cleaned up temp file: detected-stack.json'
+      );
     });
 
     it('should not attempt to delete non-existent temp files', async () => {
@@ -296,7 +316,13 @@ describe('stop hook', () => {
       const mockAnalytics = {
         session_id: 'debug-test',
         started_at: '2025-01-01T00:00:00.000Z',
-        tool_usage: [{ tool: 'Bash', timestamp: '2025-01-01T00:01:00.000Z', success: true }],
+        tool_usage: [
+          {
+            tool: 'Bash',
+            timestamp: '2025-01-01T00:01:00.000Z',
+            success: true,
+          },
+        ],
         skills_recommended: [],
         validations_run: 1,
         issues_found: 0,
@@ -316,7 +342,9 @@ describe('stop hook', () => {
 
       // Verify debug calls
       expect(mockDebug).toHaveBeenCalledWith('Stop hook starting');
-      expect(mockDebug).toHaveBeenCalledWith('Stop hook received input', { session_id: 'debug-test' });
+      expect(mockDebug).toHaveBeenCalledWith('Stop hook received input', {
+        session_id: 'debug-test',
+      });
       expect(mockDebug).toHaveBeenCalledWith('Loaded analytics', {
         has_analytics: true,
         session_id: 'debug-test',

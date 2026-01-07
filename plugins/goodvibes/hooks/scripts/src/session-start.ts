@@ -25,7 +25,10 @@ import {
 } from './shared/index.js';
 
 // Session-start specific modules
-import { checkCrashRecovery, type RecoveryInfo } from './session-start/crash-recovery.js';
+import {
+  checkCrashRecovery,
+  type RecoveryInfo,
+} from './session-start/crash-recovery.js';
 import {
   gatherProjectContext,
   createFailedContextResult,
@@ -34,7 +37,12 @@ import {
 import { buildSystemMessage } from './session-start/response-formatter.js';
 
 // State management
-import { loadState, saveState, updateSessionState, initializeSession } from './state.js';
+import {
+  loadState,
+  saveState,
+  updateSessionState,
+  initializeSession,
+} from './state.js';
 import { createDefaultState } from './types/state.js';
 
 import type { HooksState } from './types/state.js';
@@ -53,7 +61,10 @@ const DEFAULT_RECOVERY_INFO: RecoveryInfo = {
 async function loadPluginState(projectDir: string): Promise<HooksState> {
   try {
     const state = await loadState(projectDir);
-    debug('State loaded', { sessionId: state.session.id, mode: state.session.mode });
+    debug('State loaded', {
+      sessionId: state.session.id,
+      mode: state.session.mode,
+    });
     return state;
   } catch (stateError) {
     logError('State loading', stateError);
@@ -62,10 +73,14 @@ async function loadPluginState(projectDir: string): Promise<HooksState> {
 }
 
 /** Performs crash recovery check with error handling */
-async function performCrashRecoveryCheck(projectDir: string): Promise<RecoveryInfo> {
+async function performCrashRecoveryCheck(
+  projectDir: string
+): Promise<RecoveryInfo> {
   try {
     const recoveryInfo = await checkCrashRecovery(projectDir);
-    debug('Crash recovery check', { needsRecovery: recoveryInfo.needsRecovery });
+    debug('Crash recovery check', {
+      needsRecovery: recoveryInfo.needsRecovery,
+    });
     return recoveryInfo;
   } catch (recoveryError) {
     logError('Crash recovery check', recoveryError);
@@ -90,7 +105,10 @@ async function gatherContextSafely(
 }
 
 /** Saves the plugin state with error handling */
-async function savePluginState(projectDir: string, state: HooksState): Promise<void> {
+async function savePluginState(
+  projectDir: string,
+  state: HooksState
+): Promise<void> {
   try {
     await saveState(projectDir, state);
     debug('State saved');
@@ -101,7 +119,10 @@ async function savePluginState(projectDir: string, state: HooksState): Promise<v
 }
 
 /** Initializes analytics for the session */
-function initializeAnalytics(sessionId: string, contextResult: ContextGatheringResult): void {
+function initializeAnalytics(
+  sessionId: string,
+  contextResult: ContextGatheringResult
+): void {
   saveAnalytics({
     session_id: sessionId,
     started_at: new Date().toISOString(),
@@ -165,7 +186,11 @@ async function runSessionStartHook(): Promise<void> {
     const recoveryInfo = await performCrashRecoveryCheck(projectDir);
 
     // Step 3: Gather all context
-    const contextResult = await gatherContextSafely(projectDir, recoveryInfo, startTime);
+    const contextResult = await gatherContextSafely(
+      projectDir,
+      recoveryInfo,
+      startTime
+    );
 
     // Step 4: Update session state
     state = updateSessionState(state, {
@@ -191,8 +216,13 @@ async function runSessionStartHook(): Promise<void> {
   } catch (error: unknown) {
     logError('SessionStart main', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    respond(createResponse({ systemMessage: `GoodVibes: Init error - ${message}` }));
+    respond(
+      createResponse({ systemMessage: `GoodVibes: Init error - ${message}` })
+    );
   }
 }
 
-runSessionStartHook();
+runSessionStartHook().catch((error: unknown) => {
+  logError('SessionStart uncaught', error);
+  respond(createResponse());
+});

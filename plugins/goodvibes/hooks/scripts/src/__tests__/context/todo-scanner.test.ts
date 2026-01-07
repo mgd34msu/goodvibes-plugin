@@ -8,8 +8,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { Dirent } from 'fs';
-import { scanTodos, formatTodos, type TodoItem } from '../../context/todo-scanner';
-import { createMockReaddirResult, createMockDirent } from '../test-utils/mock-factories';
+import {
+  scanTodos,
+  formatTodos,
+  type TodoItem,
+} from '../../context/todo-scanner';
+import {
+  createMockReaddirResult,
+  createMockDirent,
+} from '../test-utils/mock-factories';
 
 // Mock fs/promises
 vi.mock('fs/promises');
@@ -30,15 +37,15 @@ describe('todo-scanner', () => {
       // Mock directory structure
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
       // Mock file content with TODO
-      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Fix this bug\nconst x = 1;');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// TODO: Fix this bug\nconst x = 1;'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -56,14 +63,14 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.js', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.js', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// FIXME: Broken logic\nconst y = 2;');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// FIXME: Broken logic\nconst y = 2;'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -76,14 +83,14 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.tsx', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.tsx', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// BUG: Memory leak\nconst z = 3;');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// BUG: Memory leak\nconst z = 3;'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -96,14 +103,14 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.jsx', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.jsx', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// HACK: Temporary workaround\nconst a = 4;');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// HACK: Temporary workaround\nconst a = 4;'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -116,14 +123,14 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// XXX: Needs review\nconst b = 5;');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// XXX: Needs review\nconst b = 5;'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -136,9 +143,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -161,9 +166,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -182,15 +185,16 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
       // Create 20 TODOs
-      const todos = Array.from({ length: 20 }, (_, i) => `// TODO: Item ${i + 1}`).join('\n');
+      const todos = Array.from(
+        { length: 20 },
+        (_, i) => `// TODO: Item ${i + 1}`
+      ).join('\n');
       vi.mocked(fs.readFile).mockResolvedValue(todos);
 
       const results = await scanTodos(mockCwd);
@@ -203,14 +207,10 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'src', type: 'directory' },
-          ]);
+          return createMockReaddirResult([{ name: 'src', type: 'directory' }]);
         }
         if (dirPath === path.join(mockCwd, 'src')) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -234,9 +234,7 @@ describe('todo-scanner', () => {
           ]);
         }
         if (dirPath === path.join(mockCwd, 'src')) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -414,9 +412,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.tsx', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.tsx', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -433,9 +429,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.js', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.js', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -452,9 +446,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.jsx', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.jsx', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -471,9 +463,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.TS', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.TS', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -500,9 +490,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -519,19 +507,19 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// todo: lowercase\n// TODO: uppercase\n// ToDo: mixed');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// todo: lowercase\n// TODO: uppercase\n// ToDo: mixed'
+      );
 
       const results = await scanTodos(mockCwd);
 
       expect(results).toHaveLength(3);
-      expect(results.every(r => r.type === 'TODO')).toBe(true);
+      expect(results.every((r) => r.type === 'TODO')).toBe(true);
     });
 
     it('should require colon after TODO pattern', async () => {
@@ -539,14 +527,14 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// TODO without colon\n// TODO: with colon');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// TODO without colon\n// TODO: with colon'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -559,15 +547,15 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
       // FIXME appears first in pattern list
-      vi.mocked(fs.readFile).mockResolvedValue('// FIXME: TODO: Both patterns on same line');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// FIXME: TODO: Both patterns on same line'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -580,14 +568,14 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('   // TODO: Indented comment   \n');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '   // TODO: Indented comment   \n'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -600,14 +588,10 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'src', type: 'directory' },
-          ]);
+          return createMockReaddirResult([{ name: 'src', type: 'directory' }]);
         }
         if (dirPath === path.join(mockCwd, 'src')) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -635,7 +619,9 @@ describe('todo-scanner', () => {
         return createMockReaddirResult([]);
       });
 
-      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Item 1\n// TODO: Item 2\n// TODO: Item 3\n');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// TODO: Item 1\n// TODO: Item 2\n// TODO: Item 3\n'
+      );
 
       const results = await scanTodos(mockCwd, 2);
 
@@ -664,9 +650,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -683,9 +667,7 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
@@ -702,15 +684,15 @@ describe('todo-scanner', () => {
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
         if (dirPath === mockCwd) {
-          return createMockReaddirResult([
-            { name: 'file1.ts', type: 'file' },
-          ]);
+          return createMockReaddirResult([{ name: 'file1.ts', type: 'file' }]);
         }
         return createMockReaddirResult([]);
       });
 
       // "NOTODO" should not match because of word boundary requirement
-      vi.mocked(fs.readFile).mockResolvedValue('// NOTODO: Should not match\n// TODO: Should match');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '// NOTODO: Should not match\n// TODO: Should match'
+      );
 
       const results = await scanTodos(mockCwd);
 
@@ -758,7 +740,9 @@ describe('todo-scanner', () => {
 
       const result = formatTodos(todos);
 
-      expect(result).toBe('TODOs in code:\n- TODO: src/file.ts:10 - // TODO: Fix this bug');
+      expect(result).toBe(
+        'TODOs in code:\n- TODO: src/file.ts:10 - // TODO: Fix this bug'
+      );
     });
 
     it('should format multiple TODO items', () => {
@@ -781,8 +765,8 @@ describe('todo-scanner', () => {
 
       expect(result).toBe(
         'TODOs in code:\n' +
-        '- TODO: src/file1.ts:10 - // TODO: First item\n' +
-        '- FIXME: src/file2.ts:20 - // FIXME: Second item'
+          '- TODO: src/file1.ts:10 - // TODO: First item\n' +
+          '- FIXME: src/file2.ts:20 - // FIXME: Second item'
       );
     });
 

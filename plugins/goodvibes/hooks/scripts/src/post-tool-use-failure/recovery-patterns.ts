@@ -196,7 +196,12 @@ export const RECOVERY_PATTERNS: RecoveryPattern[] = [
   {
     category: 'permission_error',
     description: 'File system permission denied',
-    patterns: [/EACCES/, /Permission denied/i, /EPERM/, /operation not permitted/i],
+    patterns: [
+      /EACCES/,
+      /Permission denied/i,
+      /EPERM/,
+      /operation not permitted/i,
+    ],
     suggestedFix:
       'Check file permissions. You may need to run with elevated privileges or fix file ownership.',
     severity: 'high',

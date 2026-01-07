@@ -46,7 +46,9 @@ export async function verifyAgentTests(
 
   // Update state
   if (result.passed) {
-    state.tests.passingFiles.push(...uniqueTests.filter(t => !state.tests.passingFiles.includes(t)));
+    state.tests.passingFiles.push(
+      ...uniqueTests.filter((t) => !state.tests.passingFiles.includes(t))
+    );
   } else {
     for (const failure of result.failures) {
       if (!state.tests.failingFiles.includes(failure.testFile)) {

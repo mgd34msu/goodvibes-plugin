@@ -9,7 +9,11 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ensureGoodVibesDir } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
-import { PHASE_RETRY_LIMITS, type ErrorCategory, type ErrorState } from '../types/errors.js';
+import {
+  PHASE_RETRY_LIMITS,
+  type ErrorCategory,
+  type ErrorState,
+} from '../types/errors.js';
 import type { HooksState } from '../types/state.js';
 import {
   generateErrorSignature as generateErrorSignatureCore,
@@ -43,17 +47,18 @@ function isRetryData(value: unknown): value is RetryData {
     return false;
   }
   const obj = value as Record<string, unknown>;
-  return Object.values(obj).every(entry =>
-    entry !== null &&
-    typeof entry === 'object' &&
-    'signature' in entry &&
-    'attempts' in entry &&
-    'lastAttempt' in entry &&
-    'phase' in entry &&
-    typeof (entry as RetryEntry).signature === 'string' &&
-    typeof (entry as RetryEntry).attempts === 'number' &&
-    typeof (entry as RetryEntry).lastAttempt === 'string' &&
-    typeof (entry as RetryEntry).phase === 'number'
+  return Object.values(obj).every(
+    (entry) =>
+      entry !== null &&
+      typeof entry === 'object' &&
+      'signature' in entry &&
+      'attempts' in entry &&
+      'lastAttempt' in entry &&
+      'phase' in entry &&
+      typeof (entry as RetryEntry).signature === 'string' &&
+      typeof (entry as RetryEntry).attempts === 'number' &&
+      typeof (entry as RetryEntry).lastAttempt === 'string' &&
+      typeof (entry as RetryEntry).phase === 'number'
   );
 }
 
@@ -159,7 +164,10 @@ export async function saveRetry(
  * @param signature - Unique error signature
  * @returns Promise resolving to retry count or 0 if not found
  */
-export async function getRetryCount(cwd: string, signature: string): Promise<number> {
+export async function getRetryCount(
+  cwd: string,
+  signature: string
+): Promise<number> {
   const retries = await loadRetries(cwd);
   return retries[signature]?.attempts ?? 0;
 }
@@ -171,7 +179,10 @@ export async function getRetryCount(cwd: string, signature: string): Promise<num
  * @param signature - Unique error signature
  * @returns Promise resolving to phase number (1-3) or 1 if not found
  */
-export async function getCurrentPhase(cwd: string, signature: string): Promise<number> {
+export async function getCurrentPhase(
+  cwd: string,
+  signature: string
+): Promise<number> {
   const retries = await loadRetries(cwd);
   return retries[signature]?.phase ?? 1;
 }
@@ -289,7 +300,10 @@ export async function getRemainingAttempts(
  * @param toolName - The name of the tool that failed (optional)
  * @returns Unique error signature string
  */
-export function generateErrorSignature(error: string, toolName?: string): string {
+export function generateErrorSignature(
+  error: string,
+  toolName?: string
+): string {
   return generateErrorSignatureCore(error, toolName);
 }
 
@@ -300,7 +314,10 @@ export function generateErrorSignature(error: string, toolName?: string): string
  * @param signature - Unique error signature to clear
  * @returns Promise that resolves when retry is cleared
  */
-export async function clearRetry(cwd: string, signature: string): Promise<void> {
+export async function clearRetry(
+  cwd: string,
+  signature: string
+): Promise<void> {
   const retriesPath = getRetriesPath(cwd);
   const retries = await loadRetries(cwd);
   if (retries[signature]) {
@@ -322,7 +339,10 @@ const DEFAULT_MAX_AGE_HOURS = 24;
  * @param maxAgeHours - Maximum age in hours before pruning (default: 24)
  * @returns Promise that resolves when old retries are pruned
  */
-export async function pruneOldRetries(cwd: string, maxAgeHours: number = DEFAULT_MAX_AGE_HOURS): Promise<void> {
+export async function pruneOldRetries(
+  cwd: string,
+  maxAgeHours: number = DEFAULT_MAX_AGE_HOURS
+): Promise<void> {
   const retriesPath = getRetriesPath(cwd);
   const retries = await loadRetries(cwd);
   const cutoff = new Date();
@@ -362,8 +382,8 @@ export async function getRetryStats(cwd: string): Promise<{
   return {
     totalSignatures: entries.length,
     totalAttempts: entries.reduce((sum, e) => sum + e.attempts, 0),
-    phase1Count: entries.filter(e => e.phase === 1).length,
-    phase2Count: entries.filter(e => e.phase === 2).length,
-    phase3Count: entries.filter(e => e.phase === 3).length,
+    phase1Count: entries.filter((e) => e.phase === 1).length,
+    phase2Count: entries.filter((e) => e.phase === 2).length,
+    phase3Count: entries.filter((e) => e.phase === 3).length,
   };
 }

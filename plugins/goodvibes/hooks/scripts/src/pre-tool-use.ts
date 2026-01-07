@@ -59,14 +59,20 @@ export function extractBashCommand(input: HookInput): string | null {
 /**
  * Handle git commit commands with quality gates
  */
-export async function handleGitCommit(input: HookInput, command: string): Promise<void> {
+export async function handleGitCommit(
+  input: HookInput,
+  command: string
+): Promise<void> {
   const cwd = input.cwd || process.cwd();
   const config = getDefaultConfig();
 
   debug('Git commit detected, running quality gates', { command });
 
   // Check if quality gates should run before commit
-  if (!config.automation.building.runBeforeCommit && !config.automation.testing.runBeforeCommit) {
+  if (
+    !config.automation.building.runBeforeCommit &&
+    !config.automation.testing.runBeforeCommit
+  ) {
     debug('Quality gates disabled for commits');
     respond(allowTool('PreToolUse'));
     return;
@@ -76,7 +82,11 @@ export async function handleGitCommit(input: HookInput, command: string): Promis
   const gateResult = await runQualityGates(cwd);
   const resultSummary = formatGateResults(gateResult.results);
 
-  debug('Quality gate results', { allPassed: gateResult.allPassed, blocking: gateResult.blocking, results: gateResult.results });
+  debug('Quality gate results', {
+    allPassed: gateResult.allPassed,
+    blocking: gateResult.blocking,
+    results: gateResult.results,
+  });
 
   if (gateResult.blocking) {
     // Block the commit if there are blocking failures
@@ -102,13 +112,18 @@ export async function handleGitCommit(input: HookInput, command: string): Promis
   }
 
   // All gates passed
-  respond(allowTool('PreToolUse', `All quality gates passed: ${resultSummary}`));
+  respond(
+    allowTool('PreToolUse', `All quality gates passed: ${resultSummary}`)
+  );
 }
 
 /**
  * Handle git commands with branch/merge guards
  */
-export async function handleGitCommand(input: HookInput, command: string): Promise<void> {
+export async function handleGitCommand(
+  input: HookInput,
+  command: string
+): Promise<void> {
   const cwd = input.cwd || process.cwd();
   const state = await loadState(cwd);
 
@@ -118,7 +133,10 @@ export async function handleGitCommand(input: HookInput, command: string): Promi
   const branchGuard = await checkBranchGuard(command, cwd, state);
 
   if (!branchGuard.allowed) {
-    respond(blockTool('PreToolUse', branchGuard.reason || 'Git operation blocked'), true);
+    respond(
+      blockTool('PreToolUse', branchGuard.reason || 'Git operation blocked'),
+      true
+    );
     return;
   }
 
@@ -127,7 +145,10 @@ export async function handleGitCommand(input: HookInput, command: string): Promi
     const mergeGuard = checkMergeReadiness(cwd, state);
 
     if (!mergeGuard.allowed) {
-      respond(blockTool('PreToolUse', mergeGuard.reason || 'Merge blocked'), true);
+      respond(
+        blockTool('PreToolUse', mergeGuard.reason || 'Merge blocked'),
+        true
+      );
       return;
     }
 
@@ -177,7 +198,13 @@ export async function handleBashTool(input: HookInput): Promise<void> {
 export async function validateDetectStack(input: HookInput): Promise<void> {
   const cwd = input.cwd || process.cwd();
   if (!(await fileExists(path.join(cwd, 'package.json')))) {
-    respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
+    respond(
+      blockTool(
+        'PreToolUse',
+        'No package.json found in project root. Cannot detect stack.'
+      ),
+      true
+    );
     return;
   }
   respond(allowTool('PreToolUse'));
@@ -193,12 +220,16 @@ export async function validateGetSchema(input: HookInput): Promise<void> {
     'drizzle/schema.ts',
   ];
 
-  const results = await Promise.all(schemaFiles.map(f => fileExists(path.join(cwd, f))));
+  const results = await Promise.all(
+    schemaFiles.map((f) => fileExists(path.join(cwd, f)))
+  );
   const found = results.some(Boolean);
 
   if (!found) {
     // Allow but warn
-    respond(allowTool('PreToolUse', 'No schema file detected. get_schema may fail.'));
+    respond(
+      allowTool('PreToolUse', 'No schema file detected. get_schema may fail.')
+    );
     return;
   }
   respond(allowTool('PreToolUse'));
@@ -209,7 +240,10 @@ export async function validateRunSmokeTest(input: HookInput): Promise<void> {
   const cwd = input.cwd || process.cwd();
   // Check if package.json exists
   if (!(await fileExists(path.join(cwd, 'package.json')))) {
-    respond(blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'), true);
+    respond(
+      blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'),
+      true
+    );
     return;
   }
 
@@ -221,7 +255,12 @@ export async function validateRunSmokeTest(input: HookInput): Promise<void> {
   ]);
 
   if (!hasPnpm && !hasYarn && !hasNpm) {
-    respond(allowTool('PreToolUse', 'No lockfile detected. Install dependencies first.'));
+    respond(
+      allowTool(
+        'PreToolUse',
+        'No lockfile detected. Install dependencies first.'
+      )
+    );
     return;
   }
 
@@ -233,7 +272,13 @@ export async function validateCheckTypes(input: HookInput): Promise<void> {
   const cwd = input.cwd || process.cwd();
   // Check for TypeScript config
   if (!(await fileExists(path.join(cwd, 'tsconfig.json')))) {
-    respond(blockTool('PreToolUse', 'No tsconfig.json found. TypeScript not configured.'), true);
+    respond(
+      blockTool(
+        'PreToolUse',
+        'No tsconfig.json found. TypeScript not configured.'
+      ),
+      true
+    );
     return;
   }
 
@@ -259,7 +304,10 @@ const TOOL_VALIDATORS: Record<string, (input: HookInput) => Promise<void>> = {
 export async function runPreToolUseHook(): Promise<void> {
   try {
     const input = await readHookInput();
-    debug('PreToolUse hook received input', { tool_name: input.tool_name, cwd: input.cwd });
+    debug('PreToolUse hook received input', {
+      tool_name: input.tool_name,
+      cwd: input.cwd,
+    });
 
     // Handle Bash tool specially for git command detection
     if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
@@ -281,14 +329,20 @@ export async function runPreToolUseHook(): Promise<void> {
   } catch (error: unknown) {
     logError('PreToolUse main', error);
     // On error, allow the tool to proceed but log the issue
-    respond(allowTool('PreToolUse', `Hook error: ${error instanceof Error ? error.message : String(error)}`));
+    respond(
+      allowTool(
+        'PreToolUse',
+        `Hook error: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
   }
 }
 
 // Only run when executed directly, not when imported for testing
 // Check if this module is the main entry point
 /* v8 ignore start -- @preserve: module entry point, not testable in unit tests */
-const isMainModule = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
 if (isMainModule) {
   runPreToolUseHook();
 }

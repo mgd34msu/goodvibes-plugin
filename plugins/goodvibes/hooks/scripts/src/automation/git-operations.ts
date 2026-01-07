@@ -9,7 +9,7 @@ import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import { debug } from '../shared/index.js';
-import {fileExists} from '../shared/file-utils.js';
+import { fileExists } from '../shared/file-utils.js';
 
 const execAsync = promisify(exec);
 
@@ -47,19 +47,27 @@ function spawnAsync(
     const timeoutId = options.timeout
       ? setTimeout(() => {
           child.kill('SIGTERM');
-          resolve({ code: null, stdout, stderr: stderr + '\nProcess timed out' });
+          resolve({
+            code: null,
+            stdout,
+            stderr: stderr + '\nProcess timed out',
+          });
         }, options.timeout)
       : /* v8 ignore next -- @preserve defensive: all exported functions always provide timeout */ null;
 
     child.on('close', (code) => {
       /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       resolve({ code, stdout, stderr });
     });
 
     child.on('error', (err) => {
       /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       resolve({ code: null, stdout, stderr: err.message });
     });
   });
@@ -91,9 +99,16 @@ function sanitizeForGit(input: string): string {
  *   console.log('Current branch:', branch);
  * }
  */
-export async function execGit(command: string, cwd: string): Promise<string | null> {
+export async function execGit(
+  command: string,
+  cwd: string
+): Promise<string | null> {
   try {
-    const { stdout } = await execAsync(command, { cwd, encoding: 'utf-8', timeout: 30000 });
+    const { stdout } = await execAsync(command, {
+      cwd,
+      encoding: 'utf-8',
+      timeout: 30000,
+    });
     return stdout.trim();
   } catch (error: unknown) {
     debug('execGit failed', { command, error: String(error) });
@@ -129,10 +144,14 @@ export async function isGitRepo(cwd: string): Promise<boolean> {
  */
 export async function detectMainBranch(cwd: string): Promise<string> {
   const main = await execGit('git rev-parse --verify main', cwd);
-  if (main) return 'main';
+  if (main) {
+    return 'main';
+  }
 
   const master = await execGit('git rev-parse --verify master', cwd);
-  if (master) return 'master';
+  if (master) {
+    return 'master';
+  }
 
   return 'main'; // default
 }
@@ -183,8 +202,13 @@ export async function hasUncommittedChanges(cwd: string): Promise<boolean> {
  */
 export async function getUncommittedFiles(cwd: string): Promise<string[]> {
   const status = await execGit('git status --porcelain', cwd);
-  if (!status) return [];
-  return status.split('\n').filter(Boolean).map(line => line.slice(3));
+  if (!status) {
+    return [];
+  }
+  return status
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.slice(3));
 }
 
 /**
@@ -201,8 +225,13 @@ export async function getUncommittedFiles(cwd: string): Promise<string[]> {
  *   console.log('Checkpoint created');
  * }
  */
-export async function createCheckpoint(cwd: string, message: string): Promise<boolean> {
-  if (!(await hasUncommittedChanges(cwd))) return false;
+export async function createCheckpoint(
+  cwd: string,
+  message: string
+): Promise<boolean> {
+  if (!(await hasUncommittedChanges(cwd))) {
+    return false;
+  }
 
   try {
     // Sanitize message to prevent command injection
@@ -211,7 +240,10 @@ export async function createCheckpoint(cwd: string, message: string): Promise<bo
 
     await execAsync('git add -A', { cwd, timeout: 30000 });
     // Use spawnAsync with array args to avoid shell injection
-    const result = await spawnAsync('git', ['commit', '-m', commitMessage], { cwd, timeout: 30000 });
+    const result = await spawnAsync('git', ['commit', '-m', commitMessage], {
+      cwd,
+      timeout: 30000,
+    });
     return result.code === 0;
   } catch (error: unknown) {
     debug('createCheckpoint failed', { error: String(error) });
@@ -232,14 +264,23 @@ export async function createCheckpoint(cwd: string, message: string): Promise<bo
  *   // Creates and checks out branch: feature/add-user-authentication
  * }
  */
-export async function createFeatureBranch(cwd: string, name: string): Promise<boolean> {
+export async function createFeatureBranch(
+  cwd: string,
+  name: string
+): Promise<boolean> {
   try {
     // Sanitize and normalize branch name
-    const safeName = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const safeName = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     const branchName = `feature/${safeName}`;
 
     // Use spawnAsync with array args to avoid shell injection
-    const result = await spawnAsync('git', ['checkout', '-b', branchName], { cwd, timeout: 30000 });
+    const result = await spawnAsync('git', ['checkout', '-b', branchName], {
+      cwd,
+      timeout: 30000,
+    });
     return result.code === 0;
   } catch (error: unknown) {
     debug('createFeatureBranch failed', { error: String(error) });
@@ -261,20 +302,39 @@ export async function createFeatureBranch(cwd: string, name: string): Promise<bo
  *   console.log('Feature merged and branch cleaned up');
  * }
  */
-export async function mergeFeatureBranch(cwd: string, featureBranch: string, mainBranch: string): Promise<boolean> {
+export async function mergeFeatureBranch(
+  cwd: string,
+  featureBranch: string,
+  mainBranch: string
+): Promise<boolean> {
   try {
     // Sanitize branch names to prevent command injection
     const safeFeature = sanitizeForGit(featureBranch);
     const safeMain = sanitizeForGit(mainBranch);
 
     // Use spawnAsync with array args to avoid shell injection
-    const checkout = await spawnAsync('git', ['checkout', safeMain], { cwd, timeout: 30000 });
-    if (checkout.code !== 0) return false;
+    const checkout = await spawnAsync('git', ['checkout', safeMain], {
+      cwd,
+      timeout: 30000,
+    });
+    if (checkout.code !== 0) {
+      return false;
+    }
 
-    const merge = await spawnAsync('git', ['merge', safeFeature, '--no-ff', '-m', `Merge ${safeFeature}`], { cwd, timeout: 30000 });
-    if (merge.code !== 0) return false;
+    const merge = await spawnAsync(
+      'git',
+      ['merge', safeFeature, '--no-ff', '-m', `Merge ${safeFeature}`],
+      { cwd, timeout: 30000 }
+    );
+    if (merge.code !== 0) {
+      return false;
+    }
 
-    const deleteBranch = await spawnAsync('git', ['branch', '-d', safeFeature], { cwd, timeout: 30000 });
+    const deleteBranch = await spawnAsync(
+      'git',
+      ['branch', '-d', safeFeature],
+      { cwd, timeout: 30000 }
+    );
     return deleteBranch.code === 0;
   } catch (error: unknown) {
     debug('mergeFeatureBranch failed', { error: String(error) });

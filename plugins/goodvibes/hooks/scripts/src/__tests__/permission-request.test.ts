@@ -70,7 +70,9 @@ describe('permission-request', () => {
       expect(mockDebug).toHaveBeenCalledWith('PermissionRequest received', {
         tool_name: mockInput.tool_name,
       });
-      expect(mockDebug).toHaveBeenCalledWith('Auto-approving GoodVibes tool permission');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Auto-approving GoodVibes tool permission'
+      );
       expect(mockCreatePermissionResponse).toHaveBeenCalledWith('allow');
       expect(mockRespond).toHaveBeenCalledWith({
         continue: true,
@@ -155,7 +157,10 @@ describe('permission-request', () => {
       });
 
       expect(mockDebug).toHaveBeenCalledWith('PermissionRequest hook starting');
-      expect(mockLogError).toHaveBeenCalledWith('PermissionRequest main', testError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'PermissionRequest main',
+        testError
+      );
       expect(mockCreatePermissionResponse).toHaveBeenCalledWith('ask');
       expect(mockRespond).toHaveBeenCalledWith({
         continue: true,
@@ -184,7 +189,9 @@ describe('permission-request', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Auto-approving GoodVibes tool permission');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Auto-approving GoodVibes tool permission'
+      );
       expect(mockCreatePermissionResponse).toHaveBeenCalledWith('allow');
     });
   });

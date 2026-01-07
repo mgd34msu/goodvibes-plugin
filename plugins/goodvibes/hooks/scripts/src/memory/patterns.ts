@@ -4,7 +4,11 @@
 
 import * as path from 'path';
 import type { MemoryPattern } from '../types/memory.js';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import {
+  parseMemoryFile,
+  ensureMemoryFile,
+  appendMemoryEntry,
+} from './parser.js';
 
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
@@ -71,7 +75,10 @@ export async function readPatterns(cwd: string): Promise<MemoryPattern[]> {
  *   files: ['src/repositories/user.ts']
  * });
  */
-export async function writePattern(cwd: string, pattern: MemoryPattern): Promise<void> {
+export async function writePattern(
+  cwd: string,
+  pattern: MemoryPattern
+): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
 
   await ensureMemoryFile(filePath, PATTERNS_HEADER);

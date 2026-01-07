@@ -133,25 +133,42 @@ function isGitRepo(cwd: string): boolean {
  * @param days - Number of days to look back (default: 7)
  * @returns Array of FileChange objects sorted by frequency of changes
  */
-function getRecentlyModifiedFiles(cwd: string, days: number = DEFAULT_DAYS_LOOKBACK): FileChange[] {
+function getRecentlyModifiedFiles(
+  cwd: string,
+  days: number = DEFAULT_DAYS_LOOKBACK
+): FileChange[] {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const sinceStr = since.toISOString().split('T')[0];
 
-  const result = gitExec(cwd, `log --since="${sinceStr}" --name-status --pretty=format:""`);
-  if (!result) return [];
+  const result = gitExec(
+    cwd,
+    `log --since="${sinceStr}" --name-status --pretty=format:""`
+  );
+  if (!result) {
+    return [];
+  }
 
-  const fileChanges = new Map<string, { added: number; modified: number; deleted: number }>();
+  const fileChanges = new Map<
+    string,
+    { added: number; modified: number; deleted: number }
+  >();
 
   for (const line of result.split('\n')) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
 
     const match = trimmed.match(/^([AMD])\t(.+)$/);
     if (match) {
       const status = match[1];
       const file = match[2];
-      const current = fileChanges.get(file) || { added: 0, modified: 0, deleted: 0 };
+      const current = fileChanges.get(file) || {
+        added: 0,
+        modified: 0,
+        deleted: 0,
+      };
 
       switch (status) {
         case 'A':
@@ -183,7 +200,9 @@ function getRecentlyModifiedFiles(cwd: string, days: number = DEFAULT_DAYS_LOOKB
     changes.push({ file, changes: total, type });
   }
 
-  return changes.sort((a, b) => b.changes - a.changes).slice(0, MAX_RECENT_FILES);
+  return changes
+    .sort((a, b) => b.changes - a.changes)
+    .slice(0, MAX_RECENT_FILES);
 }
 
 /**
@@ -194,15 +213,22 @@ function getRecentlyModifiedFiles(cwd: string, days: number = DEFAULT_DAYS_LOOKB
  * @param commits - Number of recent commits to analyze (default: 50)
  * @returns Array of Hotspot objects for files that changed frequently
  */
-function getHotspots(cwd: string, commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS): Hotspot[] {
+function getHotspots(
+  cwd: string,
+  commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS
+): Hotspot[] {
   const result = gitExec(cwd, `log -${commits} --name-only --pretty=format:""`);
-  if (!result) return [];
+  if (!result) {
+    return [];
+  }
 
   const fileCount = new Map<string, number>();
 
   for (const line of result.split('\n')) {
     const file = line.trim();
-    if (!file) continue;
+    if (!file) {
+      continue;
+    }
 
     if (
       file.includes('node_modules/') ||
@@ -217,7 +243,10 @@ function getHotspots(cwd: string, commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS
     fileCount.set(file, (fileCount.get(file) || 0) + 1);
   }
 
-  const threshold = Math.max(MIN_HOTSPOT_THRESHOLD, commits * HOTSPOT_THRESHOLD_MULTIPLIER);
+  const threshold = Math.max(
+    MIN_HOTSPOT_THRESHOLD,
+    commits * HOTSPOT_THRESHOLD_MULTIPLIER
+  );
   const hotspots: Hotspot[] = [];
 
   for (const [file, count] of fileCount) {
@@ -230,7 +259,9 @@ function getHotspots(cwd: string, commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS
     }
   }
 
-  return hotspots.sort((a, b) => b.changeCount - a.changeCount).slice(0, MAX_HOTSPOTS);
+  return hotspots
+    .sort((a, b) => b.changeCount - a.changeCount)
+    .slice(0, MAX_HOTSPOTS);
 }
 
 /**
@@ -241,16 +272,23 @@ function getHotspots(cwd: string, commits: number = DEFAULT_COMMITS_FOR_HOTSPOTS
  * @param count - Number of recent commits to retrieve (default: 5)
  * @returns Array of RecentCommit objects with hash, message, author, and date
  */
-function getRecentCommits(cwd: string, count: number = DEFAULT_RECENT_COMMITS): RecentCommit[] {
+function getRecentCommits(
+  cwd: string,
+  count: number = DEFAULT_RECENT_COMMITS
+): RecentCommit[] {
   const format = '%h|%s|%an|%ar';
   const result = gitExec(cwd, `log -${count} --format="${format}"`);
-  if (!result) return [];
+  if (!result) {
+    return [];
+  }
 
   const commits: RecentCommit[] = [];
 
   for (const line of result.split('\n')) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
 
     const parts = trimmed.split('|');
     if (parts.length >= 4) {
@@ -324,8 +362,12 @@ export function formatRecentActivity(activity: RecentActivity): string | null {
   }
 
   if (activity.hotspots.length > 0) {
-    const hotspotLines = activity.hotspots.map((h) => `- \`${h.file}\` (${h.changeCount} changes)`);
-    sections.push(`**Hotspots (frequently changed):**\n${hotspotLines.join('\n')}`);
+    const hotspotLines = activity.hotspots.map(
+      (h) => `- \`${h.file}\` (${h.changeCount} changes)`
+    );
+    sections.push(
+      `**Hotspots (frequently changed):**\n${hotspotLines.join('\n')}`
+    );
   }
 
   if (activity.recentlyModifiedFiles.length > 0) {

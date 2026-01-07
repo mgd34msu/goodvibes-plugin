@@ -34,7 +34,10 @@ async function runStopHook(): Promise<void> {
     debug('Stop hook received input', { session_id: input.session_id });
 
     const analytics = await loadAnalytics();
-    debug('Loaded analytics', { has_analytics: !!analytics, session_id: analytics?.session_id });
+    debug('Loaded analytics', {
+      has_analytics: !!analytics,
+      session_id: analytics?.session_id,
+    });
 
     if (analytics) {
       // Finalize analytics
@@ -49,16 +52,26 @@ async function runStopHook(): Promise<void> {
       await saveAnalytics(analytics);
 
       // Create session summary file
-      const summaryFile = path.join(CACHE_DIR, `session-${analytics.session_id}.json`);
-      await fs.writeFile(summaryFile, JSON.stringify({
-        session_id: analytics.session_id,
-        duration_minutes: durationMinutes,
-        tools_used: analytics.tool_usage.length,
-        unique_tools: [...new Set(analytics.tool_usage.map(u => u.tool))],
-        skills_recommended: analytics.skills_recommended.length,
-        validations_run: analytics.validations_run,
-        issues_found: analytics.issues_found,
-      }, null, 2));
+      const summaryFile = path.join(
+        CACHE_DIR,
+        `session-${analytics.session_id}.json`
+      );
+      await fs.writeFile(
+        summaryFile,
+        JSON.stringify(
+          {
+            session_id: analytics.session_id,
+            duration_minutes: durationMinutes,
+            tools_used: analytics.tool_usage.length,
+            unique_tools: [...new Set(analytics.tool_usage.map((u) => u.tool))],
+            skills_recommended: analytics.skills_recommended.length,
+            validations_run: analytics.validations_run,
+            issues_found: analytics.issues_found,
+          },
+          null,
+          2
+        )
+      );
 
       debug(`Session summary saved to ${summaryFile}`, {
         duration_minutes: durationMinutes,
@@ -79,11 +92,21 @@ async function runStopHook(): Promise<void> {
 
     // Respond with success
     respond(createResponse());
-
   } catch (error: unknown) {
     logError('Stop main', error);
-    respond(createResponse({ systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}` }));
+    respond(
+      createResponse({
+        systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`,
+      })
+    );
   }
 }
 
-runStopHook();
+runStopHook().catch((error: unknown) => {
+  logError('Stop uncaught', error);
+  respond(
+    createResponse({
+      systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`,
+    })
+  );
+});

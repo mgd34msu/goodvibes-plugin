@@ -40,7 +40,8 @@ describe('gitignore', () => {
 
   describe('SECURITY_GITIGNORE_ENTRIES', () => {
     it('should export security entries as a non-empty object', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
       expect(SECURITY_GITIGNORE_ENTRIES).toBeDefined();
       expect(typeof SECURITY_GITIGNORE_ENTRIES).toBe('object');
@@ -48,47 +49,67 @@ describe('gitignore', () => {
     });
 
     it('should contain GoodVibes plugin state category', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
-      expect(SECURITY_GITIGNORE_ENTRIES['GoodVibes plugin state']).toBeDefined();
-      expect(SECURITY_GITIGNORE_ENTRIES['GoodVibes plugin state']).toContain('.goodvibes/');
+      expect(
+        SECURITY_GITIGNORE_ENTRIES['GoodVibes plugin state']
+      ).toBeDefined();
+      expect(SECURITY_GITIGNORE_ENTRIES['GoodVibes plugin state']).toContain(
+        '.goodvibes/'
+      );
     });
 
     it('should contain Environment files category', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
       expect(SECURITY_GITIGNORE_ENTRIES['Environment files']).toBeDefined();
       expect(SECURITY_GITIGNORE_ENTRIES['Environment files']).toContain('.env');
-      expect(SECURITY_GITIGNORE_ENTRIES['Environment files']).toContain('.env.local');
+      expect(SECURITY_GITIGNORE_ENTRIES['Environment files']).toContain(
+        '.env.local'
+      );
     });
 
     it('should contain Secret files category', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
       expect(SECURITY_GITIGNORE_ENTRIES['Secret files']).toBeDefined();
       expect(SECURITY_GITIGNORE_ENTRIES['Secret files']).toContain('*.pem');
       expect(SECURITY_GITIGNORE_ENTRIES['Secret files']).toContain('*.key');
-      expect(SECURITY_GITIGNORE_ENTRIES['Secret files']).toContain('credentials.json');
+      expect(SECURITY_GITIGNORE_ENTRIES['Secret files']).toContain(
+        'credentials.json'
+      );
     });
 
     it('should contain Cloud credentials category', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
       expect(SECURITY_GITIGNORE_ENTRIES['Cloud credentials']).toBeDefined();
-      expect(SECURITY_GITIGNORE_ENTRIES['Cloud credentials']).toContain('.aws/');
-      expect(SECURITY_GITIGNORE_ENTRIES['Cloud credentials']).toContain('.gcp/');
+      expect(SECURITY_GITIGNORE_ENTRIES['Cloud credentials']).toContain(
+        '.aws/'
+      );
+      expect(SECURITY_GITIGNORE_ENTRIES['Cloud credentials']).toContain(
+        '.gcp/'
+      );
     });
 
     it('should contain Database files category', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
       expect(SECURITY_GITIGNORE_ENTRIES['Database files']).toBeDefined();
       expect(SECURITY_GITIGNORE_ENTRIES['Database files']).toContain('*.db');
-      expect(SECURITY_GITIGNORE_ENTRIES['Database files']).toContain('*.sqlite');
+      expect(SECURITY_GITIGNORE_ENTRIES['Database files']).toContain(
+        '*.sqlite'
+      );
     });
 
     it('should contain Log files category', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
       expect(SECURITY_GITIGNORE_ENTRIES['Log files']).toBeDefined();
       expect(SECURITY_GITIGNORE_ENTRIES['Log files']).toContain('*.log');
@@ -96,9 +117,12 @@ describe('gitignore', () => {
     });
 
     it('should have arrays for all categories', async () => {
-      const { SECURITY_GITIGNORE_ENTRIES } = await import('../../shared/gitignore.js');
+      const { SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
 
-      for (const [category, patterns] of Object.entries(SECURITY_GITIGNORE_ENTRIES)) {
+      for (const [category, patterns] of Object.entries(
+        SECURITY_GITIGNORE_ENTRIES
+      )) {
         expect(Array.isArray(patterns)).toBe(true);
         expect(patterns.length).toBeGreaterThan(0);
       }
@@ -114,12 +138,13 @@ describe('gitignore', () => {
     // Case: .gitignore does not exist - creates new file with all entries
     // -------------------------------------------------------------------------
     it('should create new .gitignore with all security entries when file does not exist', async () => {
-      mockAccess.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+      mockAccess.mockRejectedValue(
+        new Error('ENOENT: no such file or directory')
+      );
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore, SECURITY_GITIGNORE_ENTRIES } = await import(
-        '../../shared/gitignore.js'
-      );
+      const { ensureSecureGitignore, SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
       const cwd = '/project/root';
 
       await ensureSecureGitignore(cwd);
@@ -131,7 +156,9 @@ describe('gitignore', () => {
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
 
       // Verify all categories are present
-      for (const [section, patterns] of Object.entries(SECURITY_GITIGNORE_ENTRIES)) {
+      for (const [section, patterns] of Object.entries(
+        SECURITY_GITIGNORE_ENTRIES
+      )) {
         expect(writtenContent).toContain(`# ${section}`);
         for (const pattern of patterns) {
           expect(writtenContent).toContain(pattern);
@@ -147,15 +174,17 @@ describe('gitignore', () => {
       mockReadFile.mockResolvedValue('');
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore, SECURITY_GITIGNORE_ENTRIES } = await import(
-        '../../shared/gitignore.js'
-      );
+      const { ensureSecureGitignore, SECURITY_GITIGNORE_ENTRIES } =
+        await import('../../shared/gitignore.js');
       const cwd = '/test/project';
 
       await ensureSecureGitignore(cwd);
 
       expect(mockAccess).toHaveBeenCalledWith(path.join(cwd, '.gitignore'));
-      expect(mockReadFile).toHaveBeenCalledWith(path.join(cwd, '.gitignore'), 'utf-8');
+      expect(mockReadFile).toHaveBeenCalledWith(
+        path.join(cwd, '.gitignore'),
+        'utf-8'
+      );
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
 
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
@@ -209,7 +238,8 @@ logs/
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(existingContent);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
       const cwd = '/project';
 
       await ensureSecureGitignore(cwd);
@@ -232,7 +262,8 @@ node_modules/
       mockReadFile.mockResolvedValue(partialContent);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
       const cwd = '/partial/project';
 
       await ensureSecureGitignore(cwd);
@@ -270,7 +301,8 @@ dist/
       mockReadFile.mockResolvedValue(contentWithWhitespace);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/test');
 
@@ -290,7 +322,8 @@ dist/
       mockReadFile.mockResolvedValue('# Empty gitignore\n');
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/headers/test');
 
@@ -341,7 +374,8 @@ logs/
       mockReadFile.mockResolvedValue(almostComplete);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/almost/complete');
 
@@ -352,7 +386,9 @@ logs/
       expect(writtenContent).toContain('.goodvibes/');
 
       // Count section headers - should only have one new one added
-      const goodVibesMatches = writtenContent.match(/# GoodVibes plugin state/g);
+      const goodVibesMatches = writtenContent.match(
+        /# GoodVibes plugin state/g
+      );
       expect(goodVibesMatches?.length).toBe(1);
     });
 
@@ -363,7 +399,8 @@ logs/
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
       const cwd = 'C:\\Users\\test\\project';
 
       await ensureSecureGitignore(cwd);
@@ -379,7 +416,8 @@ logs/
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
       const cwd = '/home/user/project';
 
       await ensureSecureGitignore(cwd);
@@ -398,7 +436,8 @@ logs/
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/test');
 
@@ -416,7 +455,8 @@ logs/
       // First run - empty file
       mockReadFile.mockResolvedValueOnce('');
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/idempotent');
 
@@ -445,7 +485,8 @@ logs/
       mockReadFile.mockResolvedValue(partialCategory);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/partial/category');
 
@@ -467,7 +508,8 @@ logs/
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockRejectedValue(new Error('EACCES: permission denied'));
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await expect(ensureSecureGitignore('/readonly')).rejects.toThrow(
         'EACCES: permission denied'
@@ -478,7 +520,8 @@ logs/
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockRejectedValue(new Error('EACCES: permission denied'));
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await expect(ensureSecureGitignore('/unreadable')).rejects.toThrow(
         'EACCES: permission denied'
@@ -492,7 +535,8 @@ logs/
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('');
 
@@ -538,7 +582,8 @@ service-account*.json
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(reorderedContent);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/reordered');
 
@@ -583,7 +628,8 @@ logs/
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(embeddedContent);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/embedded');
 
@@ -602,7 +648,8 @@ logs/
       mockReadFile.mockResolvedValue('   \n\n   \n');
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/whitespace');
 
@@ -613,10 +660,13 @@ logs/
 
     it('should handle gitignore with comments only', async () => {
       mockAccess.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValue('# This is a comment\n# Another comment\n');
+      mockReadFile.mockResolvedValue(
+        '# This is a comment\n# Another comment\n'
+      );
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/comments');
 
@@ -637,7 +687,8 @@ my-app.env.backup
       mockReadFile.mockResolvedValue(contentWithSimilar);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/substring');
 
@@ -648,12 +699,14 @@ my-app.env.backup
     });
 
     it('should handle very long existing gitignore content', async () => {
-      const longContent = '# Many entries\n' + 'entry-'.padEnd(50, 'x') + '\n'.repeat(1000);
+      const longContent =
+        '# Many entries\n' + 'entry-'.padEnd(50, 'x') + '\n'.repeat(1000);
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(longContent);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/long');
 
@@ -664,23 +717,29 @@ my-app.env.backup
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
 
       await ensureSecureGitignore('/project/');
 
-      expect(mockAccess).toHaveBeenCalledWith(path.join('/project/', '.gitignore'));
+      expect(mockAccess).toHaveBeenCalledWith(
+        path.join('/project/', '.gitignore')
+      );
     });
 
     it('should handle special characters in path', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { ensureSecureGitignore } = await import('../../shared/gitignore.js');
+      const { ensureSecureGitignore } =
+        await import('../../shared/gitignore.js');
       const specialPath = '/path with spaces/and-dashes/under_scores';
 
       await ensureSecureGitignore(specialPath);
 
-      expect(mockAccess).toHaveBeenCalledWith(path.join(specialPath, '.gitignore'));
+      expect(mockAccess).toHaveBeenCalledWith(
+        path.join(specialPath, '.gitignore')
+      );
       expect(mockWriteFile).toHaveBeenCalledWith(
         path.join(specialPath, '.gitignore'),
         expect.any(String)

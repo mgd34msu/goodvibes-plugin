@@ -138,7 +138,8 @@ describe('context-builder', () => {
     it('should detect empty project and return early', async () => {
       mockIsEmptyProject.mockResolvedValue(true);
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -149,7 +150,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.isEmptyProject).toBe(true);
       expect(result.summary).toBe('New project (empty directory)');
@@ -165,7 +170,8 @@ describe('context-builder', () => {
     });
 
     it('should gather all context in parallel for non-empty project', async () => {
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -202,7 +208,8 @@ describe('context-builder', () => {
         recentCommits: [],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -213,7 +220,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.summary).toContain('React');
       expect(result.summary).toContain('Next.js');
@@ -229,7 +240,8 @@ describe('context-builder', () => {
         hasTypeScript: true,
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -240,7 +252,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should only show first 3 frameworks
       expect(result.summary).toContain('React');
@@ -265,7 +281,8 @@ describe('context-builder', () => {
         { file: 'test.ts', line: 1, text: 'TODO: fix this' },
       ]);
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -276,7 +293,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.hasIssues).toBe(true);
       expect(result.issueCount).toBe(4); // 2 health checks + 1 env warning + 1 todo
@@ -291,7 +312,8 @@ describe('context-builder', () => {
         ],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -302,7 +324,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.issueCount).toBe(1);
       expect(result.hasIssues).toBe(true);
@@ -321,7 +347,8 @@ describe('context-builder', () => {
         recentCommits: [],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -332,13 +359,18 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.summary).toBe('Project analyzed');
     });
 
     it('should set needsRecovery flag from recoveryInfo', async () => {
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: true,
@@ -353,13 +385,18 @@ describe('context-builder', () => {
         },
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.needsRecovery).toBe(true);
     });
 
     it('should call debug with context gathering metrics', async () => {
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -382,9 +419,12 @@ describe('context-builder', () => {
     });
 
     it('should format context with recovery section when needed', async () => {
-      mockFormatRecoveryContext.mockReturnValue('[Recovery Info]\nPrevious session crashed\n');
+      mockFormatRecoveryContext.mockReturnValue(
+        '[Recovery Info]\nPrevious session crashed\n'
+      );
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: true,
@@ -399,7 +439,11 @@ describe('context-builder', () => {
         },
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(mockFormatRecoveryContext).toHaveBeenCalledWith(recoveryInfo);
       expect(result.additionalContext).toContain('[GoodVibes SessionStart]');
@@ -409,7 +453,8 @@ describe('context-builder', () => {
     it('should skip recovery section when not needed', async () => {
       mockFormatRecoveryContext.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -420,7 +465,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should not call formatRecoveryContext when needsRecovery is false
       expect(mockFormatRecoveryContext).not.toHaveBeenCalled();
@@ -437,7 +486,8 @@ describe('context-builder', () => {
       mockFormatTodos.mockReturnValue('TODOs: 5 found');
       mockFormatHealthStatus.mockReturnValue('Health: 2 warnings');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -448,7 +498,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Check all sections are present
       expect(result.additionalContext).toContain('[GoodVibes SessionStart]');
@@ -460,7 +514,9 @@ describe('context-builder', () => {
       expect(result.additionalContext).toContain('## Environment');
       expect(result.additionalContext).toContain('Env files: .env.local');
       expect(result.additionalContext).toContain('## Dev Servers');
-      expect(result.additionalContext).toContain('Port 3000: Next.js dev server');
+      expect(result.additionalContext).toContain(
+        'Port 3000: Next.js dev server'
+      );
       expect(result.additionalContext).toContain('## Project Memory');
       expect(result.additionalContext).toContain('Decisions: 3');
       expect(result.additionalContext).toContain('## Code TODOs');
@@ -472,7 +528,8 @@ describe('context-builder', () => {
     it('should skip Environment section when formatEnvStatus returns empty', async () => {
       mockFormatEnvStatus.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -483,7 +540,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Environment');
     });
@@ -491,7 +552,8 @@ describe('context-builder', () => {
     it('should skip Dev Servers section when no servers detected', async () => {
       mockFormatPortStatus.mockReturnValue('No dev servers detected');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -502,7 +564,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Dev Servers');
     });
@@ -510,7 +576,8 @@ describe('context-builder', () => {
     it('should skip Project Memory section when no memory', async () => {
       mockFormatMemoryContext.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -521,7 +588,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Project Memory');
     });
@@ -529,7 +600,8 @@ describe('context-builder', () => {
     it('should skip Code TODOs section when no todos', async () => {
       mockFormatTodos.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -540,7 +612,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Code TODOs');
     });
@@ -548,7 +624,8 @@ describe('context-builder', () => {
     it('should skip Health Checks section when all good', async () => {
       mockFormatHealthStatus.mockReturnValue('Health: All good');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -559,7 +636,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Health Checks');
     });
@@ -567,7 +648,8 @@ describe('context-builder', () => {
     it('should include Health Checks section when there are issues', async () => {
       mockFormatHealthStatus.mockReturnValue('Health: 2 warnings, 1 error');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -578,14 +660,19 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).toContain('## Health Checks');
       expect(result.additionalContext).toContain('Health: 2 warnings, 1 error');
     });
 
     it('should include separator lines in context', async () => {
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -596,14 +683,19 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should have separator lines (50 equal signs)
       expect(result.additionalContext).toContain('='.repeat(50));
     });
 
     it('should measure gather time correctly', async () => {
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now() - 100; // Simulate 100ms elapsed
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -614,7 +706,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.gatherTimeMs).toBeGreaterThanOrEqual(100);
     });
@@ -622,7 +718,8 @@ describe('context-builder', () => {
 
   describe('createFailedContextResult', () => {
     it('should create a failed result with empty context', async () => {
-      const { createFailedContextResult } = await import('../../session-start/context-builder.js');
+      const { createFailedContextResult } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
 
       const result = createFailedContextResult(startTime);
@@ -637,7 +734,8 @@ describe('context-builder', () => {
     });
 
     it('should calculate gather time correctly', async () => {
-      const { createFailedContextResult } = await import('../../session-start/context-builder.js');
+      const { createFailedContextResult } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now() - 50; // Simulate 50ms elapsed
 
       const result = createFailedContextResult(startTime);
@@ -650,7 +748,8 @@ describe('context-builder', () => {
     it('should skip stack info when formatStackInfo returns empty', async () => {
       mockFormatStackInfo.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -661,17 +760,24 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).toContain('## Project Overview');
       // Should not have stack info line
-      expect(result.additionalContext.split('\n')).not.toContain('Stack: Node.js');
+      expect(result.additionalContext.split('\n')).not.toContain(
+        'Stack: Node.js'
+      );
     });
 
     it('should skip folder analysis when formatFolderAnalysis returns empty', async () => {
       mockFormatFolderAnalysis.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -682,17 +788,24 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).toContain('## Project Overview');
       // Should not have folder line
-      expect(result.additionalContext.split('\n')).not.toContain('Folders: src/');
+      expect(result.additionalContext.split('\n')).not.toContain(
+        'Folders: src/'
+      );
     });
 
     it('should skip git context when formatGitContext returns empty', async () => {
       mockFormatGitContext.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -703,17 +816,24 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).toContain('## Git Status');
       // Should not have git info line
-      expect(result.additionalContext.split('\n')).not.toContain('Branch: main');
+      expect(result.additionalContext.split('\n')).not.toContain(
+        'Branch: main'
+      );
     });
 
     it('should skip empty recovery context string when needsRecovery is true', async () => {
       mockFormatRecoveryContext.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: true,
@@ -724,7 +844,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should call formatRecoveryContext but not add it if empty
       expect(mockFormatRecoveryContext).toHaveBeenCalledWith(recoveryInfo);
@@ -734,7 +858,8 @@ describe('context-builder', () => {
     it('should include port status when server is detected', async () => {
       mockFormatPortStatus.mockReturnValue('Port 3000: dev server running');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -745,16 +870,23 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).toContain('## Dev Servers');
-      expect(result.additionalContext).toContain('Port 3000: dev server running');
+      expect(result.additionalContext).toContain(
+        'Port 3000: dev server running'
+      );
     });
 
     it('should skip port status when empty string', async () => {
       mockFormatPortStatus.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -765,7 +897,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Dev Servers');
     });
@@ -773,7 +909,8 @@ describe('context-builder', () => {
     it('should handle empty health status string', async () => {
       mockFormatHealthStatus.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -784,7 +921,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.additionalContext).not.toContain('## Health Checks');
     });
@@ -798,7 +939,8 @@ describe('context-builder', () => {
         hasTypeScript: false,
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -809,7 +951,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should not crash and should work with empty frameworks
       expect(result.summary).toBeTruthy();
@@ -823,7 +969,8 @@ describe('context-builder', () => {
         recentCommits: [],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -834,7 +981,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should not include branch in summary
       expect(result.summary).not.toContain('on ');
@@ -848,7 +999,8 @@ describe('context-builder', () => {
         recentCommits: [],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -859,7 +1011,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should not include uncommitted in summary
       expect(result.summary).not.toContain('uncommitted');
@@ -873,7 +1029,8 @@ describe('context-builder', () => {
         ],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -884,14 +1041,19 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.issueCount).toBe(0);
       expect(result.hasIssues).toBe(false);
     });
 
     it('should handle empty recovery info with null checkpoint', async () => {
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -902,7 +1064,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should not crash with null checkpoint
       expect(result.needsRecovery).toBe(false);
@@ -911,7 +1077,8 @@ describe('context-builder', () => {
     it('should handle recovery info with empty recovery context string', async () => {
       mockFormatRecoveryContext.mockReturnValue('');
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: true,
@@ -922,7 +1089,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       // Should still work even if format returns empty string
       expect(result.needsRecovery).toBe(true);
@@ -932,7 +1103,8 @@ describe('context-builder', () => {
     it('should handle empty todos array', async () => {
       mockScanTodos.mockResolvedValue([]);
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -943,7 +1115,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.issueCount).toBe(0);
     });
@@ -954,7 +1130,8 @@ describe('context-builder', () => {
         warnings: [],
       });
 
-      const { gatherProjectContext } = await import('../../session-start/context-builder.js');
+      const { gatherProjectContext } =
+        await import('../../session-start/context-builder.js');
       const startTime = Date.now();
       const recoveryInfo: RecoveryInfo = {
         needsRecovery: false,
@@ -965,7 +1142,11 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      const result = await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      const result = await gatherProjectContext(
+        '/test/project',
+        recoveryInfo,
+        startTime
+      );
 
       expect(result.issueCount).toBe(0);
     });

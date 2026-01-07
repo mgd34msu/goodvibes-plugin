@@ -25,10 +25,13 @@ describe('test-runner', () => {
   describe('findTestsForFile', () => {
     it('should find .test.ts files for source file', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.test.ts')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.test.ts')),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
       expect(result).toContain('src/utils/format.test.ts');
@@ -36,10 +39,13 @@ describe('test-runner', () => {
 
     it('should find .test.tsx files for TSX source', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.test.tsx')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.test.tsx')),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/components/Button.tsx');
 
       expect(result).toContain('src/components/Button.test.tsx');
@@ -47,10 +53,13 @@ describe('test-runner', () => {
 
     it('should find .spec.ts files', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.spec.ts')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.spec.ts')),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
       expect(result).toContain('src/utils/format.spec.ts');
@@ -58,10 +67,13 @@ describe('test-runner', () => {
 
     it('should find .spec.tsx files', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.spec.tsx')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.spec.tsx')),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/components/Modal.tsx');
 
       expect(result).toContain('src/components/Modal.spec.tsx');
@@ -69,26 +81,36 @@ describe('test-runner', () => {
 
     it('should find tests in __tests__ directory', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('__tests__')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.includes('__tests__')),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
-      expect(result.some(f => f.includes('__tests__'))).toBe(true);
-      expect(result.some(f => f.includes('src/__tests__/utils/format.test.ts'))).toBe(true);
+      expect(result.some((f) => f.includes('__tests__'))).toBe(true);
+      expect(
+        result.some((f) => f.includes('src/__tests__/utils/format.test.ts'))
+      ).toBe(true);
     });
 
     it('should find tests in tests/ directory', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.startsWith('tests/')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.startsWith('tests/')),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
-      expect(result.some(f => f.startsWith('tests/'))).toBe(true);
-      expect(result.some(f => f.includes('tests/utils/format.test.ts'))).toBe(true);
+      expect(result.some((f) => f.startsWith('tests/'))).toBe(true);
+      expect(result.some((f) => f.includes('tests/utils/format.test.ts'))).toBe(
+        true
+      );
     });
 
     it('should return empty array when no tests exist', async () => {
@@ -96,7 +118,8 @@ describe('test-runner', () => {
         existsSync: vi.fn().mockReturnValue(false),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
       expect(result).toEqual([]);
@@ -109,7 +132,8 @@ describe('test-runner', () => {
         }),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
       expect(result.length).toBeGreaterThanOrEqual(2);
@@ -119,10 +143,13 @@ describe('test-runner', () => {
 
     it('should handle .tsx source file extensions correctly', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p === 'src/Button.test.ts'),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p === 'src/Button.test.ts'),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/Button.tsx');
 
       expect(result).toContain('src/Button.test.ts');
@@ -133,7 +160,8 @@ describe('test-runner', () => {
         existsSync: vi.fn().mockReturnValue(true),
       }));
 
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const result = findTestsForFile('src/utils/helper.ts');
 
       // All 6 patterns should be found when existsSync returns true
@@ -205,11 +233,17 @@ describe('test-runner', () => {
   at Object.<anonymous>`;
 
       vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation(
-          (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-            return error.stdout?.toString() || error.stderr?.toString() || error.message;
-          }
-        ),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -243,11 +277,17 @@ FAIL src/b.test.tsx
   line 2`;
 
       vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation(
-          (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-            return error.stdout?.toString() || error.stderr?.toString() || error.message;
-          }
-        ),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -263,7 +303,10 @@ FAIL src/b.test.tsx
       }));
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/a.test.ts', 'src/b.test.tsx'], '/test/project');
+      const result = runTests(
+        ['src/a.test.ts', 'src/b.test.tsx'],
+        '/test/project'
+      );
 
       expect(result.passed).toBe(false);
       expect(result.failures).toHaveLength(2);
@@ -282,11 +325,17 @@ FAIL src/b.test.tsx
   line 6`;
 
       vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation(
-          (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-            return error.stdout?.toString() || error.stderr?.toString() || error.message;
-          }
-        ),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -432,7 +481,8 @@ FAIL src/last.test.ts`;
         execSync: vi.fn().mockReturnValue(Buffer.from('All tests passed')),
       }));
 
-      const { runFullTestSuite } = await import('../../automation/test-runner.js');
+      const { runFullTestSuite } =
+        await import('../../automation/test-runner.js');
       const result = runFullTestSuite('/test/project');
 
       expect(result.passed).toBe(true);
@@ -446,7 +496,8 @@ FAIL src/last.test.ts`;
         execSync: mockExecSync,
       }));
 
-      const { runFullTestSuite } = await import('../../automation/test-runner.js');
+      const { runFullTestSuite } =
+        await import('../../automation/test-runner.js');
       runFullTestSuite('/my/project');
 
       expect(mockExecSync).toHaveBeenCalledWith('npm test', {
@@ -474,7 +525,8 @@ FAIL src/db.test.ts
         }),
       }));
 
-      const { runFullTestSuite } = await import('../../automation/test-runner.js');
+      const { runFullTestSuite } =
+        await import('../../automation/test-runner.js');
       const result = runFullTestSuite('/test/project');
 
       expect(result.passed).toBe(false);
@@ -498,7 +550,8 @@ See npm-debug.log for more info.`;
         }),
       }));
 
-      const { runFullTestSuite } = await import('../../automation/test-runner.js');
+      const { runFullTestSuite } =
+        await import('../../automation/test-runner.js');
       const result = runFullTestSuite('/test/project');
 
       expect(result.passed).toBe(false);
@@ -511,7 +564,8 @@ See npm-debug.log for more info.`;
         execSync: mockExecSync,
       }));
 
-      const { runFullTestSuite } = await import('../../automation/test-runner.js');
+      const { runFullTestSuite } =
+        await import('../../automation/test-runner.js');
       runFullTestSuite('/test/project');
 
       expect(mockExecSync).toHaveBeenCalledWith(
@@ -539,7 +593,8 @@ See npm-debug.log for more info.`;
         }),
       }));
 
-      const { runFullTestSuite } = await import('../../automation/test-runner.js');
+      const { runFullTestSuite } =
+        await import('../../automation/test-runner.js');
       const result = runFullTestSuite('/test/project');
 
       // FAILURE_CONTEXT_LINES = 5

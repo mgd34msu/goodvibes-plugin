@@ -44,25 +44,25 @@ export const QUALITY_GATES: QualityGate[] = [
     name: 'TypeScript',
     check: 'npx tsc --noEmit',
     autoFix: null,
-    blocking: true
+    blocking: true,
   },
   {
     name: 'ESLint',
     check: 'npx eslint . --max-warnings=0',
     autoFix: 'npx eslint . --fix',
-    blocking: true
+    blocking: true,
   },
   {
     name: 'Prettier',
     check: 'npx prettier --check .',
     autoFix: 'npx prettier --write .',
-    blocking: false
+    blocking: false,
   },
   {
     name: 'Tests',
     check: 'npm test',
     autoFix: null,
-    blocking: true
+    blocking: true,
   },
 ];
 
@@ -81,7 +81,9 @@ async function toolExists(tool: string, cwd: string): Promise<boolean> {
   // Check if npm script exists
   if (tool.startsWith('npm ')) {
     const packageJson = path.join(cwd, 'package.json');
-    if (!(await fileExists(packageJson))) return false;
+    if (!(await fileExists(packageJson))) {
+      return false;
+    }
     const content = await fs.readFile(packageJson, 'utf-8');
     const pkg = JSON.parse(content);
     const scriptName = tool.replace('npm ', '').replace('run ', '');
@@ -142,7 +144,11 @@ export async function runQualityGates(
     // Check if tool exists
     const checkTool = gate.check.split(' ')[0] + ' ' + gate.check.split(' ')[1];
     if (!(await toolExists(checkTool, cwd))) {
-      results.push({ gate: gate.name, status: 'skipped', message: 'Tool not available' });
+      results.push({
+        gate: gate.name,
+        status: 'skipped',
+        message: 'Tool not available',
+      });
       continue;
     }
 
@@ -160,20 +166,34 @@ export async function runQualityGates(
         if (fixedPassed) {
           results.push({ gate: gate.name, status: 'auto-fixed' });
         } else {
-          results.push({ gate: gate.name, status: 'failed', message: 'Auto-fix did not resolve issues' });
+          results.push({
+            gate: gate.name,
+            status: 'failed',
+            message: 'Auto-fix did not resolve issues',
+          });
           allPassed = false;
-          if (gate.blocking) hasBlockingFailure = true;
+          if (gate.blocking) {
+            hasBlockingFailure = true;
+          }
         }
       } catch (error: unknown) {
         logError(`Auto-fix for ${gate.name}`, error);
-        results.push({ gate: gate.name, status: 'failed', message: 'Auto-fix failed' });
+        results.push({
+          gate: gate.name,
+          status: 'failed',
+          message: 'Auto-fix failed',
+        });
         allPassed = false;
-        if (gate.blocking) hasBlockingFailure = true;
+        if (gate.blocking) {
+          hasBlockingFailure = true;
+        }
       }
     } else {
       results.push({ gate: gate.name, status: 'failed' });
       allPassed = false;
-      if (gate.blocking) hasBlockingFailure = true;
+      if (gate.blocking) {
+        hasBlockingFailure = true;
+      }
     }
   }
 
@@ -210,6 +230,6 @@ export function isCommitCommand(command: string): boolean {
  */
 export function formatGateResults(results: GateResult[]): string {
   return results
-    .map(r => `${r.gate}: ${r.status}${r.message ? ` (${r.message})` : ''}`)
+    .map((r) => `${r.gate}: ${r.status}${r.message ? ` (${r.message})` : ''}`)
     .join(', ');
 }

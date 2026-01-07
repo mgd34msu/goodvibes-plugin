@@ -61,14 +61,20 @@ describe('telemetry', () => {
 
   beforeEach(() => {
     // Create a fresh temp directory for each test
-    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'goodvibes-telemetry-test-'));
+    testDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'goodvibes-telemetry-test-')
+    );
     originalCwd = process.cwd();
 
     // Clean up any existing .goodvibes directory in the actual PROJECT_ROOT
     goodvibesDir = path.join(originalCwd, '.goodvibes');
     if (fs.existsSync(goodvibesDir)) {
       // Back up and clear active-agents.json to avoid test pollution
-      const activeAgentsFile = path.join(goodvibesDir, 'state', 'active-agents.json');
+      const activeAgentsFile = path.join(
+        goodvibesDir,
+        'state',
+        'active-agents.json'
+      );
       if (fs.existsSync(activeAgentsFile)) {
         try {
           fs.unlinkSync(activeAgentsFile);
@@ -94,7 +100,11 @@ describe('telemetry', () => {
     }
 
     // Clean up any test pollution in PROJECT_ROOT
-    const activeAgentsFile = path.join(goodvibesDir, 'state', 'active-agents.json');
+    const activeAgentsFile = path.join(
+      goodvibesDir,
+      'state',
+      'active-agents.json'
+    );
     if (fs.existsSync(activeAgentsFile)) {
       try {
         fs.unlinkSync(activeAgentsFile);
@@ -151,7 +161,10 @@ describe('telemetry', () => {
 
     it('should handle partial git availability - branch only', () => {
       vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ branch: 'feature-branch', errors: { commit: true } })
+        createMockGitExecSync({
+          branch: 'feature-branch',
+          errors: { commit: true },
+        })
       );
 
       const info = getGitInfo(testDir);
@@ -379,9 +392,13 @@ describe('telemetry', () => {
         await registerActiveAgent(entry);
 
         const state = await loadActiveAgents();
-        expect(state.agents['agent-git'].git_branch).toBe('feature/new-feature');
+        expect(state.agents['agent-git'].git_branch).toBe(
+          'feature/new-feature'
+        );
         expect(state.agents['agent-git'].git_commit).toBe('def5678');
-        expect(state.agents['agent-git'].task_description).toBe('Implement new API endpoint');
+        expect(state.agents['agent-git'].task_description).toBe(
+          'Implement new API endpoint'
+        );
       });
 
       it('should overwrite existing agent with same ID', async () => {
@@ -563,8 +580,16 @@ describe('telemetry', () => {
     it('should parse JSON transcript with tool usage', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test/file1.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Read', input: { file_path: '/test/file2.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/test/file1.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Read',
+          input: { file_path: '/test/file2.ts' },
+        }),
       ].join('\n');
 
       fs.writeFileSync(transcriptPath, content);
@@ -581,7 +606,11 @@ describe('telemetry', () => {
       const content = JSON.stringify({
         type: 'tool_use',
         tool_name: 'Edit',
-        tool_input: { file_path: '/src/main.ts', old_string: 'old', new_string: 'new' }
+        tool_input: {
+          file_path: '/src/main.ts',
+          old_string: 'old',
+          new_string: 'new',
+        },
       });
 
       fs.writeFileSync(transcriptPath, content);
@@ -596,7 +625,11 @@ describe('telemetry', () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
         JSON.stringify({ type: 'error', message: 'Something went wrong' }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', error: 'Command failed' }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          error: 'Command failed',
+        }),
       ].join('\n');
 
       fs.writeFileSync(transcriptPath, content);
@@ -609,8 +642,14 @@ describe('telemetry', () => {
     it('should detect success indicators', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
-        JSON.stringify({ role: 'assistant', content: 'Successfully completed the task' }),
-        JSON.stringify({ role: 'assistant', content: 'All tests completed and passed' }),
+        JSON.stringify({
+          role: 'assistant',
+          content: 'Successfully completed the task',
+        }),
+        JSON.stringify({
+          role: 'assistant',
+          content: 'All tests completed and passed',
+        }),
       ].join('\n');
 
       fs.writeFileSync(transcriptPath, content);
@@ -640,9 +679,21 @@ describe('telemetry', () => {
     it('should deduplicate tools and files', async () => {
       const transcriptPath = path.join(testDir, 'transcript.jsonl');
       const content = [
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test/file.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test/file.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test/file.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/test/file.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/test/file.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/test/file.ts' },
+        }),
       ].join('\n');
 
       fs.writeFileSync(transcriptPath, content);
@@ -699,7 +750,10 @@ describe('telemetry', () => {
     it('should truncate long final output', async () => {
       const transcriptPath = path.join(testDir, 'long.jsonl');
       const longMessage = 'x'.repeat(1000);
-      const content = JSON.stringify({ role: 'assistant', content: longMessage });
+      const content = JSON.stringify({
+        role: 'assistant',
+        content: longMessage,
+      });
 
       fs.writeFileSync(transcriptPath, content);
 
@@ -712,7 +766,11 @@ describe('telemetry', () => {
 
   describe('extractKeywords', () => {
     it('should extract framework keywords', () => {
-      const keywords = extractKeywords('Building a React app with Next.js', '', 'frontend');
+      const keywords = extractKeywords(
+        'Building a React app with Next.js',
+        '',
+        'frontend'
+      );
 
       expect(keywords).toContain('react');
       expect(keywords).toContain('category:frameworks');
@@ -726,7 +784,8 @@ describe('telemetry', () => {
       );
 
       // Both postgres and postgresql are valid matches, check for at least one
-      const hasPostgresKeyword = keywords.includes('postgres') || keywords.includes('postgresql');
+      const hasPostgresKeyword =
+        keywords.includes('postgres') || keywords.includes('postgresql');
       expect(hasPostgresKeyword).toBe(true);
       expect(keywords).toContain('prisma');
       expect(keywords).toContain('category:databases');
@@ -760,7 +819,11 @@ describe('telemetry', () => {
     });
 
     it('should extract authentication keywords', () => {
-      const keywords = extractKeywords('Implementing JWT authentication with OAuth', '', '');
+      const keywords = extractKeywords(
+        'Implementing JWT authentication with OAuth',
+        '',
+        ''
+      );
 
       expect(keywords).toContain('jwt');
       expect(keywords).toContain('oauth');
@@ -768,7 +831,11 @@ describe('telemetry', () => {
     });
 
     it('should extract testing keywords', () => {
-      const keywords = extractKeywords('', 'Writing unit tests with Vitest and Playwright', '');
+      const keywords = extractKeywords(
+        '',
+        'Writing unit tests with Vitest and Playwright',
+        ''
+      );
 
       expect(keywords).toContain('vitest');
       expect(keywords).toContain('playwright');
@@ -789,7 +856,7 @@ describe('telemetry', () => {
         ''
       );
 
-      const reactCount = keywords.filter(k => k === 'react').length;
+      const reactCount = keywords.filter((k) => k === 'react').length;
       expect(reactCount).toBeLessThanOrEqual(1);
     });
   });
@@ -841,7 +908,6 @@ describe('telemetry', () => {
     });
 
     it('should write record to monthly JSONL file', async () => {
-
       const record: TelemetryRecord = {
         type: 'subagent_complete',
         agent_id: 'agent-123',
@@ -936,7 +1002,9 @@ describe('telemetry', () => {
 
       expect(record.git_branch).toBe('feature/new-api');
       expect(record.task_description).toBe('Implement new REST endpoint');
-      expect(record.final_summary).toBe('Successfully implemented and tested the new endpoint');
+      expect(record.final_summary).toBe(
+        'Successfully implemented and tested the new endpoint'
+      );
     });
   });
 
@@ -964,7 +1032,11 @@ describe('telemetry', () => {
 
       const keywords = ['typescript', 'testing', 'vitest'];
 
-      const record = createTelemetryRecord(startEntry, parsedTranscript, keywords);
+      const record = createTelemetryRecord(
+        startEntry,
+        parsedTranscript,
+        keywords
+      );
 
       expect(record.type).toBe('subagent_complete');
       expect(record.agent_id).toBe('agent-123');

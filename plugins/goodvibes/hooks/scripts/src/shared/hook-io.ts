@@ -10,7 +10,9 @@ import { STDIN_TIMEOUT_MS } from './config.js';
  * Type guard to validate hook input structure at runtime
  */
 function isValidHookInput(value: unknown): value is HookInput {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
   const obj = value as Record<string, unknown>;
   return (
     typeof obj.session_id === 'string' &&
@@ -84,7 +86,11 @@ export async function readHookInput(): Promise<HookInput> {
     // Handle case where no stdin is provided (timeout after configured delay)
     setTimeout(() => {
       if (!data) {
-        reject(new Error('Hook input timeout: no data received within configured timeout'));
+        reject(
+          new Error(
+            'Hook input timeout: no data received within configured timeout'
+          )
+        );
       }
     }, STDIN_TIMEOUT_MS);
   });
@@ -108,7 +114,10 @@ export async function readHookInput(): Promise<HookInput> {
  * // Allow with a helpful system message
  * respond(allowTool('PreToolUse', 'Remember to run tests after this change'));
  */
-export function allowTool(hookEventName: string, systemMessage?: string): HookResponse {
+export function allowTool(
+  hookEventName: string,
+  systemMessage?: string
+): HookResponse {
   return {
     continue: true,
     systemMessage,
@@ -237,7 +246,9 @@ export interface ExtendedHookResponse extends HookResponse {
  *   additionalContext: projectContextString
  * }));
  */
-export function createResponse(options: CreateResponseOptions = {}): ExtendedHookResponse {
+export function createResponse(
+  options: CreateResponseOptions = {}
+): ExtendedHookResponse {
   const response: ExtendedHookResponse = {
     continue: true,
   };

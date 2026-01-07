@@ -98,7 +98,9 @@ describe('memory/paths', () => {
   describe('getMemoryDir', () => {
     it('should return memory path under .goodvibes', () => {
       const result = getMemoryDir('/path/to/project');
-      expect(result).toBe(path.join('/path/to/project', '.goodvibes', 'memory'));
+      expect(result).toBe(
+        path.join('/path/to/project', '.goodvibes', 'memory')
+      );
     });
 
     it('should handle root path', () => {
@@ -108,12 +110,16 @@ describe('memory/paths', () => {
 
     it('should handle Windows-style paths', () => {
       const result = getMemoryDir('C:\\Users\\test\\project');
-      expect(result).toBe(path.join('C:\\Users\\test\\project', '.goodvibes', 'memory'));
+      expect(result).toBe(
+        path.join('C:\\Users\\test\\project', '.goodvibes', 'memory')
+      );
     });
 
     it('should handle paths with trailing slash', () => {
       const result = getMemoryDir('/path/to/project/');
-      expect(result).toBe(path.join('/path/to/project/', '.goodvibes', 'memory'));
+      expect(result).toBe(
+        path.join('/path/to/project/', '.goodvibes', 'memory')
+      );
     });
 
     it('should handle relative paths', () => {
@@ -123,7 +129,9 @@ describe('memory/paths', () => {
 
     it('should handle paths with spaces', () => {
       const result = getMemoryDir('/path/to/my project');
-      expect(result).toBe(path.join('/path/to/my project', '.goodvibes', 'memory'));
+      expect(result).toBe(
+        path.join('/path/to/my project', '.goodvibes', 'memory')
+      );
     });
   });
 
@@ -136,61 +144,97 @@ describe('memory/paths', () => {
     describe('decisions memory file', () => {
       it('should return path to decisions.md', () => {
         const result = getMemoryFilePath(testCwd, 'decisions');
-        expect(result).toBe(path.join(testCwd, '.goodvibes', 'memory', 'decisions.md'));
+        expect(result).toBe(
+          path.join(testCwd, '.goodvibes', 'memory', 'decisions.md')
+        );
       });
     });
 
     describe('patterns memory file', () => {
       it('should return path to patterns.md', () => {
         const result = getMemoryFilePath(testCwd, 'patterns');
-        expect(result).toBe(path.join(testCwd, '.goodvibes', 'memory', 'patterns.md'));
+        expect(result).toBe(
+          path.join(testCwd, '.goodvibes', 'memory', 'patterns.md')
+        );
       });
     });
 
     describe('failures memory file', () => {
       it('should return path to failures.md', () => {
         const result = getMemoryFilePath(testCwd, 'failures');
-        expect(result).toBe(path.join(testCwd, '.goodvibes', 'memory', 'failures.md'));
+        expect(result).toBe(
+          path.join(testCwd, '.goodvibes', 'memory', 'failures.md')
+        );
       });
     });
 
     describe('preferences memory file', () => {
       it('should return path to preferences.md', () => {
         const result = getMemoryFilePath(testCwd, 'preferences');
-        expect(result).toBe(path.join(testCwd, '.goodvibes', 'memory', 'preferences.md'));
+        expect(result).toBe(
+          path.join(testCwd, '.goodvibes', 'memory', 'preferences.md')
+        );
       });
     });
 
     describe('with different cwd values', () => {
       it('should handle root path', () => {
         const result = getMemoryFilePath('/', 'decisions');
-        expect(result).toBe(path.join('/', '.goodvibes', 'memory', 'decisions.md'));
+        expect(result).toBe(
+          path.join('/', '.goodvibes', 'memory', 'decisions.md')
+        );
       });
 
       it('should handle Windows-style paths', () => {
-        const result = getMemoryFilePath('C:\\Users\\test\\project', 'patterns');
-        expect(result).toBe(path.join('C:\\Users\\test\\project', '.goodvibes', 'memory', 'patterns.md'));
+        const result = getMemoryFilePath(
+          'C:\\Users\\test\\project',
+          'patterns'
+        );
+        expect(result).toBe(
+          path.join(
+            'C:\\Users\\test\\project',
+            '.goodvibes',
+            'memory',
+            'patterns.md'
+          )
+        );
       });
 
       it('should handle paths with trailing slash', () => {
         const result = getMemoryFilePath('/path/to/project/', 'failures');
-        expect(result).toBe(path.join('/path/to/project/', '.goodvibes', 'memory', 'failures.md'));
+        expect(result).toBe(
+          path.join('/path/to/project/', '.goodvibes', 'memory', 'failures.md')
+        );
       });
 
       it('should handle relative paths', () => {
         const result = getMemoryFilePath('./my-project', 'preferences');
-        expect(result).toBe(path.join('./my-project', '.goodvibes', 'memory', 'preferences.md'));
+        expect(result).toBe(
+          path.join('./my-project', '.goodvibes', 'memory', 'preferences.md')
+        );
       });
 
       it('should handle paths with spaces', () => {
         const result = getMemoryFilePath('/path/to/my project', 'decisions');
-        expect(result).toBe(path.join('/path/to/my project', '.goodvibes', 'memory', 'decisions.md'));
+        expect(result).toBe(
+          path.join(
+            '/path/to/my project',
+            '.goodvibes',
+            'memory',
+            'decisions.md'
+          )
+        );
       });
     });
 
     describe('type safety', () => {
       it('should work with all valid MemoryFileType values', () => {
-        const types: MemoryFileType[] = ['decisions', 'patterns', 'failures', 'preferences'];
+        const types: MemoryFileType[] = [
+          'decisions',
+          'patterns',
+          'failures',
+          'preferences',
+        ];
 
         types.forEach((type) => {
           const result = getMemoryFilePath(testCwd, type);

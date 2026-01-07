@@ -109,14 +109,18 @@ describe('environment.ts', () => {
       expect(result.hasEnvExample).toBe(true);
       expect(result.missingVars).toEqual(['DATABASE_URL', 'SECRET_KEY']);
       expect(result.warnings).toHaveLength(1);
-      expect(result.warnings[0]).toContain('Missing env vars: DATABASE_URL, SECRET_KEY');
+      expect(result.warnings[0]).toContain(
+        'Missing env vars: DATABASE_URL, SECRET_KEY'
+      );
     });
 
     it('should prefer .env.local over .env for checking variables', async () => {
       mockedFileUtils.fileExists.mockImplementation(async (path: string) => {
-        return path.endsWith('.env.example') ||
-               path.endsWith('.env') ||
-               path.endsWith('.env.local');
+        return (
+          path.endsWith('.env.example') ||
+          path.endsWith('.env') ||
+          path.endsWith('.env.local')
+        );
       });
       mockedFs.readFile.mockImplementation(async (path: fs.PathLike) => {
         const pathStr = path.toString();
@@ -243,9 +247,11 @@ describe('environment.ts', () => {
   describe('analyzeEnvironment', () => {
     it('should detect multiple env file variants', async () => {
       mockedFileUtils.fileExists.mockImplementation(async (path: string) => {
-        return path.endsWith('.env') ||
-               path.endsWith('.env.local') ||
-               path.endsWith('.env.development');
+        return (
+          path.endsWith('.env') ||
+          path.endsWith('.env.local') ||
+          path.endsWith('.env.development')
+        );
       });
       mockedFs.readFile.mockResolvedValue('API_KEY=value');
 
@@ -258,14 +264,16 @@ describe('environment.ts', () => {
 
     it('should detect all env file variants', async () => {
       mockedFileUtils.fileExists.mockImplementation(async (path: string) => {
-        return path.endsWith('.env') ||
-               path.endsWith('.env.local') ||
-               path.endsWith('.env.development') ||
-               path.endsWith('.env.development.local') ||
-               path.endsWith('.env.production') ||
-               path.endsWith('.env.production.local') ||
-               path.endsWith('.env.test') ||
-               path.endsWith('.env.test.local');
+        return (
+          path.endsWith('.env') ||
+          path.endsWith('.env.local') ||
+          path.endsWith('.env.development') ||
+          path.endsWith('.env.development.local') ||
+          path.endsWith('.env.production') ||
+          path.endsWith('.env.production.local') ||
+          path.endsWith('.env.test') ||
+          path.endsWith('.env.test.local')
+        );
       });
       mockedFs.readFile.mockResolvedValue('VAR=value');
 
@@ -295,7 +303,9 @@ describe('environment.ts', () => {
       expect(result.definedVars).toContain('BASE_VAR');
       expect(result.definedVars).toContain('SHARED_VAR');
       // Should deduplicate SHARED_VAR
-      expect(result.definedVars.filter(v => v === 'SHARED_VAR')).toHaveLength(1);
+      expect(result.definedVars.filter((v) => v === 'SHARED_VAR')).toHaveLength(
+        1
+      );
     });
 
     it('should detect .env.example file', async () => {
@@ -371,11 +381,21 @@ describe('environment.ts', () => {
       const result = await analyzeEnvironment('/test/project');
 
       expect(result.sensitiveVarsExposed.length).toBeGreaterThan(0);
-      expect(result.sensitiveVarsExposed.some(v => v.includes('API_KEY'))).toBe(true);
-      expect(result.sensitiveVarsExposed.some(v => v.includes('PASSWORD'))).toBe(true);
-      expect(result.sensitiveVarsExposed.some(v => v.includes('PRIVATE_KEY'))).toBe(true);
-      expect(result.sensitiveVarsExposed.some(v => v.includes('CREDENTIALS'))).toBe(true);
-      expect(result.sensitiveVarsExposed.some(v => v.includes('AUTH'))).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('API_KEY'))
+      ).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('PASSWORD'))
+      ).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('PRIVATE_KEY'))
+      ).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('CREDENTIALS'))
+      ).toBe(true);
+      expect(result.sensitiveVarsExposed.some((v) => v.includes('AUTH'))).toBe(
+        true
+      );
     });
 
     it('should not flag sensitive vars if .env is in gitignore', async () => {
@@ -474,9 +494,11 @@ describe('environment.ts', () => {
 
     it('should deduplicate sensitive vars from multiple files', async () => {
       mockedFileUtils.fileExists.mockImplementation(async (path: string) => {
-        return path.endsWith('.env') ||
-               path.endsWith('.env.local') ||
-               path.endsWith('.gitignore');
+        return (
+          path.endsWith('.env') ||
+          path.endsWith('.env.local') ||
+          path.endsWith('.gitignore')
+        );
       });
       mockedFs.readFile.mockImplementation(async (path: fs.PathLike) => {
         const pathStr = path.toString();
@@ -492,7 +514,9 @@ describe('environment.ts', () => {
       const result = await analyzeEnvironment('/test/project');
 
       // API_KEY appears in both files but should only be reported once
-      const apiKeyEntries = result.sensitiveVarsExposed.filter(v => v.includes('API_KEY'));
+      const apiKeyEntries = result.sensitiveVarsExposed.filter((v) =>
+        v.includes('API_KEY')
+      );
       expect(apiKeyEntries.length).toBeGreaterThan(0);
     });
 
@@ -540,7 +564,9 @@ describe('environment.ts', () => {
 
       const result = await analyzeEnvironment('/test/project');
 
-      expect(result.sensitiveVarsExposed.some(v => v.includes('MY_SECRET'))).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('MY_SECRET'))
+      ).toBe(true);
     });
 
     it('should detect token in variable name', async () => {
@@ -560,7 +586,9 @@ describe('environment.ts', () => {
 
       const result = await analyzeEnvironment('/test/project');
 
-      expect(result.sensitiveVarsExposed.some(v => v.includes('GITHUB_TOKEN'))).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('GITHUB_TOKEN'))
+      ).toBe(true);
     });
 
     it('should detect api-key with dash', async () => {
@@ -580,7 +608,9 @@ describe('environment.ts', () => {
 
       const result = await analyzeEnvironment('/test/project');
 
-      expect(result.sensitiveVarsExposed.some(v => v.includes('API_KEY'))).toBe(true);
+      expect(
+        result.sensitiveVarsExposed.some((v) => v.includes('API_KEY'))
+      ).toBe(true);
     });
 
     it('should be case-insensitive for sensitive patterns', async () => {
@@ -609,10 +639,10 @@ describe('environment.ts', () => {
       });
       mockedFs.readFile.mockResolvedValue(
         'VALID_VAR=value\n' +
-        'invalid line without equals\n' +
-        '123_STARTS_WITH_NUMBER=value\n' +
-        'lowercase_var=value\n' +
-        'ANOTHER_VALID=value'
+          'invalid line without equals\n' +
+          '123_STARTS_WITH_NUMBER=value\n' +
+          'lowercase_var=value\n' +
+          'ANOTHER_VALID=value'
       );
 
       const result = await analyzeEnvironment('/test/project');
@@ -776,7 +806,9 @@ describe('environment.ts', () => {
       const result = formatEnvironment(context);
 
       expect(result).toContain('**Env Files:** .env');
-      expect(result).toContain('**Warning:** Potentially sensitive vars may not be gitignored');
+      expect(result).toContain(
+        '**Warning:** Potentially sensitive vars may not be gitignored'
+      );
       expect(result).toContain('API_KEY (in .env)');
       expect(result).toContain('PASSWORD (in .env)');
     });
@@ -792,7 +824,9 @@ describe('environment.ts', () => {
 
       const result = formatEnvironment(context);
 
-      expect(result).toContain('**Env Files:** .env, .env.local, .env.production');
+      expect(result).toContain(
+        '**Env Files:** .env, .env.local, .env.production'
+      );
       expect(result).toContain('**Missing Vars:** SECRET_KEY');
       expect(result).toContain('**Warning:** Potentially sensitive vars');
       expect(result).toContain('API_KEY (in .env)');

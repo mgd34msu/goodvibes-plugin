@@ -52,7 +52,10 @@ export interface GitInfo {
 /**
  * Get the path to the active agents file
  */
-export function getActiveAgentsFilePath(goodVibesDir: string, stateDir: string): string {
+export function getActiveAgentsFilePath(
+  goodVibesDir: string,
+  stateDir: string
+): string {
   return path.join(goodVibesDir, stateDir, 'active-agents.json');
 }
 
@@ -76,7 +79,10 @@ export function getGitInfo(cwd: string): GitInfo {
     }).trim();
     result.branch = branch;
   } catch (error: unknown) {
-    debug('Git branch unavailable:', error instanceof Error ? error.message : 'unknown');
+    debug(
+      'Git branch unavailable:',
+      error instanceof Error ? error.message : 'unknown'
+    );
   }
 
   try {
@@ -89,7 +95,10 @@ export function getGitInfo(cwd: string): GitInfo {
     }).trim();
     result.commit = commit;
   } catch (error: unknown) {
-    debug('Git commit unavailable:', error instanceof Error ? error.message : 'unknown');
+    debug(
+      'Git commit unavailable:',
+      error instanceof Error ? error.message : 'unknown'
+    );
   }
 
   return result;
@@ -103,7 +112,11 @@ export function deriveProjectName(cwd: string): string {
   const dirName = path.basename(cwd);
 
   // If it looks like a temp directory, try parent
-  if (dirName.match(/^[a-f0-9]{8,}$/i) || dirName === 'tmp' || dirName === 'temp') {
+  if (
+    dirName.match(/^[a-f0-9]{8,}$/i) ||
+    dirName === 'tmp' ||
+    dirName === 'temp'
+  ) {
     const parentDir = path.basename(path.dirname(cwd));
     if (parentDir && parentDir !== '.' && parentDir !== '/') {
       return parentDir;
@@ -120,7 +133,9 @@ export function deriveProjectName(cwd: string): string {
 /**
  * Load active agents state from file
  */
-export async function loadActiveAgents(activeAgentsFile: string): Promise<ActiveAgentsState> {
+export async function loadActiveAgents(
+  activeAgentsFile: string
+): Promise<ActiveAgentsState> {
   if (await fileExists(activeAgentsFile)) {
     try {
       const content = await fs.readFile(activeAgentsFile, 'utf-8');
@@ -139,7 +154,10 @@ export async function loadActiveAgents(activeAgentsFile: string): Promise<Active
 /**
  * Save active agents state to file
  */
-export async function saveActiveAgents(activeAgentsFile: string, state: ActiveAgentsState): Promise<void> {
+export async function saveActiveAgents(
+  activeAgentsFile: string,
+  state: ActiveAgentsState
+): Promise<void> {
   try {
     state.last_updated = new Date().toISOString();
     await fs.writeFile(activeAgentsFile, JSON.stringify(state, null, 2));
@@ -151,17 +169,25 @@ export async function saveActiveAgents(activeAgentsFile: string, state: ActiveAg
 /**
  * Register a new active agent
  */
-export async function registerActiveAgent(activeAgentsFile: string, entry: ActiveAgentEntry): Promise<void> {
+export async function registerActiveAgent(
+  activeAgentsFile: string,
+  entry: ActiveAgentEntry
+): Promise<void> {
   const state = await loadActiveAgents(activeAgentsFile);
   state.agents[entry.agent_id] = entry;
   await saveActiveAgents(activeAgentsFile, state);
-  debug('Registered active agent: ' + entry.agent_id + ' (' + entry.agent_type + ')');
+  debug(
+    'Registered active agent: ' + entry.agent_id + ' (' + entry.agent_type + ')'
+  );
 }
 
 /**
  * Look up and remove an active agent entry
  */
-export async function popActiveAgent(activeAgentsFile: string, agentId: string): Promise<ActiveAgentEntry | null> {
+export async function popActiveAgent(
+  activeAgentsFile: string,
+  agentId: string
+): Promise<ActiveAgentEntry | null> {
   const state = await loadActiveAgents(activeAgentsFile);
   const entry = state.agents[agentId];
 
@@ -177,7 +203,9 @@ export async function popActiveAgent(activeAgentsFile: string, agentId: string):
 }
 
 /** Removes agent entries older than 24 hours. Returns count of removed entries. */
-export async function cleanupStaleAgents(activeAgentsFile: string): Promise<number> {
+export async function cleanupStaleAgents(
+  activeAgentsFile: string
+): Promise<number> {
   const state = await loadActiveAgents(activeAgentsFile);
   const now = Date.now();
   let removed = 0;

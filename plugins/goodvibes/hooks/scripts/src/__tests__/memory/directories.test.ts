@@ -120,7 +120,9 @@ describe('memory/directories', () => {
         throw new Error('Should have thrown');
       } catch (error: unknown) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('Failed to create memory directory');
+        expect((error as Error).message).toContain(
+          'Failed to create memory directory'
+        );
       }
     });
 
@@ -295,9 +297,7 @@ describe('memory/directories', () => {
 
       // Security patterns should not be duplicated as both comment and pattern
       const commentLines = lines.filter((l) => l.startsWith('#'));
-      const patternLines = lines.filter(
-        (l) => l.trim() && !l.startsWith('#')
-      );
+      const patternLines = lines.filter((l) => l.trim() && !l.startsWith('#'));
 
       // Should have comments (section headers) but they shouldn't duplicate patterns
       expect(commentLines.length).toBeGreaterThan(0);
@@ -336,7 +336,9 @@ describe('memory/directories', () => {
       const invalidPath = '\0invalid\0'; // Invalid path characters
 
       // Should not throw - errors are logged but not propagated
-      await expect(ensureSecurityGitignore(invalidPath)).resolves.toBeUndefined();
+      await expect(
+        ensureSecurityGitignore(invalidPath)
+      ).resolves.toBeUndefined();
     });
 
     it('should handle write errors gracefully', async () => {
@@ -345,7 +347,9 @@ describe('memory/directories', () => {
       await fs.mkdir(readOnlyDir, { mode: 0o444 });
 
       // Should not throw - errors are logged but not propagated
-      await expect(ensureSecurityGitignore(readOnlyDir)).resolves.toBeUndefined();
+      await expect(
+        ensureSecurityGitignore(readOnlyDir)
+      ).resolves.toBeUndefined();
     });
 
     it('should handle non-Error objects in catch block', async () => {
@@ -353,7 +357,9 @@ describe('memory/directories', () => {
       const invalidPath = '\0\0\0'; // Multiple null bytes
 
       // Should not throw - errors are logged but not propagated
-      await expect(ensureSecurityGitignore(invalidPath)).resolves.toBeUndefined();
+      await expect(
+        ensureSecurityGitignore(invalidPath)
+      ).resolves.toBeUndefined();
     });
 
     it('should return early when no patterns need to be added', async () => {

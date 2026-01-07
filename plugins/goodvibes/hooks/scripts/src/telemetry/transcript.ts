@@ -56,7 +56,9 @@ export const KEYWORD_CATEGORIES = TRANSCRIPT_KEYWORD_CATEGORIES;
 /**
  * Parse a transcript file to extract useful information
  */
-export async function parseTranscript(transcriptPath: string): Promise<ParsedTranscript> {
+export async function parseTranscript(
+  transcriptPath: string
+): Promise<ParsedTranscript> {
   const result: ParsedTranscript = {
     files_modified: [],
     tools_used: [],
@@ -73,7 +75,7 @@ export async function parseTranscript(transcriptPath: string): Promise<ParsedTra
     const content = await fs.readFile(transcriptPath, 'utf-8');
 
     // Try to parse as JSONL (each line is a JSON object)
-    const lines = content.split('\n').filter(line => line.trim());
+    const lines = content.split('\n').filter((line) => line.trim());
 
     for (const line of lines) {
       try {
@@ -91,7 +93,6 @@ export async function parseTranscript(transcriptPath: string): Promise<ParsedTra
     if (lastOutput) {
       result.final_output = lastOutput;
     }
-
   } catch (error: unknown) {
     logError('parseTranscript', error);
   }
@@ -124,10 +125,14 @@ function processToolUsage(
   result: ParsedTranscript
 ): void {
   const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
-  if (!isToolUse) return;
+  if (!isToolUse) {
+    return;
+  }
 
   const toolName = (entry.tool_name || entry.name) as string;
-  if (!toolName) return;
+  if (!toolName) {
+    return;
+  }
 
   result.tools_used.push(toolName);
 
@@ -149,9 +154,13 @@ function processToolUsage(
 /**
  * Extract file path from a tool entry
  */
-function extractFilePathFromEntry(entry: Record<string, unknown>): string | null {
+function extractFilePathFromEntry(
+  entry: Record<string, unknown>
+): string | null {
   const input = entry.tool_input || entry.input || entry.parameters;
-  if (!input || typeof input !== 'object') return null;
+  if (!input || typeof input !== 'object') {
+    return null;
+  }
 
   const inputObj = input as Record<string, unknown>;
   const filePath = inputObj.file_path || inputObj.path || inputObj.file;
@@ -178,7 +187,9 @@ function processSuccessIndicators(
   entry: Record<string, unknown>,
   result: ParsedTranscript
 ): void {
-  const text = String(entry.content || entry.text || entry.message || '').toLowerCase();
+  const text = String(
+    entry.content || entry.text || entry.message || ''
+  ).toLowerCase();
   const hasSuccessIndicator =
     text.includes('successfully') ||
     text.includes('completed') ||
@@ -217,7 +228,11 @@ function processPlainTextLine(line: string, result: ParsedTranscript): void {
   }
 
   // Count errors
-  if (lowerLine.includes('error:') || lowerLine.includes('failed:') || lowerLine.includes('exception')) {
+  if (
+    lowerLine.includes('error:') ||
+    lowerLine.includes('failed:') ||
+    lowerLine.includes('exception')
+  ) {
     result.error_count++;
   }
 }
@@ -262,5 +277,9 @@ export function extractKeywords(
   transcriptContent?: string,
   agentType?: string
 ): string[] {
-  return extractTranscriptKeywords(taskDescription, transcriptContent, agentType);
+  return extractTranscriptKeywords(
+    taskDescription,
+    transcriptContent,
+    agentType
+  );
 }

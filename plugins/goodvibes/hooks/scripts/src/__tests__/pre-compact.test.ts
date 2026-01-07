@@ -58,9 +58,11 @@ const mockSaveSessionSummary = vi.fn();
 const mockGetFilesModifiedThisSession = vi.fn();
 
 vi.mock('../pre-compact/index.js', () => ({
-  createPreCompactCheckpoint: (...args: unknown[]) => mockCreatePreCompactCheckpoint(...args),
+  createPreCompactCheckpoint: (...args: unknown[]) =>
+    mockCreatePreCompactCheckpoint(...args),
   saveSessionSummary: (...args: unknown[]) => mockSaveSessionSummary(...args),
-  getFilesModifiedThisSession: (...args: unknown[]) => mockGetFilesModifiedThisSession(...args),
+  getFilesModifiedThisSession: (...args: unknown[]) =>
+    mockGetFilesModifiedThisSession(...args),
 }));
 
 describe('pre-compact hook', () => {
@@ -91,7 +93,9 @@ describe('pre-compact hook', () => {
     mockLoadAnalytics.mockResolvedValue({
       session_id: 'test-session-123',
       started_at: '2025-01-15T12:00:00Z',
-      tool_usage: [{ tool: 'Bash', timestamp: '2025-01-15T12:00:00Z', success: true }],
+      tool_usage: [
+        { tool: 'Bash', timestamp: '2025-01-15T12:00:00Z', success: true },
+      ],
       skills_recommended: [],
       validations_run: 5,
       issues_found: 2,
@@ -115,15 +119,22 @@ describe('pre-compact hook', () => {
       mockLoadAnalytics.mockResolvedValue({
         session_id: 'test-session-123',
         started_at: '2025-01-15T12:00:00Z',
-        tool_usage: [{ tool: 'Bash', timestamp: '2025-01-15T12:00:00Z', success: true }],
+        tool_usage: [
+          { tool: 'Bash', timestamp: '2025-01-15T12:00:00Z', success: true },
+        ],
         skills_recommended: ['typescript', 'react'],
         validations_run: 5,
         issues_found: 2,
       });
 
-      mockGetFilesModifiedThisSession.mockReturnValue(['/src/file1.ts', '/src/file2.ts']);
+      mockGetFilesModifiedThisSession.mockReturnValue([
+        '/src/file1.ts',
+        '/src/file2.ts',
+      ]);
       mockFileExists.mockResolvedValue(true);
-      mockParseTranscript.mockResolvedValue({ summary: 'Working on feature X' });
+      mockParseTranscript.mockResolvedValue({
+        summary: 'Working on feature X',
+      });
 
       await import('../pre-compact.js');
 
@@ -139,7 +150,9 @@ describe('pre-compact hook', () => {
       });
 
       // Verify checkpoint creation
-      expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith('/test/project');
+      expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith(
+        '/test/project'
+      );
 
       // Verify state and analytics loading
       expect(mockLoadState).toHaveBeenCalledWith('/test/project');
@@ -186,7 +199,9 @@ describe('pre-compact hook', () => {
       });
 
       // Should use process.cwd() (/default/cwd) instead of input.cwd
-      expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith('/default/cwd');
+      expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith(
+        '/default/cwd'
+      );
       expect(mockLoadState).toHaveBeenCalledWith('/default/cwd');
     });
 
@@ -247,7 +262,10 @@ describe('pre-compact hook', () => {
       });
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('PreCompact main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'PreCompact main',
+        expect.any(Error)
+      );
 
       // Verify response was still sent
       expect(mockCreateResponse).toHaveBeenCalled();
@@ -271,7 +289,9 @@ describe('pre-compact hook', () => {
 
       mockGetFilesModifiedThisSession.mockReturnValue(['/src/index.ts']);
       mockFileExists.mockResolvedValue(true);
-      mockParseTranscript.mockResolvedValue({ summary: 'Context summary here' });
+      mockParseTranscript.mockResolvedValue({
+        summary: 'Context summary here',
+      });
 
       await import('../pre-compact.js');
 
@@ -330,7 +350,10 @@ describe('pre-compact hook', () => {
       });
 
       // Create 25 files
-      const manyFiles = Array.from({ length: 25 }, (_, i) => `/src/file${i}.ts`);
+      const manyFiles = Array.from(
+        { length: 25 },
+        (_, i) => `/src/file${i}.ts`
+      );
       mockGetFilesModifiedThisSession.mockReturnValue(manyFiles);
 
       await import('../pre-compact.js');
@@ -436,7 +459,10 @@ describe('pre-compact hook', () => {
         issues_found: 0,
       });
 
-      mockGetFilesModifiedThisSession.mockReturnValue(['/src/a.ts', '/src/b.ts']);
+      mockGetFilesModifiedThisSession.mockReturnValue([
+        '/src/a.ts',
+        '/src/b.ts',
+      ]);
 
       await import('../pre-compact.js');
 
@@ -464,7 +490,10 @@ describe('pre-compact hook', () => {
         issues_found: 0,
       });
 
-      const exactlyTwentyFiles = Array.from({ length: 20 }, (_, i) => `/src/file${i}.ts`);
+      const exactlyTwentyFiles = Array.from(
+        { length: 20 },
+        (_, i) => `/src/file${i}.ts`
+      );
       mockGetFilesModifiedThisSession.mockReturnValue(exactlyTwentyFiles);
 
       await import('../pre-compact.js');

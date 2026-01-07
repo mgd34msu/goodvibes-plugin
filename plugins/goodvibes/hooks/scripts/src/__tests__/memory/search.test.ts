@@ -159,7 +159,9 @@ describe('memory/search', () => {
 
       expect(result).toBe(true);
       expect(getMemoryDir).toHaveBeenCalledWith('/test/project');
-      expect(fileExists).toHaveBeenCalledWith('/test/project/.goodvibes/memory');
+      expect(fileExists).toHaveBeenCalledWith(
+        '/test/project/.goodvibes/memory'
+      );
     });
 
     it('should return false when memory directory does not exist', async () => {
@@ -379,8 +381,16 @@ describe('memory/search', () => {
 
     it('should search patterns by name', async () => {
       const patterns = [
-        { name: 'Repository Pattern', date: '2024-01-01', description: 'Data access' },
-        { name: 'Factory Pattern', date: '2024-01-02', description: 'Object creation' },
+        {
+          name: 'Repository Pattern',
+          date: '2024-01-01',
+          description: 'Data access',
+        },
+        {
+          name: 'Factory Pattern',
+          date: '2024-01-02',
+          description: 'Object creation',
+        },
       ];
       vi.mocked(readPatterns).mockResolvedValue(patterns);
 
@@ -392,8 +402,16 @@ describe('memory/search', () => {
 
     it('should search patterns by description', async () => {
       const patterns = [
-        { name: 'Pattern A', date: '2024-01-01', description: 'Handles database transactions' },
-        { name: 'Pattern B', date: '2024-01-02', description: 'UI component structure' },
+        {
+          name: 'Pattern A',
+          date: '2024-01-01',
+          description: 'Handles database transactions',
+        },
+        {
+          name: 'Pattern B',
+          date: '2024-01-02',
+          description: 'UI component structure',
+        },
       ];
       vi.mocked(readPatterns).mockResolvedValue(patterns);
 
@@ -457,8 +475,16 @@ describe('memory/search', () => {
 
     it('should search failures by approach', async () => {
       const failures = [
-        { approach: 'Global state management', date: '2024-01-01', reason: 'Hard to debug' },
-        { approach: 'Direct DOM manipulation', date: '2024-01-02', reason: 'React conflict' },
+        {
+          approach: 'Global state management',
+          date: '2024-01-01',
+          reason: 'Hard to debug',
+        },
+        {
+          approach: 'Direct DOM manipulation',
+          date: '2024-01-02',
+          reason: 'React conflict',
+        },
       ];
       vi.mocked(readFailures).mockResolvedValue(failures);
 
@@ -470,8 +496,16 @@ describe('memory/search', () => {
 
     it('should search failures by reason', async () => {
       const failures = [
-        { approach: 'Approach A', date: '2024-01-01', reason: 'Performance degradation' },
-        { approach: 'Approach B', date: '2024-01-02', reason: 'Security vulnerability' },
+        {
+          approach: 'Approach A',
+          date: '2024-01-01',
+          reason: 'Performance degradation',
+        },
+        {
+          approach: 'Approach B',
+          date: '2024-01-02',
+          reason: 'Security vulnerability',
+        },
       ];
       vi.mocked(readFailures).mockResolvedValue(failures);
 
@@ -649,7 +683,11 @@ describe('memory/search', () => {
         },
       ]);
       vi.mocked(readPatterns).mockResolvedValue([
-        { name: 'API Pattern', date: '2024-01-01', description: 'Standard API structure' },
+        {
+          name: 'API Pattern',
+          date: '2024-01-01',
+          description: 'Standard API structure',
+        },
       ]);
       vi.mocked(readFailures).mockResolvedValue([
         { approach: 'Raw API calls', date: '2024-01-01', reason: 'No caching' },
@@ -705,13 +743,48 @@ describe('memory/search', () => {
     it('should limit decisions to last 5', () => {
       const memory: ProjectMemory = {
         decisions: [
-          { title: 'D1', date: '2024-01-01', rationale: 'R1', alternatives: [] },
-          { title: 'D2', date: '2024-01-02', rationale: 'R2', alternatives: [] },
-          { title: 'D3', date: '2024-01-03', rationale: 'R3', alternatives: [] },
-          { title: 'D4', date: '2024-01-04', rationale: 'R4', alternatives: [] },
-          { title: 'D5', date: '2024-01-05', rationale: 'R5', alternatives: [] },
-          { title: 'D6', date: '2024-01-06', rationale: 'R6', alternatives: [] },
-          { title: 'D7', date: '2024-01-07', rationale: 'R7', alternatives: [] },
+          {
+            title: 'D1',
+            date: '2024-01-01',
+            rationale: 'R1',
+            alternatives: [],
+          },
+          {
+            title: 'D2',
+            date: '2024-01-02',
+            rationale: 'R2',
+            alternatives: [],
+          },
+          {
+            title: 'D3',
+            date: '2024-01-03',
+            rationale: 'R3',
+            alternatives: [],
+          },
+          {
+            title: 'D4',
+            date: '2024-01-04',
+            rationale: 'R4',
+            alternatives: [],
+          },
+          {
+            title: 'D5',
+            date: '2024-01-05',
+            rationale: 'R5',
+            alternatives: [],
+          },
+          {
+            title: 'D6',
+            date: '2024-01-06',
+            rationale: 'R6',
+            alternatives: [],
+          },
+          {
+            title: 'D7',
+            date: '2024-01-07',
+            rationale: 'R7',
+            alternatives: [],
+          },
         ],
         patterns: [],
         failures: [],
@@ -755,7 +828,9 @@ describe('memory/search', () => {
         'This is a very long description that should be truncated because it exceeds the 60 character limit';
       const memory: ProjectMemory = {
         decisions: [],
-        patterns: [{ name: 'Pattern', date: '2024-01-01', description: longDescription }],
+        patterns: [
+          { name: 'Pattern', date: '2024-01-01', description: longDescription },
+        ],
         failures: [],
         preferences: [],
       };
@@ -763,15 +838,24 @@ describe('memory/search', () => {
       const result = formatMemoryContext(memory);
 
       expect(result).toContain('...');
-      expect(result).toContain('This is a very long description that should be truncated bec...');
+      expect(result).toContain(
+        'This is a very long description that should be truncated bec...'
+      );
       expect(result).not.toContain(longDescription);
     });
 
     it('should not truncate pattern descriptions at exactly 60 characters', () => {
-      const exactDescription = '123456789012345678901234567890123456789012345678901234567890'; // 60 chars
+      const exactDescription =
+        '123456789012345678901234567890123456789012345678901234567890'; // 60 chars
       const memory: ProjectMemory = {
         decisions: [],
-        patterns: [{ name: 'Pattern', date: '2024-01-01', description: exactDescription }],
+        patterns: [
+          {
+            name: 'Pattern',
+            date: '2024-01-01',
+            description: exactDescription,
+          },
+        ],
         failures: [],
         preferences: [],
       };
@@ -786,7 +870,13 @@ describe('memory/search', () => {
       const shortDescription = 'Short description';
       const memory: ProjectMemory = {
         decisions: [],
-        patterns: [{ name: 'Pattern', date: '2024-01-01', description: shortDescription }],
+        patterns: [
+          {
+            name: 'Pattern',
+            date: '2024-01-01',
+            description: shortDescription,
+          },
+        ],
         failures: [],
         preferences: [],
       };
@@ -826,7 +916,11 @@ describe('memory/search', () => {
         decisions: [],
         patterns: [],
         failures: [
-          { approach: 'Global state', date: '2024-01-01', reason: 'Hard to test and maintain' },
+          {
+            approach: 'Global state',
+            date: '2024-01-01',
+            reason: 'Hard to test and maintain',
+          },
         ],
         preferences: [],
       };
@@ -866,7 +960,9 @@ describe('memory/search', () => {
         decisions: [],
         patterns: [],
         failures: [],
-        preferences: [{ key: 'style', value: 'functional', date: '2024-01-01' }],
+        preferences: [
+          { key: 'style', value: 'functional', date: '2024-01-01' },
+        ],
       };
 
       const result = formatMemoryContext(memory);
@@ -880,10 +976,23 @@ describe('memory/search', () => {
     it('should format all sections together', () => {
       const memory: ProjectMemory = {
         decisions: [
-          { title: 'Decision 1', date: '2024-01-01', rationale: 'Rationale 1', alternatives: [] },
+          {
+            title: 'Decision 1',
+            date: '2024-01-01',
+            rationale: 'Rationale 1',
+            alternatives: [],
+          },
         ],
-        patterns: [{ name: 'Pattern 1', date: '2024-01-01', description: 'Description 1' }],
-        failures: [{ approach: 'Failure 1', date: '2024-01-01', reason: 'Reason 1' }],
+        patterns: [
+          {
+            name: 'Pattern 1',
+            date: '2024-01-01',
+            description: 'Description 1',
+          },
+        ],
+        failures: [
+          { approach: 'Failure 1', date: '2024-01-01', reason: 'Reason 1' },
+        ],
         preferences: [{ key: 'pref', value: 'val', date: '2024-01-01' }],
       };
 
@@ -897,9 +1006,16 @@ describe('memory/search', () => {
     it('should add newline before patterns section', () => {
       const memory: ProjectMemory = {
         decisions: [
-          { title: 'Decision', date: '2024-01-01', rationale: 'Rationale', alternatives: [] },
+          {
+            title: 'Decision',
+            date: '2024-01-01',
+            rationale: 'Rationale',
+            alternatives: [],
+          },
         ],
-        patterns: [{ name: 'Pattern', date: '2024-01-01', description: 'Description' }],
+        patterns: [
+          { name: 'Pattern', date: '2024-01-01', description: 'Description' },
+        ],
         failures: [],
         preferences: [],
       };
@@ -912,10 +1028,17 @@ describe('memory/search', () => {
     it('should add newline before failures section', () => {
       const memory: ProjectMemory = {
         decisions: [
-          { title: 'Decision', date: '2024-01-01', rationale: 'Rationale', alternatives: [] },
+          {
+            title: 'Decision',
+            date: '2024-01-01',
+            rationale: 'Rationale',
+            alternatives: [],
+          },
         ],
         patterns: [],
-        failures: [{ approach: 'Failure', date: '2024-01-01', reason: 'Reason' }],
+        failures: [
+          { approach: 'Failure', date: '2024-01-01', reason: 'Reason' },
+        ],
         preferences: [],
       };
 
@@ -927,7 +1050,9 @@ describe('memory/search', () => {
     it('should handle only patterns being present', () => {
       const memory: ProjectMemory = {
         decisions: [],
-        patterns: [{ name: 'Pattern', date: '2024-01-01', description: 'Description' }],
+        patterns: [
+          { name: 'Pattern', date: '2024-01-01', description: 'Description' },
+        ],
         failures: [],
         preferences: [],
       };
@@ -943,7 +1068,9 @@ describe('memory/search', () => {
       const memory: ProjectMemory = {
         decisions: [],
         patterns: [],
-        failures: [{ approach: 'Failure', date: '2024-01-01', reason: 'Reason' }],
+        failures: [
+          { approach: 'Failure', date: '2024-01-01', reason: 'Reason' },
+        ],
         preferences: [],
       };
 

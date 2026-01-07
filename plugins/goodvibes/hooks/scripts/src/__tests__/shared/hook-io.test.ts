@@ -30,7 +30,9 @@ describe('hook-io', () => {
 
   beforeEach(() => {
     // Create a mock stdin
-    mockStdin = new EventEmitter() as EventEmitter & { setEncoding: ReturnType<typeof vi.fn> };
+    mockStdin = new EventEmitter() as EventEmitter & {
+      setEncoding: ReturnType<typeof vi.fn>;
+    };
     mockStdin.setEncoding = vi.fn();
 
     // Store original stdin and replace with mock
@@ -111,7 +113,9 @@ describe('hook-io', () => {
       mockStdin.emit('data', 'not valid json {{{');
       mockStdin.emit('end');
 
-      await expect(promise).rejects.toThrow('Failed to parse hook input from stdin');
+      await expect(promise).rejects.toThrow(
+        'Failed to parse hook input from stdin'
+      );
     });
 
     it('should reject when missing required session_id field', async () => {
@@ -319,7 +323,9 @@ describe('hook-io', () => {
     it('should handle different hook event names', () => {
       const response = allowTool('PermissionRequest');
 
-      expect(response.hookSpecificOutput?.hookEventName).toBe('PermissionRequest');
+      expect(response.hookSpecificOutput?.hookEventName).toBe(
+        'PermissionRequest'
+      );
     });
 
     it('should handle empty string system message', () => {
@@ -346,7 +352,9 @@ describe('hook-io', () => {
     it('should handle different hook event names', () => {
       const response = blockTool('PermissionRequest', 'Access denied');
 
-      expect(response.hookSpecificOutput?.hookEventName).toBe('PermissionRequest');
+      expect(response.hookSpecificOutput?.hookEventName).toBe(
+        'PermissionRequest'
+      );
     });
 
     it('should handle empty reason string', () => {
@@ -356,7 +364,10 @@ describe('hook-io', () => {
     });
 
     it('should handle reason with special characters', () => {
-      const response = blockTool('PreToolUse', 'Error: "quotes" and \'apostrophes\'');
+      const response = blockTool(
+        'PreToolUse',
+        'Error: "quotes" and \'apostrophes\''
+      );
 
       expect(response.hookSpecificOutput?.permissionDecisionReason).toBe(
         'Error: "quotes" and \'apostrophes\''
@@ -469,7 +480,9 @@ describe('hook-io', () => {
     });
 
     it('should create a response with additional context', () => {
-      const response = createResponse({ additionalContext: 'Project context here' });
+      const response = createResponse({
+        additionalContext: 'Project context here',
+      });
 
       expect(response).toEqual({
         continue: true,
@@ -598,7 +611,10 @@ describe('hook-io', () => {
     });
 
     it('should create an allow permission response with reason', () => {
-      const response = createPermissionResponse('allow', 'Auto-approved by policy');
+      const response = createPermissionResponse(
+        'allow',
+        'Auto-approved by policy'
+      );
 
       expect(response).toEqual({
         continue: true,
@@ -611,7 +627,10 @@ describe('hook-io', () => {
     });
 
     it('should create an ask permission response with reason', () => {
-      const response = createPermissionResponse('ask', 'User confirmation required');
+      const response = createPermissionResponse(
+        'ask',
+        'User confirmation required'
+      );
 
       expect(response).toEqual({
         continue: true,
@@ -626,18 +645,25 @@ describe('hook-io', () => {
     it('should not include reason when undefined', () => {
       const response = createPermissionResponse('deny', undefined);
 
-      expect(response.hookSpecificOutput?.permissionDecisionReason).toBeUndefined();
+      expect(
+        response.hookSpecificOutput?.permissionDecisionReason
+      ).toBeUndefined();
     });
 
     it('should not include reason when empty string (falsy)', () => {
       const response = createPermissionResponse('deny', '');
 
       // Empty string is falsy, so reason should not be included
-      expect(response.hookSpecificOutput?.permissionDecisionReason).toBeUndefined();
+      expect(
+        response.hookSpecificOutput?.permissionDecisionReason
+      ).toBeUndefined();
     });
 
     it('should handle reason with special characters', () => {
-      const response = createPermissionResponse('deny', 'Error: "quotes" and newline\n');
+      const response = createPermissionResponse(
+        'deny',
+        'Error: "quotes" and newline\n'
+      );
 
       expect(response.hookSpecificOutput?.permissionDecisionReason).toBe(
         'Error: "quotes" and newline\n'

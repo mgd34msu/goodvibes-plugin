@@ -26,11 +26,13 @@ async function runUserPromptSubmitHook(): Promise<void> {
     // Could add context injection here based on prompt content
     // For now, just continue
     respond(createResponse());
-
   } catch (error: unknown) {
     logError('UserPromptSubmit main', error);
     respond(createResponse());
   }
 }
 
-runUserPromptSubmitHook();
+runUserPromptSubmitHook().catch((error: unknown) => {
+  logError('UserPromptSubmit uncaught', error);
+  respond(createResponse());
+});

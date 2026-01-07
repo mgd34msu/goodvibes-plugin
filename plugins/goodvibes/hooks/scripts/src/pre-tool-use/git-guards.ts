@@ -10,7 +10,10 @@
  */
 
 import type { HooksState } from '../types/state.js';
-import { getCurrentBranch, hasUncommittedChanges } from '../automation/git-operations.js';
+import {
+  getCurrentBranch,
+  hasUncommittedChanges,
+} from '../automation/git-operations.js';
 
 /** Result of a git guard check */
 export interface GitGuardResult {
@@ -48,16 +51,19 @@ export async function checkBranchGuard(
   const mainBranch = state.git.mainBranch;
 
   // Prevent force push to main
-  if (/git\s+push\s+.*--force/.test(command) || /git\s+push\s+-f/.test(command)) {
+  if (
+    /git\s+push\s+.*--force/.test(command) ||
+    /git\s+push\s+-f/.test(command)
+  ) {
     if (currentBranch === mainBranch) {
       return {
         allowed: false,
-        reason: `Force push to ${mainBranch} is not allowed`
+        reason: `Force push to ${mainBranch} is not allowed`,
       };
     }
     return {
       allowed: true,
-      warning: 'Force push detected - ensure this is intentional'
+      warning: 'Force push detected - ensure this is intentional',
     };
   }
 
@@ -65,7 +71,7 @@ export async function checkBranchGuard(
   if (/git\s+reset\s+--hard/.test(command) && currentBranch === mainBranch) {
     return {
       allowed: false,
-      reason: `Hard reset on ${mainBranch} is not allowed`
+      reason: `Hard reset on ${mainBranch} is not allowed`,
     };
   }
 
@@ -73,7 +79,7 @@ export async function checkBranchGuard(
   if (/git\s+rebase/.test(command) && currentBranch === mainBranch) {
     return {
       allowed: true,
-      warning: `Rebasing ${mainBranch} - ensure this is intentional`
+      warning: `Rebasing ${mainBranch} - ensure this is intentional`,
     };
   }
 
@@ -102,7 +108,7 @@ export function checkMergeReadiness(
   if (state.tests.failingFiles.length > 0) {
     return {
       allowed: false,
-      reason: `Cannot merge: ${state.tests.failingFiles.length} test files failing`
+      reason: `Cannot merge: ${state.tests.failingFiles.length} test files failing`,
     };
   }
 
@@ -110,7 +116,7 @@ export function checkMergeReadiness(
   if (state.build.status === 'failing') {
     return {
       allowed: false,
-      reason: 'Cannot merge: build is failing'
+      reason: 'Cannot merge: build is failing',
     };
   }
 
@@ -118,7 +124,7 @@ export function checkMergeReadiness(
   if (state.tests.pendingFixes.length > 0) {
     return {
       allowed: false,
-      reason: `Cannot merge: ${state.tests.pendingFixes.length} pending test fixes`
+      reason: `Cannot merge: ${state.tests.pendingFixes.length} pending test fixes`,
     };
   }
 

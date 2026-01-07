@@ -11,12 +11,7 @@
  * - Process MCP tool results (detect_stack, validate_implementation, etc.)
  */
 
-import {
-  respond,
-  readHookInput,
-  debug,
-  logError,
-} from './shared/index.js';
+import { respond, readHookInput, debug, logError } from './shared/index.js';
 
 // State management
 import { loadState, saveState } from './state.js';
@@ -52,8 +47,15 @@ import {
 function deepMerge<T extends object>(target: T, source: Partial<T>): T {
   const result = { ...target };
   for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(result[key] as object, source[key] as object) as T[typeof key];
+    if (
+      source[key] &&
+      typeof source[key] === 'object' &&
+      !Array.isArray(source[key])
+    ) {
+      result[key] = deepMerge(
+        result[key] as object,
+        source[key] as object
+      ) as T[typeof key];
     } else if (source[key] !== undefined) {
       result[key] = source[key] as T[typeof key];
     }
@@ -115,7 +117,12 @@ async function runPostToolUseHook(): Promise<void> {
     switch (toolName) {
       case 'Edit':
       case 'Write': {
-        const result = await processFileAutomation(state, config, input, toolName);
+        const result = await processFileAutomation(
+          state,
+          config,
+          input,
+          toolName
+        );
         state = result.state;
         automationMessages = result.messages;
         break;
@@ -178,7 +185,11 @@ async function runPostToolUseHook(): Promise<void> {
     respond(createResponse(systemMessage));
   } catch (error: unknown) {
     logError('PostToolUse main', error);
-    respond(createResponse(`Hook error: ${error instanceof Error ? error.message : String(error)}`));
+    respond(
+      createResponse(
+        `Hook error: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
   }
 }
 

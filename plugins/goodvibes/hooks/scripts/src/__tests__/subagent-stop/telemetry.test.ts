@@ -13,7 +13,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import type { TelemetryEntry, TelemetryTracking } from '../../types/telemetry.js';
+import type {
+  TelemetryEntry,
+  TelemetryTracking,
+} from '../../types/telemetry.js';
 
 // Mock dependencies
 const mockEnsureGoodVibesDir = vi.fn();
@@ -44,7 +47,9 @@ describe('subagent-stop/telemetry', () => {
     vi.resetModules();
 
     // Create a fresh temp directory for each test
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'goodvibes-telemetry-test-'));
+    testDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'goodvibes-telemetry-test-')
+    );
     goodvibesDir = path.join(testDir, '.goodvibes');
 
     // Create required directories
@@ -80,11 +85,16 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { saveAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { saveAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await saveAgentTracking(testDir, tracking);
 
       // Verify file was written
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const content = await fs.readFile(trackingPath, 'utf-8');
       const saved = JSON.parse(content);
 
@@ -95,7 +105,11 @@ describe('subagent-stop/telemetry', () => {
 
     it('should append to existing tracking file', async () => {
       // Create existing tracking file
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const existingData = {
         'existing-agent': {
           agent_id: 'existing-agent',
@@ -118,7 +132,8 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T01:00:00Z',
       };
 
-      const { saveAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { saveAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await saveAgentTracking(testDir, tracking);
 
       // Verify both agents are in file
@@ -131,7 +146,11 @@ describe('subagent-stop/telemetry', () => {
 
     it('should handle corrupted JSON file gracefully', async () => {
       // Create corrupted tracking file
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       await fs.writeFile(trackingPath, 'invalid json {{{');
       mockFileExists.mockResolvedValue(true);
 
@@ -144,11 +163,15 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { saveAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { saveAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await saveAgentTracking(testDir, tracking);
 
       // Verify debug was called for the error
-      expect(mockDebug).toHaveBeenCalledWith('telemetry operation failed', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'telemetry operation failed',
+        expect.any(Object)
+      );
 
       // Verify new tracking was still saved (starts fresh)
       const content = await fs.readFile(trackingPath, 'utf-8');
@@ -157,7 +180,11 @@ describe('subagent-stop/telemetry', () => {
     });
 
     it('should overwrite existing agent with same ID', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const existingData = {
         'agent-update': {
           agent_id: 'agent-update',
@@ -180,7 +207,8 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T02:00:00Z',
       };
 
-      const { saveAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { saveAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await saveAgentTracking(testDir, tracking);
 
       const content = await fs.readFile(trackingPath, 'utf-8');
@@ -204,10 +232,15 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { saveAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { saveAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await saveAgentTracking(testDir, tracking);
 
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const content = await fs.readFile(trackingPath, 'utf-8');
       const saved = JSON.parse(content);
 
@@ -223,14 +256,19 @@ describe('subagent-stop/telemetry', () => {
     it('should return null when tracking file does not exist', async () => {
       mockFileExists.mockResolvedValue(false);
 
-      const { getAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { getAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       const result = await getAgentTracking(testDir, 'non-existent');
 
       expect(result).toBeNull();
     });
 
     it('should return tracking data for existing agent', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const trackingData: TelemetryTracking = {
         agent_id: 'agent-find',
         agent_type: 'test-engineer',
@@ -245,14 +283,19 @@ describe('subagent-stop/telemetry', () => {
       );
       mockFileExists.mockResolvedValue(true);
 
-      const { getAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { getAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       const result = await getAgentTracking(testDir, 'agent-find');
 
       expect(result).toEqual(trackingData);
     });
 
     it('should return null when agent ID not found in tracking file', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const trackingData = {
         'other-agent': {
           agent_id: 'other-agent',
@@ -266,22 +309,31 @@ describe('subagent-stop/telemetry', () => {
       await fs.writeFile(trackingPath, JSON.stringify(trackingData));
       mockFileExists.mockResolvedValue(true);
 
-      const { getAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { getAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       const result = await getAgentTracking(testDir, 'missing-agent');
 
       expect(result).toBeNull();
     });
 
     it('should handle corrupted JSON file gracefully', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       await fs.writeFile(trackingPath, 'corrupted json data {{{');
       mockFileExists.mockResolvedValue(true);
 
-      const { getAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { getAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       const result = await getAgentTracking(testDir, 'any-agent');
 
       expect(result).toBeNull();
-      expect(mockDebug).toHaveBeenCalledWith('getAgentTracking failed', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'getAgentTracking failed',
+        expect.any(Object)
+      );
     });
   });
 
@@ -292,7 +344,8 @@ describe('subagent-stop/telemetry', () => {
     it('should do nothing when tracking file does not exist', async () => {
       mockFileExists.mockResolvedValue(false);
 
-      const { removeAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { removeAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await removeAgentTracking(testDir, 'non-existent');
 
       // Should complete without error
@@ -300,7 +353,11 @@ describe('subagent-stop/telemetry', () => {
     });
 
     it('should remove agent from tracking file', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const trackingData = {
         'agent-keep': {
           agent_id: 'agent-keep',
@@ -322,7 +379,8 @@ describe('subagent-stop/telemetry', () => {
       await fs.writeFile(trackingPath, JSON.stringify(trackingData));
       mockFileExists.mockResolvedValue(true);
 
-      const { removeAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { removeAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await removeAgentTracking(testDir, 'agent-remove');
 
       const content = await fs.readFile(trackingPath, 'utf-8');
@@ -333,7 +391,11 @@ describe('subagent-stop/telemetry', () => {
     });
 
     it('should handle removing non-existent agent ID gracefully', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       const trackingData = {
         'agent-existing': {
           agent_id: 'agent-existing',
@@ -347,7 +409,8 @@ describe('subagent-stop/telemetry', () => {
       await fs.writeFile(trackingPath, JSON.stringify(trackingData));
       mockFileExists.mockResolvedValue(true);
 
-      const { removeAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { removeAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await removeAgentTracking(testDir, 'non-existent-agent');
 
       // Original data should remain intact
@@ -357,15 +420,23 @@ describe('subagent-stop/telemetry', () => {
     });
 
     it('should handle corrupted JSON file gracefully', async () => {
-      const trackingPath = path.join(goodvibesDir, 'state', 'agent-tracking.json');
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
       await fs.writeFile(trackingPath, 'invalid json {{{');
       mockFileExists.mockResolvedValue(true);
 
-      const { removeAgentTracking } = await import('../../subagent-stop/telemetry.js');
+      const { removeAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
       await removeAgentTracking(testDir, 'any-agent');
 
       // Should log debug message and not throw
-      expect(mockDebug).toHaveBeenCalledWith('telemetry operation failed', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'telemetry operation failed',
+        expect.any(Object)
+      );
     });
   });
 
@@ -391,7 +462,8 @@ describe('subagent-stop/telemetry', () => {
         summary: 'Test completed successfully',
       };
 
-      const { writeTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
+      const { writeTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
       await writeTelemetryEntry(testDir, entry);
 
       // Verify file was created with correct name format
@@ -443,7 +515,8 @@ describe('subagent-stop/telemetry', () => {
         summary: 'Second entry',
       };
 
-      const { writeTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
+      const { writeTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
       await writeTelemetryEntry(testDir, entry1);
       await writeTelemetryEntry(testDir, entry2);
 
@@ -479,7 +552,8 @@ describe('subagent-stop/telemetry', () => {
         summary: 'Git test',
       };
 
-      const { writeTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
+      const { writeTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
       await writeTelemetryEntry(testDir, entry);
 
       const now = new Date();
@@ -517,8 +591,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       expect(entry.event).toBe('subagent_complete');
       expect(entry.agent_id).toBe('agent-build');
@@ -530,7 +609,9 @@ describe('subagent-stop/telemetry', () => {
       expect(entry.tools_used).toEqual(['Write', 'Bash']);
       expect(entry.files_modified).toEqual(['/src/index.ts']);
       expect(entry.summary).toBe('Completed the task successfully');
-      expect(mockParseTranscript).toHaveBeenCalledWith('/path/to/transcript.jsonl');
+      expect(mockParseTranscript).toHaveBeenCalledWith(
+        '/path/to/transcript.jsonl'
+      );
     });
 
     it('should calculate duration correctly', async () => {
@@ -544,8 +625,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: startTime,
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       expect(entry.started_at).toBe(startTime);
       expect(entry.ended_at).toBeDefined();
@@ -566,8 +652,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       // Agent name 'test-engineer' should be added at the beginning
       expect(entry.keywords[0]).toBe('test-engineer');
@@ -587,11 +678,16 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       // Count occurrences of test-engineer
-      const count = entry.keywords.filter(k => k === 'test-engineer').length;
+      const count = entry.keywords.filter((k) => k === 'test-engineer').length;
       expect(count).toBe(1);
     });
 
@@ -607,8 +703,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       // Agent name should be extracted correctly
       expect(entry.keywords[0]).toBe('backend-engineer');
@@ -627,8 +728,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       // Should fallback to full agent_type when pop() returns empty string
       expect(entry.keywords[0]).toBe('goodvibes:');
@@ -646,8 +752,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       expect(entry.git_branch).toBe('feature/telemetry');
       expect(entry.git_commit).toBe('xyz9876');
@@ -663,8 +774,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'failed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      const entry = await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'failed'
+      );
 
       expect(entry.status).toBe('failed');
     });
@@ -686,8 +802,13 @@ describe('subagent-stop/telemetry', () => {
         started_at: '2025-01-01T00:00:00Z',
       };
 
-      const { buildTelemetryEntry } = await import('../../subagent-stop/telemetry.js');
-      await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+      const { buildTelemetryEntry } =
+        await import('../../subagent-stop/telemetry.js');
+      await buildTelemetryEntry(
+        tracking,
+        '/path/to/transcript.jsonl',
+        'completed'
+      );
 
       // Verify extractKeywords was called with combined text
       expect(mockExtractKeywords).toHaveBeenCalledWith(

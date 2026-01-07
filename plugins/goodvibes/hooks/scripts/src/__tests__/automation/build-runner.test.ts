@@ -26,7 +26,8 @@ describe('build-runner', () => {
   // =============================================================================
   describe('exports', () => {
     it('should export BUILD_COMMANDS with expected framework commands', async () => {
-      const { BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
 
       expect(BUILD_COMMANDS).toEqual({
         next: 'npm run build',
@@ -37,7 +38,8 @@ describe('build-runner', () => {
     });
 
     it('should export TYPECHECK_COMMAND as tsc --noEmit', async () => {
-      const { TYPECHECK_COMMAND } = await import('../../automation/build-runner.js');
+      const { TYPECHECK_COMMAND } =
+        await import('../../automation/build-runner.js');
 
       expect(TYPECHECK_COMMAND).toBe('npx tsc --noEmit');
     });
@@ -55,7 +57,8 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.next);
@@ -69,7 +72,8 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.next);
@@ -83,7 +87,8 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.next);
@@ -97,7 +102,8 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.vite);
@@ -111,7 +117,8 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.vite);
@@ -123,7 +130,8 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.default);
@@ -134,13 +142,15 @@ describe('build-runner', () => {
         fileExists: vi.fn().mockImplementation((filePath: string) => {
           // Both next.config.js and vite.config.ts exist
           return Promise.resolve(
-            filePath.endsWith('next.config.js') || filePath.endsWith('vite.config.ts')
+            filePath.endsWith('next.config.js') ||
+              filePath.endsWith('vite.config.ts')
           );
         }),
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand, BUILD_COMMANDS } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand, BUILD_COMMANDS } =
+        await import('../../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe(BUILD_COMMANDS.next);
@@ -153,12 +163,13 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../../automation/build-runner.js');
       await detectBuildCommand('/test/project');
 
       // Should check next.config.js, next.config.mjs, next.config.ts
-      const nextConfigCalls = mockFileExists.mock.calls.filter((call: string[]) =>
-        call[0].includes('next.config')
+      const nextConfigCalls = mockFileExists.mock.calls.filter(
+        (call: string[]) => call[0].includes('next.config')
       );
       expect(nextConfigCalls).toHaveLength(3);
     });
@@ -170,12 +181,13 @@ describe('build-runner', () => {
         extractErrorOutput: vi.fn(),
       }));
 
-      const { detectBuildCommand } = await import('../../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../../automation/build-runner.js');
       await detectBuildCommand('/test/project');
 
       // Should check vite.config.ts, vite.config.js
-      const viteConfigCalls = mockFileExists.mock.calls.filter((call: string[]) =>
-        call[0].includes('vite.config')
+      const viteConfigCalls = mockFileExists.mock.calls.filter(
+        (call: string[]) => call[0].includes('vite.config')
       );
       expect(viteConfigCalls).toHaveLength(2);
     });
@@ -332,7 +344,8 @@ src/components/Button.tsx(15,3): error TS2741: Property 'onClick' is missing in 
       expect(result.errors[0]).toEqual({
         file: 'src/components/Button.tsx',
         line: 15,
-        message: "Property 'onClick' is missing in type '{}' but required in type 'ButtonProps'.",
+        message:
+          "Property 'onClick' is missing in type '{}' but required in type 'ButtonProps'.",
       });
     });
 
@@ -346,7 +359,8 @@ src/components/Button.tsx(15,3): error TS2741: Property 'onClick' is missing in 
         execSync: mockExecSync,
       }));
 
-      const { runTypeCheck, TYPECHECK_COMMAND } = await import('../../automation/build-runner.js');
+      const { runTypeCheck, TYPECHECK_COMMAND } =
+        await import('../../automation/build-runner.js');
       runTypeCheck('/test/project');
 
       expect(mockExecSync).toHaveBeenCalledWith(
@@ -460,7 +474,9 @@ src/c.ts(3,3): error TS1003: Third error
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const result = runTypeCheck('/test/project');
 
-      expect(result.errors[0].message).toBe("This is a detailed error message with special chars: 'string' | number.");
+      expect(result.errors[0].message).toBe(
+        "This is a detailed error message with special chars: 'string' | number."
+      );
     });
 
     it('should ignore non-matching lines', async () => {
@@ -542,7 +558,9 @@ No TypeScript errors in standard format.
       const result = runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].file).toBe('C:\\Users\\dev\\project\\src\\file.ts');
+      expect(result.errors[0].file).toBe(
+        'C:\\Users\\dev\\project\\src\\file.ts'
+      );
     });
 
     it('should handle various TypeScript error codes', async () => {
@@ -584,7 +602,9 @@ file.ts(5,1): error TS12345: Error with five digit code.
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const result = runTypeCheck('/test/project');
 
-      expect(result.errors[0].file).toBe('src/components/my-component.test.tsx');
+      expect(result.errors[0].file).toBe(
+        'src/components/my-component.test.tsx'
+      );
     });
   });
 

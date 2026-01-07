@@ -202,7 +202,9 @@ describe('shared utilities', () => {
 
       expect(result.continue).toBe(false);
       expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
-      expect(result.hookSpecificOutput?.permissionDecisionReason).toBe('Tool blocked for security');
+      expect(result.hookSpecificOutput?.permissionDecisionReason).toBe(
+        'Tool blocked for security'
+      );
     });
   });
 

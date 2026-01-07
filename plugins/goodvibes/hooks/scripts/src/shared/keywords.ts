@@ -19,46 +19,59 @@
  */
 export const STACK_KEYWORD_CATEGORIES: Record<string, string[]> = {
   frameworks_frontend: [
-    'react', 'nextjs', 'next.js', 'vue', 'nuxt', 'svelte', 'sveltekit',
-    'angular', 'solid', 'solidjs', 'qwik', 'astro', 'remix', 'gatsby',
+    'react',
+    'nextjs',
+    'next.js',
+    'vue',
+    'nuxt',
+    'svelte',
+    'sveltekit',
+    'angular',
+    'solid',
+    'solidjs',
+    'qwik',
+    'astro',
+    'remix',
+    'gatsby',
   ],
-  frameworks_backend: [
-    'express', 'fastify', 'hono', 'koa', 'nest', 'nestjs',
-  ],
-  languages: [
-    'typescript', 'javascript', 'python', 'rust', 'go', 'golang',
-  ],
+  frameworks_backend: ['express', 'fastify', 'hono', 'koa', 'nest', 'nestjs'],
+  languages: ['typescript', 'javascript', 'python', 'rust', 'go', 'golang'],
   databases: [
-    'postgresql', 'postgres', 'mysql', 'sqlite', 'mongodb', 'redis',
-    'supabase', 'firebase', 'turso',
+    'postgresql',
+    'postgres',
+    'mysql',
+    'sqlite',
+    'mongodb',
+    'redis',
+    'supabase',
+    'firebase',
+    'turso',
   ],
-  orms: [
-    'prisma', 'drizzle', 'typeorm', 'sequelize', 'knex', 'kysely',
-  ],
-  api: [
-    'rest', 'graphql', 'trpc', 'grpc', 'websocket', 'socket.io',
-  ],
-  auth: [
-    'clerk', 'nextauth', 'auth.js', 'lucia', 'auth0', 'jwt', 'oauth',
-  ],
+  orms: ['prisma', 'drizzle', 'typeorm', 'sequelize', 'knex', 'kysely'],
+  api: ['rest', 'graphql', 'trpc', 'grpc', 'websocket', 'socket.io'],
+  auth: ['clerk', 'nextauth', 'auth.js', 'lucia', 'auth0', 'jwt', 'oauth'],
   ui: [
-    'tailwind', 'tailwindcss', 'shadcn', 'radix', 'chakra', 'mantine', 'mui',
+    'tailwind',
+    'tailwindcss',
+    'shadcn',
+    'radix',
+    'chakra',
+    'mantine',
+    'mui',
   ],
-  state: [
-    'zustand', 'redux', 'jotai', 'recoil', 'mobx', 'valtio',
-  ],
-  testing: [
-    'vitest', 'jest', 'playwright', 'cypress', 'testing-library',
-  ],
-  build: [
-    'vite', 'webpack', 'esbuild', 'rollup', 'turbopack', 'bun',
-  ],
+  state: ['zustand', 'redux', 'jotai', 'recoil', 'mobx', 'valtio'],
+  testing: ['vitest', 'jest', 'playwright', 'cypress', 'testing-library'],
+  build: ['vite', 'webpack', 'esbuild', 'rollup', 'turbopack', 'bun'],
   devops: [
-    'docker', 'kubernetes', 'vercel', 'netlify', 'cloudflare', 'aws', 'railway',
+    'docker',
+    'kubernetes',
+    'vercel',
+    'netlify',
+    'cloudflare',
+    'aws',
+    'railway',
   ],
-  ai: [
-    'openai', 'anthropic', 'claude', 'gpt', 'llm', 'langchain', 'vercel-ai',
-  ],
+  ai: ['openai', 'anthropic', 'claude', 'gpt', 'llm', 'langchain', 'vercel-ai'],
 };
 
 // =============================================================================
@@ -72,84 +85,210 @@ export const STACK_KEYWORD_CATEGORIES: Record<string, string[]> = {
 export const TRANSCRIPT_KEYWORD_CATEGORIES: Record<string, string[]> = {
   // Frameworks (frontend + backend combined)
   frameworks: [
-    'react', 'next', 'nextjs', 'vue', 'angular', 'svelte', 'remix', 'astro',
-    'express', 'fastify', 'hono', 'koa', 'nest', 'nestjs',
-    'django', 'flask', 'fastapi', 'rails', 'laravel',
-    'spring', 'springboot',
+    'react',
+    'next',
+    'nextjs',
+    'vue',
+    'angular',
+    'svelte',
+    'remix',
+    'astro',
+    'express',
+    'fastify',
+    'hono',
+    'koa',
+    'nest',
+    'nestjs',
+    'django',
+    'flask',
+    'fastapi',
+    'rails',
+    'laravel',
+    'spring',
+    'springboot',
   ],
 
   // Databases (includes hosted services and ORMs)
   databases: [
-    'postgres', 'postgresql', 'mysql', 'mariadb', 'sqlite',
-    'mongodb', 'mongo', 'redis', 'dynamodb',
-    'supabase', 'planetscale', 'turso', 'neon',
-    'prisma', 'drizzle', 'kysely', 'typeorm', 'sequelize',
+    'postgres',
+    'postgresql',
+    'mysql',
+    'mariadb',
+    'sqlite',
+    'mongodb',
+    'mongo',
+    'redis',
+    'dynamodb',
+    'supabase',
+    'planetscale',
+    'turso',
+    'neon',
+    'prisma',
+    'drizzle',
+    'kysely',
+    'typeorm',
+    'sequelize',
   ],
 
   // Authentication
   auth: [
-    'auth', 'authentication', 'authorization', 'oauth', 'jwt', 'session',
-    'clerk', 'auth0', 'nextauth', 'lucia', 'passport',
-    'login', 'signup', 'password', 'token',
+    'auth',
+    'authentication',
+    'authorization',
+    'oauth',
+    'jwt',
+    'session',
+    'clerk',
+    'auth0',
+    'nextauth',
+    'lucia',
+    'passport',
+    'login',
+    'signup',
+    'password',
+    'token',
   ],
 
   // Testing
   testing: [
-    'test', 'testing', 'jest', 'vitest', 'mocha', 'chai',
-    'playwright', 'cypress', 'puppeteer',
-    'unit test', 'integration test', 'e2e', 'coverage',
+    'test',
+    'testing',
+    'jest',
+    'vitest',
+    'mocha',
+    'chai',
+    'playwright',
+    'cypress',
+    'puppeteer',
+    'unit test',
+    'integration test',
+    'e2e',
+    'coverage',
   ],
 
   // API
   api: [
-    'api', 'rest', 'graphql', 'trpc', 'grpc',
-    'endpoint', 'route', 'handler', 'middleware',
-    'openapi', 'swagger', 'apollo',
+    'api',
+    'rest',
+    'graphql',
+    'trpc',
+    'grpc',
+    'endpoint',
+    'route',
+    'handler',
+    'middleware',
+    'openapi',
+    'swagger',
+    'apollo',
   ],
 
   // DevOps / Infrastructure
   devops: [
-    'docker', 'kubernetes', 'k8s', 'terraform', 'ansible',
-    'ci', 'cd', 'pipeline', 'deploy', 'deployment',
-    'aws', 'gcp', 'azure', 'vercel', 'netlify', 'railway',
-    'github actions', 'gitlab ci',
+    'docker',
+    'kubernetes',
+    'k8s',
+    'terraform',
+    'ansible',
+    'ci',
+    'cd',
+    'pipeline',
+    'deploy',
+    'deployment',
+    'aws',
+    'gcp',
+    'azure',
+    'vercel',
+    'netlify',
+    'railway',
+    'github actions',
+    'gitlab ci',
   ],
 
   // Frontend / UI
   frontend: [
-    'css', 'tailwind', 'styled-components', 'sass', 'scss',
-    'component', 'ui', 'ux', 'responsive', 'animation',
-    'form', 'modal', 'table', 'button', 'input',
+    'css',
+    'tailwind',
+    'styled-components',
+    'sass',
+    'scss',
+    'component',
+    'ui',
+    'ux',
+    'responsive',
+    'animation',
+    'form',
+    'modal',
+    'table',
+    'button',
+    'input',
   ],
 
   // State Management
   state: [
-    'state', 'redux', 'zustand', 'jotai', 'recoil', 'mobx',
-    'context', 'provider', 'store',
+    'state',
+    'redux',
+    'zustand',
+    'jotai',
+    'recoil',
+    'mobx',
+    'context',
+    'provider',
+    'store',
   ],
 
   // TypeScript
   typescript: [
-    'typescript', 'type', 'interface', 'generic', 'enum',
-    'zod', 'yup', 'io-ts', 'validation', 'schema',
+    'typescript',
+    'type',
+    'interface',
+    'generic',
+    'enum',
+    'zod',
+    'yup',
+    'io-ts',
+    'validation',
+    'schema',
   ],
 
   // Performance
   performance: [
-    'performance', 'optimization', 'cache', 'caching', 'lazy',
-    'bundle', 'minify', 'compress', 'speed',
+    'performance',
+    'optimization',
+    'cache',
+    'caching',
+    'lazy',
+    'bundle',
+    'minify',
+    'compress',
+    'speed',
   ],
 
   // Security
   security: [
-    'security', 'xss', 'csrf', 'sql injection', 'sanitize',
-    'encrypt', 'hash', 'ssl', 'https', 'cors',
+    'security',
+    'xss',
+    'csrf',
+    'sql injection',
+    'sanitize',
+    'encrypt',
+    'hash',
+    'ssl',
+    'https',
+    'cors',
   ],
 
   // File Operations
   files: [
-    'file', 'upload', 'download', 'stream', 'buffer',
-    'read', 'write', 'create', 'delete', 'modify',
+    'file',
+    'upload',
+    'download',
+    'stream',
+    'buffer',
+    'read',
+    'write',
+    'create',
+    'delete',
+    'modify',
   ],
 };
 
@@ -166,20 +305,23 @@ export const KEYWORD_CATEGORIES = STACK_KEYWORD_CATEGORIES;
 /**
  * Flat list of all stack detection keywords.
  */
-export const ALL_STACK_KEYWORDS = Object.values(STACK_KEYWORD_CATEGORIES).flat();
+export const ALL_STACK_KEYWORDS = Object.values(
+  STACK_KEYWORD_CATEGORIES
+).flat();
 
 /**
  * Flat list of all transcript classification keywords.
  */
-export const ALL_TRANSCRIPT_KEYWORDS = Object.values(TRANSCRIPT_KEYWORD_CATEGORIES).flat();
+export const ALL_TRANSCRIPT_KEYWORDS = Object.values(
+  TRANSCRIPT_KEYWORD_CATEGORIES
+).flat();
 
 /**
  * Combined flat list of all unique keywords from both categories.
  */
-export const ALL_KEYWORDS = [...new Set([
-  ...ALL_STACK_KEYWORDS,
-  ...ALL_TRANSCRIPT_KEYWORDS,
-])];
+export const ALL_KEYWORDS = [
+  ...new Set([...ALL_STACK_KEYWORDS, ...ALL_TRANSCRIPT_KEYWORDS]),
+];
 
 // =============================================================================
 // Utility Functions
@@ -234,10 +376,14 @@ export function extractTranscriptKeywords(
     taskDescription || '',
     transcriptContent || '',
     agentType || '',
-  ].join(' ').toLowerCase();
+  ]
+    .join(' ')
+    .toLowerCase();
 
   // Check for each keyword category
-  for (const [category, categoryKeywords] of Object.entries(TRANSCRIPT_KEYWORD_CATEGORIES)) {
+  for (const [category, categoryKeywords] of Object.entries(
+    TRANSCRIPT_KEYWORD_CATEGORIES
+  )) {
     for (const keyword of categoryKeywords) {
       // Use word boundary matching for accuracy
       const pattern = new RegExp('\\b' + escapeRegex(keyword) + '\\b', 'i');
@@ -251,7 +397,9 @@ export function extractTranscriptKeywords(
 
   // Add agent type as keyword if it's a known type
   if (agentType) {
-    const agentKeyword = agentType.replace(/^goodvibes:/, '').replace(/-/g, ' ');
+    const agentKeyword = agentType
+      .replace(/^goodvibes:/, '')
+      .replace(/-/g, ' ');
     keywords.add('agent:' + agentKeyword);
   }
 

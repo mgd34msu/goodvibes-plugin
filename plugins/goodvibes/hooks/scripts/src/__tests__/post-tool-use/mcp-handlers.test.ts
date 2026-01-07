@@ -128,7 +128,9 @@ describe('MCP Handlers', () => {
       await handleDetectStack(input);
 
       expect(logError).toHaveBeenCalledWith('handleDetectStack', error);
-      expect(createResponse).toHaveBeenCalledWith('Error caching stack: Failed to write file');
+      expect(createResponse).toHaveBeenCalledWith(
+        'Error caching stack: Failed to write file'
+      );
       expect(respond).toHaveBeenCalled();
     });
 
@@ -141,8 +143,13 @@ describe('MCP Handlers', () => {
 
       await handleDetectStack(input);
 
-      expect(logError).toHaveBeenCalledWith('handleDetectStack', 'string error');
-      expect(createResponse).toHaveBeenCalledWith('Error caching stack: string error');
+      expect(logError).toHaveBeenCalledWith(
+        'handleDetectStack',
+        'string error'
+      );
+      expect(createResponse).toHaveBeenCalledWith(
+        'Error caching stack: string error'
+      );
       expect(respond).toHaveBeenCalled();
     });
   });
@@ -312,7 +319,10 @@ describe('MCP Handlers', () => {
 
       await handleRecommendSkills(input);
 
-      expect(analytics.skills_recommended).toEqual(['valid/skill.md', 'another/valid.md']);
+      expect(analytics.skills_recommended).toEqual([
+        'valid/skill.md',
+        'another/valid.md',
+      ]);
       expect(saveAnalytics).toHaveBeenCalledWith(analytics);
       expect(logToolUsage).toHaveBeenCalledWith({
         tool: 'recommend_skills',
@@ -741,7 +751,9 @@ describe('MCP Handlers', () => {
       // The analytics object is modified in place, so check what was saved
       expect(saveAnalytics).toHaveBeenCalledWith(analytics);
       expect(analytics.issues_found).toBe(8); // 5 + 3
-      expect(createResponse).toHaveBeenCalledWith('TypeScript: 3 type error(s) found.');
+      expect(createResponse).toHaveBeenCalledWith(
+        'TypeScript: 3 type error(s) found.'
+      );
       expect(respond).toHaveBeenCalled();
     });
 
@@ -773,7 +785,9 @@ describe('MCP Handlers', () => {
         timestamp: expect.any(String),
         success: true,
       });
-      expect(createResponse).toHaveBeenCalledWith('TypeScript: 0 type error(s) found.');
+      expect(createResponse).toHaveBeenCalledWith(
+        'TypeScript: 0 type error(s) found.'
+      );
       expect(respond).toHaveBeenCalled();
     });
 
@@ -841,9 +855,7 @@ describe('MCP Handlers', () => {
       const input: HookInput = {
         hook_name: 'post_tool_use',
         tool_input: {
-          errors: [
-            { file: 'test.ts', line: 10, message: 'Type error' },
-          ],
+          errors: [{ file: 'test.ts', line: 10, message: 'Type error' }],
         },
       };
 

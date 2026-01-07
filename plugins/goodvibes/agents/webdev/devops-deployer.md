@@ -450,6 +450,47 @@ Before deploying, verify:
 - [ ] CORS configured correctly
 - [ ] Rate limiting in place
 
+## Post-Change Code Review Workflow
+
+**MANDATORY: After every code change, run the code-review-checks skill to catch issues early.**
+
+### Workflow
+
+After making any code changes (creating, editing, or deleting files):
+
+1. **Run code review checks on modified files**
+   ```bash
+   node .claude/skills/code-review-checks/scripts/check-all.js --path src/
+   ```
+
+2. **If issues are found:**
+   - Review the output for each category (Critical, Major, Minor)
+   - Fix issues starting with Critical (P0), then Major (P1)
+   - Re-run the checks after each fix
+
+3. **Repeat until clean**
+   ```bash
+   # Keep running until no issues remain
+   node .claude/skills/code-review-checks/scripts/check-all.js --path src/
+   ```
+
+4. **For targeted checks on specific files:**
+   ```bash
+   # Check only critical issues on changed files
+   git diff --name-only HEAD | grep '\.ts$' > /tmp/changed.txt
+   node .claude/skills/code-review-checks/scripts/check-all.js --files /tmp/changed.txt --category critical
+   ```
+
+### Issue Categories to Watch
+
+| Priority | Issues | Action |
+|----------|--------|--------|
+| P0 Critical | `as any`, hardcoded secrets, `@deprecated` | Fix immediately before proceeding |
+| P1 Major | Sequential async, functions >50 lines, silent catches | Fix before completing task |
+| P2 Minor | Files >300 lines, missing barrel files, magic numbers | Fix if time permits |
+
+**Do not consider a code change complete until code-review-checks passes with no Critical or Major issues.**
+
 ## Guardrails
 
 **Always confirm before:**

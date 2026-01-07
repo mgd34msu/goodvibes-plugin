@@ -41,11 +41,15 @@ export async function validateAgentOutput(
   }
 
   // Run type check if TypeScript files were modified
-  const tsFiles = transcriptData.filesModified.filter(f => f.endsWith('.ts') || f.endsWith('.tsx'));
+  const tsFiles = transcriptData.filesModified.filter(
+    (f) => f.endsWith('.ts') || f.endsWith('.tsx')
+  );
   if (tsFiles.length > 0) {
     const buildResult = await runTypeCheck(cwd);
     if (!buildResult.passed) {
-      errors.push(`Type errors after agent work: ${buildResult.errors.length} errors`);
+      errors.push(
+        `Type errors after agent work: ${buildResult.errors.length} errors`
+      );
     }
   }
 

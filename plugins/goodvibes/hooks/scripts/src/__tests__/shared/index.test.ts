@@ -169,7 +169,9 @@ describe('shared/index', () => {
       expect(SECURITY_GITIGNORE_ENTRIES).toBeDefined();
       expect(typeof SECURITY_GITIGNORE_ENTRIES).toBe('object');
       // SECURITY_GITIGNORE_ENTRIES is a Record<string, string[]>
-      expect(SECURITY_GITIGNORE_ENTRIES['GoodVibes plugin state']).toContain('.goodvibes/');
+      expect(SECURITY_GITIGNORE_ENTRIES['GoodVibes plugin state']).toContain(
+        '.goodvibes/'
+      );
     });
 
     it('should export ensureSecureGitignore', () => {

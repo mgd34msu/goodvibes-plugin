@@ -29,7 +29,9 @@ export interface FolderAnalysis {
  *   console.log('Using Next.js App Router');
  * }
  */
-export async function analyzeFolderStructure(cwd: string): Promise<FolderAnalysis> {
+export async function analyzeFolderStructure(
+  cwd: string
+): Promise<FolderAnalysis> {
   const hasSrcDir = await fileExists(path.join(cwd, 'src'));
   const srcDir = hasSrcDir ? 'src' : '.';
   const srcPath = path.join(cwd, srcDir);

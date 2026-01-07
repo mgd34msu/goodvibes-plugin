@@ -18,7 +18,16 @@ export interface TodoItem {
 
 const TODO_PATTERNS = ['FIXME', 'BUG', 'TODO', 'HACK', 'XXX'] as const;
 const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
-const SKIP_DIRS = ['node_modules', 'dist', '.git', 'coverage', '.goodvibes', '__tests__', 'test', 'tests'];
+const SKIP_DIRS = [
+  'node_modules',
+  'dist',
+  '.git',
+  'coverage',
+  '.goodvibes',
+  '__tests__',
+  'test',
+  'tests',
+];
 
 /**
  * Default maximum number of TODOs to return.
@@ -40,7 +49,11 @@ const MAX_TODO_TEXT_LENGTH = 60;
  * @param skipDirs - Array of directory names to skip
  * @returns Promise resolving to array of file paths
  */
-async function getFiles(dir: string, extensions: string[], skipDirs: string[]): Promise<string[]> {
+async function getFiles(
+  dir: string,
+  extensions: string[],
+  skipDirs: string[]
+): Promise<string[]> {
   const files: string[] = [];
 
   try {
@@ -51,7 +64,7 @@ async function getFiles(dir: string, extensions: string[], skipDirs: string[]): 
 
       if (entry.isDirectory()) {
         if (!skipDirs.includes(entry.name)) {
-          files.push(...await getFiles(fullPath, extensions, skipDirs));
+          files.push(...(await getFiles(fullPath, extensions, skipDirs)));
         }
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
@@ -77,7 +90,10 @@ async function getFiles(dir: string, extensions: string[], skipDirs: string[]): 
  * @param patterns - Array of patterns to search for (e.g., ['TODO', 'FIXME'])
  * @returns Promise resolving to array of TodoItem objects found in the file
  */
-async function scanFile(filePath: string, patterns: readonly string[]): Promise<TodoItem[]> {
+async function scanFile(
+  filePath: string,
+  patterns: readonly string[]
+): Promise<TodoItem[]> {
   const results: TodoItem[] = [];
 
   try {
@@ -121,18 +137,25 @@ async function scanFile(filePath: string, patterns: readonly string[]): Promise<
  * const todos = await scanTodos('/my-project');
  * const highPriority = todos.filter(t => t.type === 'FIXME' || t.type === 'BUG');
  */
-export async function scanTodos(cwd: string, limit: number = DEFAULT_TODO_LIMIT): Promise<TodoItem[]> {
+export async function scanTodos(
+  cwd: string,
+  limit: number = DEFAULT_TODO_LIMIT
+): Promise<TodoItem[]> {
   const results: TodoItem[] = [];
   const files = await getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
 
   for (const file of files) {
-    if (results.length >= limit) break;
+    if (results.length >= limit) {
+      break;
+    }
 
     const relativePath = path.relative(cwd, file).replace(/\\/g, '/');
     const todos = await scanFile(file, TODO_PATTERNS);
 
     for (const todo of todos) {
-      if (results.length >= limit) break;
+      if (results.length >= limit) {
+        break;
+      }
       results.push({
         ...todo,
         file: relativePath,
@@ -155,11 +178,15 @@ export async function scanTodos(cwd: string, limit: number = DEFAULT_TODO_LIMIT)
  * // Returns: "TODOs in code:\n- FIXME: src/utils.ts:42 - Fix edge case handling..."
  */
 export function formatTodos(todos: TodoItem[]): string {
-  if (todos.length === 0) return '';
+  if (todos.length === 0) {
+    return '';
+  }
 
   const lines = ['TODOs in code:'];
   for (const todo of todos) {
-    lines.push(`- ${todo.type}: ${todo.file}:${todo.line} - ${todo.text.slice(0, MAX_TODO_TEXT_LENGTH)}`);
+    lines.push(
+      `- ${todo.type}: ${todo.file}:${todo.line} - ${todo.text.slice(0, MAX_TODO_TEXT_LENGTH)}`
+    );
   }
   return lines.join('\n');
 }

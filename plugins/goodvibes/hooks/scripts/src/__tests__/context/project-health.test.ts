@@ -29,7 +29,9 @@ vi.mock('../../shared/file-utils.js', () => ({
 }));
 
 const mockedFs = vi.mocked(fs);
-const mockedFileExists = vi.mocked((await import('../../shared/file-utils.js')).fileExists);
+const mockedFileExists = vi.mocked(
+  (await import('../../shared/file-utils.js')).fileExists
+);
 const mockedDebug = vi.mocked((await import('../../shared/logging.js')).debug);
 
 describe('project-health', () => {
@@ -115,7 +117,11 @@ describe('project-health', () => {
 
     it('should detect multiple lockfiles and set first as package manager', async () => {
       mockedFileExists.mockImplementation(async (p: string) => {
-        return p.includes('package-lock.json') || p.includes('yarn.lock') || p.includes('pnpm-lock.yaml');
+        return (
+          p.includes('package-lock.json') ||
+          p.includes('yarn.lock') ||
+          p.includes('pnpm-lock.yaml')
+        );
       });
 
       const result = await checkProjectHealth('/test/project');
@@ -160,12 +166,14 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: true,
-          target: 'ES2020',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+            target: 'ES2020',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -182,12 +190,14 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: false,
-          target: 'ES2015',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: false,
+            target: 'ES2015',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -204,11 +214,13 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strictNullChecks: true,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strictNullChecks: true,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -225,11 +237,13 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          noImplicitAny: true,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            noImplicitAny: true,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -271,9 +285,11 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        extends: './base.json',
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          extends: './base.json',
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -329,11 +345,13 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: false,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: false,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -347,15 +365,19 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: true,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
-      const strictWarnings = result.warnings.filter(w => w.message.includes('strict mode'));
+      const strictWarnings = result.warnings.filter((w) =>
+        w.message.includes('strict mode')
+      );
       expect(strictWarnings).toHaveLength(0);
     });
 
@@ -363,14 +385,16 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          dev: 'vite',
-          build: 'vite build',
-          test: 'vitest',
-          lint: 'eslint .',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            dev: 'vite',
+            build: 'vite build',
+            test: 'vitest',
+            lint: 'eslint .',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -381,9 +405,11 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        name: 'my-package',
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          name: 'my-package',
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -418,11 +444,13 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          dev: 'vite',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            dev: 'vite',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -435,15 +463,19 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          eslint: 'eslint .',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            eslint: 'eslint .',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
-      const lintSuggestions = result.suggestions.filter(s => s.includes('lint'));
+      const lintSuggestions = result.suggestions.filter((s) =>
+        s.includes('lint')
+      );
       expect(lintSuggestions).toHaveLength(0);
     });
 
@@ -451,11 +483,13 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          dev: 'vite',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            dev: 'vite',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -468,15 +502,19 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          jest: 'jest',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            jest: 'jest',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
-      const testSuggestions = result.suggestions.filter(s => s.includes('test'));
+      const testSuggestions = result.suggestions.filter((s) =>
+        s.includes('test')
+      );
       expect(testSuggestions).toHaveLength(0);
     });
 
@@ -484,15 +522,19 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          vitest: 'vitest',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            vitest: 'vitest',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
-      const testSuggestions = result.suggestions.filter(s => s.includes('test'));
+      const testSuggestions = result.suggestions.filter((s) =>
+        s.includes('test')
+      );
       expect(testSuggestions).toHaveLength(0);
     });
 
@@ -527,7 +569,9 @@ describe('project-health', () => {
 
       const result = await checkProjectHealth('/test/project');
 
-      const typecheckSuggestions = result.suggestions.filter(s => s.includes('typecheck'));
+      const typecheckSuggestions = result.suggestions.filter((s) =>
+        s.includes('typecheck')
+      );
       expect(typecheckSuggestions).toHaveLength(0);
     });
 
@@ -535,15 +579,19 @@ describe('project-health', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('package.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        scripts: {
-          dev: 'vite',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          scripts: {
+            dev: 'vite',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
-      const typecheckSuggestions = result.suggestions.filter(s => s.includes('typecheck'));
+      const typecheckSuggestions = result.suggestions.filter((s) =>
+        s.includes('typecheck')
+      );
       expect(typecheckSuggestions).toHaveLength(0);
     });
 
@@ -565,10 +613,12 @@ describe('project-health', () => {
 
     it('should handle comprehensive project with all features', async () => {
       mockedFileExists.mockImplementation(async (p: string) => {
-        return p.includes('node_modules') ||
-               p.includes('package-lock.json') ||
-               p.includes('tsconfig.json') ||
-               p.includes('package.json');
+        return (
+          p.includes('node_modules') ||
+          p.includes('package-lock.json') ||
+          p.includes('tsconfig.json') ||
+          p.includes('package.json')
+        );
       });
       mockedFs.readFile.mockImplementation(async (p: string) => {
         if (p.toString().includes('tsconfig.json')) {
@@ -660,7 +710,9 @@ describe('project-health', () => {
 
       const result = formatProjectHealth(health);
 
-      expect(result).toBe('**Package Manager:** npm (dependencies not installed)');
+      expect(result).toBe(
+        '**Package Manager:** npm (dependencies not installed)'
+      );
     });
 
     it('should format TypeScript with strict mode enabled', () => {
@@ -683,7 +735,9 @@ describe('project-health', () => {
 
       const result = formatProjectHealth(health);
 
-      expect(result).toBe('**TypeScript:** strict mode enabled, target: ES2020');
+      expect(result).toBe(
+        '**TypeScript:** strict mode enabled, target: ES2020'
+      );
     });
 
     it('should format TypeScript with strict mode enabled and no target', () => {
@@ -729,7 +783,9 @@ describe('project-health', () => {
 
       const result = formatProjectHealth(health);
 
-      expect(result).toBe('**TypeScript:** partial (strictNullChecks, noImplicitAny), target: ES2015');
+      expect(result).toBe(
+        '**TypeScript:** partial (strictNullChecks, noImplicitAny), target: ES2015'
+      );
     });
 
     it('should format TypeScript with only strictNullChecks', () => {
@@ -832,7 +888,9 @@ describe('project-health', () => {
 
       const result = formatProjectHealth(health);
 
-      expect(result).toBe('**Scripts:** dev, build, start, test, lint, typecheck');
+      expect(result).toBe(
+        '**Scripts:** dev, build, start, test, lint, typecheck'
+      );
     });
 
     it('should not format scripts section when no important scripts', () => {
@@ -951,10 +1009,7 @@ describe('project-health', () => {
         packageManager: null,
         scripts: [],
         warnings: [],
-        suggestions: [
-          'Add a lint script',
-          'Add a test script',
-        ],
+        suggestions: ['Add a lint script', 'Add a test script'],
       };
 
       const result = formatProjectHealth(health);
@@ -978,18 +1033,16 @@ describe('project-health', () => {
         },
         packageManager: 'npm',
         scripts: ['dev', 'build', 'test', 'lint'],
-        warnings: [
-          { type: 'info', message: 'Consider upgrading Node.js' },
-        ],
-        suggestions: [
-          'Add a typecheck script',
-        ],
+        warnings: [{ type: 'info', message: 'Consider upgrading Node.js' }],
+        suggestions: ['Add a typecheck script'],
       };
 
       const result = formatProjectHealth(health);
 
       expect(result).toContain('**Package Manager:** npm');
-      expect(result).toContain('**TypeScript:** strict mode enabled, target: ES2020');
+      expect(result).toContain(
+        '**TypeScript:** strict mode enabled, target: ES2020'
+      );
       expect(result).toContain('**Scripts:** dev, build, test, lint');
       expect(result).toContain('**Health Issues:**');
       expect(result).toContain('[i] Consider upgrading Node.js');

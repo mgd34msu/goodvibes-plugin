@@ -26,7 +26,10 @@ import {
   ActiveAgentEntry,
   ActiveAgentsState,
 } from '../../telemetry/agents.js';
-import { createMockGitExecSync, createMockActiveAgentEntry } from '../test-utils/mock-factories.js';
+import {
+  createMockGitExecSync,
+  createMockActiveAgentEntry,
+} from '../test-utils/mock-factories.js';
 
 // Mock child_process module
 vi.mock('child_process', () => ({
@@ -71,17 +74,26 @@ describe('telemetry/agents', () => {
   describe('getActiveAgentsFilePath', () => {
     it('should return the correct path joining goodVibesDir, stateDir, and filename', () => {
       const result = getActiveAgentsFilePath('/home/user/.goodvibes', 'state');
-      expect(result).toBe(path.join('/home/user/.goodvibes', 'state', 'active-agents.json'));
+      expect(result).toBe(
+        path.join('/home/user/.goodvibes', 'state', 'active-agents.json')
+      );
     });
 
     it('should handle Windows-style paths', () => {
-      const result = getActiveAgentsFilePath('C:\\Users\\dev\\.goodvibes', 'state');
-      expect(result).toBe(path.join('C:\\Users\\dev\\.goodvibes', 'state', 'active-agents.json'));
+      const result = getActiveAgentsFilePath(
+        'C:\\Users\\dev\\.goodvibes',
+        'state'
+      );
+      expect(result).toBe(
+        path.join('C:\\Users\\dev\\.goodvibes', 'state', 'active-agents.json')
+      );
     });
 
     it('should handle relative paths', () => {
       const result = getActiveAgentsFilePath('.goodvibes', 'state');
-      expect(result).toBe(path.join('.goodvibes', 'state', 'active-agents.json'));
+      expect(result).toBe(
+        path.join('.goodvibes', 'state', 'active-agents.json')
+      );
     });
   });
 
@@ -111,7 +123,10 @@ describe('telemetry/agents', () => {
 
     it('should return only branch when commit command fails', () => {
       vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ branch: 'feature-branch', errors: { commit: true } })
+        createMockGitExecSync({
+          branch: 'feature-branch',
+          errors: { commit: true },
+        })
       );
 
       const info = getGitInfo('/test/project');
@@ -255,13 +270,18 @@ describe('telemetry/agents', () => {
 
       expect(state.agents).toEqual({});
       expect(state.last_updated).toBeDefined();
-      expect(new Date(state.last_updated).getTime()).toBeLessThanOrEqual(Date.now());
+      expect(new Date(state.last_updated).getTime()).toBeLessThanOrEqual(
+        Date.now()
+      );
     });
 
     it('should load existing state from file', async () => {
       const existingState: ActiveAgentsState = {
         agents: {
-          'agent-1': createMockActiveAgentEntry({ agent_id: 'agent-1', agent_type: 'test-engineer' }),
+          'agent-1': createMockActiveAgentEntry({
+            agent_id: 'agent-1',
+            agent_type: 'test-engineer',
+          }),
         },
         last_updated: '2025-01-01T00:00:00Z',
       };
@@ -282,12 +302,17 @@ describe('telemetry/agents', () => {
       const state = await loadActiveAgents('/test/active-agents.json');
 
       expect(state.agents).toEqual({});
-      expect(logError).toHaveBeenCalledWith('loadActiveAgents', expect.any(Error));
+      expect(logError).toHaveBeenCalledWith(
+        'loadActiveAgents',
+        expect.any(Error)
+      );
     });
 
     it('should handle file read errors gracefully', async () => {
       vi.mocked(fileExists).mockResolvedValue(true);
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('EACCES: permission denied'));
+      vi.mocked(fs.readFile).mockRejectedValue(
+        new Error('EACCES: permission denied')
+      );
 
       const state = await loadActiveAgents('/test/active-agents.json');
 
@@ -322,7 +347,9 @@ describe('telemetry/agents', () => {
     });
 
     it('should handle file write errors gracefully', async () => {
-      vi.mocked(fs.writeFile).mockRejectedValue(new Error('ENOSPC: no space left'));
+      vi.mocked(fs.writeFile).mockRejectedValue(
+        new Error('ENOSPC: no space left')
+      );
 
       const state: ActiveAgentsState = {
         agents: {},
@@ -332,7 +359,10 @@ describe('telemetry/agents', () => {
       // Should not throw
       await saveActiveAgents('/test/active-agents.json', state);
 
-      expect(logError).toHaveBeenCalledWith('saveActiveAgents', expect.any(Error));
+      expect(logError).toHaveBeenCalledWith(
+        'saveActiveAgents',
+        expect.any(Error)
+      );
     });
 
     it('should write formatted JSON', async () => {
@@ -368,13 +398,18 @@ describe('telemetry/agents', () => {
       const savedState = JSON.parse(content as string);
       expect(savedState.agents['agent-123']).toBeDefined();
       expect(savedState.agents['agent-123'].agent_type).toBe('test-engineer');
-      expect(debug).toHaveBeenCalledWith(expect.stringContaining('Registered active agent'));
+      expect(debug).toHaveBeenCalledWith(
+        expect.stringContaining('Registered active agent')
+      );
     });
 
     it('should overwrite existing agent with same ID', async () => {
       const existingState: ActiveAgentsState = {
         agents: {
-          'agent-dup': createMockActiveAgentEntry({ agent_id: 'agent-dup', agent_type: 'old-type' }),
+          'agent-dup': createMockActiveAgentEntry({
+            agent_id: 'agent-dup',
+            agent_type: 'old-type',
+          }),
         },
         last_updated: new Date().toISOString(),
       };
@@ -400,8 +435,14 @@ describe('telemetry/agents', () => {
     it('should return and remove agent from state', async () => {
       const existingState: ActiveAgentsState = {
         agents: {
-          'agent-1': createMockActiveAgentEntry({ agent_id: 'agent-1', agent_type: 'test-engineer' }),
-          'agent-2': createMockActiveAgentEntry({ agent_id: 'agent-2', agent_type: 'backend-engineer' }),
+          'agent-1': createMockActiveAgentEntry({
+            agent_id: 'agent-1',
+            agent_type: 'test-engineer',
+          }),
+          'agent-2': createMockActiveAgentEntry({
+            agent_id: 'agent-2',
+            agent_type: 'backend-engineer',
+          }),
         },
         last_updated: new Date().toISOString(),
       };
@@ -420,7 +461,9 @@ describe('telemetry/agents', () => {
       const savedState = JSON.parse(content as string);
       expect(savedState.agents['agent-1']).toBeUndefined();
       expect(savedState.agents['agent-2']).toBeDefined();
-      expect(debug).toHaveBeenCalledWith(expect.stringContaining('Popped active agent'));
+      expect(debug).toHaveBeenCalledWith(
+        expect.stringContaining('Popped active agent')
+      );
     });
 
     it('should return null for non-existent agent', async () => {
@@ -434,17 +477,25 @@ describe('telemetry/agents', () => {
       vi.mocked(fileExists).mockResolvedValue(true);
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(existingState));
 
-      const entry = await popActiveAgent('/test/active-agents.json', 'non-existent');
+      const entry = await popActiveAgent(
+        '/test/active-agents.json',
+        'non-existent'
+      );
 
       expect(entry).toBeNull();
       expect(fs.writeFile).not.toHaveBeenCalled();
-      expect(debug).toHaveBeenCalledWith(expect.stringContaining('Agent not found'));
+      expect(debug).toHaveBeenCalledWith(
+        expect.stringContaining('Agent not found')
+      );
     });
 
     it('should handle empty state', async () => {
       vi.mocked(fileExists).mockResolvedValue(false);
 
-      const entry = await popActiveAgent('/test/active-agents.json', 'any-agent');
+      const entry = await popActiveAgent(
+        '/test/active-agents.json',
+        'any-agent'
+      );
 
       expect(entry).toBeNull();
     });
@@ -453,13 +504,21 @@ describe('telemetry/agents', () => {
   describe('cleanupStaleAgents', () => {
     it('should remove agents older than 24 hours', async () => {
       const now = Date.now();
-      const staleTime = new Date(now - STALE_AGENT_MAX_AGE_MS - 1000).toISOString(); // 25 hours ago
+      const staleTime = new Date(
+        now - STALE_AGENT_MAX_AGE_MS - 1000
+      ).toISOString(); // 25 hours ago
       const freshTime = new Date(now - 60 * 60 * 1000).toISOString(); // 1 hour ago
 
       const existingState: ActiveAgentsState = {
         agents: {
-          'stale-agent': createMockActiveAgentEntry({ agent_id: 'stale-agent', started_at: staleTime }),
-          'fresh-agent': createMockActiveAgentEntry({ agent_id: 'fresh-agent', started_at: freshTime }),
+          'stale-agent': createMockActiveAgentEntry({
+            agent_id: 'stale-agent',
+            started_at: staleTime,
+          }),
+          'fresh-agent': createMockActiveAgentEntry({
+            agent_id: 'fresh-agent',
+            started_at: freshTime,
+          }),
         },
         last_updated: new Date().toISOString(),
       };
@@ -477,7 +536,9 @@ describe('telemetry/agents', () => {
       const savedState = JSON.parse(content as string);
       expect(savedState.agents['stale-agent']).toBeUndefined();
       expect(savedState.agents['fresh-agent']).toBeDefined();
-      expect(debug).toHaveBeenCalledWith(expect.stringContaining('Cleaned up 1 stale agent'));
+      expect(debug).toHaveBeenCalledWith(
+        expect.stringContaining('Cleaned up 1 stale agent')
+      );
     });
 
     it('should return 0 when no stale agents exist', async () => {
@@ -485,7 +546,10 @@ describe('telemetry/agents', () => {
 
       const existingState: ActiveAgentsState = {
         agents: {
-          'fresh-agent': createMockActiveAgentEntry({ agent_id: 'fresh-agent', started_at: freshTime }),
+          'fresh-agent': createMockActiveAgentEntry({
+            agent_id: 'fresh-agent',
+            started_at: freshTime,
+          }),
         },
         last_updated: new Date().toISOString(),
       };
@@ -510,13 +574,23 @@ describe('telemetry/agents', () => {
 
     it('should remove multiple stale agents', async () => {
       const now = Date.now();
-      const staleTime1 = new Date(now - STALE_AGENT_MAX_AGE_MS - 1000).toISOString();
-      const staleTime2 = new Date(now - STALE_AGENT_MAX_AGE_MS - 2 * 60 * 60 * 1000).toISOString(); // 26 hours ago
+      const staleTime1 = new Date(
+        now - STALE_AGENT_MAX_AGE_MS - 1000
+      ).toISOString();
+      const staleTime2 = new Date(
+        now - STALE_AGENT_MAX_AGE_MS - 2 * 60 * 60 * 1000
+      ).toISOString(); // 26 hours ago
 
       const existingState: ActiveAgentsState = {
         agents: {
-          'stale-1': createMockActiveAgentEntry({ agent_id: 'stale-1', started_at: staleTime1 }),
-          'stale-2': createMockActiveAgentEntry({ agent_id: 'stale-2', started_at: staleTime2 }),
+          'stale-1': createMockActiveAgentEntry({
+            agent_id: 'stale-1',
+            started_at: staleTime1,
+          }),
+          'stale-2': createMockActiveAgentEntry({
+            agent_id: 'stale-2',
+            started_at: staleTime2,
+          }),
         },
         last_updated: new Date().toISOString(),
       };
@@ -528,17 +602,24 @@ describe('telemetry/agents', () => {
       const removed = await cleanupStaleAgents('/test/active-agents.json');
 
       expect(removed).toBe(2);
-      expect(debug).toHaveBeenCalledWith(expect.stringContaining('Cleaned up 2 stale agent'));
+      expect(debug).toHaveBeenCalledWith(
+        expect.stringContaining('Cleaned up 2 stale agent')
+      );
     });
 
     it('should handle agents exactly at the threshold', async () => {
       const now = Date.now();
       // Exactly at threshold should NOT be removed
-      const exactThreshold = new Date(now - STALE_AGENT_MAX_AGE_MS).toISOString();
+      const exactThreshold = new Date(
+        now - STALE_AGENT_MAX_AGE_MS
+      ).toISOString();
 
       const existingState: ActiveAgentsState = {
         agents: {
-          'threshold-agent': createMockActiveAgentEntry({ agent_id: 'threshold-agent', started_at: exactThreshold }),
+          'threshold-agent': createMockActiveAgentEntry({
+            agent_id: 'threshold-agent',
+            started_at: exactThreshold,
+          }),
         },
         last_updated: new Date().toISOString(),
       };

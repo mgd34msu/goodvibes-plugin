@@ -16,7 +16,9 @@ describe('logging', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Mock Date to return consistent timestamps
-    dateNowSpy = vi.spyOn(Date.prototype, 'toISOString').mockReturnValue(mockTimestamp);
+    dateNowSpy = vi
+      .spyOn(Date.prototype, 'toISOString')
+      .mockReturnValue(mockTimestamp);
   });
 
   afterEach(() => {
@@ -101,9 +103,9 @@ describe('logging', () => {
       const data = {
         outer: {
           inner: {
-            value: 'nested'
-          }
-        }
+            value: 'nested',
+          },
+        },
       };
       debug('Nested data', data);
 
@@ -163,7 +165,9 @@ describe('logging', () => {
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       const calledWith = consoleErrorSpy.mock.calls[0][0] as string;
 
-      expect(calledWith).toMatch(/^\[GoodVibes \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] Real timestamp test$/);
+      expect(calledWith).toMatch(
+        /^\[GoodVibes \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] Real timestamp test$/
+      );
 
       // Extract timestamp from the logged message
       const match = calledWith.match(/\[GoodVibes (.*?)\]/);
@@ -291,7 +295,9 @@ describe('logging', () => {
 
     it('should handle Error with very long stack trace', () => {
       const error = new Error('Deep error');
-      const longStack = Array(100).fill('    at function (file.ts:1:1)').join('\n');
+      const longStack = Array(100)
+        .fill('    at function (file.ts:1:1)')
+        .join('\n');
       error.stack = `Error: Deep error\n${longStack}`;
 
       logError('deepStack', error);
@@ -301,10 +307,7 @@ describe('logging', () => {
         1,
         `[GoodVibes ${mockTimestamp}] ERROR in deepStack: Deep error`
       );
-      expect(consoleErrorSpy).toHaveBeenNthCalledWith(
-        2,
-        error.stack
-      );
+      expect(consoleErrorSpy).toHaveBeenNthCalledWith(2, error.stack);
     });
 
     it('should handle special characters in context', () => {
@@ -314,7 +317,9 @@ describe('logging', () => {
       logError('context:with:colons', error);
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy.mock.calls[0][0]).toContain('ERROR in context:with:colons:');
+      expect(consoleErrorSpy.mock.calls[0][0]).toContain(
+        'ERROR in context:with:colons:'
+      );
     });
 
     it('should handle special characters in error message', () => {
@@ -324,7 +329,9 @@ describe('logging', () => {
       logError('specialChars', error);
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy.mock.calls[0][0]).toContain('Error with "quotes" and \'apostrophes\'');
+      expect(consoleErrorSpy.mock.calls[0][0]).toContain(
+        'Error with "quotes" and \'apostrophes\''
+      );
     });
 
     it('should use actual timestamp when not mocked', () => {
@@ -337,7 +344,9 @@ describe('logging', () => {
       expect(consoleErrorSpy).toHaveBeenCalled();
       const calledWith = consoleErrorSpy.mock.calls[0][0] as string;
 
-      expect(calledWith).toMatch(/^\[GoodVibes \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] ERROR in realTime:/);
+      expect(calledWith).toMatch(
+        /^\[GoodVibes \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] ERROR in realTime:/
+      );
 
       // Extract timestamp from the logged message
       const match = calledWith.match(/\[GoodVibes (.*?)\]/);
@@ -360,10 +369,7 @@ describe('logging', () => {
         1,
         `[GoodVibes ${mockTimestamp}] ERROR in typeError: Type mismatch`
       );
-      expect(consoleErrorSpy).toHaveBeenNthCalledWith(
-        2,
-        error.stack
-      );
+      expect(consoleErrorSpy).toHaveBeenNthCalledWith(2, error.stack);
     });
 
     it('should handle RangeError instance', () => {
@@ -377,10 +383,7 @@ describe('logging', () => {
         1,
         `[GoodVibes ${mockTimestamp}] ERROR in rangeError: Out of range`
       );
-      expect(consoleErrorSpy).toHaveBeenNthCalledWith(
-        2,
-        error.stack
-      );
+      expect(consoleErrorSpy).toHaveBeenNthCalledWith(2, error.stack);
     });
 
     it('should handle custom Error subclass', () => {
@@ -403,10 +406,7 @@ describe('logging', () => {
         1,
         `[GoodVibes ${mockTimestamp}] ERROR in customError: Custom error occurred`
       );
-      expect(consoleErrorSpy).toHaveBeenNthCalledWith(
-        2,
-        error.stack
-      );
+      expect(consoleErrorSpy).toHaveBeenNthCalledWith(2, error.stack);
     });
   });
 });

@@ -22,7 +22,8 @@ describe('types/memory', () => {
         title: 'Use TypeScript for type safety',
         date: '2025-01-15',
         alternatives: ['JavaScript', 'Flow'],
-        rationale: 'Better developer experience and catch errors at compile time',
+        rationale:
+          'Better developer experience and catch errors at compile time',
       };
 
       expect(decision.title).toBe('Use TypeScript for type safety');
@@ -130,7 +131,8 @@ describe('types/memory', () => {
         name: 'Error Boundary',
         date: '2025-01-15',
         description: 'React error handling component',
-        example: '<ErrorBoundary fallback={<Error />}>{children}</ErrorBoundary>',
+        example:
+          '<ErrorBoundary fallback={<Error />}>{children}</ErrorBoundary>',
         files: ['src/components/ErrorBoundary.tsx'],
       };
 
@@ -184,7 +186,9 @@ describe('types/memory', () => {
         suggestion: 'Use CSS modules or Tailwind CSS instead',
       };
 
-      expect(failure.suggestion).toBe('Use CSS modules or Tailwind CSS instead');
+      expect(failure.suggestion).toBe(
+        'Use CSS modules or Tailwind CSS instead'
+      );
     });
 
     it('should accept MemoryFailure with all optional fields', () => {

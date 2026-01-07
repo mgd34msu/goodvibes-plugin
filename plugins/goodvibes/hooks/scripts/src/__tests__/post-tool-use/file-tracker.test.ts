@@ -66,17 +66,24 @@ describe('file-tracker', () => {
     it('should add file path to modifiedThisSession', () => {
       const result = trackFileModification(mockState, '/project/src/utils.ts');
 
-      expect(result.files.modifiedThisSession).toContain('/project/src/utils.ts');
+      expect(result.files.modifiedThisSession).toContain(
+        '/project/src/utils.ts'
+      );
     });
 
     it('should add file path to modifiedSinceCheckpoint', () => {
       const result = trackFileModification(mockState, '/project/src/utils.ts');
 
-      expect(result.files.modifiedSinceCheckpoint).toContain('/project/src/utils.ts');
+      expect(result.files.modifiedSinceCheckpoint).toContain(
+        '/project/src/utils.ts'
+      );
     });
 
     it('should preserve existing modified files in modifiedThisSession', () => {
-      mockState.files.modifiedThisSession = ['/existing/file1.ts', '/existing/file2.ts'];
+      mockState.files.modifiedThisSession = [
+        '/existing/file1.ts',
+        '/existing/file2.ts',
+      ];
 
       const result = trackFileModification(mockState, '/project/src/new.ts');
 
@@ -90,8 +97,12 @@ describe('file-tracker', () => {
 
       const result = trackFileModification(mockState, '/project/src/new.ts');
 
-      expect(result.files.modifiedSinceCheckpoint).toContain('/existing/file1.ts');
-      expect(result.files.modifiedSinceCheckpoint).toContain('/project/src/new.ts');
+      expect(result.files.modifiedSinceCheckpoint).toContain(
+        '/existing/file1.ts'
+      );
+      expect(result.files.modifiedSinceCheckpoint).toContain(
+        '/project/src/new.ts'
+      );
     });
 
     it('should deduplicate files in modifiedThisSession', () => {
@@ -125,12 +136,18 @@ describe('file-tracker', () => {
 
     it('should not mutate the original state', () => {
       const originalModifiedSession = [...mockState.files.modifiedThisSession];
-      const originalModifiedCheckpoint = [...mockState.files.modifiedSinceCheckpoint];
+      const originalModifiedCheckpoint = [
+        ...mockState.files.modifiedSinceCheckpoint,
+      ];
 
       trackFileModification(mockState, '/project/src/utils.ts');
 
-      expect(mockState.files.modifiedThisSession).toEqual(originalModifiedSession);
-      expect(mockState.files.modifiedSinceCheckpoint).toEqual(originalModifiedCheckpoint);
+      expect(mockState.files.modifiedThisSession).toEqual(
+        originalModifiedSession
+      );
+      expect(mockState.files.modifiedSinceCheckpoint).toEqual(
+        originalModifiedCheckpoint
+      );
     });
 
     it('should preserve createdThisSession unchanged', () => {
@@ -187,19 +204,25 @@ describe('file-tracker', () => {
     it('should add file path to createdThisSession', () => {
       const result = trackFileCreation(mockState, '/project/src/newFile.ts');
 
-      expect(result.files.createdThisSession).toContain('/project/src/newFile.ts');
+      expect(result.files.createdThisSession).toContain(
+        '/project/src/newFile.ts'
+      );
     });
 
     it('should also add file path to modifiedThisSession', () => {
       const result = trackFileCreation(mockState, '/project/src/newFile.ts');
 
-      expect(result.files.modifiedThisSession).toContain('/project/src/newFile.ts');
+      expect(result.files.modifiedThisSession).toContain(
+        '/project/src/newFile.ts'
+      );
     });
 
     it('should also add file path to modifiedSinceCheckpoint', () => {
       const result = trackFileCreation(mockState, '/project/src/newFile.ts');
 
-      expect(result.files.modifiedSinceCheckpoint).toContain('/project/src/newFile.ts');
+      expect(result.files.modifiedSinceCheckpoint).toContain(
+        '/project/src/newFile.ts'
+      );
     });
 
     it('should preserve existing created files', () => {
@@ -208,7 +231,9 @@ describe('file-tracker', () => {
       const result = trackFileCreation(mockState, '/project/src/newFile.ts');
 
       expect(result.files.createdThisSession).toContain('/existing/created.ts');
-      expect(result.files.createdThisSession).toContain('/project/src/newFile.ts');
+      expect(result.files.createdThisSession).toContain(
+        '/project/src/newFile.ts'
+      );
     });
 
     it('should deduplicate files in createdThisSession', () => {
@@ -236,13 +261,20 @@ describe('file-tracker', () => {
       trackFileCreation(mockState, '/project/src/newFile.ts');
 
       expect(mockState.files.createdThisSession).toEqual(originalCreated);
-      expect(mockState.files.modifiedThisSession).toEqual(originalModifiedSession);
+      expect(mockState.files.modifiedThisSession).toEqual(
+        originalModifiedSession
+      );
     });
 
     it('should handle file paths with spaces', () => {
-      const result = trackFileCreation(mockState, '/project/My Documents/file.ts');
+      const result = trackFileCreation(
+        mockState,
+        '/project/My Documents/file.ts'
+      );
 
-      expect(result.files.createdThisSession).toContain('/project/My Documents/file.ts');
+      expect(result.files.createdThisSession).toContain(
+        '/project/My Documents/file.ts'
+      );
     });
 
     it('should handle multiple sequential creations', () => {
@@ -268,7 +300,11 @@ describe('file-tracker', () => {
 
   describe('clearCheckpointTracking', () => {
     it('should clear modifiedSinceCheckpoint', () => {
-      mockState.files.modifiedSinceCheckpoint = ['/file1.ts', '/file2.ts', '/file3.ts'];
+      mockState.files.modifiedSinceCheckpoint = [
+        '/file1.ts',
+        '/file2.ts',
+        '/file3.ts',
+      ];
 
       const result = clearCheckpointTracking(mockState);
 
@@ -281,7 +317,10 @@ describe('file-tracker', () => {
 
       const result = clearCheckpointTracking(mockState);
 
-      expect(result.files.modifiedThisSession).toEqual(['/file1.ts', '/file2.ts']);
+      expect(result.files.modifiedThisSession).toEqual([
+        '/file1.ts',
+        '/file2.ts',
+      ]);
     });
 
     it('should preserve createdThisSession', () => {
@@ -308,7 +347,9 @@ describe('file-tracker', () => {
 
       clearCheckpointTracking(mockState);
 
-      expect(mockState.files.modifiedSinceCheckpoint).toEqual(originalCheckpoint);
+      expect(mockState.files.modifiedSinceCheckpoint).toEqual(
+        originalCheckpoint
+      );
     });
 
     it('should handle already empty modifiedSinceCheckpoint', () => {

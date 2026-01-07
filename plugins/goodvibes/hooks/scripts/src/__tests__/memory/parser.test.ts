@@ -86,7 +86,10 @@ describe('memory/parser', () => {
     it('should return empty array when file does not exist', async () => {
       vi.mocked(fileExists).mockResolvedValue(false);
 
-      const result = await parseMemoryFile<TestDecision>('/nonexistent/file.md', decisionParser);
+      const result = await parseMemoryFile<TestDecision>(
+        '/nonexistent/file.md',
+        decisionParser
+      );
 
       expect(result).toEqual([]);
       expect(fileExists).toHaveBeenCalledWith('/nonexistent/file.md');
@@ -105,7 +108,10 @@ Type safety is important
       await fs.writeFile(filePath, content);
       vi.mocked(fileExists).mockResolvedValue(true);
 
-      const result = await parseMemoryFile<TestDecision>(filePath, decisionParser);
+      const result = await parseMemoryFile<TestDecision>(
+        filePath,
+        decisionParser
+      );
 
       expect(result.length).toBe(1);
       expect(result[0].title).toBe('Use TypeScript');
@@ -188,7 +194,11 @@ Second pattern description
     });
 
     describe('inline field parsing', () => {
-      const inlineParser: SectionParser<{ title: string; date: string; status: string }> = {
+      const inlineParser: SectionParser<{
+        title: string;
+        date: string;
+        status: string;
+      }> = {
         primaryField: 'title',
         fields: {
           date: 'inline',
@@ -240,7 +250,11 @@ Second pattern description
     });
 
     describe('text field parsing', () => {
-      const textParser: SectionParser<{ title: string; description: string; notes: string }> = {
+      const textParser: SectionParser<{
+        title: string;
+        description: string;
+        notes: string;
+      }> = {
         primaryField: 'title',
         fields: {
           description: 'text',
@@ -260,7 +274,9 @@ Line three of description
 `;
         const result = parseMemoryContent(content, textParser);
 
-        expect(result[0].description).toBe('Line one of description Line two of description Line three of description');
+        expect(result[0].description).toBe(
+          'Line one of description Line two of description Line three of description'
+        );
       });
 
       it('should handle text fields with empty lines', () => {
@@ -297,7 +313,11 @@ The notes text
     });
 
     describe('list field parsing', () => {
-      const listParser: SectionParser<{ title: string; items: string[]; tags: string[] }> = {
+      const listParser: SectionParser<{
+        title: string;
+        items: string[];
+        tags: string[];
+      }> = {
         primaryField: 'title',
         fields: {
           items: 'list',
@@ -447,7 +467,10 @@ Some notes here
         // 1. Opening ``` toggles inCodeBlock to true, but doesn't add to codeContent (not a code field)
         // 2. Lines inside code block are skipped
         // 3. Closing ``` overwrites currentSection with empty codeContent and resets currentSection
-        const textOnlyParser: SectionParser<{ title: string; description: string }> = {
+        const textOnlyParser: SectionParser<{
+          title: string;
+          description: string;
+        }> = {
           primaryField: 'title',
           fields: {
             description: 'text',
@@ -634,12 +657,13 @@ Some reason
       });
 
       it('should work without transform function', () => {
-        const noTransformParser: SectionParser<{ name: string; date: string }> = {
-          primaryField: 'name',
-          fields: {
-            date: 'inline',
-          },
-        };
+        const noTransformParser: SectionParser<{ name: string; date: string }> =
+          {
+            primaryField: 'name',
+            fields: {
+              date: 'inline',
+            },
+          };
 
         const content = `# Items
 
@@ -676,7 +700,10 @@ Some reason
         const result = parseMemoryContent(content, throwingParser);
 
         expect(result).toEqual([]);
-        expect(debug).toHaveBeenCalledWith('Skipping malformed memory entry', expect.any(Object));
+        expect(debug).toHaveBeenCalledWith(
+          'Skipping malformed memory entry',
+          expect.any(Object)
+        );
       });
 
       it('should continue parsing after error in one entry', () => {

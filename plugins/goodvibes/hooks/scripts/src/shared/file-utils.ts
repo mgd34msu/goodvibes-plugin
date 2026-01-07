@@ -70,7 +70,10 @@ export async function fileExists(filePath: string): Promise<boolean> {
  *   console.log('Source file found');
  * }
  */
-export async function fileExistsRelative(filePath: string, baseDir: string = PROJECT_ROOT): Promise<boolean> {
+export async function fileExistsRelative(
+  filePath: string,
+  baseDir: string = PROJECT_ROOT
+): Promise<boolean> {
   return fileExists(path.resolve(baseDir, filePath));
 }
 
@@ -132,7 +135,10 @@ export function commandExists(cmd: string): boolean {
  *   console.error('Missing registries:', result.missing.join(', '));
  * }
  */
-export async function validateRegistries(): Promise<{ valid: boolean; missing: string[] }> {
+export async function validateRegistries(): Promise<{
+  valid: boolean;
+  missing: string[];
+}> {
   const registries = [
     'skills/_registry.yaml',
     'agents/_registry.yaml',
@@ -142,10 +148,10 @@ export async function validateRegistries(): Promise<{ valid: boolean; missing: s
   const results = await Promise.all(
     registries.map(async (reg) => ({
       reg,
-      exists: await fileExists(path.join(PLUGIN_ROOT, reg))
+      exists: await fileExists(path.join(PLUGIN_ROOT, reg)),
     }))
   );
-  const missing = results.filter(r => !r.exists).map(r => r.reg);
+  const missing = results.filter((r) => !r.exists).map((r) => r.reg);
 
   return { valid: missing.length === 0, missing };
 }
@@ -199,7 +205,9 @@ export async function ensureGoodVibesDir(cwd: string): Promise<string> {
 // =============================================================================
 
 /** Type guard for exec errors with stdout/stderr buffers */
-function isExecError(error: unknown): error is { stdout?: Buffer; stderr?: Buffer; message?: string } {
+function isExecError(
+  error: unknown
+): error is { stdout?: Buffer; stderr?: Buffer; message?: string } {
   return error !== null && typeof error === 'object';
 }
 
@@ -222,7 +230,12 @@ function isExecError(error: unknown): error is { stdout?: Buffer; stderr?: Buffe
  */
 export function extractErrorOutput(error: unknown): string {
   if (isExecError(error)) {
-    return error.stdout?.toString() || error.stderr?.toString() || error.message || 'Unknown error';
+    return (
+      error.stdout?.toString() ||
+      error.stderr?.toString() ||
+      error.message ||
+      'Unknown error'
+    );
   }
   return String(error);
 }

@@ -67,7 +67,9 @@ describe('file-utils', () => {
     });
 
     it('should return false when file does not exist', async () => {
-      mockAccess.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+      mockAccess.mockRejectedValue(
+        new Error('ENOENT: no such file or directory')
+      );
 
       const { fileExists } = await import('../shared/file-utils.js');
       const result = await fileExists('/nonexistent/file.txt');
@@ -117,7 +119,9 @@ describe('file-utils', () => {
       const result = await fileExistsRelative('src/index.ts', customBase);
 
       expect(result).toBe(true);
-      expect(mockAccess).toHaveBeenCalledWith(path.resolve(customBase, 'src/index.ts'));
+      expect(mockAccess).toHaveBeenCalledWith(
+        path.resolve(customBase, 'src/index.ts')
+      );
     });
 
     it('should return false when relative file does not exist', async () => {
@@ -133,7 +137,10 @@ describe('file-utils', () => {
       mockAccess.mockResolvedValue(undefined);
 
       const { fileExistsRelative } = await import('../shared/file-utils.js');
-      const result = await fileExistsRelative('deep/nested/path/file.ts', '/base');
+      const result = await fileExistsRelative(
+        'deep/nested/path/file.ts',
+        '/base'
+      );
 
       expect(result).toBe(true);
     });
@@ -165,7 +172,9 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockReturnValue(Buffer.from('C:\\Program Files\\Git\\cmd\\git.exe'));
+      mockExecSync.mockReturnValue(
+        Buffer.from('C:\\Program Files\\Git\\cmd\\git.exe')
+      );
 
       const { commandExists } = await import('../shared/file-utils.js');
       const result = commandExists('git');
@@ -345,11 +354,25 @@ describe('file-utils', () => {
 
       expect(result).toBe(path.join(cwd, '.goodvibes'));
       expect(mockMkdir).toHaveBeenCalledTimes(5); // main + 4 subdirs
-      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes'), { recursive: true });
-      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes', 'memory'), { recursive: true });
-      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes', 'state'), { recursive: true });
-      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes', 'logs'), { recursive: true });
-      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes', 'telemetry'), { recursive: true });
+      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes'), {
+        recursive: true,
+      });
+      expect(mockMkdir).toHaveBeenCalledWith(
+        path.join(cwd, '.goodvibes', 'memory'),
+        { recursive: true }
+      );
+      expect(mockMkdir).toHaveBeenCalledWith(
+        path.join(cwd, '.goodvibes', 'state'),
+        { recursive: true }
+      );
+      expect(mockMkdir).toHaveBeenCalledWith(
+        path.join(cwd, '.goodvibes', 'logs'),
+        { recursive: true }
+      );
+      expect(mockMkdir).toHaveBeenCalledWith(
+        path.join(cwd, '.goodvibes', 'telemetry'),
+        { recursive: true }
+      );
       expect(mockEnsureSecureGitignore).toHaveBeenCalledWith(cwd);
     });
 
@@ -375,7 +398,9 @@ describe('file-utils', () => {
       const result = await ensureGoodVibesDir(cwd);
 
       expect(result).toBe(path.join(cwd, '.goodvibes'));
-      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes'), { recursive: true });
+      expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.goodvibes'), {
+        recursive: true,
+      });
     });
 
     it('should create all subdirectories in correct order', async () => {
@@ -388,7 +413,7 @@ describe('file-utils', () => {
       await ensureGoodVibesDir(cwd);
 
       // Verify subdirectories were created
-      const mkdirCalls = mockMkdir.mock.calls.map(call => call[0]);
+      const mkdirCalls = mockMkdir.mock.calls.map((call) => call[0]);
       expect(mkdirCalls).toContain(path.join(cwd, '.goodvibes'));
       expect(mkdirCalls).toContain(path.join(cwd, '.goodvibes', 'memory'));
       expect(mkdirCalls).toContain(path.join(cwd, '.goodvibes', 'state'));
@@ -402,17 +427,23 @@ describe('file-utils', () => {
 
       const { ensureGoodVibesDir } = await import('../shared/file-utils.js');
 
-      await expect(ensureGoodVibesDir('/readonly')).rejects.toThrow('Permission denied');
+      await expect(ensureGoodVibesDir('/readonly')).rejects.toThrow(
+        'Permission denied'
+      );
     });
 
     it('should propagate ensureSecureGitignore errors', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       mockMkdir.mockResolvedValue(undefined);
-      mockEnsureSecureGitignore.mockRejectedValue(new Error('Gitignore write failed'));
+      mockEnsureSecureGitignore.mockRejectedValue(
+        new Error('Gitignore write failed')
+      );
 
       const { ensureGoodVibesDir } = await import('../shared/file-utils.js');
 
-      await expect(ensureGoodVibesDir('/test')).rejects.toThrow('Gitignore write failed');
+      await expect(ensureGoodVibesDir('/test')).rejects.toThrow(
+        'Gitignore write failed'
+      );
     });
   });
 

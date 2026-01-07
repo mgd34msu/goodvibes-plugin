@@ -21,7 +21,9 @@ describe('hook-workflow integration', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'goodvibes-workflow-test-'));
+    testDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'goodvibes-workflow-test-')
+    );
   });
 
   afterEach(() => {
@@ -172,9 +174,17 @@ describe('hook-workflow integration', () => {
 
       const failuresPath = path.join(stateDir, 'tool-failures.json');
 
-      fs.writeFileSync(failuresPath, JSON.stringify([
-        { tool: 'Bash', timestamp: new Date().toISOString(), error: 'Failed', retryCount: 1 },
-      ]));
+      fs.writeFileSync(
+        failuresPath,
+        JSON.stringify([
+          {
+            tool: 'Bash',
+            timestamp: new Date().toISOString(),
+            error: 'Failed',
+            retryCount: 1,
+          },
+        ])
+      );
 
       // Simulate successful recovery
       fs.writeFileSync(failuresPath, JSON.stringify([]));
@@ -235,7 +245,9 @@ describe('hook-workflow integration', () => {
 
       expect(fs.existsSync(telemetryPath)).toBe(true);
 
-      const updatedTracking = JSON.parse(fs.readFileSync(trackingPath, 'utf-8'));
+      const updatedTracking = JSON.parse(
+        fs.readFileSync(trackingPath, 'utf-8')
+      );
       expect(updatedTracking[agentId]).toBeUndefined();
     });
 
@@ -345,7 +357,7 @@ describe('hook-workflow integration', () => {
 
       // Simulate rapid updates
       const updates = ['/src/a.ts', '/src/b.ts', '/src/c.ts'];
-      updates.forEach(file => {
+      updates.forEach((file) => {
         const currentState = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
         currentState.files.modifiedThisSession.push(file);
         fs.writeFileSync(statePath, JSON.stringify(currentState));
@@ -381,7 +393,7 @@ describe('hook-workflow integration', () => {
 
       const loaded = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
 
-      requiredFields.forEach(field => {
+      requiredFields.forEach((field) => {
         expect(loaded[field]).toBeDefined();
       });
     });
@@ -402,7 +414,7 @@ describe('hook-workflow integration', () => {
         { event: 'subagent_complete', agent_id: 'agent-3', duration_ms: 1500 },
       ];
 
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         fs.appendFileSync(telemetryPath, JSON.stringify(entry) + '\n');
       });
 
@@ -411,8 +423,11 @@ describe('hook-workflow integration', () => {
 
       expect(lines).toHaveLength(3);
 
-      const parsed = lines.map(line => JSON.parse(line));
-      const totalDuration = parsed.reduce((sum, entry) => sum + entry.duration_ms, 0);
+      const parsed = lines.map((line) => JSON.parse(line));
+      const totalDuration = parsed.reduce(
+        (sum, entry) => sum + entry.duration_ms,
+        0
+      );
       expect(totalDuration).toBe(4500);
     });
 
@@ -423,8 +438,14 @@ describe('hook-workflow integration', () => {
       const jan2025 = path.join(telemetryDir, '2025-01.jsonl');
       const feb2025 = path.join(telemetryDir, '2025-02.jsonl');
 
-      fs.writeFileSync(jan2025, JSON.stringify({ event: 'test', month: 'jan' }) + '\n');
-      fs.writeFileSync(feb2025, JSON.stringify({ event: 'test', month: 'feb' }) + '\n');
+      fs.writeFileSync(
+        jan2025,
+        JSON.stringify({ event: 'test', month: 'jan' }) + '\n'
+      );
+      fs.writeFileSync(
+        feb2025,
+        JSON.stringify({ event: 'test', month: 'feb' }) + '\n'
+      );
 
       expect(fs.existsSync(jan2025)).toBe(true);
       expect(fs.existsSync(feb2025)).toBe(true);

@@ -100,7 +100,7 @@ export async function searchMemory(
         matchesKeywords(p.name) ||
         matchesKeywords(p.description) ||
         (p.example && matchesKeywords(p.example)) ||
-        (p.files && p.files.some(matchesKeywords))
+        p.files?.some(matchesKeywords)
     ),
     failures: memory.failures.filter(
       (f) =>

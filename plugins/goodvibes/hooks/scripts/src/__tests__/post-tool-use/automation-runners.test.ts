@@ -77,7 +77,8 @@ describe('automation-runners', () => {
 
   describe('maybeRunTests', () => {
     it('should skip tests when automation is disabled', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
       const { debug } = await import('../../shared/index.js');
 
       const config: GoodVibesConfig = {
@@ -88,7 +89,12 @@ describe('automation-runners', () => {
         },
       };
 
-      const result = await maybeRunTests(mockState, config, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        config,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(result.ran).toBe(false);
       expect(result.result).toBe(null);
@@ -97,7 +103,8 @@ describe('automation-runners', () => {
     });
 
     it('should skip tests when runAfterFileChange is disabled', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -111,7 +118,12 @@ describe('automation-runners', () => {
         },
       };
 
-      const result = await maybeRunTests(mockState, config, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        config,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(result.ran).toBe(false);
       expect(result.result).toBe(null);
@@ -119,9 +131,15 @@ describe('automation-runners', () => {
     });
 
     it('should skip test files with .test. in filename', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.test.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.test.ts',
+        '/project'
+      );
 
       expect(result.ran).toBe(false);
       expect(result.result).toBe(null);
@@ -129,9 +147,15 @@ describe('automation-runners', () => {
     });
 
     it('should skip test files with .spec. in filename', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.spec.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.spec.ts',
+        '/project'
+      );
 
       expect(result.ran).toBe(false);
       expect(result.result).toBe(null);
@@ -139,13 +163,20 @@ describe('automation-runners', () => {
     });
 
     it('should skip when no tests are found for the file', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile } =
+        await import('../../automation/test-runner.js');
       const { debug } = await import('../../shared/index.js');
 
       vi.mocked(findTestsForFile).mockReturnValue([]);
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(findTestsForFile).toHaveBeenCalledWith('/src/utils.ts');
       expect(debug).toHaveBeenCalledWith('No tests found for: /src/utils.ts');
@@ -154,8 +185,10 @@ describe('automation-runners', () => {
     });
 
     it('should run tests and update state when tests pass', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
       const { debug } = await import('../../shared/index.js');
 
@@ -169,11 +202,18 @@ describe('automation-runners', () => {
       vi.mocked(findTestsForFile).mockReturnValue(testFiles);
       vi.mocked(runTests).mockResolvedValue(testResult);
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(findTestsForFile).toHaveBeenCalledWith('/src/utils.ts');
       expect(runTests).toHaveBeenCalledWith(testFiles, '/project');
-      expect(debug).toHaveBeenCalledWith('Running tests for: /src/utils.ts', { testFiles });
+      expect(debug).toHaveBeenCalledWith('Running tests for: /src/utils.ts', {
+        testFiles,
+      });
       expect(result.ran).toBe(true);
       expect(result.result).toEqual(testResult);
 
@@ -186,8 +226,10 @@ describe('automation-runners', () => {
     });
 
     it('should deduplicate passing files when adding to state', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -195,7 +237,10 @@ describe('automation-runners', () => {
         tests: {
           lastFullRun: null,
           lastQuickRun: null,
-          passingFiles: ['/src/__tests__/utils.test.ts', '/src/__tests__/other.test.ts'],
+          passingFiles: [
+            '/src/__tests__/utils.test.ts',
+            '/src/__tests__/other.test.ts',
+          ],
           failingFiles: [],
           pendingFixes: [],
         },
@@ -208,18 +253,28 @@ describe('automation-runners', () => {
         summary: 'All tests passed',
       });
 
-      await maybeRunTests(stateWithExistingPassing, mockConfig, '/src/utils.ts', '/project');
+      await maybeRunTests(
+        stateWithExistingPassing,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(updateTestState).toHaveBeenCalledWith(stateWithExistingPassing, {
         lastQuickRun: expect.any(String),
-        passingFiles: expect.arrayContaining(['/src/__tests__/utils.test.ts', '/src/__tests__/other.test.ts']),
+        passingFiles: expect.arrayContaining([
+          '/src/__tests__/utils.test.ts',
+          '/src/__tests__/other.test.ts',
+        ]),
         failingFiles: [],
       });
     });
 
     it('should remove from failing files when tests pass', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -240,15 +295,22 @@ describe('automation-runners', () => {
         summary: 'All tests passed',
       });
 
-      await maybeRunTests(stateWithFailingFile, mockConfig, '/src/utils.ts', '/project');
+      await maybeRunTests(
+        stateWithFailingFile,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       const updateCall = vi.mocked(updateTestState).mock.calls[0];
       expect(updateCall[1].failingFiles).toEqual([]);
     });
 
     it('should run tests and update state when tests fail', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -266,7 +328,12 @@ describe('automation-runners', () => {
       vi.mocked(findTestsForFile).mockReturnValue(testFiles);
       vi.mocked(runTests).mockResolvedValue(testResult);
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(result.ran).toBe(true);
       expect(result.result).toEqual(testResult);
@@ -287,8 +354,10 @@ describe('automation-runners', () => {
     });
 
     it('should deduplicate failing files when adding to state', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -297,7 +366,10 @@ describe('automation-runners', () => {
           lastFullRun: null,
           lastQuickRun: null,
           passingFiles: [],
-          failingFiles: ['/src/__tests__/utils.test.ts', '/src/__tests__/other.test.ts'],
+          failingFiles: [
+            '/src/__tests__/utils.test.ts',
+            '/src/__tests__/other.test.ts',
+          ],
           pendingFixes: [],
         },
       });
@@ -314,19 +386,29 @@ describe('automation-runners', () => {
         summary: '1 test failed',
       });
 
-      await maybeRunTests(stateWithExistingFailing, mockConfig, '/src/utils.ts', '/project');
+      await maybeRunTests(
+        stateWithExistingFailing,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(updateTestState).toHaveBeenCalledWith(stateWithExistingFailing, {
         lastQuickRun: expect.any(String),
-        failingFiles: expect.arrayContaining(['/src/__tests__/utils.test.ts', '/src/__tests__/other.test.ts']),
+        failingFiles: expect.arrayContaining([
+          '/src/__tests__/utils.test.ts',
+          '/src/__tests__/other.test.ts',
+        ]),
         passingFiles: [],
         pendingFixes: expect.any(Array),
       });
     });
 
     it('should remove from passing files when tests fail', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -352,18 +434,28 @@ describe('automation-runners', () => {
         summary: '1 test failed',
       });
 
-      await maybeRunTests(stateWithPassingFile, mockConfig, '/src/utils.ts', '/project');
+      await maybeRunTests(
+        stateWithPassingFile,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       const updateCall = vi.mocked(updateTestState).mock.calls[0];
       expect(updateCall[1].passingFiles).toEqual([]);
     });
 
     it('should handle multiple test failures', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { updateTestState } = await import('../../state.js');
 
-      const testFiles = ['/src/__tests__/utils.test.ts', '/src/__tests__/helpers.test.ts'];
+      const testFiles = [
+        '/src/__tests__/utils.test.ts',
+        '/src/__tests__/helpers.test.ts',
+      ];
       const testResult = {
         passed: false,
         failures: [
@@ -404,8 +496,10 @@ describe('automation-runners', () => {
     });
 
     it('should handle errors from runTests and log them', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { logError } = await import('../../shared/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -414,7 +508,12 @@ describe('automation-runners', () => {
       vi.mocked(findTestsForFile).mockReturnValue(testFiles);
       vi.mocked(runTests).mockRejectedValue(error);
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(logError).toHaveBeenCalledWith('maybeRunTests', error);
       expect(result.ran).toBe(false);
@@ -423,8 +522,10 @@ describe('automation-runners', () => {
     });
 
     it('should handle non-Error exceptions', async () => {
-      const { maybeRunTests } = await import('../../post-tool-use/automation-runners.js');
-      const { findTestsForFile, runTests } = await import('../../automation/test-runner.js');
+      const { maybeRunTests } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { findTestsForFile, runTests } =
+        await import('../../automation/test-runner.js');
       const { logError } = await import('../../shared/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -432,7 +533,12 @@ describe('automation-runners', () => {
       vi.mocked(findTestsForFile).mockReturnValue(testFiles);
       vi.mocked(runTests).mockRejectedValue('String error');
 
-      const result = await maybeRunTests(mockState, mockConfig, '/src/utils.ts', '/project');
+      const result = await maybeRunTests(
+        mockState,
+        mockConfig,
+        '/src/utils.ts',
+        '/project'
+      );
 
       expect(logError).toHaveBeenCalledWith('maybeRunTests', 'String error');
       expect(result.ran).toBe(false);
@@ -442,7 +548,8 @@ describe('automation-runners', () => {
 
   describe('maybeRunBuild', () => {
     it('should skip build when automation is disabled', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -460,8 +567,10 @@ describe('automation-runners', () => {
     });
 
     it('should skip build when modified count is below threshold', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { debug } = await import('../../shared/index.js');
 
       vi.mocked(getModifiedFileCount).mockReturnValue(3);
@@ -469,14 +578,18 @@ describe('automation-runners', () => {
       const result = await maybeRunBuild(mockState, mockConfig, '/project');
 
       expect(getModifiedFileCount).toHaveBeenCalledWith(mockState);
-      expect(debug).toHaveBeenCalledWith('Build skipped: 3 files modified (threshold: 5)');
+      expect(debug).toHaveBeenCalledWith(
+        'Build skipped: 3 files modified (threshold: 5)'
+      );
       expect(result.ran).toBe(false);
       expect(result.result).toBe(null);
     });
 
     it('should skip build when modified count equals threshold minus one', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
 
       vi.mocked(getModifiedFileCount).mockReturnValue(4);
 
@@ -487,8 +600,10 @@ describe('automation-runners', () => {
     });
 
     it('should run build when modified count equals threshold', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { updateBuildState } = await import('../../state.js');
       const { debug } = await import('../../shared/index.js');
@@ -502,7 +617,9 @@ describe('automation-runners', () => {
 
       const result = await maybeRunBuild(mockState, mockConfig, '/project');
 
-      expect(debug).toHaveBeenCalledWith('Running typecheck after 5 file modifications');
+      expect(debug).toHaveBeenCalledWith(
+        'Running typecheck after 5 file modifications'
+      );
       expect(runTypeCheck).toHaveBeenCalledWith('/project');
       expect(result.ran).toBe(true);
       expect(result.result).toEqual({
@@ -520,8 +637,10 @@ describe('automation-runners', () => {
     });
 
     it('should run build when modified count exceeds threshold', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { debug } = await import('../../shared/index.js');
 
@@ -534,13 +653,17 @@ describe('automation-runners', () => {
 
       const result = await maybeRunBuild(mockState, mockConfig, '/project');
 
-      expect(debug).toHaveBeenCalledWith('Running typecheck after 10 file modifications');
+      expect(debug).toHaveBeenCalledWith(
+        'Running typecheck after 10 file modifications'
+      );
       expect(result.ran).toBe(true);
     });
 
     it('should update state with passing status when build passes', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { updateBuildState } = await import('../../state.js');
 
@@ -562,8 +685,10 @@ describe('automation-runners', () => {
     });
 
     it('should update state with failing status and increment fixAttempts when build fails', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { updateBuildState } = await import('../../state.js');
 
@@ -598,8 +723,10 @@ describe('automation-runners', () => {
     });
 
     it('should reset fixAttempts to 0 when build passes after previous failures', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { updateBuildState } = await import('../../state.js');
 
@@ -630,8 +757,10 @@ describe('automation-runners', () => {
     });
 
     it('should handle errors from runTypeCheck and log them', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { logError } = await import('../../shared/index.js');
 
@@ -649,8 +778,10 @@ describe('automation-runners', () => {
     });
 
     it('should handle non-Error exceptions from runTypeCheck', async () => {
-      const { maybeRunBuild } = await import('../../post-tool-use/automation-runners.js');
-      const { getModifiedFileCount } = await import('../../post-tool-use/file-tracker.js');
+      const { maybeRunBuild } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { getModifiedFileCount } =
+        await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
       const { logError } = await import('../../shared/index.js');
 
@@ -667,8 +798,10 @@ describe('automation-runners', () => {
 
   describe('maybeCreateCheckpoint', () => {
     it('should skip checkpoint when automation is disabled', async () => {
-      const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { maybeCreateCheckpoint } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -687,8 +820,10 @@ describe('automation-runners', () => {
     });
 
     it('should skip checkpoint when autoCheckpoint is disabled', async () => {
-      const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { maybeCreateCheckpoint } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -710,12 +845,15 @@ describe('automation-runners', () => {
     });
 
     it('should create checkpoint when both automation and autoCheckpoint are enabled', async () => {
-      const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { maybeCreateCheckpoint } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
       const checkpointResult = {
         created: true,
-        message: 'checkpoint: pre-compact: saving work before context compaction',
+        message:
+          'checkpoint: pre-compact: saving work before context compaction',
         state: {
           ...mockState,
           git: {
@@ -727,17 +865,28 @@ describe('automation-runners', () => {
 
       vi.mocked(createCheckpointIfNeeded).mockResolvedValue(checkpointResult);
 
-      const result = await maybeCreateCheckpoint(mockState, mockConfig, '/project');
+      const result = await maybeCreateCheckpoint(
+        mockState,
+        mockConfig,
+        '/project'
+      );
 
-      expect(createCheckpointIfNeeded).toHaveBeenCalledWith(mockState, '/project');
+      expect(createCheckpointIfNeeded).toHaveBeenCalledWith(
+        mockState,
+        '/project'
+      );
       expect(result.created).toBe(true);
-      expect(result.message).toBe('checkpoint: pre-compact: saving work before context compaction');
+      expect(result.message).toBe(
+        'checkpoint: pre-compact: saving work before context compaction'
+      );
       expect(result.state).toEqual(checkpointResult.state);
     });
 
     it('should return result when checkpoint is not created', async () => {
-      const { maybeCreateCheckpoint } = await import('../../post-tool-use/automation-runners.js');
-      const { createCheckpointIfNeeded } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { maybeCreateCheckpoint } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
       const checkpointResult = {
         created: false,
@@ -747,7 +896,11 @@ describe('automation-runners', () => {
 
       vi.mocked(createCheckpointIfNeeded).mockResolvedValue(checkpointResult);
 
-      const result = await maybeCreateCheckpoint(mockState, mockConfig, '/project');
+      const result = await maybeCreateCheckpoint(
+        mockState,
+        mockConfig,
+        '/project'
+      );
 
       expect(result.created).toBe(false);
       expect(result.message).toBe('');
@@ -757,8 +910,10 @@ describe('automation-runners', () => {
 
   describe('maybeCreateBranch', () => {
     it('should skip branch creation when automation is disabled', async () => {
-      const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
+      const { maybeCreateBranch } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -776,8 +931,10 @@ describe('automation-runners', () => {
     });
 
     it('should skip branch creation when autoFeatureBranch is disabled', async () => {
-      const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
+      const { maybeCreateBranch } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const config: GoodVibesConfig = {
         ...mockConfig,
@@ -799,8 +956,10 @@ describe('automation-runners', () => {
     });
 
     it('should create branch when both automation and autoFeatureBranch are enabled', async () => {
-      const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
+      const { maybeCreateBranch } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const branchResult = {
         created: true,
@@ -811,14 +970,19 @@ describe('automation-runners', () => {
 
       const result = await maybeCreateBranch(mockState, mockConfig, '/project');
 
-      expect(maybeCreateFeatureBranch).toHaveBeenCalledWith(mockState, '/project');
+      expect(maybeCreateFeatureBranch).toHaveBeenCalledWith(
+        mockState,
+        '/project'
+      );
       expect(result.created).toBe(true);
       expect(result.branchName).toBe('feature/add-user-authentication');
     });
 
     it('should return result when branch is not created', async () => {
-      const { maybeCreateBranch } = await import('../../post-tool-use/automation-runners.js');
-      const { maybeCreateFeatureBranch } = await import('../../post-tool-use/git-branch-manager.js');
+      const { maybeCreateBranch } =
+        await import('../../post-tool-use/automation-runners.js');
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const branchResult = {
         created: false,

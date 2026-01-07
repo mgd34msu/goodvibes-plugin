@@ -34,7 +34,9 @@ export interface TranscriptData {
  * console.log('Files:', data.filesModified); // ['/src/index.ts']
  * console.log('Summary:', data.summary); // 'I have completed the changes...'
  */
-export async function parseTranscript(transcriptPath: string): Promise<TranscriptData> {
+export async function parseTranscript(
+  transcriptPath: string
+): Promise<TranscriptData> {
   const toolsUsed = new Set<string>();
   const filesModified: string[] = [];
   let lastAssistantMessage = '';
@@ -49,15 +51,19 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
         if (event.type === 'tool_use') {
           toolsUsed.add(event.name);
-          if (['Write', 'Edit'].includes(event.name) && event.input?.file_path) {
+          if (
+            ['Write', 'Edit'].includes(event.name) &&
+            event.input?.file_path
+          ) {
             filesModified.push(event.input.file_path);
           }
         }
 
         if (event.role === 'assistant' && event.content) {
-          lastAssistantMessage = typeof event.content === 'string'
-            ? event.content
-            : JSON.stringify(event.content);
+          lastAssistantMessage =
+            typeof event.content === 'string'
+              ? event.content
+              : JSON.stringify(event.content);
         }
       } catch (error: unknown) {
         debug('parseTranscript line parse failed', { error: String(error) });

@@ -27,9 +27,24 @@ export const CHECKPOINT_TRIGGERS = {
 
 /** Default quality gate checks with auto-fix commands. */
 export const QUALITY_GATES = [
-  { name: 'TypeScript', check: 'npx tsc --noEmit', autoFix: null, blocking: true },
-  { name: 'ESLint', check: 'npx eslint . --max-warnings=0', autoFix: 'npx eslint . --fix', blocking: true },
-  { name: 'Prettier', check: 'npx prettier --check .', autoFix: 'npx prettier --write .', blocking: false },
+  {
+    name: 'TypeScript',
+    check: 'npx tsc --noEmit',
+    autoFix: null,
+    blocking: true,
+  },
+  {
+    name: 'ESLint',
+    check: 'npx eslint . --max-warnings=0',
+    autoFix: 'npx eslint . --fix',
+    blocking: true,
+  },
+  {
+    name: 'Prettier',
+    check: 'npx prettier --check .',
+    autoFix: 'npx prettier --write .',
+    blocking: false,
+  },
   { name: 'Tests', check: 'npm test', autoFix: null, blocking: true },
 ];
 
@@ -105,8 +120,15 @@ export function getDefaultSharedConfig(): SharedConfig {
 function deepMerge<T extends object>(target: T, source: Partial<T>): T {
   const result = { ...target };
   for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(result[key] as object, source[key] as object) as T[typeof key];
+    if (
+      source[key] &&
+      typeof source[key] === 'object' &&
+      !Array.isArray(source[key])
+    ) {
+      result[key] = deepMerge(
+        result[key] as object,
+        source[key] as object
+      ) as T[typeof key];
     } else if (source[key] !== undefined) {
       result[key] = source[key] as T[typeof key];
     }

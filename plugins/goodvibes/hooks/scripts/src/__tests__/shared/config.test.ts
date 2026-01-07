@@ -173,7 +173,11 @@ describe('config', () => {
 
   describe('loadSharedConfig', () => {
     const mockCwd = '/mock/project';
-    const expectedConfigPath = path.join(mockCwd, '.goodvibes', 'settings.json');
+    const expectedConfigPath = path.join(
+      mockCwd,
+      '.goodvibes',
+      'settings.json'
+    );
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -276,7 +280,12 @@ describe('config', () => {
       vi.mocked(fileExists).mockResolvedValue(true);
 
       const customGates = [
-        { name: 'Custom', check: 'custom check', autoFix: null, blocking: true },
+        {
+          name: 'Custom',
+          check: 'custom check',
+          autoFix: null,
+          blocking: true,
+        },
       ];
 
       const userConfig = {
@@ -494,9 +503,7 @@ describe('config', () => {
 
       const userConfig = {
         quality: {
-          gates: [
-            { name: '', check: '', autoFix: '', blocking: false },
-          ],
+          gates: [{ name: '', check: '', autoFix: '', blocking: false }],
         },
       };
 

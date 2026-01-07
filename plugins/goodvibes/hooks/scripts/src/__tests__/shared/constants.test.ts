@@ -144,7 +144,8 @@ describe('constants', () => {
       process.env.CLAUDE_PLUGIN_ROOT = '/test/plugin';
       vi.resetModules();
 
-      const { CACHE_DIR, PLUGIN_ROOT } = await import('../../shared/constants.js');
+      const { CACHE_DIR, PLUGIN_ROOT } =
+        await import('../../shared/constants.js');
 
       expect(CACHE_DIR).toBe(path.join(PLUGIN_ROOT, '.cache'));
       expect(CACHE_DIR).toBe(path.join('/test/plugin', '.cache'));
@@ -166,10 +167,13 @@ describe('constants', () => {
       process.env.CLAUDE_PLUGIN_ROOT = '/test/plugin';
       vi.resetModules();
 
-      const { ANALYTICS_FILE, CACHE_DIR } = await import('../../shared/constants.js');
+      const { ANALYTICS_FILE, CACHE_DIR } =
+        await import('../../shared/constants.js');
 
       expect(ANALYTICS_FILE).toBe(path.join(CACHE_DIR, 'analytics.json'));
-      expect(ANALYTICS_FILE).toBe(path.join('/test/plugin', '.cache', 'analytics.json'));
+      expect(ANALYTICS_FILE).toBe(
+        path.join('/test/plugin', '.cache', 'analytics.json')
+      );
     });
 
     it('should use fallback paths when env vars not set', async () => {
@@ -180,7 +184,9 @@ describe('constants', () => {
 
       const expectedPluginRoot = path.resolve(process.cwd(), '..');
       const expectedCacheDir = path.join(expectedPluginRoot, '.cache');
-      expect(ANALYTICS_FILE).toBe(path.join(expectedCacheDir, 'analytics.json'));
+      expect(ANALYTICS_FILE).toBe(
+        path.join(expectedCacheDir, 'analytics.json')
+      );
     });
   });
 
@@ -190,9 +196,8 @@ describe('constants', () => {
       process.env.CLAUDE_PROJECT_DIR = '/root/project';
       vi.resetModules();
 
-      const { PLUGIN_ROOT, PROJECT_ROOT, CACHE_DIR, ANALYTICS_FILE } = await import(
-        '../../shared/constants.js'
-      );
+      const { PLUGIN_ROOT, PROJECT_ROOT, CACHE_DIR, ANALYTICS_FILE } =
+        await import('../../shared/constants.js');
 
       // Verify CACHE_DIR contains .cache segment after PLUGIN_ROOT
       expect(CACHE_DIR).toBe(path.join(PLUGIN_ROOT, '.cache'));

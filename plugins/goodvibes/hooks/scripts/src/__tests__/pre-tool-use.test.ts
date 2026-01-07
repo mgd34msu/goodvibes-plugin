@@ -15,7 +15,15 @@
  * - Error handling and edge cases
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from 'vitest';
 import type { HookInput } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
 import type { GateResult } from '../pre-tool-use/quality-gates.js';
@@ -284,7 +292,9 @@ describe('pre-tool-use hook', () => {
         'Git commit detected, running quality gates',
         expect.anything()
       );
-      expect(mockDebug).toHaveBeenCalledWith('Quality gates disabled for commits');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Quality gates disabled for commits'
+      );
       expect(mockAllowTool).toHaveBeenCalledWith('PreToolUse');
       expect(mockRespond).toHaveBeenCalled();
       // Quality gates should NOT have been run since they're disabled
@@ -422,12 +432,17 @@ describe('pre-tool-use hook', () => {
         // Expected due to respond throwing
       }
 
-      expect(mockBlockTool).toHaveBeenCalledWith('PreToolUse', 'Git operation blocked');
+      expect(mockBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
+        'Git operation blocked'
+      );
     });
 
     it('should check merge readiness for merge commands', async () => {
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(true);
       mockCheckMergeReadiness.mockReturnValue({
         allowed: false,
@@ -452,7 +467,9 @@ describe('pre-tool-use hook', () => {
 
     it('should use default reason when merge guard reason is undefined', async () => {
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(true);
       mockCheckMergeReadiness.mockReturnValue({
         allowed: false,
@@ -472,7 +489,9 @@ describe('pre-tool-use hook', () => {
 
     it('should allow merge with warning when merge guard has warning', async () => {
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(true);
       mockCheckMergeReadiness.mockReturnValue({
         allowed: true,
@@ -492,7 +511,9 @@ describe('pre-tool-use hook', () => {
 
     it('should allow merge without warning when merge guard has no warning', async () => {
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(true);
       mockCheckMergeReadiness.mockReturnValue({
         allowed: true,
@@ -534,7 +555,9 @@ describe('pre-tool-use hook', () => {
 
     it('should allow git command when all guards pass', async () => {
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(false);
 
       const { handleGitCommand } = await import('../pre-tool-use.js');
@@ -551,7 +574,9 @@ describe('pre-tool-use hook', () => {
 
     it('should use process.cwd() when input.cwd is undefined', async () => {
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(false);
       process.cwd = vi.fn(() => '/fallback/cwd');
 
@@ -611,7 +636,9 @@ describe('pre-tool-use hook', () => {
       mockIsCommitCommand.mockReturnValue(false);
       mockIsGitCommand.mockReturnValue(true);
       mockLoadState.mockResolvedValue(createHooksState());
-      mockCheckBranchGuard.mockResolvedValue({ allowed: true } as GitGuardResult);
+      mockCheckBranchGuard.mockResolvedValue({
+        allowed: true,
+      } as GitGuardResult);
       mockIsMergeCommand.mockReturnValue(false);
 
       const { handleBashTool } = await import('../pre-tool-use.js');
@@ -804,7 +831,9 @@ describe('pre-tool-use hook', () => {
 
     it('should allow when pnpm lockfile exists', async () => {
       mockFileExists.mockImplementation((path: string) => {
-        return Promise.resolve(path.endsWith('package.json') || path.endsWith('pnpm-lock.yaml'));
+        return Promise.resolve(
+          path.endsWith('package.json') || path.endsWith('pnpm-lock.yaml')
+        );
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -821,7 +850,9 @@ describe('pre-tool-use hook', () => {
 
     it('should allow when yarn lockfile exists', async () => {
       mockFileExists.mockImplementation((path: string) => {
-        return Promise.resolve(path.endsWith('package.json') || path.endsWith('yarn.lock'));
+        return Promise.resolve(
+          path.endsWith('package.json') || path.endsWith('yarn.lock')
+        );
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -838,7 +869,9 @@ describe('pre-tool-use hook', () => {
 
     it('should allow when npm lockfile exists', async () => {
       mockFileExists.mockImplementation((path: string) => {
-        return Promise.resolve(path.endsWith('package.json') || path.endsWith('package-lock.json'));
+        return Promise.resolve(
+          path.endsWith('package.json') || path.endsWith('package-lock.json')
+        );
       });
 
       const { validateRunSmokeTest } = await import('../pre-tool-use.js');
@@ -1100,7 +1133,10 @@ describe('pre-tool-use hook', () => {
         // Expected due to respond throwing
       }
 
-      expect(mockLogError).toHaveBeenCalledWith('PreToolUse main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'PreToolUse main',
+        expect.any(Error)
+      );
       expect(mockAllowTool).toHaveBeenCalledWith(
         'PreToolUse',
         'Hook error: Failed to read input'
@@ -1118,8 +1154,14 @@ describe('pre-tool-use hook', () => {
         // Expected due to respond throwing
       }
 
-      expect(mockLogError).toHaveBeenCalledWith('PreToolUse main', 'string error');
-      expect(mockAllowTool).toHaveBeenCalledWith('PreToolUse', 'Hook error: string error');
+      expect(mockLogError).toHaveBeenCalledWith(
+        'PreToolUse main',
+        'string error'
+      );
+      expect(mockAllowTool).toHaveBeenCalledWith(
+        'PreToolUse',
+        'Hook error: string error'
+      );
     });
   });
 });

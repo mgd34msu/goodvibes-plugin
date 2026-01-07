@@ -13,8 +13,11 @@
 import * as path from 'path';
 import type { HooksState } from '../types/state.js';
 import { loadState } from '../state.js';
-import { hasUncommittedChanges, getUncommittedFiles } from '../automation/git-operations.js';
-import {fileExists} from '../shared/index.js';
+import {
+  hasUncommittedChanges,
+  getUncommittedFiles,
+} from '../automation/git-operations.js';
+import { fileExists } from '../shared/index.js';
 
 /** Information about a potential crash recovery scenario */
 export interface RecoveryInfo {
@@ -58,7 +61,12 @@ export async function checkCrashRecovery(cwd: string): Promise<RecoveryInfo> {
   const failingBuild = state.build.status === 'failing';
   const hasModifiedFiles = state.files.modifiedSinceCheckpoint.length > 0;
 
-  const needsRecovery = uncommitted || onFeatureBranch || hasPendingFixes || failingBuild || hasModifiedFiles;
+  const needsRecovery =
+    uncommitted ||
+    onFeatureBranch ||
+    hasPendingFixes ||
+    failingBuild ||
+    hasModifiedFiles;
 
   if (!needsRecovery) {
     return {
@@ -94,7 +102,9 @@ export async function checkCrashRecovery(cwd: string): Promise<RecoveryInfo> {
 
 /** Formats recovery information into a human-readable context string */
 export function formatRecoveryContext(info: RecoveryInfo): string {
-  if (!info.needsRecovery) return '';
+  if (!info.needsRecovery) {
+    return '';
+  }
 
   const parts: string[] = [
     '[GoodVibes Recovery]',

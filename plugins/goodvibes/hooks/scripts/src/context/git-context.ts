@@ -36,7 +36,12 @@ export interface GitContext {
  */
 function execGit(command: string, cwd: string): string | null {
   try {
-    return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
+    return execSync(command, {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 30000,
+    }).trim();
   } catch (error: unknown) {
     // Git command failed - this is expected for some operations (e.g., no upstream)
     debug(`git-context: Git command failed: ${command}`, error);
@@ -126,7 +131,9 @@ export async function getGitContext(cwd: string): Promise<GitContext> {
  * // Returns: "Git: main branch, 3 uncommitted files, 2 ahead\nLast: \"fix: bug\" (2 hours ago)"
  */
 export function formatGitContext(context: GitContext): string {
-  if (!context.isRepo) return 'Git: Not a git repository';
+  if (!context.isRepo) {
+    return 'Git: Not a git repository';
+  }
 
   const parts: string[] = [];
   parts.push(`Git: ${context.branch || GIT_DETACHED_HEAD} branch`);
@@ -136,8 +143,12 @@ export function formatGitContext(context: GitContext): string {
   }
 
   if (context.aheadBehind) {
-    if (context.aheadBehind.ahead > 0) parts.push(`${context.aheadBehind.ahead} ahead`);
-    if (context.aheadBehind.behind > 0) parts.push(`${context.aheadBehind.behind} behind`);
+    if (context.aheadBehind.ahead > 0) {
+      parts.push(`${context.aheadBehind.ahead} ahead`);
+    }
+    if (context.aheadBehind.behind > 0) {
+      parts.push(`${context.aheadBehind.behind} behind`);
+    }
   }
 
   if (context.lastCommit) {

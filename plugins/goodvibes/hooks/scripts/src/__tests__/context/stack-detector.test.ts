@@ -155,7 +155,10 @@ describe('stack-detector', () => {
 
       it('should detect Prisma via prisma/schema.prisma', async () => {
         vi.mocked(fileExists).mockImplementation(async (path: string) => {
-          return path.includes('prisma/schema.prisma') || path.includes('prisma\\schema.prisma');
+          return (
+            path.includes('prisma/schema.prisma') ||
+            path.includes('prisma\\schema.prisma')
+          );
         });
 
         const result = await detectStack(mockCwd);
@@ -247,9 +250,15 @@ describe('stack-detector', () => {
 
       it('should detect multiple frameworks', async () => {
         vi.mocked(fileExists).mockImplementation(async (path: string) => {
-          if (path.includes('next.config')) return true;
-          if (path.includes('tailwind.config')) return true;
-          if (path.includes('tsconfig.json')) return true;
+          if (path.includes('next.config')) {
+            return true;
+          }
+          if (path.includes('tailwind.config')) {
+            return true;
+          }
+          if (path.includes('tsconfig.json')) {
+            return true;
+          }
           return false;
         });
         vi.mocked(fs.readFile).mockResolvedValue('{}');
@@ -321,8 +330,12 @@ describe('stack-detector', () => {
 
       it('should prefer first lockfile found (pnpm over yarn)', async () => {
         vi.mocked(fileExists).mockImplementation(async (path: string) => {
-          if (path.includes('pnpm-lock.yaml')) return true;
-          if (path.includes('yarn.lock')) return true;
+          if (path.includes('pnpm-lock.yaml')) {
+            return true;
+          }
+          if (path.includes('yarn.lock')) {
+            return true;
+          }
           return false;
         });
 
@@ -337,11 +350,13 @@ describe('stack-detector', () => {
         vi.mocked(fileExists).mockImplementation(async (path: string) => {
           return path.includes('tsconfig.json');
         });
-        vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
-          compilerOptions: {
-            strict: true,
-          },
-        }));
+        vi.mocked(fs.readFile).mockResolvedValue(
+          JSON.stringify({
+            compilerOptions: {
+              strict: true,
+            },
+          })
+        );
 
         const result = await detectStack(mockCwd);
 
@@ -353,9 +368,11 @@ describe('stack-detector', () => {
         vi.mocked(fileExists).mockImplementation(async (path: string) => {
           return path.includes('tsconfig.json');
         });
-        vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
-          compilerOptions: {},
-        }));
+        vi.mocked(fs.readFile).mockResolvedValue(
+          JSON.stringify({
+            compilerOptions: {},
+          })
+        );
 
         const result = await detectStack(mockCwd);
 
@@ -367,11 +384,13 @@ describe('stack-detector', () => {
         vi.mocked(fileExists).mockImplementation(async (path: string) => {
           return path.includes('tsconfig.json');
         });
-        vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
-          compilerOptions: {
-            strict: false,
-          },
-        }));
+        vi.mocked(fs.readFile).mockResolvedValue(
+          JSON.stringify({
+            compilerOptions: {
+              strict: false,
+            },
+          })
+        );
 
         const result = await detectStack(mockCwd);
 
@@ -801,7 +820,7 @@ describe('stack-detector', () => {
     it('should handle concurrent calls to same cwd', async () => {
       vi.mocked(fileExists).mockImplementation(async () => {
         // Simulate async delay
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         return false;
       });
 

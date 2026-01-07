@@ -272,7 +272,10 @@ export function getErrorState(
  * @example
  * const newState = initializeSession(state, 'session-2024-01-04-abc123');
  */
-export function initializeSession(state: HooksState, sessionId: string): HooksState {
+export function initializeSession(
+  state: HooksState,
+  sessionId: string
+): HooksState {
   return {
     ...state,
     session: {

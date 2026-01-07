@@ -4,7 +4,11 @@
 
 import * as path from 'path';
 import type { MemoryDecision } from '../types/memory.js';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import {
+  parseMemoryFile,
+  ensureMemoryFile,
+  appendMemoryEntry,
+} from './parser.js';
 
 const DECISIONS_HEADER = `# Architectural Decisions
 
@@ -71,7 +75,10 @@ export async function readDecisions(cwd: string): Promise<MemoryDecision[]> {
  *   alternatives: ['REST', 'GraphQL']
  * });
  */
-export async function writeDecision(cwd: string, decision: MemoryDecision): Promise<void> {
+export async function writeDecision(
+  cwd: string,
+  decision: MemoryDecision
+): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
 
   await ensureMemoryFile(filePath, DECISIONS_HEADER);

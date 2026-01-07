@@ -35,7 +35,12 @@ describe('post-tool-use-failure/recovery-types', () => {
     });
 
     it('should allow comparison of severity levels', () => {
-      const severityLevels: ErrorSeverity[] = ['low', 'medium', 'high', 'critical'];
+      const severityLevels: ErrorSeverity[] = [
+        'low',
+        'medium',
+        'high',
+        'critical',
+      ];
 
       expect(severityLevels).toHaveLength(4);
       expect(severityLevels[0]).toBe('low');
@@ -68,7 +73,9 @@ describe('post-tool-use-failure/recovery-types', () => {
       expect(pattern.category).toBe('lint_warning');
       expect(pattern.description).toBe('ESLint style warning');
       expect(pattern.patterns).toHaveLength(2);
-      expect(pattern.suggestedFix).toBe('Run eslint --fix to auto-fix style issues');
+      expect(pattern.suggestedFix).toBe(
+        'Run eslint --fix to auto-fix style issues'
+      );
       expect(pattern.severity).toBe('low');
     });
 
@@ -82,7 +89,11 @@ describe('post-tool-use-failure/recovery-types', () => {
       };
 
       expect(pattern.severity).toBe('medium');
-      expect(pattern.patterns[0].test("Type 'string' is not assignable to type 'number'")).toBe(true);
+      expect(
+        pattern.patterns[0].test(
+          "Type 'string' is not assignable to type 'number'"
+        )
+      ).toBe(true);
     });
 
     it('should accept RecoveryPattern with high severity', () => {
@@ -120,7 +131,9 @@ describe('post-tool-use-failure/recovery-types', () => {
       };
 
       expect(pattern.patterns).toHaveLength(1);
-      expect(pattern.patterns[0].test("Cannot find module 'lodash'")).toBe(true);
+      expect(pattern.patterns[0].test("Cannot find module 'lodash'")).toBe(
+        true
+      );
     });
 
     it('should accept RecoveryPattern with multiple regex patterns', () => {
@@ -148,9 +161,9 @@ describe('post-tool-use-failure/recovery-types', () => {
         category: 'typescript_error',
         description: 'TypeScript compilation error',
         patterns: [
-          /TS\d{4}:/,  // Match TS error codes like TS2345:
-          /error TS\d+/,  // Match "error TS2345"
-          /\(\d+,\d+\): error/,  // Match "(10,5): error"
+          /TS\d{4}:/, // Match TS error codes like TS2345:
+          /error TS\d+/, // Match "error TS2345"
+          /\(\d+,\d+\): error/, // Match "(10,5): error"
         ],
         suggestedFix: 'Fix the TypeScript errors shown in the output',
         severity: 'high',
@@ -174,14 +187,16 @@ describe('post-tool-use-failure/recovery-types', () => {
           category: 'permission_error',
           description: 'File permission denied',
           patterns: [/EACCES/i, /permission denied/i],
-          suggestedFix: 'Check file permissions or run with elevated privileges',
+          suggestedFix:
+            'Check file permissions or run with elevated privileges',
           severity: 'high',
         },
         {
           category: 'out_of_memory',
           description: 'Process ran out of memory',
           patterns: [/JavaScript heap out of memory/i, /ENOMEM/],
-          suggestedFix: 'Increase Node.js memory limit with --max-old-space-size',
+          suggestedFix:
+            'Increase Node.js memory limit with --max-old-space-size',
           severity: 'critical',
         },
       ];
@@ -196,11 +211,7 @@ describe('post-tool-use-failure/recovery-types', () => {
       const pattern: RecoveryPattern = {
         category: 'test_failure',
         description: 'Unit test assertion failed',
-        patterns: [
-          /AssertionError/,
-          /expect\(.*\)\.to/,
-          /FAIL.*\.test\./,
-        ],
+        patterns: [/AssertionError/, /expect\(.*\)\.to/, /FAIL.*\.test\./],
         suggestedFix: 'Review the failing test and fix the assertion or code',
         severity: 'medium',
       };
@@ -220,11 +231,7 @@ describe('post-tool-use-failure/recovery-types', () => {
       const pattern: RecoveryPattern = {
         category: 'git_error',
         description: 'Git operation failed',
-        patterns: [
-          /fatal:/i,
-          /error:/i,
-          /merge conflict/i,
-        ],
+        patterns: [/fatal:/i, /error:/i, /merge conflict/i],
         suggestedFix: 'Review git status and resolve any conflicts',
         severity: 'medium',
       };
@@ -239,16 +246,17 @@ describe('post-tool-use-failure/recovery-types', () => {
         category: 'file_error',
         description: 'File operation failed',
         patterns: [
-          /ENOENT.*'(.+)'/,  // Capture file path
+          /ENOENT.*'(.+)'/, // Capture file path
           /Cannot find file: (.+)/,
         ],
         suggestedFix: 'Check if the file exists and has correct path',
         severity: 'medium',
       };
 
-      const match = "ENOENT: no such file or directory, open '/path/to/file.ts'".match(
-        pattern.patterns[0]
-      );
+      const match =
+        "ENOENT: no such file or directory, open '/path/to/file.ts'".match(
+          pattern.patterns[0]
+        );
       expect(match).not.toBeNull();
       expect(match![1]).toBe('/path/to/file.ts');
     });

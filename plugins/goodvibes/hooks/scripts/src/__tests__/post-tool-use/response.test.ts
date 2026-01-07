@@ -12,7 +12,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createResponse, combineMessages } from '../../post-tool-use/response.js';
+import {
+  createResponse,
+  combineMessages,
+} from '../../post-tool-use/response.js';
 import type { AutomationMessages } from '../../post-tool-use/response.js';
 
 describe('post-tool-use/response utilities', () => {
@@ -107,7 +110,9 @@ describe('post-tool-use/response utilities', () => {
         'Type check OK',
       ]);
 
-      expect(result).toBe('Tests passed | Build OK | Linting passed | Type check OK');
+      expect(result).toBe(
+        'Tests passed | Build OK | Linting passed | Type check OK'
+      );
     });
 
     it('should handle messages with empty strings', () => {
@@ -129,7 +134,9 @@ describe('post-tool-use/response utilities', () => {
         'Info: special!@#$',
       ]);
 
-      expect(result).toBe('Error: <test> | Warning: "quotes" | Info: special!@#$');
+      expect(result).toBe(
+        'Error: <test> | Warning: "quotes" | Info: special!@#$'
+      );
     });
 
     it('should handle messages with pipe characters', () => {
@@ -251,7 +258,11 @@ describe('post-tool-use/response utilities', () => {
     });
 
     it('should handle success reporting workflow', () => {
-      const successMessages = ['All tests passed', 'Build successful', 'Ready to deploy'];
+      const successMessages = [
+        'All tests passed',
+        'Build successful',
+        'Ready to deploy',
+      ];
 
       const combined = combineMessages(successMessages);
       const response = createResponse(combined);

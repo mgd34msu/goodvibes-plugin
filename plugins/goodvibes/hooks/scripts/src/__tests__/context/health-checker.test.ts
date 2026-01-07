@@ -27,7 +27,9 @@ vi.mock('../../shared/index.js', () => ({
 }));
 
 const mockedFs = vi.mocked(fs);
-const mockedFileExists = vi.mocked((await import('../../shared/index.js')).fileExists);
+const mockedFileExists = vi.mocked(
+  (await import('../../shared/index.js')).fileExists
+);
 const mockedDebug = vi.mocked((await import('../../shared/logging.js')).debug);
 
 describe('health-checker', () => {
@@ -68,7 +70,9 @@ describe('health-checker', () => {
 
       const result = await checkProjectHealth('/test/project');
 
-      const dependencyChecks = result.checks.filter(c => c.check === 'dependencies');
+      const dependencyChecks = result.checks.filter(
+        (c) => c.check === 'dependencies'
+      );
       expect(dependencyChecks).toHaveLength(0);
     });
 
@@ -79,7 +83,9 @@ describe('health-checker', () => {
 
       const result = await checkProjectHealth('/test/project');
 
-      const dependencyChecks = result.checks.filter(c => c.check === 'dependencies');
+      const dependencyChecks = result.checks.filter(
+        (c) => c.check === 'dependencies'
+      );
       expect(dependencyChecks).toHaveLength(0);
     });
 
@@ -90,7 +96,9 @@ describe('health-checker', () => {
 
       const result = await checkProjectHealth('/test/project');
 
-      const lockfileChecks = result.checks.filter(c => c.check === 'lockfiles');
+      const lockfileChecks = result.checks.filter(
+        (c) => c.check === 'lockfiles'
+      );
       expect(lockfileChecks).toHaveLength(0);
     });
 
@@ -101,7 +109,7 @@ describe('health-checker', () => {
 
       const result = await checkProjectHealth('/test/project');
 
-      const lockfileCheck = result.checks.find(c => c.check === 'lockfiles');
+      const lockfileCheck = result.checks.find((c) => c.check === 'lockfiles');
       expect(lockfileCheck).toBeDefined();
       expect(lockfileCheck!.status).toBe('warning');
       expect(lockfileCheck!.message).toContain('Multiple lockfiles found');
@@ -111,14 +119,16 @@ describe('health-checker', () => {
 
     it('should warn with all lockfiles when more than two exist', async () => {
       mockedFileExists.mockImplementation(async (p: string) => {
-        return p.includes('package-lock.json') ||
-               p.includes('yarn.lock') ||
-               p.includes('pnpm-lock.yaml');
+        return (
+          p.includes('package-lock.json') ||
+          p.includes('yarn.lock') ||
+          p.includes('pnpm-lock.yaml')
+        );
       });
 
       const result = await checkProjectHealth('/test/project');
 
-      const lockfileCheck = result.checks.find(c => c.check === 'lockfiles');
+      const lockfileCheck = result.checks.find((c) => c.check === 'lockfiles');
       expect(lockfileCheck).toBeDefined();
       expect(lockfileCheck!.message).toContain('pnpm-lock.yaml');
       expect(lockfileCheck!.message).toContain('yarn.lock');
@@ -129,11 +139,13 @@ describe('health-checker', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: false,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: false,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -148,9 +160,11 @@ describe('health-checker', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        extends: './base.json',
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          extends: './base.json',
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -165,11 +179,13 @@ describe('health-checker', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          target: 'ES2020',
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            target: 'ES2020',
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -184,15 +200,17 @@ describe('health-checker', () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: true,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
-      const tsChecks = result.checks.filter(c => c.check === 'typescript');
+      const tsChecks = result.checks.filter((c) => c.check === 'typescript');
       expect(tsChecks).toHaveLength(0);
     });
 
@@ -210,7 +228,7 @@ describe('health-checker', () => {
         expect.any(SyntaxError)
       );
       // No typescript check should be added since parsing failed
-      const tsChecks = result.checks.filter(c => c.check === 'typescript');
+      const tsChecks = result.checks.filter((c) => c.check === 'typescript');
       expect(tsChecks).toHaveLength(0);
     });
 
@@ -227,44 +245,54 @@ describe('health-checker', () => {
         'health-checker: Failed to parse tsconfig.json',
         expect.any(Error)
       );
-      const tsChecks = result.checks.filter(c => c.check === 'typescript');
+      const tsChecks = result.checks.filter((c) => c.check === 'typescript');
       expect(tsChecks).toHaveLength(0);
     });
 
     it('should return multiple checks when multiple issues exist', async () => {
       mockedFileExists.mockImplementation(async (p: string) => {
-        return p.includes('package.json') ||
-               p.includes('package-lock.json') ||
-               p.includes('yarn.lock') ||
-               p.includes('tsconfig.json');
+        return (
+          p.includes('package.json') ||
+          p.includes('package-lock.json') ||
+          p.includes('yarn.lock') ||
+          p.includes('tsconfig.json')
+        );
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: false,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: false,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
       // Should have: dependencies warning, lockfiles warning, typescript info
       expect(result.checks.length).toBe(3);
-      expect(result.checks.find(c => c.check === 'dependencies')).toBeDefined();
-      expect(result.checks.find(c => c.check === 'lockfiles')).toBeDefined();
-      expect(result.checks.find(c => c.check === 'typescript')).toBeDefined();
+      expect(
+        result.checks.find((c) => c.check === 'dependencies')
+      ).toBeDefined();
+      expect(result.checks.find((c) => c.check === 'lockfiles')).toBeDefined();
+      expect(result.checks.find((c) => c.check === 'typescript')).toBeDefined();
     });
 
     it('should return no checks for fully healthy project', async () => {
       mockedFileExists.mockImplementation(async (p: string) => {
-        return p.includes('package.json') ||
-               p.includes('node_modules') ||
-               p.includes('package-lock.json') ||
-               p.includes('tsconfig.json');
+        return (
+          p.includes('package.json') ||
+          p.includes('node_modules') ||
+          p.includes('package-lock.json') ||
+          p.includes('tsconfig.json')
+        );
       });
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: {
-          strict: true,
-        },
-      }));
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+          },
+        })
+      );
 
       const result = await checkProjectHealth('/test/project');
 
@@ -370,9 +398,9 @@ describe('health-checker', () => {
 
       expect(result).toBe(
         'Health:\n' +
-        '[!] node_modules missing\n' +
-        '[!] Multiple lockfiles found\n' +
-        '[i] TypeScript strict mode is off'
+          '[!] node_modules missing\n' +
+          '[!] Multiple lockfiles found\n' +
+          '[i] TypeScript strict mode is off'
       );
     });
 

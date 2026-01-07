@@ -93,7 +93,10 @@ const RECENT_FAILURES_LIMIT = 2;
  * @param filename - The JSON file name to load (relative to .goodvibes/memory/)
  * @returns Promise resolving to parsed JSON object, or null if file doesn't exist or parse fails
  */
-async function loadJsonFile<T>(cwd: string, filename: string): Promise<T | null> {
+async function loadJsonFile<T>(
+  cwd: string,
+  filename: string
+): Promise<T | null> {
   const filePath = path.join(cwd, MEMORY_DIR, filename);
   try {
     if (await fileExists(filePath)) {
@@ -119,7 +122,7 @@ async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
   const results: string[] = [];
 
   try {
-    if (await fileExists(dirPath) && await isDirectory(dirPath)) {
+    if ((await fileExists(dirPath)) && (await isDirectory(dirPath))) {
       const files = await fs.readdir(dirPath);
       for (const file of files) {
         if (file.endsWith('.md') || file.endsWith('.txt')) {
@@ -155,7 +158,7 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   const memoryPath = path.join(cwd, MEMORY_DIR);
 
   // Check if memory directory exists
-  if (!await fileExists(memoryPath)) {
+  if (!(await fileExists(memoryPath))) {
     return {
       decisions: [],
       patterns: [],
@@ -166,13 +169,14 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   }
 
   // Load structured data
-  const [decisions, patterns, failures, preferences, customContext] = await Promise.all([
-    loadJsonFile<Decision[]>(cwd, 'decisions.json'),
-    loadJsonFile<Pattern[]>(cwd, 'patterns.json'),
-    loadJsonFile<Failure[]>(cwd, 'failures.json'),
-    loadJsonFile<Preferences>(cwd, 'preferences.json'),
-    loadTextFiles(cwd, 'context'),
-  ]);
+  const [decisions, patterns, failures, preferences, customContext] =
+    await Promise.all([
+      loadJsonFile<Decision[]>(cwd, 'decisions.json'),
+      loadJsonFile<Pattern[]>(cwd, 'patterns.json'),
+      loadJsonFile<Failure[]>(cwd, 'failures.json'),
+      loadJsonFile<Preferences>(cwd, 'preferences.json'),
+      loadTextFiles(cwd, 'context'),
+    ]);
 
   return {
     decisions: decisions || [],
@@ -200,13 +204,17 @@ export function formatMemory(memory: ProjectMemory): string | null {
   // Recent decisions
   if (memory.decisions.length > 0) {
     const recent = memory.decisions.slice(-RECENT_DECISIONS_LIMIT);
-    const decisionLines = recent.map((d) => `- ${d.description}${d.rationale ? ` (${d.rationale})` : ''}`);
+    const decisionLines = recent.map(
+      (d) => `- ${d.description}${d.rationale ? ` (${d.rationale})` : ''}`
+    );
     sections.push(`**Recent Decisions:**\n${decisionLines.join('\n')}`);
   }
 
   // Active patterns
   if (memory.patterns.length > 0) {
-    const patternLines = memory.patterns.slice(0, MAX_PATTERNS_DISPLAY).map((p) => `- **${p.name}:** ${p.description}`);
+    const patternLines = memory.patterns
+      .slice(0, MAX_PATTERNS_DISPLAY)
+      .map((p) => `- **${p.name}:** ${p.description}`);
     sections.push(`**Project Patterns:**\n${patternLines.join('\n')}`);
   }
 
@@ -215,7 +223,9 @@ export function formatMemory(memory: ProjectMemory): string | null {
     const recent = memory.failures.slice(-RECENT_FAILURES_LIMIT);
     const failureLines = recent.map((f) => {
       let line = `- ${f.error}`;
-      if (f.resolution) line += ` -> Resolved: ${f.resolution}`;
+      if (f.resolution) {
+        line += ` -> Resolved: ${f.resolution}`;
+      }
       return line;
     });
     sections.push(`**Recent Issues:**\n${failureLines.join('\n')}`);
@@ -223,17 +233,27 @@ export function formatMemory(memory: ProjectMemory): string | null {
 
   // Preferences
   const prefLines: string[] = [];
-  if (memory.preferences.conventions && memory.preferences.conventions.length > 0) {
-    prefLines.push(`- Conventions: ${memory.preferences.conventions.join(', ')}`);
+  if (
+    memory.preferences.conventions &&
+    memory.preferences.conventions.length > 0
+  ) {
+    prefLines.push(
+      `- Conventions: ${memory.preferences.conventions.join(', ')}`
+    );
   }
-  if (memory.preferences.avoidPatterns && memory.preferences.avoidPatterns.length > 0) {
+  if (
+    memory.preferences.avoidPatterns &&
+    memory.preferences.avoidPatterns.length > 0
+  ) {
     prefLines.push(`- Avoid: ${memory.preferences.avoidPatterns.join(', ')}`);
   }
   if (memory.preferences.preferredLibraries) {
     const libs = Object.entries(memory.preferences.preferredLibraries)
       .map(([cat, lib]) => `${cat}: ${lib}`)
       .join(', ');
-    if (libs) prefLines.push(`- Preferred: ${libs}`);
+    if (libs) {
+      prefLines.push(`- Preferred: ${libs}`);
+    }
   }
   if (prefLines.length > 0) {
     sections.push(`**Preferences:**\n${prefLines.join('\n')}`);

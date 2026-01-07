@@ -21,7 +21,12 @@ import {
 } from '../shared/error-handling-core.js';
 
 // Re-export consolidated functions for backwards compatibility
-export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries };
+export {
+  generateErrorSignature,
+  shouldEscalatePhase,
+  escalatePhase,
+  hasExhaustedRetries,
+};
 
 /** Maximum length for error message in fix context. */
 const ERROR_PREVIEW_MAX_LENGTH = 200;
@@ -47,10 +52,17 @@ const RECENT_ATTEMPTS_COUNT = 3;
 export function categorizeError(errorMessage: string): ErrorCategory {
   const lower = errorMessage.toLowerCase();
 
-  if (lower.includes('eresolve') || lower.includes('npm') || lower.includes('peer dep')) {
+  if (
+    lower.includes('eresolve') ||
+    lower.includes('npm') ||
+    lower.includes('peer dep')
+  ) {
     return 'npm_install';
   }
-  if (lower.includes('ts') && (lower.includes('error') || lower.includes('type'))) {
+  if (
+    lower.includes('ts') &&
+    (lower.includes('error') || lower.includes('type'))
+  ) {
     return 'typescript_error';
   }
   if (lower.includes('test') && lower.includes('fail')) {
@@ -65,10 +77,18 @@ export function categorizeError(errorMessage: string): ErrorCategory {
   if (lower.includes('conflict') || lower.includes('merge')) {
     return 'git_conflict';
   }
-  if (lower.includes('database') || lower.includes('prisma') || lower.includes('sql')) {
+  if (
+    lower.includes('database') ||
+    lower.includes('prisma') ||
+    lower.includes('sql')
+  ) {
     return 'database_error';
   }
-  if (lower.includes('api') || lower.includes('fetch') || lower.includes('request')) {
+  if (
+    lower.includes('api') ||
+    lower.includes('fetch') ||
+    lower.includes('request')
+  ) {
     return 'api_error';
   }
 
@@ -87,7 +107,10 @@ export function categorizeError(errorMessage: string): ErrorCategory {
  * const state = createErrorState('hash123', 'typescript_error');
  * // Returns initialized error state ready for fix tracking
  */
-export function createErrorState(signature: string, category: ErrorCategory): ErrorState {
+export function createErrorState(
+  signature: string,
+  category: ErrorCategory
+): ErrorState {
   return {
     signature,
     category,
@@ -101,7 +124,6 @@ export function createErrorState(signature: string, category: ErrorCategory): Er
     fixStrategiesAttempted: [],
   };
 }
-
 
 /**
  * Builds a context string for the fix loop with error details and history.
@@ -136,7 +158,9 @@ export function buildFixContext(state: ErrorState, error: string): string {
 
   if (state.fixStrategiesAttempted.length > 0) {
     parts.push('\n--- Previously Attempted (failed) ---');
-    for (const attempt of state.fixStrategiesAttempted.slice(-RECENT_ATTEMPTS_COUNT)) {
+    for (const attempt of state.fixStrategiesAttempted.slice(
+      -RECENT_ATTEMPTS_COUNT
+    )) {
       parts.push(`- ${attempt.strategy}`);
     }
     parts.push('Try a DIFFERENT approach.');

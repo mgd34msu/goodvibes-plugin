@@ -74,7 +74,8 @@ vi.mock('../subagent-stop/telemetry.js', () => ({
 const mockBuildSubagentContext = vi.fn();
 
 vi.mock('../subagent-start/context-injection.js', () => ({
-  buildSubagentContext: (...args: unknown[]) => mockBuildSubagentContext(...args),
+  buildSubagentContext: (...args: unknown[]) =>
+    mockBuildSubagentContext(...args),
 }));
 
 // Mock state module
@@ -128,12 +129,35 @@ describe('subagent-start hook', () => {
     });
     mockSaveAnalytics.mockResolvedValue(undefined);
     mockLoadState.mockResolvedValue({
-      session: { id: '', startedAt: '', mode: 'default', featureDescription: null },
+      session: {
+        id: '',
+        startedAt: '',
+        mode: 'default',
+        featureDescription: null,
+      },
       errors: {},
-      tests: { lastFullRun: null, lastQuickRun: null, passingFiles: [], failingFiles: [], pendingFixes: [] },
+      tests: {
+        lastFullRun: null,
+        lastQuickRun: null,
+        passingFiles: [],
+        failingFiles: [],
+        pendingFixes: [],
+      },
       build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
-      git: { mainBranch: 'main', currentBranch: 'main', featureBranch: null, featureStartedAt: null, featureDescription: null, checkpoints: [], pendingMerge: false },
-      files: { modifiedSinceCheckpoint: [], modifiedThisSession: [], createdThisSession: [] },
+      git: {
+        mainBranch: 'main',
+        currentBranch: 'main',
+        featureBranch: null,
+        featureStartedAt: null,
+        featureDescription: null,
+        checkpoints: [],
+        pendingMerge: false,
+      },
+      files: {
+        modifiedSinceCheckpoint: [],
+        modifiedThisSession: [],
+        createdThisSession: [],
+      },
       devServers: {},
     });
     mockSaveState.mockResolvedValue(undefined);
@@ -159,7 +183,10 @@ describe('subagent-start hook', () => {
       // Verify initialization sequence
       expect(mockDebug).toHaveBeenCalledWith('SubagentStart hook starting');
       expect(mockReadHookInput).toHaveBeenCalled();
-      expect(mockDebug).toHaveBeenCalledWith('Raw input shape:', expect.any(Array));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Raw input shape:',
+        expect.any(Array)
+      );
 
       // Verify input parsing and debug logging
       expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', {
@@ -175,34 +202,44 @@ describe('subagent-start hook', () => {
 
       // Verify git info
       expect(mockGetGitInfo).toHaveBeenCalledWith('/test/project');
-      expect(mockDebug).toHaveBeenCalledWith('Git info', { branch: 'main', commit: 'abc1234' });
+      expect(mockDebug).toHaveBeenCalledWith('Git info', {
+        branch: 'main',
+        commit: 'abc1234',
+      });
 
       // Verify project name derivation
       expect(mockDeriveProjectName).toHaveBeenCalledWith('/test/project');
       expect(mockDebug).toHaveBeenCalledWith('Project name', 'test-project');
 
       // Verify agent tracking saved
-      expect(mockSaveAgentTracking).toHaveBeenCalledWith('/test/project', expect.objectContaining({
+      expect(mockSaveAgentTracking).toHaveBeenCalledWith(
+        '/test/project',
+        expect.objectContaining({
+          agent_id: 'agent-abc',
+          agent_type: 'test-engineer',
+          session_id: 'test-session-123',
+          project: '/test/project',
+          project_name: 'test-project',
+          git_branch: 'main',
+          git_commit: 'abc1234',
+        })
+      );
+      expect(mockDebug).toHaveBeenCalledWith('Saved agent tracking', {
         agent_id: 'agent-abc',
-        agent_type: 'test-engineer',
-        session_id: 'test-session-123',
-        project: '/test/project',
-        project_name: 'test-project',
-        git_branch: 'main',
-        git_commit: 'abc1234',
-      }));
-      expect(mockDebug).toHaveBeenCalledWith('Saved agent tracking', { agent_id: 'agent-abc' });
+      });
 
       // Verify analytics tracking
       expect(mockLoadAnalytics).toHaveBeenCalled();
-      expect(mockSaveAnalytics).toHaveBeenCalledWith(expect.objectContaining({
-        subagents_spawned: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'test-engineer',
-            task: 'Run unit tests for the login module',
-          }),
-        ]),
-      }));
+      expect(mockSaveAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subagents_spawned: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'test-engineer',
+              task: 'Run unit tests for the login module',
+            }),
+          ]),
+        })
+      );
 
       // Verify state loading
       expect(mockLoadState).toHaveBeenCalledWith('/test/project');
@@ -235,9 +272,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        agent_id: 'subagent-xyz',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          agent_id: 'subagent-xyz',
+        })
+      );
     });
 
     it('should generate fallback agent_id when neither agent_id nor subagent_id provided', async () => {
@@ -257,9 +297,12 @@ describe('subagent-start hook', () => {
       });
 
       // Should generate agent_id with timestamp format
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        agent_id: `agent_${fixedTimestamp}`,
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          agent_id: `agent_${fixedTimestamp}`,
+        })
+      );
     });
 
     it('should use subagent_type when agent_type is not provided', async () => {
@@ -279,9 +322,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        agent_type: 'devops-deployer',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          agent_type: 'devops-deployer',
+        })
+      );
     });
 
     it('should fallback to "unknown" agent_type when neither provided', async () => {
@@ -300,9 +346,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        agent_type: 'unknown',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          agent_type: 'unknown',
+        })
+      );
     });
 
     it('should use task field when task_description is not provided', async () => {
@@ -323,9 +372,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        task_preview: 'Alternative task field',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          task_preview: 'Alternative task field',
+        })
+      );
     });
 
     it('should fallback to empty string when no task description', async () => {
@@ -345,9 +397,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        task_preview: '',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          task_preview: '',
+        })
+      );
     });
 
     it('should use process.cwd() when input.cwd is not provided', async () => {
@@ -386,9 +441,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        session_id: '',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          session_id: '',
+        })
+      );
     });
 
     it('should truncate long task descriptions to 100 chars in debug', async () => {
@@ -410,9 +468,12 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStart received input', expect.objectContaining({
-        task_preview: 'A'.repeat(100),
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStart received input',
+        expect.objectContaining({
+          task_preview: 'A'.repeat(100),
+        })
+      );
     });
 
     it('should truncate long task descriptions to 200 chars in analytics', async () => {
@@ -434,13 +495,15 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockSaveAnalytics).toHaveBeenCalledWith(expect.objectContaining({
-        subagents_spawned: expect.arrayContaining([
-          expect.objectContaining({
-            task: 'B'.repeat(200),
-          }),
-        ]),
-      }));
+      expect(mockSaveAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subagents_spawned: expect.arrayContaining([
+            expect.objectContaining({
+              task: 'B'.repeat(200),
+            }),
+          ]),
+        })
+      );
     });
 
     it('should handle null analytics gracefully', async () => {
@@ -473,23 +536,48 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockSaveAnalytics).toHaveBeenCalledWith(expect.objectContaining({
-        subagents_spawned: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'test-engineer',
-          }),
-        ]),
-      }));
+      expect(mockSaveAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subagents_spawned: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'test-engineer',
+            }),
+          ]),
+        })
+      );
     });
 
     it('should initialize session state when session.id is empty', async () => {
       mockLoadState.mockResolvedValue({
-        session: { id: '', startedAt: '', mode: 'default', featureDescription: null },
+        session: {
+          id: '',
+          startedAt: '',
+          mode: 'default',
+          featureDescription: null,
+        },
         errors: {},
-        tests: { lastFullRun: null, lastQuickRun: null, passingFiles: [], failingFiles: [], pendingFixes: [] },
+        tests: {
+          lastFullRun: null,
+          lastQuickRun: null,
+          passingFiles: [],
+          failingFiles: [],
+          pendingFixes: [],
+        },
         build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
-        git: { mainBranch: 'main', currentBranch: 'main', featureBranch: null, featureStartedAt: null, featureDescription: null, checkpoints: [], pendingMerge: false },
-        files: { modifiedSinceCheckpoint: [], modifiedThisSession: [], createdThisSession: [] },
+        git: {
+          mainBranch: 'main',
+          currentBranch: 'main',
+          featureBranch: null,
+          featureStartedAt: null,
+          featureDescription: null,
+          checkpoints: [],
+          pendingMerge: false,
+        },
+        files: {
+          modifiedSinceCheckpoint: [],
+          modifiedThisSession: [],
+          createdThisSession: [],
+        },
         devServers: {},
       });
 
@@ -499,21 +587,47 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockSaveState).toHaveBeenCalledWith('/test/project', expect.objectContaining({
-        session: expect.objectContaining({
-          id: 'test-session-123',
-        }),
-      }));
+      expect(mockSaveState).toHaveBeenCalledWith(
+        '/test/project',
+        expect.objectContaining({
+          session: expect.objectContaining({
+            id: 'test-session-123',
+          }),
+        })
+      );
     });
 
     it('should not update session state when session.id is already set', async () => {
       mockLoadState.mockResolvedValue({
-        session: { id: 'existing-session', startedAt: '2024-01-01T00:00:00.000Z', mode: 'default', featureDescription: null },
+        session: {
+          id: 'existing-session',
+          startedAt: '2024-01-01T00:00:00.000Z',
+          mode: 'default',
+          featureDescription: null,
+        },
         errors: {},
-        tests: { lastFullRun: null, lastQuickRun: null, passingFiles: [], failingFiles: [], pendingFixes: [] },
+        tests: {
+          lastFullRun: null,
+          lastQuickRun: null,
+          passingFiles: [],
+          failingFiles: [],
+          pendingFixes: [],
+        },
         build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
-        git: { mainBranch: 'main', currentBranch: 'main', featureBranch: null, featureStartedAt: null, featureDescription: null, checkpoints: [], pendingMerge: false },
-        files: { modifiedSinceCheckpoint: [], modifiedThisSession: [], createdThisSession: [] },
+        git: {
+          mainBranch: 'main',
+          currentBranch: 'main',
+          featureBranch: null,
+          featureStartedAt: null,
+          featureDescription: null,
+          checkpoints: [],
+          pendingMerge: false,
+        },
+        files: {
+          modifiedSinceCheckpoint: [],
+          modifiedThisSession: [],
+          createdThisSession: [],
+        },
         devServers: {},
       });
 
@@ -538,12 +652,35 @@ describe('subagent-start hook', () => {
       });
 
       mockLoadState.mockResolvedValue({
-        session: { id: '', startedAt: '', mode: 'default', featureDescription: null },
+        session: {
+          id: '',
+          startedAt: '',
+          mode: 'default',
+          featureDescription: null,
+        },
         errors: {},
-        tests: { lastFullRun: null, lastQuickRun: null, passingFiles: [], failingFiles: [], pendingFixes: [] },
+        tests: {
+          lastFullRun: null,
+          lastQuickRun: null,
+          passingFiles: [],
+          failingFiles: [],
+          pendingFixes: [],
+        },
         build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
-        git: { mainBranch: 'main', currentBranch: 'main', featureBranch: null, featureStartedAt: null, featureDescription: null, checkpoints: [], pendingMerge: false },
-        files: { modifiedSinceCheckpoint: [], modifiedThisSession: [], createdThisSession: [] },
+        git: {
+          mainBranch: 'main',
+          currentBranch: 'main',
+          featureBranch: null,
+          featureStartedAt: null,
+          featureDescription: null,
+          checkpoints: [],
+          pendingMerge: false,
+        },
+        files: {
+          modifiedSinceCheckpoint: [],
+          modifiedThisSession: [],
+          createdThisSession: [],
+        },
         devServers: {},
       });
 
@@ -583,7 +720,10 @@ describe('subagent-start hook', () => {
     });
 
     it('should add git branch to reminders when available', async () => {
-      mockGetGitInfo.mockReturnValue({ branch: 'feature/new-feature', commit: 'def5678' });
+      mockGetGitInfo.mockReturnValue({
+        branch: 'feature/new-feature',
+        commit: 'def5678',
+      });
 
       await import('../subagent-start.js');
 
@@ -592,7 +732,9 @@ describe('subagent-start hook', () => {
       });
 
       const respondCall = mockRespond.mock.calls[0][0];
-      expect(respondCall.additionalContext).toContain('Git branch: feature/new-feature');
+      expect(respondCall.additionalContext).toContain(
+        'Git branch: feature/new-feature'
+      );
     });
 
     it('should not add git branch reminder when branch is undefined', async () => {
@@ -618,12 +760,15 @@ describe('subagent-start hook', () => {
       });
 
       const respondCall = mockRespond.mock.calls[0][0];
-      expect(respondCall.additionalContext).toContain('Project: my-awesome-project');
+      expect(respondCall.additionalContext).toContain(
+        'Project: my-awesome-project'
+      );
     });
 
     it('should append reminders to subagent context when context has additionalContext', async () => {
       mockBuildSubagentContext.mockResolvedValue({
-        additionalContext: '[GoodVibes] Project: test-project\nMode: autonomous',
+        additionalContext:
+          '[GoodVibes] Project: test-project\nMode: autonomous',
       });
 
       await import('../subagent-start.js');
@@ -634,7 +779,9 @@ describe('subagent-start hook', () => {
 
       const respondCall = mockRespond.mock.calls[0][0];
       // Should contain both the original context and reminders
-      expect(respondCall.additionalContext).toContain('[GoodVibes] Project: test-project');
+      expect(respondCall.additionalContext).toContain(
+        '[GoodVibes] Project: test-project'
+      );
       expect(respondCall.additionalContext).toContain('Project: test-project');
     });
 
@@ -650,7 +797,9 @@ describe('subagent-start hook', () => {
       });
 
       const respondCall = mockRespond.mock.calls[0][0];
-      expect(respondCall.additionalContext).toContain('[GoodVibes Project Context]');
+      expect(respondCall.additionalContext).toContain(
+        '[GoodVibes Project Context]'
+      );
     });
 
     it('should handle undefined additionalContext from subagent context', async () => {
@@ -663,7 +812,9 @@ describe('subagent-start hook', () => {
       });
 
       const respondCall = mockRespond.mock.calls[0][0];
-      expect(respondCall.additionalContext).toContain('[GoodVibes Project Context]');
+      expect(respondCall.additionalContext).toContain(
+        '[GoodVibes Project Context]'
+      );
     });
   });
 
@@ -701,7 +852,9 @@ describe('subagent-start hook', () => {
 
         const respondCall = mockRespond.mock.calls[0][0];
         expect(respondCall.systemMessage).toContain('[GoodVibes]');
-        expect(respondCall.systemMessage).toContain(`Agent ${agentType} starting`);
+        expect(respondCall.systemMessage).toContain(
+          `Agent ${agentType} starting`
+        );
         expect(respondCall.systemMessage).toContain('Project: test-project');
 
         // Reset for next iteration
@@ -720,7 +873,10 @@ describe('subagent-start hook', () => {
         agent_id: 'agent-abc',
         agent_type: 'goodvibes:test-engineer',
       });
-      mockGetGitInfo.mockReturnValue({ branch: 'feature/branch', commit: 'abc123' });
+      mockGetGitInfo.mockReturnValue({
+        branch: 'feature/branch',
+        commit: 'abc123',
+      });
 
       await import('../subagent-start.js');
 
@@ -771,7 +927,9 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Non-GoodVibes agent started: custom-agent');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Non-GoodVibes agent started: custom-agent'
+      );
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.systemMessage).toBeUndefined();
@@ -794,7 +952,9 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Non-GoodVibes agent started: unknown');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Non-GoodVibes agent started: unknown'
+      );
     });
   });
 
@@ -808,7 +968,10 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockLogError).toHaveBeenCalledWith('SubagentStart main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SubagentStart main',
+        expect.any(Error)
+      );
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.continue).toBe(true);
@@ -823,7 +986,10 @@ describe('subagent-start hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockLogError).toHaveBeenCalledWith('SubagentStart main', 'String error');
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SubagentStart main',
+        'String error'
+      );
     });
   });
 
@@ -847,7 +1013,8 @@ describe('subagent-start hook', () => {
       // and only the project name reminder is added (no stack, no git branch)
 
       mockBuildSubagentContext.mockResolvedValue({
-        additionalContext: '[GoodVibes] Project: test-project\nMode: autonomous',
+        additionalContext:
+          '[GoodVibes] Project: test-project\nMode: autonomous',
       });
       mockGetGitInfo.mockReturnValue({}); // No branch, no commit
       mockLoadAnalytics.mockResolvedValue({
@@ -869,7 +1036,9 @@ describe('subagent-start hook', () => {
 
       const respondCall = mockRespond.mock.calls[0][0];
       // Should contain the original context plus the project reminder
-      expect(respondCall.additionalContext).toContain('[GoodVibes] Project: test-project');
+      expect(respondCall.additionalContext).toContain(
+        '[GoodVibes] Project: test-project'
+      );
       expect(respondCall.additionalContext).toContain('Project: test-project');
     });
   });

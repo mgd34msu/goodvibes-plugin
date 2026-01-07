@@ -44,7 +44,9 @@ describe('memory/preferences', () => {
 
       expect(mockParseMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath] = mockParseMemoryFile.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'preferences.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+      );
     });
 
     it('should call parseMemoryFile with correct parser configuration', async () => {
@@ -105,7 +107,9 @@ describe('memory/preferences', () => {
       const validate = parserConfig.validate!;
 
       // Valid entry - has key, value, date
-      expect(validate({ key: 'test-key', value: 'test-value', date: '2024-01-01' })).toBe(true);
+      expect(
+        validate({ key: 'test-key', value: 'test-value', date: '2024-01-01' })
+      ).toBe(true);
 
       // Invalid - missing key
       expect(validate({ value: 'test-value', date: '2024-01-01' })).toBe(false);
@@ -120,9 +124,15 @@ describe('memory/preferences', () => {
       expect(validate({})).toBe(false);
 
       // Invalid - empty strings
-      expect(validate({ key: '', value: 'test-value', date: '2024-01-01' })).toBe(false);
-      expect(validate({ key: 'test-key', value: '', date: '2024-01-01' })).toBe(false);
-      expect(validate({ key: 'test-key', value: 'test-value', date: '' })).toBe(false);
+      expect(
+        validate({ key: '', value: 'test-value', date: '2024-01-01' })
+      ).toBe(false);
+      expect(validate({ key: 'test-key', value: '', date: '2024-01-01' })).toBe(
+        false
+      );
+      expect(validate({ key: 'test-key', value: 'test-value', date: '' })).toBe(
+        false
+      );
     });
 
     it('should have transform function that constructs MemoryPreference', async () => {
@@ -194,7 +204,9 @@ describe('memory/preferences', () => {
 
       expect(mockEnsureMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath, header] = mockEnsureMemoryFile.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'preferences.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+      );
       expect(header).toContain('# User Preferences');
       expect(header).toContain('This file stores user preferences');
       expect(header).toContain('These preferences guide agent behavior');
@@ -216,7 +228,9 @@ describe('memory/preferences', () => {
 
       expect(mockAppendMemoryEntry).toHaveBeenCalledTimes(1);
       const [filePath, entry] = mockAppendMemoryEntry.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'preferences.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+      );
       expect(entry).toContain('## code-style');
       expect(entry).toContain('**Value:** functional');
       expect(entry).toContain('**Date:** 2024-01-04');
@@ -240,7 +254,9 @@ describe('memory/preferences', () => {
 
       const [, entry] = mockAppendMemoryEntry.mock.calls[0];
       expect(entry).toContain('**Notes:**');
-      expect(entry).toContain('Faster than Jest and integrates better with Vite');
+      expect(entry).toContain(
+        'Faster than Jest and integrates better with Vite'
+      );
     });
 
     it('should not include notes section when notes is not provided', async () => {
@@ -393,7 +409,9 @@ describe('memory/preferences', () => {
       const [, entry] = mockAppendMemoryEntry.mock.calls[0];
       expect(entry).toContain('use-"quotes"-and-<brackets>');
       expect(entry).toContain('value with *asterisks* and `backticks`');
-      expect(entry).toContain('Notes with **bold** and _italic_\nand multiline\ncontent');
+      expect(entry).toContain(
+        'Notes with **bold** and _italic_\nand multiline\ncontent'
+      );
     });
 
     it('should handle empty string notes (truthy check)', async () => {

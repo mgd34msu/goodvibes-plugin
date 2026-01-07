@@ -35,12 +35,21 @@ export { debug, logError } from './logging.js';
 // Configuration
 // =============================================================================
 export type { SharedConfig } from './config.js';
-export { STDIN_TIMEOUT_MS, CHECKPOINT_TRIGGERS, QUALITY_GATES, getDefaultSharedConfig, loadSharedConfig } from './config.js';
+export {
+  STDIN_TIMEOUT_MS,
+  CHECKPOINT_TRIGGERS,
+  QUALITY_GATES,
+  getDefaultSharedConfig,
+  loadSharedConfig,
+} from './config.js';
 
 // =============================================================================
 // Gitignore Management
 // =============================================================================
-export { SECURITY_GITIGNORE_ENTRIES, ensureSecureGitignore } from './gitignore.js';
+export {
+  SECURITY_GITIGNORE_ENTRIES,
+  ensureSecureGitignore,
+} from './gitignore.js';
 
 // =============================================================================
 // Security Patterns
@@ -50,13 +59,30 @@ export { SECURITY_GITIGNORE_PATTERNS } from './security-patterns.js';
 // =============================================================================
 // Constants
 // =============================================================================
-export { LOCKFILES, PLUGIN_ROOT, PROJECT_ROOT, CACHE_DIR, ANALYTICS_FILE } from './constants.js';
+export {
+  LOCKFILES,
+  PLUGIN_ROOT,
+  PROJECT_ROOT,
+  CACHE_DIR,
+  ANALYTICS_FILE,
+} from './constants.js';
 
 // =============================================================================
 // Analytics
 // =============================================================================
-export type { ToolUsage, ToolFailure, SubagentSpawn, SessionAnalytics } from './analytics.js';
-export { ensureCacheDir, loadAnalytics, saveAnalytics, getSessionId, logToolUsage } from './analytics.js';
+export type {
+  ToolUsage,
+  ToolFailure,
+  SubagentSpawn,
+  SessionAnalytics,
+} from './analytics.js';
+export {
+  ensureCacheDir,
+  loadAnalytics,
+  saveAnalytics,
+  getSessionId,
+  logToolUsage,
+} from './analytics.js';
 
 // =============================================================================
 // File Utilities

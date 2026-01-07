@@ -35,7 +35,10 @@ vi.mock('../../post-tool-use/file-tracker.js', () => ({
     files: {
       ...state.files,
       modifiedThisSession: [...state.files.modifiedThisSession, filePath],
-      modifiedSinceCheckpoint: [...state.files.modifiedSinceCheckpoint, filePath],
+      modifiedSinceCheckpoint: [
+        ...state.files.modifiedSinceCheckpoint,
+        filePath,
+      ],
     },
   })),
   trackFileCreation: vi.fn((state: HooksState, filePath: string) => ({
@@ -44,7 +47,10 @@ vi.mock('../../post-tool-use/file-tracker.js', () => ({
       ...state.files,
       createdThisSession: [...state.files.createdThisSession, filePath],
       modifiedThisSession: [...state.files.modifiedThisSession, filePath],
-      modifiedSinceCheckpoint: [...state.files.modifiedSinceCheckpoint, filePath],
+      modifiedSinceCheckpoint: [
+        ...state.files.modifiedSinceCheckpoint,
+        filePath,
+      ],
     },
   })),
 }));
@@ -155,8 +161,12 @@ describe('file-automation', () => {
 
       expect(result.tracked).toBe(true);
       expect(result.filePath).toBe('/project/src/utils.ts');
-      expect(result.state.files.modifiedThisSession).toContain('/project/src/utils.ts');
-      expect(result.state.files.modifiedSinceCheckpoint).toContain('/project/src/utils.ts');
+      expect(result.state.files.modifiedThisSession).toContain(
+        '/project/src/utils.ts'
+      );
+      expect(result.state.files.modifiedSinceCheckpoint).toContain(
+        '/project/src/utils.ts'
+      );
     });
 
     it('should track file creation for Write tool', () => {
@@ -169,9 +179,15 @@ describe('file-automation', () => {
 
       expect(result.tracked).toBe(true);
       expect(result.filePath).toBe('/project/src/utils.ts');
-      expect(result.state.files.createdThisSession).toContain('/project/src/utils.ts');
-      expect(result.state.files.modifiedThisSession).toContain('/project/src/utils.ts');
-      expect(result.state.files.modifiedSinceCheckpoint).toContain('/project/src/utils.ts');
+      expect(result.state.files.createdThisSession).toContain(
+        '/project/src/utils.ts'
+      );
+      expect(result.state.files.modifiedThisSession).toContain(
+        '/project/src/utils.ts'
+      );
+      expect(result.state.files.modifiedSinceCheckpoint).toContain(
+        '/project/src/utils.ts'
+      );
     });
 
     it('should return tracked=false when file_path is missing', () => {
@@ -193,7 +209,11 @@ describe('file-automation', () => {
         tool_input: undefined,
       };
 
-      const result = handleFileModification(mockState, inputNoToolInput, 'Edit');
+      const result = handleFileModification(
+        mockState,
+        inputNoToolInput,
+        'Edit'
+      );
 
       expect(result.tracked).toBe(false);
       expect(result.filePath).toBe(null);
@@ -208,7 +228,11 @@ describe('file-automation', () => {
         },
       };
 
-      const result = handleFileModification(mockState, inputUndefinedPath, 'Edit');
+      const result = handleFileModification(
+        mockState,
+        inputUndefinedPath,
+        'Edit'
+      );
 
       expect(result.tracked).toBe(false);
       expect(result.filePath).toBe(null);
@@ -216,12 +240,20 @@ describe('file-automation', () => {
     });
 
     it('should handle non-Edit non-Write tool as modification', () => {
-      const result = handleFileModification(mockState, mockInput, 'SomeOtherTool');
+      const result = handleFileModification(
+        mockState,
+        mockInput,
+        'SomeOtherTool'
+      );
 
       expect(result.tracked).toBe(true);
       expect(result.filePath).toBe('/project/src/utils.ts');
-      expect(result.state.files.modifiedThisSession).toContain('/project/src/utils.ts');
-      expect(result.state.files.createdThisSession).not.toContain('/project/src/utils.ts');
+      expect(result.state.files.modifiedThisSession).toContain(
+        '/project/src/utils.ts'
+      );
+      expect(result.state.files.createdThisSession).not.toContain(
+        '/project/src/utils.ts'
+      );
     });
   });
 
@@ -232,7 +264,12 @@ describe('file-automation', () => {
         tool_input: {},
       };
 
-      const result = await processFileAutomation(mockState, mockConfig, inputNoPath, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        inputNoPath,
+        'Edit'
+      );
 
       expect(result.messages).toEqual([]);
       expect(result.state).toBe(mockState);
@@ -274,7 +311,12 @@ describe('file-automation', () => {
         branchName: 'feature/test-feature',
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toEqual([
         'Created checkpoint: checkpoint-1',
@@ -286,9 +328,21 @@ describe('file-automation', () => {
         '/project/src/utils.ts',
         '/project'
       );
-      expect(maybeRunBuild).toHaveBeenCalledWith(expect.any(Object), mockConfig, '/project');
-      expect(maybeCreateCheckpoint).toHaveBeenCalledWith(expect.any(Object), mockConfig, '/project');
-      expect(maybeCreateBranch).toHaveBeenCalledWith(expect.any(Object), mockConfig, '/project');
+      expect(maybeRunBuild).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockConfig,
+        '/project'
+      );
+      expect(maybeCreateCheckpoint).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockConfig,
+        '/project'
+      );
+      expect(maybeCreateBranch).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockConfig,
+        '/project'
+      );
     });
 
     it('should add test failure message when tests fail', async () => {
@@ -327,7 +381,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toContain('Tests failed: 2 tests failed');
     });
@@ -365,7 +424,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toContain('Build check: 3 type errors found');
     });
@@ -396,7 +460,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toEqual([]);
     });
@@ -427,7 +496,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toEqual([]);
     });
@@ -458,7 +532,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toEqual(['Checkpoint created']);
     });
@@ -489,7 +568,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toEqual([]);
     });
@@ -530,7 +614,12 @@ describe('file-automation', () => {
         branchName: 'feature/new',
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.messages).toEqual([
         'Tests failed: Test failure',
@@ -553,7 +642,13 @@ describe('file-automation', () => {
         ...stateAfterBuild,
         git: {
           ...stateAfterBuild.git,
-          checkpoints: [{ hash: 'abc123', message: 'checkpoint', timestamp: '2025-01-01T03:00:00Z' }],
+          checkpoints: [
+            {
+              hash: 'abc123',
+              message: 'checkpoint',
+              timestamp: '2025-01-01T03:00:00Z',
+            },
+          ],
         },
       };
 
@@ -580,7 +675,12 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Edit');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Edit'
+      );
 
       expect(result.state.tests.lastQuickRun).toBe('2025-01-01T01:00:00Z');
       expect(result.state.build.lastRun).toBe('2025-01-01T02:00:00Z');
@@ -612,9 +712,16 @@ describe('file-automation', () => {
         branchName: null,
       });
 
-      const result = await processFileAutomation(mockState, mockConfig, mockInput, 'Write');
+      const result = await processFileAutomation(
+        mockState,
+        mockConfig,
+        mockInput,
+        'Write'
+      );
 
-      expect(result.state.files.createdThisSession).toContain('/project/src/utils.ts');
+      expect(result.state.files.createdThisSession).toContain(
+        '/project/src/utils.ts'
+      );
     });
   });
 

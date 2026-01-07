@@ -125,10 +125,12 @@ export function createMockDirentsWithTypes(
 export function createMockReaddirResult(
   entries: Array<{ name: string; type: 'file' | 'directory' }>
 ): Dirent[] {
-  return entries.map(entry => createMockDirent(entry.name, {
-    isFile: entry.type === 'file',
-    isDirectory: entry.type === 'directory',
-  }));
+  return entries.map((entry) =>
+    createMockDirent(entry.name, {
+      isFile: entry.type === 'file',
+      isDirectory: entry.type === 'directory',
+    })
+  );
 }
 
 /**
@@ -253,7 +255,10 @@ export function createMockGitExecSync(config: {
 }): (command: string) => string {
   return (command: string): string => {
     // Handle branch command
-    if (command.includes('branch --show-current') || command.includes('--abbrev-ref HEAD')) {
+    if (
+      command.includes('branch --show-current') ||
+      command.includes('--abbrev-ref HEAD')
+    ) {
       if (config.errors?.branch) {
         throw new Error('git error: not a git repository');
       }
@@ -261,7 +266,10 @@ export function createMockGitExecSync(config: {
     }
 
     // Handle commit/short hash command
-    if (command.includes('--short HEAD') || command.includes('rev-parse HEAD')) {
+    if (
+      command.includes('--short HEAD') ||
+      command.includes('rev-parse HEAD')
+    ) {
       if (config.errors?.commit) {
         throw new Error('git error: no commits');
       }

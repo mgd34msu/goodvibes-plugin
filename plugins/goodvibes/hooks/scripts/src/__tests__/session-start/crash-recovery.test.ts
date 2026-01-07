@@ -46,7 +46,8 @@ describe('crash-recovery', () => {
     it('should return no recovery needed when state file does not exist', async () => {
       mockFileExistsAsync.mockResolvedValue(false);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(false);
@@ -79,7 +80,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(false);
@@ -93,7 +95,10 @@ describe('crash-recovery', () => {
     it('should detect recovery needed from uncommitted changes', async () => {
       mockFileExistsAsync.mockResolvedValue(true);
       mockHasUncommittedChanges.mockResolvedValue(true);
-      mockGetUncommittedFiles.mockResolvedValue(['src/index.ts', 'src/utils.ts']);
+      mockGetUncommittedFiles.mockResolvedValue([
+        'src/index.ts',
+        'src/utils.ts',
+      ]);
       mockLoadState.mockResolvedValue({
         git: {
           featureBranch: null,
@@ -113,7 +118,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -142,7 +148,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -183,7 +190,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -212,7 +220,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -241,7 +250,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -276,7 +286,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -306,7 +317,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -335,7 +347,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -371,7 +384,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       const result = await checkCrashRecovery(cwd);
 
       expect(result.needsRecovery).toBe(true);
@@ -403,7 +417,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       await checkCrashRecovery(cwd);
 
       expect(mockGetUncommittedFiles).not.toHaveBeenCalled();
@@ -432,7 +447,8 @@ describe('crash-recovery', () => {
         },
       } as HooksState);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       await checkCrashRecovery(cwd);
 
       expect(mockGetUncommittedFiles).toHaveBeenCalledWith(cwd);
@@ -441,7 +457,8 @@ describe('crash-recovery', () => {
     it('should use correct path for state file', async () => {
       mockFileExistsAsync.mockResolvedValue(false);
 
-      const { checkCrashRecovery } = await import('../../session-start/crash-recovery.js');
+      const { checkCrashRecovery } =
+        await import('../../session-start/crash-recovery.js');
       await checkCrashRecovery(cwd);
 
       expect(mockFileExistsAsync).toHaveBeenCalled();
@@ -454,7 +471,8 @@ describe('crash-recovery', () => {
 
   describe('formatRecoveryContext', () => {
     it('should return empty string when no recovery needed', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: false,
         previousFeature: null,
@@ -470,7 +488,8 @@ describe('crash-recovery', () => {
     });
 
     it('should format basic recovery message', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -488,7 +507,8 @@ describe('crash-recovery', () => {
     });
 
     it('should include branch information', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -504,7 +524,8 @@ describe('crash-recovery', () => {
     });
 
     it('should include feature description', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: 'Implementing user authentication',
@@ -520,7 +541,8 @@ describe('crash-recovery', () => {
     });
 
     it('should include last checkpoint', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -540,7 +562,8 @@ describe('crash-recovery', () => {
     });
 
     it('should include uncommitted files count', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -556,7 +579,8 @@ describe('crash-recovery', () => {
     });
 
     it('should include pending issues list', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -574,7 +598,8 @@ describe('crash-recovery', () => {
     });
 
     it('should format complete recovery context with all information', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: 'Authentication system',
@@ -603,7 +628,8 @@ describe('crash-recovery', () => {
     });
 
     it('should not include branch section when onBranch is null', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: 'Some feature',
@@ -619,7 +645,8 @@ describe('crash-recovery', () => {
     });
 
     it('should not include feature section when previousFeature is null', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -635,7 +662,8 @@ describe('crash-recovery', () => {
     });
 
     it('should not include checkpoint section when lastCheckpoint is null', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: 'Some feature',
@@ -651,7 +679,8 @@ describe('crash-recovery', () => {
     });
 
     it('should not include uncommitted files when array is empty', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: 'Some feature',
@@ -667,7 +696,8 @@ describe('crash-recovery', () => {
     });
 
     it('should not include pending issues section when array is empty', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: 'Some feature',
@@ -683,7 +713,8 @@ describe('crash-recovery', () => {
     });
 
     it('should handle single uncommitted file', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,
@@ -699,7 +730,8 @@ describe('crash-recovery', () => {
     });
 
     it('should handle single pending issue', async () => {
-      const { formatRecoveryContext } = await import('../../session-start/crash-recovery.js');
+      const { formatRecoveryContext } =
+        await import('../../session-start/crash-recovery.js');
       const info = {
         needsRecovery: true,
         previousFeature: null,

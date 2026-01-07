@@ -31,7 +31,8 @@ describe('quality-gates', () => {
 
   describe('QUALITY_GATES constant', () => {
     it('should export default quality gates array', async () => {
-      const { QUALITY_GATES } = await import('../pre-tool-use/quality-gates.js');
+      const { QUALITY_GATES } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(QUALITY_GATES).toBeDefined();
       expect(Array.isArray(QUALITY_GATES)).toBe(true);
@@ -39,9 +40,10 @@ describe('quality-gates', () => {
     });
 
     it('should include TypeScript gate', async () => {
-      const { QUALITY_GATES } = await import('../pre-tool-use/quality-gates.js');
+      const { QUALITY_GATES } =
+        await import('../pre-tool-use/quality-gates.js');
 
-      const tsGate = QUALITY_GATES.find(g => g.name === 'TypeScript');
+      const tsGate = QUALITY_GATES.find((g) => g.name === 'TypeScript');
       expect(tsGate).toBeDefined();
       expect(tsGate?.check).toContain('tsc');
       expect(tsGate?.blocking).toBe(true);
@@ -49,9 +51,10 @@ describe('quality-gates', () => {
     });
 
     it('should include ESLint gate with auto-fix', async () => {
-      const { QUALITY_GATES } = await import('../pre-tool-use/quality-gates.js');
+      const { QUALITY_GATES } =
+        await import('../pre-tool-use/quality-gates.js');
 
-      const eslintGate = QUALITY_GATES.find(g => g.name === 'ESLint');
+      const eslintGate = QUALITY_GATES.find((g) => g.name === 'ESLint');
       expect(eslintGate).toBeDefined();
       expect(eslintGate?.check).toContain('eslint');
       expect(eslintGate?.autoFix).toContain('eslint . --fix');
@@ -59,9 +62,10 @@ describe('quality-gates', () => {
     });
 
     it('should include Prettier gate with auto-fix', async () => {
-      const { QUALITY_GATES } = await import('../pre-tool-use/quality-gates.js');
+      const { QUALITY_GATES } =
+        await import('../pre-tool-use/quality-gates.js');
 
-      const prettierGate = QUALITY_GATES.find(g => g.name === 'Prettier');
+      const prettierGate = QUALITY_GATES.find((g) => g.name === 'Prettier');
       expect(prettierGate).toBeDefined();
       expect(prettierGate?.check).toContain('prettier --check');
       expect(prettierGate?.autoFix).toContain('prettier --write');
@@ -69,9 +73,10 @@ describe('quality-gates', () => {
     });
 
     it('should include Tests gate', async () => {
-      const { QUALITY_GATES } = await import('../pre-tool-use/quality-gates.js');
+      const { QUALITY_GATES } =
+        await import('../pre-tool-use/quality-gates.js');
 
-      const testGate = QUALITY_GATES.find(g => g.name === 'Tests');
+      const testGate = QUALITY_GATES.find((g) => g.name === 'Tests');
       expect(testGate).toBeDefined();
       expect(testGate?.check).toBe('npm test');
       expect(testGate?.autoFix).toBeNull();
@@ -86,9 +91,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -101,7 +108,7 @@ describe('quality-gates', () => {
 
       // We can't directly test toolExists as it's private, but we test it through runQualityGates
       // If node_modules exists, gates should not be skipped
-      expect(result.results.every(r => r.status !== 'skipped')).toBe(true);
+      expect(result.results.every((r) => r.status !== 'skipped')).toBe(true);
     });
 
     it('should return false for npx command when node_modules does not exist', async () => {
@@ -117,7 +124,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // Without node_modules, all npx gates should be skipped
-      const skippedGates = result.results.filter(r => r.status === 'skipped');
+      const skippedGates = result.results.filter((r) => r.status === 'skipped');
       expect(skippedGates.length).toBeGreaterThan(0);
     });
 
@@ -127,11 +134,13 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: {
-            test: 'vitest',
-          },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: {
+              test: 'vitest',
+            },
+          })
+        ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -142,7 +151,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // Test gate should not be skipped if script exists
-      const testGate = result.results.find(r => r.gate === 'Tests');
+      const testGate = result.results.find((r) => r.gate === 'Tests');
       expect(testGate?.status).not.toBe('skipped');
     });
 
@@ -165,7 +174,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // Test gate should be skipped without package.json
-      const testGate = result.results.find(r => r.gate === 'Tests');
+      const testGate = result.results.find((r) => r.gate === 'Tests');
       expect(testGate?.status).toBe('skipped');
     });
 
@@ -175,11 +184,13 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: {
-            build: 'tsc',
-          },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: {
+              build: 'tsc',
+            },
+          })
+        ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -190,7 +201,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // Test gate should be skipped when test script doesn't exist
-      const testGate = result.results.find(r => r.gate === 'Tests');
+      const testGate = result.results.find((r) => r.gate === 'Tests');
       expect(testGate?.status).toBe('skipped');
     });
 
@@ -200,11 +211,13 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: {
-            test: 'vitest',
-          },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: {
+              test: 'vitest',
+            },
+          })
+        ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -215,7 +228,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // Should handle 'npm test' and 'npm run test' the same
-      const testGate = result.results.find(r => r.gate === 'Tests');
+      const testGate = result.results.find((r) => r.gate === 'Tests');
       expect(testGate?.status).not.toBe('skipped');
     });
 
@@ -226,8 +239,8 @@ describe('quality-gates', () => {
           name: 'CustomTool',
           check: 'cargo test --release',
           autoFix: null,
-          blocking: false
-        }
+          blocking: false,
+        },
       ];
 
       vi.doMock('../shared/file-utils.js', () => ({
@@ -246,7 +259,10 @@ describe('quality-gates', () => {
 
       // Run with custom gates that use non-npm/npx commands
       // This exercises the `return true` path in toolExists for unknown command types
-      const result = await qualityGates.runQualityGates('/test/project', customGates);
+      const result = await qualityGates.runQualityGates(
+        '/test/project',
+        customGates
+      );
 
       // Custom gate should NOT be skipped (toolExists returns true for unknown commands)
       expect(result.results).toHaveLength(1);
@@ -261,8 +277,8 @@ describe('quality-gates', () => {
           name: 'OptionalLint',
           check: 'cargo clippy',
           autoFix: null, // No auto-fix available
-          blocking: false // Non-blocking
-        }
+          blocking: false, // Non-blocking
+        },
       ];
 
       vi.doMock('../shared/file-utils.js', () => ({
@@ -280,7 +296,10 @@ describe('quality-gates', () => {
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
-      const result = await qualityGates.runQualityGates('/test/project', customGates);
+      const result = await qualityGates.runQualityGates(
+        '/test/project',
+        customGates
+      );
 
       // Gate fails but is non-blocking, so blocking should be false
       expect(result.results).toHaveLength(1);
@@ -303,9 +322,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -313,7 +334,7 @@ describe('quality-gates', () => {
 
       // All gates should pass if execSync doesn't throw
       expect(result.allPassed).toBe(true);
-      expect(result.results.every(r => r.status === 'passed')).toBe(true);
+      expect(result.results.every((r) => r.status === 'passed')).toBe(true);
     });
 
     it('should return false when command fails', async () => {
@@ -330,9 +351,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -340,7 +363,7 @@ describe('quality-gates', () => {
 
       // All gates should fail
       expect(result.allPassed).toBe(false);
-      expect(result.results.some(r => r.status === 'failed')).toBe(true);
+      expect(result.results.some((r) => r.status === 'failed')).toBe(true);
     });
 
     it('should execute command in correct working directory', async () => {
@@ -354,9 +377,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -380,9 +405,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -406,9 +433,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -433,9 +462,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -443,7 +474,7 @@ describe('quality-gates', () => {
 
       expect(result.allPassed).toBe(true);
       expect(result.blocking).toBe(false);
-      expect(result.results.every(r => r.status === 'passed')).toBe(true);
+      expect(result.results.every((r) => r.status === 'passed')).toBe(true);
     });
 
     it('should return allPassed false when any gate fails', async () => {
@@ -458,9 +489,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -481,9 +514,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -512,9 +547,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -538,7 +575,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // All gates should be skipped without node_modules
-      expect(result.results.every(r => r.status === 'skipped')).toBe(true);
+      expect(result.results.every((r) => r.status === 'skipped')).toBe(true);
     });
 
     it('should attempt auto-fix when gate fails and autoFix is available', async () => {
@@ -568,16 +605,18 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
 
       // ESLint should show as auto-fixed
-      const eslintGate = result.results.find(r => r.gate === 'ESLint');
+      const eslintGate = result.results.find((r) => r.gate === 'ESLint');
       expect(eslintGate?.status).toBe('auto-fixed');
     });
 
@@ -598,16 +637,18 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
 
       // ESLint should be marked as failed
-      const eslintGate = result.results.find(r => r.gate === 'ESLint');
+      const eslintGate = result.results.find((r) => r.gate === 'ESLint');
       expect(eslintGate?.status).toBe('failed');
       expect(eslintGate?.message).toBe('Auto-fix failed');
     });
@@ -636,16 +677,18 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
 
       // ESLint should be failed with specific message
-      const eslintGate = result.results.find(r => r.gate === 'ESLint');
+      const eslintGate = result.results.find((r) => r.gate === 'ESLint');
       expect(eslintGate?.status).toBe('failed');
       expect(eslintGate?.message).toBe('Auto-fix did not resolve issues');
     });
@@ -665,16 +708,18 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
 
       // TypeScript has no autoFix, so should be marked as failed
-      const tsGate = result.results.find(r => r.gate === 'TypeScript');
+      const tsGate = result.results.find((r) => r.gate === 'TypeScript');
       expect(tsGate?.status).toBe('failed');
       expect(tsGate?.message).toBeUndefined();
     });
@@ -694,9 +739,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -716,9 +763,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -747,28 +796,34 @@ describe('quality-gates', () => {
 
   describe('isCommitCommand', () => {
     it('should return true for basic git commit command', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('git commit -m "message"')).toBe(true);
     });
 
     it('should return true for git commit with various flags', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('git commit -am "message"')).toBe(true);
       expect(isCommitCommand('git commit --amend')).toBe(true);
-      expect(isCommitCommand('git commit --no-verify -m "skip hooks"')).toBe(true);
+      expect(isCommitCommand('git commit --no-verify -m "skip hooks"')).toBe(
+        true
+      );
     });
 
     it('should return true for git commit with extra whitespace', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('git  commit  -m "message"')).toBe(true);
       expect(isCommitCommand('git\tcommit -m "message"')).toBe(true);
     });
 
     it('should return false for non-commit git commands', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('git push origin main')).toBe(false);
       expect(isCommitCommand('git pull')).toBe(false);
@@ -777,20 +832,23 @@ describe('quality-gates', () => {
     });
 
     it('should return false for commit in other contexts', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('commit to this task')).toBe(false);
       expect(isCommitCommand('npm run commit')).toBe(false);
     });
 
     it('should return false for empty string', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('')).toBe(false);
     });
 
     it('should be case sensitive', async () => {
-      const { isCommitCommand } = await import('../pre-tool-use/quality-gates.js');
+      const { isCommitCommand } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(isCommitCommand('GIT COMMIT -m "message"')).toBe(false);
       expect(isCommitCommand('git COMMIT -m "message"')).toBe(false);
@@ -799,27 +857,34 @@ describe('quality-gates', () => {
 
   describe('formatGateResults', () => {
     it('should format single result without message', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
-      const results = [
-        { gate: 'TypeScript', status: 'passed' as const },
-      ];
+      const results = [{ gate: 'TypeScript', status: 'passed' as const }];
 
       expect(formatGateResults(results)).toBe('TypeScript: passed');
     });
 
     it('should format single result with message', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
       const results = [
-        { gate: 'ESLint', status: 'failed' as const, message: 'Auto-fix failed' },
+        {
+          gate: 'ESLint',
+          status: 'failed' as const,
+          message: 'Auto-fix failed',
+        },
       ];
 
-      expect(formatGateResults(results)).toBe('ESLint: failed (Auto-fix failed)');
+      expect(formatGateResults(results)).toBe(
+        'ESLint: failed (Auto-fix failed)'
+      );
     });
 
     it('should format multiple results', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
       const results = [
         { gate: 'TypeScript', status: 'passed' as const },
@@ -833,12 +898,21 @@ describe('quality-gates', () => {
     });
 
     it('should format results with mixed messages', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
       const results = [
         { gate: 'TypeScript', status: 'passed' as const },
-        { gate: 'ESLint', status: 'failed' as const, message: 'Lint errors found' },
-        { gate: 'Tests', status: 'skipped' as const, message: 'Tool not available' },
+        {
+          gate: 'ESLint',
+          status: 'failed' as const,
+          message: 'Lint errors found',
+        },
+        {
+          gate: 'Tests',
+          status: 'skipped' as const,
+          message: 'Tool not available',
+        },
       ];
 
       expect(formatGateResults(results)).toBe(
@@ -847,13 +921,15 @@ describe('quality-gates', () => {
     });
 
     it('should handle empty results array', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
       expect(formatGateResults([])).toBe('');
     });
 
     it('should handle all status types', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
       const results = [
         { gate: 'Gate1', status: 'passed' as const },
@@ -870,13 +946,19 @@ describe('quality-gates', () => {
     });
 
     it('should preserve gate names exactly', async () => {
-      const { formatGateResults } = await import('../pre-tool-use/quality-gates.js');
+      const { formatGateResults } =
+        await import('../pre-tool-use/quality-gates.js');
 
       const results = [
-        { gate: 'TypeScript with special-chars_123', status: 'passed' as const },
+        {
+          gate: 'TypeScript with special-chars_123',
+          status: 'passed' as const,
+        },
       ];
 
-      expect(formatGateResults(results)).toContain('TypeScript with special-chars_123');
+      expect(formatGateResults(results)).toContain(
+        'TypeScript with special-chars_123'
+      );
     });
   });
 
@@ -893,9 +975,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -928,7 +1012,9 @@ describe('quality-gates', () => {
 
       // Should throw since toolExists doesn't catch JSON parse errors
       // This is expected behavior - malformed package.json is a critical error
-      await expect(qualityGates.runQualityGates('/test/project')).rejects.toThrow();
+      await expect(
+        qualityGates.runQualityGates('/test/project')
+      ).rejects.toThrow();
     });
 
     it('should handle package.json without scripts field', async () => {
@@ -937,9 +1023,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          name: 'test-package',
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            name: 'test-package',
+          })
+        ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -950,7 +1038,7 @@ describe('quality-gates', () => {
       const result = await qualityGates.runQualityGates('/test/project');
 
       // Test gate should be skipped when scripts field doesn't exist
-      const testGate = result.results.find(r => r.gate === 'Tests');
+      const testGate = result.results.find((r) => r.gate === 'Tests');
       expect(testGate?.status).toBe('skipped');
     });
 
@@ -960,9 +1048,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       vi.doMock('child_process', () => ({
@@ -1017,9 +1107,11 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
@@ -1029,16 +1121,16 @@ describe('quality-gates', () => {
       expect(result.allPassed).toBe(false);
       expect(result.blocking).toBe(false); // Only Prettier failed, which is non-blocking
 
-      const tsGate = result.results.find(r => r.gate === 'TypeScript');
+      const tsGate = result.results.find((r) => r.gate === 'TypeScript');
       expect(tsGate?.status).toBe('passed');
 
-      const eslintGate = result.results.find(r => r.gate === 'ESLint');
+      const eslintGate = result.results.find((r) => r.gate === 'ESLint');
       expect(eslintGate?.status).toBe('auto-fixed');
 
-      const prettierGate = result.results.find(r => r.gate === 'Prettier');
+      const prettierGate = result.results.find((r) => r.gate === 'Prettier');
       expect(prettierGate?.status).toBe('failed');
 
-      const testGate = result.results.find(r => r.gate === 'Tests');
+      const testGate = result.results.find((r) => r.gate === 'Tests');
       expect(testGate?.status).toBe('passed');
     });
 
@@ -1056,7 +1148,7 @@ describe('quality-gates', () => {
 
       expect(result.allPassed).toBe(true); // No failures
       expect(result.blocking).toBe(false);
-      expect(result.results.every(r => r.status === 'skipped')).toBe(true);
+      expect(result.results.every((r) => r.status === 'skipped')).toBe(true);
     });
 
     it('should handle timeout errors in check execution', async () => {
@@ -1073,16 +1165,18 @@ describe('quality-gates', () => {
       }));
 
       vi.doMock('fs/promises', () => ({
-        readFile: vi.fn().mockResolvedValue(JSON.stringify({
-          scripts: { test: 'vitest' },
-        })),
+        readFile: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            scripts: { test: 'vitest' },
+          })
+        ),
       }));
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
 
       expect(result.allPassed).toBe(false);
-      expect(result.results.every(r => r.status === 'failed')).toBe(true);
+      expect(result.results.every((r) => r.status === 'failed')).toBe(true);
     });
   });
 });

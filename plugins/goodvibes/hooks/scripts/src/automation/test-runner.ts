@@ -46,7 +46,7 @@ export function findTestsForFile(sourceFile: string): string[] {
     sourceFile.replace(/src\/(.*)\.tsx?$/, 'tests/$1.test.ts'),
   ];
 
-  return testPatterns.filter(p => fs.existsSync(p));
+  return testPatterns.filter((p) => fs.existsSync(p));
 }
 
 /**
@@ -70,8 +70,16 @@ export function runTests(testFiles: string[], cwd: string): TestResult {
 
   try {
     const fileArgs = testFiles.join(' ');
-    execSync(`npm test -- ${fileArgs}`, { cwd, stdio: 'pipe', timeout: 300000 });
-    return { passed: true, summary: `${testFiles.length} test files passed`, failures: [] };
+    execSync(`npm test -- ${fileArgs}`, {
+      cwd,
+      stdio: 'pipe',
+      timeout: 300000,
+    });
+    return {
+      passed: true,
+      summary: `${testFiles.length} test files passed`,
+      failures: [],
+    };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);
     return {

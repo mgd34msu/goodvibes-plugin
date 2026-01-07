@@ -21,7 +21,10 @@ import {
 describe('pattern-matcher', () => {
   describe('findMatchingPattern', () => {
     it('should find pattern by category mapping - npm_install', () => {
-      const result = findMatchingPattern('npm_install', 'Module not found: lodash');
+      const result = findMatchingPattern(
+        'npm_install',
+        'Module not found: lodash'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('missing_import');
@@ -29,14 +32,20 @@ describe('pattern-matcher', () => {
     });
 
     it('should find pattern by category mapping - npm_install with npm error', () => {
-      const result = findMatchingPattern('npm_install', 'npm ERR! code ERESOLVE');
+      const result = findMatchingPattern(
+        'npm_install',
+        'npm ERR! code ERESOLVE'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('npm_error');
     });
 
     it('should find pattern by category mapping - typescript_error', () => {
-      const result = findMatchingPattern('typescript_error', "Type 'string' is not assignable to type 'number'");
+      const result = findMatchingPattern(
+        'typescript_error',
+        "Type 'string' is not assignable to type 'number'"
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('typescript_type_error');
@@ -44,28 +53,40 @@ describe('pattern-matcher', () => {
     });
 
     it('should find pattern by category mapping - typescript_error with config error', () => {
-      const result = findMatchingPattern('typescript_error', 'Error in tsconfig.json file');
+      const result = findMatchingPattern(
+        'typescript_error',
+        'Error in tsconfig.json file'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('typescript_config_error');
     });
 
     it('should find pattern by category mapping - typescript_error with type mismatch', () => {
-      const result = findMatchingPattern('typescript_error', 'Expected 2 arguments, but got 3');
+      const result = findMatchingPattern(
+        'typescript_error',
+        'Expected 2 arguments, but got 3'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('type_mismatch');
     });
 
     it('should find pattern by category mapping - test_failure', () => {
-      const result = findMatchingPattern('test_failure', 'FAIL src/utils.test.ts');
+      const result = findMatchingPattern(
+        'test_failure',
+        'FAIL src/utils.test.ts'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('test_failure');
     });
 
     it('should find pattern by category mapping - build_failure', () => {
-      const result = findMatchingPattern('build_failure', 'Build failed with errors');
+      const result = findMatchingPattern(
+        'build_failure',
+        'Build failed with errors'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('build_failure');
@@ -73,21 +94,30 @@ describe('pattern-matcher', () => {
     });
 
     it('should find pattern by category mapping - file_not_found', () => {
-      const result = findMatchingPattern('file_not_found', 'ENOENT: no such file or directory');
+      const result = findMatchingPattern(
+        'file_not_found',
+        'ENOENT: no such file or directory'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('file_not_found');
     });
 
     it('should find pattern by category mapping - git_conflict', () => {
-      const result = findMatchingPattern('git_conflict', 'fatal: not a git repository');
+      const result = findMatchingPattern(
+        'git_conflict',
+        'fatal: not a git repository'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('git_error');
     });
 
     it('should find pattern by category mapping - database_error', () => {
-      const result = findMatchingPattern('database_error', 'ECONNREFUSED 127.0.0.1:5432');
+      const result = findMatchingPattern(
+        'database_error',
+        'ECONNREFUSED 127.0.0.1:5432'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('database_error');
@@ -101,7 +131,10 @@ describe('pattern-matcher', () => {
     });
 
     it('should find pattern by category mapping - unknown with undefined_reference', () => {
-      const result = findMatchingPattern('unknown', 'ReferenceError: foo is not defined');
+      const result = findMatchingPattern(
+        'unknown',
+        'ReferenceError: foo is not defined'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('undefined_reference');
@@ -115,14 +148,20 @@ describe('pattern-matcher', () => {
     });
 
     it('should find pattern by category mapping - unknown with permission_error', () => {
-      const result = findMatchingPattern('unknown', 'EACCES: permission denied');
+      const result = findMatchingPattern(
+        'unknown',
+        'EACCES: permission denied'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('permission_error');
     });
 
     it('should find pattern by category mapping - unknown with resource_error', () => {
-      const result = findMatchingPattern('unknown', 'JavaScript heap out of memory');
+      const result = findMatchingPattern(
+        'unknown',
+        'JavaScript heap out of memory'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('resource_error');
@@ -130,7 +169,10 @@ describe('pattern-matcher', () => {
     });
 
     it('should find pattern by category mapping - unknown with syntax_error', () => {
-      const result = findMatchingPattern('unknown', 'SyntaxError: Unexpected token');
+      const result = findMatchingPattern(
+        'unknown',
+        'SyntaxError: Unexpected token'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('syntax_error');
@@ -145,7 +187,10 @@ describe('pattern-matcher', () => {
     });
 
     it('should return null when no pattern matches', () => {
-      const result = findMatchingPattern('unknown', 'some random error message that matches nothing');
+      const result = findMatchingPattern(
+        'unknown',
+        'some random error message that matches nothing'
+      );
 
       expect(result).toBeNull();
     });
@@ -157,14 +202,20 @@ describe('pattern-matcher', () => {
     });
 
     it('should match first pattern when multiple patterns exist in one category', () => {
-      const result = findMatchingPattern('typescript_error', 'TS1234: some error');
+      const result = findMatchingPattern(
+        'typescript_error',
+        'TS1234: some error'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('typescript_type_error');
     });
 
     it('should match second pattern regex in category', () => {
-      const result = findMatchingPattern('typescript_error', "Type 'A' is not assignable to type 'B'");
+      const result = findMatchingPattern(
+        'typescript_error',
+        "Type 'A' is not assignable to type 'B'"
+      );
 
       expect(result).not.toBeNull();
       expect(result?.category).toBe('typescript_type_error');
@@ -172,7 +223,10 @@ describe('pattern-matcher', () => {
 
     it('should handle category with empty pattern list in CATEGORY_MAP', () => {
       // Test with a category that exists but might not have mapped patterns
-      const result = findMatchingPattern('build_failure', 'random unmatched error');
+      const result = findMatchingPattern(
+        'build_failure',
+        'random unmatched error'
+      );
 
       expect(result).toBeNull();
     });
@@ -180,7 +234,10 @@ describe('pattern-matcher', () => {
     it('should handle invalid category gracefully with fallback to pattern matching', () => {
       // Force an invalid category to test the || [] fallback on line 46
       const invalidCategory = 'invalid_category' as ErrorCategory;
-      const result = findMatchingPattern(invalidCategory, 'TS1234: some typescript error');
+      const result = findMatchingPattern(
+        invalidCategory,
+        'TS1234: some typescript error'
+      );
 
       // Should still find pattern via fallback pattern matching
       expect(result).not.toBeNull();
@@ -190,7 +247,10 @@ describe('pattern-matcher', () => {
     it('should return null for invalid category with no pattern match', () => {
       // Force an invalid category with no matching pattern
       const invalidCategory = 'invalid_category' as ErrorCategory;
-      const result = findMatchingPattern(invalidCategory, 'completely unmatched error xyz123');
+      const result = findMatchingPattern(
+        invalidCategory,
+        'completely unmatched error xyz123'
+      );
 
       expect(result).toBeNull();
     });
@@ -201,28 +261,36 @@ describe('pattern-matcher', () => {
       const result = findAllMatchingPatterns('Module not found: foo');
 
       expect(result.length).toBeGreaterThan(0);
-      expect(result.some(p => p.category === 'missing_import')).toBe(true);
+      expect(result.some((p) => p.category === 'missing_import')).toBe(true);
     });
 
     it('should find multiple patterns when error matches multiple categories', () => {
-      const result = findAllMatchingPatterns('Module not found and npm ERR! occurred');
+      const result = findAllMatchingPatterns(
+        'Module not found and npm ERR! occurred'
+      );
 
       expect(result.length).toBeGreaterThanOrEqual(1);
-      const categories = result.map(p => p.category);
+      const categories = result.map((p) => p.category);
       expect(categories).toContain('missing_import');
     });
 
     it('should return empty array when no patterns match', () => {
-      const result = findAllMatchingPatterns('completely unrelated error message xyz123');
+      const result = findAllMatchingPatterns(
+        'completely unrelated error message xyz123'
+      );
 
       expect(result).toEqual([]);
     });
 
     it('should only add each pattern once even if multiple regexes match', () => {
       // TypeScript type error has multiple patterns, but should only appear once
-      const result = findAllMatchingPatterns("TS2345: Type 'string' is not assignable to type 'number'");
+      const result = findAllMatchingPatterns(
+        "TS2345: Type 'string' is not assignable to type 'number'"
+      );
 
-      const typescriptPatterns = result.filter(p => p.category === 'typescript_type_error');
+      const typescriptPatterns = result.filter(
+        (p) => p.category === 'typescript_type_error'
+      );
       expect(typescriptPatterns.length).toBe(1);
     });
 
@@ -233,22 +301,30 @@ describe('pattern-matcher', () => {
     });
 
     it('should find build failure pattern', () => {
-      const result = findAllMatchingPatterns('Build failed with critical errors');
+      const result = findAllMatchingPatterns(
+        'Build failed with critical errors'
+      );
 
-      expect(result.some(p => p.category === 'build_failure')).toBe(true);
+      expect(result.some((p) => p.category === 'build_failure')).toBe(true);
     });
 
     it('should find test failure pattern with AssertionError', () => {
-      const result = findAllMatchingPatterns('AssertionError: expected true to be false');
+      const result = findAllMatchingPatterns(
+        'AssertionError: expected true to be false'
+      );
 
-      expect(result.some(p => p.category === 'test_failure')).toBe(true);
+      expect(result.some((p) => p.category === 'test_failure')).toBe(true);
     });
 
     it('should break after first matching regex in pattern', () => {
       // Both TS\d+ and "Type.*not assignable" would match, but should only add pattern once
-      const result = findAllMatchingPatterns("TS1234: Type 'A' is not assignable to type 'B'");
+      const result = findAllMatchingPatterns(
+        "TS1234: Type 'A' is not assignable to type 'B'"
+      );
 
-      const count = result.filter(p => p.category === 'typescript_type_error').length;
+      const count = result.filter(
+        (p) => p.category === 'typescript_type_error'
+      ).length;
       expect(count).toBe(1);
     });
   });
@@ -435,7 +511,9 @@ describe('pattern-matcher', () => {
         mockErrorState
       );
 
-      expect(result).toBe('Review the error message carefully. Check logs for more details. Try isolating the problem step by step.');
+      expect(result).toBe(
+        'Review the error message carefully. Check logs for more details. Try isolating the problem step by step.'
+      );
     });
 
     it('should add phase-specific advice when phase >= 2 and strategies attempted', () => {

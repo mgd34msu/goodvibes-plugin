@@ -34,7 +34,9 @@ describe('memory-persistence integration', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'goodvibes-memory-integration-'));
+    testDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'goodvibes-memory-integration-')
+    );
   });
 
   afterEach(() => {
@@ -66,7 +68,8 @@ describe('memory-persistence integration', () => {
         title: 'Use TypeScript for type safety',
         date: '2025-01-15',
         alternatives: ['JavaScript', 'Flow', 'JSDoc'],
-        rationale: 'Better IDE support, compile-time errors, and rich ecosystem',
+        rationale:
+          'Better IDE support, compile-time errors, and rich ecosystem',
         agent: 'backend-engineer',
         context: 'After evaluating JSDoc as well',
       };
@@ -78,7 +81,9 @@ describe('memory-persistence integration', () => {
 
       // Verify persistence
       expect(memory.decisions[0].title).toBe(decision.title);
-      expect(memory.decisions[1].context).toBe('After evaluating JSDoc as well');
+      expect(memory.decisions[1].context).toBe(
+        'After evaluating JSDoc as well'
+      );
     });
 
     it('should complete full lifecycle for patterns', async () => {
@@ -87,7 +92,8 @@ describe('memory-persistence integration', () => {
         name: 'Repository Pattern',
         date: '2025-01-01',
         description: 'Separate data access logic into repository classes',
-        example: '```typescript\nclass UserRepository {\n  async findById(id: string) { ... }\n}\n```',
+        example:
+          '```typescript\nclass UserRepository {\n  async findById(id: string) { ... }\n}\n```',
         files: ['/src/repositories/user.ts'],
       };
 
@@ -134,7 +140,8 @@ describe('memory-persistence integration', () => {
         date: '2025-01-05',
         reason: 'Unreliable and prone to race conditions',
         context: 'Specifically problematic in test environments',
-        suggestion: 'Use Promises or async/await, especially with proper error handling',
+        suggestion:
+          'Use Promises or async/await, especially with proper error handling',
       };
 
       await appendFailure(testDir, contextualFailure);
@@ -170,7 +177,9 @@ describe('memory-persistence integration', () => {
 
       memory = await loadMemory(testDir);
       expect(memory.preferences).toHaveLength(2);
-      expect(memory.preferences[1].notes).toBe('Aligned with Prettier defaults');
+      expect(memory.preferences[1].notes).toBe(
+        'Aligned with Prettier defaults'
+      );
     });
   });
 
@@ -220,7 +229,7 @@ describe('memory-persistence integration', () => {
       expect(memory.failures).toHaveLength(1);
 
       // Verify specific memories
-      const decisionTitles = memory.decisions.map(d => d.title);
+      const decisionTitles = memory.decisions.map((d) => d.title);
       expect(decisionTitles).toContain('Session 1 Decision');
       expect(decisionTitles).toContain('Session 2 Decision');
     });
@@ -337,13 +346,30 @@ describe('memory-persistence integration', () => {
     });
 
     it('should maintain consistency with mixed operations', async () => {
-      await appendDecision(testDir, { title: 'D1', date: '2025-01-01', alternatives: [], rationale: 'R1' });
+      await appendDecision(testDir, {
+        title: 'D1',
+        date: '2025-01-01',
+        alternatives: [],
+        rationale: 'R1',
+      });
       await loadMemory(testDir);
-      await appendPattern(testDir, { name: 'P1', date: '2025-01-01', description: 'Desc' });
+      await appendPattern(testDir, {
+        name: 'P1',
+        date: '2025-01-01',
+        description: 'Desc',
+      });
       await getMemorySummary(testDir);
-      await appendFailure(testDir, { approach: 'F1', date: '2025-01-01', reason: 'Failed' });
+      await appendFailure(testDir, {
+        approach: 'F1',
+        date: '2025-01-01',
+        reason: 'Failed',
+      });
       await hasMemory(testDir);
-      await appendPreference(testDir, { key: 'K1', value: 'V1', date: '2025-01-01' });
+      await appendPreference(testDir, {
+        key: 'K1',
+        value: 'V1',
+        date: '2025-01-01',
+      });
 
       const summary = await getMemorySummary(testDir);
       expect(summary.decisionsCount).toBe(1);
@@ -415,7 +441,11 @@ describe('memory-persistence integration', () => {
     it('should perform case-insensitive search', async () => {
       const results = await searchMemory(testDir, ['POSTGRESQL', 'Database']);
 
-      expect(results.decisions.length + results.patterns.length + results.failures.length).toBeGreaterThan(0);
+      expect(
+        results.decisions.length +
+          results.patterns.length +
+          results.failures.length
+      ).toBeGreaterThan(0);
     });
 
     it('should find memories in alternatives and suggestions', async () => {
@@ -430,12 +460,38 @@ describe('memory-persistence integration', () => {
     it('should track accurate counts for all memory types', async () => {
       expect(await hasMemory(testDir)).toBe(false);
 
-      await appendDecision(testDir, { title: 'D1', date: '2025-01-01', alternatives: [], rationale: 'R1' });
-      await appendDecision(testDir, { title: 'D2', date: '2025-01-01', alternatives: [], rationale: 'R2' });
-      await appendPattern(testDir, { name: 'P1', date: '2025-01-01', description: 'Desc' });
-      await appendFailure(testDir, { approach: 'F1', date: '2025-01-01', reason: 'Failed' });
-      await appendPreference(testDir, { key: 'K1', value: 'V1', date: '2025-01-01' });
-      await appendPreference(testDir, { key: 'K2', value: 'V2', date: '2025-01-01' });
+      await appendDecision(testDir, {
+        title: 'D1',
+        date: '2025-01-01',
+        alternatives: [],
+        rationale: 'R1',
+      });
+      await appendDecision(testDir, {
+        title: 'D2',
+        date: '2025-01-01',
+        alternatives: [],
+        rationale: 'R2',
+      });
+      await appendPattern(testDir, {
+        name: 'P1',
+        date: '2025-01-01',
+        description: 'Desc',
+      });
+      await appendFailure(testDir, {
+        approach: 'F1',
+        date: '2025-01-01',
+        reason: 'Failed',
+      });
+      await appendPreference(testDir, {
+        key: 'K1',
+        value: 'V1',
+        date: '2025-01-01',
+      });
+      await appendPreference(testDir, {
+        key: 'K2',
+        value: 'V2',
+        date: '2025-01-01',
+      });
 
       expect(await hasMemory(testDir)).toBe(true);
 
@@ -451,11 +507,21 @@ describe('memory-persistence integration', () => {
       let summary = await getMemorySummary(testDir);
       expect(summary.decisionsCount).toBe(0);
 
-      await appendDecision(testDir, { title: 'D1', date: '2025-01-01', alternatives: [], rationale: 'R1' });
+      await appendDecision(testDir, {
+        title: 'D1',
+        date: '2025-01-01',
+        alternatives: [],
+        rationale: 'R1',
+      });
       summary = await getMemorySummary(testDir);
       expect(summary.decisionsCount).toBe(1);
 
-      await appendDecision(testDir, { title: 'D2', date: '2025-01-01', alternatives: [], rationale: 'R2' });
+      await appendDecision(testDir, {
+        title: 'D2',
+        date: '2025-01-01',
+        alternatives: [],
+        rationale: 'R2',
+      });
       summary = await getMemorySummary(testDir);
       expect(summary.decisionsCount).toBe(2);
     });
@@ -477,7 +543,10 @@ describe('memory-persistence integration', () => {
 
       // Create malformed decision file
       const decisionsPath = path.join(memoryDir, 'decisions.md');
-      fs.writeFileSync(decisionsPath, '# Malformed\nIncomplete entry without proper headers');
+      fs.writeFileSync(
+        decisionsPath,
+        '# Malformed\nIncomplete entry without proper headers'
+      );
 
       // Should not crash
       const memory = await loadMemory(testDir);

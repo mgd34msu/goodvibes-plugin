@@ -55,85 +55,19 @@ import type {
 export type { ProjectMemory };
 
 // Type aliases for backward compatibility
-/** Architectural decision record type alias */
-export type Decision = MemoryDecision;
-
-/** Code pattern record type alias */
-export type Pattern = MemoryPattern;
-
-/** Failed approach record type alias */
-export type Failure = MemoryFailure;
-
-/** User preference record type alias */
-export type Preference = MemoryPreference;
-
+export type {
+  MemoryDecision as Decision,
+  MemoryPattern as Pattern,
+  MemoryFailure as Failure,
+  MemoryPreference as Preference,
+} from '../types/memory.js';
 // Re-export security patterns for backward compatibility
 export { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
 
-// Backward compatibility wrappers
-import { debug, logError } from '../shared/index.js';
-import { ensureMemoryDir } from './directories.js';
-import { writeDecision } from './decisions.js';
-import { writePattern } from './patterns.js';
-import { writeFailure } from './failures.js';
-import { writePreference } from './preferences.js';
-
-/** Append a new architectural decision (ensures directory exists). */
-export async function appendDecision(
-  cwd: string,
-  decision: Decision
-): Promise<void> {
-  try {
-    await ensureMemoryDir(cwd);
-    await writeDecision(cwd, decision);
-    debug(`Appended decision: ${decision.title}`);
-  } catch (error: unknown) {
-    logError('appendDecision', error);
-    throw error;
-  }
-}
-
-/** Append a new code pattern (ensures directory exists). */
-export async function appendPattern(
-  cwd: string,
-  pattern: Pattern
-): Promise<void> {
-  try {
-    await ensureMemoryDir(cwd);
-    await writePattern(cwd, pattern);
-    debug(`Appended pattern: ${pattern.name}`);
-  } catch (error: unknown) {
-    logError('appendPattern', error);
-    throw error;
-  }
-}
-
-/** Append a failed approach (ensures directory exists). */
-export async function appendFailure(
-  cwd: string,
-  failure: Failure
-): Promise<void> {
-  try {
-    await ensureMemoryDir(cwd);
-    await writeFailure(cwd, failure);
-    debug(`Appended failure: ${failure.approach}`);
-  } catch (error: unknown) {
-    logError('appendFailure', error);
-    throw error;
-  }
-}
-
-/** Append a user preference (ensures directory exists). */
-export async function appendPreference(
-  cwd: string,
-  preference: Preference
-): Promise<void> {
-  try {
-    await ensureMemoryDir(cwd);
-    await writePreference(cwd, preference);
-    debug(`Appended preference: ${preference.key}`);
-  } catch (error: unknown) {
-    logError('appendPreference', error);
-    throw error;
-  }
-}
+// Backward compatibility wrappers (re-exported from ./wrappers.js)
+export {
+  appendDecision,
+  appendPattern,
+  appendFailure,
+  appendPreference,
+} from './wrappers.js';

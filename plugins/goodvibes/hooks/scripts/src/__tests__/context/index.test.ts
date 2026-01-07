@@ -116,7 +116,6 @@ describe('context/index', () => {
       expect(typeof analyzeEnvironment).toBe('function');
     });
 
-
     it('should export formatEnvStatus', () => {
       expect(formatEnvStatus).toBeDefined();
       expect(typeof formatEnvStatus).toBe('function');

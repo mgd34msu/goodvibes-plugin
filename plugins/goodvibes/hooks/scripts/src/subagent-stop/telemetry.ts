@@ -12,14 +12,22 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
-import { ensureGoodVibesDir, parseTranscript, extractKeywords, fileExists } from '../shared/index.js';
+import {
+  ensureGoodVibesDir,
+  parseTranscript,
+  extractKeywords,
+  fileExists,
+} from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 
 /** Persists agent tracking data to disk */
-export async function saveAgentTracking(cwd: string, tracking: TelemetryTracking): Promise<void> {
+export async function saveAgentTracking(
+  cwd: string,
+  tracking: TelemetryTracking
+): Promise<void> {
   await ensureGoodVibesDir(cwd);
   const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
 
@@ -37,10 +45,15 @@ export async function saveAgentTracking(cwd: string, tracking: TelemetryTracking
 }
 
 /** Retrieves tracking data for a specific agent */
-export async function getAgentTracking(cwd: string, agentId: string): Promise<TelemetryTracking | null> {
+export async function getAgentTracking(
+  cwd: string,
+  agentId: string
+): Promise<TelemetryTracking | null> {
   const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
 
-  if (!(await fileExists(trackingPath))) return null;
+  if (!(await fileExists(trackingPath))) {
+    return null;
+  }
 
   try {
     const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
@@ -52,10 +65,15 @@ export async function getAgentTracking(cwd: string, agentId: string): Promise<Te
 }
 
 /** Removes tracking data for a specific agent */
-export async function removeAgentTracking(cwd: string, agentId: string): Promise<void> {
+export async function removeAgentTracking(
+  cwd: string,
+  agentId: string
+): Promise<void> {
   const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
 
-  if (!(await fileExists(trackingPath))) return;
+  if (!(await fileExists(trackingPath))) {
+    return;
+  }
 
   try {
     const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
@@ -67,7 +85,10 @@ export async function removeAgentTracking(cwd: string, agentId: string): Promise
 }
 
 /** Appends a telemetry entry to the monthly log file */
-export async function writeTelemetryEntry(cwd: string, entry: TelemetryEntry): Promise<void> {
+export async function writeTelemetryEntry(
+  cwd: string,
+  entry: TelemetryEntry
+): Promise<void> {
   await ensureGoodVibesDir(cwd);
 
   const now = new Date();
@@ -84,7 +105,8 @@ export async function buildTelemetryEntry(
   status: 'completed' | 'failed'
 ): Promise<TelemetryEntry> {
   const transcriptData = await parseTranscript(transcriptPath);
-  const allText = transcriptData.summary + ' ' + transcriptData.filesModified.join(' ');
+  const allText =
+    transcriptData.summary + ' ' + transcriptData.filesModified.join(' ');
   const keywords = extractKeywords(allText);
 
   // Add agent type as keyword

@@ -95,7 +95,8 @@ async function runPostToolUseFailureHook(): Promise<void> {
     // Extract error message safely - the error field is passed by Claude Code but not in our type
     let errorMessage = 'Unknown error';
     if (isRecord(input)) {
-      errorMessage = typeof input.error === 'string' ? input.error : 'Unknown error';
+      errorMessage =
+        typeof input.error === 'string' ? input.error : 'Unknown error';
     }
 
     const ERROR_PREVIEW_LENGTH = 200;
@@ -154,7 +155,10 @@ async function runPostToolUseFailureHook(): Promise<void> {
 
     // Step 5: Find matching recovery pattern
     const pattern = findMatchingPattern(category, errorMessage);
-    debug('Matching pattern', { found: !!pattern, category: pattern?.category });
+    debug('Matching pattern', {
+      found: !!pattern,
+      category: pattern?.category,
+    });
 
     // Step 6: Get suggested fix based on pattern
     const suggestedFix = getSuggestedFix(category, errorMessage, errorState);
@@ -164,7 +168,11 @@ async function runPostToolUseFailureHook(): Promise<void> {
 
     // Build research hints for current phase
     const effectiveCategory = (pattern?.category || category) as ErrorCategory;
-    const researchHints = buildResearchHintsMessage(effectiveCategory, errorMessage, errorState.phase);
+    const researchHints = buildResearchHintsMessage(
+      effectiveCategory,
+      errorMessage,
+      errorState.phase
+    );
 
     // Step 8: Save retry attempt (both to state and file-based tracker)
     errorState = {
@@ -193,7 +201,9 @@ async function runPostToolUseFailureHook(): Promise<void> {
       try {
         await writeFailure(cwd, failure);
       } catch (writeError) {
-        debug('Failed to write failure to memory', { error: String(writeError) });
+        debug('Failed to write failure to memory', {
+          error: String(writeError),
+        });
       }
     }
 
@@ -221,9 +231,13 @@ async function runPostToolUseFailureHook(): Promise<void> {
     const responseParts: string[] = [];
 
     // Header with phase info
-    responseParts.push(`[GoodVibes Fix Loop - Phase ${errorState.phase}/3: ${phaseDesc}]`);
+    responseParts.push(
+      `[GoodVibes Fix Loop - Phase ${errorState.phase}/3: ${phaseDesc}]`
+    );
     const remaining = await getRemainingAttempts(errorState);
-    responseParts.push(`Attempt ${retryCount + 1} (${remaining} remaining this phase)`);
+    responseParts.push(
+      `Attempt ${retryCount + 1} (${remaining} remaining this phase)`
+    );
     responseParts.push('');
 
     // Error category
@@ -249,7 +263,9 @@ async function runPostToolUseFailureHook(): Promise<void> {
     if (errorState.fixStrategiesAttempted.length > 0) {
       responseParts.push('');
       responseParts.push('Previously attempted (failed):');
-      for (const attempt of errorState.fixStrategiesAttempted.slice(-MAX_RECENT_ATTEMPTS)) {
+      for (const attempt of errorState.fixStrategiesAttempted.slice(
+        -MAX_RECENT_ATTEMPTS
+      )) {
         responseParts.push(`  - ${attempt.strategy}`);
       }
       responseParts.push('Try a DIFFERENT approach.');
@@ -267,7 +283,6 @@ async function runPostToolUseFailureHook(): Promise<void> {
     const additionalContext = responseParts.join('\n');
 
     respond(createResponse({ systemMessage: additionalContext }));
-
   } catch (error: unknown) {
     logError('PostToolUseFailure main', error);
     respond(createResponse());

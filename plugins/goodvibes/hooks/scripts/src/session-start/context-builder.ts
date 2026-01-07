@@ -71,7 +71,9 @@ function createEmptyProjectResult(startTime: number): ContextGatheringResult {
 }
 
 /** Creates a failed context result */
-export function createFailedContextResult(startTime: number): ContextGatheringResult {
+export function createFailedContextResult(
+  startTime: number
+): ContextGatheringResult {
   return {
     additionalContext: '',
     summary: 'Context gathering failed',
@@ -85,11 +87,7 @@ export function createFailedContextResult(startTime: number): ContextGatheringRe
 
 /** Formats the header section */
 function formatHeader(): string[] {
-  return [
-    '[GoodVibes SessionStart]',
-    '='.repeat(SECTION_SEPARATOR_LENGTH),
-    '',
-  ];
+  return ['[GoodVibes SessionStart]', '='.repeat(SECTION_SEPARATOR_LENGTH), ''];
 }
 
 /** Formats an optional section with header */
@@ -97,13 +95,17 @@ function formatOptionalSection(
   header: string,
   content: string | null
 ): string[] {
-  if (!content) return [];
+  if (!content) {
+    return [];
+  }
   return [`## ${header}`, '', content, ''];
 }
 
 /** Formats the recovery section if needed */
 function formatRecoverySection(recoveryInfo: RecoveryInfo): string[] {
-  if (!recoveryInfo.needsRecovery) return [];
+  if (!recoveryInfo.needsRecovery) {
+    return [];
+  }
   const recoveryStr = formatRecoveryContext(recoveryInfo);
   return recoveryStr ? [recoveryStr, ''] : [];
 }
@@ -116,32 +118,44 @@ function formatProjectOverviewSection(
   const parts: string[] = ['## Project Overview', ''];
 
   const stackStr = formatStackInfo(stackInfo);
-  if (stackStr) parts.push(stackStr);
+  if (stackStr) {
+    parts.push(stackStr);
+  }
 
   const folderStr = formatFolderAnalysis(folderAnalysis);
-  if (folderStr) parts.push(folderStr);
+  if (folderStr) {
+    parts.push(folderStr);
+  }
 
   parts.push('');
   return parts;
 }
 
 /** Formats the git status section */
-function formatGitSection(gitContext: Awaited<ReturnType<typeof getGitContext>>): string[] {
+function formatGitSection(
+  gitContext: Awaited<ReturnType<typeof getGitContext>>
+): string[] {
   const parts: string[] = ['## Git Status', ''];
   const gitStr = formatGitContext(gitContext);
-  if (gitStr) parts.push(gitStr);
+  if (gitStr) {
+    parts.push(gitStr);
+  }
   parts.push('');
   return parts;
 }
 
 /** Helper for conditional port status */
-function formatPortStatusIfActive(portStatus: Awaited<ReturnType<typeof checkPorts>>): string | null {
+function formatPortStatusIfActive(
+  portStatus: Awaited<ReturnType<typeof checkPorts>>
+): string | null {
   const portStr = formatPortStatus(portStatus);
   return portStr && portStr !== 'No dev servers detected' ? portStr : null;
 }
 
 /** Helper for conditional health status */
-function formatHealthIfWarning(healthStatus: Awaited<ReturnType<typeof checkProjectHealth>>): string | null {
+function formatHealthIfWarning(
+  healthStatus: Awaited<ReturnType<typeof checkProjectHealth>>
+): string | null {
   const healthStr = formatHealthStatus(healthStatus);
   return healthStr && healthStr !== 'Health: All good' ? healthStr : null;
 }
@@ -164,10 +178,16 @@ function formatContextSections(
     ...formatProjectOverviewSection(stackInfo, folderAnalysis),
     ...formatGitSection(gitContext),
     ...formatOptionalSection('Environment', formatEnvStatus(envStatus)),
-    ...formatOptionalSection('Dev Servers', formatPortStatusIfActive(portStatus)),
+    ...formatOptionalSection(
+      'Dev Servers',
+      formatPortStatusIfActive(portStatus)
+    ),
     ...formatOptionalSection('Project Memory', formatMemoryContext(memory)),
     ...formatOptionalSection('Code TODOs', formatTodos(todos)),
-    ...formatOptionalSection('Health Checks', formatHealthIfWarning(healthStatus)),
+    ...formatOptionalSection(
+      'Health Checks',
+      formatHealthIfWarning(healthStatus)
+    ),
     '='.repeat(SECTION_SEPARATOR_LENGTH),
   ];
 
@@ -184,7 +204,9 @@ function buildContextSummary(
   const MAX_FRAMEWORKS_IN_SUMMARY = 3;
 
   if (stackInfo.frameworks.length > 0) {
-    summaryParts.push(stackInfo.frameworks.slice(0, MAX_FRAMEWORKS_IN_SUMMARY).join(', '));
+    summaryParts.push(
+      stackInfo.frameworks.slice(0, MAX_FRAMEWORKS_IN_SUMMARY).join(', ')
+    );
   }
   if (gitContext.branch) {
     summaryParts.push(`on ${gitContext.branch}`);
@@ -206,7 +228,9 @@ function calculateIssueCount(
   todos: Awaited<ReturnType<typeof scanTodos>>
 ): number {
   return (
-    healthStatus.checks.filter((c) => c.status === 'warning' || c.status === 'error').length +
+    healthStatus.checks.filter(
+      (c) => c.status === 'warning' || c.status === 'error'
+    ).length +
     envStatus.warnings.length +
     todos.length
   );
@@ -231,17 +255,25 @@ export async function gatherProjectContext(
   }
 
   // Gather all context in parallel for performance
-  const [stackInfo, gitContext, envStatus, todos, healthStatus, folderAnalysis, memory, portStatus] =
-    await Promise.all([
-      detectStack(projectDir),
-      getGitContext(projectDir),
-      checkEnvStatus(projectDir),
-      scanTodos(projectDir),
-      checkProjectHealth(projectDir),
-      analyzeFolderStructure(projectDir),
-      loadProjectMemory(projectDir),
-      checkPorts(projectDir),
-    ]);
+  const [
+    stackInfo,
+    gitContext,
+    envStatus,
+    todos,
+    healthStatus,
+    folderAnalysis,
+    memory,
+    portStatus,
+  ] = await Promise.all([
+    detectStack(projectDir),
+    getGitContext(projectDir),
+    checkEnvStatus(projectDir),
+    scanTodos(projectDir),
+    checkProjectHealth(projectDir),
+    analyzeFolderStructure(projectDir),
+    loadProjectMemory(projectDir),
+    checkPorts(projectDir),
+  ]);
 
   // Calculate issues
   const issueCount = calculateIssueCount(healthStatus, envStatus, todos);

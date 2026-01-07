@@ -62,21 +62,25 @@ describe('folder-structure', () => {
     });
 
     it('should detect Next.js App Router with page files', async () => {
-      vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike, options?: unknown) => {
-        const p = dirPath.toString();
-        if (p === mockCwd) {
-          return [
-            { name: 'app', isDirectory: () => true },
-          ] as fs.Dirent[];
-        }
-        if (p === path.join(mockCwd, 'app')) {
-          if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            return [] as fs.Dirent[];
+      vi.mocked(fs.readdir).mockImplementation(
+        async (dirPath: fs.PathLike, options?: unknown) => {
+          const p = dirPath.toString();
+          if (p === mockCwd) {
+            return [{ name: 'app', isDirectory: () => true }] as fs.Dirent[];
           }
-          return ['page.tsx', 'layout.tsx'] as string[];
+          if (p === path.join(mockCwd, 'app')) {
+            if (
+              options &&
+              typeof options === 'object' &&
+              'withFileTypes' in options
+            ) {
+              return [] as fs.Dirent[];
+            }
+            return ['page.tsx', 'layout.tsx'] as string[];
+          }
+          return [] as fs.Dirent[];
         }
-        return [] as fs.Dirent[];
-      });
+      );
 
       vi.mocked(fileExists).mockResolvedValue(true);
 
@@ -331,9 +335,7 @@ describe('folder-structure', () => {
 
     it('should handle helpers directory as utils', async () => {
       vi.mocked(fs.readdir).mockImplementation(async () => {
-        return [
-          { name: 'helpers', isDirectory: () => true },
-        ] as fs.Dirent[];
+        return [{ name: 'helpers', isDirectory: () => true }] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -345,9 +347,7 @@ describe('folder-structure', () => {
 
     it('should handle interfaces directory as types', async () => {
       vi.mocked(fs.readdir).mockImplementation(async () => {
-        return [
-          { name: 'interfaces', isDirectory: () => true },
-        ] as fs.Dirent[];
+        return [{ name: 'interfaces', isDirectory: () => true }] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -359,9 +359,7 @@ describe('folder-structure', () => {
 
     it('should handle test/tests directories', async () => {
       vi.mocked(fs.readdir).mockImplementation(async () => {
-        return [
-          { name: 'tests', isDirectory: () => true },
-        ] as fs.Dirent[];
+        return [{ name: 'tests', isDirectory: () => true }] as fs.Dirent[];
       });
 
       vi.mocked(fileExists).mockResolvedValue(false);
@@ -413,19 +411,13 @@ describe('folder-structure', () => {
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
-          return [
-            { name: 'level1', isDirectory: () => true },
-          ] as fs.Dirent[];
+          return [{ name: 'level1', isDirectory: () => true }] as fs.Dirent[];
         }
         if (p.includes('level1') && !p.includes('level2')) {
-          return [
-            { name: 'level2', isDirectory: () => true },
-          ] as fs.Dirent[];
+          return [{ name: 'level2', isDirectory: () => true }] as fs.Dirent[];
         }
         if (p.includes('level2') && !p.includes('level3')) {
-          return [
-            { name: 'level3', isDirectory: () => true },
-          ] as fs.Dirent[];
+          return [{ name: 'level3', isDirectory: () => true }] as fs.Dirent[];
         }
         return [] as fs.Dirent[];
       });
@@ -451,9 +443,7 @@ describe('folder-structure', () => {
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: fs.PathLike) => {
         const p = dirPath.toString();
         if (p === mockCwd) {
-          return [
-            { name: 'app', isDirectory: () => true },
-          ] as fs.Dirent[];
+          return [{ name: 'app', isDirectory: () => true }] as fs.Dirent[];
         }
         return [] as fs.Dirent[];
       });

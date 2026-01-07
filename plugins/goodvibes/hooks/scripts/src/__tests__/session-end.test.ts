@@ -139,7 +139,9 @@ describe('session-end hook', () => {
       await vi.runAllTimersAsync();
       await importPromise;
 
-      const summaryContent = JSON.parse(mockWriteFile.mock.calls[0][1] as string);
+      const summaryContent = JSON.parse(
+        mockWriteFile.mock.calls[0][1] as string
+      );
       expect(summaryContent.duration_minutes).toBe(2);
     });
 
@@ -161,7 +163,9 @@ describe('session-end hook', () => {
       await vi.runAllTimersAsync();
       await importPromise;
 
-      const summaryContent = JSON.parse(mockWriteFile.mock.calls[0][1] as string);
+      const summaryContent = JSON.parse(
+        mockWriteFile.mock.calls[0][1] as string
+      );
       expect(summaryContent.tools_used).toBe(0);
       expect(summaryContent.unique_tools).toEqual([]);
     });
@@ -196,7 +200,10 @@ describe('session-end hook', () => {
       await importPromise;
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('SessionEnd main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SessionEnd main',
+        expect.any(Error)
+      );
 
       // Verify response was sent despite error
       expect(mockRespond).toHaveBeenCalledWith({
@@ -213,7 +220,10 @@ describe('session-end hook', () => {
       await importPromise;
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('SessionEnd main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SessionEnd main',
+        expect.any(Error)
+      );
 
       // Verify response was sent despite error
       expect(mockRespond).toHaveBeenCalledWith({
@@ -240,7 +250,10 @@ describe('session-end hook', () => {
       await importPromise;
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('SessionEnd main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SessionEnd main',
+        expect.any(Error)
+      );
 
       // Verify response was sent despite error
       expect(mockRespond).toHaveBeenCalledWith({
@@ -268,7 +281,10 @@ describe('session-end hook', () => {
       await importPromise;
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('SessionEnd main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SessionEnd main',
+        expect.any(Error)
+      );
 
       // Verify response was sent despite error
       expect(mockRespond).toHaveBeenCalledWith({
@@ -314,7 +330,9 @@ describe('session-end hook', () => {
       await vi.runAllTimersAsync();
       await importPromise;
 
-      expect(mockDebug).toHaveBeenCalledWith('Session ended. Duration: 30m, Tools: 2');
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Session ended. Duration: 30m, Tools: 2'
+      );
     });
   });
 });

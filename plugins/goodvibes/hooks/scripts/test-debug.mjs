@@ -27,6 +27,12 @@ const input = {
 const toolInput = input.tool_input;
 console.log('toolInput:', toolInput);
 console.log('toolInput?.errors:', toolInput?.errors);
-console.log('Array.isArray(toolInput.errors):', Array.isArray(toolInput.errors));
+console.log(
+  'Array.isArray(toolInput.errors):',
+  Array.isArray(toolInput.errors)
+);
 console.log('analytics:', analytics);
-console.log('Condition result:', !!(toolInput?.errors && Array.isArray(toolInput.errors) && analytics));
+console.log(
+  'Condition result:',
+  !!(toolInput?.errors && Array.isArray(toolInput.errors) && analytics)
+);

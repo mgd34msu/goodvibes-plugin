@@ -45,7 +45,9 @@ describe('memory/decisions', () => {
 
       expect(mockParseMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath] = mockParseMemoryFile.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'decisions.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+      );
     });
 
     it('should call parseMemoryFile with correct parser configuration', async () => {
@@ -111,7 +113,9 @@ describe('memory/decisions', () => {
       const validate = parserConfig.validate!;
 
       // Valid entry - has title, date, rationale
-      expect(validate({ title: 'Test', date: '2024-01-01', rationale: 'reason' })).toBe(true);
+      expect(
+        validate({ title: 'Test', date: '2024-01-01', rationale: 'reason' })
+      ).toBe(true);
 
       // Invalid - missing title
       expect(validate({ date: '2024-01-01', rationale: 'reason' })).toBe(false);
@@ -126,7 +130,9 @@ describe('memory/decisions', () => {
       expect(validate({})).toBe(false);
 
       // Invalid - empty strings
-      expect(validate({ title: '', date: '2024-01-01', rationale: 'reason' })).toBe(false);
+      expect(
+        validate({ title: '', date: '2024-01-01', rationale: 'reason' })
+      ).toBe(false);
     });
 
     it('should have transform function that constructs MemoryDecision', async () => {
@@ -207,7 +213,9 @@ describe('memory/decisions', () => {
 
       expect(mockEnsureMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath, header] = mockEnsureMemoryFile.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'decisions.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+      );
       expect(header).toContain('# Architectural Decisions');
       expect(header).toContain('This file records architectural decisions');
     });
@@ -229,7 +237,9 @@ describe('memory/decisions', () => {
 
       expect(mockAppendMemoryEntry).toHaveBeenCalledTimes(1);
       const [filePath, entry] = mockAppendMemoryEntry.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'decisions.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+      );
       expect(entry).toContain('## Use tRPC');
       expect(entry).toContain('**Date:** 2024-01-04');
       expect(entry).toContain('**Alternatives:**');

@@ -45,10 +45,24 @@ export interface SpecialDirectories {
   hasTests: boolean;
 }
 
-const LAYER_INDICATORS = ['controllers', 'services', 'repositories', 'models', 'middleware', 'routes'];
+const LAYER_INDICATORS = [
+  'controllers',
+  'services',
+  'repositories',
+  'models',
+  'middleware',
+  'routes',
+];
 const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
 const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];
-const DDD_INDICATORS = ['domain', 'infrastructure', 'application', 'aggregates', 'entities', 'value-objects'];
+const DDD_INDICATORS = [
+  'domain',
+  'infrastructure',
+  'application',
+  'aggregates',
+  'entities',
+  'value-objects',
+];
 
 /** Minimum indicator matches for pattern detection. */
 const MIN_INDICATOR_MATCH = 2;
@@ -69,7 +83,9 @@ const FLAT_STRUCTURE_THRESHOLD = 3;
 async function getSubdirs(dirPath: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    return entries.filter((e) => e.isDirectory()).map((e) => e.name.toLowerCase());
+    return entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name.toLowerCase());
   } catch (error: unknown) {
     debug('folder-structure failed', { error: String(error) });
     return [];
@@ -97,7 +113,14 @@ function hasIndicators(dirs: string[], indicators: string[]): number {
  * @param srcDirs - Array of subdirectories within src/ if it exists
  * @returns Promise resolving to an object with pattern name and confidence level
  */
-async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: string[]): Promise<{ pattern: ArchitecturePattern; confidence: 'high' | 'medium' | 'low' }> {
+async function detectPattern(
+  cwd: string,
+  topLevelDirs: string[],
+  srcDirs: string[]
+): Promise<{
+  pattern: ArchitecturePattern;
+  confidence: 'high' | 'medium' | 'low';
+}> {
   const allDirs = [...topLevelDirs, ...srcDirs];
 
   // Check for Next.js App Router
@@ -113,7 +136,9 @@ async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: strin
       }
       try {
         const files = await fs.readdir(appPath);
-        if (files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))) {
+        if (
+          files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))
+        ) {
           return { pattern: 'next-app-router', confidence: 'high' };
         }
       } catch (error: unknown) {
@@ -130,19 +155,28 @@ async function detectPattern(cwd: string, topLevelDirs: string[], srcDirs: strin
   // Check for Atomic Design
   const atomicCount = hasIndicators(allDirs, ATOMIC_INDICATORS);
   if (atomicCount >= MIN_INDICATOR_MATCH) {
-    return { pattern: 'atomic-design', confidence: atomicCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
+    return {
+      pattern: 'atomic-design',
+      confidence: atomicCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
+    };
   }
 
   // Check for Domain-Driven Design
   const dddCount = hasIndicators(allDirs, DDD_INDICATORS);
   if (dddCount >= MIN_INDICATOR_MATCH) {
-    return { pattern: 'domain-driven', confidence: dddCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
+    return {
+      pattern: 'domain-driven',
+      confidence: dddCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
+    };
   }
 
   // Check for Layer-based
   const layerCount = hasIndicators(allDirs, LAYER_INDICATORS);
   if (layerCount >= MIN_INDICATOR_MATCH) {
-    return { pattern: 'layer-based', confidence: layerCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
+    return {
+      pattern: 'layer-based',
+      confidence: layerCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
+    };
   }
 
   // Check for Feature-based
@@ -182,7 +216,10 @@ function checkSpecialDirs(dirs: string[]): SpecialDirectories {
     hasHooks: dirs.includes('hooks'),
     hasServices: dirs.includes('services'),
     hasTypes: dirs.includes('types') || dirs.includes('interfaces'),
-    hasTests: dirs.includes('__tests__') || dirs.includes('tests') || dirs.includes('test'),
+    hasTests:
+      dirs.includes('__tests__') ||
+      dirs.includes('tests') ||
+      dirs.includes('test'),
   };
 }
 
@@ -194,17 +231,26 @@ function checkSpecialDirs(dirs: string[]): SpecialDirectories {
  * @param maxDepth - Maximum depth to traverse (default: 5)
  * @returns Promise resolving to the maximum folder depth found
  */
-async function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH): Promise<number> {
+async function calculateDepth(
+  cwd: string,
+  maxDepth: number = DEFAULT_MAX_DEPTH
+): Promise<number> {
   let maxFound = 0;
 
   async function walk(dir: string, currentDepth: number): Promise<void> {
-    if (currentDepth > maxDepth) return;
+    if (currentDepth > maxDepth) {
+      return;
+    }
     maxFound = Math.max(maxFound, currentDepth);
 
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+        if (
+          entry.isDirectory() &&
+          !entry.name.startsWith('.') &&
+          entry.name !== 'node_modules'
+        ) {
           await walk(path.join(dir, entry.name), currentDepth + 1);
         }
       }
@@ -230,17 +276,27 @@ async function calculateDepth(cwd: string, maxDepth: number = DEFAULT_MAX_DEPTH)
  *   console.log('Next.js App Router detected');
  * }
  */
-export async function analyzeFolderStructure(cwd: string): Promise<FolderStructure> {
+export async function analyzeFolderStructure(
+  cwd: string
+): Promise<FolderStructure> {
   const allTopLevelDirs = await getSubdirs(cwd);
   const topLevelDirs = allTopLevelDirs.filter(
-    (d) => !d.startsWith('.') && d !== 'node_modules' && d !== 'dist' && d !== 'build',
+    (d) =>
+      !d.startsWith('.') &&
+      d !== 'node_modules' &&
+      d !== 'dist' &&
+      d !== 'build'
   );
 
   const srcPath = path.join(cwd, 'src');
-  const srcDir = await fileExists(srcPath) ? 'src' : null;
+  const srcDir = (await fileExists(srcPath)) ? 'src' : null;
   const srcDirs = srcDir ? await getSubdirs(srcPath) : [];
 
-  const { pattern, confidence } = await detectPattern(cwd, topLevelDirs, srcDirs);
+  const { pattern, confidence } = await detectPattern(
+    cwd,
+    topLevelDirs,
+    srcDirs
+  );
   const allDirs = [...topLevelDirs, ...srcDirs];
   const specialDirs = checkSpecialDirs(allDirs);
   const depth = await calculateDepth(cwd);
@@ -288,22 +344,40 @@ function getPatternName(pattern: ArchitecturePattern): string {
  * const formatted = formatFolderStructure(structure);
  * // Returns: "Architecture: Next.js App Router (high confidence)\nKey Dirs: app/, components/, lib/"
  */
-export function formatFolderStructure(structure: FolderStructure): string | null {
+export function formatFolderStructure(
+  structure: FolderStructure
+): string | null {
   const sections: string[] = [];
 
   const patternName = getPatternName(structure.pattern);
-  sections.push(`**Architecture:** ${patternName} (${structure.confidence} confidence)`);
+  sections.push(
+    `**Architecture:** ${patternName} (${structure.confidence} confidence)`
+  );
 
   const keyDirs: string[] = [];
   const special = structure.specialDirs;
 
-  if (special.hasApp) keyDirs.push('app/');
-  if (special.hasPages) keyDirs.push('pages/');
-  if (special.hasComponents) keyDirs.push('components/');
-  if (special.hasLib) keyDirs.push('lib/');
-  if (special.hasServices) keyDirs.push('services/');
-  if (special.hasHooks) keyDirs.push('hooks/');
-  if (special.hasApi) keyDirs.push('api/');
+  if (special.hasApp) {
+    keyDirs.push('app/');
+  }
+  if (special.hasPages) {
+    keyDirs.push('pages/');
+  }
+  if (special.hasComponents) {
+    keyDirs.push('components/');
+  }
+  if (special.hasLib) {
+    keyDirs.push('lib/');
+  }
+  if (special.hasServices) {
+    keyDirs.push('services/');
+  }
+  if (special.hasHooks) {
+    keyDirs.push('hooks/');
+  }
+  if (special.hasApi) {
+    keyDirs.push('api/');
+  }
 
   if (keyDirs.length > 0) {
     sections.push(`**Key Dirs:** ${keyDirs.join(', ')}`);

@@ -190,7 +190,9 @@ describe('telemetry/records', () => {
       expect(parsed.git_branch).toBe('feature/new-api');
       expect(parsed.git_commit).toBe('abc1234');
       expect(parsed.task_description).toBe('Implement REST endpoint');
-      expect(parsed.final_summary).toBe('Successfully implemented the endpoint');
+      expect(parsed.final_summary).toBe(
+        'Successfully implemented the endpoint'
+      );
     });
   });
 

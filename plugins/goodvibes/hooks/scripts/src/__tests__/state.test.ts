@@ -109,7 +109,9 @@ describe('state management', () => {
       mockReadFile.mockResolvedValue('invalid json content');
 
       // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const { loadState } = await import('../state.js');
       const state = await loadState(tempDir);
@@ -125,7 +127,9 @@ describe('state management', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockRejectedValue(new Error('Read error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const { loadState } = await import('../state.js');
       const state = await loadState(tempDir);
@@ -290,7 +294,9 @@ describe('state management', () => {
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockRejectedValue(new Error('Write error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const { saveState } = await import('../state.js');
       // Should not throw
@@ -433,7 +439,9 @@ describe('state management', () => {
       const newState = trackError(originalState, 'test-error-sig', errorState);
 
       expect(newState.errors['test-error-sig']).toBeDefined();
-      expect(newState.errors['test-error-sig'].signature).toBe('test-error-sig');
+      expect(newState.errors['test-error-sig'].signature).toBe(
+        'test-error-sig'
+      );
       expect(newState.errors['test-error-sig'].phase).toBe(1);
       expect(originalState.errors['test-error-sig']).toBeUndefined(); // original unchanged
       expect(newState).not.toBe(originalState); // different object reference
@@ -570,7 +578,8 @@ describe('state management', () => {
 
   describe('clearError', () => {
     it('should return new state with error removed immutably', async () => {
-      const { trackError, clearError, getErrorState } = await import('../state.js');
+      const { trackError, clearError, getErrorState } =
+        await import('../state.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -603,7 +612,8 @@ describe('state management', () => {
 describe('file tracking (from file-tracker)', () => {
   describe('trackFileModification', () => {
     it('should add file to modifiedThisSession', async () => {
-      const { trackFileModification } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -614,7 +624,8 @@ describe('file tracking (from file-tracker)', () => {
     });
 
     it('should add file to modifiedSinceCheckpoint', async () => {
-      const { trackFileModification } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -625,7 +636,8 @@ describe('file tracking (from file-tracker)', () => {
     });
 
     it('should not duplicate files when tracking same file twice', async () => {
-      const { trackFileModification } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -637,12 +649,15 @@ describe('file tracking (from file-tracker)', () => {
         state.files.modifiedThisSession.filter((f) => f === 'src/duplicate.ts')
       ).toHaveLength(1);
       expect(
-        state.files.modifiedSinceCheckpoint.filter((f) => f === 'src/duplicate.ts')
+        state.files.modifiedSinceCheckpoint.filter(
+          (f) => f === 'src/duplicate.ts'
+        )
       ).toHaveLength(1);
     });
 
     it('should accumulate multiple different file modifications', async () => {
-      const { trackFileModification } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -658,7 +673,8 @@ describe('file tracking (from file-tracker)', () => {
 
   describe('trackFileCreation', () => {
     it('should add file to createdThisSession', async () => {
-      const { trackFileCreation } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileCreation } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -669,7 +685,8 @@ describe('file tracking (from file-tracker)', () => {
     });
 
     it('should also track created file as modified', async () => {
-      const { trackFileCreation } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileCreation } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -678,11 +695,14 @@ describe('file tracking (from file-tracker)', () => {
 
       expect(newState.files.createdThisSession).toContain('src/created.ts');
       expect(newState.files.modifiedThisSession).toContain('src/created.ts');
-      expect(newState.files.modifiedSinceCheckpoint).toContain('src/created.ts');
+      expect(newState.files.modifiedSinceCheckpoint).toContain(
+        'src/created.ts'
+      );
     });
 
     it('should not duplicate files when tracking same creation twice', async () => {
-      const { trackFileCreation } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileCreation } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -696,7 +716,8 @@ describe('file tracking (from file-tracker)', () => {
     });
 
     it('should accumulate multiple file creations', async () => {
-      const { trackFileCreation } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileCreation } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -711,10 +732,8 @@ describe('file tracking (from file-tracker)', () => {
 
   describe('clearCheckpointTracking', () => {
     it('should clear modifiedSinceCheckpoint', async () => {
-      const {
-        trackFileModification,
-        clearCheckpointTracking,
-      } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification, clearCheckpointTracking } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -730,10 +749,8 @@ describe('file tracking (from file-tracker)', () => {
     });
 
     it('should not affect modifiedThisSession when clearing checkpoint', async () => {
-      const {
-        trackFileModification,
-        clearCheckpointTracking,
-      } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification, clearCheckpointTracking } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -749,10 +766,8 @@ describe('file tracking (from file-tracker)', () => {
 
   describe('getModifiedFileCount', () => {
     it('should return count of files modified since checkpoint', async () => {
-      const {
-        trackFileModification,
-        getModifiedFileCount,
-      } = await import('../post-tool-use/file-tracker.js');
+      const { trackFileModification, getModifiedFileCount } =
+        await import('../post-tool-use/file-tracker.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -833,7 +848,11 @@ describe('session management', () => {
       state.git.currentBranch = 'feature/preserved';
       state.git.featureBranch = 'feature/preserved';
       state.git.checkpoints = [
-        { hash: 'abc123', message: 'checkpoint', timestamp: '2025-01-01T00:00:00Z' },
+        {
+          hash: 'abc123',
+          message: 'checkpoint',
+          timestamp: '2025-01-01T00:00:00Z',
+        },
       ];
 
       const newState = resetForNewSession(state);
@@ -899,7 +918,9 @@ describe('update state helpers', () => {
       const originalState = createDefaultState();
       const originalMode = originalState.session.mode;
 
-      const newState = updateSessionState(originalState, { mode: 'vibecoding' });
+      const newState = updateSessionState(originalState, {
+        mode: 'vibecoding',
+      });
 
       expect(newState.session.mode).toBe('vibecoding');
       expect(newState.session.id).toBe(''); // unchanged

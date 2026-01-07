@@ -80,7 +80,9 @@ async function checkDependencies(cwd: string): Promise<{
   for (const [file, manager] of Object.entries(LOCKFILES)) {
     if (await fileExists(path.join(cwd, file))) {
       lockfiles.push(file);
-      if (!packageManager) packageManager = manager;
+      if (!packageManager) {
+        packageManager = manager;
+      }
     }
   }
 
@@ -97,7 +99,7 @@ async function checkDependencies(cwd: string): Promise<{
 async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
   const tsconfigPath = path.join(cwd, 'tsconfig.json');
 
-  if (!await fileExists(tsconfigPath)) {
+  if (!(await fileExists(tsconfigPath))) {
     return null;
   }
 
@@ -110,8 +112,12 @@ async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
     return {
       hasConfig: true,
       strict: compilerOptions.strict === true,
-      strictNullChecks: compilerOptions.strictNullChecks === true || compilerOptions.strict === true,
-      noImplicitAny: compilerOptions.noImplicitAny === true || compilerOptions.strict === true,
+      strictNullChecks:
+        compilerOptions.strictNullChecks === true ||
+        compilerOptions.strict === true,
+      noImplicitAny:
+        compilerOptions.noImplicitAny === true ||
+        compilerOptions.strict === true,
       target: compilerOptions.target || null,
     };
   } catch (error: unknown) {
@@ -136,7 +142,7 @@ async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
 async function getScripts(cwd: string): Promise<string[]> {
   const packageJsonPath = path.join(cwd, 'package.json');
 
-  if (!await fileExists(packageJsonPath)) {
+  if (!(await fileExists(packageJsonPath))) {
     return [];
   }
 
@@ -160,10 +166,15 @@ async function getScripts(cwd: string): Promise<string[]> {
 function generateWarnings(health: Partial<ProjectHealth>): HealthWarning[] {
   const warnings: HealthWarning[] = [];
 
-  if (health.lockfiles && health.lockfiles.length > 0 && !health.hasNodeModules) {
+  if (
+    health.lockfiles &&
+    health.lockfiles.length > 0 &&
+    !health.hasNodeModules
+  ) {
     warnings.push({
       type: 'warning',
-      message: 'node_modules not found. Run `npm install` (or your package manager) to install dependencies.',
+      message:
+        'node_modules not found. Run `npm install` (or your package manager) to install dependencies.',
     });
   }
 
@@ -174,10 +185,15 @@ function generateWarnings(health: Partial<ProjectHealth>): HealthWarning[] {
     });
   }
 
-  if (health.typescript && health.typescript.hasConfig && !health.typescript.strict) {
+  if (
+    health.typescript &&
+    health.typescript.hasConfig &&
+    !health.typescript.strict
+  ) {
     warnings.push({
       type: 'info',
-      message: 'TypeScript strict mode is not enabled. Consider enabling for better type safety.',
+      message:
+        'TypeScript strict mode is not enabled. Consider enabling for better type safety.',
     });
   }
 
@@ -200,11 +216,19 @@ function generateSuggestions(health: Partial<ProjectHealth>): string[] {
     suggestions.push('Add a `lint` script to catch code issues');
   }
 
-  if (!scripts.includes('test') && !scripts.includes('jest') && !scripts.includes('vitest')) {
+  if (
+    !scripts.includes('test') &&
+    !scripts.includes('jest') &&
+    !scripts.includes('vitest')
+  ) {
     suggestions.push('Add a `test` script for automated testing');
   }
 
-  if (!scripts.includes('typecheck') && !scripts.includes('tsc') && health.typescript?.hasConfig) {
+  if (
+    !scripts.includes('typecheck') &&
+    !scripts.includes('tsc') &&
+    health.typescript?.hasConfig
+  ) {
     suggestions.push('Add a `typecheck` script (e.g., `tsc --noEmit`) for CI');
   }
 
@@ -227,11 +251,12 @@ function generateSuggestions(health: Partial<ProjectHealth>): string[] {
  * console.log('Available scripts:', health.scripts);
  */
 export async function checkProjectHealth(cwd: string): Promise<ProjectHealth> {
-  const [{ hasNodeModules, lockfiles, packageManager }, typescript, scripts] = await Promise.all([
-    checkDependencies(cwd),
-    checkTypeScript(cwd),
-    getScripts(cwd),
-  ]);
+  const [{ hasNodeModules, lockfiles, packageManager }, typescript, scripts] =
+    await Promise.all([
+      checkDependencies(cwd),
+      checkTypeScript(cwd),
+      getScripts(cwd),
+    ]);
 
   const health: ProjectHealth = {
     hasNodeModules,
@@ -279,17 +304,23 @@ export function formatProjectHealth(health: ProjectHealth): string | null {
       line += 'strict mode enabled';
     } else {
       const flags: string[] = [];
-      if (ts.strictNullChecks) flags.push('strictNullChecks');
-      if (ts.noImplicitAny) flags.push('noImplicitAny');
+      if (ts.strictNullChecks) {
+        flags.push('strictNullChecks');
+      }
+      if (ts.noImplicitAny) {
+        flags.push('noImplicitAny');
+      }
       line += flags.length > 0 ? `partial (${flags.join(', ')})` : 'not strict';
     }
-    if (ts.target) line += `, target: ${ts.target}`;
+    if (ts.target) {
+      line += `, target: ${ts.target}`;
+    }
     sections.push(line);
   }
 
   if (health.scripts.length > 0) {
     const importantScripts = health.scripts.filter((s) =>
-      ['dev', 'build', 'start', 'test', 'lint', 'typecheck'].includes(s),
+      ['dev', 'build', 'start', 'test', 'lint', 'typecheck'].includes(s)
     );
     if (importantScripts.length > 0) {
       sections.push(`**Scripts:** ${importantScripts.join(', ')}`);
@@ -298,7 +329,8 @@ export function formatProjectHealth(health: ProjectHealth): string | null {
 
   if (health.warnings.length > 0) {
     const warningLines = health.warnings.map((w) => {
-      const icon = w.type === 'error' ? '[!]' : w.type === 'warning' ? '[*]' : '[i]';
+      const icon =
+        w.type === 'error' ? '[!]' : w.type === 'warning' ? '[*]' : '[i]';
       return `${icon} ${w.message}`;
     });
     sections.push(`**Health Issues:**\n${warningLines.join('\n')}`);

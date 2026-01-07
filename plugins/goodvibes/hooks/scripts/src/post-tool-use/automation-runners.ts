@@ -17,7 +17,11 @@ import { createCheckpointIfNeeded } from './checkpoint-manager.js';
 import { maybeCreateFeatureBranch } from './git-branch-manager.js';
 
 // Testing and building
-import { findTestsForFile, runTests, type TestResult } from '../automation/test-runner.js';
+import {
+  findTestsForFile,
+  runTests,
+  type TestResult,
+} from '../automation/test-runner.js';
 import { runTypeCheck, type BuildResult } from '../automation/build-runner.js';
 
 // State management
@@ -46,7 +50,10 @@ export async function maybeRunTests(
   filePath: string,
   cwd: string
 ): Promise<{ ran: boolean; result: TestResult | null; state: HooksState }> {
-  if (!config.automation.enabled || !config.automation.testing.runAfterFileChange) {
+  if (
+    !config.automation.enabled ||
+    !config.automation.testing.runAfterFileChange
+  ) {
     return { ran: false, result: null, state };
   }
 
@@ -72,13 +79,17 @@ export async function maybeRunTests(
       state = updateTestState(state, {
         lastQuickRun: new Date().toISOString(),
         passingFiles: [...new Set([...state.tests.passingFiles, ...testFiles])],
-        failingFiles: state.tests.failingFiles.filter((f) => !testFiles.includes(f)),
+        failingFiles: state.tests.failingFiles.filter(
+          (f) => !testFiles.includes(f)
+        ),
       });
     } else {
       state = updateTestState(state, {
         lastQuickRun: new Date().toISOString(),
         failingFiles: [...new Set([...state.tests.failingFiles, ...testFiles])],
-        passingFiles: state.tests.passingFiles.filter((f) => !testFiles.includes(f)),
+        passingFiles: state.tests.passingFiles.filter(
+          (f) => !testFiles.includes(f)
+        ),
         pendingFixes: result.failures.map((f) => ({
           testFile: f.testFile,
           error: f.error,
@@ -123,7 +134,9 @@ export async function maybeRunBuild(
   const threshold = config.automation.building.runAfterFileThreshold;
 
   if (modifiedCount < threshold) {
-    debug(`Build skipped: ${modifiedCount} files modified (threshold: ${threshold})`);
+    debug(
+      `Build skipped: ${modifiedCount} files modified (threshold: ${threshold})`
+    );
     return { ran: false, result: null, state };
   }
 

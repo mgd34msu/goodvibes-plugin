@@ -44,7 +44,9 @@ describe('memory/failures', () => {
 
       expect(mockParseMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath] = mockParseMemoryFile.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'failures.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+      );
     });
 
     it('should call parseMemoryFile with correct parser configuration', async () => {
@@ -107,7 +109,9 @@ describe('memory/failures', () => {
       const validate = parserConfig.validate!;
 
       // Valid entry - has approach, date, reason
-      expect(validate({ approach: 'Test', date: '2024-01-01', reason: 'reason' })).toBe(true);
+      expect(
+        validate({ approach: 'Test', date: '2024-01-01', reason: 'reason' })
+      ).toBe(true);
 
       // Invalid - missing approach
       expect(validate({ date: '2024-01-01', reason: 'reason' })).toBe(false);
@@ -122,7 +126,9 @@ describe('memory/failures', () => {
       expect(validate({})).toBe(false);
 
       // Invalid - empty strings
-      expect(validate({ approach: '', date: '2024-01-01', reason: 'reason' })).toBe(false);
+      expect(
+        validate({ approach: '', date: '2024-01-01', reason: 'reason' })
+      ).toBe(false);
     });
 
     it('should have transform function that constructs MemoryFailure', async () => {
@@ -199,7 +205,9 @@ describe('memory/failures', () => {
 
       expect(mockEnsureMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath, header] = mockEnsureMemoryFile.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'failures.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+      );
       expect(header).toContain('# Failed Approaches');
       expect(header).toContain('approaches that were tried and failed');
     });
@@ -220,11 +228,15 @@ describe('memory/failures', () => {
 
       expect(mockAppendMemoryEntry).toHaveBeenCalledTimes(1);
       const [filePath, entry] = mockAppendMemoryEntry.mock.calls[0];
-      expect(filePath).toBe(path.join(testDir, '.goodvibes', 'memory', 'failures.md'));
+      expect(filePath).toBe(
+        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+      );
       expect(entry).toContain('## Using synchronous file reads');
       expect(entry).toContain('**Date:** 2024-01-04');
       expect(entry).toContain('**Reason:**');
-      expect(entry).toContain('Blocks the event loop and causes performance issues');
+      expect(entry).toContain(
+        'Blocks the event loop and causes performance issues'
+      );
       expect(entry).toContain('---');
     });
 

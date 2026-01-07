@@ -88,7 +88,7 @@ describe('hook-io', () => {
     });
 
     // Mock process.exit to capture exit code
-    process.exit = vi.fn((code?: string | number | null | undefined) => {
+    process.exit = vi.fn((code?: string | number | null) => {
       capturedExitCode = typeof code === 'number' ? code : 0;
       throw new Error('process.exit called');
     }) as never;
@@ -197,7 +197,9 @@ describe('hook-io', () => {
         mockStdin.simulateEnd();
       }, 10);
 
-      await expect(readPromise).rejects.toThrow('Failed to parse hook input from stdin');
+      await expect(readPromise).rejects.toThrow(
+        'Failed to parse hook input from stdin'
+      );
     });
 
     it('should reject when input structure is invalid - missing session_id', async () => {
@@ -328,7 +330,9 @@ describe('hook-io', () => {
       // Don't send any data - let it timeout
       const readPromise = readHookInput();
 
-      await expect(readPromise).rejects.toThrow('Hook input timeout: no data received within configured timeout');
+      await expect(readPromise).rejects.toThrow(
+        'Hook input timeout: no data received within configured timeout'
+      );
     }, 200); // Give enough time for timeout
   });
 
@@ -351,7 +355,10 @@ describe('hook-io', () => {
     it('should create response allowing tool with system message', async () => {
       const { allowTool } = await import('../shared/hook-io.js');
 
-      const result = allowTool('PreToolUse', 'Remember to run tests after this change');
+      const result = allowTool(
+        'PreToolUse',
+        'Remember to run tests after this change'
+      );
 
       expect(result).toEqual({
         continue: true,
@@ -368,7 +375,9 @@ describe('hook-io', () => {
 
       const result = allowTool('PermissionRequest', 'Approved');
 
-      expect(result.hookSpecificOutput?.hookEventName).toBe('PermissionRequest');
+      expect(result.hookSpecificOutput?.hookEventName).toBe(
+        'PermissionRequest'
+      );
       expect(result.hookSpecificOutput?.permissionDecision).toBe('allow');
     });
   });
@@ -377,7 +386,10 @@ describe('hook-io', () => {
     it('should create response blocking tool with reason', async () => {
       const { blockTool } = await import('../shared/hook-io.js');
 
-      const result = blockTool('PreToolUse', 'rm -rf commands are not permitted');
+      const result = blockTool(
+        'PreToolUse',
+        'rm -rf commands are not permitted'
+      );
 
       expect(result).toEqual({
         continue: false,
@@ -392,12 +404,19 @@ describe('hook-io', () => {
     it('should work with different hook event names', async () => {
       const { blockTool } = await import('../shared/hook-io.js');
 
-      const result = blockTool('PermissionRequest', 'Access to .env files is restricted');
+      const result = blockTool(
+        'PermissionRequest',
+        'Access to .env files is restricted'
+      );
 
       expect(result.continue).toBe(false);
-      expect(result.hookSpecificOutput?.hookEventName).toBe('PermissionRequest');
+      expect(result.hookSpecificOutput?.hookEventName).toBe(
+        'PermissionRequest'
+      );
       expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
-      expect(result.hookSpecificOutput?.permissionDecisionReason).toBe('Access to .env files is restricted');
+      expect(result.hookSpecificOutput?.permissionDecisionReason).toBe(
+        'Access to .env files is restricted'
+      );
     });
   });
 
@@ -413,7 +432,8 @@ describe('hook-io', () => {
     });
 
     it('should format allowTool response as JSON', async () => {
-      const { formatResponse, allowTool } = await import('../shared/hook-io.js');
+      const { formatResponse, allowTool } =
+        await import('../shared/hook-io.js');
 
       const response = allowTool('PreToolUse', 'Test message');
       const result = formatResponse(response);
@@ -423,7 +443,8 @@ describe('hook-io', () => {
     });
 
     it('should format blockTool response as JSON', async () => {
-      const { formatResponse, blockTool } = await import('../shared/hook-io.js');
+      const { formatResponse, blockTool } =
+        await import('../shared/hook-io.js');
 
       const response = blockTool('PreToolUse', 'Blocked for security');
       const result = formatResponse(response);
@@ -472,7 +493,8 @@ describe('hook-io', () => {
     });
 
     it('should handle createResponse output', async () => {
-      const { formatResponse, createResponse } = await import('../shared/hook-io.js');
+      const { formatResponse, createResponse } =
+        await import('../shared/hook-io.js');
 
       const response = createResponse({
         systemMessage: 'GoodVibes ready',
@@ -489,7 +511,8 @@ describe('hook-io', () => {
     });
 
     it('should handle createPermissionResponse output', async () => {
-      const { formatResponse, createPermissionResponse } = await import('../shared/hook-io.js');
+      const { formatResponse, createPermissionResponse } =
+        await import('../shared/hook-io.js');
 
       const response = createPermissionResponse('deny', 'Not allowed');
       const result = formatResponse(response);
@@ -497,7 +520,9 @@ describe('hook-io', () => {
       expect(result).toBe(JSON.stringify(response));
       const parsed = JSON.parse(result);
       expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny');
-      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toBe('Not allowed');
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toBe(
+        'Not allowed'
+      );
     });
 
     it('should handle response with nested objects', async () => {
@@ -522,8 +547,12 @@ describe('hook-io', () => {
       const result = formatResponse(response);
       const parsed = JSON.parse(result);
 
-      expect(parsed.hookSpecificOutput?.updatedInput?.nested?.deeply?.value).toBe(42);
-      expect(parsed.hookSpecificOutput?.updatedInput?.nested?.deeply?.array).toEqual([1, 2, 3]);
+      expect(
+        parsed.hookSpecificOutput?.updatedInput?.nested?.deeply?.value
+      ).toBe(42);
+      expect(
+        parsed.hookSpecificOutput?.updatedInput?.nested?.deeply?.array
+      ).toEqual([1, 2, 3]);
     });
   });
 
@@ -764,7 +793,10 @@ describe('hook-io', () => {
     it('should include reason when provided with deny', async () => {
       const { createPermissionResponse } = await import('../shared/hook-io.js');
 
-      const result = createPermissionResponse('deny', 'Tool not permitted in this context');
+      const result = createPermissionResponse(
+        'deny',
+        'Tool not permitted in this context'
+      );
 
       expect(result).toEqual({
         continue: true,
@@ -797,7 +829,9 @@ describe('hook-io', () => {
       const result = createPermissionResponse('deny', '');
 
       // Empty string is falsy, so reason won't be added
-      expect('permissionDecisionReason' in (result.hookSpecificOutput || {})).toBe(false);
+      expect(
+        'permissionDecisionReason' in (result.hookSpecificOutput || {})
+      ).toBe(false);
     });
 
     it('should not include reason when undefined', async () => {
@@ -805,7 +839,9 @@ describe('hook-io', () => {
 
       const result = createPermissionResponse('allow', undefined);
 
-      expect('permissionDecisionReason' in (result.hookSpecificOutput || {})).toBe(false);
+      expect(
+        'permissionDecisionReason' in (result.hookSpecificOutput || {})
+      ).toBe(false);
     });
   });
 });

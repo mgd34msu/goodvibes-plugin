@@ -8,7 +8,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import type { HooksState } from '../../types/state.js';
-import { createMockHooksState, createMockFileState } from '../test-utils/mock-factories.js';
+import {
+  createMockHooksState,
+  createMockFileState,
+} from '../test-utils/mock-factories.js';
 
 // Mock dependencies - must be defined before vi.mock calls
 const mockLoadState = vi.fn();
@@ -37,12 +40,14 @@ vi.mock('../../state.js', () => ({
 
 // Mock checkpoint-manager module
 vi.mock('../../post-tool-use/checkpoint-manager.js', () => ({
-  createCheckpointIfNeeded: (...args: unknown[]) => mockCreateCheckpointIfNeeded(...args),
+  createCheckpointIfNeeded: (...args: unknown[]) =>
+    mockCreateCheckpointIfNeeded(...args),
 }));
 
 // Mock git-operations module
 vi.mock('../../automation/git-operations.js', () => ({
-  hasUncommittedChanges: (...args: unknown[]) => mockHasUncommittedChanges(...args),
+  hasUncommittedChanges: (...args: unknown[]) =>
+    mockHasUncommittedChanges(...args),
 }));
 
 // Mock shared module
@@ -74,9 +79,8 @@ describe('state-preservation', () => {
     it('should skip checkpoint when there are no uncommitted changes', async () => {
       mockHasUncommittedChanges.mockResolvedValue(false);
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
       await createPreCompactCheckpoint(testCwd);
 
       expect(mockHasUncommittedChanges).toHaveBeenCalledWith(testCwd);
@@ -98,9 +102,8 @@ describe('state-preservation', () => {
       });
       mockSaveState.mockResolvedValue(undefined);
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
       await createPreCompactCheckpoint(testCwd);
 
       expect(mockHasUncommittedChanges).toHaveBeenCalledWith(testCwd);
@@ -126,9 +129,8 @@ describe('state-preservation', () => {
         state: mockState,
       });
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
       await createPreCompactCheckpoint(testCwd);
 
       expect(mockSaveState).not.toHaveBeenCalled();
@@ -141,14 +143,18 @@ describe('state-preservation', () => {
       const testError = new Error('Git operation failed');
       mockHasUncommittedChanges.mockRejectedValue(testError);
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
 
       // Should not throw
-      await expect(createPreCompactCheckpoint(testCwd)).resolves.toBeUndefined();
+      await expect(
+        createPreCompactCheckpoint(testCwd)
+      ).resolves.toBeUndefined();
 
-      expect(mockLogError).toHaveBeenCalledWith('createPreCompactCheckpoint', testError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'createPreCompactCheckpoint',
+        testError
+      );
     });
 
     it('should handle loadState errors gracefully', async () => {
@@ -156,13 +162,17 @@ describe('state-preservation', () => {
       const stateError = new Error('Failed to load state');
       mockLoadState.mockRejectedValue(stateError);
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
+
+      await expect(
+        createPreCompactCheckpoint(testCwd)
+      ).resolves.toBeUndefined();
+
+      expect(mockLogError).toHaveBeenCalledWith(
+        'createPreCompactCheckpoint',
+        stateError
       );
-
-      await expect(createPreCompactCheckpoint(testCwd)).resolves.toBeUndefined();
-
-      expect(mockLogError).toHaveBeenCalledWith('createPreCompactCheckpoint', stateError);
     });
 
     it('should handle createCheckpointIfNeeded errors gracefully', async () => {
@@ -172,13 +182,17 @@ describe('state-preservation', () => {
       const checkpointError = new Error('Checkpoint creation failed');
       mockCreateCheckpointIfNeeded.mockRejectedValue(checkpointError);
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
+
+      await expect(
+        createPreCompactCheckpoint(testCwd)
+      ).resolves.toBeUndefined();
+
+      expect(mockLogError).toHaveBeenCalledWith(
+        'createPreCompactCheckpoint',
+        checkpointError
       );
-
-      await expect(createPreCompactCheckpoint(testCwd)).resolves.toBeUndefined();
-
-      expect(mockLogError).toHaveBeenCalledWith('createPreCompactCheckpoint', checkpointError);
     });
 
     it('should handle saveState errors gracefully', async () => {
@@ -193,13 +207,17 @@ describe('state-preservation', () => {
       const saveError = new Error('Failed to save state');
       mockSaveState.mockRejectedValue(saveError);
 
-      const { createPreCompactCheckpoint } = await import(
-        '../../pre-compact/state-preservation.js'
+      const { createPreCompactCheckpoint } =
+        await import('../../pre-compact/state-preservation.js');
+
+      await expect(
+        createPreCompactCheckpoint(testCwd)
+      ).resolves.toBeUndefined();
+
+      expect(mockLogError).toHaveBeenCalledWith(
+        'createPreCompactCheckpoint',
+        saveError
       );
-
-      await expect(createPreCompactCheckpoint(testCwd)).resolves.toBeUndefined();
-
-      expect(mockLogError).toHaveBeenCalledWith('createPreCompactCheckpoint', saveError);
     });
   });
 
@@ -207,10 +225,13 @@ describe('state-preservation', () => {
   // saveSessionSummary tests
   // ==========================================================================
   describe('saveSessionSummary', () => {
-    const testSummary = 'This is a test session summary with important context.';
+    const testSummary =
+      'This is a test session summary with important context.';
 
     it('should save session summary to the correct path', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
@@ -218,11 +239,15 @@ describe('state-preservation', () => {
       const mockDate = new Date('2025-01-05T12:00:00.000Z');
       vi.setSystemTime(mockDate);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, testSummary);
 
       const expectedStateDir = path.join(testCwd, '.goodvibes', 'state');
-      const expectedSummaryPath = path.join(expectedStateDir, 'last-session-summary.md');
+      const expectedSummaryPath = path.join(
+        expectedStateDir,
+        'last-session-summary.md'
+      );
 
       expect(mockEnsureGoodVibesDir).toHaveBeenCalledWith(testCwd);
       expect(mockFileExists).toHaveBeenCalledWith(expectedStateDir);
@@ -237,12 +262,15 @@ describe('state-preservation', () => {
     });
 
     it('should create state directory if it does not exist', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(false);
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, testSummary);
 
       const expectedStateDir = path.join(testCwd, '.goodvibes', 'state');
@@ -253,25 +281,31 @@ describe('state-preservation', () => {
     });
 
     it('should not create state directory if it already exists', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, testSummary);
 
       expect(mockMkdir).not.toHaveBeenCalled();
     });
 
     it('should include timestamp in the summary content', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
       const mockDate = new Date('2025-01-05T15:30:45.123Z');
       vi.setSystemTime(mockDate);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, testSummary);
 
       expect(mockWriteFile).toHaveBeenCalledWith(
@@ -282,13 +316,16 @@ describe('state-preservation', () => {
     });
 
     it('should include the summary content in the file', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
       const customSummary = 'Custom summary with **markdown** content';
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, customSummary);
 
       expect(mockWriteFile).toHaveBeenCalledWith(
@@ -299,11 +336,14 @@ describe('state-preservation', () => {
     });
 
     it('should include proper markdown structure', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, testSummary);
 
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
@@ -317,59 +357,89 @@ describe('state-preservation', () => {
 
     it('should handle errors gracefully without throwing', async () => {
       const writeError = new Error('Write failed');
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockRejectedValue(writeError);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
 
-      await expect(saveSessionSummary(testCwd, testSummary)).resolves.toBeUndefined();
+      await expect(
+        saveSessionSummary(testCwd, testSummary)
+      ).resolves.toBeUndefined();
 
-      expect(mockLogError).toHaveBeenCalledWith('saveSessionSummary', writeError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'saveSessionSummary',
+        writeError
+      );
     });
 
     it('should handle ensureGoodVibesDir errors gracefully', async () => {
       const dirError = new Error('Failed to create directory');
       mockEnsureGoodVibesDir.mockRejectedValue(dirError);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
 
-      await expect(saveSessionSummary(testCwd, testSummary)).resolves.toBeUndefined();
+      await expect(
+        saveSessionSummary(testCwd, testSummary)
+      ).resolves.toBeUndefined();
 
       expect(mockLogError).toHaveBeenCalledWith('saveSessionSummary', dirError);
     });
 
     it('should handle fileExists errors gracefully', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       const existsError = new Error('Cannot check file existence');
       mockFileExists.mockRejectedValue(existsError);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
 
-      await expect(saveSessionSummary(testCwd, testSummary)).resolves.toBeUndefined();
+      await expect(
+        saveSessionSummary(testCwd, testSummary)
+      ).resolves.toBeUndefined();
 
-      expect(mockLogError).toHaveBeenCalledWith('saveSessionSummary', existsError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'saveSessionSummary',
+        existsError
+      );
     });
 
     it('should handle mkdir errors gracefully', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(false);
       const mkdirError = new Error('Cannot create directory');
       mockMkdir.mockRejectedValue(mkdirError);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
 
-      await expect(saveSessionSummary(testCwd, testSummary)).resolves.toBeUndefined();
+      await expect(
+        saveSessionSummary(testCwd, testSummary)
+      ).resolves.toBeUndefined();
 
-      expect(mockLogError).toHaveBeenCalledWith('saveSessionSummary', mkdirError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'saveSessionSummary',
+        mkdirError
+      );
     });
 
     it('should handle empty summary string', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, '');
 
       expect(mockWriteFile).toHaveBeenCalled();
@@ -378,13 +448,16 @@ describe('state-preservation', () => {
     });
 
     it('should handle summary with special characters', async () => {
-      mockEnsureGoodVibesDir.mockResolvedValue(path.join(testCwd, '.goodvibes'));
+      mockEnsureGoodVibesDir.mockResolvedValue(
+        path.join(testCwd, '.goodvibes')
+      );
       mockFileExists.mockResolvedValue(true);
       mockWriteFile.mockResolvedValue(undefined);
 
       const specialSummary = 'Summary with "quotes", <tags>, & symbols: $100';
 
-      const { saveSessionSummary } = await import('../../pre-compact/state-preservation.js');
+      const { saveSessionSummary } =
+        await import('../../pre-compact/state-preservation.js');
       await saveSessionSummary(testCwd, specialSummary);
 
       expect(mockWriteFile).toHaveBeenCalledWith(
@@ -407,9 +480,8 @@ describe('state-preservation', () => {
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual([]);
@@ -423,9 +495,8 @@ describe('state-preservation', () => {
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual(expect.arrayContaining(['file1.ts', 'file2.ts']));
@@ -440,12 +511,13 @@ describe('state-preservation', () => {
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
-      expect(result).toEqual(expect.arrayContaining(['newfile1.ts', 'newfile2.ts']));
+      expect(result).toEqual(
+        expect.arrayContaining(['newfile1.ts', 'newfile2.ts'])
+      );
       expect(result).toHaveLength(2);
     });
 
@@ -457,13 +529,17 @@ describe('state-preservation', () => {
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual(
-        expect.arrayContaining(['existing1.ts', 'existing2.ts', 'new1.ts', 'new2.ts'])
+        expect.arrayContaining([
+          'existing1.ts',
+          'existing2.ts',
+          'new1.ts',
+          'new2.ts',
+        ])
       );
       expect(result).toHaveLength(4);
     });
@@ -476,9 +552,8 @@ describe('state-preservation', () => {
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       // Should contain 4 unique files, not 5
@@ -497,9 +572,8 @@ describe('state-preservation', () => {
         },
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual(['new1.ts']);
@@ -514,9 +588,8 @@ describe('state-preservation', () => {
         },
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual(['file1.ts']);
@@ -531,17 +604,22 @@ describe('state-preservation', () => {
         },
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual([]);
     });
 
     it('should handle large number of files', async () => {
-      const manyModified = Array.from({ length: 100 }, (_, i) => `modified${i}.ts`);
-      const manyCreated = Array.from({ length: 50 }, (_, i) => `created${i}.ts`);
+      const manyModified = Array.from(
+        { length: 100 },
+        (_, i) => `modified${i}.ts`
+      );
+      const manyCreated = Array.from(
+        { length: 50 },
+        (_, i) => `created${i}.ts`
+      );
 
       const state = createMockHooksState({
         files: createMockFileState({
@@ -550,9 +628,8 @@ describe('state-preservation', () => {
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toHaveLength(150);
@@ -562,13 +639,15 @@ describe('state-preservation', () => {
       const state = createMockHooksState({
         files: createMockFileState({
           modifiedThisSession: ['file with spaces.ts', 'file-with-dashes.ts'],
-          createdThisSession: ['file_with_underscores.ts', 'file.multiple.dots.ts'],
+          createdThisSession: [
+            'file_with_underscores.ts',
+            'file.multiple.dots.ts',
+          ],
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual(
@@ -584,14 +663,16 @@ describe('state-preservation', () => {
     it('should handle files with paths', async () => {
       const state = createMockHooksState({
         files: createMockFileState({
-          modifiedThisSession: ['src/components/Button.tsx', 'src/utils/helpers.ts'],
+          modifiedThisSession: [
+            'src/components/Button.tsx',
+            'src/utils/helpers.ts',
+          ],
           createdThisSession: ['tests/Button.test.tsx'],
         }),
       });
 
-      const { getFilesModifiedThisSession } = await import(
-        '../../pre-compact/state-preservation.js'
-      );
+      const { getFilesModifiedThisSession } =
+        await import('../../pre-compact/state-preservation.js');
       const result = getFilesModifiedThisSession(state);
 
       expect(result).toEqual(

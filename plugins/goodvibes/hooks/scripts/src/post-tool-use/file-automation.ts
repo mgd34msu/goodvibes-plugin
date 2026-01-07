@@ -51,7 +51,7 @@ export function handleFileModification(
   input: HookInput,
   toolName: string
 ): { tracked: boolean; filePath: string | null; state: HooksState } {
-  const toolInput = input.tool_input as Record<string, unknown> | undefined;
+  const toolInput = input.tool_input;
   const filePath = toolInput?.file_path as string | undefined;
 
   if (!filePath) {
@@ -105,7 +105,12 @@ export async function processFileAutomation(
   state = trackResult.state;
 
   // Run tests for modified file
-  const testResult = await maybeRunTests(state, config, trackResult.filePath, cwd);
+  const testResult = await maybeRunTests(
+    state,
+    config,
+    trackResult.filePath,
+    cwd
+  );
   state = testResult.state;
   if (testResult.ran && testResult.result) {
     if (!testResult.result.passed) {

@@ -50,16 +50,24 @@ export async function handleDetectStack(input: HookInput): Promise<void> {
     }
 
     // Log usage
-    logToolUsage({
+    await logToolUsage({
       tool: 'detect_stack',
       timestamp: new Date().toISOString(),
       success: true,
     });
 
-    respond(createResponse('Stack detected. Consider using recommend_skills for relevant skill suggestions.'));
+    respond(
+      createResponse(
+        'Stack detected. Consider using recommend_skills for relevant skill suggestions.'
+      )
+    );
   } catch (error: unknown) {
     logError('handleDetectStack', error);
-    respond(createResponse(`Error caching stack: ${error instanceof Error ? error.message : String(error)}`));
+    respond(
+      createResponse(
+        `Error caching stack: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
   }
 }
 
@@ -78,11 +86,18 @@ export async function handleRecommendSkills(input: HookInput): Promise<void> {
     const analytics = await loadAnalytics();
     if (analytics && input.tool_input) {
       // Track recommended skills from tool input
-      const toolInput = input.tool_input as Record<string, unknown>;
-      if (toolInput.recommendations && Array.isArray(toolInput.recommendations)) {
+      const toolInput = input.tool_input;
+      if (
+        toolInput.recommendations &&
+        Array.isArray(toolInput.recommendations)
+      ) {
         const skillPaths = toolInput.recommendations
-          .filter((r): r is { path: string } =>
-            typeof r === 'object' && r !== null && 'path' in r && typeof (r as Record<string, unknown>).path === 'string'
+          .filter(
+            (r): r is { path: string } =>
+              typeof r === 'object' &&
+              r !== null &&
+              'path' in r &&
+              typeof (r as Record<string, unknown>).path === 'string'
           )
           .map((r) => r.path);
         analytics.skills_recommended.push(...skillPaths);
@@ -133,7 +148,9 @@ export async function handleSearch(_input: HookInput): Promise<void> {
  * // Called automatically when validate_implementation MCP tool completes
  * await handleValidateImplementation(input);
  */
-export async function handleValidateImplementation(input: HookInput): Promise<void> {
+export async function handleValidateImplementation(
+  input: HookInput
+): Promise<void> {
   try {
     const analytics = await loadAnalytics();
     if (analytics) {
@@ -143,7 +160,8 @@ export async function handleValidateImplementation(input: HookInput): Promise<vo
       const toolInput = input.tool_input as Record<string, unknown>;
       if (toolInput?.summary) {
         const summary = toolInput.summary as Record<string, number>;
-        analytics.issues_found += (summary.errors || 0) + (summary.warnings || 0);
+        analytics.issues_found +=
+          (summary.errors || 0) + (summary.warnings || 0);
       }
 
       await saveAnalytics(analytics);
@@ -185,7 +203,11 @@ export async function handleRunSmokeTest(input: HookInput): Promise<void> {
     if (toolInput?.passed === false) {
       const summary = toolInput.summary as Record<string, number> | undefined;
       const failed = summary?.failed || 0;
-      respond(createResponse(`Smoke test: ${failed} check(s) failed. Review output for details.`));
+      respond(
+        createResponse(
+          `Smoke test: ${failed} check(s) failed. Review output for details.`
+        )
+      );
       return;
     }
 
@@ -222,7 +244,11 @@ export async function handleCheckTypes(input: HookInput): Promise<void> {
       analytics.issues_found += toolInput.errors.length;
       await saveAnalytics(analytics);
 
-      respond(createResponse(`TypeScript: ${toolInput.errors.length} type error(s) found.`));
+      respond(
+        createResponse(
+          `TypeScript: ${toolInput.errors.length} type error(s) found.`
+        )
+      );
       return;
     }
 

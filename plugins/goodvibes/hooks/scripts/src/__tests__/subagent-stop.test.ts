@@ -72,12 +72,35 @@ vi.mock('../state.js', () => ({
 
 describe('subagent-stop hook', () => {
   const defaultState = {
-    session: { id: 'test-session', startedAt: new Date().toISOString(), mode: 'default', featureDescription: null },
+    session: {
+      id: 'test-session',
+      startedAt: new Date().toISOString(),
+      mode: 'default',
+      featureDescription: null,
+    },
     errors: {},
-    tests: { lastFullRun: null, lastQuickRun: null, passingFiles: [], failingFiles: [], pendingFixes: [] },
+    tests: {
+      lastFullRun: null,
+      lastQuickRun: null,
+      passingFiles: [],
+      failingFiles: [],
+      pendingFixes: [],
+    },
     build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
-    git: { mainBranch: 'main', currentBranch: 'main', featureBranch: null, featureStartedAt: null, featureDescription: null, checkpoints: [], pendingMerge: false },
-    files: { modifiedSinceCheckpoint: [], modifiedThisSession: [], createdThisSession: [] },
+    git: {
+      mainBranch: 'main',
+      currentBranch: 'main',
+      featureBranch: null,
+      featureStartedAt: null,
+      featureDescription: null,
+      checkpoints: [],
+      pendingMerge: false,
+    },
+    files: {
+      modifiedSinceCheckpoint: [],
+      modifiedThisSession: [],
+      createdThisSession: [],
+    },
     devServers: {},
   };
 
@@ -162,15 +185,27 @@ describe('subagent-stop hook', () => {
 
       // Verify debug logging
       expect(mockDebug).toHaveBeenCalledWith('SubagentStop hook starting');
-      expect(mockDebug).toHaveBeenCalledWith('Raw input shape:', expect.any(Array));
-      expect(mockDebug).toHaveBeenCalledWith('SubagentStop received input', expect.objectContaining({
-        agent_id: 'agent-123',
-        agent_type: 'test-engineer',
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Raw input shape:',
+        expect.any(Array)
+      );
+      expect(mockDebug).toHaveBeenCalledWith(
+        'SubagentStop received input',
+        expect.objectContaining({
+          agent_id: 'agent-123',
+          agent_type: 'test-engineer',
+        })
+      );
 
       // Verify tracking lookup
-      expect(mockGetAgentTracking).toHaveBeenCalledWith('/workspace/project', 'agent-123');
-      expect(mockDebug).toHaveBeenCalledWith('Found matching tracking entry', expect.any(Object));
+      expect(mockGetAgentTracking).toHaveBeenCalledWith(
+        '/workspace/project',
+        'agent-123'
+      );
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Found matching tracking entry',
+        expect.any(Object)
+      );
 
       // Verify validation
       expect(mockValidateAgentOutput).toHaveBeenCalledWith(
@@ -178,7 +213,10 @@ describe('subagent-stop hook', () => {
         '/path/to/agent/transcript.jsonl',
         defaultState
       );
-      expect(mockDebug).toHaveBeenCalledWith('Validation result', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Validation result',
+        expect.any(Object)
+      );
 
       // Verify test verification
       expect(mockVerifyAgentTests).toHaveBeenCalledWith(
@@ -186,7 +224,10 @@ describe('subagent-stop hook', () => {
         ['/src/test.ts'],
         defaultState
       );
-      expect(mockDebug).toHaveBeenCalledWith('Test verification result', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Test verification result',
+        expect.any(Object)
+      );
 
       // Verify telemetry
       expect(mockBuildTelemetryEntry).toHaveBeenCalledWith(
@@ -194,12 +235,23 @@ describe('subagent-stop hook', () => {
         '/path/to/agent/transcript.jsonl',
         'completed'
       );
-      expect(mockWriteTelemetryEntry).toHaveBeenCalledWith('/workspace/project', defaultTelemetryEntry);
-      expect(mockDebug).toHaveBeenCalledWith('Telemetry entry written', expect.any(Object));
+      expect(mockWriteTelemetryEntry).toHaveBeenCalledWith(
+        '/workspace/project',
+        defaultTelemetryEntry
+      );
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Telemetry entry written',
+        expect.any(Object)
+      );
 
       // Verify tracking removal
-      expect(mockRemoveAgentTracking).toHaveBeenCalledWith('/workspace/project', 'agent-123');
-      expect(mockDebug).toHaveBeenCalledWith('Removed agent tracking', { agent_id: 'agent-123' });
+      expect(mockRemoveAgentTracking).toHaveBeenCalledWith(
+        '/workspace/project',
+        'agent-123'
+      );
+      expect(mockDebug).toHaveBeenCalledWith('Removed agent tracking', {
+        agent_id: 'agent-123',
+      });
 
       // Verify state save
       expect(mockSaveState).toHaveBeenCalled();
@@ -238,7 +290,10 @@ describe('subagent-stop hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockGetAgentTracking).toHaveBeenCalledWith('/workspace/project', 'subagent-789');
+      expect(mockGetAgentTracking).toHaveBeenCalledWith(
+        '/workspace/project',
+        'subagent-789'
+      );
       expect(mockValidateAgentOutput).toHaveBeenCalledWith(
         '/workspace/project',
         '/path/to/subagent/transcript.jsonl',
@@ -278,7 +333,10 @@ describe('subagent-stop hook', () => {
       });
 
       // Should log no matching tracking entry
-      expect(mockDebug).toHaveBeenCalledWith('No matching tracking entry found', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'No matching tracking entry found',
+        expect.any(Object)
+      );
 
       // Should still validate agent output
       expect(mockValidateAgentOutput).toHaveBeenCalled();
@@ -534,7 +592,10 @@ describe('subagent-stop hook', () => {
       });
 
       // Should log error
-      expect(mockLogError).toHaveBeenCalledWith('SubagentStop main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'SubagentStop main',
+        expect.any(Error)
+      );
 
       // Should still respond with continue: true
       const responseCall = mockRespond.mock.calls[0][0];
@@ -629,9 +690,7 @@ describe('subagent-stop hook', () => {
       const startedAt = defaultTracking.started_at;
       mockLoadAnalytics.mockResolvedValue({
         session_id: 'session-456',
-        subagents_spawned: [
-          { type: 'test-engineer', started_at: startedAt },
-        ],
+        subagents_spawned: [{ type: 'test-engineer', started_at: startedAt }],
       });
 
       mockValidateAgentOutput.mockResolvedValue({

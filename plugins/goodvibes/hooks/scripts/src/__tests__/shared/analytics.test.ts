@@ -332,7 +332,9 @@ describe('analytics', () => {
 
       const mockNow = 1704456000000;
       vi.spyOn(Date, 'now').mockReturnValue(mockNow);
-      vi.spyOn(Date.prototype, 'toISOString').mockReturnValue('2025-01-05T12:00:00.000Z');
+      vi.spyOn(Date.prototype, 'toISOString').mockReturnValue(
+        '2025-01-05T12:00:00.000Z'
+      );
 
       await logToolUsage(mockUsage);
 
@@ -364,7 +366,9 @@ describe('analytics', () => {
 
       const mockNow = 1704456000000;
       vi.spyOn(Date, 'now').mockReturnValue(mockNow);
-      vi.spyOn(Date.prototype, 'toISOString').mockReturnValue('2025-01-05T12:00:00.000Z');
+      vi.spyOn(Date.prototype, 'toISOString').mockReturnValue(
+        '2025-01-05T12:00:00.000Z'
+      );
 
       await logToolUsage(minimalUsage);
 
@@ -382,7 +386,11 @@ describe('analytics', () => {
         ended_at: '2025-01-05T10:00:00.000Z',
         tool_usage: [],
         tool_failures: [
-          { tool: 'Write', error: 'Permission denied', timestamp: '2025-01-05T09:30:00.000Z' },
+          {
+            tool: 'Write',
+            error: 'Permission denied',
+            timestamp: '2025-01-05T09:30:00.000Z',
+          },
         ],
         skills_recommended: ['playwright', 'vitest'],
         subagents_spawned: [
@@ -410,10 +418,15 @@ describe('analytics', () => {
       expect(savedData.ended_at).toBe('2025-01-05T10:00:00.000Z');
       expect(savedData.tool_failures).toEqual(existingAnalytics.tool_failures);
       expect(savedData.skills_recommended).toEqual(['playwright', 'vitest']);
-      expect(savedData.subagents_spawned).toEqual(existingAnalytics.subagents_spawned);
+      expect(savedData.subagents_spawned).toEqual(
+        existingAnalytics.subagents_spawned
+      );
       expect(savedData.validations_run).toBe(3);
       expect(savedData.issues_found).toBe(1);
-      expect(savedData.detected_stack).toEqual({ framework: 'next', runtime: 'node' });
+      expect(savedData.detected_stack).toEqual({
+        framework: 'next',
+        runtime: 'node',
+      });
     });
   });
 

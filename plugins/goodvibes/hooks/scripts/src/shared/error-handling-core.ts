@@ -10,7 +10,11 @@
  * - Retry exhaustion checking
  */
 
-import { PHASE_RETRY_LIMITS, type ErrorCategory, type ErrorState } from '../types/errors.js';
+import {
+  PHASE_RETRY_LIMITS,
+  type ErrorCategory,
+  type ErrorState,
+} from '../types/errors.js';
 
 // =============================================================================
 // Constants
@@ -54,7 +58,10 @@ const SIGNATURE_MAX_LENGTH = 20;
  * generateErrorSignature('Error at line 42: file.ts')
  * // Returns: 'err_a1b2c3d4'
  */
-export function generateErrorSignature(errorOrToolName: string, errorMessage?: string): string {
+export function generateErrorSignature(
+  errorOrToolName: string,
+  errorMessage?: string
+): string {
   // Determine if called with one or two arguments
   const hasToolName = errorMessage !== undefined;
   const error = hasToolName ? errorMessage : errorOrToolName;
@@ -92,7 +99,7 @@ export function generateErrorSignature(errorOrToolName: string, errorMessage?: s
     let hash = 0;
     for (let i = 0; i < normalized.length; i++) {
       const char = normalized.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
 

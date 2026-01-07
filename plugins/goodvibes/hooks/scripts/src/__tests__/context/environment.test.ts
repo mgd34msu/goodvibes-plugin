@@ -43,7 +43,11 @@ describe('environment.ts', () => {
   describe('checkEnvStatus', () => {
     it('should detect .env file exists', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        return path.endsWith('.env') && !path.includes('example') && !path.includes('local');
+        return (
+          path.endsWith('.env') &&
+          !path.includes('example') &&
+          !path.includes('local')
+        );
       });
 
       const result = await checkEnvStatus(mockCwd);
@@ -77,8 +81,12 @@ describe('environment.ts', () => {
 
     it('should detect missing variables when .env.example exists', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -104,9 +112,15 @@ describe('environment.ts', () => {
 
     it('should prefer .env.local over .env when checking variables', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.includes('.env.local')) return true;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.includes('.env.local')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -133,9 +147,15 @@ describe('environment.ts', () => {
 
     it('should fall back to .env when .env.local does not exist', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.includes('.env.local')) return false;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.includes('.env.local')) {
+          return false;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -157,8 +177,12 @@ describe('environment.ts', () => {
 
     it('should return empty warnings when no variables are missing', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -192,8 +216,12 @@ describe('environment.ts', () => {
 
     it('should parse env files with comments and empty lines', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -216,8 +244,12 @@ describe('environment.ts', () => {
 
     it('should handle variables with whitespace around equals', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -239,8 +271,12 @@ describe('environment.ts', () => {
 
     it('should skip invalid lines without equals sign', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.endsWith('.env') && !path.includes('local')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
         return false;
       });
 
@@ -269,21 +305,34 @@ describe('environment.ts', () => {
   describe('analyzeEnvironment', () => {
     it('should detect multiple env file variants', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env')) return true;
-        if (path.includes('.env.local')) return true;
-        if (path.includes('.env.development')) return true;
+        if (path.endsWith('.env')) {
+          return true;
+        }
+        if (path.includes('.env.local')) {
+          return true;
+        }
+        if (path.includes('.env.development')) {
+          return true;
+        }
         return false;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         const pathStr = filePath.toString();
-        if (pathStr.endsWith('.env') && !pathStr.includes('local') && !pathStr.includes('development')) {
+        if (
+          pathStr.endsWith('.env') &&
+          !pathStr.includes('local') &&
+          !pathStr.includes('development')
+        ) {
           return 'VAR1=value\n';
         }
         if (pathStr.includes('.env.local')) {
           return 'VAR2=value\n';
         }
-        if (pathStr.includes('.env.development') && !pathStr.includes('local')) {
+        if (
+          pathStr.includes('.env.development') &&
+          !pathStr.includes('local')
+        ) {
           return 'VAR3=value\n';
         }
         return '';
@@ -301,8 +350,12 @@ describe('environment.ts', () => {
 
     it('should deduplicate defined variables', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local')) return true;
-        if (path.includes('.env.local')) return true;
+        if (path.endsWith('.env') && !path.includes('local')) {
+          return true;
+        }
+        if (path.includes('.env.local')) {
+          return true;
+        }
         return false;
       });
 
@@ -320,16 +373,28 @@ describe('environment.ts', () => {
       const result = await analyzeEnvironment(mockCwd);
 
       // Should deduplicate
-      const apiKeyCount = result.definedVars.filter((v) => v === 'API_KEY').length;
-      const sharedCount = result.definedVars.filter((v) => v === 'SHARED').length;
+      const apiKeyCount = result.definedVars.filter(
+        (v) => v === 'API_KEY'
+      ).length;
+      const sharedCount = result.definedVars.filter(
+        (v) => v === 'SHARED'
+      ).length;
       expect(apiKeyCount).toBe(1);
       expect(sharedCount).toBe(1);
     });
 
     it('should check .env.example for required variables', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.example')) return true;
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
         return false;
       });
 
@@ -353,8 +418,12 @@ describe('environment.ts', () => {
 
     it('should check .env.sample as an alternative to .env.example', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.sample')) return true;
-        if (path.endsWith('.env') && !path.includes('sample')) return true;
+        if (path.includes('.env.sample')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('sample')) {
+          return true;
+        }
         return false;
       });
 
@@ -377,8 +446,12 @@ describe('environment.ts', () => {
 
     it('should check .env.template as an alternative to .env.example', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.template')) return true;
-        if (path.endsWith('.env') && !path.includes('template')) return true;
+        if (path.includes('.env.template')) {
+          return true;
+        }
+        if (path.endsWith('.env') && !path.includes('template')) {
+          return true;
+        }
         return false;
       });
 
@@ -401,14 +474,26 @@ describe('environment.ts', () => {
 
     it('should detect sensitive variables exposed (not in gitignore)', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         const pathStr = filePath.toString();
-        if (pathStr.endsWith('.env') && !pathStr.includes('local') && !pathStr.includes('example')) {
+        if (
+          pathStr.endsWith('.env') &&
+          !pathStr.includes('local') &&
+          !pathStr.includes('example')
+        ) {
           return 'API_KEY=secret\nSECRET_TOKEN=xyz\nPASSWORD=abc\nDATABASE_URL=postgres\n';
         }
         if (pathStr.includes('.gitignore')) {
@@ -431,14 +516,26 @@ describe('environment.ts', () => {
 
     it('should not report sensitive vars when .env is in gitignore', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         const pathStr = filePath.toString();
-        if (pathStr.endsWith('.env') && !pathStr.includes('local') && !pathStr.includes('example')) {
+        if (
+          pathStr.endsWith('.env') &&
+          !pathStr.includes('local') &&
+          !pathStr.includes('example')
+        ) {
           return 'API_KEY=secret\n';
         }
         if (pathStr.includes('.gitignore')) {
@@ -454,14 +551,26 @@ describe('environment.ts', () => {
 
     it('should not report sensitive vars when .env* pattern is in gitignore', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         const pathStr = filePath.toString();
-        if (pathStr.endsWith('.env') && !pathStr.includes('local') && !pathStr.includes('example')) {
+        if (
+          pathStr.endsWith('.env') &&
+          !pathStr.includes('local') &&
+          !pathStr.includes('example')
+        ) {
           return 'API_KEY=secret\n';
         }
         if (pathStr.includes('.gitignore')) {
@@ -477,8 +586,12 @@ describe('environment.ts', () => {
 
     it('should not report sensitive vars when .env.* pattern is in gitignore', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.includes('.env.local')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (path.includes('.env.local')) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
@@ -502,8 +615,12 @@ describe('environment.ts', () => {
       // This tests the condition: envFile !== '.env.example'
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
         // Only .env.example exists (unusual but possible)
-        if (path.includes('.env.example')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (path.includes('.env.example')) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
@@ -527,8 +644,16 @@ describe('environment.ts', () => {
 
     it('should handle when no gitignore exists', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        if (path.includes('.gitignore')) return false;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return false;
+        }
         return false;
       });
 
@@ -560,7 +685,13 @@ describe('environment.ts', () => {
 
     it('should handle parseEnvFile error gracefully', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
         return false;
       });
 
@@ -575,14 +706,26 @@ describe('environment.ts', () => {
 
     it('should detect all sensitive variable patterns', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         const pathStr = filePath.toString();
-        if (pathStr.endsWith('.env') && !pathStr.includes('local') && !pathStr.includes('example')) {
+        if (
+          pathStr.endsWith('.env') &&
+          !pathStr.includes('local') &&
+          !pathStr.includes('example')
+        ) {
           // Test all sensitive patterns
           return [
             'API_KEY=1',
@@ -625,15 +768,29 @@ describe('environment.ts', () => {
 
     it('should deduplicate sensitive vars exposed', async () => {
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) return true;
-        if (path.includes('.env.local')) return true;
-        if (path.includes('.gitignore')) return true;
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
+          return true;
+        }
+        if (path.includes('.env.local')) {
+          return true;
+        }
+        if (path.includes('.gitignore')) {
+          return true;
+        }
         return false;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         const pathStr = filePath.toString();
-        if (pathStr.endsWith('.env') && !pathStr.includes('local') && !pathStr.includes('example')) {
+        if (
+          pathStr.endsWith('.env') &&
+          !pathStr.includes('local') &&
+          !pathStr.includes('example')
+        ) {
           return 'API_KEY=1\n';
         }
         if (pathStr.includes('.env.local')) {
@@ -654,7 +811,6 @@ describe('environment.ts', () => {
       expect(uniqueEntries.size).toBe(result.sensitiveVarsExposed.length);
     });
   });
-
 
   // =============================================================================
   // formatEnvStatus Tests
@@ -684,7 +840,9 @@ describe('environment.ts', () => {
 
       const formatted = formatEnvStatus(status);
 
-      expect(formatted).toBe('Environment: .env.example exists but no .env file');
+      expect(formatted).toBe(
+        'Environment: .env.example exists but no .env file'
+      );
     });
 
     it('should include warnings in formatted output', () => {
@@ -785,7 +943,9 @@ describe('environment.ts', () => {
 
       const formatted = formatEnvironment(context);
 
-      expect(formatted).toContain('**Missing Vars:** API_KEY, SECRET (defined in .env.example but not set)');
+      expect(formatted).toContain(
+        '**Missing Vars:** API_KEY, SECRET (defined in .env.example but not set)'
+      );
     });
 
     it('should format sensitive vars warning', () => {
@@ -799,7 +959,9 @@ describe('environment.ts', () => {
 
       const formatted = formatEnvironment(context);
 
-      expect(formatted).toContain('**Warning:** Potentially sensitive vars may not be gitignored: API_KEY (in .env)');
+      expect(formatted).toContain(
+        '**Warning:** Potentially sensitive vars may not be gitignored: API_KEY (in .env)'
+      );
     });
 
     it('should format all sections together', () => {
@@ -882,7 +1044,11 @@ describe('environment.ts', () => {
       // Simulate: first call (outer check) returns true, second call (inner parseEnvFile) returns false
       let callCount = 0;
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) {
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
           callCount++;
           // First call returns true (outer check), second returns false (inner parseEnvFile)
           return callCount === 1;
@@ -921,8 +1087,14 @@ describe('environment.ts', () => {
       // Simulate file existing for initial detection but not for sensitive var parse
       const callCounts: Record<string, number> = {};
       vi.mocked(fileExists).mockImplementation(async (path: string) => {
-        if (path.endsWith('.gitignore')) return true;
-        if (path.endsWith('.env') && !path.includes('local') && !path.includes('example')) {
+        if (path.endsWith('.gitignore')) {
+          return true;
+        }
+        if (
+          path.endsWith('.env') &&
+          !path.includes('local') &&
+          !path.includes('example')
+        ) {
           callCounts[path] = (callCounts[path] || 0) + 1;
           // First 2 calls return true, third (for sensitive var check) returns false
           return callCounts[path] <= 2;

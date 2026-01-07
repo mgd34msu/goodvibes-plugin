@@ -123,9 +123,8 @@ describe('handleBashTool', () => {
 
   describe('dev server command detection', () => {
     it('should detect and register dev server command', async () => {
-      const { isDevServerCommand, registerDevServer } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, registerDevServer } =
+        await import('../../post-tool-use/dev-server-monitor.js');
       const { debug } = await import('../../shared/index.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
@@ -148,9 +147,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle vite dev command', async () => {
-      const { isDevServerCommand, registerDevServer } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, registerDevServer } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
 
@@ -164,9 +162,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle next dev command', async () => {
-      const { isDevServerCommand, registerDevServer } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, registerDevServer } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
 
@@ -180,9 +177,8 @@ describe('handleBashTool', () => {
     });
 
     it('should use default port 3000 when registering dev server', async () => {
-      const { isDevServerCommand, registerDevServer } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, registerDevServer } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
 
@@ -199,9 +195,8 @@ describe('handleBashTool', () => {
     });
 
     it('should generate unique PIDs for multiple dev servers', async () => {
-      const { isDevServerCommand, registerDevServer } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, registerDevServer } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
 
@@ -228,9 +223,8 @@ describe('handleBashTool', () => {
 
   describe('error parsing from output', () => {
     it('should parse errors from command output', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue([
@@ -240,7 +234,8 @@ describe('handleBashTool', () => {
 
       mockInput.tool_input = {
         command: 'node build.js',
-        output: 'Error: Cannot find module "foo"\nSyntaxError: Unexpected token',
+        output:
+          'Error: Cannot find module "foo"\nSyntaxError: Unexpected token',
       };
 
       const result = handleBashTool(mockState, mockInput);
@@ -255,24 +250,21 @@ describe('handleBashTool', () => {
     });
 
     it('should record errors for running dev servers', async () => {
-      const {
-        isDevServerCommand,
-        parseDevServerErrors,
-        recordDevServerError,
-      } = await import('../../post-tool-use/dev-server-monitor.js');
+      const { isDevServerCommand, parseDevServerErrors, recordDevServerError } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue(['Module not found']);
 
       // Add a running dev server
       mockState.devServers = {
-        'bash_12345': {
+        bash_12345: {
           command: 'npm run dev',
           port: 3000,
           startedAt: '2025-01-01T00:00:00Z',
           lastError: null,
         },
-        'bash_67890': {
+        bash_67890: {
           command: 'vite',
           port: 5173,
           startedAt: '2025-01-01T00:00:00Z',
@@ -302,9 +294,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle multiple errors from output', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue([
@@ -314,7 +305,7 @@ describe('handleBashTool', () => {
       ]);
 
       mockState.devServers = {
-        'bash_12345': {
+        bash_12345: {
           command: 'npm run dev',
           port: 3000,
           startedAt: '2025-01-01T00:00:00Z',
@@ -333,11 +324,8 @@ describe('handleBashTool', () => {
     });
 
     it('should join multiple errors with semicolon when recording', async () => {
-      const {
-        isDevServerCommand,
-        parseDevServerErrors,
-        recordDevServerError,
-      } = await import('../../post-tool-use/dev-server-monitor.js');
+      const { isDevServerCommand, parseDevServerErrors, recordDevServerError } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue([
@@ -347,7 +335,7 @@ describe('handleBashTool', () => {
       ]);
 
       mockState.devServers = {
-        'bash_12345': {
+        bash_12345: {
           command: 'npm run dev',
           port: 3000,
           startedAt: '2025-01-01T00:00:00Z',
@@ -370,9 +358,8 @@ describe('handleBashTool', () => {
     });
 
     it('should return default response when no errors found in output', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue([]);
@@ -389,9 +376,8 @@ describe('handleBashTool', () => {
     });
 
     it('should not call parseDevServerErrors when output is undefined', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -404,9 +390,8 @@ describe('handleBashTool', () => {
     });
 
     it('should not call parseDevServerErrors when output is null', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -419,9 +404,8 @@ describe('handleBashTool', () => {
     });
 
     it('should not call parseDevServerErrors when output is empty string', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -436,9 +420,8 @@ describe('handleBashTool', () => {
 
   describe('edge cases', () => {
     it('should handle empty devServers object when recording errors', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue(['Some error']);
@@ -456,9 +439,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle state with no existing dev servers', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue([]);
@@ -474,9 +456,8 @@ describe('handleBashTool', () => {
     });
 
     it('should not parse errors for dev server commands', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
 
@@ -493,9 +474,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle command with only whitespace', async () => {
-      const { isDevServerCommand } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -509,9 +489,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle output with special characters', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue(['Special chars: @#$%']);
@@ -530,9 +509,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle very long output', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue(['Long error']);
@@ -551,17 +529,14 @@ describe('handleBashTool', () => {
     });
 
     it('should handle single error from output', async () => {
-      const {
-        isDevServerCommand,
-        parseDevServerErrors,
-        recordDevServerError,
-      } = await import('../../post-tool-use/dev-server-monitor.js');
+      const { isDevServerCommand, parseDevServerErrors, recordDevServerError } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue(['Single error']);
 
       mockState.devServers = {
-        'bash_12345': {
+        bash_12345: {
           command: 'npm run dev',
           port: 3000,
           startedAt: '2025-01-01T00:00:00Z',
@@ -587,9 +562,8 @@ describe('handleBashTool', () => {
 
   describe('type safety', () => {
     it('should handle tool_input with unexpected properties', async () => {
-      const { isDevServerCommand } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -617,9 +591,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle output as non-string type', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -638,9 +611,8 @@ describe('handleBashTool', () => {
 
   describe('complex scenarios', () => {
     it('should handle dev server detection with output present', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(true);
 
@@ -657,9 +629,8 @@ describe('handleBashTool', () => {
     });
 
     it('should handle non-dev-server command with no output', async () => {
-      const { isDevServerCommand, parseDevServerErrors } = await import(
-        '../../post-tool-use/dev-server-monitor.js'
-      );
+      const { isDevServerCommand, parseDevServerErrors } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
 
@@ -672,29 +643,26 @@ describe('handleBashTool', () => {
     });
 
     it('should iterate over all dev servers when recording errors', async () => {
-      const {
-        isDevServerCommand,
-        parseDevServerErrors,
-        recordDevServerError,
-      } = await import('../../post-tool-use/dev-server-monitor.js');
+      const { isDevServerCommand, parseDevServerErrors, recordDevServerError } =
+        await import('../../post-tool-use/dev-server-monitor.js');
 
       vi.mocked(isDevServerCommand).mockReturnValue(false);
       vi.mocked(parseDevServerErrors).mockReturnValue(['Error message']);
 
       mockState.devServers = {
-        'pid_1': {
+        pid_1: {
           command: 'npm run dev',
           port: 3000,
           startedAt: '2025-01-01T00:00:00Z',
           lastError: null,
         },
-        'pid_2': {
+        pid_2: {
           command: 'vite',
           port: 5173,
           startedAt: '2025-01-01T00:00:00Z',
           lastError: null,
         },
-        'pid_3': {
+        pid_3: {
           command: 'next dev',
           port: 3001,
           startedAt: '2025-01-01T00:00:00Z',

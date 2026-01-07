@@ -45,12 +45,14 @@ describe('telemetry/transcript', () => {
 
   describe('exports', () => {
     it('should export MAX_OUTPUT_LENGTH constant', async () => {
-      const { MAX_OUTPUT_LENGTH } = await import('../../telemetry/transcript.js');
+      const { MAX_OUTPUT_LENGTH } =
+        await import('../../telemetry/transcript.js');
       expect(MAX_OUTPUT_LENGTH).toBe(500);
     });
 
     it('should export KEYWORD_CATEGORIES from shared keywords module', async () => {
-      const { KEYWORD_CATEGORIES } = await import('../../telemetry/transcript.js');
+      const { KEYWORD_CATEGORIES } =
+        await import('../../telemetry/transcript.js');
       expect(KEYWORD_CATEGORIES).toBeDefined();
       expect(KEYWORD_CATEGORIES.testing).toContain('vitest');
     });
@@ -59,7 +61,8 @@ describe('telemetry/transcript', () => {
   describe('parseTranscript', () => {
     describe('path validation', () => {
       it('should return empty result for empty path', async () => {
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('');
 
         expect(result).toEqual({
@@ -74,7 +77,8 @@ describe('telemetry/transcript', () => {
       it('should return empty result when file does not exist', async () => {
         mockFileExists.mockResolvedValue(false);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/nonexistent/path.jsonl');
 
         expect(result).toEqual({
@@ -83,7 +87,9 @@ describe('telemetry/transcript', () => {
           error_count: 0,
           success_indicators: [],
         });
-        expect(mockDebug).toHaveBeenCalledWith('Transcript file not found: /nonexistent/path.jsonl');
+        expect(mockDebug).toHaveBeenCalledWith(
+          'Transcript file not found: /nonexistent/path.jsonl'
+        );
       });
     });
 
@@ -92,11 +98,16 @@ describe('telemetry/transcript', () => {
         mockFileExists.mockResolvedValue(true);
         const content = [
           JSON.stringify({ type: 'tool_use', tool_name: 'Bash' }),
-          JSON.stringify({ type: 'tool_use', name: 'Write', tool_input: { file_path: '/src/test.ts' } }),
+          JSON.stringify({
+            type: 'tool_use',
+            name: 'Write',
+            tool_input: { file_path: '/src/test.ts' },
+          }),
         ].join('\n');
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.tools_used).toContain('Bash');
@@ -109,10 +120,13 @@ describe('telemetry/transcript', () => {
         const content = 'using Bash tool to run commands';
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
-        expect(mockDebug).toHaveBeenCalledWith('Line not JSON, parsing as plain text');
+        expect(mockDebug).toHaveBeenCalledWith(
+          'Line not JSON, parsing as plain text'
+        );
         expect(result.tools_used).toContain('Bash');
       });
 
@@ -121,7 +135,8 @@ describe('telemetry/transcript', () => {
         const content = '\n\n  \n';
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.tools_used).toEqual([]);
@@ -133,10 +148,14 @@ describe('telemetry/transcript', () => {
         mockFileExists.mockResolvedValue(true);
         mockReadFile.mockRejectedValue(new Error('ENOENT: file not found'));
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
-        expect(mockLogError).toHaveBeenCalledWith('parseTranscript', expect.any(Error));
+        expect(mockLogError).toHaveBeenCalledWith(
+          'parseTranscript',
+          expect.any(Error)
+        );
         expect(result).toEqual({
           files_modified: [],
           tools_used: [],
@@ -150,12 +169,21 @@ describe('telemetry/transcript', () => {
       it('should deduplicate files_modified', async () => {
         mockFileExists.mockResolvedValue(true);
         const content = [
-          JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/test.ts' } }),
-          JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/test.ts' } }),
+          JSON.stringify({
+            type: 'tool_use',
+            name: 'Write',
+            input: { file_path: '/src/test.ts' },
+          }),
+          JSON.stringify({
+            type: 'tool_use',
+            name: 'Edit',
+            input: { file_path: '/src/test.ts' },
+          }),
         ].join('\n');
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.files_modified).toEqual(['/src/test.ts']);
@@ -169,7 +197,8 @@ describe('telemetry/transcript', () => {
         ].join('\n');
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.tools_used).toEqual(['Bash']);
@@ -183,7 +212,8 @@ describe('telemetry/transcript', () => {
         ].join('\n');
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.success_indicators.length).toBe(1);
@@ -193,10 +223,12 @@ describe('telemetry/transcript', () => {
     describe('final output extraction', () => {
       it('should extract final output from JSON format', async () => {
         mockFileExists.mockResolvedValue(true);
-        const content = '{"role":"assistant","content":"This is the final output"}';
+        const content =
+          '{"role":"assistant","content":"This is the final output"}';
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.final_output).toBe('This is the final output');
@@ -204,10 +236,12 @@ describe('telemetry/transcript', () => {
 
       it('should extract final output from Assistant: format', async () => {
         mockFileExists.mockResolvedValue(true);
-        const content = 'Assistant: This is the assistant response\n\nHuman: Next message';
+        const content =
+          'Assistant: This is the assistant response\n\nHuman: Next message';
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.final_output).toBe('This is the assistant response');
@@ -219,7 +253,8 @@ describe('telemetry/transcript', () => {
         const content = `{"role":"assistant","content":"${longContent}"}`;
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.final_output).toBe('a'.repeat(500) + '...');
@@ -231,7 +266,8 @@ describe('telemetry/transcript', () => {
         const content = JSON.stringify({ type: 'tool_use', name: 'Bash' });
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.final_output).toBeUndefined();
@@ -246,7 +282,8 @@ describe('telemetry/transcript', () => {
         ].join('\n');
         mockReadFile.mockResolvedValue(content);
 
-        const { parseTranscript } = await import('../../telemetry/transcript.js');
+        const { parseTranscript } =
+          await import('../../telemetry/transcript.js');
         const result = await parseTranscript('/path/to/transcript.jsonl');
 
         expect(result.final_output).toBe('Final message');
@@ -501,7 +538,9 @@ describe('telemetry/transcript', () => {
     });
 
     it('should detect "successfully" in content', async () => {
-      const content = JSON.stringify({ content: 'Task was successfully completed' });
+      const content = JSON.stringify({
+        content: 'Task was successfully completed',
+      });
       mockReadFile.mockResolvedValue(content);
 
       const { parseTranscript } = await import('../../telemetry/transcript.js');
@@ -694,7 +733,11 @@ describe('telemetry/transcript', () => {
       mockExtractTranscriptKeywords.mockReturnValue(['react', 'typescript']);
 
       const { extractKeywords } = await import('../../telemetry/transcript.js');
-      const result = extractKeywords('task description', 'transcript content', 'test-agent');
+      const result = extractKeywords(
+        'task description',
+        'transcript content',
+        'test-agent'
+      );
 
       expect(mockExtractTranscriptKeywords).toHaveBeenCalledWith(
         'task description',
@@ -710,7 +753,11 @@ describe('telemetry/transcript', () => {
       const { extractKeywords } = await import('../../telemetry/transcript.js');
       const result = extractKeywords();
 
-      expect(mockExtractTranscriptKeywords).toHaveBeenCalledWith(undefined, undefined, undefined);
+      expect(mockExtractTranscriptKeywords).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        undefined
+      );
       expect(result).toEqual([]);
     });
   });
@@ -719,7 +766,11 @@ describe('telemetry/transcript', () => {
     it('should work with all properties of ParsedTranscript', async () => {
       mockFileExists.mockResolvedValue(true);
       const content = [
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/test.ts' },
+        }),
         JSON.stringify({ type: 'error', message: 'An error occurred' }),
         JSON.stringify({ content: 'Successfully completed the task' }),
         '{"role":"assistant","content":"All done"}',
@@ -734,7 +785,10 @@ describe('telemetry/transcript', () => {
       expect(Array.isArray(result.tools_used)).toBe(true);
       expect(typeof result.error_count).toBe('number');
       expect(Array.isArray(result.success_indicators)).toBe(true);
-      expect(result.final_output === undefined || typeof result.final_output === 'string').toBe(true);
+      expect(
+        result.final_output === undefined ||
+          typeof result.final_output === 'string'
+      ).toBe(true);
 
       // Verify values
       expect(result.files_modified).toContain('/test.ts');
@@ -754,7 +808,11 @@ describe('telemetry/transcript', () => {
       const content = [
         JSON.stringify({ type: 'tool_use', name: 'Bash' }),
         'using Read tool for inspection',
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/test.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/test.ts' },
+        }),
         'editing config.js file',
       ].join('\n');
       mockReadFile.mockResolvedValue(content);
@@ -819,15 +877,36 @@ describe('telemetry/transcript', () => {
 
     it('should handle complex real-world transcript', async () => {
       const content = [
-        JSON.stringify({ role: 'user', content: 'Please create a new component' }),
-        JSON.stringify({ type: 'tool_use', name: 'Read', input: { file_path: '/src/existing.ts' } }),
+        JSON.stringify({
+          role: 'user',
+          content: 'Please create a new component',
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Read',
+          input: { file_path: '/src/existing.ts' },
+        }),
         JSON.stringify({ type: 'tool_result', content: 'file contents...' }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/new-component.tsx' } }),
-        JSON.stringify({ type: 'tool_result', content: 'File written successfully' }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/index.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/new-component.tsx' },
+        }),
+        JSON.stringify({
+          type: 'tool_result',
+          content: 'File written successfully',
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/index.ts' },
+        }),
         JSON.stringify({ type: 'tool_result', content: 'Edit successful' }),
         JSON.stringify({ content: 'Task completed successfully' }),
-        JSON.stringify({ role: 'assistant', content: 'I have created the new component and updated the exports.' }),
+        JSON.stringify({
+          role: 'assistant',
+          content: 'I have created the new component and updated the exports.',
+        }),
       ].join('\n');
       mockReadFile.mockResolvedValue(content);
 
@@ -835,10 +914,15 @@ describe('telemetry/transcript', () => {
       const result = await parseTranscript('/path/to/transcript.jsonl');
 
       expect(result.tools_used).toEqual(['Read', 'Write', 'Edit']);
-      expect(result.files_modified).toEqual(['/src/new-component.tsx', '/src/index.ts']);
+      expect(result.files_modified).toEqual([
+        '/src/new-component.tsx',
+        '/src/index.ts',
+      ]);
       expect(result.error_count).toBe(0);
       expect(result.success_indicators.length).toBeGreaterThan(0);
-      expect(result.final_output).toBe('I have created the new component and updated the exports.');
+      expect(result.final_output).toBe(
+        'I have created the new component and updated the exports.'
+      );
     });
   });
 });

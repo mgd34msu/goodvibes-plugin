@@ -43,7 +43,10 @@ describe('types/telemetry', () => {
       expect(entry.duration_ms).toBe(1800000);
       expect(entry.status).toBe('completed');
       expect(entry.keywords).toEqual(['testing', 'vitest', 'coverage']);
-      expect(entry.files_modified).toEqual(['src/utils.ts', 'src/utils.test.ts']);
+      expect(entry.files_modified).toEqual([
+        'src/utils.ts',
+        'src/utils.test.ts',
+      ]);
       expect(entry.tools_used).toEqual(['Read', 'Write', 'Bash']);
       expect(entry.summary).toBe('Added unit tests for utility functions');
     });

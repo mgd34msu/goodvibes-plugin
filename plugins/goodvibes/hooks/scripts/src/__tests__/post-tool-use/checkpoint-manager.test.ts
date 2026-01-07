@@ -7,7 +7,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { HooksState } from '../../types/state.js';
-import { createMockHooksState, createMockFileState } from '../test-utils/mock-factories.js';
+import {
+  createMockHooksState,
+  createMockFileState,
+} from '../test-utils/mock-factories.js';
 
 // Mock dependencies - must be defined before vi.mock calls
 const mockCreateCheckpoint = vi.fn();
@@ -18,18 +21,23 @@ const mockClearCheckpointTracking = vi.fn();
 // Mock git-operations module
 vi.mock('../../automation/git-operations.js', () => ({
   createCheckpoint: (...args: unknown[]) => mockCreateCheckpoint(...args),
-  hasUncommittedChanges: (...args: unknown[]) => mockHasUncommittedChanges(...args),
+  hasUncommittedChanges: (...args: unknown[]) =>
+    mockHasUncommittedChanges(...args),
 }));
 
 // Mock file-tracker module
 vi.mock('../../post-tool-use/file-tracker.js', () => ({
-  getModifiedFileCount: (...args: unknown[]) => mockGetModifiedFileCount(...args),
-  clearCheckpointTracking: (...args: unknown[]) => mockClearCheckpointTracking(...args),
+  getModifiedFileCount: (...args: unknown[]) =>
+    mockGetModifiedFileCount(...args),
+  clearCheckpointTracking: (...args: unknown[]) =>
+    mockClearCheckpointTracking(...args),
 }));
 
 // Mock CHECKPOINT_TRIGGERS constant
 vi.mock('../../shared/index.js', async () => {
-  const actual = await vi.importActual<typeof import('../../shared/index.js')>('../../shared/index.js');
+  const actual = await vi.importActual<typeof import('../../shared/index.js')>(
+    '../../shared/index.js'
+  );
   return {
     ...actual,
     CHECKPOINT_TRIGGERS: {
@@ -78,7 +86,8 @@ describe('checkpoint-manager', () => {
     it('should trigger checkpoint when file count reaches threshold', async () => {
       mockGetModifiedFileCount.mockReturnValue(5);
 
-      const { shouldCheckpoint } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { shouldCheckpoint } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = shouldCheckpoint(mockState, testCwd);
 
       expect(result.triggered).toBe(true);
@@ -89,7 +98,8 @@ describe('checkpoint-manager', () => {
     it('should trigger checkpoint when file count exceeds threshold', async () => {
       mockGetModifiedFileCount.mockReturnValue(10);
 
-      const { shouldCheckpoint } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { shouldCheckpoint } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = shouldCheckpoint(mockState, testCwd);
 
       expect(result.triggered).toBe(true);
@@ -99,7 +109,8 @@ describe('checkpoint-manager', () => {
     it('should not trigger checkpoint when file count is below threshold', async () => {
       mockGetModifiedFileCount.mockReturnValue(4);
 
-      const { shouldCheckpoint } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { shouldCheckpoint } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = shouldCheckpoint(mockState, testCwd);
 
       expect(result.triggered).toBe(false);
@@ -109,7 +120,8 @@ describe('checkpoint-manager', () => {
     it('should not trigger checkpoint when file count is zero', async () => {
       mockGetModifiedFileCount.mockReturnValue(0);
 
-      const { shouldCheckpoint } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { shouldCheckpoint } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = shouldCheckpoint(mockState, testCwd);
 
       expect(result.triggered).toBe(false);
@@ -119,7 +131,8 @@ describe('checkpoint-manager', () => {
     it('should not trigger checkpoint when file count is exactly one below threshold', async () => {
       mockGetModifiedFileCount.mockReturnValue(4); // Threshold is 5
 
-      const { shouldCheckpoint } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { shouldCheckpoint } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = shouldCheckpoint(mockState, testCwd);
 
       expect(result.triggered).toBe(false);
@@ -129,7 +142,8 @@ describe('checkpoint-manager', () => {
     it('should handle large file counts', async () => {
       mockGetModifiedFileCount.mockReturnValue(1000);
 
-      const { shouldCheckpoint } = await import('../../post-tool-use/checkpoint-manager.js');
+      const { shouldCheckpoint } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = shouldCheckpoint(mockState, testCwd);
 
       expect(result.triggered).toBe(true);
@@ -144,9 +158,8 @@ describe('checkpoint-manager', () => {
     it('should not create checkpoint when threshold not met', async () => {
       mockGetModifiedFileCount.mockReturnValue(3); // Below threshold
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       expect(result.created).toBe(false);
@@ -160,9 +173,8 @@ describe('checkpoint-manager', () => {
       mockGetModifiedFileCount.mockReturnValue(5); // Meets threshold
       mockHasUncommittedChanges.mockResolvedValue(false);
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       expect(mockHasUncommittedChanges).toHaveBeenCalledWith(testCwd);
@@ -178,14 +190,20 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
+      const result = await createCheckpointIfNeeded(
+        mockState,
+        testCwd,
+        'pre-refactor backup'
       );
-      const result = await createCheckpointIfNeeded(mockState, testCwd, 'pre-refactor backup');
 
       expect(result.created).toBe(true);
       expect(result.message).toBe('Checkpoint: pre-refactor backup');
-      expect(mockCreateCheckpoint).toHaveBeenCalledWith(testCwd, 'pre-refactor backup');
+      expect(mockCreateCheckpoint).toHaveBeenCalledWith(
+        testCwd,
+        'pre-refactor backup'
+      );
     });
 
     it('should bypass threshold check with forced reason', async () => {
@@ -197,10 +215,13 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
+      const result = await createCheckpointIfNeeded(
+        mockState,
+        testCwd,
+        'manual checkpoint'
       );
-      const result = await createCheckpointIfNeeded(mockState, testCwd, 'manual checkpoint');
 
       expect(result.created).toBe(true);
       expect(result.message).toBe('Checkpoint: manual checkpoint');
@@ -211,9 +232,8 @@ describe('checkpoint-manager', () => {
     it('should not create checkpoint when forced but no uncommitted changes', async () => {
       mockHasUncommittedChanges.mockResolvedValue(false);
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(
         mockState,
         testCwd,
@@ -239,14 +259,16 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       expect(result.created).toBe(true);
       expect(result.message).toBe('Checkpoint: 5 files modified');
-      expect(mockCreateCheckpoint).toHaveBeenCalledWith(testCwd, '5 files modified');
+      expect(mockCreateCheckpoint).toHaveBeenCalledWith(
+        testCwd,
+        '5 files modified'
+      );
       expect(mockClearCheckpointTracking).toHaveBeenCalledWith(mockState);
     });
 
@@ -255,9 +277,8 @@ describe('checkpoint-manager', () => {
       mockHasUncommittedChanges.mockResolvedValue(true);
       mockCreateCheckpoint.mockResolvedValue(false); // Checkpoint fails
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       expect(result.created).toBe(false);
@@ -270,11 +291,12 @@ describe('checkpoint-manager', () => {
       mockGetModifiedFileCount.mockReturnValue(5);
       mockHasUncommittedChanges.mockRejectedValue(new Error('git error'));
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
-      await expect(createCheckpointIfNeeded(mockState, testCwd)).rejects.toThrow('git error');
+      await expect(
+        createCheckpointIfNeeded(mockState, testCwd)
+      ).rejects.toThrow('git error');
       expect(mockCreateCheckpoint).not.toHaveBeenCalled();
     });
 
@@ -283,13 +305,12 @@ describe('checkpoint-manager', () => {
       mockHasUncommittedChanges.mockResolvedValue(true);
       mockCreateCheckpoint.mockRejectedValue(new Error('git commit failed'));
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
-      await expect(createCheckpointIfNeeded(mockState, testCwd)).rejects.toThrow(
-        'git commit failed'
-      );
+      await expect(
+        createCheckpointIfNeeded(mockState, testCwd)
+      ).rejects.toThrow('git commit failed');
       expect(mockClearCheckpointTracking).not.toHaveBeenCalled();
     });
   });
@@ -301,7 +322,13 @@ describe('checkpoint-manager', () => {
     it('should update state immutably with checkpoint info', async () => {
       const originalState = createMockHooksState({
         files: createMockFileState({
-          modifiedSinceCheckpoint: ['file1.ts', 'file2.ts', 'file3.ts', 'file4.ts', 'file5.ts'],
+          modifiedSinceCheckpoint: [
+            'file1.ts',
+            'file2.ts',
+            'file3.ts',
+            'file4.ts',
+            'file5.ts',
+          ],
         }),
         git: {
           mainBranch: 'main',
@@ -328,23 +355,36 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(originalState, testCwd);
 
       expect(result.created).toBe(true);
       expect(result.state).not.toBe(originalState); // Should be a new object
       expect(result.state.git.checkpoints).toHaveLength(2); // Old + new
       expect(result.state.git.checkpoints[0].message).toBe('5 files modified'); // New one first
-      expect(result.state.git.checkpoints[1].message).toBe('Previous checkpoint'); // Old one preserved
+      expect(result.state.git.checkpoints[1].message).toBe(
+        'Previous checkpoint'
+      ); // Old one preserved
     });
 
     it('should preserve existing checkpoints when adding new one', async () => {
       const existingCheckpoints = [
-        { hash: 'abc123', message: 'Checkpoint 1', timestamp: '2025-01-01T10:00:00Z' },
-        { hash: 'def456', message: 'Checkpoint 2', timestamp: '2025-01-01T11:00:00Z' },
-        { hash: 'ghi789', message: 'Checkpoint 3', timestamp: '2025-01-01T12:00:00Z' },
+        {
+          hash: 'abc123',
+          message: 'Checkpoint 1',
+          timestamp: '2025-01-01T10:00:00Z',
+        },
+        {
+          hash: 'def456',
+          message: 'Checkpoint 2',
+          timestamp: '2025-01-01T11:00:00Z',
+        },
+        {
+          hash: 'ghi789',
+          message: 'Checkpoint 3',
+          timestamp: '2025-01-01T12:00:00Z',
+        },
       ];
 
       const stateWithCheckpoints = createMockHooksState({
@@ -367,10 +407,12 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
+      const result = await createCheckpointIfNeeded(
+        stateWithCheckpoints,
+        testCwd
       );
-      const result = await createCheckpointIfNeeded(stateWithCheckpoints, testCwd);
 
       expect(result.state.git.checkpoints).toHaveLength(4);
       expect(result.state.git.checkpoints[0].message).toBe('5 files modified');
@@ -394,9 +436,8 @@ describe('checkpoint-manager', () => {
 
       mockClearCheckpointTracking.mockReturnValue(clearedState);
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       expect(result.created).toBe(true);
@@ -415,9 +456,8 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       const afterTime = new Date().toISOString();
@@ -427,7 +467,9 @@ describe('checkpoint-manager', () => {
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
       );
       // Timestamp should be between before and after
-      expect(result.state.git.checkpoints[0].timestamp >= beforeTime).toBe(true);
+      expect(result.state.git.checkpoints[0].timestamp >= beforeTime).toBe(
+        true
+      );
       expect(result.state.git.checkpoints[0].timestamp <= afterTime).toBe(true);
     });
 
@@ -440,9 +482,8 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd);
 
       expect(result.state.git.checkpoints[0].hash).toBe('');
@@ -460,9 +501,8 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       await createCheckpointIfNeeded(mockState, testCwd);
 
       // Original state should be unchanged
@@ -496,10 +536,12 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
+      const result = await createCheckpointIfNeeded(
+        stateWithNoCheckpoints,
+        testCwd
       );
-      const result = await createCheckpointIfNeeded(stateWithNoCheckpoints, testCwd);
 
       expect(result.created).toBe(true);
       expect(result.state.git.checkpoints).toHaveLength(1);
@@ -516,9 +558,8 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(mockState, testCwd, '');
 
       expect(result.created).toBe(true);
@@ -536,12 +577,16 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const specialReason = 'Fix: "quotes" & <tags> | pipes / slashes \\ backslashes';
+      const specialReason =
+        'Fix: "quotes" & <tags> | pipes / slashes \\ backslashes';
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
+      const result = await createCheckpointIfNeeded(
+        mockState,
+        testCwd,
+        specialReason
       );
-      const result = await createCheckpointIfNeeded(mockState, testCwd, specialReason);
 
       expect(result.created).toBe(true);
       expect(result.state.git.checkpoints[0].message).toBe(specialReason);
@@ -558,10 +603,13 @@ describe('checkpoint-manager', () => {
 
       const longReason = 'A'.repeat(1000);
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
+      const result = await createCheckpointIfNeeded(
+        mockState,
+        testCwd,
+        longReason
       );
-      const result = await createCheckpointIfNeeded(mockState, testCwd, longReason);
 
       expect(result.created).toBe(true);
       expect(result.state.git.checkpoints[0].message).toBe(longReason);
@@ -584,9 +632,8 @@ describe('checkpoint-manager', () => {
         '/root',
       ];
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
 
       for (const path of differentPaths) {
         vi.clearAllMocks();
@@ -613,7 +660,11 @@ describe('checkpoint-manager', () => {
           featureStartedAt: '2025-01-01T10:00:00Z',
           featureDescription: 'Complex feature with many changes',
           checkpoints: [
-            { hash: 'abc123', message: 'First checkpoint', timestamp: '2025-01-01T11:00:00Z' },
+            {
+              hash: 'abc123',
+              message: 'First checkpoint',
+              timestamp: '2025-01-01T11:00:00Z',
+            },
           ],
           pendingMerge: true,
         },
@@ -627,16 +678,17 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(complexGitState, testCwd);
 
       expect(result.state.git.mainBranch).toBe('develop');
       expect(result.state.git.currentBranch).toBe('feature/complex');
       expect(result.state.git.featureBranch).toBe('feature/complex');
       expect(result.state.git.featureStartedAt).toBe('2025-01-01T10:00:00Z');
-      expect(result.state.git.featureDescription).toBe('Complex feature with many changes');
+      expect(result.state.git.featureDescription).toBe(
+        'Complex feature with many changes'
+      );
       expect(result.state.git.pendingMerge).toBe(true);
     });
   });
@@ -656,7 +708,13 @@ describe('checkpoint-manager', () => {
             'file4.ts',
             'file5.ts',
           ],
-          modifiedThisSession: ['file1.ts', 'file2.ts', 'file3.ts', 'file4.ts', 'file5.ts'],
+          modifiedThisSession: [
+            'file1.ts',
+            'file2.ts',
+            'file3.ts',
+            'file4.ts',
+            'file5.ts',
+          ],
         }),
         git: {
           mainBranch: 'main',
@@ -676,19 +734,27 @@ describe('checkpoint-manager', () => {
         ...initialState,
         files: createMockFileState({
           modifiedSinceCheckpoint: [],
-          modifiedThisSession: ['file1.ts', 'file2.ts', 'file3.ts', 'file4.ts', 'file5.ts'],
+          modifiedThisSession: [
+            'file1.ts',
+            'file2.ts',
+            'file3.ts',
+            'file4.ts',
+            'file5.ts',
+          ],
         }),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result = await createCheckpointIfNeeded(initialState, testCwd);
 
       // Verify complete workflow
       expect(mockGetModifiedFileCount).toHaveBeenCalledWith(initialState);
       expect(mockHasUncommittedChanges).toHaveBeenCalledWith(testCwd);
-      expect(mockCreateCheckpoint).toHaveBeenCalledWith(testCwd, '5 files modified');
+      expect(mockCreateCheckpoint).toHaveBeenCalledWith(
+        testCwd,
+        '5 files modified'
+      );
       expect(mockClearCheckpointTracking).toHaveBeenCalledWith(initialState);
 
       expect(result.created).toBe(true);
@@ -716,9 +782,8 @@ describe('checkpoint-manager', () => {
         files: createMockFileState(),
       });
 
-      const { createCheckpointIfNeeded } = await import(
-        '../../post-tool-use/checkpoint-manager.js'
-      );
+      const { createCheckpointIfNeeded } =
+        await import('../../post-tool-use/checkpoint-manager.js');
       const result1 = await createCheckpointIfNeeded(currentState, testCwd);
 
       expect(result1.created).toBe(true);

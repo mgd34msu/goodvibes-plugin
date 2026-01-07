@@ -27,7 +27,10 @@
 export function debug(message: string, data?: unknown): void {
   const timestamp = new Date().toISOString();
   if (data !== undefined) {
-    console.error(`[GoodVibes ${timestamp}] ${message}:`, JSON.stringify(data, null, 2));
+    console.error(
+      `[GoodVibes ${timestamp}] ${message}:`,
+      JSON.stringify(data, null, 2)
+    );
   } else {
     console.error(`[GoodVibes ${timestamp}] ${message}`);
   }

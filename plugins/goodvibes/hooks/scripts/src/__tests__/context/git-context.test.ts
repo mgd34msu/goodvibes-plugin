@@ -6,7 +6,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getGitContext, formatGitContext, type GitContext } from '../../context/git-context.js';
+import {
+  getGitContext,
+  formatGitContext,
+  type GitContext,
+} from '../../context/git-context.js';
 import * as childProcess from 'child_process';
 import * as fs from 'fs/promises';
 
@@ -54,15 +58,27 @@ describe('git-context', () => {
       });
 
       it('should return full git context with all data available', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'main\n';
-          if (cmd.includes('status --porcelain')) return ' M file1.ts\n M file2.ts\n';
-          if (cmd.includes('log -1 --format')) return 'Fix bug (2 hours ago)\n';
-          if (cmd.includes('log -5 --format')) return '- Fix bug\n- Add feature\n- Initial commit\n';
-          if (cmd.includes('rev-list --left-right')) return '3\t1\n';
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'main\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return ' M file1.ts\n M file2.ts\n';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'Fix bug (2 hours ago)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- Fix bug\n- Add feature\n- Initial commit\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '3\t1\n';
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -78,15 +94,27 @@ describe('git-context', () => {
       });
 
       it('should handle empty branch (detached HEAD state)', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return '\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return 'Detached commit (1 day ago)\n';
-          if (cmd.includes('log -5 --format')) return '- Detached commit\n';
-          if (cmd.includes('rev-list --left-right')) throw new Error('No upstream');
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return '\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'Detached commit (1 day ago)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- Detached commit\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              throw new Error('No upstream');
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -95,15 +123,27 @@ describe('git-context', () => {
       });
 
       it('should handle null branch when git command fails', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) throw new Error('Git error');
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return '';
-          if (cmd.includes('log -5 --format')) return '';
-          if (cmd.includes('rev-list --left-right')) throw new Error('No upstream');
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              throw new Error('Git error');
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return '';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              throw new Error('No upstream');
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -111,15 +151,27 @@ describe('git-context', () => {
       });
 
       it('should handle empty status (no uncommitted changes)', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'main\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return 'Last commit (1 hour ago)\n';
-          if (cmd.includes('log -5 --format')) return '- Last commit\n';
-          if (cmd.includes('rev-list --left-right')) return '0\t0\n';
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'main\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'Last commit (1 hour ago)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- Last commit\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '0\t0\n';
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -128,15 +180,27 @@ describe('git-context', () => {
       });
 
       it('should handle status command returning null (failure)', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'main\n';
-          if (cmd.includes('status --porcelain')) throw new Error('Status failed');
-          if (cmd.includes('log -1 --format')) return 'Commit\n';
-          if (cmd.includes('log -5 --format')) return '- Commit\n';
-          if (cmd.includes('rev-list --left-right')) return '0\t0\n';
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'main\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              throw new Error('Status failed');
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'Commit\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- Commit\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '0\t0\n';
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -146,15 +210,27 @@ describe('git-context', () => {
       });
 
       it('should handle null lastCommit when log command fails', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'main\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) throw new Error('No commits');
-          if (cmd.includes('log -5 --format')) throw new Error('No commits');
-          if (cmd.includes('rev-list --left-right')) throw new Error('No upstream');
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'main\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              throw new Error('No commits');
+            }
+            if (cmd.includes('log -5 --format')) {
+              throw new Error('No commits');
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              throw new Error('No upstream');
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -163,15 +239,27 @@ describe('git-context', () => {
       });
 
       it('should handle null recentCommitsRaw returning empty array', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'feature\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return 'First commit (now)\n';
-          if (cmd.includes('log -5 --format')) throw new Error('Log failed');
-          if (cmd.includes('rev-list --left-right')) return '1\t0\n';
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'feature\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'First commit (now)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              throw new Error('Log failed');
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '1\t0\n';
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -179,15 +267,27 @@ describe('git-context', () => {
       });
 
       it('should handle ahead/behind when no upstream is configured', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'feature-branch\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return 'Add feature (5 min ago)\n';
-          if (cmd.includes('log -5 --format')) return '- Add feature\n';
-          if (cmd.includes('rev-list --left-right')) throw new Error('No upstream configured');
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'feature-branch\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'Add feature (5 min ago)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- Add feature\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              throw new Error('No upstream configured');
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -195,17 +295,27 @@ describe('git-context', () => {
       });
 
       it('should handle multiple uncommitted files', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'develop\n';
-          if (cmd.includes('status --porcelain')) {
-            return ' M src/file1.ts\n M src/file2.ts\nA  new-file.ts\n?? untracked.txt\nD  deleted.ts\n';
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'develop\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return ' M src/file1.ts\n M src/file2.ts\nA  new-file.ts\n?? untracked.txt\nD  deleted.ts\n';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'WIP (just now)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- WIP\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '5\t2\n';
+            }
+            return '';
           }
-          if (cmd.includes('log -1 --format')) return 'WIP (just now)\n';
-          if (cmd.includes('log -5 --format')) return '- WIP\n';
-          if (cmd.includes('rev-list --left-right')) return '5\t2\n';
-          return '';
-        });
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -214,15 +324,27 @@ describe('git-context', () => {
       });
 
       it('should correctly parse ahead/behind values', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'main\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return 'Sync (1 min ago)\n';
-          if (cmd.includes('log -5 --format')) return '- Sync\n';
-          if (cmd.includes('rev-list --left-right')) return '10\t5\n';
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'main\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'Sync (1 min ago)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- Sync\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '10\t5\n';
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -230,15 +352,27 @@ describe('git-context', () => {
       });
 
       it('should handle zero ahead/behind', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation((command: string) => {
-          const cmd = String(command);
-          if (cmd.includes('branch --show-current')) return 'main\n';
-          if (cmd.includes('status --porcelain')) return '';
-          if (cmd.includes('log -1 --format')) return 'In sync (2 days ago)\n';
-          if (cmd.includes('log -5 --format')) return '- In sync\n';
-          if (cmd.includes('rev-list --left-right')) return '0\t0\n';
-          return '';
-        });
+        vi.mocked(childProcess.execSync).mockImplementation(
+          (command: string) => {
+            const cmd = String(command);
+            if (cmd.includes('branch --show-current')) {
+              return 'main\n';
+            }
+            if (cmd.includes('status --porcelain')) {
+              return '';
+            }
+            if (cmd.includes('log -1 --format')) {
+              return 'In sync (2 days ago)\n';
+            }
+            if (cmd.includes('log -5 --format')) {
+              return '- In sync\n';
+            }
+            if (cmd.includes('rev-list --left-right')) {
+              return '0\t0\n';
+            }
+            return '';
+          }
+        );
 
         const result = await getGitContext(mockCwd);
 
@@ -405,7 +539,9 @@ describe('git-context', () => {
 
       const result = formatGitContext(context);
 
-      expect(result).toBe('Git: main branch, \nLast: "Fix critical bug (2 hours ago)"');
+      expect(result).toBe(
+        'Git: main branch, \nLast: "Fix critical bug (2 hours ago)"'
+      );
     });
 
     it('should format with all information combined', () => {
@@ -455,7 +591,9 @@ describe('git-context', () => {
 
       const result = formatGitContext(context);
 
-      expect(result).toBe('Git: develop branch, 2 uncommitted files, \nLast: "Setup project (1 week ago)"');
+      expect(result).toBe(
+        'Git: develop branch, 2 uncommitted files, \nLast: "Setup project (1 week ago)"'
+      );
     });
   });
 

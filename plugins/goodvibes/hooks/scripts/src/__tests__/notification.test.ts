@@ -91,7 +91,10 @@ describe('notification hook', () => {
       await import('../notification.js');
 
       await vi.waitFor(() => {
-        expect(mockLogError).toHaveBeenCalledWith('Notification main', testError);
+        expect(mockLogError).toHaveBeenCalledWith(
+          'Notification main',
+          testError
+        );
         expect(mockRespond).toHaveBeenCalledWith({
           continue: true,
           systemMessage: 'Notification error: Test error message',
@@ -106,7 +109,10 @@ describe('notification hook', () => {
       await import('../notification.js');
 
       await vi.waitFor(() => {
-        expect(mockLogError).toHaveBeenCalledWith('Notification main', nonErrorValue);
+        expect(mockLogError).toHaveBeenCalledWith(
+          'Notification main',
+          nonErrorValue
+        );
         expect(mockRespond).toHaveBeenCalledWith({
           continue: true,
           systemMessage: 'Notification error: string error',
@@ -121,7 +127,10 @@ describe('notification hook', () => {
       await import('../notification.js');
 
       await vi.waitFor(() => {
-        expect(mockLogError).toHaveBeenCalledWith('Notification main', objectError);
+        expect(mockLogError).toHaveBeenCalledWith(
+          'Notification main',
+          objectError
+        );
         expect(mockRespond).toHaveBeenCalledWith({
           continue: true,
           systemMessage: 'Notification error: [object Object]',
@@ -149,7 +158,10 @@ describe('notification hook', () => {
       await import('../notification.js');
 
       await vi.waitFor(() => {
-        expect(mockLogError).toHaveBeenCalledWith('Notification main', undefined);
+        expect(mockLogError).toHaveBeenCalledWith(
+          'Notification main',
+          undefined
+        );
         expect(mockRespond).toHaveBeenCalledWith({
           continue: true,
           systemMessage: 'Notification error: undefined',
@@ -168,7 +180,9 @@ describe('notification hook', () => {
       await vi.waitFor(() => {
         const respondCall = mockRespond.mock.calls[0][0];
         expect(respondCall.continue).toBe(true);
-        expect(respondCall.systemMessage).toBe(`Notification error: ${errorMessage}`);
+        expect(respondCall.systemMessage).toBe(
+          `Notification error: ${errorMessage}`
+        );
       });
     });
 

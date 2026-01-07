@@ -1,0 +1,21 @@
+# Build outputs
+dist/
+
+# Test coverage
+coverage/
+
+# Dependencies
+node_modules/
+
+# Temp directories
+temp_check/
+
+# JSON files (often auto-generated or have specific formatting)
+*.json
+
+# Markdown files (preserve original formatting)
+*.md
+
+# Config files in root
+vitest.config.ts
+eslint.config.js

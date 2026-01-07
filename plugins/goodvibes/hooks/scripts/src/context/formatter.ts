@@ -89,7 +89,9 @@ export function formatContext(context: GatheredContext): FormattedContext {
     sections.push('## Project Health');
     sections.push(healthFormatted);
     // Count warnings and errors from health checks
-    issueCount += context.health.checks.filter(c => c.status === 'warning' || c.status === 'error').length;
+    issueCount += context.health.checks.filter(
+      (c) => c.status === 'warning' || c.status === 'error'
+    ).length;
     sections.push('');
   }
 
@@ -105,7 +107,9 @@ export function formatContext(context: GatheredContext): FormattedContext {
   if (todosFormatted) {
     sections.push('## Code TODOs');
     sections.push(todosFormatted);
-    issueCount += context.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
+    issueCount += context.todos.filter(
+      (i) => i.type === 'FIXME' || i.type === 'BUG'
+    ).length;
     sections.push('');
   }
 
@@ -126,7 +130,9 @@ export function formatContext(context: GatheredContext): FormattedContext {
 
   if (context.git.isRepo && context.git.branch) {
     if (context.git.uncommittedFileCount > 0) {
-      summaryParts.push(`${context.git.uncommittedFileCount} uncommitted changes`);
+      summaryParts.push(
+        `${context.git.uncommittedFileCount} uncommitted changes`
+      );
     }
   }
 
@@ -134,7 +140,10 @@ export function formatContext(context: GatheredContext): FormattedContext {
     summaryParts.push(`${issueCount} issue(s) to review`);
   }
 
-  const summary = summaryParts.length > 0 ? summaryParts.join(' | ') : 'Project context loaded';
+  const summary =
+    summaryParts.length > 0
+      ? summaryParts.join(' | ')
+      : 'Project context loaded';
 
   return {
     full: sections.join('\n'),
@@ -167,12 +176,16 @@ export function formatMinimalContext(context: GatheredContext): string {
     parts.push(`Branch: ${context.git.branch}`);
   }
 
-  const healthWarnings = context.health.checks.filter(c => c.status === 'warning' || c.status === 'error');
+  const healthWarnings = context.health.checks.filter(
+    (c) => c.status === 'warning' || c.status === 'error'
+  );
   if (healthWarnings.length > 0) {
     parts.push(`${healthWarnings.length} health warning(s)`);
   }
 
-  const highPriorityTodos = context.todos.filter((i) => i.type === 'FIXME' || i.type === 'BUG').length;
+  const highPriorityTodos = context.todos.filter(
+    (i) => i.type === 'FIXME' || i.type === 'BUG'
+  ).length;
   if (highPriorityTodos > 0) {
     parts.push(`${highPriorityTodos} high-priority TODO(s)`);
   }

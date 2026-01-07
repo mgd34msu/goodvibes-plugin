@@ -73,11 +73,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git push --force origin main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force origin main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Force push to main is not allowed');
@@ -89,11 +94,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git push -f origin main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push -f origin main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Force push to main is not allowed');
@@ -105,14 +115,21 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'feature-branch';
 
-      const result = await checkBranchGuard('git push --force origin feature-branch', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force origin feature-branch',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
-      expect(result.warning).toBe('Force push detected - ensure this is intentional');
+      expect(result.warning).toBe(
+        'Force push detected - ensure this is intentional'
+      );
     });
 
     it('should block hard reset on main branch', async () => {
@@ -121,11 +138,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git reset --hard HEAD~1', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git reset --hard HEAD~1',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Hard reset on main is not allowed');
@@ -137,11 +159,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'feature-branch';
 
-      const result = await checkBranchGuard('git reset --hard HEAD~1', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git reset --hard HEAD~1',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
       expect(result.warning).toBeUndefined();
@@ -153,11 +180,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git rebase origin/main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git rebase origin/main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
       expect(result.warning).toBe('Rebasing main - ensure this is intentional');
@@ -169,11 +201,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'feature-branch';
 
-      const result = await checkBranchGuard('git rebase main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git rebase main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
       expect(result.warning).toBeUndefined();
@@ -185,12 +222,17 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.mainBranch = 'master';
       state.git.currentBranch = 'master';
 
-      const result = await checkBranchGuard('git push --force origin master', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force origin master',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Force push to master is not allowed');
@@ -202,7 +244,8 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
 
       const result = await checkBranchGuard('git status', '/test/repo', state);
@@ -218,11 +261,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git push origin main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push origin main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
       expect(result.warning).toBeUndefined();
@@ -234,11 +282,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git  push  --force  origin  main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git  push  --force  origin  main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('Force push to main');
@@ -250,11 +303,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git reset --hard', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git reset --hard',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Hard reset on main is not allowed');
@@ -266,11 +324,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git reset --soft HEAD~1', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git reset --soft HEAD~1',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
     });
@@ -281,11 +344,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git push --force --verbose --tags origin main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force --verbose --tags origin main',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('Force push to main');
@@ -294,7 +362,8 @@ describe('git-guards', () => {
 
   describe('checkMergeReadiness', () => {
     it('should block merge when tests are failing', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = ['test1.test.ts', 'test2.test.ts'];
 
@@ -305,7 +374,8 @@ describe('git-guards', () => {
     });
 
     it('should block merge when build is failing', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.build.status = 'failing';
 
@@ -316,7 +386,8 @@ describe('git-guards', () => {
     });
 
     it('should block merge when there are pending fixes', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.pendingFixes = [
         { testFile: 'test1.test.ts', error: 'Error 1', fixAttempts: 1 },
@@ -330,7 +401,8 @@ describe('git-guards', () => {
     });
 
     it('should allow merge when all checks pass', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = [];
       state.build.status = 'passing';
@@ -344,7 +416,8 @@ describe('git-guards', () => {
     });
 
     it('should allow merge when build status is unknown', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = [];
       state.build.status = 'unknown';
@@ -356,7 +429,8 @@ describe('git-guards', () => {
     });
 
     it('should prioritize test failures over build failures', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = ['test.test.ts'];
       state.build.status = 'failing';
@@ -368,7 +442,8 @@ describe('git-guards', () => {
     });
 
     it('should prioritize build failures over pending fixes', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = [];
       state.build.status = 'failing';
@@ -383,7 +458,8 @@ describe('git-guards', () => {
     });
 
     it('should handle single failing test file', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = ['single.test.ts'];
 
@@ -394,7 +470,8 @@ describe('git-guards', () => {
     });
 
     it('should handle single pending fix', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.pendingFixes = [
         { testFile: 'test.test.ts', error: 'Error', fixAttempts: 0 },
@@ -407,7 +484,8 @@ describe('git-guards', () => {
     });
 
     it('should not use cwd parameter (unused parameter)', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
 
       // Should work regardless of cwd value
@@ -487,7 +565,8 @@ describe('git-guards', () => {
 
   describe('isMergeCommand', () => {
     it('should return true for basic git merge commands', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('git merge feature-branch')).toBe(true);
       expect(isMergeCommand('git merge origin/main')).toBe(true);
@@ -495,7 +574,8 @@ describe('git-guards', () => {
     });
 
     it('should return true for merge with various flags', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('git merge --squash feature')).toBe(true);
       expect(isMergeCommand('git merge --no-commit branch')).toBe(true);
@@ -503,7 +583,8 @@ describe('git-guards', () => {
     });
 
     it('should return true regardless of whitespace', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('git  merge  branch')).toBe(true);
       expect(isMergeCommand('git\tmerge branch')).toBe(true);
@@ -511,7 +592,8 @@ describe('git-guards', () => {
     });
 
     it('should return false for non-merge git commands', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('git status')).toBe(false);
       expect(isMergeCommand('git commit -m "merge this"')).toBe(false);
@@ -520,7 +602,8 @@ describe('git-guards', () => {
     });
 
     it('should return false for non-git commands containing merge', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('npm run merge-scripts')).toBe(false);
       expect(isMergeCommand('merge these files')).toBe(false);
@@ -528,13 +611,15 @@ describe('git-guards', () => {
     });
 
     it('should return false for empty string', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('')).toBe(false);
     });
 
     it('should be case sensitive', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       expect(isMergeCommand('GIT merge branch')).toBe(false);
       expect(isMergeCommand('git MERGE branch')).toBe(false);
@@ -542,11 +627,14 @@ describe('git-guards', () => {
     });
 
     it('should handle merge in commit messages', async () => {
-      const { isMergeCommand } = await import('../../pre-tool-use/git-guards.js');
+      const { isMergeCommand } =
+        await import('../../pre-tool-use/git-guards.js');
 
       // This contains "merge" in the message but is not a merge command
       // The regex /git\s+merge/ only matches when "git merge" are consecutive words
-      expect(isMergeCommand('git commit -m "Merge branch feature"')).toBe(false);
+      expect(isMergeCommand('git commit -m "Merge branch feature"')).toBe(
+        false
+      );
     });
   });
 
@@ -557,11 +645,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
-      const result = await checkBranchGuard('git push --force origin main', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force origin main',
+        '/test/repo',
+        state
+      );
 
       expect(result).toHaveProperty('allowed');
       expect(result).toHaveProperty('reason');
@@ -575,11 +668,16 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'feature-branch';
 
-      const result = await checkBranchGuard('git push --force origin feature', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force origin feature',
+        '/test/repo',
+        state
+      );
 
       expect(result).toHaveProperty('allowed');
       expect(result).toHaveProperty('warning');
@@ -593,7 +691,8 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
 
       const result = await checkBranchGuard('git status', '/test/repo', state);
@@ -612,12 +711,17 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'main';
 
       // Force push is checked first, so it should match that
-      const result = await checkBranchGuard('git push --force && git reset --hard', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git push --force && git reset --hard',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('Force push');
@@ -629,7 +733,8 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'feature/test-123';
 
@@ -639,7 +744,8 @@ describe('git-guards', () => {
     });
 
     it('should handle all failure conditions in merge readiness', async () => {
-      const { checkMergeReadiness } = await import('../../pre-tool-use/git-guards.js');
+      const { checkMergeReadiness } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.tests.failingFiles = ['test1.test.ts', 'test2.test.ts'];
       state.build.status = 'failing';
@@ -660,10 +766,15 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
 
-      const result = await checkBranchGuard('git commit -m "feat(user): add feature"', '/test/repo', state);
+      const result = await checkBranchGuard(
+        'git commit -m "feat(user): add feature"',
+        '/test/repo',
+        state
+      );
 
       expect(result.allowed).toBe(true);
     });
@@ -684,12 +795,17 @@ describe('git-guards', () => {
         hasUncommittedChanges: vi.fn().mockResolvedValue(false),
       }));
 
-      const { checkBranchGuard } = await import('../../pre-tool-use/git-guards.js');
+      const { checkBranchGuard } =
+        await import('../../pre-tool-use/git-guards.js');
       const state = createMockState();
       state.git.currentBranch = 'stale-branch-in-state';
       state.git.mainBranch = 'actual-branch';
 
-      await checkBranchGuard('git push --force origin branch', '/test/repo', state);
+      await checkBranchGuard(
+        'git push --force origin branch',
+        '/test/repo',
+        state
+      );
 
       expect(mockGetCurrentBranch).toHaveBeenCalledWith('/test/repo');
     });

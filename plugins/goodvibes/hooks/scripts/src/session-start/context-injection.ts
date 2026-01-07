@@ -40,7 +40,9 @@ export interface ContextInjectionResult {
 }
 
 /** Gathers project context and formats it for session injection */
-export async function gatherAndFormatContext(cwd: string): Promise<ContextInjectionResult> {
+export async function gatherAndFormatContext(
+  cwd: string
+): Promise<ContextInjectionResult> {
   // Check for empty project first
   if (await isEmptyProject(cwd)) {
     return {
@@ -69,31 +71,45 @@ export async function gatherAndFormatContext(cwd: string): Promise<ContextInject
   ]);
 
   // Format the context
-  const parts: string[] = ['[GoodVibes SessionStart]', '━'.repeat(SEPARATOR_WIDTH), ''];
+  const parts: string[] = [
+    '[GoodVibes SessionStart]',
+    '━'.repeat(SEPARATOR_WIDTH),
+    '',
+  ];
 
   // Stack info
   const stackStr = formatStackInfo(stackInfo);
-  if (stackStr) parts.push(stackStr);
+  if (stackStr) {
+    parts.push(stackStr);
+  }
 
   // Folder structure
   const folderStr = formatFolderAnalysis(folderAnalysis);
-  if (folderStr) parts.push(folderStr);
+  if (folderStr) {
+    parts.push(folderStr);
+  }
 
   parts.push('');
 
   // Git context
   const gitStr = formatGitContext(gitContext);
-  if (gitStr) parts.push(gitStr);
+  if (gitStr) {
+    parts.push(gitStr);
+  }
 
   // Environment
   const envStr = formatEnvStatus(envStatus);
-  if (envStr) parts.push(envStr);
+  if (envStr) {
+    parts.push(envStr);
+  }
 
   parts.push('');
 
   // Memory (decisions, patterns, failures)
   const memoryStr = formatMemoryContext(memory);
-  if (memoryStr) parts.push(memoryStr);
+  if (memoryStr) {
+    parts.push(memoryStr);
+  }
 
   // TODOs
   const todoStr = formatTodos(todos);
@@ -104,7 +120,9 @@ export async function gatherAndFormatContext(cwd: string): Promise<ContextInject
 
   // Health
   const healthStr = formatHealthStatus(healthStatus);
-  if (healthStr) parts.push(healthStr);
+  if (healthStr) {
+    parts.push(healthStr);
+  }
 
   parts.push('');
   parts.push('━'.repeat(SEPARATOR_WIDTH));

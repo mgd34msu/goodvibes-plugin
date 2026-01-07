@@ -37,8 +37,13 @@ describe('subagent-stop/test-verification', () => {
     it('should return early when no tests are found for modified files', async () => {
       mockFindTestsForFile.mockReturnValue([]);
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
-      const result = await verifyAgentTests('/project', ['src/utils.ts', 'src/helpers.ts'], testState);
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
+      const result = await verifyAgentTests(
+        '/project',
+        ['src/utils.ts', 'src/helpers.ts'],
+        testState
+      );
 
       expect(result).toEqual({
         ran: false,
@@ -59,15 +64,23 @@ describe('subagent-stop/test-verification', () => {
         failures: [],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
-      const result = await verifyAgentTests('/project', ['src/utils.ts'], testState);
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
+      const result = await verifyAgentTests(
+        '/project',
+        ['src/utils.ts'],
+        testState
+      );
 
       expect(result).toEqual({
         ran: true,
         passed: true,
         summary: '1 test files passed',
       });
-      expect(mockRunTests).toHaveBeenCalledWith(['src/utils.test.ts'], '/project');
+      expect(mockRunTests).toHaveBeenCalledWith(
+        ['src/utils.test.ts'],
+        '/project'
+      );
       expect(testState.tests.passingFiles).toContain('src/utils.test.ts');
       expect(testState.tests.failingFiles).toHaveLength(0);
       expect(testState.tests.pendingFixes).toHaveLength(0);
@@ -77,7 +90,10 @@ describe('subagent-stop/test-verification', () => {
       // Multiple source files map to the same test file
       mockFindTestsForFile
         .mockReturnValueOnce(['src/__tests__/shared.test.ts'])
-        .mockReturnValueOnce(['src/__tests__/shared.test.ts', 'src/__tests__/helper.test.ts'])
+        .mockReturnValueOnce([
+          'src/__tests__/shared.test.ts',
+          'src/__tests__/helper.test.ts',
+        ])
         .mockReturnValueOnce(['src/__tests__/helper.test.ts']);
       mockRunTests.mockResolvedValue({
         passed: true,
@@ -85,7 +101,8 @@ describe('subagent-stop/test-verification', () => {
         failures: [],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
       const result = await verifyAgentTests(
         '/project',
         ['src/shared.ts', 'src/helper.ts', 'src/other.ts'],
@@ -96,7 +113,10 @@ describe('subagent-stop/test-verification', () => {
       expect(result.passed).toBe(true);
       // Should only run unique tests
       expect(mockRunTests).toHaveBeenCalledWith(
-        expect.arrayContaining(['src/__tests__/shared.test.ts', 'src/__tests__/helper.test.ts']),
+        expect.arrayContaining([
+          'src/__tests__/shared.test.ts',
+          'src/__tests__/helper.test.ts',
+        ]),
         '/project'
       );
       // Verify deduplication - should only be 2 unique tests
@@ -105,18 +125,34 @@ describe('subagent-stop/test-verification', () => {
     });
 
     it('should handle test failures and update state', async () => {
-      mockFindTestsForFile.mockReturnValueOnce(['src/broken.test.ts', 'src/other.test.ts']);
+      mockFindTestsForFile.mockReturnValueOnce([
+        'src/broken.test.ts',
+        'src/other.test.ts',
+      ]);
       mockRunTests.mockResolvedValue({
         passed: false,
         summary: 'Tests failed',
         failures: [
-          { testFile: 'src/broken.test.ts', testName: 'should work', error: 'Expected true to be false' },
-          { testFile: 'src/other.test.ts', testName: 'should also work', error: 'Timeout' },
+          {
+            testFile: 'src/broken.test.ts',
+            testName: 'should work',
+            error: 'Expected true to be false',
+          },
+          {
+            testFile: 'src/other.test.ts',
+            testName: 'should also work',
+            error: 'Timeout',
+          },
         ],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
-      const result = await verifyAgentTests('/project', ['src/broken.ts'], testState);
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
+      const result = await verifyAgentTests(
+        '/project',
+        ['src/broken.ts'],
+        testState
+      );
 
       expect(result).toEqual({
         ran: true,
@@ -141,16 +177,23 @@ describe('subagent-stop/test-verification', () => {
 
     it('should not add duplicate files to passingFiles', async () => {
       // Pre-populate passingFiles with some tests
-      testState.tests.passingFiles = ['src/utils.test.ts', 'src/existing.test.ts'];
+      testState.tests.passingFiles = [
+        'src/utils.test.ts',
+        'src/existing.test.ts',
+      ];
 
-      mockFindTestsForFile.mockReturnValueOnce(['src/utils.test.ts', 'src/new.test.ts']);
+      mockFindTestsForFile.mockReturnValueOnce([
+        'src/utils.test.ts',
+        'src/new.test.ts',
+      ]);
       mockRunTests.mockResolvedValue({
         passed: true,
         summary: '2 test files passed',
         failures: [],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
       await verifyAgentTests('/project', ['src/utils.ts'], testState);
 
       // Should have 3 entries: 2 original + 1 new (utils.test.ts should not be duplicated)
@@ -159,7 +202,9 @@ describe('subagent-stop/test-verification', () => {
       expect(testState.tests.passingFiles).toContain('src/utils.test.ts');
       expect(testState.tests.passingFiles).toContain('src/new.test.ts');
       // Count occurrences of utils.test.ts - should be exactly 1
-      const utilsCount = testState.tests.passingFiles.filter(f => f === 'src/utils.test.ts').length;
+      const utilsCount = testState.tests.passingFiles.filter(
+        (f) => f === 'src/utils.test.ts'
+      ).length;
       expect(utilsCount).toBe(1);
     });
 
@@ -167,17 +212,29 @@ describe('subagent-stop/test-verification', () => {
       // Pre-populate failingFiles with a test
       testState.tests.failingFiles = ['src/broken.test.ts'];
 
-      mockFindTestsForFile.mockReturnValueOnce(['src/broken.test.ts', 'src/new-broken.test.ts']);
+      mockFindTestsForFile.mockReturnValueOnce([
+        'src/broken.test.ts',
+        'src/new-broken.test.ts',
+      ]);
       mockRunTests.mockResolvedValue({
         passed: false,
         summary: 'Tests failed',
         failures: [
-          { testFile: 'src/broken.test.ts', testName: 'test', error: 'Error 1' },
-          { testFile: 'src/new-broken.test.ts', testName: 'test', error: 'Error 2' },
+          {
+            testFile: 'src/broken.test.ts',
+            testName: 'test',
+            error: 'Error 1',
+          },
+          {
+            testFile: 'src/new-broken.test.ts',
+            testName: 'test',
+            error: 'Error 2',
+          },
         ],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
       await verifyAgentTests('/project', ['src/broken.ts'], testState);
 
       // Should have 2 entries: 1 original + 1 new (broken.test.ts should not be duplicated)
@@ -185,7 +242,9 @@ describe('subagent-stop/test-verification', () => {
       expect(testState.tests.failingFiles).toContain('src/broken.test.ts');
       expect(testState.tests.failingFiles).toContain('src/new-broken.test.ts');
       // Count occurrences of broken.test.ts - should be exactly 1
-      const brokenCount = testState.tests.failingFiles.filter(f => f === 'src/broken.test.ts').length;
+      const brokenCount = testState.tests.failingFiles.filter(
+        (f) => f === 'src/broken.test.ts'
+      ).length;
       expect(brokenCount).toBe(1);
     });
 
@@ -201,11 +260,16 @@ describe('subagent-stop/test-verification', () => {
         passed: false,
         summary: 'Tests failed',
         failures: [
-          { testFile: 'src/broken.test.ts', testName: 'test', error: 'New error' },
+          {
+            testFile: 'src/broken.test.ts',
+            testName: 'test',
+            error: 'New error',
+          },
         ],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
       await verifyAgentTests('/project', ['src/broken.ts'], testState);
 
       // pendingFixes should have 2 entries now (original + new)
@@ -223,7 +287,8 @@ describe('subagent-stop/test-verification', () => {
     });
 
     it('should handle empty filesModified array', async () => {
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
       const result = await verifyAgentTests('/project', [], testState);
 
       expect(result).toEqual({
@@ -247,7 +312,8 @@ describe('subagent-stop/test-verification', () => {
         failures: [],
       });
 
-      const { verifyAgentTests } = await import('../../subagent-stop/test-verification.js');
+      const { verifyAgentTests } =
+        await import('../../subagent-stop/test-verification.js');
       const result = await verifyAgentTests(
         '/project',
         ['src/no-test-1.ts', 'src/helper.ts', 'src/no-test-2.ts'],
@@ -255,7 +321,10 @@ describe('subagent-stop/test-verification', () => {
       );
 
       expect(result.ran).toBe(true);
-      expect(mockRunTests).toHaveBeenCalledWith(['src/helper.test.ts'], '/project');
+      expect(mockRunTests).toHaveBeenCalledWith(
+        ['src/helper.test.ts'],
+        '/project'
+      );
     });
   });
 });

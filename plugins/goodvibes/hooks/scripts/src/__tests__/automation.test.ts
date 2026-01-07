@@ -10,7 +10,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 describe('fix-loop', () => {
   describe('generateErrorSignature', () => {
     it('should create a stable signature from tool name and error', async () => {
-      const { generateErrorSignature } = await import('../automation/fix-loop.js');
+      const { generateErrorSignature } =
+        await import('../automation/fix-loop.js');
 
       const sig1 = generateErrorSignature('Bash', 'Error at line 42');
       const sig2 = generateErrorSignature('Bash', 'Error at line 42');
@@ -20,7 +21,8 @@ describe('fix-loop', () => {
     });
 
     it('should normalize numbers in error messages', async () => {
-      const { generateErrorSignature } = await import('../automation/fix-loop.js');
+      const { generateErrorSignature } =
+        await import('../automation/fix-loop.js');
 
       const sig1 = generateErrorSignature('Bash', 'Error at line 42');
       const sig2 = generateErrorSignature('Bash', 'Error at line 99');
@@ -30,7 +32,8 @@ describe('fix-loop', () => {
     });
 
     it('should normalize quoted strings in error messages', async () => {
-      const { generateErrorSignature } = await import('../automation/fix-loop.js');
+      const { generateErrorSignature } =
+        await import('../automation/fix-loop.js');
 
       const sig1 = generateErrorSignature('Edit', "Cannot find 'foo.ts'");
       const sig2 = generateErrorSignature('Edit', "Cannot find 'bar.ts'");
@@ -40,7 +43,8 @@ describe('fix-loop', () => {
     });
 
     it('should differentiate errors from different tools', async () => {
-      const { generateErrorSignature } = await import('../automation/fix-loop.js');
+      const { generateErrorSignature } =
+        await import('../automation/fix-loop.js');
 
       const sig1 = generateErrorSignature('Bash', 'Error occurred');
       const sig2 = generateErrorSignature('Edit', 'Error occurred');
@@ -49,7 +53,8 @@ describe('fix-loop', () => {
     });
 
     it('should handle empty error message', async () => {
-      const { generateErrorSignature } = await import('../automation/fix-loop.js');
+      const { generateErrorSignature } =
+        await import('../automation/fix-loop.js');
 
       const sig = generateErrorSignature('Bash', '');
 
@@ -57,7 +62,8 @@ describe('fix-loop', () => {
     });
 
     it('should truncate long error messages', async () => {
-      const { generateErrorSignature } = await import('../automation/fix-loop.js');
+      const { generateErrorSignature } =
+        await import('../automation/fix-loop.js');
 
       const longError = 'a'.repeat(500);
       const sig = generateErrorSignature('Bash', longError);
@@ -71,7 +77,9 @@ describe('fix-loop', () => {
     it('should categorize npm install errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('ERESOLVE unable to resolve dependency tree')).toBe('npm_install');
+      expect(
+        categorizeError('ERESOLVE unable to resolve dependency tree')
+      ).toBe('npm_install');
       expect(categorizeError('npm ERR! peer dep missing')).toBe('npm_install');
       expect(categorizeError('npm install failed')).toBe('npm_install');
     });
@@ -80,8 +88,12 @@ describe('fix-loop', () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
       // Must contain 'ts' AND ('error' OR 'type')
-      expect(categorizeError('error TS2304: Cannot find name')).toBe('typescript_error');
-      expect(categorizeError('tsc error: Property does not exist')).toBe('typescript_error');
+      expect(categorizeError('error TS2304: Cannot find name')).toBe(
+        'typescript_error'
+      );
+      expect(categorizeError('tsc error: Property does not exist')).toBe(
+        'typescript_error'
+      );
     });
 
     it('should categorize TypeScript errors with type keyword', async () => {
@@ -95,7 +107,9 @@ describe('fix-loop', () => {
     it('should categorize test failures', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Test failed: expected true')).toBe('test_failure');
+      expect(categorizeError('Test failed: expected true')).toBe(
+        'test_failure'
+      );
       expect(categorizeError('FAIL tests/unit.test.ts')).toBe('test_failure');
     });
 
@@ -110,20 +124,26 @@ describe('fix-loop', () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
       expect(categorizeError('ENOENT: no such file')).toBe('file_not_found');
-      expect(categorizeError('File not found: config.ts')).toBe('file_not_found');
+      expect(categorizeError('File not found: config.ts')).toBe(
+        'file_not_found'
+      );
     });
 
     it('should categorize git conflict errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
       expect(categorizeError('Merge conflict in file.ts')).toBe('git_conflict');
-      expect(categorizeError('CONFLICT (content): Merge conflict')).toBe('git_conflict');
+      expect(categorizeError('CONFLICT (content): Merge conflict')).toBe(
+        'git_conflict'
+      );
     });
 
     it('should categorize database errors', async () => {
       const { categorizeError } = await import('../automation/fix-loop.js');
 
-      expect(categorizeError('Database connection failed')).toBe('database_error');
+      expect(categorizeError('Database connection failed')).toBe(
+        'database_error'
+      );
       expect(categorizeError('Prisma client error')).toBe('database_error');
       expect(categorizeError('SQL syntax error')).toBe('database_error');
     });
@@ -181,7 +201,8 @@ describe('fix-loop', () => {
 
   describe('shouldEscalatePhase', () => {
     it('should return false when attempts are below limit', async () => {
-      const { shouldEscalatePhase, createErrorState } = await import('../automation/fix-loop.js');
+      const { shouldEscalatePhase, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       // npm_install has limit of 2
@@ -191,7 +212,8 @@ describe('fix-loop', () => {
     });
 
     it('should return true when attempts reach limit', async () => {
-      const { shouldEscalatePhase, createErrorState } = await import('../automation/fix-loop.js');
+      const { shouldEscalatePhase, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       // npm_install has limit of 2
@@ -201,7 +223,8 @@ describe('fix-loop', () => {
     });
 
     it('should return true when attempts exceed limit', async () => {
-      const { shouldEscalatePhase, createErrorState } = await import('../automation/fix-loop.js');
+      const { shouldEscalatePhase, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.attemptsThisPhase = 5;
@@ -210,7 +233,8 @@ describe('fix-loop', () => {
     });
 
     it('should use different limits for different categories', async () => {
-      const { shouldEscalatePhase, createErrorState } = await import('../automation/fix-loop.js');
+      const { shouldEscalatePhase, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       // typescript_error has limit of 3
       const tsState = createErrorState('sig', 'typescript_error');
@@ -227,7 +251,8 @@ describe('fix-loop', () => {
     });
 
     it('should use default limit for unknown categories', async () => {
-      const { shouldEscalatePhase, createErrorState } = await import('../automation/fix-loop.js');
+      const { shouldEscalatePhase, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'unknown');
       // Default limit is 2
@@ -241,7 +266,8 @@ describe('fix-loop', () => {
 
   describe('buildFixContext', () => {
     it('should build basic context for phase 1', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.attemptsThisPhase = 1;
@@ -256,7 +282,8 @@ describe('fix-loop', () => {
     });
 
     it('should include official docs in phase 2', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.phase = 2;
@@ -269,7 +296,8 @@ describe('fix-loop', () => {
     });
 
     it('should not include official docs in phase 1', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.phase = 1;
@@ -281,7 +309,8 @@ describe('fix-loop', () => {
     });
 
     it('should include community solutions in phase 3', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.phase = 3;
@@ -294,7 +323,8 @@ describe('fix-loop', () => {
     });
 
     it('should not include community solutions before phase 3', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.phase = 2;
@@ -306,12 +336,23 @@ describe('fix-loop', () => {
     });
 
     it('should include previously attempted strategies', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.fixStrategiesAttempted = [
-        { phase: 1, strategy: 'Cleared node_modules', succeeded: false, timestamp: '2025-01-01' },
-        { phase: 1, strategy: 'Updated npm', succeeded: false, timestamp: '2025-01-01' },
+        {
+          phase: 1,
+          strategy: 'Cleared node_modules',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
+        {
+          phase: 1,
+          strategy: 'Updated npm',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
       ];
 
       const context = buildFixContext(state, 'npm error');
@@ -323,7 +364,8 @@ describe('fix-loop', () => {
     });
 
     it('should truncate long error messages', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       const longError = 'x'.repeat(500);
@@ -336,15 +378,41 @@ describe('fix-loop', () => {
     });
 
     it('should show only recent 3 fix attempts', async () => {
-      const { buildFixContext, createErrorState } = await import('../automation/fix-loop.js');
+      const { buildFixContext, createErrorState } =
+        await import('../automation/fix-loop.js');
 
       const state = createErrorState('sig', 'npm_install');
       state.fixStrategiesAttempted = [
-        { phase: 1, strategy: 'Strategy 1', succeeded: false, timestamp: '2025-01-01' },
-        { phase: 1, strategy: 'Strategy 2', succeeded: false, timestamp: '2025-01-01' },
-        { phase: 1, strategy: 'Strategy 3', succeeded: false, timestamp: '2025-01-01' },
-        { phase: 1, strategy: 'Strategy 4', succeeded: false, timestamp: '2025-01-01' },
-        { phase: 1, strategy: 'Strategy 5', succeeded: false, timestamp: '2025-01-01' },
+        {
+          phase: 1,
+          strategy: 'Strategy 1',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
+        {
+          phase: 1,
+          strategy: 'Strategy 2',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
+        {
+          phase: 1,
+          strategy: 'Strategy 3',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
+        {
+          phase: 1,
+          strategy: 'Strategy 4',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
+        {
+          phase: 1,
+          strategy: 'Strategy 5',
+          succeeded: false,
+          timestamp: '2025-01-01',
+        },
       ];
 
       const context = buildFixContext(state, 'npm error');
@@ -398,13 +466,25 @@ describe('git-operations', () => {
   describe('detectMainBranch', () => {
     it('should return "main" when main branch exists', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: 'abc123\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: 'abc123\n', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { detectMainBranch } = await import('../automation/git-operations.js');
+      const { detectMainBranch } =
+        await import('../automation/git-operations.js');
       const result = await detectMainBranch('/test/project');
 
       expect(result).toBe('main');
@@ -413,18 +493,33 @@ describe('git-operations', () => {
     it('should return "master" when only master branch exists', async () => {
       let callCount = 0;
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callCount++;
-          if (callCount === 1) {
-            callback(new Error('fatal: Needed a single revision'), { stdout: '', stderr: '' });
-          } else {
-            callback(null, { stdout: 'abc123\n', stderr: '' });
-          }
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callCount++;
+              if (callCount === 1) {
+                callback(new Error('fatal: Needed a single revision'), {
+                  stdout: '',
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: 'abc123\n', stderr: '' });
+              }
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { detectMainBranch } = await import('../automation/git-operations.js');
+      const { detectMainBranch } =
+        await import('../automation/git-operations.js');
       const result = await detectMainBranch('/test/project');
 
       expect(result).toBe('master');
@@ -432,13 +527,28 @@ describe('git-operations', () => {
 
     it('should default to "main" when neither branch exists', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(new Error('fatal: Needed a single revision'), { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(new Error('fatal: Needed a single revision'), {
+                stdout: '',
+                stderr: '',
+              });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { detectMainBranch } = await import('../automation/git-operations.js');
+      const { detectMainBranch } =
+        await import('../automation/git-operations.js');
       const result = await detectMainBranch('/test/project');
 
       expect(result).toBe('main');
@@ -448,13 +558,25 @@ describe('git-operations', () => {
   describe('hasUncommittedChanges', () => {
     it('should return true when there are uncommitted changes', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M src/file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M src/file.ts\n', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
+      const { hasUncommittedChanges } =
+        await import('../automation/git-operations.js');
       const result = await hasUncommittedChanges('/test/project');
 
       expect(result).toBe(true);
@@ -462,13 +584,25 @@ describe('git-operations', () => {
 
     it('should return false when working directory is clean', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: '', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
+      const { hasUncommittedChanges } =
+        await import('../automation/git-operations.js');
       const result = await hasUncommittedChanges('/test/project');
 
       expect(result).toBe(false);
@@ -476,13 +610,28 @@ describe('git-operations', () => {
 
     it('should return false when git command fails', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(new Error('not a git repository'), { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(new Error('not a git repository'), {
+                stdout: '',
+                stderr: '',
+              });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { hasUncommittedChanges } = await import('../automation/git-operations.js');
+      const { hasUncommittedChanges } =
+        await import('../automation/git-operations.js');
       const result = await hasUncommittedChanges('/test/project');
 
       expect(result).toBe(false);
@@ -495,23 +644,39 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          spawnEvents.set(event, handler);
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              spawnEvents.set(event, handler);
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
 
       // Attempt to inject shell command via message
       await createCheckpoint('/test/project', 'test; rm -rf /');
@@ -528,22 +693,38 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
 
       await createCheckpoint('/test/project', 'test `whoami`');
 
@@ -558,22 +739,38 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
 
       await createCheckpoint('/test/project', 'test $HOME $(pwd) ${USER}');
 
@@ -589,9 +786,20 @@ describe('git-operations', () => {
   describe('execGit', () => {
     it('should return trimmed output on success', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: '  result  \n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: '  result  \n', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
@@ -603,9 +811,20 @@ describe('git-operations', () => {
 
     it('should return null on failure', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(new Error('git error'), { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(new Error('git error'), { stdout: '', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
@@ -619,13 +838,25 @@ describe('git-operations', () => {
   describe('getCurrentBranch', () => {
     it('should return current branch name', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: 'feature/test\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: 'feature/test\n', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { getCurrentBranch } = await import('../automation/git-operations.js');
+      const { getCurrentBranch } =
+        await import('../automation/git-operations.js');
       const result = await getCurrentBranch('/test/project');
 
       expect(result).toBe('feature/test');
@@ -633,13 +864,28 @@ describe('git-operations', () => {
 
     it('should return null on detached HEAD', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(new Error('not on a branch'), { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(new Error('not on a branch'), {
+                stdout: '',
+                stderr: '',
+              });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { getCurrentBranch } = await import('../automation/git-operations.js');
+      const { getCurrentBranch } =
+        await import('../automation/git-operations.js');
       const result = await getCurrentBranch('/test/project');
 
       expect(result).toBeNull();
@@ -649,21 +895,33 @@ describe('git-operations', () => {
   describe('getUncommittedFiles', () => {
     it('should return list of modified files', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          // Git porcelain format: XY PATH where XY is exactly 2 status chars followed by a space
-          // Note: execGit does stdout.trim() which removes leading whitespace from the first line
-          // This means " M path" becomes "M path" after trim, breaking slice(3) parsing
-          // To work around this, we use status codes that don't start with a space
-          // "MM" = modified in both index and worktree
-          // "??" = untracked
-          const line1 = 'MM src/file1.ts';  // M + M + space + path (no leading space to be trimmed)
-          const line2 = '?? src/file2.ts';  // ? + ? + space + path
-          callback(null, { stdout: `${line1}\n${line2}`, stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              // Git porcelain format: XY PATH where XY is exactly 2 status chars followed by a space
+              // Note: execGit does stdout.trim() which removes leading whitespace from the first line
+              // This means " M path" becomes "M path" after trim, breaking slice(3) parsing
+              // To work around this, we use status codes that don't start with a space
+              // "MM" = modified in both index and worktree
+              // "??" = untracked
+              const line1 = 'MM src/file1.ts'; // M + M + space + path (no leading space to be trimmed)
+              const line2 = '?? src/file2.ts'; // ? + ? + space + path
+              callback(null, { stdout: `${line1}\n${line2}`, stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { getUncommittedFiles } = await import('../automation/git-operations.js');
+      const { getUncommittedFiles } =
+        await import('../automation/git-operations.js');
       const result = await getUncommittedFiles('/test/project');
 
       // slice(3) removes first 3 chars: XY and the separator space
@@ -672,13 +930,25 @@ describe('git-operations', () => {
 
     it('should return empty array when no changes', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: '', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { getUncommittedFiles } = await import('../automation/git-operations.js');
+      const { getUncommittedFiles } =
+        await import('../automation/git-operations.js');
       const result = await getUncommittedFiles('/test/project');
 
       expect(result).toEqual([]);
@@ -686,13 +956,25 @@ describe('git-operations', () => {
 
     it('should return empty array when git command fails', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(new Error('not a git repo'), { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(new Error('not a git repo'), { stdout: '', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { getUncommittedFiles } = await import('../automation/git-operations.js');
+      const { getUncommittedFiles } =
+        await import('../automation/git-operations.js');
       const result = await getUncommittedFiles('/test/project');
 
       expect(result).toEqual([]);
@@ -702,13 +984,25 @@ describe('git-operations', () => {
   describe('createCheckpoint', () => {
     it('should return false when no uncommitted changes', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: '', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: '', stderr: '' });
+            }
+          ),
         spawn: vi.fn(),
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
       const result = await createCheckpoint('/test/project', 'test checkpoint');
 
       expect(result).toBe(false);
@@ -718,28 +1012,48 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
       const result = await createCheckpoint('/test/project', 'test checkpoint');
 
       expect(result).toBe(true);
       expect(mockSpawn).toHaveBeenCalledWith(
         'git',
-        ['commit', '-m', expect.stringContaining('checkpoint: test checkpoint')],
+        [
+          'commit',
+          '-m',
+          expect.stringContaining('checkpoint: test checkpoint'),
+        ],
         expect.any(Object)
       );
     });
@@ -748,22 +1062,38 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(1), 0); // Exit code 1 = failure
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(1), 0); // Exit code 1 = failure
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
       const result = await createCheckpoint('/test/project', 'test checkpoint');
 
       expect(result).toBe(false);
@@ -773,22 +1103,38 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'error') {
-            setTimeout(() => handler(new Error('spawn error')), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'error') {
+                setTimeout(() => handler(new Error('spawn error')), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
       const result = await createCheckpoint('/test/project', 'test checkpoint');
 
       expect(result).toBe(false);
@@ -800,11 +1146,15 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -813,8 +1163,12 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { createFeatureBranch } = await import('../automation/git-operations.js');
-      const result = await createFeatureBranch('/test/project', 'Add User Authentication');
+      const { createFeatureBranch } =
+        await import('../automation/git-operations.js');
+      const result = await createFeatureBranch(
+        '/test/project',
+        'Add User Authentication'
+      );
 
       expect(result).toBe(true);
       expect(mockSpawn).toHaveBeenCalledWith(
@@ -828,11 +1182,15 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -841,7 +1199,8 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const { createFeatureBranch } =
+        await import('../automation/git-operations.js');
       await createFeatureBranch('/test/project', 'Fix: Bug #123 & Issue!');
 
       expect(mockSpawn).toHaveBeenCalledWith(
@@ -855,11 +1214,15 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(1), 0); // Exit code 1 = failure
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(1), 0); // Exit code 1 = failure
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -868,7 +1231,8 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const { createFeatureBranch } =
+        await import('../automation/git-operations.js');
       const result = await createFeatureBranch('/test/project', 'test-feature');
 
       expect(result).toBe(false);
@@ -878,11 +1242,15 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'error') {
-            setTimeout(() => handler(new Error('spawn error')), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'error') {
+                setTimeout(() => handler(new Error('spawn error')), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -891,7 +1259,8 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const { createFeatureBranch } =
+        await import('../automation/git-operations.js');
       const result = await createFeatureBranch('/test/project', 'test-feature');
 
       expect(result).toBe(false);
@@ -900,15 +1269,19 @@ describe('git-operations', () => {
 
   describe('mergeFeatureBranch', () => {
     it('should merge feature branch into main and delete it', async () => {
-      let callCount = 0;
+      const callCount = 0;
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -917,26 +1290,50 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
-      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+      const { mergeFeatureBranch } =
+        await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch(
+        '/test/project',
+        'feature/test',
+        'main'
+      );
 
       expect(result).toBe(true);
       // Should be called 3 times: checkout, merge, delete
       expect(mockSpawn).toHaveBeenCalledTimes(3);
-      expect(mockSpawn).toHaveBeenNthCalledWith(1, 'git', ['checkout', 'main'], expect.any(Object));
-      expect(mockSpawn).toHaveBeenNthCalledWith(2, 'git', ['merge', 'feature/test', '--no-ff', '-m', 'Merge feature/test'], expect.any(Object));
-      expect(mockSpawn).toHaveBeenNthCalledWith(3, 'git', ['branch', '-d', 'feature/test'], expect.any(Object));
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        1,
+        'git',
+        ['checkout', 'main'],
+        expect.any(Object)
+      );
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        2,
+        'git',
+        ['merge', 'feature/test', '--no-ff', '-m', 'Merge feature/test'],
+        expect.any(Object)
+      );
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        3,
+        'git',
+        ['branch', '-d', 'feature/test'],
+        expect.any(Object)
+      );
     });
 
     it('should sanitize branch names to prevent injection', async () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -945,24 +1342,43 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
-      await mergeFeatureBranch('/test/project', 'feature/test; rm -rf /', 'main; whoami');
+      const { mergeFeatureBranch } =
+        await import('../automation/git-operations.js');
+      await mergeFeatureBranch(
+        '/test/project',
+        'feature/test; rm -rf /',
+        'main; whoami'
+      );
 
       // Verify shell metacharacters are removed (sanitizeForGit removes: `$\\;"'|&<>(){}[]!#*?~)
       // Note: / is NOT removed by sanitizeForGit since it's valid in branch names
-      expect(mockSpawn).toHaveBeenNthCalledWith(1, 'git', ['checkout', 'main whoami'], expect.any(Object));
-      expect(mockSpawn).toHaveBeenNthCalledWith(2, 'git', ['merge', 'feature/test rm -rf /', '--no-ff', '-m', expect.any(String)], expect.any(Object));
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        1,
+        'git',
+        ['checkout', 'main whoami'],
+        expect.any(Object)
+      );
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        2,
+        'git',
+        ['merge', 'feature/test rm -rf /', '--no-ff', '-m', expect.any(String)],
+        expect.any(Object)
+      );
     });
 
     it('should return false when checkout fails', async () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(1), 0); // Checkout fails
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(1), 0); // Checkout fails
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -971,8 +1387,13 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
-      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+      const { mergeFeatureBranch } =
+        await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch(
+        '/test/project',
+        'feature/test',
+        'main'
+      );
 
       expect(result).toBe(false);
       // Should only call checkout, not merge or delete
@@ -984,13 +1405,17 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            callCount++;
-            const code = callCount === 1 ? 0 : 1; // Checkout succeeds, merge fails
-            setTimeout(() => handler(code), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                callCount++;
+                const code = callCount === 1 ? 0 : 1; // Checkout succeeds, merge fails
+                setTimeout(() => handler(code), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -999,8 +1424,13 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
-      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+      const { mergeFeatureBranch } =
+        await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch(
+        '/test/project',
+        'feature/test',
+        'main'
+      );
 
       expect(result).toBe(false);
       // Should call checkout and merge, not delete
@@ -1012,13 +1442,17 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            callCount++;
-            const code = callCount <= 2 ? 0 : 1; // Checkout and merge succeed, delete fails
-            setTimeout(() => handler(code), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                callCount++;
+                const code = callCount <= 2 ? 0 : 1; // Checkout and merge succeed, delete fails
+                setTimeout(() => handler(code), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -1027,8 +1461,13 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
-      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+      const { mergeFeatureBranch } =
+        await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch(
+        '/test/project',
+        'feature/test',
+        'main'
+      );
 
       expect(result).toBe(false);
       // All three operations should be called
@@ -1039,11 +1478,15 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'error') {
-            setTimeout(() => handler(new Error('spawn error')), 0);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'error') {
+                setTimeout(() => handler(new Error('spawn error')), 0);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -1052,8 +1495,13 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { mergeFeatureBranch } = await import('../automation/git-operations.js');
-      const result = await mergeFeatureBranch('/test/project', 'feature/test', 'main');
+      const { mergeFeatureBranch } =
+        await import('../automation/git-operations.js');
+      const result = await mergeFeatureBranch(
+        '/test/project',
+        'feature/test',
+        'main'
+      );
 
       expect(result).toBe(false);
     });
@@ -1078,16 +1526,31 @@ describe('git-operations', () => {
       });
 
       vi.doMock('child_process', () => ({
-        exec: vi.fn().mockImplementation((_cmd: string, _opts: unknown, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          callback(null, { stdout: ' M file.ts\n', stderr: '' });
-        }),
+        exec: vi
+          .fn()
+          .mockImplementation(
+            (
+              _cmd: string,
+              _opts: unknown,
+              callback: (
+                err: Error | null,
+                result: { stdout: string; stderr: string }
+              ) => void
+            ) => {
+              callback(null, { stdout: ' M file.ts\n', stderr: '' });
+            }
+          ),
         spawn: mockSpawn,
       }));
 
-      const { createCheckpoint } = await import('../automation/git-operations.js');
+      const { createCheckpoint } =
+        await import('../automation/git-operations.js');
 
       // Start the checkpoint (will be blocked waiting for spawn to complete)
-      const resultPromise = createCheckpoint('/test/project', 'test checkpoint');
+      const resultPromise = createCheckpoint(
+        '/test/project',
+        'test checkpoint'
+      );
 
       // Fast-forward past the 30 second timeout
       await vi.advanceTimersByTimeAsync(31000);
@@ -1105,19 +1568,27 @@ describe('git-operations', () => {
 
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: {
-          on: vi.fn().mockImplementation((event: string, handler: (data: Buffer) => void) => {
-            if (event === 'data') {
-              onDataCallback = handler;
-              setTimeout(() => handler(Buffer.from('stdout data')), 0);
-            }
-          })
+          on: vi
+            .fn()
+            .mockImplementation(
+              (event: string, handler: (data: Buffer) => void) => {
+                if (event === 'data') {
+                  onDataCallback = handler;
+                  setTimeout(() => handler(Buffer.from('stdout data')), 0);
+                }
+              }
+            ),
         },
         stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 10);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 10);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -1126,7 +1597,8 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const { createFeatureBranch } =
+        await import('../automation/git-operations.js');
       await createFeatureBranch('/test/project', 'test');
 
       expect(onDataCallback).toBeTruthy();
@@ -1138,18 +1610,26 @@ describe('git-operations', () => {
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
         stderr: {
-          on: vi.fn().mockImplementation((event: string, handler: (data: Buffer) => void) => {
-            if (event === 'data') {
-              onDataCallback = handler;
-              setTimeout(() => handler(Buffer.from('stderr data')), 0);
-            }
-          })
+          on: vi
+            .fn()
+            .mockImplementation(
+              (event: string, handler: (data: Buffer) => void) => {
+                if (event === 'data') {
+                  onDataCallback = handler;
+                  setTimeout(() => handler(Buffer.from('stderr data')), 0);
+                }
+              }
+            ),
         },
-        on: vi.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
-          if (event === 'close') {
-            setTimeout(() => handler(0), 10);
-          }
-        }),
+        on: vi
+          .fn()
+          .mockImplementation(
+            (event: string, handler: (...args: unknown[]) => void) => {
+              if (event === 'close') {
+                setTimeout(() => handler(0), 10);
+              }
+            }
+          ),
         kill: vi.fn(),
       }));
 
@@ -1158,7 +1638,8 @@ describe('git-operations', () => {
         spawn: mockSpawn,
       }));
 
-      const { createFeatureBranch } = await import('../automation/git-operations.js');
+      const { createFeatureBranch } =
+        await import('../automation/git-operations.js');
       await createFeatureBranch('/test/project', 'test');
 
       expect(onDataCallback).toBeTruthy();
@@ -1181,12 +1662,17 @@ describe('build-runner', () => {
   describe('detectBuildCommand', () => {
     it('should detect Next.js project with next.config.js', async () => {
       vi.doMock('fs/promises', () => ({
-        access: vi.fn().mockImplementation((p: string) =>
-          p.includes('next.config.js') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
-        ),
+        access: vi
+          .fn()
+          .mockImplementation((p: string) =>
+            p.includes('next.config.js')
+              ? Promise.resolve()
+              : Promise.reject(new Error('ENOENT'))
+          ),
       }));
 
-      const { detectBuildCommand } = await import('../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
@@ -1194,12 +1680,17 @@ describe('build-runner', () => {
 
     it('should detect Next.js project with next.config.mjs', async () => {
       vi.doMock('fs/promises', () => ({
-        access: vi.fn().mockImplementation((p: string) =>
-          p.includes('next.config.mjs') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
-        ),
+        access: vi
+          .fn()
+          .mockImplementation((p: string) =>
+            p.includes('next.config.mjs')
+              ? Promise.resolve()
+              : Promise.reject(new Error('ENOENT'))
+          ),
       }));
 
-      const { detectBuildCommand } = await import('../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
@@ -1207,12 +1698,17 @@ describe('build-runner', () => {
 
     it('should detect Next.js project with next.config.ts', async () => {
       vi.doMock('fs/promises', () => ({
-        access: vi.fn().mockImplementation((p: string) =>
-          p.includes('next.config.ts') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
-        ),
+        access: vi
+          .fn()
+          .mockImplementation((p: string) =>
+            p.includes('next.config.ts')
+              ? Promise.resolve()
+              : Promise.reject(new Error('ENOENT'))
+          ),
       }));
 
-      const { detectBuildCommand } = await import('../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
@@ -1220,12 +1716,17 @@ describe('build-runner', () => {
 
     it('should detect Vite project with vite.config.ts', async () => {
       vi.doMock('fs/promises', () => ({
-        access: vi.fn().mockImplementation((p: string) =>
-          p.includes('vite.config.ts') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
-        ),
+        access: vi
+          .fn()
+          .mockImplementation((p: string) =>
+            p.includes('vite.config.ts')
+              ? Promise.resolve()
+              : Promise.reject(new Error('ENOENT'))
+          ),
       }));
 
-      const { detectBuildCommand } = await import('../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
@@ -1233,12 +1734,17 @@ describe('build-runner', () => {
 
     it('should detect Vite project with vite.config.js', async () => {
       vi.doMock('fs/promises', () => ({
-        access: vi.fn().mockImplementation((p: string) =>
-          p.includes('vite.config.js') ? Promise.resolve() : Promise.reject(new Error('ENOENT'))
-        ),
+        access: vi
+          .fn()
+          .mockImplementation((p: string) =>
+            p.includes('vite.config.js')
+              ? Promise.resolve()
+              : Promise.reject(new Error('ENOENT'))
+          ),
       }));
 
-      const { detectBuildCommand } = await import('../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
@@ -1249,7 +1755,8 @@ describe('build-runner', () => {
         access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
-      const { detectBuildCommand } = await import('../automation/build-runner.js');
+      const { detectBuildCommand } =
+        await import('../automation/build-runner.js');
       const result = await detectBuildCommand('/test/project');
 
       expect(result).toBe('npm run build');
@@ -1264,17 +1771,30 @@ describe('build-runner', () => {
 
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-          return error.stdout?.toString() || error.stderr?.toString() || error.message;
-        }),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Build failed') as Error & { stdout?: Buffer; stderr?: Buffer };
+          const error = new Error('Build failed') as Error & {
+            stdout?: Buffer;
+            stderr?: Buffer;
+          };
           error.stdout = Buffer.from('');
-          error.stderr = Buffer.from('src/index.ts(10,5): error TS2304: Cannot find name \'foo\'');
+          error.stderr = Buffer.from(
+            "src/index.ts(10,5): error TS2304: Cannot find name 'foo'"
+          );
           throw error;
         }),
       }));
@@ -1298,9 +1818,17 @@ describe('build-runner', () => {
 
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-          return error.stdout?.toString() || error.stderr?.toString() || error.message;
-        }),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
@@ -1309,7 +1837,10 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Build failed') as Error & { stdout?: Buffer; stderr?: Buffer };
+          const error = new Error('Build failed') as Error & {
+            stdout?: Buffer;
+            stderr?: Buffer;
+          };
           error.stdout = Buffer.from(tsErrors);
           error.stderr = Buffer.from('');
           throw error;
@@ -1334,15 +1865,26 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
 
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-          return error.stdout?.toString() || error.stderr?.toString() || error.message;
-        }),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Build failed') as Error & { stdout?: Buffer; stderr?: Buffer };
+          const error = new Error('Build failed') as Error & {
+            stdout?: Buffer;
+            stderr?: Buffer;
+          };
           error.stdout = Buffer.from('Some other error format');
           error.stderr = Buffer.from('');
           throw error;
@@ -1390,7 +1932,9 @@ describe('test-runner', () => {
   describe('findTestsForFile', () => {
     it('should find .test.ts files for source file', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.test.ts')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.test.ts')),
       }));
 
       const { findTestsForFile } = await import('../automation/test-runner.js');
@@ -1401,7 +1945,9 @@ describe('test-runner', () => {
 
     it('should find .test.tsx files for TSX source', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.test.tsx')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.test.tsx')),
       }));
 
       const { findTestsForFile } = await import('../automation/test-runner.js');
@@ -1412,7 +1958,9 @@ describe('test-runner', () => {
 
     it('should find .spec.ts files', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.endsWith('.spec.ts')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.endsWith('.spec.ts')),
       }));
 
       const { findTestsForFile } = await import('../automation/test-runner.js');
@@ -1423,13 +1971,15 @@ describe('test-runner', () => {
 
     it('should find tests in __tests__ directory', async () => {
       vi.doMock('fs', () => ({
-        existsSync: vi.fn().mockImplementation((p: string) => p.includes('__tests__')),
+        existsSync: vi
+          .fn()
+          .mockImplementation((p: string) => p.includes('__tests__')),
       }));
 
       const { findTestsForFile } = await import('../automation/test-runner.js');
       const result = findTestsForFile('src/utils/format.ts');
 
-      expect(result.some(f => f.includes('__tests__'))).toBe(true);
+      expect(result.some((f) => f.includes('__tests__'))).toBe(true);
     });
 
     it('should return empty array when no tests exist', async () => {
@@ -1466,14 +2016,25 @@ describe('test-runner', () => {
 
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-          return error.stdout?.toString() || error.stderr?.toString() || error.message;
-        }),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
       }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & { stdout?: Buffer; stderr?: Buffer };
+          const error = new Error('Tests failed') as Error & {
+            stdout?: Buffer;
+            stderr?: Buffer;
+          };
           error.stdout = Buffer.from(testOutput);
           error.stderr = Buffer.from('');
           throw error;
@@ -1496,14 +2057,25 @@ FAIL src/b.test.tsx
 
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-          return error.stdout?.toString() || error.stderr?.toString() || error.message;
-        }),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
       }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & { stdout?: Buffer; stderr?: Buffer };
+          const error = new Error('Tests failed') as Error & {
+            stdout?: Buffer;
+            stderr?: Buffer;
+          };
           error.stdout = Buffer.from(testOutput);
           error.stderr = Buffer.from('');
           throw error;
@@ -1511,7 +2083,10 @@ FAIL src/b.test.tsx
       }));
 
       const { runTests } = await import('../automation/test-runner.js');
-      const result = runTests(['src/a.test.ts', 'src/b.test.tsx'], '/test/project');
+      const result = runTests(
+        ['src/a.test.ts', 'src/b.test.tsx'],
+        '/test/project'
+      );
 
       expect(result.passed).toBe(false);
       expect(result.failures).toHaveLength(2);
@@ -1531,14 +2106,25 @@ FAIL src/b.test.tsx
 
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockImplementation((error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-          return error.stdout?.toString() || error.stderr?.toString() || error.message;
-        }),
+        extractErrorOutput: vi
+          .fn()
+          .mockImplementation(
+            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+              return (
+                error.stdout?.toString() ||
+                error.stderr?.toString() ||
+                error.message
+              );
+            }
+          ),
       }));
 
       vi.doMock('child_process', () => ({
         execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & { stdout?: Buffer; stderr?: Buffer };
+          const error = new Error('Tests failed') as Error & {
+            stdout?: Buffer;
+            stderr?: Buffer;
+          };
           error.stdout = Buffer.from(testOutput);
           error.stderr = Buffer.from('');
           throw error;

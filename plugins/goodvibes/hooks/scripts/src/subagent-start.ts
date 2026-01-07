@@ -83,7 +83,8 @@ async function runSubagentStartHook(): Promise<void> {
     const input = rawInput as unknown as SubagentStartInput;
 
     // Extract subagent info (handle different field names)
-    const agentId = input.agent_id || input.subagent_id || ('agent_' + Date.now());
+    const agentId =
+      input.agent_id || input.subagent_id || 'agent_' + Date.now();
     const agentType = input.agent_type || input.subagent_type || 'unknown';
     const taskDescription = input.task_description || input.task || '';
     const cwd = input.cwd || process.cwd();
@@ -148,7 +149,11 @@ async function runSubagentStartHook(): Promise<void> {
     }
 
     // Build additional context for the subagent
-    const subagentContext = await buildSubagentContext(cwd, agentType, sessionId);
+    const subagentContext = await buildSubagentContext(
+      cwd,
+      agentType,
+      sessionId
+    );
 
     // Build project reminders for the context
     const reminders: string[] = [];
@@ -171,9 +176,11 @@ async function runSubagentStartHook(): Promise<void> {
     // Note: reminders always has at least one element (project name) so we always append
     let additionalContext: string | undefined;
     if (subagentContext.additionalContext) {
-      additionalContext = subagentContext.additionalContext + '\n\n' + reminders.join('\n');
+      additionalContext =
+        subagentContext.additionalContext + '\n\n' + reminders.join('\n');
     } else {
-      additionalContext = '[GoodVibes Project Context]\n' + reminders.join('\n');
+      additionalContext =
+        '[GoodVibes Project Context]\n' + reminders.join('\n');
     }
 
     // Build system message for GoodVibes agents
@@ -193,19 +200,24 @@ async function runSubagentStartHook(): Promise<void> {
     let systemMessage: string | undefined;
 
     if (goodvibesAgents.includes(agentType)) {
-      systemMessage = '[GoodVibes] Agent ' + agentType + ' starting. ' +
-        'Project: ' + projectName +
+      systemMessage =
+        '[GoodVibes] Agent ' +
+        agentType +
+        ' starting. ' +
+        'Project: ' +
+        projectName +
         (gitInfo.branch ? ', Branch: ' + gitInfo.branch : '');
     } else {
       // For non-GoodVibes agents, just log telemetry silently
       debug('Non-GoodVibes agent started: ' + agentType);
     }
 
-    respond(createResponse({
-      systemMessage,
-      additionalContext,
-    }));
-
+    respond(
+      createResponse({
+        systemMessage,
+        additionalContext,
+      })
+    );
   } catch (error: unknown) {
     logError('SubagentStart main', error);
     respond(createResponse());

@@ -90,7 +90,9 @@ const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
  */
 async function parseEnvFile(filePath: string): Promise<string[]> {
   try {
-    if (!await fileExists(filePath)) return [];
+    if (!(await fileExists(filePath))) {
+      return [];
+    }
 
     const content = await fs.readFile(filePath, 'utf-8');
     return parseEnvVars(content);
@@ -113,7 +115,9 @@ function parseEnvVars(content: string): string[] {
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
     // Skip comments and empty lines
-    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
 
     // Extract variable name (support both KEY=value and KEY= formats)
     const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
@@ -155,11 +159,12 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
   const envLocalPath = path.join(cwd, '.env.local');
   const envExamplePath = path.join(cwd, '.env.example');
 
-  const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] = await Promise.all([
-    fileExists(envPath),
-    fileExists(envLocalPath),
-    fileExists(envExamplePath),
-  ]);
+  const [hasEnvPathExists, hasEnvLocalExists, hasEnvExampleExists] =
+    await Promise.all([
+      fileExists(envPath),
+      fileExists(envLocalPath),
+      fileExists(envExamplePath),
+    ]);
 
   const hasEnvFile = hasEnvPathExists || hasEnvLocalExists;
   const hasEnvExample = hasEnvExampleExists;
@@ -178,7 +183,7 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
       definedVars = parseEnvVars(await fs.readFile(envPath, 'utf-8'));
     }
 
-    missingVars = requiredVars.filter(v => !definedVars.includes(v));
+    missingVars = requiredVars.filter((v) => !definedVars.includes(v));
 
     if (missingVars.length > 0) {
       warnings.push(`Missing env vars: ${missingVars.join(', ')}`);
@@ -203,7 +208,9 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
  * @param cwd - Working directory to analyze
  * @returns Promise resolving to EnvironmentContext
  */
-export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContext> {
+export async function analyzeEnvironment(
+  cwd: string
+): Promise<EnvironmentContext> {
   const envFiles: string[] = [];
   let definedVars: string[] = [];
 
@@ -271,7 +278,9 @@ export async function analyzeEnvironment(cwd: string): Promise<EnvironmentContex
       if (!isIgnored && envFile !== '.env.example') {
         const vars = await parseEnvFile(path.join(cwd, envFile));
         const sensitive = vars.filter(isSensitiveVar);
-        sensitiveVarsExposed.push(...sensitive.map((v) => `${v} (in ${envFile})`));
+        sensitiveVarsExposed.push(
+          ...sensitive.map((v) => `${v} (in ${envFile})`)
+        );
       }
     }
   }
@@ -327,11 +336,15 @@ export function formatEnvironment(context: EnvironmentContext): string | null {
   lines.push(`**Env Files:** ${context.envFiles.join(', ')}`);
 
   if (context.missingVars.length > 0) {
-    lines.push(`**Missing Vars:** ${context.missingVars.join(', ')} (defined in .env.example but not set)`);
+    lines.push(
+      `**Missing Vars:** ${context.missingVars.join(', ')} (defined in .env.example but not set)`
+    );
   }
 
   if (context.sensitiveVarsExposed.length > 0) {
-    lines.push(`**Warning:** Potentially sensitive vars may not be gitignored: ${context.sensitiveVarsExposed.join(', ')}`);
+    lines.push(
+      `**Warning:** Potentially sensitive vars may not be gitignored: ${context.sensitiveVarsExposed.join(', ')}`
+    );
   }
 
   // lines always has at least one element here since we return early if envFiles is empty

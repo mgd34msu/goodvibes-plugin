@@ -44,7 +44,9 @@ function generateSessionSummary(
     lines.push(`Issues found: ${analytics.issues_found}`);
 
     if (analytics.skills_recommended.length > 0) {
-      lines.push(`Skills recommended: ${analytics.skills_recommended.join(', ')}`);
+      lines.push(
+        `Skills recommended: ${analytics.skills_recommended.join(', ')}`
+      );
     }
   }
 
@@ -56,7 +58,9 @@ function generateSessionSummary(
       lines.push(`- ${file}`);
     }
     if (modifiedFiles.length > MAX_FILES_IN_SUMMARY) {
-      lines.push(`- ... and ${modifiedFiles.length - MAX_FILES_IN_SUMMARY} more files`);
+      lines.push(
+        `- ... and ${modifiedFiles.length - MAX_FILES_IN_SUMMARY} more files`
+      );
     }
   }
 
@@ -97,26 +101,39 @@ async function runPreCompactHook(): Promise<void> {
     }
 
     // Generate and save session summary
-    const summary = generateSessionSummary(analytics, modifiedFiles, transcriptSummary);
+    const summary = generateSessionSummary(
+      analytics,
+      modifiedFiles,
+      transcriptSummary
+    );
     await saveSessionSummary(cwd, summary);
 
     // Save analytics backup before compact
     if (analytics) {
       const compactBackup = path.join(CACHE_DIR, 'pre-compact-backup.json');
-      await fs.writeFile(compactBackup, JSON.stringify({
-        ...analytics,
-        compact_at: new Date().toISOString(),
-        files_modified: modifiedFiles,
-      }, null, 2));
+      await fs.writeFile(
+        compactBackup,
+        JSON.stringify(
+          {
+            ...analytics,
+            compact_at: new Date().toISOString(),
+            files_modified: modifiedFiles,
+          },
+          null,
+          2
+        )
+      );
       debug(`Saved pre-compact backup to ${compactBackup}`);
     }
 
     respond(createResponse());
-
   } catch (error: unknown) {
     logError('PreCompact main', error);
     respond(createResponse());
   }
 }
 
-runPreCompactHook();
+runPreCompactHook().catch((error: unknown) => {
+  logError('PreCompact uncaught', error);
+  respond(createResponse());
+});

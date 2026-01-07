@@ -11,7 +11,10 @@ import type { ErrorCategory } from '../types/errors.js';
  * Research hints organized by pattern category.
  * Each category has official (documentation) and community (forums/issues) sources.
  */
-const RESEARCH_HINTS: Record<string, { official: string[]; community: string[] }> = {
+const RESEARCH_HINTS: Record<
+  string,
+  { official: string[]; community: string[] }
+> = {
   typescript_type_error: {
     official: ['typescriptlang.org error reference', 'typescript handbook'],
     community: ['stackoverflow typescript', 'github typescript discussions'],

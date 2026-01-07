@@ -7,7 +7,7 @@
 import * as fs from 'fs/promises';
 import { CACHE_DIR, ANALYTICS_FILE } from './constants.js';
 import { debug } from './logging.js';
-import {fileExists} from './file-utils.js';
+import { fileExists } from './file-utils.js';
 
 // =============================================================================
 // Analytics Types
@@ -51,7 +51,6 @@ export interface SessionAnalytics {
   issues_found: number;
   detected_stack?: Record<string, unknown>;
 }
-
 
 // =============================================================================
 // Cache and Analytics Management
@@ -123,7 +122,9 @@ export async function loadAnalytics(): Promise<SessionAnalytics | null> {
  * };
  * await saveAnalytics(analytics);
  */
-export async function saveAnalytics(analytics: SessionAnalytics): Promise<void> {
+export async function saveAnalytics(
+  analytics: SessionAnalytics
+): Promise<void> {
   await ensureCacheDir();
   await fs.writeFile(ANALYTICS_FILE, JSON.stringify(analytics, null, 2));
 }

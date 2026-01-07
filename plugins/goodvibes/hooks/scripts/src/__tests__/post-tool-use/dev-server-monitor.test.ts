@@ -181,7 +181,9 @@ describe('dev-server-monitor', () => {
 
       recordDevServerError(state, 'bash_12345', 'Module not found: ./missing');
 
-      expect(state.devServers['bash_12345'].lastError).toBe('Module not found: ./missing');
+      expect(state.devServers['bash_12345'].lastError).toBe(
+        'Module not found: ./missing'
+      );
     });
 
     it('should update existing error with new error', () => {
@@ -245,7 +247,10 @@ describe('dev-server-monitor', () => {
       const errors = parseDevServerErrors(output);
 
       // Note: This matches both /Error: (.+)/ and /TypeError: (.+)/
-      expect(errors).toEqual(['Cannot read property "name" of undefined', 'Cannot read property "name" of undefined']);
+      expect(errors).toEqual([
+        'Cannot read property "name" of undefined',
+        'Cannot read property "name" of undefined',
+      ]);
     });
 
     it('should extract ReferenceError messages', () => {
@@ -282,7 +287,13 @@ describe('dev-server-monitor', () => {
       const errors = parseDevServerErrors(output);
 
       // Note: /Error: (.+)/ matches all three, then specific patterns match their own
-      expect(errors).toEqual(['First error', 'Second error', 'Third error', 'Second error', 'Third error']);
+      expect(errors).toEqual([
+        'First error',
+        'Second error',
+        'Third error',
+        'Second error',
+        'Third error',
+      ]);
     });
 
     it('should extract multiple occurrences of the same error type', () => {
@@ -385,11 +396,16 @@ describe('dev-server-monitor', () => {
     });
 
     it('should handle error messages with newlines in output', () => {
-      const output = 'Error: This is an error\nAnother line\nTypeError: Another error';
+      const output =
+        'Error: This is an error\nAnother line\nTypeError: Another error';
       const errors = parseDevServerErrors(output);
 
       // TypeError also matches /Error: (.+)/ pattern
-      expect(errors).toEqual(['This is an error', 'Another error', 'Another error']);
+      expect(errors).toEqual([
+        'This is an error',
+        'Another error',
+        'Another error',
+      ]);
     });
 
     it('should handle error messages with tabs and spaces', () => {

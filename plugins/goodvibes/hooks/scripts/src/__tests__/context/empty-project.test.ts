@@ -8,7 +8,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
-import { isEmptyProject, formatEmptyProjectContext } from '../../context/empty-project.js';
+import {
+  isEmptyProject,
+  formatEmptyProjectContext,
+} from '../../context/empty-project.js';
 
 // Mock dependencies
 vi.mock('fs/promises');
@@ -37,7 +40,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only readme.md', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['readme.md'] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        'readme.md',
+      ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
 
       const result = await isEmptyProject(mockCwd);
 
@@ -45,7 +50,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only README (case insensitive)', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['README'] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue(['README'] as unknown as Awaited<
+        ReturnType<typeof fs.readdir>
+      >);
 
       const result = await isEmptyProject(mockCwd);
 
@@ -53,7 +60,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only license', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['license'] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue(['license'] as unknown as Awaited<
+        ReturnType<typeof fs.readdir>
+      >);
 
       const result = await isEmptyProject(mockCwd);
 
@@ -61,7 +70,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only LICENSE.md', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['LICENSE.MD'] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        'LICENSE.MD',
+      ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
 
       const result = await isEmptyProject(mockCwd);
 
@@ -69,7 +80,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only .gitignore', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['.gitignore'] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        '.gitignore',
+      ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
 
       const result = await isEmptyProject(mockCwd);
 
@@ -77,7 +90,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only .git', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['.git'] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue(['.git'] as unknown as Awaited<
+        ReturnType<typeof fs.readdir>
+      >);
 
       const result = await isEmptyProject(mockCwd);
 
@@ -143,7 +158,9 @@ describe('empty-project', () => {
     });
 
     it('should return true when readdir throws an error', async () => {
-      vi.mocked(fs.readdir).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+      vi.mocked(fs.readdir).mockRejectedValue(
+        new Error('ENOENT: no such file or directory')
+      );
 
       const result = await isEmptyProject(mockCwd);
 
@@ -151,7 +168,9 @@ describe('empty-project', () => {
     });
 
     it('should return true when directory is not readable (permission denied)', async () => {
-      vi.mocked(fs.readdir).mockRejectedValue(new Error('EACCES: permission denied'));
+      vi.mocked(fs.readdir).mockRejectedValue(
+        new Error('EACCES: permission denied')
+      );
 
       const result = await isEmptyProject(mockCwd);
 
@@ -185,9 +204,9 @@ describe('empty-project', () => {
     });
 
     it('should correctly identify non-empty project with single meaningful file', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue([
-        'app.js',
-      ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+      vi.mocked(fs.readdir).mockResolvedValue(['app.js'] as unknown as Awaited<
+        ReturnType<typeof fs.readdir>
+      >);
 
       const result = await isEmptyProject(mockCwd);
 

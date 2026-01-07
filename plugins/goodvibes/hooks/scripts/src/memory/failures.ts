@@ -4,7 +4,11 @@
 
 import * as path from 'path';
 import type { MemoryFailure } from '../types/memory.js';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import {
+  parseMemoryFile,
+  ensureMemoryFile,
+  appendMemoryEntry,
+} from './parser.js';
 
 const FAILURES_HEADER = `# Failed Approaches
 
@@ -71,7 +75,10 @@ export async function readFailures(cwd: string): Promise<MemoryFailure[]> {
  *   suggestion: 'Use refs or state management instead'
  * });
  */
-export async function writeFailure(cwd: string, failure: MemoryFailure): Promise<void> {
+export async function writeFailure(
+  cwd: string,
+  failure: MemoryFailure
+): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
 
   await ensureMemoryFile(filePath, FAILURES_HEADER);

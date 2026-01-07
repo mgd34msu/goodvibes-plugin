@@ -4,7 +4,11 @@
 
 import * as path from 'path';
 import type { MemoryPreference } from '../types/memory.js';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import {
+  parseMemoryFile,
+  ensureMemoryFile,
+  appendMemoryEntry,
+} from './parser.js';
 
 const PREFERENCES_HEADER = `# User Preferences
 
@@ -30,7 +34,9 @@ These preferences guide agent behavior and decision-making.
  *   console.log(`${pref.key}: ${pref.value}`);
  * }
  */
-export async function readPreferences(cwd: string): Promise<MemoryPreference[]> {
+export async function readPreferences(
+  cwd: string
+): Promise<MemoryPreference[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
 
   return parseMemoryFile<MemoryPreference>(filePath, {
@@ -68,7 +74,10 @@ export async function readPreferences(cwd: string): Promise<MemoryPreference[]> 
  *   notes: 'Prefer functional components over class components'
  * });
  */
-export async function writePreference(cwd: string, preference: MemoryPreference): Promise<void> {
+export async function writePreference(
+  cwd: string,
+  preference: MemoryPreference
+): Promise<void> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
 
   await ensureMemoryFile(filePath, PREFERENCES_HEADER);

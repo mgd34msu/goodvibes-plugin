@@ -104,7 +104,9 @@ describe('keywords', () => {
     it('should be a non-empty object', () => {
       expect(TRANSCRIPT_KEYWORD_CATEGORIES).toBeDefined();
       expect(typeof TRANSCRIPT_KEYWORD_CATEGORIES).toBe('object');
-      expect(Object.keys(TRANSCRIPT_KEYWORD_CATEGORIES).length).toBeGreaterThan(0);
+      expect(Object.keys(TRANSCRIPT_KEYWORD_CATEGORIES).length).toBeGreaterThan(
+        0
+      );
     });
 
     it('should contain expected category keys', () => {
@@ -125,8 +127,12 @@ describe('keywords', () => {
 
       for (const category of expectedCategories) {
         expect(TRANSCRIPT_KEYWORD_CATEGORIES).toHaveProperty(category);
-        expect(Array.isArray(TRANSCRIPT_KEYWORD_CATEGORIES[category])).toBe(true);
-        expect(TRANSCRIPT_KEYWORD_CATEGORIES[category].length).toBeGreaterThan(0);
+        expect(Array.isArray(TRANSCRIPT_KEYWORD_CATEGORIES[category])).toBe(
+          true
+        );
+        expect(TRANSCRIPT_KEYWORD_CATEGORIES[category].length).toBeGreaterThan(
+          0
+        );
       }
     });
 
@@ -151,7 +157,9 @@ describe('keywords', () => {
     });
 
     it('should have the same keys as STACK_KEYWORD_CATEGORIES', () => {
-      expect(Object.keys(KEYWORD_CATEGORIES)).toEqual(Object.keys(STACK_KEYWORD_CATEGORIES));
+      expect(Object.keys(KEYWORD_CATEGORIES)).toEqual(
+        Object.keys(STACK_KEYWORD_CATEGORIES)
+      );
     });
   });
 
@@ -171,7 +179,8 @@ describe('keywords', () => {
     });
 
     it('should have the correct total length', () => {
-      const expectedLength = Object.values(STACK_KEYWORD_CATEGORIES).flat().length;
+      const expectedLength = Object.values(STACK_KEYWORD_CATEGORIES).flat()
+        .length;
       expect(ALL_STACK_KEYWORDS.length).toBe(expectedLength);
     });
   });
@@ -191,7 +200,8 @@ describe('keywords', () => {
     });
 
     it('should have the correct total length', () => {
-      const expectedLength = Object.values(TRANSCRIPT_KEYWORD_CATEGORIES).flat().length;
+      const expectedLength = Object.values(TRANSCRIPT_KEYWORD_CATEGORIES).flat()
+        .length;
       expect(ALL_TRANSCRIPT_KEYWORDS.length).toBe(expectedLength);
     });
   });
@@ -230,7 +240,9 @@ describe('keywords', () => {
     });
 
     it('should return an empty array for text with no keywords', () => {
-      const result = extractStackKeywords('This is just some random text without any tech words');
+      const result = extractStackKeywords(
+        'This is just some random text without any tech words'
+      );
       expect(result).toEqual([]);
     });
 
@@ -240,7 +252,9 @@ describe('keywords', () => {
     });
 
     it('should extract multiple keywords', () => {
-      const result = extractStackKeywords('Using React with TypeScript and Prisma');
+      const result = extractStackKeywords(
+        'Using React with TypeScript and Prisma'
+      );
       expect(result).toContain('react');
       expect(result).toContain('typescript');
       expect(result).toContain('prisma');
@@ -330,19 +344,31 @@ describe('keywords', () => {
     });
 
     it('should extract keywords from taskDescription only', () => {
-      const result = extractTranscriptKeywords('Fix the React component', undefined, undefined);
+      const result = extractTranscriptKeywords(
+        'Fix the React component',
+        undefined,
+        undefined
+      );
       expect(result).toContain('react');
       expect(result).toContain('category:frameworks');
     });
 
     it('should extract keywords from transcriptContent only', () => {
-      const result = extractTranscriptKeywords(undefined, 'Using Jest for testing', undefined);
+      const result = extractTranscriptKeywords(
+        undefined,
+        'Using Jest for testing',
+        undefined
+      );
       expect(result).toContain('jest');
       expect(result).toContain('category:testing');
     });
 
     it('should extract keywords from agentType only', () => {
-      const result = extractTranscriptKeywords(undefined, undefined, 'goodvibes:test-runner');
+      const result = extractTranscriptKeywords(
+        undefined,
+        undefined,
+        'goodvibes:test-runner'
+      );
       expect(result).toContain('agent:test runner');
     });
 
@@ -358,14 +384,18 @@ describe('keywords', () => {
     });
 
     it('should add category meta-keywords for each matched keyword', () => {
-      const result = extractTranscriptKeywords('Using Jest and Playwright for testing');
+      const result = extractTranscriptKeywords(
+        'Using Jest and Playwright for testing'
+      );
       expect(result).toContain('jest');
       expect(result).toContain('playwright');
       expect(result).toContain('category:testing');
     });
 
     it('should add multiple category meta-keywords for keywords from different categories', () => {
-      const result = extractTranscriptKeywords('React component with Redux state and Jest tests');
+      const result = extractTranscriptKeywords(
+        'React component with Redux state and Jest tests'
+      );
       expect(result).toContain('react');
       expect(result).toContain('redux');
       expect(result).toContain('jest');
@@ -375,19 +405,31 @@ describe('keywords', () => {
     });
 
     it('should handle agentType with goodvibes: prefix', () => {
-      const result = extractTranscriptKeywords(undefined, undefined, 'goodvibes:test-engineer');
+      const result = extractTranscriptKeywords(
+        undefined,
+        undefined,
+        'goodvibes:test-engineer'
+      );
       expect(result).toContain('agent:test engineer');
       // Should not contain the "goodvibes:" prefix
       expect(result.some((k) => k.includes('goodvibes'))).toBe(false);
     });
 
     it('should handle agentType without prefix', () => {
-      const result = extractTranscriptKeywords(undefined, undefined, 'test-engineer');
+      const result = extractTranscriptKeywords(
+        undefined,
+        undefined,
+        'test-engineer'
+      );
       expect(result).toContain('agent:test engineer');
     });
 
     it('should replace hyphens with spaces in agentType', () => {
-      const result = extractTranscriptKeywords(undefined, undefined, 'my-custom-agent-type');
+      const result = extractTranscriptKeywords(
+        undefined,
+        undefined,
+        'my-custom-agent-type'
+      );
       expect(result).toContain('agent:my custom agent type');
     });
 
@@ -421,20 +463,30 @@ describe('keywords', () => {
     });
 
     it('should handle multi-word keywords', () => {
-      const result = extractTranscriptKeywords('Run integration test with unit test coverage');
+      const result = extractTranscriptKeywords(
+        'Run integration test with unit test coverage'
+      );
       expect(result).toContain('integration test');
       expect(result).toContain('unit test');
     });
 
     it('should not add duplicate keywords', () => {
-      const result = extractTranscriptKeywords('jest jest jest test testing', 'jest vitest', '');
+      const result = extractTranscriptKeywords(
+        'jest jest jest test testing',
+        'jest vitest',
+        ''
+      );
       const jestCount = result.filter((k) => k === 'jest').length;
       expect(jestCount).toBe(1);
     });
 
     it('should not add duplicate category meta-keywords', () => {
-      const result = extractTranscriptKeywords('jest vitest playwright cypress');
-      const testingCategoryCount = result.filter((k) => k === 'category:testing').length;
+      const result = extractTranscriptKeywords(
+        'jest vitest playwright cypress'
+      );
+      const testingCategoryCount = result.filter(
+        (k) => k === 'category:testing'
+      ).length;
       expect(testingCategoryCount).toBe(1);
     });
 
@@ -446,7 +498,11 @@ describe('keywords', () => {
     });
 
     it('should handle undefined agentType (falsy check)', () => {
-      const result = extractTranscriptKeywords('React code', 'some content', undefined);
+      const result = extractTranscriptKeywords(
+        'React code',
+        'some content',
+        undefined
+      );
       expect(result).toContain('react');
       // Should not have any agent: keyword when agentType is undefined
       expect(result.some((k) => k.startsWith('agent:'))).toBe(false);
@@ -454,10 +510,15 @@ describe('keywords', () => {
 
     it('should handle complex combined text', () => {
       const taskDescription = 'Add auth and authentication with Clerk';
-      const transcriptContent = 'Using prisma for database access with postgres';
+      const transcriptContent =
+        'Using prisma for database access with postgres';
       const agentType = 'goodvibes:backend-engineer';
 
-      const result = extractTranscriptKeywords(taskDescription, transcriptContent, agentType);
+      const result = extractTranscriptKeywords(
+        taskDescription,
+        transcriptContent,
+        agentType
+      );
 
       expect(result).toContain('auth');
       expect(result).toContain('authentication');

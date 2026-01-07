@@ -30,7 +30,11 @@ import {
   ensureGoodVibesDirs as ensureGoodVibesDirsCore,
   writeTelemetryRecord as writeTelemetryRecordCore,
 } from './telemetry/index.js';
-import type { ActiveAgentsState, ActiveAgentEntry, TelemetryRecord } from './telemetry/index.js';
+import type {
+  ActiveAgentsState,
+  ActiveAgentEntry,
+  TelemetryRecord,
+} from './telemetry/index.js';
 
 // =============================================================================
 // Constants and Paths
@@ -39,7 +43,11 @@ import type { ActiveAgentsState, ActiveAgentEntry, TelemetryRecord } from './tel
 const GOODVIBES_DIR = path.join(PROJECT_ROOT, '.goodvibes');
 const STATE_DIR = 'state';
 const TELEMETRY_DIR = 'telemetry';
-const ACTIVE_AGENTS_FILE = path.join(GOODVIBES_DIR, STATE_DIR, 'active-agents.json');
+const ACTIVE_AGENTS_FILE = path.join(
+  GOODVIBES_DIR,
+  STATE_DIR,
+  'active-agents.json'
+);
 
 // =============================================================================
 // Backward Compatibility Wrappers
@@ -64,14 +72,18 @@ export async function loadActiveAgents(): Promise<ActiveAgentsState> {
 /**
  * Save active agents state to file (backward compatible wrapper)
  */
-export async function saveActiveAgents(state: ActiveAgentsState): Promise<void> {
+export async function saveActiveAgents(
+  state: ActiveAgentsState
+): Promise<void> {
   await saveActiveAgentsCore(ACTIVE_AGENTS_FILE, state);
 }
 
 /**
  * Register a new active agent (backward compatible wrapper)
  */
-export async function registerActiveAgent(entry: ActiveAgentEntry): Promise<void> {
+export async function registerActiveAgent(
+  entry: ActiveAgentEntry
+): Promise<void> {
   await ensureGoodVibesDirs();
   await registerActiveAgentCore(ACTIVE_AGENTS_FILE, entry);
 }
@@ -79,7 +91,9 @@ export async function registerActiveAgent(entry: ActiveAgentEntry): Promise<void
 /**
  * Look up and remove an active agent entry (backward compatible wrapper)
  */
-export async function popActiveAgent(agentId: string): Promise<ActiveAgentEntry | null> {
+export async function popActiveAgent(
+  agentId: string
+): Promise<ActiveAgentEntry | null> {
   return popActiveAgentCore(ACTIVE_AGENTS_FILE, agentId);
 }
 
@@ -93,7 +107,9 @@ export async function cleanupStaleAgents(): Promise<number> {
 /**
  * Write a telemetry record to the monthly JSONL file (backward compatible wrapper)
  */
-export async function writeTelemetryRecord(record: TelemetryRecord): Promise<void> {
+export async function writeTelemetryRecord(
+  record: TelemetryRecord
+): Promise<void> {
   await ensureGoodVibesDirs();
   const telemetryDirPath = path.join(GOODVIBES_DIR, TELEMETRY_DIR);
   await writeTelemetryRecordCore(telemetryDirPath, record);

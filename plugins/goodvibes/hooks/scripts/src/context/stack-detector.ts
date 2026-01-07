@@ -94,8 +94,9 @@ function pruneCache(): void {
 
   // If still over limit, remove oldest entries
   if (stackCache.size >= MAX_CACHE_ENTRIES) {
-    const entries = Array.from(stackCache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const entries = Array.from(stackCache.entries()).sort(
+      (a, b) => a[1].timestamp - b[1].timestamp
+    );
     const toRemove = entries.slice(0, stackCache.size - MAX_CACHE_ENTRIES + 1);
     for (const [key] of toRemove) {
       stackCache.delete(key);
@@ -159,7 +160,7 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
   const cached = stackCache.get(cwd);
   const now = Date.now();
 
-  if (cached && (now - cached.timestamp) < CACHE_TTL) {
+  if (cached && now - cached.timestamp < CACHE_TTL) {
     return cached.result;
   }
 
@@ -178,9 +179,11 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
       fileExists(checkPath + '.mjs'),
     ]);
 
-    if (checks.some(exists => exists)) {
+    if (checks.some((exists) => exists)) {
       frameworks.push(name);
-      if (name === 'TypeScript') hasTypeScript = true;
+      if (name === 'TypeScript') {
+        hasTypeScript = true;
+      }
     }
   }
 

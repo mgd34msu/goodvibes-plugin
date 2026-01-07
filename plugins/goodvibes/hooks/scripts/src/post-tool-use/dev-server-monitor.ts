@@ -35,7 +35,7 @@ const DEV_SERVER_PATTERNS = [
  * isDevServerCommand('npm install');  // false
  */
 export function isDevServerCommand(command: string): boolean {
-  return DEV_SERVER_PATTERNS.some(p => p.test(command));
+  return DEV_SERVER_PATTERNS.some((p) => p.test(command));
 }
 
 /**
@@ -89,7 +89,11 @@ export function unregisterDevServer(state: HooksState, pid: string): void {
  * @example
  * recordDevServerError(state, 'bash_12345', 'Module not found: ./missing');
  */
-export function recordDevServerError(state: HooksState, pid: string, error: string): void {
+export function recordDevServerError(
+  state: HooksState,
+  pid: string,
+  error: string
+): void {
   if (state.devServers[pid]) {
     state.devServers[pid].lastError = error;
   }

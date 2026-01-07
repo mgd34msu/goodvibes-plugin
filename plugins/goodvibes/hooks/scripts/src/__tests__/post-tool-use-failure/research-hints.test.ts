@@ -148,7 +148,10 @@ describe('getResearchHints', () => {
         'npmjs.com documentation',
         'package changelog',
       ]);
-      expect(result.community).toEqual(['stackoverflow npm', 'github npm issues']);
+      expect(result.community).toEqual([
+        'stackoverflow npm',
+        'github npm issues',
+      ]);
     });
 
     it('should return both official and community hints for typescript_error in phase 3', () => {
@@ -246,7 +249,10 @@ describe('getResearchHints', () => {
         'npmjs.com documentation',
         'package changelog',
       ]);
-      expect(result.community).toEqual(['stackoverflow npm', 'github npm issues']);
+      expect(result.community).toEqual([
+        'stackoverflow npm',
+        'github npm issues',
+      ]);
     });
 
     it('should return independent arrays for official and community hints', () => {
@@ -390,7 +396,11 @@ describe('getResearchHints', () => {
 
       categories.forEach((category) => {
         [1, 2, 3].forEach((phase) => {
-          const result = getResearchHints(category, 'error', phase as 1 | 2 | 3);
+          const result = getResearchHints(
+            category,
+            'error',
+            phase as 1 | 2 | 3
+          );
           expect(result).not.toBeNull();
           expect(result).not.toBeUndefined();
           expect(result.official).not.toBeNull();

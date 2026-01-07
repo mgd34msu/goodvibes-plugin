@@ -73,9 +73,8 @@ describe('context-injection', () => {
   describe('buildSubagentContext', () => {
     describe('basic functionality', () => {
       it('should return context with project name and mode', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/my-project',
@@ -83,14 +82,15 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('[GoodVibes] Project: my-project');
+        expect(result.additionalContext).toContain(
+          '[GoodVibes] Project: my-project'
+        );
         expect(result.additionalContext).toContain('Mode: default');
       });
 
       it('should call loadSharedConfig with the correct cwd', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         await buildSubagentContext('/custom/path', 'some-agent', 'session-456');
 
@@ -98,9 +98,8 @@ describe('context-injection', () => {
       });
 
       it('should extract project name from cwd using path.basename', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/a/b/c/deeply-nested-project',
@@ -125,9 +124,8 @@ describe('context-injection', () => {
           },
         });
 
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -141,9 +139,8 @@ describe('context-injection', () => {
 
     describe('backend agent type', () => {
       it('should add backend reminder when agentType includes "backend"', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -157,9 +154,8 @@ describe('context-injection', () => {
       });
 
       it('should add backend reminder for agent types containing "backend" substring', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -175,9 +171,8 @@ describe('context-injection', () => {
 
     describe('test agent type', () => {
       it('should add test reminder when agentType includes "test"', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -191,9 +186,8 @@ describe('context-injection', () => {
       });
 
       it('should add test reminder for agent types containing "test" substring', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -209,9 +203,8 @@ describe('context-injection', () => {
 
     describe('brutal-reviewer agent type', () => {
       it('should add brutal-reviewer reminder when agentType includes "brutal-reviewer"', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -225,9 +218,8 @@ describe('context-injection', () => {
       });
 
       it('should add brutal-reviewer reminder for agent types containing "brutal-reviewer" substring', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -243,9 +235,8 @@ describe('context-injection', () => {
 
     describe('combined agent types', () => {
       it('should add both backend and test reminders when both are in agentType', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -262,9 +253,8 @@ describe('context-injection', () => {
       });
 
       it('should add all three reminders when all agent types are present', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -284,9 +274,8 @@ describe('context-injection', () => {
       });
 
       it('should add backend and brutal-reviewer reminders when both are in agentType', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -306,9 +295,8 @@ describe('context-injection', () => {
       });
 
       it('should add test and brutal-reviewer reminders when both are in agentType', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -330,9 +318,8 @@ describe('context-injection', () => {
 
     describe('no matching agent type', () => {
       it('should return only project context when agent type has no special reminders', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -340,15 +327,16 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('[GoodVibes] Project: project');
+        expect(result.additionalContext).toContain(
+          '[GoodVibes] Project: project'
+        );
         expect(result.additionalContext).toContain('Mode: default');
         expect(result.additionalContext).not.toContain('Remember:');
       });
 
       it('should return context for unrecognized agent type', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -363,9 +351,8 @@ describe('context-injection', () => {
 
     describe('edge cases', () => {
       it('should handle empty agentType string', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -373,14 +360,15 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('[GoodVibes] Project: project');
+        expect(result.additionalContext).toContain(
+          '[GoodVibes] Project: project'
+        );
         expect(result.additionalContext).not.toContain('Remember:');
       });
 
       it('should handle cwd that is just a folder name', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           'my-folder',
@@ -388,13 +376,14 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('[GoodVibes] Project: my-folder');
+        expect(result.additionalContext).toContain(
+          '[GoodVibes] Project: my-folder'
+        );
       });
 
       it('should handle Windows-style paths', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           'C:\\Users\\test\\my-project',
@@ -402,13 +391,14 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('[GoodVibes] Project: my-project');
+        expect(result.additionalContext).toContain(
+          '[GoodVibes] Project: my-project'
+        );
       });
 
       it('should always return string additionalContext since project info is always added', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/any/path',
@@ -422,9 +412,8 @@ describe('context-injection', () => {
       });
 
       it('should correctly join multiple context parts with newlines', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -440,9 +429,8 @@ describe('context-injection', () => {
       });
 
       it('should handle session ID parameter (unused but accepted)', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         // Session ID is currently unused but accepted as a parameter
         const result = await buildSubagentContext(
@@ -457,9 +445,8 @@ describe('context-injection', () => {
 
     describe('SubagentContext interface', () => {
       it('should return object matching SubagentContext interface', async () => {
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -481,9 +468,8 @@ describe('context-injection', () => {
           return { telemetry: { enabled: false } };
         });
 
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         await buildSubagentContext('/test/project', 'agent', 'session-123');
 
@@ -493,9 +479,8 @@ describe('context-injection', () => {
       it('should handle loadSharedConfig rejection gracefully if it throws', async () => {
         mockLoadSharedConfig.mockRejectedValue(new Error('Config load failed'));
 
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         // The function awaits loadSharedConfig but doesn't use it currently
         // so rejection should propagate
@@ -518,9 +503,8 @@ describe('context-injection', () => {
           },
         });
 
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
@@ -543,9 +527,8 @@ describe('context-injection', () => {
           },
         });
 
-        const { buildSubagentContext } = await import(
-          '../../subagent-start/context-injection.js'
-        );
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',

@@ -16,7 +16,9 @@ describe('security-patterns', () => {
     });
 
     it('should contain header comment', () => {
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('GoodVibes Security-Hardened .gitignore');
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        'GoodVibes Security-Hardened .gitignore'
+      );
     });
   });
 
@@ -153,7 +155,9 @@ describe('security-patterns', () => {
 
   describe('Docker Secrets patterns', () => {
     it('should include Docker patterns', () => {
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('docker-compose.override.yml');
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        'docker-compose.override.yml'
+      );
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('.docker/');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('docker_secrets/');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('*.dockercfg');
@@ -180,7 +184,9 @@ describe('security-patterns', () => {
   describe('CI/CD Secrets patterns', () => {
     it('should include CI/CD patterns', () => {
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('.travis.yml.local');
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('.circleci/config.local.yml');
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        '.circleci/config.local.yml'
+      );
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('.github/secrets/');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('jenkins_credentials*');
     });
@@ -323,14 +329,22 @@ describe('security-patterns', () => {
 
   describe('section organization', () => {
     it('should have section headers', () => {
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Environment Variables & Secrets');
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        '# Environment Variables & Secrets'
+      );
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# API Keys & Tokens');
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('# SSH Keys & Certificates');
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        '# SSH Keys & Certificates'
+      );
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# AWS Configuration');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Google Cloud Platform');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Azure Configuration');
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Database Credentials & Files');
-      expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Terraform State & Secrets');
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        '# Database Credentials & Files'
+      );
+      expect(SECURITY_GITIGNORE_PATTERNS).toContain(
+        '# Terraform State & Secrets'
+      );
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Docker Secrets');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# Kubernetes Secrets');
       expect(SECURITY_GITIGNORE_PATTERNS).toContain('# CI/CD Secrets');

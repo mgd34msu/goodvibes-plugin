@@ -30,9 +30,8 @@ describe('git-branch-manager', () => {
 
   describe('shouldCreateFeatureBranch', () => {
     it('should return true when conditions are met', async () => {
-      const { shouldCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -57,9 +56,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when already on a feature branch', async () => {
-      const { shouldCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -84,9 +82,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when not on main branch', async () => {
-      const { shouldCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -111,9 +108,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when no files created this session', async () => {
-      const { shouldCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -138,9 +134,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when multiple files created this session', async () => {
-      const { shouldCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -167,9 +162,8 @@ describe('git-branch-manager', () => {
 
   describe('maybeCreateFeatureBranch', () => {
     it('should return false when conditions not met', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -195,9 +189,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should create feature branch with custom name when provided', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -218,7 +211,11 @@ describe('git-branch-manager', () => {
         },
       });
 
-      const result = await maybeCreateFeatureBranch(state, '/project', 'user-auth');
+      const result = await maybeCreateFeatureBranch(
+        state,
+        '/project',
+        'user-auth'
+      );
 
       expect(result.created).toBe(true);
       expect(result.branchName).toBe('feature/user-auth');
@@ -226,13 +223,15 @@ describe('git-branch-manager', () => {
       expect(state.git.currentBranch).toBe('feature/user-auth');
       expect(state.git.featureStartedAt).toBeTruthy();
       expect(state.git.featureDescription).toBe('user-auth');
-      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith('/project', 'user-auth');
+      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith(
+        '/project',
+        'user-auth'
+      );
     });
 
     it('should create feature branch with state featureDescription when no custom name', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -264,13 +263,15 @@ describe('git-branch-manager', () => {
       expect(result.created).toBe(true);
       expect(result.branchName).toBe('feature/api-integration');
       expect(state.git.featureDescription).toBe('api-integration');
-      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith('/project', 'api-integration');
+      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith(
+        '/project',
+        'api-integration'
+      );
     });
 
     it('should create feature branch with default name when no description available', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -302,13 +303,15 @@ describe('git-branch-manager', () => {
       expect(result.created).toBe(true);
       expect(result.branchName).toBe('feature/feature');
       expect(state.git.featureDescription).toBe('feature');
-      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith('/project', 'feature');
+      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith(
+        '/project',
+        'feature'
+      );
     });
 
     it('should sanitize branch name to lowercase and replace non-alphanumeric', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -336,14 +339,17 @@ describe('git-branch-manager', () => {
       );
 
       expect(result.created).toBe(true);
-      expect(result.branchName).toBe('feature/user-authentication-authorization');
-      expect(state.git.featureBranch).toBe('feature/user-authentication-authorization');
+      expect(result.branchName).toBe(
+        'feature/user-authentication-authorization'
+      );
+      expect(state.git.featureBranch).toBe(
+        'feature/user-authentication-authorization'
+      );
     });
 
     it('should truncate branch name to max length (50 chars)', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -365,7 +371,11 @@ describe('git-branch-manager', () => {
       });
 
       const longName = 'a'.repeat(100);
-      const result = await maybeCreateFeatureBranch(state, '/project', longName);
+      const result = await maybeCreateFeatureBranch(
+        state,
+        '/project',
+        longName
+      );
 
       expect(result.created).toBe(true);
       expect(result.branchName).toBe(`feature/${'a'.repeat(50)}`);
@@ -373,9 +383,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when git createFeatureBranch fails', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(false);
 
@@ -396,19 +405,25 @@ describe('git-branch-manager', () => {
         },
       });
 
-      const result = await maybeCreateFeatureBranch(state, '/project', 'test-feature');
+      const result = await maybeCreateFeatureBranch(
+        state,
+        '/project',
+        'test-feature'
+      );
 
       expect(result.created).toBe(false);
       expect(result.branchName).toBe(null);
       expect(state.git.featureBranch).toBe(null);
       expect(state.git.currentBranch).toBe('main');
-      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith('/project', 'test-feature');
+      expect(mockGitOps.createFeatureBranch).toHaveBeenCalledWith(
+        '/project',
+        'test-feature'
+      );
     });
 
     it('should handle special characters and spaces in branch name', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -442,9 +457,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should handle multiple consecutive non-alphanumeric characters', async () => {
-      const { maybeCreateFeatureBranch } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeCreateFeatureBranch } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.createFeatureBranch).mockResolvedValue(true);
 
@@ -465,7 +479,11 @@ describe('git-branch-manager', () => {
         },
       });
 
-      const result = await maybeCreateFeatureBranch(state, '/project', 'test---feature___name');
+      const result = await maybeCreateFeatureBranch(
+        state,
+        '/project',
+        'test---feature___name'
+      );
 
       expect(result.created).toBe(true);
       expect(result.branchName).toBe('feature/test-feature-name');
@@ -474,9 +492,8 @@ describe('git-branch-manager', () => {
 
   describe('shouldMergeFeature', () => {
     it('should return true when all conditions are met', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -509,9 +526,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when not on a feature branch', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -544,9 +560,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when tests are failing', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -579,9 +594,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when build is not passing', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -614,9 +628,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when build status is unknown', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -649,9 +662,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when there are pending test fixes', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -690,9 +702,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when pendingMerge is false', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -725,9 +736,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should return false when all conditions fail', async () => {
-      const { shouldMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { shouldMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -768,9 +778,8 @@ describe('git-branch-manager', () => {
 
   describe('maybeMergeFeature', () => {
     it('should return false when conditions not met', async () => {
-      const { maybeMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       const state = createMockHooksState({
         git: {
@@ -791,9 +800,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should merge feature branch successfully', async () => {
-      const { maybeMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.mergeFeatureBranch).mockResolvedValue(true);
 
@@ -838,9 +846,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should handle merge failure', async () => {
-      const { maybeMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.mergeFeatureBranch).mockResolvedValue(false);
 
@@ -886,9 +893,8 @@ describe('git-branch-manager', () => {
     });
 
     it('should merge with custom main branch name', async () => {
-      const { maybeMergeFeature } = await import(
-        '../../post-tool-use/git-branch-manager.js'
-      );
+      const { maybeMergeFeature } =
+        await import('../../post-tool-use/git-branch-manager.js');
 
       vi.mocked(mockGitOps.mergeFeatureBranch).mockResolvedValue(true);
 

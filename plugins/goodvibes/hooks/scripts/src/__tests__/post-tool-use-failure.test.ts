@@ -21,7 +21,10 @@ const mockLoadAnalytics = vi.fn();
 const mockSaveAnalytics = vi.fn();
 const mockDebug = vi.fn();
 const mockLogError = vi.fn();
-const mockCreateResponse = vi.fn((opts: unknown) => ({ continue: true, ...opts }));
+const mockCreateResponse = vi.fn((opts: unknown) => ({
+  continue: true,
+  ...opts,
+}));
 const mockRespond = vi.fn();
 const mockLoadState = vi.fn();
 const mockSaveState = vi.fn();
@@ -75,7 +78,8 @@ vi.mock('../state.js', () => ({
 
 // Mock fix-loop module
 vi.mock('../automation/fix-loop.js', () => ({
-  generateErrorSignature: (...args: unknown[]) => mockGenerateErrorSignature(...args),
+  generateErrorSignature: (...args: unknown[]) =>
+    mockGenerateErrorSignature(...args),
   categorizeError: (...args: unknown[]) => mockCategorizeError(...args),
   createErrorState: (...args: unknown[]) => mockCreateErrorState(...args),
   buildFixContext: (...args: unknown[]) => mockBuildFixContext(...args),
@@ -95,9 +99,11 @@ vi.mock('../post-tool-use-failure/retry-tracker.js', () => ({
   getCurrentPhase: (...args: unknown[]) => mockGetCurrentPhase(...args),
   shouldEscalatePhase: (...args: unknown[]) => mockShouldEscalatePhase(...args),
   getPhaseDescription: (...args: unknown[]) => mockGetPhaseDescription(...args),
-  getRemainingAttempts: (...args: unknown[]) => mockGetRemainingAttempts(...args),
+  getRemainingAttempts: (...args: unknown[]) =>
+    mockGetRemainingAttempts(...args),
   hasExhaustedRetries: (...args: unknown[]) => mockHasExhaustedRetries(...args),
-  generateErrorSignature: (...args: unknown[]) => mockGenerateRetrySignature(...args),
+  generateErrorSignature: (...args: unknown[]) =>
+    mockGenerateRetrySignature(...args),
 }));
 
 // Mock memory failures module
@@ -111,7 +117,10 @@ describe('post-tool-use-failure hook', () => {
     vi.resetModules();
 
     // Reset default implementations
-    mockCreateResponse.mockImplementation((opts: unknown) => ({ continue: true, ...opts }));
+    mockCreateResponse.mockImplementation((opts: unknown) => ({
+      continue: true,
+      ...opts,
+    }));
     mockLoadState.mockResolvedValue({ errors: {} });
     mockSaveState.mockResolvedValue(undefined);
     mockGenerateErrorSignature.mockReturnValue('sig-123');
@@ -185,7 +194,9 @@ describe('post-tool-use-failure hook', () => {
 
       expect(mockReadHookInput).toHaveBeenCalled();
       expect(mockLoadState).toHaveBeenCalledWith('/test/project');
-      expect(mockCategorizeError).toHaveBeenCalledWith('Command failed: npm install');
+      expect(mockCategorizeError).toHaveBeenCalledWith(
+        'Command failed: npm install'
+      );
     });
 
     it('should use PROJECT_ROOT when cwd is not provided', async () => {
@@ -256,7 +267,10 @@ describe('post-tool-use-failure hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockGenerateErrorSignature).toHaveBeenCalledWith('unknown', 'Error message');
+      expect(mockGenerateErrorSignature).toHaveBeenCalledWith(
+        'unknown',
+        'Error message'
+      );
     });
 
     it('should handle non-string error and use "Unknown error"', async () => {
@@ -302,7 +316,12 @@ describe('post-tool-use-failure hook', () => {
         attemptsThisPhase: 1,
         totalAttempts: 3,
         fixStrategiesAttempted: [
-          { phase: 1, strategy: 'npm install', succeeded: false, timestamp: '2025-01-01' },
+          {
+            phase: 1,
+            strategy: 'npm install',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
         ],
         officialDocsSearched: [],
         officialDocsContent: '',
@@ -321,7 +340,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
       mockGetRetryCount.mockResolvedValue(3);
@@ -333,7 +354,10 @@ describe('post-tool-use-failure hook', () => {
       });
 
       expect(mockGetErrorState).toHaveBeenCalled();
-      expect(mockDebug).toHaveBeenCalledWith('Existing error state', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Existing error state',
+        expect.any(Object)
+      );
     });
 
     it('should escalate phase when shouldEscalatePhase returns true', async () => {
@@ -361,7 +385,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(1);
       mockShouldEscalatePhase.mockResolvedValue(true);
@@ -373,7 +399,9 @@ describe('post-tool-use-failure hook', () => {
       });
 
       expect(mockShouldEscalatePhase).toHaveBeenCalled();
-      expect(mockDebug).toHaveBeenCalledWith('Escalated to phase', { phase: 2 });
+      expect(mockDebug).toHaveBeenCalledWith('Escalated to phase', {
+        phase: 2,
+      });
     });
 
     it('should not escalate phase when already at phase 3', async () => {
@@ -401,7 +429,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(3);
       mockShouldEscalatePhase.mockResolvedValue(true);
@@ -413,7 +443,10 @@ describe('post-tool-use-failure hook', () => {
       });
 
       // Should not have escalated since phase is already 3
-      expect(mockDebug).not.toHaveBeenCalledWith('Escalated to phase', expect.any(Object));
+      expect(mockDebug).not.toHaveBeenCalledWith(
+        'Escalated to phase',
+        expect.any(Object)
+      );
     });
 
     it('should log failure to memory when all phases exhausted', async () => {
@@ -449,12 +482,17 @@ describe('post-tool-use-failure hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockWriteFailure).toHaveBeenCalledWith('/test', expect.objectContaining({
-        approach: expect.stringContaining('Bash failed'),
-        reason: expect.stringContaining('Exhausted'),
-        suggestion: 'Manual intervention required',
-      }));
-      expect(mockDebug).toHaveBeenCalledWith('All phases exhausted, logging to memory');
+      expect(mockWriteFailure).toHaveBeenCalledWith(
+        '/test',
+        expect.objectContaining({
+          approach: expect.stringContaining('Bash failed'),
+          reason: expect.stringContaining('Exhausted'),
+          suggestion: 'Manual intervention required',
+        })
+      );
+      expect(mockDebug).toHaveBeenCalledWith(
+        'All phases exhausted, logging to memory'
+      );
     });
 
     it('should handle writeFailure error gracefully', async () => {
@@ -491,14 +529,19 @@ describe('post-tool-use-failure hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockDebug).toHaveBeenCalledWith('Failed to write failure to memory', expect.any(Object));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Failed to write failure to memory',
+        expect.any(Object)
+      );
     });
 
     it('should track tool failures in analytics when analytics exist', async () => {
       const analytics = {
         session_id: 'test',
         issues_found: 5,
-        tool_failures: [{ tool: 'Edit', error: 'previous error', timestamp: '2025-01-01' }],
+        tool_failures: [
+          { tool: 'Edit', error: 'previous error', timestamp: '2025-01-01' },
+        ],
       };
 
       const mockInput = {
@@ -533,12 +576,14 @@ describe('post-tool-use-failure hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockSaveAnalytics).toHaveBeenCalledWith(expect.objectContaining({
-        issues_found: 6,
-        tool_failures: expect.arrayContaining([
-          expect.objectContaining({ tool: 'Bash', error: 'Command failed' }),
-        ]),
-      }));
+      expect(mockSaveAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issues_found: 6,
+          tool_failures: expect.arrayContaining([
+            expect.objectContaining({ tool: 'Bash', error: 'Command failed' }),
+          ]),
+        })
+      );
     });
 
     it('should initialize tool_failures array if not present in analytics', async () => {
@@ -580,11 +625,13 @@ describe('post-tool-use-failure hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockSaveAnalytics).toHaveBeenCalledWith(expect.objectContaining({
-        tool_failures: expect.arrayContaining([
-          expect.objectContaining({ tool: 'Edit' }),
-        ]),
-      }));
+      expect(mockSaveAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool_failures: expect.arrayContaining([
+            expect.objectContaining({ tool: 'Edit' }),
+          ]),
+        })
+      );
     });
 
     it('should include pattern category in response when pattern is found', async () => {
@@ -640,9 +687,24 @@ describe('post-tool-use-failure hook', () => {
         attemptsThisPhase: 1,
         totalAttempts: 4,
         fixStrategiesAttempted: [
-          { phase: 1, strategy: 'npm run build', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'rm -rf node_modules', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 2, strategy: 'npm ci', succeeded: false, timestamp: '2025-01-01' },
+          {
+            phase: 1,
+            strategy: 'npm run build',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'rm -rf node_modules',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 2,
+            strategy: 'npm ci',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
         ],
         officialDocsSearched: [],
         officialDocsContent: '',
@@ -661,7 +723,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
 
@@ -703,7 +767,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
       mockGetResearchHints.mockReturnValue({
@@ -749,7 +815,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(3);
       mockGetResearchHints.mockReturnValue({
@@ -819,7 +887,10 @@ describe('post-tool-use-failure hook', () => {
         expect(mockRespond).toHaveBeenCalled();
       });
 
-      expect(mockLogError).toHaveBeenCalledWith('PostToolUseFailure main', expect.any(Error));
+      expect(mockLogError).toHaveBeenCalledWith(
+        'PostToolUseFailure main',
+        expect.any(Error)
+      );
     });
 
     it('should clamp phase to valid range 1-3 when syncing from retry tracker (high value)', async () => {
@@ -847,7 +918,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(5); // Invalid high value
 
@@ -858,9 +931,12 @@ describe('post-tool-use-failure hook', () => {
       });
 
       // Phase should be clamped to 3 (max valid value)
-      expect(mockDebug).toHaveBeenCalledWith('Existing error state', expect.objectContaining({
-        phase: 3,
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Existing error state',
+        expect.objectContaining({
+          phase: 3,
+        })
+      );
     });
 
     it('should clamp phase to minimum 1 when syncing from retry tracker (low value)', async () => {
@@ -888,7 +964,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(0); // Invalid low value
 
@@ -899,9 +977,12 @@ describe('post-tool-use-failure hook', () => {
       });
 
       // Phase should be clamped to 1 (min valid value)
-      expect(mockDebug).toHaveBeenCalledWith('Existing error state', expect.objectContaining({
-        phase: 1,
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Existing error state',
+        expect.objectContaining({
+          phase: 1,
+        })
+      );
     });
 
     it('should handle empty research hints for phase 2', async () => {
@@ -929,7 +1010,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
       // file_not_found has empty official hints
@@ -971,7 +1054,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(3);
       // file_not_found has empty community hints
@@ -1024,9 +1109,12 @@ describe('post-tool-use-failure hook', () => {
       });
 
       // Error message should be truncated in failure.approach
-      expect(mockWriteFailure).toHaveBeenCalledWith('/test', expect.objectContaining({
-        approach: expect.stringMatching(/^Bash failed: A{100}$/),
-      }));
+      expect(mockWriteFailure).toHaveBeenCalledWith(
+        '/test',
+        expect.objectContaining({
+          approach: expect.stringMatching(/^Bash failed: A{100}$/),
+        })
+      );
     });
 
     it('should truncate error preview in debug logging', async () => {
@@ -1064,9 +1152,12 @@ describe('post-tool-use-failure hook', () => {
       });
 
       // Debug should log truncated error
-      expect(mockDebug).toHaveBeenCalledWith('PostToolUseFailure received input', expect.objectContaining({
-        error: 'B'.repeat(200),
-      }));
+      expect(mockDebug).toHaveBeenCalledWith(
+        'PostToolUseFailure received input',
+        expect.objectContaining({
+          error: 'B'.repeat(200),
+        })
+      );
     });
 
     it('should show category when no pattern is found', async () => {
@@ -1135,7 +1226,9 @@ describe('post-tool-use-failure hook', () => {
       };
 
       mockReadHookInput.mockResolvedValue(mockInput);
-      mockLoadState.mockResolvedValue({ errors: { 'sig-123': existingErrorState } });
+      mockLoadState.mockResolvedValue({
+        errors: { 'sig-123': existingErrorState },
+      });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
       // Pattern found with different category
@@ -1156,7 +1249,11 @@ describe('post-tool-use-failure hook', () => {
       });
 
       // getResearchHints should be called with the pattern's category
-      expect(mockGetResearchHints).toHaveBeenCalledWith('missing_import', 'cannot find module', 2);
+      expect(mockGetResearchHints).toHaveBeenCalledWith(
+        'missing_import',
+        'cannot find module',
+        2
+      );
     });
   });
 });

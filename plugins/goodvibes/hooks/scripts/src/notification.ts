@@ -37,11 +37,21 @@ async function runNotificationHook(): Promise<void> {
     // Could send to external service, log file, etc.
     // For now, just acknowledge
     respond(createResponse());
-
   } catch (error: unknown) {
     logError('Notification main', error);
-    respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
+    respond(
+      createResponse(
+        `Notification error: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
   }
 }
 
-runNotificationHook();
+runNotificationHook().catch((error: unknown) => {
+  logError('Notification uncaught', error);
+  respond(
+    createResponse(
+      `Notification error: ${error instanceof Error ? error.message : String(error)}`
+    )
+  );
+});

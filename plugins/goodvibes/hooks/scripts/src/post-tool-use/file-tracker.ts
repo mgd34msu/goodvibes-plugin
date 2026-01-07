@@ -23,7 +23,10 @@ import type { HooksState } from '../types/state.js';
  * @example
  * const newState = trackFileModification(state, '/project/src/utils.ts');
  */
-export function trackFileModification(state: HooksState, filePath: string): HooksState {
+export function trackFileModification(
+  state: HooksState,
+  filePath: string
+): HooksState {
   // Use Set for O(1) lookups, then convert to array
   const modifiedSession = new Set(state.files.modifiedThisSession);
   const modifiedCheckpoint = new Set(state.files.modifiedSinceCheckpoint);
@@ -53,7 +56,10 @@ export function trackFileModification(state: HooksState, filePath: string): Hook
  * @example
  * const newState = trackFileCreation(state, '/project/src/newFile.ts');
  */
-export function trackFileCreation(state: HooksState, filePath: string): HooksState {
+export function trackFileCreation(
+  state: HooksState,
+  filePath: string
+): HooksState {
   // Use Set for O(1) lookups, then convert to array
   const created = new Set(state.files.createdThisSession);
   created.add(filePath);

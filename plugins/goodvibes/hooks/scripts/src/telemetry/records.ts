@@ -42,7 +42,11 @@ export interface TelemetryRecord {
 /**
  * Ensure .goodvibes directories exist with lazy creation
  */
-export async function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, telemetryDir: string): Promise<void> {
+export async function ensureGoodVibesDirs(
+  goodVibesDir: string,
+  stateDir: string,
+  telemetryDir: string
+): Promise<void> {
   const dirs = [
     goodVibesDir,
     path.join(goodVibesDir, stateDir),
@@ -63,7 +67,10 @@ export async function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string
 /**
  * Write a telemetry record to the monthly JSONL file
  */
-export async function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): Promise<void> {
+export async function writeTelemetryRecord(
+  telemetryDir: string,
+  record: TelemetryRecord
+): Promise<void> {
   // Get current month for filename (YYYY-MM)
   const now = new Date();
   const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -90,7 +97,8 @@ export function createTelemetryRecord(
   const durationMs = endedAtMs - startedAt;
 
   // Determine success based on error count and success indicators
-  const success = parsedTranscript.error_count === 0 ||
+  const success =
+    parsedTranscript.error_count === 0 ||
     parsedTranscript.success_indicators.length > 0;
 
   return {

@@ -31,11 +31,13 @@ async function runPermissionRequestHook(): Promise<void> {
       // Let user decide for non-GoodVibes tools
       respond(createPermissionResponse('ask'));
     }
-
   } catch (error: unknown) {
     logError('PermissionRequest main', error);
     respond(createPermissionResponse('ask'));
   }
 }
 
-runPermissionRequestHook();
+runPermissionRequestHook().catch((error: unknown) => {
+  logError('PermissionRequest uncaught', error);
+  respond(createPermissionResponse('ask'));
+});

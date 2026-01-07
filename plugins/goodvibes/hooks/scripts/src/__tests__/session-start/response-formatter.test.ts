@@ -152,7 +152,9 @@ describe('response-formatter', () => {
 
         const message = buildSystemMessage('test-session', context);
 
-        expect(message).toContain('| Empty project detected - scaffolding tools available.');
+        expect(message).toContain(
+          '| Empty project detected - scaffolding tools available.'
+        );
       });
 
       it('should not show empty project message when isEmptyProject is false', () => {
@@ -187,7 +189,9 @@ describe('response-formatter', () => {
 
         const message = buildSystemMessage('test-session', context);
 
-        expect(message).toContain('| React, Next.js on main | 3 uncommitted | 2 issues');
+        expect(message).toContain(
+          '| React, Next.js on main | 3 uncommitted | 2 issues'
+        );
       });
 
       it('should not include summary when isEmptyProject is true', () => {
@@ -350,7 +354,9 @@ describe('response-formatter', () => {
         expect(message).toContain('17 tools available.');
         expect(message).toContain('Session: short-id');
         expect(message).toContain('| RECOVERY MODE');
-        expect(message).toContain('| Empty project detected - scaffolding tools available.');
+        expect(message).toContain(
+          '| Empty project detected - scaffolding tools available.'
+        );
         expect(message).not.toContain('This should not appear');
         expect(message).toContain('(context: 50ms)');
       });
@@ -421,7 +427,8 @@ describe('response-formatter', () => {
       it('should handle very long summary', () => {
         const context: ContextGatheringResult = {
           additionalContext: '',
-          summary: 'React, Next.js, TypeScript, TailwindCSS, Redux, React Query, Jest, Playwright, ESLint, Prettier on feature/very-long-branch-name | 25 uncommitted files | 10 issues detected | health checks failing',
+          summary:
+            'React, Next.js, TypeScript, TailwindCSS, Redux, React Query, Jest, Playwright, ESLint, Prettier on feature/very-long-branch-name | 25 uncommitted files | 10 issues detected | health checks failing',
           isEmptyProject: false,
           hasIssues: true,
           issueCount: 10,
@@ -432,7 +439,9 @@ describe('response-formatter', () => {
         const message = buildSystemMessage('session_id', context);
 
         // Should include the entire summary without truncation
-        expect(message).toContain('React, Next.js, TypeScript, TailwindCSS, Redux, React Query, Jest, Playwright, ESLint, Prettier');
+        expect(message).toContain(
+          'React, Next.js, TypeScript, TailwindCSS, Redux, React Query, Jest, Playwright, ESLint, Prettier'
+        );
         expect(message).toContain('feature/very-long-branch-name');
       });
 
@@ -449,7 +458,9 @@ describe('response-formatter', () => {
 
         const message = buildSystemMessage('session_id', context);
 
-        expect(message).toContain('React (v18.2) on main/staging | 3 files | "test" & more');
+        expect(message).toContain(
+          'React (v18.2) on main/staging | 3 files | "test" & more'
+        );
       });
 
       it('should handle context with only whitespace in summary', () => {
@@ -520,7 +531,9 @@ describe('response-formatter', () => {
 
         const message = buildSystemMessage('test-session', context);
 
-        expect(message.startsWith('GoodVibes plugin v2.1.0 initialized.')).toBe(true);
+        expect(message.startsWith('GoodVibes plugin v2.1.0 initialized.')).toBe(
+          true
+        );
       });
 
       it('should include tools count as second component', () => {

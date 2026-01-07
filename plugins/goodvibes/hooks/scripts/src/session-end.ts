@@ -54,27 +54,41 @@ async function runSessionEndHook(): Promise<void> {
       await saveAnalytics(analytics);
 
       // Create session summary file
-      const summaryFile = path.join(CACHE_DIR, `session-${analytics.session_id}.json`);
-      await fs.writeFile(summaryFile, JSON.stringify({
-        session_id: analytics.session_id,
-        duration_minutes: durationMinutes,
-        tools_used: analytics.tool_usage.length,
-        unique_tools: [...new Set(analytics.tool_usage.map(u => u.tool))],
-        skills_recommended: analytics.skills_recommended.length,
-        validations_run: analytics.validations_run,
-        issues_found: analytics.issues_found,
-        ended_reason: 'session_end',
-      }, null, 2));
+      const summaryFile = path.join(
+        CACHE_DIR,
+        `session-${analytics.session_id}.json`
+      );
+      await fs.writeFile(
+        summaryFile,
+        JSON.stringify(
+          {
+            session_id: analytics.session_id,
+            duration_minutes: durationMinutes,
+            tools_used: analytics.tool_usage.length,
+            unique_tools: [...new Set(analytics.tool_usage.map((u) => u.tool))],
+            skills_recommended: analytics.skills_recommended.length,
+            validations_run: analytics.validations_run,
+            issues_found: analytics.issues_found,
+            ended_reason: 'session_end',
+          },
+          null,
+          2
+        )
+      );
 
-      debug(`Session ended. Duration: ${durationMinutes}m, Tools: ${analytics.tool_usage.length}`);
+      debug(
+        `Session ended. Duration: ${durationMinutes}m, Tools: ${analytics.tool_usage.length}`
+      );
     }
 
     respond(createResponse());
-
   } catch (error: unknown) {
     logError('SessionEnd main', error);
     respond(createResponse());
   }
 }
 
-runSessionEndHook();
+runSessionEndHook().catch((error: unknown) => {
+  logError('SessionEnd uncaught', error);
+  respond(createResponse());
+});

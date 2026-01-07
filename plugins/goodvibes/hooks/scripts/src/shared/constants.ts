@@ -10,13 +10,19 @@ import * as path from 'path';
  * Package manager lockfiles for detection.
  * Used to identify which package manager a project uses (pnpm, yarn, npm, or bun).
  */
-export const LOCKFILES = ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'bun.lockb'] as const;
+export const LOCKFILES = [
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'package-lock.json',
+  'bun.lockb',
+] as const;
 
 /**
  * Root directory of the GoodVibes plugin itself.
  * Uses official Claude Code environment variable or falls back to parent directory.
  */
-export const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), '..');
+export const PLUGIN_ROOT =
+  process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), '..');
 
 /**
  * Root directory of the user's project.

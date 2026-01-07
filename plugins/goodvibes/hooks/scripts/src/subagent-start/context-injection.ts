@@ -38,11 +38,15 @@ export async function buildSubagentContext(
 
   // Add agent-specific reminders based on type
   if (agentType.includes('backend')) {
-    contextParts.push('Remember: Write-local only. All changes must be in the project root.');
+    contextParts.push(
+      'Remember: Write-local only. All changes must be in the project root.'
+    );
   }
 
   if (agentType.includes('test')) {
-    contextParts.push('Remember: Tests must actually verify behavior, not just exist.');
+    contextParts.push(
+      'Remember: Tests must actually verify behavior, not just exist.'
+    );
   }
 
   if (agentType.includes('brutal-reviewer')) {

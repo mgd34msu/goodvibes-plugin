@@ -62,7 +62,9 @@ export function createMockFileState(overrides?: Partial<FileState>): FileState {
  *   files: createMockFileState({ modifiedThisSession: ['/src/test.ts'] }),
  * });
  */
-export function createMockHooksState(overrides?: Partial<HooksState>): HooksState {
+export function createMockHooksState(
+  overrides?: Partial<HooksState>
+): HooksState {
   return {
     session: {
       id: 'test-session',
@@ -294,7 +296,5 @@ export function createMockBashToolInput(
   command: unknown,
   output?: unknown
 ): Record<string, unknown> {
-  return output !== undefined
-    ? { command, output }
-    : { command };
+  return output !== undefined ? { command, output } : { command };
 }

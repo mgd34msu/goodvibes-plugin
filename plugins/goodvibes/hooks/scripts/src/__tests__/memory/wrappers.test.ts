@@ -1,9 +1,9 @@
 /**
- * Tests for memory/index.ts
+ * Tests for memory/wrappers.ts
  *
  * Tests the backward compatibility wrapper functions (appendDecision, appendPattern,
- * appendFailure, appendPreference). These are the only functions with actual logic
- * in index.ts - the rest are re-exports that don't require coverage testing.
+ * appendFailure, appendPreference). These functions ensure the memory directory
+ * exists before writing and add error handling and debug logging.
  *
  * Achieves 100% line and branch coverage by testing success and error paths.
  */
@@ -51,42 +51,17 @@ import {
   appendPattern,
   appendFailure,
   appendPreference,
-} from '../../memory/index.js';
+} from '../../memory/wrappers.js';
 
-// Type definitions for test data (duplicated here to avoid import issues with mocks)
-interface Decision {
-  title: string;
-  date: string;
-  alternatives: string[];
-  rationale: string;
-  agent?: string;
-  context?: string;
-}
+// Import actual types
+import type {
+  MemoryDecision as Decision,
+  MemoryPattern as Pattern,
+  MemoryFailure as Failure,
+  MemoryPreference as Preference,
+} from '../../types/memory.js';
 
-interface Pattern {
-  name: string;
-  date: string;
-  description: string;
-  example?: string;
-  files?: string[];
-}
-
-interface Failure {
-  approach: string;
-  date: string;
-  reason: string;
-  context?: string;
-  suggestion?: string;
-}
-
-interface Preference {
-  key: string;
-  value: string;
-  date: string;
-  notes?: string;
-}
-
-describe('memory/index', () => {
+describe('memory/wrappers', () => {
   const testCwd = '/test/project';
 
   beforeEach(() => {
@@ -342,5 +317,4 @@ describe('memory/index', () => {
       expect(logError).toHaveBeenCalledWith('appendPreference', errorString);
     });
   });
-
 });

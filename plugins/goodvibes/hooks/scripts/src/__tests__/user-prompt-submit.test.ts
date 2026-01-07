@@ -84,9 +84,12 @@ describe('user-prompt-submit hook', () => {
       expect(mockReadHookInput).toHaveBeenCalled();
 
       // Verify debug was called with input details
-      expect(mockDebug).toHaveBeenCalledWith('UserPromptSubmit received input', {
-        session_id: 'test-session-123',
-      });
+      expect(mockDebug).toHaveBeenCalledWith(
+        'UserPromptSubmit received input',
+        {
+          session_id: 'test-session-123',
+        }
+      );
 
       // Verify createResponse was called with no options
       expect(mockCreateResponse).toHaveBeenCalledWith();
@@ -107,9 +110,12 @@ describe('user-prompt-submit hook', () => {
       await setupMocksAndImport();
 
       // Verify debug was called with correct session_id
-      expect(mockDebug).toHaveBeenCalledWith('UserPromptSubmit received input', {
-        session_id: 'another-session-456',
-      });
+      expect(mockDebug).toHaveBeenCalledWith(
+        'UserPromptSubmit received input',
+        {
+          session_id: 'another-session-456',
+        }
+      );
     });
   });
 
@@ -121,7 +127,10 @@ describe('user-prompt-submit hook', () => {
       await setupMocksAndImport();
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('UserPromptSubmit main', testError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'UserPromptSubmit main',
+        testError
+      );
 
       // Verify createResponse was called (in catch block)
       expect(mockCreateResponse).toHaveBeenCalledWith();
@@ -137,7 +146,10 @@ describe('user-prompt-submit hook', () => {
       await setupMocksAndImport();
 
       // Verify error was logged with the string error
-      expect(mockLogError).toHaveBeenCalledWith('UserPromptSubmit main', stringError);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'UserPromptSubmit main',
+        stringError
+      );
 
       // Verify createResponse was called
       expect(mockCreateResponse).toHaveBeenCalledWith();
@@ -152,7 +164,10 @@ describe('user-prompt-submit hook', () => {
       await setupMocksAndImport();
 
       // Verify error was logged
-      expect(mockLogError).toHaveBeenCalledWith('UserPromptSubmit main', undefined);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'UserPromptSubmit main',
+        undefined
+      );
 
       // Verify createResponse was called
       expect(mockCreateResponse).toHaveBeenCalledWith();

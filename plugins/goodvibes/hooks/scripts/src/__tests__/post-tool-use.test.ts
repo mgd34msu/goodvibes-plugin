@@ -110,12 +110,7 @@ vi.mock('../post-tool-use/mcp-handlers.js', () => ({
 
 // Import mocked modules
 import * as fs from 'fs/promises';
-import {
-  respond,
-  readHookInput,
-  debug,
-  logError,
-} from '../shared/index.js';
+import { respond, readHookInput, debug, logError } from '../shared/index.js';
 import { loadState, saveState } from '../state.js';
 import { getDefaultConfig } from '../types/config.js';
 import { fileExists } from '../shared/file-utils.js';
@@ -219,7 +214,11 @@ describe('post-tool-use hook', () => {
 
       // Verify debug was called showing the merged config was loaded
       // Use path.join to handle platform-specific path separators
-      const expectedPath = path.join('/test/project', '.goodvibes', 'automation.json');
+      const expectedPath = path.join(
+        '/test/project',
+        '.goodvibes',
+        'automation.json'
+      );
       expect(fileExists).toHaveBeenCalledWith(expectedPath);
       expect(fs.readFile).toHaveBeenCalled();
     });
@@ -413,7 +412,7 @@ describe('post-tool-use hook', () => {
       const mockParse = vi.fn((text: string) => {
         const parsed = originalJSONParse(text);
         // Add an explicit undefined property to the parsed object
-        if (parsed && parsed.automation) {
+        if (parsed?.automation) {
           Object.defineProperty(parsed.automation, 'undefinedProp', {
             value: undefined,
             enumerable: true,
@@ -505,7 +504,10 @@ describe('post-tool-use hook', () => {
       vi.resetModules();
       await import('../post-tool-use.js');
 
-      expect(debug).toHaveBeenCalledWith('loadAutomationConfig failed', expect.any(Object));
+      expect(debug).toHaveBeenCalledWith(
+        'loadAutomationConfig failed',
+        expect.any(Object)
+      );
     });
 
     it('should return defaults on file read error', async () => {
@@ -521,7 +523,10 @@ describe('post-tool-use hook', () => {
       vi.resetModules();
       await import('../post-tool-use.js');
 
-      expect(debug).toHaveBeenCalledWith('loadAutomationConfig failed', expect.any(Object));
+      expect(debug).toHaveBeenCalledWith(
+        'loadAutomationConfig failed',
+        expect.any(Object)
+      );
     });
   });
 
@@ -617,7 +622,9 @@ describe('post-tool-use hook', () => {
 
         expect(handleBashTool).toHaveBeenCalled();
         expect(combineMessages).toHaveBeenCalledWith(
-          expect.arrayContaining([expect.stringContaining('Dev server errors detected')])
+          expect.arrayContaining([
+            expect.stringContaining('Dev server errors detected'),
+          ])
         );
         expect(respond).toHaveBeenCalled();
       });
@@ -641,7 +648,9 @@ describe('post-tool-use hook', () => {
         expect(handleBashTool).toHaveBeenCalled();
         // Should only include first 3 errors (MAX_ERRORS_TO_DISPLAY = 3)
         expect(combineMessages).toHaveBeenCalledWith(
-          expect.arrayContaining([expect.stringMatching(/Error 1.*Error 2.*Error 3/)])
+          expect.arrayContaining([
+            expect.stringMatching(/Error 1.*Error 2.*Error 3/),
+          ])
         );
         expect(respond).toHaveBeenCalled();
       });
@@ -897,7 +906,9 @@ describe('post-tool-use hook', () => {
         vi.resetModules();
         await import('../post-tool-use.js');
 
-        expect(debug).toHaveBeenCalledWith("Tool 'UnknownTool' - no special handling");
+        expect(debug).toHaveBeenCalledWith(
+          "Tool 'UnknownTool' - no special handling"
+        );
         expect(saveState).toHaveBeenCalled();
         expect(respond).toHaveBeenCalled();
       });
@@ -926,7 +937,9 @@ describe('post-tool-use hook', () => {
         await import('../post-tool-use.js');
 
         expect(logError).toHaveBeenCalledWith('PostToolUse main', testError);
-        expect(createResponse).toHaveBeenCalledWith('Hook error: Test error message');
+        expect(createResponse).toHaveBeenCalledWith(
+          'Hook error: Test error message'
+        );
         expect(respond).toHaveBeenCalled();
       });
 
@@ -936,7 +949,10 @@ describe('post-tool-use hook', () => {
         vi.resetModules();
         await import('../post-tool-use.js');
 
-        expect(logError).toHaveBeenCalledWith('PostToolUse main', 'string error');
+        expect(logError).toHaveBeenCalledWith(
+          'PostToolUse main',
+          'string error'
+        );
         expect(createResponse).toHaveBeenCalledWith('Hook error: string error');
         expect(respond).toHaveBeenCalled();
       });
@@ -952,7 +968,10 @@ describe('post-tool-use hook', () => {
         vi.resetModules();
         await import('../post-tool-use.js');
 
-        expect(logError).toHaveBeenCalledWith('PostToolUse main', expect.any(Error));
+        expect(logError).toHaveBeenCalledWith(
+          'PostToolUse main',
+          expect.any(Error)
+        );
         expect(respond).toHaveBeenCalled();
       });
 
@@ -967,7 +986,10 @@ describe('post-tool-use hook', () => {
         vi.resetModules();
         await import('../post-tool-use.js');
 
-        expect(logError).toHaveBeenCalledWith('PostToolUse main', expect.any(Error));
+        expect(logError).toHaveBeenCalledWith(
+          'PostToolUse main',
+          expect.any(Error)
+        );
         expect(respond).toHaveBeenCalled();
       });
     });
@@ -989,7 +1011,10 @@ describe('post-tool-use hook', () => {
         vi.resetModules();
         await import('../post-tool-use.js');
 
-        expect(combineMessages).toHaveBeenCalledWith(['Tests failed', 'Build check: errors found']);
+        expect(combineMessages).toHaveBeenCalledWith([
+          'Tests failed',
+          'Build check: errors found',
+        ]);
         expect(respond).toHaveBeenCalled();
       });
 

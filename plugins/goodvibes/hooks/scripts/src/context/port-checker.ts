@@ -19,7 +19,9 @@ export interface PortInfo {
  * Common development server ports to check.
  * Includes ports for Next.js, Vite, Express, and other popular frameworks.
  */
-export const COMMON_DEV_PORTS = [3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888];
+export const COMMON_DEV_PORTS = [
+  3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888,
+];
 
 /**
  * Timeout for netstat/lsof commands in milliseconds.
@@ -45,27 +47,38 @@ const TASKLIST_TIMEOUT = 5000;
  * @param ports - Array of port numbers to look for
  * @returns Map of port numbers to process names
  */
-function parseWindowsNetstat(output: string, ports: number[]): Map<number, string> {
+function parseWindowsNetstat(
+  output: string,
+  ports: number[]
+): Map<number, string> {
   const portMap = new Map<number, string>();
   const lines = output.split('\n');
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('Proto')) continue;
+    if (!trimmed || trimmed.startsWith('Proto')) {
+      continue;
+    }
 
     // Format: TCP    0.0.0.0:3000    0.0.0.0:0    LISTENING    1234
     // Or: TCP    [::]:3000    [::]:0    LISTENING    1234
     const parts = trimmed.split(/\s+/);
-    if (parts.length < 4) continue;
+    if (parts.length < 4) {
+      continue;
+    }
 
     const localAddr = parts[1];
     const state = parts[3];
 
-    if (state !== 'LISTENING') continue;
+    if (state !== 'LISTENING') {
+      continue;
+    }
 
     // Extract port from address (handles both IPv4 and IPv6)
     const portMatch = localAddr.match(/:(\d+)$/);
-    if (!portMatch) continue;
+    if (!portMatch) {
+      continue;
+    }
 
     const port = parseInt(portMatch[1], 10);
     if (ports.includes(port)) {
@@ -75,17 +88,22 @@ function parseWindowsNetstat(output: string, ports: number[]): Map<number, strin
 
       if (pid) {
         try {
-          const tasklistOutput = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, {
-            encoding: 'utf-8',
-            timeout: TASKLIST_TIMEOUT,
-            windowsHide: true,
-          });
+          const tasklistOutput = execSync(
+            `tasklist /FI "PID eq ${pid}" /FO CSV /NH`,
+            {
+              encoding: 'utf-8',
+              timeout: TASKLIST_TIMEOUT,
+              windowsHide: true,
+            }
+          );
           const match = tasklistOutput.match(/"([^"]+)"/);
           if (match) {
             processName = match[1].replace('.exe', '');
           }
         } catch (error: unknown) {
-          debug('parseWindowsNetstat tasklist failed', { error: String(error) });
+          debug('parseWindowsNetstat tasklist failed', {
+            error: String(error),
+          });
         }
       }
 
@@ -109,18 +127,24 @@ function parseUnixLsof(output: string, ports: number[]): Map<number, string> {
   const lines = output.split('\n');
 
   for (const line of lines) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
 
     // lsof -i output format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
     const parts = line.split(/\s+/);
-    if (parts.length < 9) continue;
+    if (parts.length < 9) {
+      continue;
+    }
 
     const command = parts[0];
     const name = parts[parts.length - 1];
 
     // Extract port from NAME column (e.g., *:3000 or localhost:3000)
     const portMatch = name.match(/:(\d+)/);
-    if (!portMatch) continue;
+    if (!portMatch) {
+      continue;
+    }
 
     const port = parseInt(portMatch[1], 10);
     if (ports.includes(port) && !portMap.has(port)) {
@@ -139,13 +163,18 @@ function parseUnixLsof(output: string, ports: number[]): Map<number, string> {
  * @param ports - Array of port numbers to look for
  * @returns Map of port numbers to process names (may be 'unknown' if -p not available)
  */
-function parseUnixNetstat(output: string, ports: number[]): Map<number, string> {
+function parseUnixNetstat(
+  output: string,
+  ports: number[]
+): Map<number, string> {
   const portMap = new Map<number, string>();
   const lines = output.split('\n');
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || !trimmed.includes('LISTEN')) continue;
+    if (!trimmed?.includes('LISTEN')) {
+      continue;
+    }
 
     // Extract port from local address
     const parts = trimmed.split(/\s+/);
@@ -187,7 +216,7 @@ function checkPortsWindows(ports: number[]): Map<number, string> {
     });
     return parseWindowsNetstat(output, ports);
   } catch (error: unknown) {
-    debug("checkPortsWindows failed", { error: String(error) });
+    debug('checkPortsWindows failed', { error: String(error) });
     return new Map();
   }
 }
@@ -202,7 +231,7 @@ function checkPortsWindows(ports: number[]): Map<number, string> {
 function checkPortsUnix(ports: number[]): Map<number, string> {
   // Try lsof first (more reliable for process names)
   try {
-    const portsArg = ports.map(p => `-i:${p}`).join(' ');
+    const portsArg = ports.map((p) => `-i:${p}`).join(' ');
     const output = execSync(`lsof ${portsArg} 2>/dev/null`, {
       encoding: 'utf-8',
       timeout: COMMAND_TIMEOUT,
@@ -218,7 +247,7 @@ function checkPortsUnix(ports: number[]): Map<number, string> {
       });
       return parseUnixNetstat(output, ports);
     } catch (error: unknown) {
-      debug("checkPortsUnix netstat failed", { error: String(error) });
+      debug('checkPortsUnix netstat failed', { error: String(error) });
       return new Map();
     }
   }
@@ -246,7 +275,7 @@ export async function checkPorts(_cwd: string): Promise<PortInfo[]> {
     activePortsMap = checkPortsUnix(COMMON_DEV_PORTS);
   }
 
-  return COMMON_DEV_PORTS.map(port => ({
+  return COMMON_DEV_PORTS.map((port) => ({
     port,
     inUse: activePortsMap.has(port),
     process: activePortsMap.get(port),
@@ -265,14 +294,14 @@ export async function checkPorts(_cwd: string): Promise<PortInfo[]> {
  * // Returns: "Active ports: 3000 (node), 5173 (vite)"
  */
 export function formatPortStatus(ports: PortInfo[]): string {
-  const activePorts = ports.filter(p => p.inUse);
+  const activePorts = ports.filter((p) => p.inUse);
 
   if (activePorts.length === 0) {
     return 'No dev servers detected';
   }
 
   const portList = activePorts
-    .map(p => (p.process ? `${p.port} (${p.process})` : `${p.port}`))
+    .map((p) => (p.process ? `${p.port} (${p.process})` : `${p.port}`))
     .join(', ');
 
   return `Active ports: ${portList}`;

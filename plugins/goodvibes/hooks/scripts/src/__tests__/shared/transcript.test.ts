@@ -32,10 +32,25 @@ describe('transcript utilities', () => {
   describe('parseTranscript', () => {
     it('should parse transcript with tools used and files modified', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/index.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/app.ts' } }),
-        JSON.stringify({ role: 'assistant', content: 'I have completed the changes' }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/index.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/app.ts' },
+        }),
+        JSON.stringify({
+          role: 'assistant',
+          content: 'I have completed the changes',
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -81,9 +96,17 @@ describe('transcript utilities', () => {
 
     it('should handle invalid JSON lines gracefully', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
         'invalid json line',
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/test.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/test.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -104,9 +127,21 @@ describe('transcript utilities', () => {
 
     it('should deduplicate tools used', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'pwd' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'cat' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'pwd' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'cat' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -119,9 +154,21 @@ describe('transcript utilities', () => {
 
     it('should deduplicate files modified', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/index.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/index.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/index.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/index.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/index.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/index.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -134,10 +181,26 @@ describe('transcript utilities', () => {
 
     it('should only track Write and Edit tools for filesModified', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Read', input: { file_path: '/src/read.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/write.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/edit.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Read',
+          input: { file_path: '/src/read.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/write.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/edit.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -152,8 +215,16 @@ describe('transcript utilities', () => {
     it('should ignore Write/Edit tools without file_path', async () => {
       const transcriptContent = [
         JSON.stringify({ type: 'tool_use', name: 'Write', input: {} }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { old_string: 'test' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/valid.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { old_string: 'test' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/valid.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -224,7 +295,11 @@ describe('transcript utilities', () => {
     it('should handle events without type field', async () => {
       const transcriptContent = [
         JSON.stringify({ name: 'Bash' }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/test.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/test.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -239,7 +314,11 @@ describe('transcript utilities', () => {
     it('should handle events without role field', async () => {
       const transcriptContent = [
         JSON.stringify({ content: 'Some content' }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -254,7 +333,11 @@ describe('transcript utilities', () => {
     it('should handle assistant messages without content field', async () => {
       const transcriptContent = [
         JSON.stringify({ role: 'assistant' }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -267,9 +350,17 @@ describe('transcript utilities', () => {
 
     it('should handle mixed valid and invalid lines', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
         'not json',
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/test.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/test.ts' },
+        }),
         '{broken json',
         JSON.stringify({ role: 'assistant', content: 'Final summary' }),
       ].join('\n');
@@ -287,8 +378,15 @@ describe('transcript utilities', () => {
 
     it('should handle tool_use events without name field', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', input: { file_path: '/src/test.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          input: { file_path: '/src/test.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -389,9 +487,21 @@ describe('transcript utilities', () => {
 
     it('should handle multiple file modifications in single Edit event', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/a.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/b.ts' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/c.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/a.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/b.ts' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/c.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -399,13 +509,25 @@ describe('transcript utilities', () => {
       const { parseTranscript } = await import('../../shared/transcript.js');
       const result = await parseTranscript('/path/to/transcript.jsonl');
 
-      expect(result.filesModified).toEqual(['/src/a.ts', '/src/b.ts', '/src/c.ts']);
+      expect(result.filesModified).toEqual([
+        '/src/a.ts',
+        '/src/b.ts',
+        '/src/c.ts',
+      ]);
     });
 
     it('should handle Write tool with file_path set to empty string', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '' } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/valid.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '' },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/valid.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -419,7 +541,11 @@ describe('transcript utilities', () => {
     it('should handle transcript with user messages', async () => {
       const transcriptContent = [
         JSON.stringify({ role: 'user', content: 'Please do something' }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
         JSON.stringify({ role: 'assistant', content: 'Done' }),
       ].join('\n');
 
@@ -479,9 +605,7 @@ describe('transcript utilities', () => {
     });
 
     it('should handle JSON parse error with non-Error object', async () => {
-      const transcriptContent = [
-        'not valid json at all',
-      ].join('\n');
+      const transcriptContent = ['not valid json at all'].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
 
@@ -498,8 +622,16 @@ describe('transcript utilities', () => {
 
     it('should handle Write tool with null file_path', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: null } }),
-        JSON.stringify({ type: 'tool_use', name: 'Write', input: { file_path: '/src/valid.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: null },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/valid.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -512,8 +644,16 @@ describe('transcript utilities', () => {
 
     it('should handle Edit tool with undefined file_path', async () => {
       const transcriptContent = [
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: undefined } }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/src/valid.ts' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: undefined },
+        }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: { file_path: '/src/valid.ts' },
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -527,9 +667,17 @@ describe('transcript utilities', () => {
     it('should handle multiple assistant messages and keep only the last one', async () => {
       const transcriptContent = [
         JSON.stringify({ role: 'assistant', content: 'First' }),
-        JSON.stringify({ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
         JSON.stringify({ role: 'assistant', content: 'Second' }),
-        JSON.stringify({ type: 'tool_use', name: 'Read', input: { file_path: '/test' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Read',
+          input: { file_path: '/test' },
+        }),
         JSON.stringify({ role: 'assistant', content: 'Third and final' }),
       ].join('\n');
 
@@ -544,11 +692,26 @@ describe('transcript utilities', () => {
     it('should handle real-world transcript format', async () => {
       const transcriptContent = [
         JSON.stringify({ role: 'user', content: 'Please update the config' }),
-        JSON.stringify({ type: 'tool_use', name: 'Read', input: { file_path: '/config.json' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Read',
+          input: { file_path: '/config.json' },
+        }),
         JSON.stringify({ type: 'tool_result', content: '{"key": "value"}' }),
-        JSON.stringify({ type: 'tool_use', name: 'Edit', input: { file_path: '/config.json', old_string: '"key": "value"', new_string: '"key": "newvalue"' } }),
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Edit',
+          input: {
+            file_path: '/config.json',
+            old_string: '"key": "value"',
+            new_string: '"key": "newvalue"',
+          },
+        }),
         JSON.stringify({ type: 'tool_result', content: 'Success' }),
-        JSON.stringify({ role: 'assistant', content: 'I have updated the config file as requested.' }),
+        JSON.stringify({
+          role: 'assistant',
+          content: 'I have updated the config file as requested.',
+        }),
       ].join('\n');
 
       mockReadFile.mockResolvedValue(transcriptContent);
@@ -559,7 +722,9 @@ describe('transcript utilities', () => {
       expect(result.toolsUsed).toContain('Read');
       expect(result.toolsUsed).toContain('Edit');
       expect(result.filesModified).toEqual(['/config.json']);
-      expect(result.summary).toBe('I have updated the config file as requested.');
+      expect(result.summary).toBe(
+        'I have updated the config file as requested.'
+      );
     });
   });
 });

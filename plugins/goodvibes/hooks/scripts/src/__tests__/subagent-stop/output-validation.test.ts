@@ -17,7 +17,8 @@ import type { BuildResult } from '../../automation/build-runner.js';
 // Mock dependencies
 const mockParseTranscript = vi.fn<(path: string) => Promise<TranscriptData>>();
 const mockRunTypeCheck = vi.fn<(cwd: string) => BuildResult>();
-const mockTrackFileModification = vi.fn<(state: HooksState, filePath: string) => HooksState>();
+const mockTrackFileModification =
+  vi.fn<(state: HooksState, filePath: string) => HooksState>();
 
 // Mock shared/index.js
 vi.mock('../../shared/index.js', () => ({
@@ -31,7 +32,8 @@ vi.mock('../../automation/build-runner.js', () => ({
 
 // Mock post-tool-use/file-tracker.js
 vi.mock('../../post-tool-use/file-tracker.js', () => ({
-  trackFileModification: (state: HooksState, filePath: string) => mockTrackFileModification(state, filePath),
+  trackFileModification: (state: HooksState, filePath: string) =>
+    mockTrackFileModification(state, filePath),
 }));
 
 // Helper to create minimal test state
@@ -86,7 +88,10 @@ describe('subagent-stop/output-validation', () => {
       files: {
         ...state.files,
         modifiedThisSession: [...state.files.modifiedThisSession, filePath],
-        modifiedSinceCheckpoint: [...state.files.modifiedSinceCheckpoint, filePath],
+        modifiedSinceCheckpoint: [
+          ...state.files.modifiedSinceCheckpoint,
+          filePath,
+        ],
       },
     }));
   });
@@ -103,12 +108,20 @@ describe('subagent-stop/output-validation', () => {
         summary: 'Updated documentation',
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
-      expect(result.filesModified).toEqual(['/project/README.md', '/project/config.json']);
+      expect(result.filesModified).toEqual([
+        '/project/README.md',
+        '/project/config.json',
+      ]);
       expect(mockRunTypeCheck).not.toHaveBeenCalled();
     });
 
@@ -125,8 +138,13 @@ describe('subagent-stop/output-validation', () => {
         errors: [],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -146,8 +164,13 @@ describe('subagent-stop/output-validation', () => {
         errors: [],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(true);
       expect(mockRunTypeCheck).toHaveBeenCalledWith('/project');
@@ -164,13 +187,26 @@ describe('subagent-stop/output-validation', () => {
         passed: false,
         summary: 'Type errors found',
         errors: [
-          { file: '/project/src/broken.ts', line: 10, message: "Cannot find name 'foo'" },
-          { file: '/project/src/broken.ts', line: 15, message: "Property 'bar' does not exist" },
+          {
+            file: '/project/src/broken.ts',
+            line: 10,
+            message: "Cannot find name 'foo'",
+          },
+          {
+            file: '/project/src/broken.ts',
+            line: 15,
+            message: "Property 'bar' does not exist",
+          },
         ],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
@@ -181,7 +217,11 @@ describe('subagent-stop/output-validation', () => {
       const state = createTestState();
       mockParseTranscript.mockResolvedValue({
         toolsUsed: ['Write', 'Edit'],
-        filesModified: ['/project/src/a.ts', '/project/src/b.ts', '/project/config.json'],
+        filesModified: [
+          '/project/src/a.ts',
+          '/project/src/b.ts',
+          '/project/config.json',
+        ],
         summary: 'Modified multiple files',
       });
       mockRunTypeCheck.mockReturnValue({
@@ -190,14 +230,28 @@ describe('subagent-stop/output-validation', () => {
         errors: [],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       // trackFileModification should be called for each file
       expect(mockTrackFileModification).toHaveBeenCalledTimes(3);
-      expect(mockTrackFileModification).toHaveBeenCalledWith(expect.any(Object), '/project/src/a.ts');
-      expect(mockTrackFileModification).toHaveBeenCalledWith(expect.any(Object), '/project/src/b.ts');
-      expect(mockTrackFileModification).toHaveBeenCalledWith(expect.any(Object), '/project/config.json');
+      expect(mockTrackFileModification).toHaveBeenCalledWith(
+        expect.any(Object),
+        '/project/src/a.ts'
+      );
+      expect(mockTrackFileModification).toHaveBeenCalledWith(
+        expect.any(Object),
+        '/project/src/b.ts'
+      );
+      expect(mockTrackFileModification).toHaveBeenCalledWith(
+        expect.any(Object),
+        '/project/config.json'
+      );
 
       // State should be updated
       expect(result.state).toBeDefined();
@@ -219,16 +273,27 @@ describe('subagent-stop/output-validation', () => {
           ...currentState,
           files: {
             ...currentState.files,
-            modifiedThisSession: [...currentState.files.modifiedThisSession, `file-${callCount}`],
+            modifiedThisSession: [
+              ...currentState.files.modifiedThisSession,
+              `file-${callCount}`,
+            ],
           },
         };
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       // State should contain both files from chained calls
-      expect(result.state.files.modifiedThisSession).toEqual(['file-1', 'file-2']);
+      expect(result.state.files.modifiedThisSession).toEqual([
+        'file-1',
+        'file-2',
+      ]);
     });
 
     it('should handle empty filesModified list', async () => {
@@ -239,8 +304,13 @@ describe('subagent-stop/output-validation', () => {
         summary: 'Ran some commands',
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -267,8 +337,13 @@ describe('subagent-stop/output-validation', () => {
         errors: [],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(true);
       expect(mockRunTypeCheck).toHaveBeenCalledTimes(1);
@@ -293,8 +368,13 @@ describe('subagent-stop/output-validation', () => {
         errors: [],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.filesModified).toEqual(expectedFiles);
     });
@@ -308,7 +388,8 @@ describe('subagent-stop/output-validation', () => {
         summary: '',
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
       await validateAgentOutput('/project', transcriptPath, state);
 
       expect(mockParseTranscript).toHaveBeenCalledWith(transcriptPath);
@@ -328,7 +409,8 @@ describe('subagent-stop/output-validation', () => {
         errors: [],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
       await validateAgentOutput(projectDir, '/path/to/transcript.jsonl', state);
 
       expect(mockRunTypeCheck).toHaveBeenCalledWith(projectDir);
@@ -346,17 +428,30 @@ describe('subagent-stop/output-validation', () => {
       });
 
       // Mock returns state with file added but preserves other fields
-      mockTrackFileModification.mockImplementation((currentState, filePath) => ({
-        ...currentState,
-        files: {
-          ...currentState.files,
-          modifiedThisSession: [...currentState.files.modifiedThisSession, filePath],
-          modifiedSinceCheckpoint: [...currentState.files.modifiedSinceCheckpoint, filePath],
-        },
-      }));
+      mockTrackFileModification.mockImplementation(
+        (currentState, filePath) => ({
+          ...currentState,
+          files: {
+            ...currentState.files,
+            modifiedThisSession: [
+              ...currentState.files.modifiedThisSession,
+              filePath,
+            ],
+            modifiedSinceCheckpoint: [
+              ...currentState.files.modifiedSinceCheckpoint,
+              filePath,
+            ],
+          },
+        })
+      );
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.state.session.id).toBe('preserve-me');
       expect(result.state.build.status).toBe('passing');
@@ -373,12 +468,21 @@ describe('subagent-stop/output-validation', () => {
         passed: false,
         summary: 'Type errors found',
         errors: [
-          { file: '/project/src/single-error.ts', line: 5, message: 'Type error message' },
+          {
+            file: '/project/src/single-error.ts',
+            line: 5,
+            message: 'Type error message',
+          },
         ],
       });
 
-      const { validateAgentOutput } = await import('../../subagent-stop/output-validation.js');
-      const result = await validateAgentOutput('/project', '/path/to/transcript.jsonl', state);
+      const { validateAgentOutput } =
+        await import('../../subagent-stop/output-validation.js');
+      const result = await validateAgentOutput(
+        '/project',
+        '/path/to/transcript.jsonl',
+        state
+      );
 
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toBe('Type errors after agent work: 1 errors');

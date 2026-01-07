@@ -17,7 +17,11 @@ vi.mock('../../memory/parser.js', () => ({
 }));
 
 // Import the mocked modules and module under test
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from '../../memory/parser.js';
+import {
+  parseMemoryFile,
+  ensureMemoryFile,
+  appendMemoryEntry,
+} from '../../memory/parser.js';
 import { readPatterns, writePattern } from '../../memory/patterns.js';
 
 // Helper to construct platform-specific file paths
@@ -116,10 +120,22 @@ describe('memory/patterns', () => {
       const parserConfig = vi.mocked(parseMemoryFile).mock.calls[0][1];
 
       // Test validation function
-      expect(parserConfig.validate?.({ name: 'Test', date: '2024-01-01', description: 'Desc' })).toBe(true);
-      expect(parserConfig.validate?.({ name: 'Test', date: '2024-01-01' })).toBe(false);
-      expect(parserConfig.validate?.({ name: 'Test', description: 'Desc' })).toBe(false);
-      expect(parserConfig.validate?.({ date: '2024-01-01', description: 'Desc' })).toBe(false);
+      expect(
+        parserConfig.validate?.({
+          name: 'Test',
+          date: '2024-01-01',
+          description: 'Desc',
+        })
+      ).toBe(true);
+      expect(
+        parserConfig.validate?.({ name: 'Test', date: '2024-01-01' })
+      ).toBe(false);
+      expect(
+        parserConfig.validate?.({ name: 'Test', description: 'Desc' })
+      ).toBe(false);
+      expect(
+        parserConfig.validate?.({ date: '2024-01-01', description: 'Desc' })
+      ).toBe(false);
       expect(parserConfig.validate?.({})).toBe(false);
     });
 
@@ -217,7 +233,9 @@ describe('memory/patterns', () => {
       await writePattern('/test/project', pattern);
 
       const header = vi.mocked(ensureMemoryFile).mock.calls[0][1];
-      expect(header).toContain('This file documents code patterns specific to this project');
+      expect(header).toContain(
+        'This file documents code patterns specific to this project'
+      );
       expect(header).toContain('maintain consistency across the codebase');
     });
 
@@ -286,7 +304,9 @@ describe('memory/patterns', () => {
 
       const formattedEntry = vi.mocked(appendMemoryEntry).mock.calls[0][1];
       expect(formattedEntry).toContain('**Description:**');
-      expect(formattedEntry).toContain('This is a detailed description of the pattern.');
+      expect(formattedEntry).toContain(
+        'This is a detailed description of the pattern.'
+      );
     });
 
     it('should format pattern with example when provided', async () => {
@@ -304,7 +324,9 @@ describe('memory/patterns', () => {
 
       const formattedEntry = vi.mocked(appendMemoryEntry).mock.calls[0][1];
       expect(formattedEntry).toContain('**Example:**');
-      expect(formattedEntry).toContain('class UserRepository { async findById(id) { ... } }');
+      expect(formattedEntry).toContain(
+        'class UserRepository { async findById(id) { ... } }'
+      );
     });
 
     it('should not include example section when example is not provided', async () => {
@@ -453,8 +475,12 @@ describe('memory/patterns', () => {
       await writePattern('/test/project', pattern);
 
       const formattedEntry = vi.mocked(appendMemoryEntry).mock.calls[0][1];
-      expect(formattedEntry).toContain('## Pattern with *special* & <characters>');
-      expect(formattedEntry).toContain('Description with "quotes" and `backticks`');
+      expect(formattedEntry).toContain(
+        '## Pattern with *special* & <characters>'
+      );
+      expect(formattedEntry).toContain(
+        'Description with "quotes" and `backticks`'
+      );
       expect(formattedEntry).toContain('`const x = { key: "value" };`');
     });
 

@@ -62,11 +62,12 @@ describe('context-injection', () => {
     describe('empty project handling', () => {
       it('should return empty project context when project is empty', async () => {
         mockIsEmptyProject.mockResolvedValue(true);
-        mockFormatEmptyProjectContext.mockReturnValue('[Empty Project Context]');
-
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
+        mockFormatEmptyProjectContext.mockReturnValue(
+          '[Empty Project Context]'
         );
+
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/cwd');
 
         expect(mockIsEmptyProject).toHaveBeenCalledWith('/test/cwd');
@@ -79,9 +80,8 @@ describe('context-injection', () => {
         mockIsEmptyProject.mockResolvedValue(true);
         mockFormatEmptyProjectContext.mockReturnValue('Empty');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         await gatherAndFormatContext('/test/cwd');
 
         expect(mockDetectStack).not.toHaveBeenCalled();
@@ -146,9 +146,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('Health: All good');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         // Verify all context gatherers were called
@@ -157,7 +156,9 @@ describe('context-injection', () => {
         expect(mockCheckEnvStatus).toHaveBeenCalledWith('/test/project');
         expect(mockScanTodos).toHaveBeenCalledWith('/test/project');
         expect(mockCheckProjectHealth).toHaveBeenCalledWith('/test/project');
-        expect(mockAnalyzeFolderStructure).toHaveBeenCalledWith('/test/project');
+        expect(mockAnalyzeFolderStructure).toHaveBeenCalledWith(
+          '/test/project'
+        );
         expect(mockLoadProjectMemory).toHaveBeenCalledWith('/test/project');
 
         // Verify result
@@ -169,7 +170,9 @@ describe('context-injection', () => {
         mockDetectStack.mockResolvedValue({});
         mockGetGitContext.mockResolvedValue({});
         mockCheckEnvStatus.mockResolvedValue({});
-        mockScanTodos.mockResolvedValue([{ type: 'TODO', file: 'test.ts', line: 1, text: 'Fix this' }]);
+        mockScanTodos.mockResolvedValue([
+          { type: 'TODO', file: 'test.ts', line: 1, text: 'Fix this' },
+        ]);
         mockCheckProjectHealth.mockResolvedValue({ checks: [] });
         mockAnalyzeFolderStructure.mockResolvedValue({});
         mockLoadProjectMemory.mockResolvedValue({
@@ -184,12 +187,13 @@ describe('context-injection', () => {
         mockFormatGitContext.mockReturnValue('Git: feature-branch');
         mockFormatEnvStatus.mockReturnValue('Env: configured');
         mockFormatMemoryContext.mockReturnValue('Previous decisions...');
-        mockFormatTodos.mockReturnValue('TODOs in code:\n- TODO: test.ts:1 - Fix this');
+        mockFormatTodos.mockReturnValue(
+          'TODOs in code:\n- TODO: test.ts:1 - Fix this'
+        );
         mockFormatHealthStatus.mockReturnValue('Health: warnings');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).toContain('Stack: React');
@@ -224,9 +228,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('Health: ok');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).not.toContain('Stack:');
@@ -256,9 +259,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).toContain('Stack: Vue');
@@ -288,9 +290,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).toContain('Stack: Angular');
@@ -325,9 +326,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).toContain('Git: main');
@@ -358,9 +358,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).toContain('Stack: Astro');
@@ -373,7 +372,12 @@ describe('context-injection', () => {
         mockGetGitContext.mockResolvedValue({});
         mockCheckEnvStatus.mockResolvedValue({});
         mockScanTodos.mockResolvedValue([
-          { type: 'FIXME', file: 'app.ts', line: 42, text: 'FIXME: Critical bug' },
+          {
+            type: 'FIXME',
+            file: 'app.ts',
+            line: 42,
+            text: 'FIXME: Critical bug',
+          },
         ]);
         mockCheckProjectHealth.mockResolvedValue({ checks: [] });
         mockAnalyzeFolderStructure.mockResolvedValue({});
@@ -393,9 +397,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('TODOs:\n- FIXME: app.ts:42');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).toContain('TODOs:');
@@ -425,9 +428,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('Health: All good');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).not.toContain('TODOs');
@@ -456,9 +458,8 @@ describe('context-injection', () => {
         // Return empty string for health status (branch: if (healthStr) parts.push(healthStr))
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.context).not.toContain('Health:');
@@ -486,16 +487,17 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         // Check for separator lines (50 characters of '━')
         const separator = '\u2501'.repeat(50);
         expect(result.context).toContain(separator);
         // Should have header and footer separators
-        const separatorCount = (result.context.match(new RegExp(separator, 'g')) || []).length;
+        const separatorCount = (
+          result.context.match(new RegExp(separator, 'g')) || []
+        ).length;
         expect(separatorCount).toBe(2);
       });
 
@@ -522,10 +524,21 @@ describe('context-injection', () => {
           warnings: ['Missing env vars: API_KEY'],
         });
         mockScanTodos.mockResolvedValue([
-          { type: 'TODO', file: 'src/index.ts', line: 10, text: 'Implement feature' },
+          {
+            type: 'TODO',
+            file: 'src/index.ts',
+            line: 10,
+            text: 'Implement feature',
+          },
         ]);
         mockCheckProjectHealth.mockResolvedValue({
-          checks: [{ check: 'dependencies', status: 'warning', message: 'Missing deps' }],
+          checks: [
+            {
+              check: 'dependencies',
+              status: 'warning',
+              message: 'Missing deps',
+            },
+          ],
         });
         mockAnalyzeFolderStructure.mockResolvedValue({
           srcDir: 'src',
@@ -534,23 +547,41 @@ describe('context-injection', () => {
           hasApi: true,
         });
         mockLoadProjectMemory.mockResolvedValue({
-          decisions: [{ title: 'Use TypeScript', date: '2024-01-01', rationale: 'Type safety', alternatives: [] }],
+          decisions: [
+            {
+              title: 'Use TypeScript',
+              date: '2024-01-01',
+              rationale: 'Type safety',
+              alternatives: [],
+            },
+          ],
           patterns: [],
           failures: [],
           preferences: [],
         });
 
-        mockFormatStackInfo.mockReturnValue('Stack: Next.js, Tailwind CSS\nTypeScript: not strict\nPackage Manager: npm');
-        mockFormatFolderAnalysis.mockReturnValue('Structure: feature-based, App Router, has API layer');
-        mockFormatGitContext.mockReturnValue('Git: feature/test branch, 3 uncommitted files, 2 ahead\nLast: "Add tests"');
-        mockFormatEnvStatus.mockReturnValue('Environment: .env present\nWarning: Missing env vars: API_KEY');
-        mockFormatMemoryContext.mockReturnValue('Previous Decisions:\n- Use TypeScript (Type safety)');
-        mockFormatTodos.mockReturnValue('TODOs in code:\n- TODO: src/index.ts:10 - Implement feature');
+        mockFormatStackInfo.mockReturnValue(
+          'Stack: Next.js, Tailwind CSS\nTypeScript: not strict\nPackage Manager: npm'
+        );
+        mockFormatFolderAnalysis.mockReturnValue(
+          'Structure: feature-based, App Router, has API layer'
+        );
+        mockFormatGitContext.mockReturnValue(
+          'Git: feature/test branch, 3 uncommitted files, 2 ahead\nLast: "Add tests"'
+        );
+        mockFormatEnvStatus.mockReturnValue(
+          'Environment: .env present\nWarning: Missing env vars: API_KEY'
+        );
+        mockFormatMemoryContext.mockReturnValue(
+          'Previous Decisions:\n- Use TypeScript (Type safety)'
+        );
+        mockFormatTodos.mockReturnValue(
+          'TODOs in code:\n- TODO: src/index.ts:10 - Implement feature'
+        );
         mockFormatHealthStatus.mockReturnValue('Health:\n[!] Missing deps');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/project');
 
         expect(result.isEmpty).toBe(false);
@@ -589,9 +620,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         const result = await gatherAndFormatContext('/test/empty-formatters');
 
         expect(result.isEmpty).toBe(false);
@@ -625,9 +655,8 @@ describe('context-injection', () => {
         mockFormatTodos.mockReturnValue('');
         mockFormatHealthStatus.mockReturnValue('');
 
-        const { gatherAndFormatContext } = await import(
-          '../../session-start/context-injection.js'
-        );
+        const { gatherAndFormatContext } =
+          await import('../../session-start/context-injection.js');
         await gatherAndFormatContext(testCwd);
 
         expect(mockIsEmptyProject).toHaveBeenCalledWith(testCwd);

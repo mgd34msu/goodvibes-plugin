@@ -26,7 +26,10 @@ const SESSION_ID_DISPLAY_LENGTH = 8;
  * @param context - The gathered context result
  * @returns A formatted system message string
  */
-export function buildSystemMessage(sessionId: string, context: ContextGatheringResult): string {
+export function buildSystemMessage(
+  sessionId: string,
+  context: ContextGatheringResult
+): string {
   const parts: string[] = [];
 
   // Base message

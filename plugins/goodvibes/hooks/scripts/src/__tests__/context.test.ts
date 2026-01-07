@@ -20,11 +20,31 @@ vi.mock('fs/promises', async () => {
 vi.mock('child_process');
 
 // Import modules under test
-import { detectStack, formatStackInfo, clearStackCache, StackInfo } from '../context/stack-detector';
-import { getGitContext, formatGitContext, GitContext } from '../context/git-context';
-import { checkProjectHealth, formatHealthStatus, HealthStatus } from '../context/health-checker';
-import { checkEnvStatus as checkEnvironment, formatEnvStatus, EnvStatus } from '../context/environment';
-import { isEmptyProject, formatEmptyProjectContext } from '../context/empty-project';
+import {
+  detectStack,
+  formatStackInfo,
+  clearStackCache,
+  StackInfo,
+} from '../context/stack-detector';
+import {
+  getGitContext,
+  formatGitContext,
+  GitContext,
+} from '../context/git-context';
+import {
+  checkProjectHealth,
+  formatHealthStatus,
+  HealthStatus,
+} from '../context/health-checker';
+import {
+  checkEnvStatus as checkEnvironment,
+  formatEnvStatus,
+  EnvStatus,
+} from '../context/environment';
+import {
+  isEmptyProject,
+  formatEmptyProjectContext,
+} from '../context/empty-project';
 import * as fsPromises from 'fs/promises';
 
 // Type the mocked modules
@@ -52,7 +72,9 @@ describe('stack-detector', () => {
     it('should detect Next.js framework from next.config.js', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('next.config.js')) return undefined;
+        if (pathStr.endsWith('next.config.js')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -64,7 +86,9 @@ describe('stack-detector', () => {
     it('should detect Next.js framework from next.config.ts', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('next.config.ts')) return undefined;
+        if (pathStr.endsWith('next.config.ts')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -76,12 +100,16 @@ describe('stack-detector', () => {
     it('should detect TypeScript from tsconfig.json', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('tsconfig.json')) return undefined;
+        if (pathStr.endsWith('tsconfig.json')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
-      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: { strict: false }
-      }));
+      mockedFsPromises.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: { strict: false },
+        })
+      );
 
       const result = await detectStack('/test/project');
 
@@ -93,12 +121,16 @@ describe('stack-detector', () => {
     it('should detect TypeScript strict mode', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('tsconfig.json')) return undefined;
+        if (pathStr.endsWith('tsconfig.json')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
-      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: { strict: true }
-      }));
+      mockedFsPromises.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: { strict: true },
+        })
+      );
 
       const result = await detectStack('/test/project-ts-strict');
 
@@ -109,7 +141,9 @@ describe('stack-detector', () => {
     it('should detect pnpm from pnpm-lock.yaml', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('pnpm-lock.yaml')) return undefined;
+        if (pathStr.endsWith('pnpm-lock.yaml')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -121,7 +155,9 @@ describe('stack-detector', () => {
     it('should detect yarn from yarn.lock', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('yarn.lock')) return undefined;
+        if (pathStr.endsWith('yarn.lock')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -133,7 +169,9 @@ describe('stack-detector', () => {
     it('should detect npm from package-lock.json', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('package-lock.json')) return undefined;
+        if (pathStr.endsWith('package-lock.json')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -145,7 +183,9 @@ describe('stack-detector', () => {
     it('should detect bun from bun.lockb', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('bun.lockb')) return undefined;
+        if (pathStr.endsWith('bun.lockb')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -157,14 +197,20 @@ describe('stack-detector', () => {
     it('should detect multiple frameworks', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('next.config.js') ||
-            pathStr.endsWith('tailwind.config.js') ||
-            pathStr.endsWith('tsconfig.json')) return undefined;
+        if (
+          pathStr.endsWith('next.config.js') ||
+          pathStr.endsWith('tailwind.config.js') ||
+          pathStr.endsWith('tsconfig.json')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
-      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: { strict: true }
-      }));
+      mockedFsPromises.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: { strict: true },
+        })
+      );
 
       const result = await detectStack('/test/project-multi-framework');
 
@@ -187,7 +233,9 @@ describe('stack-detector', () => {
     it('should handle malformed tsconfig.json', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('tsconfig.json')) return undefined;
+        if (pathStr.endsWith('tsconfig.json')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
       mockedFsPromises.readFile.mockResolvedValue('{ invalid json }');
@@ -202,7 +250,9 @@ describe('stack-detector', () => {
     it('should detect Vite from vite.config.mjs', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('vite.config.mjs')) return undefined;
+        if (pathStr.endsWith('vite.config.mjs')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -226,7 +276,9 @@ describe('stack-detector', () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         callCount++;
         const pathStr = p.toString();
-        if (pathStr.endsWith('next.config.js')) return undefined;
+        if (pathStr.endsWith('next.config.js')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -296,7 +348,9 @@ describe('stack-detector', () => {
     it('should clear cache when clearStackCache is called', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('next.config.js')) return undefined;
+        if (pathStr.endsWith('next.config.js')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -426,11 +480,21 @@ describe('git-context', () => {
     it('should return full git context for a repo', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
-        if (cmd.includes('branch --show-current')) return 'main\n';
-        if (cmd.includes('status --porcelain')) return 'M file1.ts\nA file2.ts\n';
-        if (cmd.includes('log -1')) return 'Fix bug (2 hours ago)\n';
-        if (cmd.includes('log -5')) return '- Fix bug\n- Add feature\n- Initial commit\n';
-        if (cmd.includes('rev-list')) return '2\t1\n';
+        if (cmd.includes('branch --show-current')) {
+          return 'main\n';
+        }
+        if (cmd.includes('status --porcelain')) {
+          return 'M file1.ts\nA file2.ts\n';
+        }
+        if (cmd.includes('log -1')) {
+          return 'Fix bug (2 hours ago)\n';
+        }
+        if (cmd.includes('log -5')) {
+          return '- Fix bug\n- Add feature\n- Initial commit\n';
+        }
+        if (cmd.includes('rev-list')) {
+          return '2\t1\n';
+        }
         return '';
       });
 
@@ -448,11 +512,21 @@ describe('git-context', () => {
     it('should handle clean repo with no changes', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
-        if (cmd.includes('branch --show-current')) return 'develop\n';
-        if (cmd.includes('status --porcelain')) return '';
-        if (cmd.includes('log -1')) return 'Last commit (1 day ago)\n';
-        if (cmd.includes('log -5')) return '- Last commit\n';
-        if (cmd.includes('rev-list')) return '0\t0\n';
+        if (cmd.includes('branch --show-current')) {
+          return 'develop\n';
+        }
+        if (cmd.includes('status --porcelain')) {
+          return '';
+        }
+        if (cmd.includes('log -1')) {
+          return 'Last commit (1 day ago)\n';
+        }
+        if (cmd.includes('log -5')) {
+          return '- Last commit\n';
+        }
+        if (cmd.includes('rev-list')) {
+          return '0\t0\n';
+        }
         return '';
       });
 
@@ -466,10 +540,18 @@ describe('git-context', () => {
     it('should handle git command failures gracefully', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
-        if (cmd.includes('branch --show-current')) throw new Error('git error');
-        if (cmd.includes('status --porcelain')) throw new Error('git error');
-        if (cmd.includes('log')) throw new Error('git error');
-        if (cmd.includes('rev-list')) throw new Error('git error');
+        if (cmd.includes('branch --show-current')) {
+          throw new Error('git error');
+        }
+        if (cmd.includes('status --porcelain')) {
+          throw new Error('git error');
+        }
+        if (cmd.includes('log')) {
+          throw new Error('git error');
+        }
+        if (cmd.includes('rev-list')) {
+          throw new Error('git error');
+        }
         throw new Error('git error');
       });
 
@@ -486,11 +568,21 @@ describe('git-context', () => {
     it('should handle missing upstream for ahead/behind', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
       mockedExecSync.mockImplementation((cmd: string) => {
-        if (cmd.includes('branch --show-current')) return 'feature-branch\n';
-        if (cmd.includes('status --porcelain')) return '';
-        if (cmd.includes('log -1')) return 'Initial commit (5 mins ago)\n';
-        if (cmd.includes('log -5')) return '- Initial commit\n';
-        if (cmd.includes('rev-list')) throw new Error('no upstream');
+        if (cmd.includes('branch --show-current')) {
+          return 'feature-branch\n';
+        }
+        if (cmd.includes('status --porcelain')) {
+          return '';
+        }
+        if (cmd.includes('log -1')) {
+          return 'Initial commit (5 mins ago)\n';
+        }
+        if (cmd.includes('log -5')) {
+          return '- Initial commit\n';
+        }
+        if (cmd.includes('rev-list')) {
+          throw new Error('no upstream');
+        }
         return '';
       });
 
@@ -609,9 +701,13 @@ describe('health-checker', () => {
     it('should return no checks for healthy project', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('node_modules') ||
-            pathStr.endsWith('package.json') ||
-            pathStr.endsWith('pnpm-lock.yaml')) return undefined;
+        if (
+          pathStr.endsWith('node_modules') ||
+          pathStr.endsWith('package.json') ||
+          pathStr.endsWith('pnpm-lock.yaml')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -623,7 +719,9 @@ describe('health-checker', () => {
     it('should warn about missing node_modules', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('package.json')) return undefined;
+        if (pathStr.endsWith('package.json')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -638,17 +736,21 @@ describe('health-checker', () => {
     it('should warn about multiple lockfiles', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('node_modules') ||
-            pathStr.endsWith('package.json') ||
-            pathStr.endsWith('pnpm-lock.yaml') ||
-            pathStr.endsWith('package-lock.json')) return undefined;
+        if (
+          pathStr.endsWith('node_modules') ||
+          pathStr.endsWith('package.json') ||
+          pathStr.endsWith('pnpm-lock.yaml') ||
+          pathStr.endsWith('package-lock.json')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
       const result = await checkProjectHealth('/test/project-multi-lockfiles');
 
-      expect(result.checks.some(c => c.check === 'lockfiles')).toBe(true);
-      const lockfileCheck = result.checks.find(c => c.check === 'lockfiles');
+      expect(result.checks.some((c) => c.check === 'lockfiles')).toBe(true);
+      const lockfileCheck = result.checks.find((c) => c.check === 'lockfiles');
       expect(lockfileCheck?.status).toBe('warning');
       expect(lockfileCheck?.message).toContain('Multiple lockfiles');
     });
@@ -656,19 +758,25 @@ describe('health-checker', () => {
     it('should report non-strict TypeScript', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('node_modules') ||
-            pathStr.endsWith('package.json') ||
-            pathStr.endsWith('tsconfig.json')) return undefined;
+        if (
+          pathStr.endsWith('node_modules') ||
+          pathStr.endsWith('package.json') ||
+          pathStr.endsWith('tsconfig.json')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
-      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: { strict: false }
-      }));
+      mockedFsPromises.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: { strict: false },
+        })
+      );
 
       const result = await checkProjectHealth('//test/project');
 
-      expect(result.checks.some(c => c.check === 'typescript')).toBe(true);
-      const tsCheck = result.checks.find(c => c.check === 'typescript');
+      expect(result.checks.some((c) => c.check === 'typescript')).toBe(true);
+      const tsCheck = result.checks.find((c) => c.check === 'typescript');
       expect(tsCheck?.status).toBe('info');
       expect(tsCheck?.message).toContain('strict mode is off');
     });
@@ -676,26 +784,36 @@ describe('health-checker', () => {
     it('should not report strict TypeScript', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('node_modules') ||
-            pathStr.endsWith('package.json') ||
-            pathStr.endsWith('tsconfig.json')) return undefined;
+        if (
+          pathStr.endsWith('node_modules') ||
+          pathStr.endsWith('package.json') ||
+          pathStr.endsWith('tsconfig.json')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
-      mockedFsPromises.readFile.mockResolvedValue(JSON.stringify({
-        compilerOptions: { strict: true }
-      }));
+      mockedFsPromises.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: { strict: true },
+        })
+      );
 
       const result = await checkProjectHealth('//test/project');
 
-      expect(result.checks.some(c => c.check === 'typescript')).toBe(false);
+      expect(result.checks.some((c) => c.check === 'typescript')).toBe(false);
     });
 
     it('should handle malformed tsconfig.json', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('node_modules') ||
-            pathStr.endsWith('package.json') ||
-            pathStr.endsWith('tsconfig.json')) return undefined;
+        if (
+          pathStr.endsWith('node_modules') ||
+          pathStr.endsWith('package.json') ||
+          pathStr.endsWith('tsconfig.json')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
       mockedFsPromises.readFile.mockResolvedValue('// comment\n{ invalid }');
@@ -703,7 +821,7 @@ describe('health-checker', () => {
       const result = await checkProjectHealth('//test/project');
 
       // Should not crash and should not add typescript check
-      expect(result.checks.some(c => c.check === 'typescript')).toBe(false);
+      expect(result.checks.some((c) => c.check === 'typescript')).toBe(false);
     });
 
     it('should handle empty directory', async () => {
@@ -727,8 +845,12 @@ describe('health-checker', () => {
     it('should format warning status', () => {
       const status: HealthStatus = {
         checks: [
-          { check: 'dependencies', status: 'warning', message: 'node_modules missing - run install' }
-        ]
+          {
+            check: 'dependencies',
+            status: 'warning',
+            message: 'node_modules missing - run install',
+          },
+        ],
       };
 
       const result = formatHealthStatus(status);
@@ -740,8 +862,8 @@ describe('health-checker', () => {
     it('should format error status', () => {
       const status: HealthStatus = {
         checks: [
-          { check: 'critical', status: 'error', message: 'Build failed' }
-        ]
+          { check: 'critical', status: 'error', message: 'Build failed' },
+        ],
       };
 
       const result = formatHealthStatus(status);
@@ -752,8 +874,12 @@ describe('health-checker', () => {
     it('should format info status', () => {
       const status: HealthStatus = {
         checks: [
-          { check: 'typescript', status: 'info', message: 'TypeScript strict mode is off' }
-        ]
+          {
+            check: 'typescript',
+            status: 'info',
+            message: 'TypeScript strict mode is off',
+          },
+        ],
       };
 
       const result = formatHealthStatus(status);
@@ -764,10 +890,22 @@ describe('health-checker', () => {
     it('should format multiple checks', () => {
       const status: HealthStatus = {
         checks: [
-          { check: 'dependencies', status: 'warning', message: 'node_modules missing' },
-          { check: 'lockfiles', status: 'warning', message: 'Multiple lockfiles' },
-          { check: 'typescript', status: 'info', message: 'strict mode is off' }
-        ]
+          {
+            check: 'dependencies',
+            status: 'warning',
+            message: 'node_modules missing',
+          },
+          {
+            check: 'lockfiles',
+            status: 'warning',
+            message: 'Multiple lockfiles',
+          },
+          {
+            check: 'typescript',
+            status: 'info',
+            message: 'strict mode is off',
+          },
+        ],
       };
 
       const result = formatHealthStatus(status);
@@ -799,7 +937,9 @@ describe('env-checker', () => {
     it('should detect .env file', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('.env')) return undefined;
+        if (pathStr.endsWith('.env')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -812,7 +952,9 @@ describe('env-checker', () => {
     it('should detect .env.local file', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('.env.local')) return undefined;
+        if (pathStr.endsWith('.env.local')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
 
@@ -824,7 +966,9 @@ describe('env-checker', () => {
     it('should detect .env.example file', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('.env.example')) return undefined;
+        if (pathStr.endsWith('.env.example')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
       mockedFsPromises.readFile.mockResolvedValue('');
@@ -838,7 +982,9 @@ describe('env-checker', () => {
     it('should detect missing env vars', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('.env.example') || pathStr.endsWith('.env')) return undefined;
+        if (pathStr.endsWith('.env.example') || pathStr.endsWith('.env')) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
       mockedFsPromises.readFile.mockImplementation(async (p: fs.PathLike) => {
@@ -864,9 +1010,13 @@ describe('env-checker', () => {
     it('should prefer .env.local over .env', async () => {
       mockedFsPromises.access.mockImplementation(async (p: fs.PathLike) => {
         const pathStr = p.toString();
-        if (pathStr.endsWith('.env.example') ||
-            pathStr.endsWith('.env') ||
-            pathStr.endsWith('.env.local')) return undefined;
+        if (
+          pathStr.endsWith('.env.example') ||
+          pathStr.endsWith('.env') ||
+          pathStr.endsWith('.env.local')
+        ) {
+          return undefined;
+        }
         throw new Error('ENOENT');
       });
       mockedFsPromises.readFile.mockImplementation(async (p: fs.PathLike) => {
@@ -1014,12 +1164,9 @@ describe('empty-project', () => {
     });
 
     it('should return true for directory with only scaffolding files', async () => {
-      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
-        'README.md',
-        'LICENSE',
-        '.gitignore',
-        '.git',
-      ]));
+      mockedFsPromises.readdir.mockResolvedValue(
+        createMockReaddirStrings(['README.md', 'LICENSE', '.gitignore', '.git'])
+      );
 
       const result = await isEmptyProject('/test/scaffolding');
 
@@ -1027,11 +1174,9 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with meaningful files', async () => {
-      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
-        'package.json',
-        'src',
-        'README.md',
-      ]));
+      mockedFsPromises.readdir.mockResolvedValue(
+        createMockReaddirStrings(['package.json', 'src', 'README.md'])
+      );
 
       const result = await isEmptyProject('/test/project');
 
@@ -1039,9 +1184,9 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with only package.json', async () => {
-      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
-        'package.json',
-      ]));
+      mockedFsPromises.readdir.mockResolvedValue(
+        createMockReaddirStrings(['package.json'])
+      );
 
       const result = await isEmptyProject('/test/project');
 
@@ -1049,11 +1194,9 @@ describe('empty-project', () => {
     });
 
     it('should ignore hidden files (starting with dot)', async () => {
-      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
-        '.env',
-        '.eslintrc',
-        '.prettierrc',
-      ]));
+      mockedFsPromises.readdir.mockResolvedValue(
+        createMockReaddirStrings(['.env', '.eslintrc', '.prettierrc'])
+      );
 
       const result = await isEmptyProject('/test/project');
 
@@ -1061,11 +1204,9 @@ describe('empty-project', () => {
     });
 
     it('should handle case-insensitive scaffolding file names', async () => {
-      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
-        'README.MD',
-        'License.md',
-        'license',
-      ]));
+      mockedFsPromises.readdir.mockResolvedValue(
+        createMockReaddirStrings(['README.MD', 'License.md', 'license'])
+      );
 
       const result = await isEmptyProject('/test/project');
 
@@ -1073,7 +1214,9 @@ describe('empty-project', () => {
     });
 
     it('should return true on fs error', async () => {
-      mockedFsPromises.readdir.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+      mockedFsPromises.readdir.mockRejectedValue(
+        new Error('ENOENT: no such file or directory')
+      );
 
       const result = await isEmptyProject('/nonexistent');
 
@@ -1081,10 +1224,9 @@ describe('empty-project', () => {
     });
 
     it('should return false for directory with src folder', async () => {
-      mockedFsPromises.readdir.mockResolvedValue(createMockReaddirStrings([
-        'src',
-        'README.md',
-      ]));
+      mockedFsPromises.readdir.mockResolvedValue(
+        createMockReaddirStrings(['src', 'README.md'])
+      );
 
       const result = await isEmptyProject('/test/project');
 

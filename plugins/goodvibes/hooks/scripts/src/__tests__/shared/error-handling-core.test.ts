@@ -72,14 +72,26 @@ describe('generateErrorSignature', () => {
     });
 
     it('should normalize absolute Windows paths', () => {
-      const sig1 = generateErrorSignature('Bash', 'Error in C:\\Users\\test\\file.ts');
-      const sig2 = generateErrorSignature('Bash', 'Error in C:\\Users\\other\\file.ts');
+      const sig1 = generateErrorSignature(
+        'Bash',
+        'Error in C:\\Users\\test\\file.ts'
+      );
+      const sig2 = generateErrorSignature(
+        'Bash',
+        'Error in C:\\Users\\other\\file.ts'
+      );
       expect(sig1).toBe(sig2); // Both should normalize to same signature
     });
 
     it('should normalize absolute Unix paths', () => {
-      const sig1 = generateErrorSignature('Bash', 'Error in /home/user/file.ts');
-      const sig2 = generateErrorSignature('Bash', 'Error in /home/other/file.ts');
+      const sig1 = generateErrorSignature(
+        'Bash',
+        'Error in /home/user/file.ts'
+      );
+      const sig2 = generateErrorSignature(
+        'Bash',
+        'Error in /home/other/file.ts'
+      );
       expect(sig1).toBe(sig2); // Both should normalize to same signature
     });
 
@@ -120,8 +132,14 @@ describe('generateErrorSignature', () => {
     });
 
     it('should normalize timestamps', () => {
-      const sig1 = generateErrorSignature('Bash', 'Error at 2024-01-15T10:30:45.123Z');
-      const sig2 = generateErrorSignature('Bash', 'Error at 2024-01-16T11:45:30.456Z');
+      const sig1 = generateErrorSignature(
+        'Bash',
+        'Error at 2024-01-15T10:30:45.123Z'
+      );
+      const sig2 = generateErrorSignature(
+        'Bash',
+        'Error at 2024-01-16T11:45:30.456Z'
+      );
       expect(sig1).toBe(sig2);
     });
 
@@ -133,7 +151,9 @@ describe('generateErrorSignature', () => {
       expect(sig1).toMatch(/^Bash:/);
       expect(sig2).toMatch(/^Bash:/);
       // Verify they're treated consistently (numbers replaced before hex pattern)
-      expect(generateErrorSignature('Bash', 'Error at 0x123abc')).toMatch(/^Bash:/);
+      expect(generateErrorSignature('Bash', 'Error at 0x123abc')).toMatch(
+        /^Bash:/
+      );
     });
 
     it('should normalize uppercase hex addresses', () => {
@@ -171,8 +191,10 @@ describe('generateErrorSignature', () => {
     });
 
     it('should handle complex error with multiple normalizations', () => {
-      const error1 = 'TypeError at C:\\Users\\test\\app.ts:42:10 in "main" function at 2024-01-15T10:30:45Z with code 500 at address 0xabcd1234';
-      const error2 = 'TypeError at /home/other/app.ts:99:25 in "other" function at 2024-01-16T11:45:30Z with code 404 at address 0x12345678';
+      const error1 =
+        'TypeError at C:\\Users\\test\\app.ts:42:10 in "main" function at 2024-01-15T10:30:45Z with code 500 at address 0xabcd1234';
+      const error2 =
+        'TypeError at /home/other/app.ts:99:25 in "other" function at 2024-01-16T11:45:30Z with code 404 at address 0x12345678';
       const sig1 = generateErrorSignature('Bash', error1);
       const sig2 = generateErrorSignature('Bash', error2);
       expect(sig1).toBe(sig2);
@@ -744,7 +766,9 @@ describe('getPhaseDescription', () => {
   });
 
   it('should return description for phase 2', () => {
-    expect(getPhaseDescription(2)).toBe('Including official documentation search');
+    expect(getPhaseDescription(2)).toBe(
+      'Including official documentation search'
+    );
   });
 
   it('should return description for phase 3', () => {

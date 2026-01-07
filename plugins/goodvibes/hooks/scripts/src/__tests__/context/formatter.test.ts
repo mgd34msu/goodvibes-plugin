@@ -62,7 +62,9 @@ describe('formatter', () => {
   });
 
   /** Helper to create a complete GatheredContext with sensible defaults */
-  function createMockGatheredContext(overrides?: Partial<GatheredContext>): GatheredContext {
+  function createMockGatheredContext(
+    overrides?: Partial<GatheredContext>
+  ): GatheredContext {
     return {
       stack: {
         frameworks: [],
@@ -117,8 +119,21 @@ describe('formatter', () => {
       mockedFormatMemoryContext.mockReturnValue('Memory: 2 decisions');
 
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Next.js', 'TypeScript'], packageManager: 'pnpm', hasTypeScript: true, isStrict: true },
-        git: { isRepo: true, branch: 'main', hasUncommittedChanges: false, uncommittedFileCount: 0, lastCommit: null, recentCommits: [], aheadBehind: null },
+        stack: {
+          frameworks: ['Next.js', 'TypeScript'],
+          packageManager: 'pnpm',
+          hasTypeScript: true,
+          isStrict: true,
+        },
+        git: {
+          isRepo: true,
+          branch: 'main',
+          hasUncommittedChanges: false,
+          uncommittedFileCount: 0,
+          lastCommit: null,
+          recentCommits: [],
+          aheadBehind: null,
+        },
       });
 
       const result = formatContext(context);
@@ -165,7 +180,11 @@ describe('formatter', () => {
       const context = createMockGatheredContext({
         health: {
           checks: [
-            { check: 'dependencies', status: 'warning', message: 'Missing node_modules' },
+            {
+              check: 'dependencies',
+              status: 'warning',
+              message: 'Missing node_modules',
+            },
             { check: 'typescript', status: 'error', message: 'TS errors' },
             { check: 'linter', status: 'info', message: 'All good' },
           ],
@@ -203,11 +222,41 @@ describe('formatter', () => {
 
       const context = createMockGatheredContext({
         todos: [
-          { file: 'a.ts', line: 1, type: 'TODO', text: 'Regular todo', priority: 'low' },
-          { file: 'b.ts', line: 2, type: 'FIXME', text: 'Fix this', priority: 'high' },
-          { file: 'c.ts', line: 3, type: 'BUG', text: 'Bug here', priority: 'high' },
-          { file: 'd.ts', line: 4, type: 'HACK', text: 'Temporary hack', priority: 'medium' },
-          { file: 'e.ts', line: 5, type: 'FIXME', text: 'Another fix', priority: 'high' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'TODO',
+            text: 'Regular todo',
+            priority: 'low',
+          },
+          {
+            file: 'b.ts',
+            line: 2,
+            type: 'FIXME',
+            text: 'Fix this',
+            priority: 'high',
+          },
+          {
+            file: 'c.ts',
+            line: 3,
+            type: 'BUG',
+            text: 'Bug here',
+            priority: 'high',
+          },
+          {
+            file: 'd.ts',
+            line: 4,
+            type: 'HACK',
+            text: 'Temporary hack',
+            priority: 'medium',
+          },
+          {
+            file: 'e.ts',
+            line: 5,
+            type: 'FIXME',
+            text: 'Another fix',
+            priority: 'high',
+          },
         ],
       });
 
@@ -236,7 +285,13 @@ describe('formatter', () => {
           warnings: ['Missing vars'],
         },
         todos: [
-          { file: 'a.ts', line: 1, type: 'FIXME', text: 'Fix', priority: 'high' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'FIXME',
+            text: 'Fix',
+            priority: 'high',
+          },
           { file: 'b.ts', line: 2, type: 'BUG', text: 'Bug', priority: 'high' },
         ],
       });
@@ -266,7 +321,12 @@ describe('formatter', () => {
 
     it('should include uncommitted changes in summary', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Vite'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Vite'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         git: {
           isRepo: true,
           branch: 'feature',
@@ -286,7 +346,12 @@ describe('formatter', () => {
 
     it('should not include uncommitted changes if repo is not a git repo', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['React'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['React'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         git: {
           isRepo: false,
           branch: null,
@@ -306,7 +371,12 @@ describe('formatter', () => {
 
     it('should not include uncommitted changes if branch is null', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Vue'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Vue'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         git: {
           isRepo: true,
           branch: null,
@@ -326,7 +396,12 @@ describe('formatter', () => {
 
     it('should not include uncommitted changes if count is zero', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Angular'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Angular'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         git: {
           isRepo: true,
           branch: 'main',
@@ -357,7 +432,12 @@ describe('formatter', () => {
       mockedFormatHealthStatus.mockReturnValue('Health: Warning');
 
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Express'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Express'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         git: {
           isRepo: true,
           branch: 'develop',
@@ -374,7 +454,9 @@ describe('formatter', () => {
 
       const result = formatContext(context);
 
-      expect(result.summary).toBe('Express | 2 uncommitted changes | 1 issue(s) to review');
+      expect(result.summary).toBe(
+        'Express | 2 uncommitted changes | 1 issue(s) to review'
+      );
     });
 
     it('should include proper spacing between sections', () => {
@@ -398,7 +480,12 @@ describe('formatter', () => {
       mockedFormatStackInfo.mockReturnValue('Stack: TypeScript');
 
       const context = createMockGatheredContext({
-        stack: { frameworks: ['TypeScript'], packageManager: 'npm', hasTypeScript: true, isStrict: false },
+        stack: {
+          frameworks: ['TypeScript'],
+          packageManager: 'npm',
+          hasTypeScript: true,
+          isStrict: false,
+        },
       });
 
       const result = formatContext(context);
@@ -427,9 +514,27 @@ describe('formatter', () => {
     it('should filter out regular TODO types from issue count', () => {
       const context = createMockGatheredContext({
         todos: [
-          { file: 'a.ts', line: 1, type: 'TODO', text: 'Regular', priority: 'low' },
-          { file: 'b.ts', line: 2, type: 'NOTE', text: 'Note', priority: 'low' },
-          { file: 'c.ts', line: 3, type: 'HACK', text: 'Hack', priority: 'medium' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'TODO',
+            text: 'Regular',
+            priority: 'low',
+          },
+          {
+            file: 'b.ts',
+            line: 2,
+            type: 'NOTE',
+            text: 'Note',
+            priority: 'low',
+          },
+          {
+            file: 'c.ts',
+            line: 3,
+            type: 'HACK',
+            text: 'Hack',
+            priority: 'medium',
+          },
         ],
       });
 
@@ -443,8 +548,21 @@ describe('formatter', () => {
   describe('formatMinimalContext', () => {
     it('should format minimal context with stack and branch', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Next.js', 'TypeScript'], packageManager: null, hasTypeScript: true, isStrict: false },
-        git: { isRepo: true, branch: 'main', hasUncommittedChanges: false, uncommittedFileCount: 0, lastCommit: null, recentCommits: [], aheadBehind: null },
+        stack: {
+          frameworks: ['Next.js', 'TypeScript'],
+          packageManager: null,
+          hasTypeScript: true,
+          isStrict: false,
+        },
+        git: {
+          isRepo: true,
+          branch: 'main',
+          hasUncommittedChanges: false,
+          uncommittedFileCount: 0,
+          lastCommit: null,
+          recentCommits: [],
+          aheadBehind: null,
+        },
       });
 
       const result = formatMinimalContext(context);
@@ -456,7 +574,13 @@ describe('formatter', () => {
     it('should limit to 3 frameworks max', () => {
       const context = createMockGatheredContext({
         stack: {
-          frameworks: ['React', 'TypeScript', 'Tailwind', 'Redux', 'React Router'],
+          frameworks: [
+            'React',
+            'TypeScript',
+            'Tailwind',
+            'Redux',
+            'React Router',
+          ],
           packageManager: null,
           hasTypeScript: true,
           isStrict: false,
@@ -489,8 +613,20 @@ describe('formatter', () => {
     it('should include high-priority todos', () => {
       const context = createMockGatheredContext({
         todos: [
-          { file: 'a.ts', line: 1, type: 'TODO', text: 'Regular', priority: 'low' },
-          { file: 'b.ts', line: 2, type: 'FIXME', text: 'Fix', priority: 'high' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'TODO',
+            text: 'Regular',
+            priority: 'low',
+          },
+          {
+            file: 'b.ts',
+            line: 2,
+            type: 'FIXME',
+            text: 'Fix',
+            priority: 'high',
+          },
           { file: 'c.ts', line: 3, type: 'BUG', text: 'Bug', priority: 'high' },
         ],
       });
@@ -502,19 +638,40 @@ describe('formatter', () => {
 
     it('should combine all parts with pipe separator', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Express'], packageManager: null, hasTypeScript: false, isStrict: false },
-        git: { isRepo: true, branch: 'develop', hasUncommittedChanges: false, uncommittedFileCount: 0, lastCommit: null, recentCommits: [], aheadBehind: null },
+        stack: {
+          frameworks: ['Express'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
+        git: {
+          isRepo: true,
+          branch: 'develop',
+          hasUncommittedChanges: false,
+          uncommittedFileCount: 0,
+          lastCommit: null,
+          recentCommits: [],
+          aheadBehind: null,
+        },
         health: {
           checks: [{ check: 'test', status: 'warning', message: 'Warning' }],
         },
         todos: [
-          { file: 'a.ts', line: 1, type: 'FIXME', text: 'Fix', priority: 'high' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'FIXME',
+            text: 'Fix',
+            priority: 'high',
+          },
         ],
       });
 
       const result = formatMinimalContext(context);
 
-      expect(result).toBe('Stack: Express | Branch: develop | 1 health warning(s) | 1 high-priority TODO(s)');
+      expect(result).toBe(
+        'Stack: Express | Branch: develop | 1 health warning(s) | 1 high-priority TODO(s)'
+      );
     });
 
     it('should return empty string for completely empty context', () => {
@@ -526,7 +683,15 @@ describe('formatter', () => {
 
     it('should skip stack when no frameworks present', () => {
       const context = createMockGatheredContext({
-        git: { isRepo: true, branch: 'main', hasUncommittedChanges: false, uncommittedFileCount: 0, lastCommit: null, recentCommits: [], aheadBehind: null },
+        git: {
+          isRepo: true,
+          branch: 'main',
+          hasUncommittedChanges: false,
+          uncommittedFileCount: 0,
+          lastCommit: null,
+          recentCommits: [],
+          aheadBehind: null,
+        },
       });
 
       const result = formatMinimalContext(context);
@@ -537,8 +702,21 @@ describe('formatter', () => {
 
     it('should skip branch when not a git repo', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Vue'], packageManager: null, hasTypeScript: false, isStrict: false },
-        git: { isRepo: false, branch: null, hasUncommittedChanges: false, uncommittedFileCount: 0, lastCommit: null, recentCommits: [], aheadBehind: null },
+        stack: {
+          frameworks: ['Vue'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
+        git: {
+          isRepo: false,
+          branch: null,
+          hasUncommittedChanges: false,
+          uncommittedFileCount: 0,
+          lastCommit: null,
+          recentCommits: [],
+          aheadBehind: null,
+        },
       });
 
       const result = formatMinimalContext(context);
@@ -549,8 +727,21 @@ describe('formatter', () => {
 
     it('should skip branch when branch is null even if repo exists', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Angular'], packageManager: null, hasTypeScript: false, isStrict: false },
-        git: { isRepo: true, branch: null, hasUncommittedChanges: false, uncommittedFileCount: 0, lastCommit: null, recentCommits: [], aheadBehind: null },
+        stack: {
+          frameworks: ['Angular'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
+        git: {
+          isRepo: true,
+          branch: null,
+          hasUncommittedChanges: false,
+          uncommittedFileCount: 0,
+          lastCommit: null,
+          recentCommits: [],
+          aheadBehind: null,
+        },
       });
 
       const result = formatMinimalContext(context);
@@ -561,7 +752,12 @@ describe('formatter', () => {
 
     it('should skip health warnings when none present', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Svelte'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Svelte'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         health: { checks: [] },
       });
 
@@ -573,7 +769,12 @@ describe('formatter', () => {
 
     it('should skip health warnings when only info checks', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Svelte'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Svelte'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         health: {
           checks: [
             { check: 'info1', status: 'info', message: 'Info' },
@@ -590,9 +791,20 @@ describe('formatter', () => {
 
     it('should skip high-priority todos when none present', () => {
       const context = createMockGatheredContext({
-        stack: { frameworks: ['Remix'], packageManager: null, hasTypeScript: false, isStrict: false },
+        stack: {
+          frameworks: ['Remix'],
+          packageManager: null,
+          hasTypeScript: false,
+          isStrict: false,
+        },
         todos: [
-          { file: 'a.ts', line: 1, type: 'TODO', text: 'Regular', priority: 'low' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'TODO',
+            text: 'Regular',
+            priority: 'low',
+          },
         ],
       });
 
@@ -617,7 +829,13 @@ describe('formatter', () => {
     it('should handle single high-priority todo', () => {
       const context = createMockGatheredContext({
         todos: [
-          { file: 'a.ts', line: 1, type: 'FIXME', text: 'Fix', priority: 'high' },
+          {
+            file: 'a.ts',
+            line: 1,
+            type: 'FIXME',
+            text: 'Fix',
+            priority: 'high',
+          },
         ],
       });
 

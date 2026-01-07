@@ -114,7 +114,9 @@ export function parseMemoryContent<T>(
 
       if (isValid) {
         // Transform entry if transformer provided
-        const finalEntry = parser.transform ? parser.transform(entry) : (entry as T);
+        const finalEntry = parser.transform
+          ? parser.transform(entry)
+          : (entry as T);
         results.push(finalEntry);
       }
     } catch (error: unknown) {
@@ -166,7 +168,11 @@ function parseBlock<T>(block: string, parser: SectionParser<T>): Partial<T> {
     }
 
     // If we're inside a code block, accumulate content
-    if (inCodeBlock && currentSection && parser.fields[currentSection] === 'code') {
+    if (
+      inCodeBlock &&
+      currentSection &&
+      parser.fields[currentSection] === 'code'
+    ) {
       codeContent += line + '\n';
       continue;
     }

@@ -7,8 +7,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { analyzeFolderStructure, formatFolderStructure } from '../../context/folder-structure.js';
-import type { FolderStructure, ArchitecturePattern, SpecialDirectories } from '../../context/folder-structure.js';
+import {
+  analyzeFolderStructure,
+  formatFolderStructure,
+} from '../../context/folder-structure.js';
+import type {
+  FolderStructure,
+  ArchitecturePattern,
+  SpecialDirectories,
+} from '../../context/folder-structure.js';
 import { fileExists } from '../../shared/file-utils.js';
 
 // Mock dependencies
@@ -111,8 +118,12 @@ describe('folder-structure', () => {
         ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).includes('app')) return appEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).includes('app')) {
+            return appEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockImplementation(async (p: string) => {
@@ -135,8 +146,12 @@ describe('folder-structure', () => {
         ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).includes('app')) return appEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).includes('app')) {
+            return appEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockImplementation(async (p: string) => {
@@ -158,9 +173,15 @@ describe('folder-structure', () => {
         const appFiles = ['page.tsx', 'globals.css'];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath, options) => {
-          if (dirPath === mockCwd) return topLevelEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
           if (String(dirPath).includes('app')) {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            if (
+              options &&
+              typeof options === 'object' &&
+              'withFileTypes' in options
+            ) {
               return appSubDirs;
             }
             return appFiles as unknown as fs.Dirent[];
@@ -186,9 +207,15 @@ describe('folder-structure', () => {
         const appFiles = ['layout.js', 'styles.css'];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath, options) => {
-          if (dirPath === mockCwd) return topLevelEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
           if (String(dirPath).includes('app')) {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            if (
+              options &&
+              typeof options === 'object' &&
+              'withFileTypes' in options
+            ) {
               return appSubDirs;
             }
             return appFiles as unknown as fs.Dirent[];
@@ -219,9 +246,15 @@ describe('folder-structure', () => {
         ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).endsWith('src')) return srcEntries;
-          if (String(dirPath).includes('app')) return appEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).endsWith('src')) {
+            return srcEntries;
+          }
+          if (String(dirPath).includes('app')) {
+            return appEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockImplementation(async (p: string) => {
@@ -242,9 +275,15 @@ describe('folder-structure', () => {
         const appSubDirs: fs.Dirent[] = [];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath, options) => {
-          if (dirPath === mockCwd) return topLevelEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
           if (String(dirPath).includes('app')) {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            if (
+              options &&
+              typeof options === 'object' &&
+              'withFileTypes' in options
+            ) {
               return appSubDirs;
             }
             throw new Error('Permission denied');
@@ -273,9 +312,15 @@ describe('folder-structure', () => {
         const appFiles = ['index.ts', 'styles.css', 'config.json'];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath, options) => {
-          if (dirPath === mockCwd) return topLevelEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
           if (String(dirPath).includes('app')) {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            if (
+              options &&
+              typeof options === 'object' &&
+              'withFileTypes' in options
+            ) {
               return appSubDirs;
             }
             return appFiles as unknown as fs.Dirent[];
@@ -318,8 +363,12 @@ describe('folder-structure', () => {
         ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).endsWith('src')) return srcEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).endsWith('src')) {
+            return srcEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockImplementation(async (p: string) => {
@@ -602,7 +651,9 @@ describe('folder-structure', () => {
         // Mock to return top-level entries for cwd, empty arrays for subdirectories
         // This prevents infinite recursion in calculateDepth
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockResolvedValue(false);
@@ -724,10 +775,18 @@ describe('folder-structure', () => {
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
           const pathStr = String(dirPath);
-          if (pathStr === mockCwd) return topLevelEntries;
-          if (pathStr.endsWith('src')) return srcEntries;
-          if (pathStr.includes('components')) return componentsEntries;
-          if (pathStr.includes('ui')) return uiEntries;
+          if (pathStr === mockCwd) {
+            return topLevelEntries;
+          }
+          if (pathStr.endsWith('src')) {
+            return srcEntries;
+          }
+          if (pathStr.includes('components')) {
+            return componentsEntries;
+          }
+          if (pathStr.includes('ui')) {
+            return uiEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockResolvedValue(false);
@@ -746,8 +805,12 @@ describe('folder-structure', () => {
         const srcEntries: fs.Dirent[] = [];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).endsWith('src')) return srcEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).endsWith('src')) {
+            return srcEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockResolvedValue(false);
@@ -767,8 +830,12 @@ describe('folder-structure', () => {
         const srcEntries: fs.Dirent[] = [];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).endsWith('src')) return srcEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).endsWith('src')) {
+            return srcEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockResolvedValue(false);
@@ -784,8 +851,12 @@ describe('folder-structure', () => {
         ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
-          if (String(dirPath).endsWith('src')) throw new Error('Permission denied');
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
+          if (String(dirPath).endsWith('src')) {
+            throw new Error('Permission denied');
+          }
           return [];
         });
         vi.mocked(fileExists).mockResolvedValue(false);
@@ -798,9 +869,10 @@ describe('folder-structure', () => {
 
       it('should respect maximum depth limit', async () => {
         // Create a deeply nested structure
-        const createNestedEntries = () => [
-          { name: 'nested', isDirectory: () => true },
-        ] as unknown as fs.Dirent[];
+        const createNestedEntries = () =>
+          [
+            { name: 'nested', isDirectory: () => true },
+          ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async () => {
           return createNestedEntries();
@@ -820,7 +892,9 @@ describe('folder-structure', () => {
         ] as unknown as fs.Dirent[];
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
-          if (dirPath === mockCwd) return topLevelEntries;
+          if (dirPath === mockCwd) {
+            return topLevelEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockResolvedValue(false);
@@ -850,9 +924,15 @@ describe('folder-structure', () => {
 
         vi.mocked(fs.readdir).mockImplementation(async (dirPath) => {
           const pathStr = String(dirPath);
-          if (pathStr === mockCwd) return topLevelEntries;
-          if (pathStr.endsWith('src')) return srcEntries;
-          if (pathStr.includes('app')) return appEntries;
+          if (pathStr === mockCwd) {
+            return topLevelEntries;
+          }
+          if (pathStr.endsWith('src')) {
+            return srcEntries;
+          }
+          if (pathStr.includes('app')) {
+            return appEntries;
+          }
           return [];
         });
         vi.mocked(fileExists).mockImplementation(async (p: string) => {

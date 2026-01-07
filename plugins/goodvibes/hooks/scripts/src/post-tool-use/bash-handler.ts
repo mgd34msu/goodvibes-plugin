@@ -38,7 +38,7 @@ export function handleBashTool(
   state: HooksState,
   input: HookInput
 ): { isDevServer: boolean; errors: string[] } {
-  const toolInput = input.tool_input as Record<string, unknown> | undefined;
+  const toolInput = input.tool_input;
   const command = toolInput?.command as string | undefined;
   const output = toolInput?.output as string | undefined;
 

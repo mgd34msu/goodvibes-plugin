@@ -32,8 +32,14 @@ import {
   buildTelemetryEntry,
 } from './subagent-stop/telemetry.js';
 
-import { validateAgentOutput, ValidationResult } from './subagent-stop/output-validation.js';
-import { verifyAgentTests, TestVerificationResult } from './subagent-stop/test-verification.js';
+import {
+  validateAgentOutput,
+  ValidationResult,
+} from './subagent-stop/output-validation.js';
+import {
+  verifyAgentTests,
+  TestVerificationResult,
+} from './subagent-stop/test-verification.js';
 import { loadState, saveState } from './state.js';
 
 // Extended hook input interface for SubagentStop
@@ -98,7 +104,8 @@ async function runSubagentStopHook(): Promise<void> {
     // Extract subagent info (handle different field names)
     const agentId = input.agent_id || input.subagent_id || '';
     const agentType = input.agent_type || input.subagent_type || 'unknown';
-    const transcriptPath = input.agent_transcript_path || input.subagent_transcript_path || '';
+    const transcriptPath =
+      input.agent_transcript_path || input.subagent_transcript_path || '';
     const cwd = input.cwd || process.cwd();
 
     debug('SubagentStop received input', {
@@ -133,7 +140,11 @@ async function runSubagentStopHook(): Promise<void> {
 
       // Validate agent output (type check if TS files modified)
       if (transcriptPath) {
-        const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+        const validationOutput = await validateAgentOutput(
+          cwd,
+          transcriptPath,
+          state
+        );
         validationResult = validationOutput;
         state = validationOutput.state;
         debug('Validation result', {
@@ -144,7 +155,11 @@ async function runSubagentStopHook(): Promise<void> {
 
         // Verify tests for modified files
         if (validationResult.filesModified.length > 0) {
-          testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
+          testResult = await verifyAgentTests(
+            cwd,
+            validationResult.filesModified,
+            state
+          );
           debug('Test verification result', {
             ran: testResult.ran,
             passed: testResult.passed,
@@ -154,9 +169,10 @@ async function runSubagentStopHook(): Promise<void> {
       }
 
       // Build telemetry entry with keywords, files, tools, summary
-      const status = (validationResult?.valid !== false && testResult?.passed !== false)
-        ? 'completed'
-        : 'failed';
+      const status =
+        validationResult?.valid !== false && testResult?.passed !== false
+          ? 'completed'
+          : 'failed';
 
       const telemetryEntry = await buildTelemetryEntry(
         tracking,
@@ -180,11 +196,12 @@ async function runSubagentStopHook(): Promise<void> {
 
       // Update session analytics
       const analytics = await loadAnalytics();
-      if (analytics && analytics.subagents_spawned) {
+      if (analytics?.subagents_spawned) {
         // Find and update the matching subagent entry
         const subagentEntry = analytics.subagents_spawned.find(
-          (s: { type: string; started_at: string }) => s.type === tracking.agent_type &&
-               s.started_at === tracking.started_at
+          (s: { type: string; started_at: string }) =>
+            s.type === tracking.agent_type &&
+            s.started_at === tracking.started_at
         );
         if (subagentEntry) {
           subagentEntry.completed_at = new Date().toISOString();
@@ -195,7 +212,6 @@ async function runSubagentStopHook(): Promise<void> {
 
       // Save updated state
       await saveState(cwd, state);
-
     } else {
       debug('No matching tracking entry found', {
         agent_id: agentId,
@@ -204,12 +220,20 @@ async function runSubagentStopHook(): Promise<void> {
 
       // Even without a tracking entry, we can still validate if transcript exists
       if (transcriptPath) {
-        const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+        const validationOutput = await validateAgentOutput(
+          cwd,
+          transcriptPath,
+          state
+        );
         validationResult = validationOutput;
         state = validationOutput.state;
 
         if (validationResult.filesModified.length > 0) {
-          testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
+          testResult = await verifyAgentTests(
+            cwd,
+            validationResult.filesModified,
+            state
+          );
         }
 
         await saveState(cwd, state);
@@ -229,22 +253,27 @@ async function runSubagentStopHook(): Promise<void> {
     }
 
     if (issues.length > 0) {
-      systemMessage = '[GoodVibes] Agent ' + agentType + ' completed with issues: ' + issues.join('; ');
+      systemMessage =
+        '[GoodVibes] Agent ' +
+        agentType +
+        ' completed with issues: ' +
+        issues.join('; ');
     }
 
     // Return validation results in output
-    respond(createResponse({
-      systemMessage,
-      output: {
-        validation: validationResult,
-        tests: testResult,
-        telemetryWritten,
-        agentId: agentId || undefined,
-        agentType,
-        durationMs,
-      },
-    }));
-
+    respond(
+      createResponse({
+        systemMessage,
+        output: {
+          validation: validationResult,
+          tests: testResult,
+          telemetryWritten,
+          agentId: agentId || undefined,
+          agentType,
+          durationMs,
+        },
+      })
+    );
   } catch (error: unknown) {
     logError('SubagentStop main', error);
     respond(createResponse());

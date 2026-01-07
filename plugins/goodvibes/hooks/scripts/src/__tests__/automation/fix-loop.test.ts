@@ -31,7 +31,9 @@ import {
 describe('categorizeError', () => {
   describe('npm_install category', () => {
     it('should categorize ERESOLVE errors as npm_install', () => {
-      expect(categorizeError('ERESOLVE unable to resolve dependency tree')).toBe('npm_install');
+      expect(
+        categorizeError('ERESOLVE unable to resolve dependency tree')
+      ).toBe('npm_install');
     });
 
     it('should categorize npm errors as npm_install', () => {
@@ -39,19 +41,27 @@ describe('categorizeError', () => {
     });
 
     it('should categorize peer dep errors as npm_install', () => {
-      expect(categorizeError('peer dep missing: react@18.0.0')).toBe('npm_install');
+      expect(categorizeError('peer dep missing: react@18.0.0')).toBe(
+        'npm_install'
+      );
     });
 
     it('should be case insensitive for npm errors', () => {
-      expect(categorizeError('NPM ERROR: package not found')).toBe('npm_install');
+      expect(categorizeError('NPM ERROR: package not found')).toBe(
+        'npm_install'
+      );
       expect(categorizeError('PEER DEP conflict')).toBe('npm_install');
     });
   });
 
   describe('typescript_error category', () => {
     it('should categorize ts with error keyword as typescript_error', () => {
-      expect(categorizeError('error TS2304: Cannot find name')).toBe('typescript_error');
-      expect(categorizeError('tsc error: Property does not exist')).toBe('typescript_error');
+      expect(categorizeError('error TS2304: Cannot find name')).toBe(
+        'typescript_error'
+      );
+      expect(categorizeError('tsc error: Property does not exist')).toBe(
+        'typescript_error'
+      );
     });
 
     it('should categorize ts with type keyword as typescript_error', () => {
@@ -71,7 +81,9 @@ describe('categorizeError', () => {
 
   describe('test_failure category', () => {
     it('should categorize test failures correctly', () => {
-      expect(categorizeError('Test failed: expected true')).toBe('test_failure');
+      expect(categorizeError('Test failed: expected true')).toBe(
+        'test_failure'
+      );
       expect(categorizeError('FAIL tests/unit.test.ts')).toBe('test_failure');
     });
 
@@ -81,7 +93,9 @@ describe('categorizeError', () => {
     });
 
     it('should be case insensitive for test failures', () => {
-      expect(categorizeError('TEST FAILED with assertion error')).toBe('test_failure');
+      expect(categorizeError('TEST FAILED with assertion error')).toBe(
+        'test_failure'
+      );
     });
   });
 
@@ -102,12 +116,18 @@ describe('categorizeError', () => {
 
   describe('file_not_found category', () => {
     it('should categorize ENOENT errors as file_not_found', () => {
-      expect(categorizeError('ENOENT: no such file or directory')).toBe('file_not_found');
+      expect(categorizeError('ENOENT: no such file or directory')).toBe(
+        'file_not_found'
+      );
     });
 
     it('should categorize "not found" errors as file_not_found', () => {
-      expect(categorizeError('File not found: config.ts')).toBe('file_not_found');
-      expect(categorizeError('Module not found: ./missing')).toBe('file_not_found');
+      expect(categorizeError('File not found: config.ts')).toBe(
+        'file_not_found'
+      );
+      expect(categorizeError('Module not found: ./missing')).toBe(
+        'file_not_found'
+      );
     });
 
     it('should be case insensitive for file not found', () => {
@@ -117,7 +137,9 @@ describe('categorizeError', () => {
 
   describe('git_conflict category', () => {
     it('should categorize conflict errors as git_conflict', () => {
-      expect(categorizeError('CONFLICT (content): Merge conflict')).toBe('git_conflict');
+      expect(categorizeError('CONFLICT (content): Merge conflict')).toBe(
+        'git_conflict'
+      );
     });
 
     it('should categorize merge errors as git_conflict', () => {
@@ -131,7 +153,9 @@ describe('categorizeError', () => {
 
   describe('database_error category', () => {
     it('should categorize database errors correctly', () => {
-      expect(categorizeError('Database connection failed')).toBe('database_error');
+      expect(categorizeError('Database connection failed')).toBe(
+        'database_error'
+      );
     });
 
     it('should categorize prisma errors as database_error', () => {
@@ -139,7 +163,9 @@ describe('categorizeError', () => {
     });
 
     it('should categorize SQL errors as database_error', () => {
-      expect(categorizeError('SQL syntax error near SELECT')).toBe('database_error');
+      expect(categorizeError('SQL syntax error near SELECT')).toBe(
+        'database_error'
+      );
     });
 
     it('should be case insensitive for database errors', () => {
@@ -159,7 +185,9 @@ describe('categorizeError', () => {
     });
 
     it('should categorize request errors as api_error', () => {
-      expect(categorizeError('Request failed: connection refused')).toBe('api_error');
+      expect(categorizeError('Request failed: connection refused')).toBe(
+        'api_error'
+      );
     });
 
     it('should be case insensitive for api errors', () => {
@@ -482,11 +510,36 @@ describe('buildFixContext', () => {
     it('should show only last 3 strategies', () => {
       const state = createTestState({
         fixStrategiesAttempted: [
-          { phase: 1, strategy: 'Strategy 1', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'Strategy 2', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'Strategy 3', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'Strategy 4', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'Strategy 5', succeeded: false, timestamp: '2025-01-01' },
+          {
+            phase: 1,
+            strategy: 'Strategy 1',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'Strategy 2',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'Strategy 3',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'Strategy 4',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'Strategy 5',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
         ],
       });
       const context = buildFixContext(state, 'error');
@@ -503,7 +556,12 @@ describe('buildFixContext', () => {
     it('should show all strategies when less than 3', () => {
       const state = createTestState({
         fixStrategiesAttempted: [
-          { phase: 1, strategy: 'Only strategy', succeeded: false, timestamp: '2025-01-01' },
+          {
+            phase: 1,
+            strategy: 'Only strategy',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
         ],
       });
       const context = buildFixContext(state, 'error');
@@ -514,9 +572,24 @@ describe('buildFixContext', () => {
     it('should show exactly 3 strategies when exactly 3 exist', () => {
       const state = createTestState({
         fixStrategiesAttempted: [
-          { phase: 1, strategy: 'First', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'Second', succeeded: false, timestamp: '2025-01-01' },
-          { phase: 1, strategy: 'Third', succeeded: false, timestamp: '2025-01-01' },
+          {
+            phase: 1,
+            strategy: 'First',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'Second',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
+          {
+            phase: 1,
+            strategy: 'Third',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
         ],
       });
       const context = buildFixContext(state, 'error');
@@ -536,7 +609,12 @@ describe('buildFixContext', () => {
         officialDocsContent: 'Official docs',
         unofficialDocsContent: 'Community docs',
         fixStrategiesAttempted: [
-          { phase: 1, strategy: 'Previous fix', succeeded: false, timestamp: '2025-01-01' },
+          {
+            phase: 1,
+            strategy: 'Previous fix',
+            succeeded: false,
+            timestamp: '2025-01-01',
+          },
         ],
       });
       const context = buildFixContext(state, 'Test error message');
