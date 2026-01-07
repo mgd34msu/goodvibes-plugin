@@ -10,29 +10,31 @@
  * - Check if feature branch should be created
  * - Process MCP tool results (detect_stack, validate_implementation, etc.)
  */
-import { respond, readHookInput, debug, logError, } from './shared/index.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { handleBashTool } from './post-tool-use/bash-handler.js';
+import { processFileAutomation } from './post-tool-use/file-automation.js';
+import { handleDetectStack, handleRecommendSkills, handleSearch, handleValidateImplementation, handleRunSmokeTest, handleCheckTypes, } from './post-tool-use/mcp-handlers.js';
+import { createResponse, combineMessages } from './post-tool-use/response.js';
+import { fileExists } from './shared/file-utils.js';
+import { respond, readHookInput, debug, logError } from './shared/index.js';
 // State management
 import { loadState, saveState } from './state.js';
 // Configuration
 import { getDefaultConfig } from './types/config.js';
-import { fileExists } from './shared/file-utils.js';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 // Response utilities
-import { createResponse, combineMessages } from './post-tool-use/response.js';
 // File automation (Edit, Write tools)
-import { processFileAutomation } from './post-tool-use/file-automation.js';
 // Bash tool handling
-import { handleBashTool } from './post-tool-use/bash-handler.js';
 // MCP tool handlers
-import { handleDetectStack, handleRecommendSkills, handleSearch, handleValidateImplementation, handleRunSmokeTest, handleCheckTypes, } from './post-tool-use/mcp-handlers.js';
 /**
  * Deep merge two objects
  */
 function deepMerge(target, source) {
     const result = { ...target };
     for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        if (source[key] &&
+            typeof source[key] === 'object' &&
+            !Array.isArray(source[key])) {
             result[key] = deepMerge(result[key], source[key]);
         }
         else if (source[key] !== undefined) {

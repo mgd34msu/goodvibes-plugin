@@ -1,11 +1,11 @@
 /**
  * Search and summary functions for project memory.
  */
-import { getMemoryDir } from './paths.js';
-import { fileExists } from './directories.js';
 import { readDecisions } from './decisions.js';
-import { readPatterns } from './patterns.js';
+import { fileExists } from './directories.js';
 import { readFailures } from './failures.js';
+import { getMemoryDir } from './paths.js';
+import { readPatterns } from './patterns.js';
 import { readPreferences } from './preferences.js';
 /**
  * Loads all project memory (decisions, patterns, failures, preferences).
@@ -64,7 +64,7 @@ export async function searchMemory(cwd, keywords) {
         patterns: memory.patterns.filter((p) => matchesKeywords(p.name) ||
             matchesKeywords(p.description) ||
             (p.example && matchesKeywords(p.example)) ||
-            (p.files && p.files.some(matchesKeywords))),
+            p.files?.some(matchesKeywords)),
         failures: memory.failures.filter((f) => matchesKeywords(f.approach) ||
             matchesKeywords(f.reason) ||
             (f.context && matchesKeywords(f.context)) ||

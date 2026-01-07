@@ -33,29 +33,38 @@ export async function gatherAndFormatContext(cwd) {
         loadProjectMemory(cwd),
     ]);
     // Format the context
-    const parts = ['[GoodVibes SessionStart]', '━'.repeat(SEPARATOR_WIDTH), ''];
+    const parts = [
+        '[GoodVibes SessionStart]',
+        '━'.repeat(SEPARATOR_WIDTH),
+        '',
+    ];
     // Stack info
     const stackStr = formatStackInfo(stackInfo);
-    if (stackStr)
+    if (stackStr) {
         parts.push(stackStr);
+    }
     // Folder structure
     const folderStr = formatFolderAnalysis(folderAnalysis);
-    if (folderStr)
+    if (folderStr) {
         parts.push(folderStr);
+    }
     parts.push('');
     // Git context
     const gitStr = formatGitContext(gitContext);
-    if (gitStr)
+    if (gitStr) {
         parts.push(gitStr);
+    }
     // Environment
     const envStr = formatEnvStatus(envStatus);
-    if (envStr)
+    if (envStr) {
         parts.push(envStr);
+    }
     parts.push('');
     // Memory (decisions, patterns, failures)
     const memoryStr = formatMemoryContext(memory);
-    if (memoryStr)
+    if (memoryStr) {
         parts.push(memoryStr);
+    }
     // TODOs
     const todoStr = formatTodos(todos);
     if (todoStr) {
@@ -64,8 +73,9 @@ export async function gatherAndFormatContext(cwd) {
     }
     // Health
     const healthStr = formatHealthStatus(healthStatus);
-    if (healthStr)
+    if (healthStr) {
         parts.push(healthStr);
+    }
     parts.push('');
     parts.push('━'.repeat(SEPARATOR_WIDTH));
     return {

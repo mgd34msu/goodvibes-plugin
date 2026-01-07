@@ -46,7 +46,7 @@ export async function parseTranscript(transcriptPath) {
     try {
         const content = await fs.readFile(transcriptPath, 'utf-8');
         // Try to parse as JSONL (each line is a JSON object)
-        const lines = content.split('\n').filter(line => line.trim());
+        const lines = content.split('\n').filter((line) => line.trim());
         for (const line of lines) {
             try {
                 const entry = JSON.parse(line);
@@ -86,11 +86,13 @@ function processTranscriptEntry(entry, result) {
  */
 function processToolUsage(entry, result) {
     const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
-    if (!isToolUse)
+    if (!isToolUse) {
         return;
+    }
     const toolName = (entry.tool_name || entry.name);
-    if (!toolName)
+    if (!toolName) {
         return;
+    }
     result.tools_used.push(toolName);
     // Check for file modifications
     const isFileModificationTool = toolName === 'Write' ||
@@ -109,8 +111,9 @@ function processToolUsage(entry, result) {
  */
 function extractFilePathFromEntry(entry) {
     const input = entry.tool_input || entry.input || entry.parameters;
-    if (!input || typeof input !== 'object')
+    if (!input || typeof input !== 'object') {
         return null;
+    }
     const inputObj = input;
     const filePath = inputObj.file_path || inputObj.path || inputObj.file;
     return typeof filePath === 'string' ? filePath : null;
@@ -159,7 +162,9 @@ function processPlainTextLine(line, result) {
         }
     }
     // Count errors
-    if (lowerLine.includes('error:') || lowerLine.includes('failed:') || lowerLine.includes('exception')) {
+    if (lowerLine.includes('error:') ||
+        lowerLine.includes('failed:') ||
+        lowerLine.includes('exception')) {
         result.error_count++;
     }
 }

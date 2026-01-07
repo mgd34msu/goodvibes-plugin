@@ -4,8 +4,8 @@
  * Handles lazy creation of the .goodvibes and memory directories,
  * as well as security-hardened .gitignore management.
  */
-import { ensureGoodVibesDir } from '../shared/index.js';
 import { fileExists } from '../shared/file-utils.js';
+import { ensureGoodVibesDir } from '../shared/index.js';
 export { fileExists };
 export { ensureGoodVibesDir };
 /**

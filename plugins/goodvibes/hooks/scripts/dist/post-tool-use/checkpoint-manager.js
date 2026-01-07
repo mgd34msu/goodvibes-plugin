@@ -9,9 +9,9 @@
  * @see {@link ./file-tracker} for file modification tracking
  * @see {@link ../automation/git-operations} for git commit operations
  */
-import { createCheckpoint as gitCheckpoint, hasUncommittedChanges } from '../automation/git-operations.js';
+import { createCheckpoint as gitCheckpoint, hasUncommittedChanges, } from '../automation/git-operations.js';
 import { CHECKPOINT_TRIGGERS } from '../shared/index.js';
-import { clearCheckpointTracking, getModifiedFileCount } from './file-tracker.js';
+import { clearCheckpointTracking, getModifiedFileCount, } from './file-tracker.js';
 /**
  * Determines if a checkpoint should be created based on file modification count.
  * Compares the number of modified files since last checkpoint against the configured threshold.
@@ -80,7 +80,11 @@ export async function createCheckpointIfNeeded(state, cwd, forcedReason) {
                 ],
             },
         };
-        return { created: true, message: `Checkpoint: ${trigger.reason}`, state: finalState };
+        return {
+            created: true,
+            message: `Checkpoint: ${trigger.reason}`,
+            state: finalState,
+        };
     }
     return { created: false, message: 'Checkpoint failed', state };
 }

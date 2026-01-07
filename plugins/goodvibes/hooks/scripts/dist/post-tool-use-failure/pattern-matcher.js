@@ -10,14 +10,24 @@ import { RECOVERY_PATTERNS } from './recovery-patterns.js';
  */
 const CATEGORY_MAP = {
     npm_install: ['missing_import', 'npm_error'],
-    typescript_error: ['typescript_type_error', 'typescript_config_error', 'type_mismatch'],
+    typescript_error: [
+        'typescript_type_error',
+        'typescript_config_error',
+        'type_mismatch',
+    ],
     test_failure: ['test_failure'],
     build_failure: ['build_failure'],
     file_not_found: ['file_not_found'],
     git_conflict: ['git_error'],
     database_error: ['database_error'],
     api_error: ['api_error'],
-    unknown: ['undefined_reference', 'lint_error', 'permission_error', 'resource_error', 'syntax_error'],
+    unknown: [
+        'undefined_reference',
+        'lint_error',
+        'permission_error',
+        'resource_error',
+        'syntax_error',
+    ],
 };
 /**
  * Find a matching recovery pattern for the given error category and message.

@@ -6,9 +6,9 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { createPreCompactCheckpoint, saveSessionSummary, getFilesModifiedThisSession, } from './pre-compact/index.js';
 import { respond, readHookInput, loadAnalytics, debug, logError, CACHE_DIR, createResponse, parseTranscript, fileExists, } from './shared/index.js';
 import { loadState } from './state.js';
-import { createPreCompactCheckpoint, saveSessionSummary, getFilesModifiedThisSession, } from './pre-compact/index.js';
 /**
  * Generate a session summary from analytics and state
  */
@@ -83,4 +83,7 @@ async function runPreCompactHook() {
         respond(createResponse());
     }
 }
-runPreCompactHook();
+runPreCompactHook().catch((error) => {
+    logError('PreCompact uncaught', error);
+    respond(createResponse());
+});

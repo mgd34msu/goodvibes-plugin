@@ -4,10 +4,10 @@
  * Handles file modification tracking and orchestrates automation
  * for Edit and Write tools.
  */
-import { HookInput } from '../shared/index.js';
-import type { HooksState } from '../types/state.js';
-import type { GoodVibesConfig } from '../types/config.js';
 import type { AutomationMessages } from './response.js';
+import type { HookInput } from '../shared/index.js';
+import type { GoodVibesConfig } from '../types/config.js';
+import type { HooksState } from '../types/state.js';
 export { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch, } from './automation-runners.js';
 /**
  * Handle file modification tracking for Edit and Write tools.

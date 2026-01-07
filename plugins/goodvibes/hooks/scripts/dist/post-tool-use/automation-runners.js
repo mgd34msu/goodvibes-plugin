@@ -4,17 +4,17 @@
  * Conditional runners for tests, builds, checkpoints, and branches.
  * Each function checks configuration before executing automation.
  */
-import { debug, logError } from '../shared/index.js';
 // File tracking
-import { getModifiedFileCount } from './file-tracker.js';
+import { runTypeCheck } from '../automation/build-runner.js';
+import { findTestsForFile, runTests, } from '../automation/test-runner.js';
+import { debug, logError } from '../shared/index.js';
+import { updateTestState, updateBuildState } from '../state.js';
 // Git operations
 import { createCheckpointIfNeeded } from './checkpoint-manager.js';
+import { getModifiedFileCount } from './file-tracker.js';
 import { maybeCreateFeatureBranch } from './git-branch-manager.js';
 // Testing and building
-import { findTestsForFile, runTests } from '../automation/test-runner.js';
-import { runTypeCheck } from '../automation/build-runner.js';
 // State management
-import { updateTestState, updateBuildState } from '../state.js';
 /**
  * Run tests for modified files if test automation is enabled in config.
  * Skips test files themselves and files with no associated tests.
@@ -33,7 +33,8 @@ import { updateTestState, updateBuildState } from '../state.js';
  * }
  */
 export async function maybeRunTests(state, config, filePath, cwd) {
-    if (!config.automation.enabled || !config.automation.testing.runAfterFileChange) {
+    if (!config.automation.enabled ||
+        !config.automation.testing.runAfterFileChange) {
         return { ran: false, result: null, state };
     }
     // Skip if file is a test file itself

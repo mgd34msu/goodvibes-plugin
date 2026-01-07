@@ -3,9 +3,9 @@
  *
  * Provides active agent state tracking for SubagentStart/Stop correlation.
  */
+import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execSync } from 'child_process';
 import { debug, logError, fileExists } from '../shared/index.js';
 // ============================================================================
 // Constants and Paths
@@ -64,7 +64,9 @@ export function deriveProjectName(cwd) {
     // Get the directory name
     const dirName = path.basename(cwd);
     // If it looks like a temp directory, try parent
-    if (dirName.match(/^[a-f0-9]{8,}$/i) || dirName === 'tmp' || dirName === 'temp') {
+    if (dirName.match(/^[a-f0-9]{8,}$/i) ||
+        dirName === 'tmp' ||
+        dirName === 'temp') {
         const parentDir = path.basename(path.dirname(cwd));
         if (parentDir && parentDir !== '.' && parentDir !== '/') {
             return parentDir;

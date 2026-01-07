@@ -3,8 +3,8 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared/logging.js';
 import { fileExists } from '../shared/file-utils.js';
+import { debug } from '../shared/logging.js';
 /**
  * Generic memory file parser that reads and parses markdown-based memory files.
  *
@@ -67,7 +67,9 @@ export function parseMemoryContent(content, parser) {
             const isValid = parser.validate ? parser.validate(entry) : true;
             if (isValid) {
                 // Transform entry if transformer provided
-                const finalEntry = parser.transform ? parser.transform(entry) : entry;
+                const finalEntry = parser.transform
+                    ? parser.transform(entry)
+                    : entry;
                 results.push(finalEntry);
             }
         }
@@ -113,7 +115,9 @@ function parseBlock(block, parser) {
             continue;
         }
         // If we're inside a code block, accumulate content
-        if (inCodeBlock && currentSection && parser.fields[currentSection] === 'code') {
+        if (inCodeBlock &&
+            currentSection &&
+            parser.fields[currentSection] === 'code') {
             codeContent += line + '\n';
             continue;
         }

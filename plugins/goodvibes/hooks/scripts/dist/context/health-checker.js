@@ -35,8 +35,13 @@ export async function checkProjectHealth(cwd) {
         });
     }
     // Check for multiple lockfiles
-    const lockfileChecks = await Promise.all(LOCKFILES.map(async (f) => ({ file: f, exists: await fileExists(path.join(cwd, f)) })));
-    const foundLockfiles = lockfileChecks.filter(({ exists }) => exists).map(({ file }) => file);
+    const lockfileChecks = await Promise.all(LOCKFILES.map(async (f) => ({
+        file: f,
+        exists: await fileExists(path.join(cwd, f)),
+    })));
+    const foundLockfiles = lockfileChecks
+        .filter(({ exists }) => exists)
+        .map(({ file }) => file);
     if (foundLockfiles.length > 1) {
         checks.push({
             check: 'lockfiles',
@@ -67,11 +72,16 @@ export async function checkProjectHealth(cwd) {
 }
 /** Format health status for display in context output. */
 export function formatHealthStatus(status) {
-    if (status.checks.length === 0)
+    if (status.checks.length === 0) {
         return 'Health: All good';
+    }
     const lines = ['Health:'];
     for (const check of status.checks) {
-        const icon = check.status === 'warning' ? '[!]' : check.status === 'error' ? '[X]' : '[i]';
+        const icon = check.status === 'warning'
+            ? '[!]'
+            : check.status === 'error'
+                ? '[X]'
+                : '[i]';
         lines.push(`${icon} ${check.message}`);
     }
     return lines.join('\n');

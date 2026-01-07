@@ -17,5 +17,5 @@ export { readPreferences, writePreference } from './preferences.js';
 export { loadProjectMemory, loadMemory, hasMemory, getMemorySummary, searchMemory, formatMemoryContext, getCurrentDate, } from './search.js';
 // Re-export security patterns for backward compatibility
 export { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
-// Backward compatibility wrappers (re-exported from wrappers.ts)
+// Backward compatibility wrappers (re-exported from ./wrappers.js)
 export { appendDecision, appendPattern, appendFailure, appendPreference, } from './wrappers.js';

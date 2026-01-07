@@ -11,13 +11,13 @@
  * - Updates session state (increment session count, record start time)
  * - Saves state for future sessions
  */
-import { respond, readHookInput, validateRegistries, ensureCacheDir, saveAnalytics, debug, logError, createResponse, PROJECT_ROOT, } from './shared/index.js';
 // Session-start specific modules
-import { checkCrashRecovery } from './session-start/crash-recovery.js';
 import { gatherProjectContext, createFailedContextResult, } from './session-start/context-builder.js';
+import { checkCrashRecovery, } from './session-start/crash-recovery.js';
 import { buildSystemMessage } from './session-start/response-formatter.js';
+import { respond, readHookInput, validateRegistries, ensureCacheDir, saveAnalytics, debug, logError, createResponse, PROJECT_ROOT, } from './shared/index.js';
 // State management
-import { loadState, saveState, updateSessionState, initializeSession } from './state.js';
+import { loadState, saveState, updateSessionState, initializeSession, } from './state.js';
 import { createDefaultState } from './types/state.js';
 /** Default recovery info when crash recovery check fails */
 const DEFAULT_RECOVERY_INFO = {
@@ -32,7 +32,10 @@ const DEFAULT_RECOVERY_INFO = {
 async function loadPluginState(projectDir) {
     try {
         const state = await loadState(projectDir);
-        debug('State loaded', { sessionId: state.session.id, mode: state.session.mode });
+        debug('State loaded', {
+            sessionId: state.session.id,
+            mode: state.session.mode,
+        });
         return state;
     }
     catch (stateError) {
@@ -44,7 +47,9 @@ async function loadPluginState(projectDir) {
 async function performCrashRecoveryCheck(projectDir) {
     try {
         const recoveryInfo = await checkCrashRecovery(projectDir);
-        debug('Crash recovery check', { needsRecovery: recoveryInfo.needsRecovery });
+        debug('Crash recovery check', {
+            needsRecovery: recoveryInfo.needsRecovery,
+        });
         return recoveryInfo;
     }
     catch (recoveryError) {
@@ -149,4 +154,7 @@ async function runSessionStartHook() {
         respond(createResponse({ systemMessage: `GoodVibes: Init error - ${message}` }));
     }
 }
-runSessionStartHook();
+runSessionStartHook().catch((error) => {
+    logError('SessionStart uncaught', error);
+    respond(createResponse());
+});

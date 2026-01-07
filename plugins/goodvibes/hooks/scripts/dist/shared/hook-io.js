@@ -8,8 +8,9 @@ import { STDIN_TIMEOUT_MS } from './config.js';
  * Type guard to validate hook input structure at runtime
  */
 function isValidHookInput(value) {
-    if (typeof value !== 'object' || value === null)
+    if (typeof value !== 'object' || value === null) {
         return false;
+    }
     const obj = value;
     return (typeof obj.session_id === 'string' &&
         typeof obj.cwd === 'string' &&

@@ -15,10 +15,10 @@
  * - Return validation results in output
  */
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared/index.js';
-import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './subagent-stop/telemetry.js';
-import { validateAgentOutput } from './subagent-stop/output-validation.js';
-import { verifyAgentTests } from './subagent-stop/test-verification.js';
 import { loadState, saveState } from './state.js';
+import { validateAgentOutput } from './subagent-stop/output-validation.js';
+import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './subagent-stop/telemetry.js';
+import { verifyAgentTests } from './subagent-stop/test-verification.js';
 /** Creates a hook response with optional system message and output data. */
 function createResponse(options) {
     const response = {
@@ -89,7 +89,7 @@ async function runSubagentStopHook() {
                 }
             }
             // Build telemetry entry with keywords, files, tools, summary
-            const status = (validationResult?.valid !== false && testResult?.passed !== false)
+            const status = validationResult?.valid !== false && testResult?.passed !== false
                 ? 'completed'
                 : 'failed';
             const telemetryEntry = await buildTelemetryEntry(tracking, transcriptPath, status);
@@ -106,7 +106,7 @@ async function runSubagentStopHook() {
             debug('Removed agent tracking', { agent_id: agentId });
             // Update session analytics
             const analytics = await loadAnalytics();
-            if (analytics && analytics.subagents_spawned) {
+            if (analytics?.subagents_spawned) {
                 // Find and update the matching subagent entry
                 const subagentEntry = analytics.subagents_spawned.find((s) => s.type === tracking.agent_type &&
                     s.started_at === tracking.started_at);
@@ -145,7 +145,11 @@ async function runSubagentStopHook() {
             issues.push('Test failures: ' + testResult.summary);
         }
         if (issues.length > 0) {
-            systemMessage = '[GoodVibes] Agent ' + agentType + ' completed with issues: ' + issues.join('; ');
+            systemMessage =
+                '[GoodVibes] Agent ' +
+                    agentType +
+                    ' completed with issues: ' +
+                    issues.join('; ');
         }
         // Return validation results in output
         respond(createResponse({

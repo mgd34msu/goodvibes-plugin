@@ -103,18 +103,24 @@ function getRecentlyModifiedFiles(cwd, days = DEFAULT_DAYS_LOOKBACK) {
     since.setDate(since.getDate() - days);
     const sinceStr = since.toISOString().split('T')[0];
     const result = gitExec(cwd, `log --since="${sinceStr}" --name-status --pretty=format:""`);
-    if (!result)
+    if (!result) {
         return [];
+    }
     const fileChanges = new Map();
     for (const line of result.split('\n')) {
         const trimmed = line.trim();
-        if (!trimmed)
+        if (!trimmed) {
             continue;
+        }
         const match = trimmed.match(/^([AMD])\t(.+)$/);
         if (match) {
             const status = match[1];
             const file = match[2];
-            const current = fileChanges.get(file) || { added: 0, modified: 0, deleted: 0 };
+            const current = fileChanges.get(file) || {
+                added: 0,
+                modified: 0,
+                deleted: 0,
+            };
             switch (status) {
                 case 'A':
                     current.added++;
@@ -141,7 +147,9 @@ function getRecentlyModifiedFiles(cwd, days = DEFAULT_DAYS_LOOKBACK) {
         }
         changes.push({ file, changes: total, type });
     }
-    return changes.sort((a, b) => b.changes - a.changes).slice(0, MAX_RECENT_FILES);
+    return changes
+        .sort((a, b) => b.changes - a.changes)
+        .slice(0, MAX_RECENT_FILES);
 }
 /**
  * Identify hotspots (frequently changed files).
@@ -153,13 +161,15 @@ function getRecentlyModifiedFiles(cwd, days = DEFAULT_DAYS_LOOKBACK) {
  */
 function getHotspots(cwd, commits = DEFAULT_COMMITS_FOR_HOTSPOTS) {
     const result = gitExec(cwd, `log -${commits} --name-only --pretty=format:""`);
-    if (!result)
+    if (!result) {
         return [];
+    }
     const fileCount = new Map();
     for (const line of result.split('\n')) {
         const file = line.trim();
-        if (!file)
+        if (!file) {
             continue;
+        }
         if (file.includes('node_modules/') ||
             file.includes('dist/') ||
             file.includes('.lock') ||
@@ -180,7 +190,9 @@ function getHotspots(cwd, commits = DEFAULT_COMMITS_FOR_HOTSPOTS) {
             });
         }
     }
-    return hotspots.sort((a, b) => b.changeCount - a.changeCount).slice(0, MAX_HOTSPOTS);
+    return hotspots
+        .sort((a, b) => b.changeCount - a.changeCount)
+        .slice(0, MAX_HOTSPOTS);
 }
 /**
  * Get recent commits summary.
@@ -193,13 +205,15 @@ function getHotspots(cwd, commits = DEFAULT_COMMITS_FOR_HOTSPOTS) {
 function getRecentCommits(cwd, count = DEFAULT_RECENT_COMMITS) {
     const format = '%h|%s|%an|%ar';
     const result = gitExec(cwd, `log -${count} --format="${format}"`);
-    if (!result)
+    if (!result) {
         return [];
+    }
     const commits = [];
     for (const line of result.split('\n')) {
         const trimmed = line.trim();
-        if (!trimmed)
+        if (!trimmed) {
             continue;
+        }
         const parts = trimmed.split('|');
         if (parts.length >= 4) {
             commits.push({

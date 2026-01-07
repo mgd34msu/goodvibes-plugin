@@ -8,7 +8,7 @@
  * @module pre-tool-use/git-guards
  * @see {@link ../automation/git-operations} for git command execution
  */
-import { getCurrentBranch } from '../automation/git-operations.js';
+import { getCurrentBranch, } from '../automation/git-operations.js';
 /**
  * Checks if a git command is safe to run on the current branch.
  * Prevents dangerous operations like force push to main, hard reset on main,
@@ -30,30 +30,31 @@ export async function checkBranchGuard(command, cwd, state) {
     const currentBranch = await getCurrentBranch(cwd);
     const mainBranch = state.git.mainBranch;
     // Prevent force push to main
-    if (/git\s+push\s+.*--force/.test(command) || /git\s+push\s+-f/.test(command)) {
+    if (/git\s+push\s+.*--force/.test(command) ||
+        /git\s+push\s+-f/.test(command)) {
         if (currentBranch === mainBranch) {
             return {
                 allowed: false,
-                reason: `Force push to ${mainBranch} is not allowed`
+                reason: `Force push to ${mainBranch} is not allowed`,
             };
         }
         return {
             allowed: true,
-            warning: 'Force push detected - ensure this is intentional'
+            warning: 'Force push detected - ensure this is intentional',
         };
     }
     // Prevent hard reset on main
     if (/git\s+reset\s+--hard/.test(command) && currentBranch === mainBranch) {
         return {
             allowed: false,
-            reason: `Hard reset on ${mainBranch} is not allowed`
+            reason: `Hard reset on ${mainBranch} is not allowed`,
         };
     }
     // Warn about rebasing main
     if (/git\s+rebase/.test(command) && currentBranch === mainBranch) {
         return {
             allowed: true,
-            warning: `Rebasing ${mainBranch} - ensure this is intentional`
+            warning: `Rebasing ${mainBranch} - ensure this is intentional`,
         };
     }
     return { allowed: true };
@@ -77,21 +78,21 @@ export function checkMergeReadiness(_cwd, state) {
     if (state.tests.failingFiles.length > 0) {
         return {
             allowed: false,
-            reason: `Cannot merge: ${state.tests.failingFiles.length} test files failing`
+            reason: `Cannot merge: ${state.tests.failingFiles.length} test files failing`,
         };
     }
     // Check if build is passing
     if (state.build.status === 'failing') {
         return {
             allowed: false,
-            reason: 'Cannot merge: build is failing'
+            reason: 'Cannot merge: build is failing',
         };
     }
     // Check for pending fixes
     if (state.tests.pendingFixes.length > 0) {
         return {
             allowed: false,
-            reason: `Cannot merge: ${state.tests.pendingFixes.length} pending test fixes`
+            reason: `Cannot merge: ${state.tests.pendingFixes.length} pending test fixes`,
         };
     }
     return { allowed: true };

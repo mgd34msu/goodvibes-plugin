@@ -6,8 +6,8 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared/logging.js';
 import { fileExists } from '../shared/file-utils.js';
+import { debug } from '../shared/logging.js';
 /**
  * Check if a path is a directory (async).
  * Used to filter out non-directory paths when loading memory files.
@@ -74,7 +74,7 @@ async function loadTextFiles(cwd, subdir) {
     const dirPath = path.join(cwd, MEMORY_DIR, subdir);
     const results = [];
     try {
-        if (await fileExists(dirPath) && await isDirectory(dirPath)) {
+        if ((await fileExists(dirPath)) && (await isDirectory(dirPath))) {
             const files = await fs.readdir(dirPath);
             for (const file of files) {
                 if (file.endsWith('.md') || file.endsWith('.txt')) {
@@ -108,7 +108,7 @@ async function loadTextFiles(cwd, subdir) {
 export async function loadMemory(cwd) {
     const memoryPath = path.join(cwd, MEMORY_DIR);
     // Check if memory directory exists
-    if (!await fileExists(memoryPath)) {
+    if (!(await fileExists(memoryPath))) {
         return {
             decisions: [],
             patterns: [],
@@ -154,7 +154,9 @@ export function formatMemory(memory) {
     }
     // Active patterns
     if (memory.patterns.length > 0) {
-        const patternLines = memory.patterns.slice(0, MAX_PATTERNS_DISPLAY).map((p) => `- **${p.name}:** ${p.description}`);
+        const patternLines = memory.patterns
+            .slice(0, MAX_PATTERNS_DISPLAY)
+            .map((p) => `- **${p.name}:** ${p.description}`);
         sections.push(`**Project Patterns:**\n${patternLines.join('\n')}`);
     }
     // Recent failures
@@ -162,26 +164,30 @@ export function formatMemory(memory) {
         const recent = memory.failures.slice(-RECENT_FAILURES_LIMIT);
         const failureLines = recent.map((f) => {
             let line = `- ${f.error}`;
-            if (f.resolution)
+            if (f.resolution) {
                 line += ` -> Resolved: ${f.resolution}`;
+            }
             return line;
         });
         sections.push(`**Recent Issues:**\n${failureLines.join('\n')}`);
     }
     // Preferences
     const prefLines = [];
-    if (memory.preferences.conventions && memory.preferences.conventions.length > 0) {
+    if (memory.preferences.conventions &&
+        memory.preferences.conventions.length > 0) {
         prefLines.push(`- Conventions: ${memory.preferences.conventions.join(', ')}`);
     }
-    if (memory.preferences.avoidPatterns && memory.preferences.avoidPatterns.length > 0) {
+    if (memory.preferences.avoidPatterns &&
+        memory.preferences.avoidPatterns.length > 0) {
         prefLines.push(`- Avoid: ${memory.preferences.avoidPatterns.join(', ')}`);
     }
     if (memory.preferences.preferredLibraries) {
         const libs = Object.entries(memory.preferences.preferredLibraries)
             .map(([cat, lib]) => `${cat}: ${lib}`)
             .join(', ');
-        if (libs)
+        if (libs) {
             prefLines.push(`- Preferred: ${libs}`);
+        }
     }
     if (prefLines.length > 0) {
         sections.push(`**Preferences:**\n${prefLines.join('\n')}`);

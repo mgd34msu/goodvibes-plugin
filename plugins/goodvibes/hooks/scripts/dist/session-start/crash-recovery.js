@@ -10,9 +10,9 @@
  * @see {@link ../automation/git-operations} for git status
  */
 import * as path from 'path';
-import { loadState } from '../state.js';
-import { hasUncommittedChanges, getUncommittedFiles } from '../automation/git-operations.js';
+import { hasUncommittedChanges, getUncommittedFiles, } from '../automation/git-operations.js';
 import { fileExists } from '../shared/index.js';
+import { loadState } from '../state.js';
 /** Checks if crash recovery is needed based on previous session state */
 export async function checkCrashRecovery(cwd) {
     const stateFile = path.join(cwd, '.goodvibes', 'state', 'hooks-state.json');
@@ -35,7 +35,11 @@ export async function checkCrashRecovery(cwd) {
     const hasPendingFixes = state.tests.pendingFixes.length > 0;
     const failingBuild = state.build.status === 'failing';
     const hasModifiedFiles = state.files.modifiedSinceCheckpoint.length > 0;
-    const needsRecovery = uncommitted || onFeatureBranch || hasPendingFixes || failingBuild || hasModifiedFiles;
+    const needsRecovery = uncommitted ||
+        onFeatureBranch ||
+        hasPendingFixes ||
+        failingBuild ||
+        hasModifiedFiles;
     if (!needsRecovery) {
         return {
             needsRecovery: false,
@@ -67,8 +71,9 @@ export async function checkCrashRecovery(cwd) {
 }
 /** Formats recovery information into a human-readable context string */
 export function formatRecoveryContext(info) {
-    if (!info.needsRecovery)
+    if (!info.needsRecovery) {
         return '';
+    }
     const parts = [
         '[GoodVibes Recovery]',
         'Previous session ended unexpectedly.',

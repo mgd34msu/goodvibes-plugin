@@ -4,12 +4,12 @@
  * Formats all gathered context into a clean, readable format
  * for injection via additionalContext.
  */
-import { StackInfo } from './stack-detector.js';
-import { GitContext } from './git-context.js';
-import { EnvStatus } from './environment.js';
-import { TodoItem } from './todo-scanner.js';
-import { HealthStatus } from './health-checker.js';
-import { FolderAnalysis } from './folder-analyzer.js';
+import type { EnvStatus } from './environment.js';
+import type { FolderAnalysis } from './folder-analyzer.js';
+import type { GitContext } from './git-context.js';
+import type { HealthStatus } from './health-checker.js';
+import type { StackInfo } from './stack-detector.js';
+import type { TodoItem } from './todo-scanner.js';
 import type { ProjectMemory } from '../types/memory.js';
 /** All gathered project context data. */
 export interface GatheredContext {

@@ -2,7 +2,7 @@
  * Patterns memory module - stores project-specific code patterns.
  */
 import * as path from 'path';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
 const PATTERNS_HEADER = `# Project-Specific Patterns
 
 This file documents code patterns specific to this project.

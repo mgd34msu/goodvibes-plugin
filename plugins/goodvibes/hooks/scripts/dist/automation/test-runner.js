@@ -4,8 +4,8 @@
  * Executes test suites and parses test runner output to extract
  * failure information for automated debugging.
  */
-import * as fs from 'fs';
 import { execSync } from 'child_process';
+import * as fs from 'fs';
 import { extractErrorOutput } from '../shared/index.js';
 /** Number of lines to include after a test failure match for context. */
 const FAILURE_CONTEXT_LINES = 5;
@@ -30,7 +30,7 @@ export function findTestsForFile(sourceFile) {
         sourceFile.replace(/src\/(.*)\.tsx?$/, 'src/__tests__/$1.test.ts'),
         sourceFile.replace(/src\/(.*)\.tsx?$/, 'tests/$1.test.ts'),
     ];
-    return testPatterns.filter(p => fs.existsSync(p));
+    return testPatterns.filter((p) => fs.existsSync(p));
 }
 /**
  * Runs tests for specific test files and returns structured results.
@@ -52,8 +52,16 @@ export function runTests(testFiles, cwd) {
     }
     try {
         const fileArgs = testFiles.join(' ');
-        execSync(`npm test -- ${fileArgs}`, { cwd, stdio: 'pipe', timeout: 300000 });
-        return { passed: true, summary: `${testFiles.length} test files passed`, failures: [] };
+        execSync(`npm test -- ${fileArgs}`, {
+            cwd,
+            stdio: 'pipe',
+            timeout: 300000,
+        });
+        return {
+            passed: true,
+            summary: `${testFiles.length} test files passed`,
+            failures: [],
+        };
     }
     catch (error) {
         const output = extractErrorOutput(error);

@@ -5,8 +5,8 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from './logging.js';
 import { fileExists } from './file-utils.js';
+import { debug } from './logging.js';
 /**
  * Timeout in milliseconds for waiting on stdin input before using defaults.
  * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
@@ -20,9 +20,24 @@ export const CHECKPOINT_TRIGGERS = {
 };
 /** Default quality gate checks with auto-fix commands. */
 export const QUALITY_GATES = [
-    { name: 'TypeScript', check: 'npx tsc --noEmit', autoFix: null, blocking: true },
-    { name: 'ESLint', check: 'npx eslint . --max-warnings=0', autoFix: 'npx eslint . --fix', blocking: true },
-    { name: 'Prettier', check: 'npx prettier --check .', autoFix: 'npx prettier --write .', blocking: false },
+    {
+        name: 'TypeScript',
+        check: 'npx tsc --noEmit',
+        autoFix: null,
+        blocking: true,
+    },
+    {
+        name: 'ESLint',
+        check: 'npx eslint . --max-warnings=0',
+        autoFix: 'npx eslint . --fix',
+        blocking: true,
+    },
+    {
+        name: 'Prettier',
+        check: 'npx prettier --check .',
+        autoFix: 'npx prettier --write .',
+        blocking: false,
+    },
     { name: 'Tests', check: 'npm test', autoFix: null, blocking: true },
 ];
 /**
@@ -67,7 +82,9 @@ export function getDefaultSharedConfig() {
 function deepMerge(target, source) {
     const result = { ...target };
     for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        if (source[key] &&
+            typeof source[key] === 'object' &&
+            !Array.isArray(source[key])) {
             result[key] = deepMerge(result[key], source[key]);
         }
         else if (source[key] !== undefined) {

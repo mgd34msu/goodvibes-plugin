@@ -18,7 +18,7 @@
  * - Branch protection (prevent force push to main)
  * - Merge readiness checks
  */
-import { HookInput } from './shared/index.js';
+import type { HookInput } from './shared/index.js';
 /**
  * Extract the bash command from tool input
  */

@@ -4,10 +4,10 @@
  * Conditional runners for tests, builds, checkpoints, and branches.
  * Each function checks configuration before executing automation.
  */
-import type { HooksState } from '../types/state.js';
-import type { GoodVibesConfig } from '../types/config.js';
-import { type TestResult } from '../automation/test-runner.js';
 import { type BuildResult } from '../automation/build-runner.js';
+import { type TestResult } from '../automation/test-runner.js';
+import type { GoodVibesConfig } from '../types/config.js';
+import type { HooksState } from '../types/state.js';
 /**
  * Run tests for modified files if test automation is enabled in config.
  * Skips test files themselves and files with no associated tests.

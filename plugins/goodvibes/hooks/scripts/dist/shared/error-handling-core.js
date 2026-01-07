@@ -9,7 +9,7 @@
  * - Phase escalation logic
  * - Retry exhaustion checking
  */
-import { PHASE_RETRY_LIMITS } from '../types/errors.js';
+import { PHASE_RETRY_LIMITS, } from '../types/errors.js';
 // =============================================================================
 // Constants
 // =============================================================================
@@ -82,7 +82,7 @@ export function generateErrorSignature(errorOrToolName, errorMessage) {
         let hash = 0;
         for (let i = 0; i < normalized.length; i++) {
             const char = normalized.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
+            hash = (hash << 5) - hash + char;
             hash = hash & hash; // Convert to 32bit integer
         }
         return `err_${Math.abs(hash).toString(16)}`;

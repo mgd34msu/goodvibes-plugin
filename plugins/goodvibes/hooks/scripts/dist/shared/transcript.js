@@ -36,14 +36,16 @@ export async function parseTranscript(transcriptPath) {
                 const event = JSON.parse(line);
                 if (event.type === 'tool_use') {
                     toolsUsed.add(event.name);
-                    if (['Write', 'Edit'].includes(event.name) && event.input?.file_path) {
+                    if (['Write', 'Edit'].includes(event.name) &&
+                        event.input?.file_path) {
                         filesModified.push(event.input.file_path);
                     }
                 }
                 if (event.role === 'assistant' && event.content) {
-                    lastAssistantMessage = typeof event.content === 'string'
-                        ? event.content
-                        : JSON.stringify(event.content);
+                    lastAssistantMessage =
+                        typeof event.content === 'string'
+                            ? event.content
+                            : JSON.stringify(event.content);
                 }
             }
             catch (error) {

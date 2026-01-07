@@ -22,7 +22,12 @@ const GIT_DETACHED_HEAD = 'detached';
  */
 function execGit(command, cwd) {
     try {
-        return execSync(command, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
+        return execSync(command, {
+            cwd,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 30000,
+        }).trim();
     }
     catch (error) {
         // Git command failed - this is expected for some operations (e.g., no upstream)
@@ -107,18 +112,21 @@ export async function getGitContext(cwd) {
  * // Returns: "Git: main branch, 3 uncommitted files, 2 ahead\nLast: \"fix: bug\" (2 hours ago)"
  */
 export function formatGitContext(context) {
-    if (!context.isRepo)
+    if (!context.isRepo) {
         return 'Git: Not a git repository';
+    }
     const parts = [];
     parts.push(`Git: ${context.branch || GIT_DETACHED_HEAD} branch`);
     if (context.hasUncommittedChanges) {
         parts.push(`${context.uncommittedFileCount} uncommitted files`);
     }
     if (context.aheadBehind) {
-        if (context.aheadBehind.ahead > 0)
+        if (context.aheadBehind.ahead > 0) {
             parts.push(`${context.aheadBehind.ahead} ahead`);
-        if (context.aheadBehind.behind > 0)
+        }
+        if (context.aheadBehind.behind > 0) {
             parts.push(`${context.aheadBehind.behind} behind`);
+        }
     }
     if (context.lastCommit) {
         parts.push(`\nLast: "${context.lastCommit}"`);

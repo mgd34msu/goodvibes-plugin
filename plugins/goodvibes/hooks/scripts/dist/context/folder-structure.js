@@ -5,12 +5,26 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared/logging.js';
 import { fileExists } from '../shared/file-utils.js';
-const LAYER_INDICATORS = ['controllers', 'services', 'repositories', 'models', 'middleware', 'routes'];
+import { debug } from '../shared/logging.js';
+const LAYER_INDICATORS = [
+    'controllers',
+    'services',
+    'repositories',
+    'models',
+    'middleware',
+    'routes',
+];
 const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
 const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];
-const DDD_INDICATORS = ['domain', 'infrastructure', 'application', 'aggregates', 'entities', 'value-objects'];
+const DDD_INDICATORS = [
+    'domain',
+    'infrastructure',
+    'application',
+    'aggregates',
+    'entities',
+    'value-objects',
+];
 /** Minimum indicator matches for pattern detection. */
 const MIN_INDICATOR_MATCH = 2;
 /** Minimum matches for high confidence pattern detection. */
@@ -29,7 +43,9 @@ const FLAT_STRUCTURE_THRESHOLD = 3;
 async function getSubdirs(dirPath) {
     try {
         const entries = await fs.readdir(dirPath, { withFileTypes: true });
-        return entries.filter((e) => e.isDirectory()).map((e) => e.name.toLowerCase());
+        return entries
+            .filter((e) => e.isDirectory())
+            .map((e) => e.name.toLowerCase());
     }
     catch (error) {
         debug('folder-structure failed', { error: String(error) });
@@ -86,17 +102,26 @@ async function detectPattern(cwd, topLevelDirs, srcDirs) {
     // Check for Atomic Design
     const atomicCount = hasIndicators(allDirs, ATOMIC_INDICATORS);
     if (atomicCount >= MIN_INDICATOR_MATCH) {
-        return { pattern: 'atomic-design', confidence: atomicCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
+        return {
+            pattern: 'atomic-design',
+            confidence: atomicCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
+        };
     }
     // Check for Domain-Driven Design
     const dddCount = hasIndicators(allDirs, DDD_INDICATORS);
     if (dddCount >= MIN_INDICATOR_MATCH) {
-        return { pattern: 'domain-driven', confidence: dddCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
+        return {
+            pattern: 'domain-driven',
+            confidence: dddCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
+        };
     }
     // Check for Layer-based
     const layerCount = hasIndicators(allDirs, LAYER_INDICATORS);
     if (layerCount >= MIN_INDICATOR_MATCH) {
-        return { pattern: 'layer-based', confidence: layerCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium' };
+        return {
+            pattern: 'layer-based',
+            confidence: layerCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
+        };
     }
     // Check for Feature-based
     const featureCount = hasIndicators(allDirs, FEATURE_INDICATORS);
@@ -131,7 +156,9 @@ function checkSpecialDirs(dirs) {
         hasHooks: dirs.includes('hooks'),
         hasServices: dirs.includes('services'),
         hasTypes: dirs.includes('types') || dirs.includes('interfaces'),
-        hasTests: dirs.includes('__tests__') || dirs.includes('tests') || dirs.includes('test'),
+        hasTests: dirs.includes('__tests__') ||
+            dirs.includes('tests') ||
+            dirs.includes('test'),
     };
 }
 /**
@@ -145,13 +172,16 @@ function checkSpecialDirs(dirs) {
 async function calculateDepth(cwd, maxDepth = DEFAULT_MAX_DEPTH) {
     let maxFound = 0;
     async function walk(dir, currentDepth) {
-        if (currentDepth > maxDepth)
+        if (currentDepth > maxDepth) {
             return;
+        }
         maxFound = Math.max(maxFound, currentDepth);
         try {
             const entries = await fs.readdir(dir, { withFileTypes: true });
             for (const entry of entries) {
-                if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+                if (entry.isDirectory() &&
+                    !entry.name.startsWith('.') &&
+                    entry.name !== 'node_modules') {
                     await walk(path.join(dir, entry.name), currentDepth + 1);
                 }
             }
@@ -178,9 +208,12 @@ async function calculateDepth(cwd, maxDepth = DEFAULT_MAX_DEPTH) {
  */
 export async function analyzeFolderStructure(cwd) {
     const allTopLevelDirs = await getSubdirs(cwd);
-    const topLevelDirs = allTopLevelDirs.filter((d) => !d.startsWith('.') && d !== 'node_modules' && d !== 'dist' && d !== 'build');
+    const topLevelDirs = allTopLevelDirs.filter((d) => !d.startsWith('.') &&
+        d !== 'node_modules' &&
+        d !== 'dist' &&
+        d !== 'build');
     const srcPath = path.join(cwd, 'src');
-    const srcDir = await fileExists(srcPath) ? 'src' : null;
+    const srcDir = (await fileExists(srcPath)) ? 'src' : null;
     const srcDirs = srcDir ? await getSubdirs(srcPath) : [];
     const { pattern, confidence } = await detectPattern(cwd, topLevelDirs, srcDirs);
     const allDirs = [...topLevelDirs, ...srcDirs];
@@ -233,20 +266,27 @@ export function formatFolderStructure(structure) {
     sections.push(`**Architecture:** ${patternName} (${structure.confidence} confidence)`);
     const keyDirs = [];
     const special = structure.specialDirs;
-    if (special.hasApp)
+    if (special.hasApp) {
         keyDirs.push('app/');
-    if (special.hasPages)
+    }
+    if (special.hasPages) {
         keyDirs.push('pages/');
-    if (special.hasComponents)
+    }
+    if (special.hasComponents) {
         keyDirs.push('components/');
-    if (special.hasLib)
+    }
+    if (special.hasLib) {
         keyDirs.push('lib/');
-    if (special.hasServices)
+    }
+    if (special.hasServices) {
         keyDirs.push('services/');
-    if (special.hasHooks)
+    }
+    if (special.hasHooks) {
         keyDirs.push('hooks/');
-    if (special.hasApi)
+    }
+    if (special.hasApi) {
         keyDirs.push('api/');
+    }
     if (keyDirs.length > 0) {
         sections.push(`**Key Dirs:** ${keyDirs.join(', ')}`);
     }

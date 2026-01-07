@@ -6,17 +6,17 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { generateErrorSignature as generateErrorSignatureCore, shouldEscalatePhase as shouldEscalatePhaseCore, escalatePhase as escalatePhaseCore, hasExhaustedRetries as hasExhaustedRetriesCore, getPhaseDescription as getPhaseDescriptionCore, getRemainingAttemptsInPhase, MAX_PHASE, } from '../shared/error-handling-core.js';
 import { ensureGoodVibesDir } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
-import { PHASE_RETRY_LIMITS } from '../types/errors.js';
-import { generateErrorSignature as generateErrorSignatureCore, shouldEscalatePhase as shouldEscalatePhaseCore, escalatePhase as escalatePhaseCore, hasExhaustedRetries as hasExhaustedRetriesCore, getPhaseDescription as getPhaseDescriptionCore, getRemainingAttemptsInPhase, MAX_PHASE, } from '../shared/error-handling-core.js';
+import { PHASE_RETRY_LIMITS, } from '../types/errors.js';
 /** Type guard to check if a value is a RetryData object */
 function isRetryData(value) {
     if (!value || typeof value !== 'object') {
         return false;
     }
     const obj = value;
-    return Object.values(obj).every(entry => entry !== null &&
+    return Object.values(obj).every((entry) => entry !== null &&
         typeof entry === 'object' &&
         'signature' in entry &&
         'attempts' in entry &&
@@ -303,8 +303,8 @@ export async function getRetryStats(cwd) {
     return {
         totalSignatures: entries.length,
         totalAttempts: entries.reduce((sum, e) => sum + e.attempts, 0),
-        phase1Count: entries.filter(e => e.phase === 1).length,
-        phase2Count: entries.filter(e => e.phase === 2).length,
-        phase3Count: entries.filter(e => e.phase === 3).length,
+        phase1Count: entries.filter((e) => e.phase === 1).length,
+        phase2Count: entries.filter((e) => e.phase === 2).length,
+        phase3Count: entries.filter((e) => e.phase === 3).length,
     };
 }

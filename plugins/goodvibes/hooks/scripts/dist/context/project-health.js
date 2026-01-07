@@ -17,8 +17,8 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared/logging.js';
 import { fileExists } from '../shared/file-utils.js';
+import { debug } from '../shared/logging.js';
 const LOCKFILES = {
     'package-lock.json': 'npm',
     'yarn.lock': 'yarn',
@@ -44,8 +44,9 @@ async function checkDependencies(cwd) {
     for (const [file, manager] of Object.entries(LOCKFILES)) {
         if (await fileExists(path.join(cwd, file))) {
             lockfiles.push(file);
-            if (!packageManager)
+            if (!packageManager) {
                 packageManager = manager;
+            }
         }
     }
     return { hasNodeModules, lockfiles, packageManager };
@@ -59,7 +60,7 @@ async function checkDependencies(cwd) {
  */
 async function checkTypeScript(cwd) {
     const tsconfigPath = path.join(cwd, 'tsconfig.json');
-    if (!await fileExists(tsconfigPath)) {
+    if (!(await fileExists(tsconfigPath))) {
         return null;
     }
     try {
@@ -70,8 +71,10 @@ async function checkTypeScript(cwd) {
         return {
             hasConfig: true,
             strict: compilerOptions.strict === true,
-            strictNullChecks: compilerOptions.strictNullChecks === true || compilerOptions.strict === true,
-            noImplicitAny: compilerOptions.noImplicitAny === true || compilerOptions.strict === true,
+            strictNullChecks: compilerOptions.strictNullChecks === true ||
+                compilerOptions.strict === true,
+            noImplicitAny: compilerOptions.noImplicitAny === true ||
+                compilerOptions.strict === true,
             target: compilerOptions.target || null,
         };
     }
@@ -95,7 +98,7 @@ async function checkTypeScript(cwd) {
  */
 async function getScripts(cwd) {
     const packageJsonPath = path.join(cwd, 'package.json');
-    if (!await fileExists(packageJsonPath)) {
+    if (!(await fileExists(packageJsonPath))) {
         return [];
     }
     try {
@@ -117,7 +120,9 @@ async function getScripts(cwd) {
  */
 function generateWarnings(health) {
     const warnings = [];
-    if (health.lockfiles && health.lockfiles.length > 0 && !health.hasNodeModules) {
+    if (health.lockfiles &&
+        health.lockfiles.length > 0 &&
+        !health.hasNodeModules) {
         warnings.push({
             type: 'warning',
             message: 'node_modules not found. Run `npm install` (or your package manager) to install dependencies.',
@@ -129,7 +134,9 @@ function generateWarnings(health) {
             message: `Multiple lockfiles found (${health.lockfiles?.join(', ')}). This can cause inconsistent installs. Remove all but one.`,
         });
     }
-    if (health.typescript && health.typescript.hasConfig && !health.typescript.strict) {
+    if (health.typescript &&
+        health.typescript.hasConfig &&
+        !health.typescript.strict) {
         warnings.push({
             type: 'info',
             message: 'TypeScript strict mode is not enabled. Consider enabling for better type safety.',
@@ -151,10 +158,14 @@ function generateSuggestions(health) {
     if (!scripts.includes('lint') && !scripts.includes('eslint')) {
         suggestions.push('Add a `lint` script to catch code issues');
     }
-    if (!scripts.includes('test') && !scripts.includes('jest') && !scripts.includes('vitest')) {
+    if (!scripts.includes('test') &&
+        !scripts.includes('jest') &&
+        !scripts.includes('vitest')) {
         suggestions.push('Add a `test` script for automated testing');
     }
-    if (!scripts.includes('typecheck') && !scripts.includes('tsc') && health.typescript?.hasConfig) {
+    if (!scripts.includes('typecheck') &&
+        !scripts.includes('tsc') &&
+        health.typescript?.hasConfig) {
         suggestions.push('Add a `typecheck` script (e.g., `tsc --noEmit`) for CI');
     }
     return suggestions.slice(0, MAX_SUGGESTIONS);
@@ -222,14 +233,17 @@ export function formatProjectHealth(health) {
         }
         else {
             const flags = [];
-            if (ts.strictNullChecks)
+            if (ts.strictNullChecks) {
                 flags.push('strictNullChecks');
-            if (ts.noImplicitAny)
+            }
+            if (ts.noImplicitAny) {
                 flags.push('noImplicitAny');
+            }
             line += flags.length > 0 ? `partial (${flags.join(', ')})` : 'not strict';
         }
-        if (ts.target)
+        if (ts.target) {
             line += `, target: ${ts.target}`;
+        }
         sections.push(line);
     }
     if (health.scripts.length > 0) {

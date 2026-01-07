@@ -28,4 +28,7 @@ async function runPermissionRequestHook() {
         respond(createPermissionResponse('ask'));
     }
 }
-runPermissionRequestHook();
+runPermissionRequestHook().catch((error) => {
+    logError('PermissionRequest uncaught', error);
+    respond(createPermissionResponse('ask'));
+});

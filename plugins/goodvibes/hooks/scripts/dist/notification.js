@@ -6,7 +6,7 @@
  * - Test failures
  * - Build errors
  */
-import { respond, readHookInput, debug, logError, } from './shared/index.js';
+import { respond, readHookInput, debug, logError } from './shared/index.js';
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage) {
     return {
@@ -32,4 +32,7 @@ async function runNotificationHook() {
         respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
     }
 }
-runNotificationHook();
+runNotificationHook().catch((error) => {
+    logError('Notification uncaught', error);
+    respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
+});

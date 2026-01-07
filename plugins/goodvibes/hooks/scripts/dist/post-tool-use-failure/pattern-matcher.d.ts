@@ -4,8 +4,8 @@
  * Functions to match error messages against recovery patterns and
  * provide suggested fixes based on error state.
  */
-import type { ErrorState, ErrorCategory } from '../types/errors.js';
 import type { RecoveryPattern, ErrorSeverity } from './recovery-types.js';
+import type { ErrorState, ErrorCategory } from '../types/errors.js';
 /**
  * Find a matching recovery pattern for the given error category and message.
  * First attempts to match by category mapping, then falls back to pattern matching.

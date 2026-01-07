@@ -22,4 +22,7 @@ async function runUserPromptSubmitHook() {
         respond(createResponse());
     }
 }
-runUserPromptSubmitHook();
+runUserPromptSubmitHook().catch((error) => {
+    logError('UserPromptSubmit uncaught', error);
+    respond(createResponse());
+});

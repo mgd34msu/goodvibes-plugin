@@ -1,8 +1,8 @@
 /**
  * Search and summary functions for project memory.
  */
-import type { ProjectMemory } from '../types/memory.js';
 import type { MemoryDecision, MemoryPattern, MemoryFailure, MemoryPreference } from '../types/memory.js';
+import type { ProjectMemory } from '../types/memory.js';
 /**
  * Loads all project memory (decisions, patterns, failures, preferences).
  * Returns empty arrays for any memory types that don't have files yet.

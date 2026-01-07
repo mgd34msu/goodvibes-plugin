@@ -8,7 +8,16 @@ import * as path from 'path';
 import { debug } from '../shared/logging.js';
 const TODO_PATTERNS = ['FIXME', 'BUG', 'TODO', 'HACK', 'XXX'];
 const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
-const SKIP_DIRS = ['node_modules', 'dist', '.git', 'coverage', '.goodvibes', '__tests__', 'test', 'tests'];
+const SKIP_DIRS = [
+    'node_modules',
+    'dist',
+    '.git',
+    'coverage',
+    '.goodvibes',
+    '__tests__',
+    'test',
+    'tests',
+];
 /**
  * Default maximum number of TODOs to return.
  * Limits the number of TODO items to prevent overwhelming output.
@@ -36,7 +45,7 @@ async function getFiles(dir, extensions, skipDirs) {
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
                 if (!skipDirs.includes(entry.name)) {
-                    files.push(...await getFiles(fullPath, extensions, skipDirs));
+                    files.push(...(await getFiles(fullPath, extensions, skipDirs)));
                 }
             }
             else if (entry.isFile()) {
@@ -107,13 +116,15 @@ export async function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
     const results = [];
     const files = await getFiles(cwd, FILE_EXTENSIONS, SKIP_DIRS);
     for (const file of files) {
-        if (results.length >= limit)
+        if (results.length >= limit) {
             break;
+        }
         const relativePath = path.relative(cwd, file).replace(/\\/g, '/');
         const todos = await scanFile(file, TODO_PATTERNS);
         for (const todo of todos) {
-            if (results.length >= limit)
+            if (results.length >= limit) {
                 break;
+            }
             results.push({
                 ...todo,
                 file: relativePath,
@@ -134,8 +145,9 @@ export async function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
  * // Returns: "TODOs in code:\n- FIXME: src/utils.ts:42 - Fix edge case handling..."
  */
 export function formatTodos(todos) {
-    if (todos.length === 0)
+    if (todos.length === 0) {
         return '';
+    }
     const lines = ['TODOs in code:'];
     for (const todo of todos) {
         lines.push(`- ${todo.type}: ${todo.file}:${todo.line} - ${todo.text.slice(0, MAX_TODO_TEXT_LENGTH)}`);

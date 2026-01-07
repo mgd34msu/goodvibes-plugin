@@ -28,11 +28,13 @@ const BRANCH_NAME_MAX_LENGTH = 50;
  */
 export function shouldCreateFeatureBranch(state, _cwd) {
     // Already on a feature branch
-    if (state.git.featureBranch)
+    if (state.git.featureBranch) {
         return false;
+    }
     // Not on main branch
-    if (state.git.currentBranch !== state.git.mainBranch)
+    if (state.git.currentBranch !== state.git.mainBranch) {
         return false;
+    }
     // First significant file creation
     return state.files.createdThisSession.length === 1;
 }
@@ -57,7 +59,10 @@ export async function maybeCreateFeatureBranch(state, cwd, featureName) {
         return { created: false, branchName: null };
     }
     const name = featureName || state.session.featureDescription || 'feature';
-    const branchName = `feature/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, BRANCH_NAME_MAX_LENGTH)}`;
+    const branchName = `feature/${name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .slice(0, BRANCH_NAME_MAX_LENGTH)}`;
     const success = await gitCreateBranch(cwd, name);
     if (success) {
         state.git.featureBranch = branchName;
@@ -83,20 +88,25 @@ export async function maybeCreateFeatureBranch(state, cwd, featureName) {
  */
 export function shouldMergeFeature(state) {
     // Must be on a feature branch
-    if (!state.git.featureBranch)
+    if (!state.git.featureBranch) {
         return false;
+    }
     // Tests must be passing
-    if (state.tests.failingFiles.length > 0)
+    if (state.tests.failingFiles.length > 0) {
         return false;
+    }
     // Build must be passing
-    if (state.build.status !== 'passing')
+    if (state.build.status !== 'passing') {
         return false;
+    }
     // No pending fixes
-    if (state.tests.pendingFixes.length > 0)
+    if (state.tests.pendingFixes.length > 0) {
         return false;
+    }
     // Feature must be marked complete
-    if (!state.git.pendingMerge)
+    if (!state.git.pendingMerge) {
         return false;
+    }
     return true;
 }
 /**
@@ -128,7 +138,10 @@ export async function maybeMergeFeature(state, cwd) {
         state.git.featureBranch = null;
         state.git.featureStartedAt = null;
         state.git.pendingMerge = false;
-        return { merged: true, message: `Merged ${featureBranch} to ${mainBranch}` };
+        return {
+            merged: true,
+            message: `Merged ${featureBranch} to ${mainBranch}`,
+        };
     }
     return { merged: false, message: 'Merge failed - may have conflicts' };
 }

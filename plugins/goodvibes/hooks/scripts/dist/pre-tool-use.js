@@ -19,11 +19,11 @@
  * - Merge readiness checks
  */
 import path from 'node:path';
+import { checkBranchGuard, checkMergeReadiness, isGitCommand, isMergeCommand, } from './pre-tool-use/git-guards.js';
+import { runQualityGates, isCommitCommand, formatGateResults, } from './pre-tool-use/quality-gates.js';
 import { respond, readHookInput, allowTool, blockTool, fileExists, debug, logError, } from './shared/index.js';
 import { loadState } from './state.js';
 import { getDefaultConfig } from './types/config.js';
-import { runQualityGates, isCommitCommand, formatGateResults, } from './pre-tool-use/quality-gates.js';
-import { checkBranchGuard, checkMergeReadiness, isGitCommand, isMergeCommand, } from './pre-tool-use/git-guards.js';
 /**
  * Extract the bash command from tool input
  */
@@ -42,7 +42,8 @@ export async function handleGitCommit(input, command) {
     const config = getDefaultConfig();
     debug('Git commit detected, running quality gates', { command });
     // Check if quality gates should run before commit
-    if (!config.automation.building.runBeforeCommit && !config.automation.testing.runBeforeCommit) {
+    if (!config.automation.building.runBeforeCommit &&
+        !config.automation.testing.runBeforeCommit) {
         debug('Quality gates disabled for commits');
         respond(allowTool('PreToolUse'));
         return;
@@ -50,7 +51,11 @@ export async function handleGitCommit(input, command) {
     // Run quality gates
     const gateResult = await runQualityGates(cwd);
     const resultSummary = formatGateResults(gateResult.results);
-    debug('Quality gate results', { allPassed: gateResult.allPassed, blocking: gateResult.blocking, results: gateResult.results });
+    debug('Quality gate results', {
+        allPassed: gateResult.allPassed,
+        blocking: gateResult.blocking,
+        results: gateResult.results,
+    });
     if (gateResult.blocking) {
         // Block the commit if there are blocking failures
         respond(blockTool('PreToolUse', `Quality gates failed: ${resultSummary}. Fix issues before committing.`), true);
@@ -136,7 +141,7 @@ export async function validateGetSchema(input) {
         'drizzle.config.ts',
         'drizzle/schema.ts',
     ];
-    const results = await Promise.all(schemaFiles.map(f => fileExists(path.join(cwd, f))));
+    const results = await Promise.all(schemaFiles.map((f) => fileExists(path.join(cwd, f))));
     const found = results.some(Boolean);
     if (!found) {
         // Allow but warn
@@ -192,7 +197,10 @@ const TOOL_VALIDATORS = {
 export async function runPreToolUseHook() {
     try {
         const input = await readHookInput();
-        debug('PreToolUse hook received input', { tool_name: input.tool_name, cwd: input.cwd });
+        debug('PreToolUse hook received input', {
+            tool_name: input.tool_name,
+            cwd: input.cwd,
+        });
         // Handle Bash tool specially for git command detection
         if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
             await handleBashTool(input);

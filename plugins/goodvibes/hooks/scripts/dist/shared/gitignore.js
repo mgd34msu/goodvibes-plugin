@@ -13,7 +13,13 @@ import * as path from 'path';
 export const SECURITY_GITIGNORE_ENTRIES = {
     'GoodVibes plugin state': ['.goodvibes/'],
     'Environment files': ['.env', '.env.local', '.env.*.local', '*.env'],
-    'Secret files': ['*.pem', '*.key', 'credentials.json', 'secrets.json', 'service-account*.json'],
+    'Secret files': [
+        '*.pem',
+        '*.key',
+        'credentials.json',
+        'secrets.json',
+        'service-account*.json',
+    ],
     'Cloud credentials': ['.aws/', '.gcp/', 'kubeconfig'],
     'Database files': ['*.db', '*.sqlite', '*.sqlite3', 'prisma/*.db'],
     'Log files': ['*.log', 'logs/'],
@@ -52,7 +58,7 @@ export async function ensureSecureGitignore(cwd) {
     }
     const entriesToAdd = [];
     for (const [section, patterns] of Object.entries(SECURITY_GITIGNORE_ENTRIES)) {
-        const missing = patterns.filter(p => !content.includes(p));
+        const missing = patterns.filter((p) => !content.includes(p));
         if (missing.length > 0) {
             entriesToAdd.push(`\n# ${section}`);
             entriesToAdd.push(...missing);

@@ -4,13 +4,13 @@
  * Formats all gathered context into a clean, readable format
  * for injection via additionalContext.
  */
-import { formatStackInfo } from './stack-detector.js';
-import { formatGitContext } from './git-context.js';
 import { formatMemoryContext } from '../memory/index.js';
 import { formatEnvStatus } from './environment.js';
-import { formatTodos } from './todo-scanner.js';
-import { formatHealthStatus } from './health-checker.js';
 import { formatFolderAnalysis } from './folder-analyzer.js';
+import { formatGitContext } from './git-context.js';
+import { formatHealthStatus } from './health-checker.js';
+import { formatStackInfo } from './stack-detector.js';
+import { formatTodos } from './todo-scanner.js';
 /**
  * Maximum number of frameworks to display in summary.
  * Prevents summary from becoming too long with many frameworks.
@@ -61,7 +61,7 @@ export function formatContext(context) {
         sections.push('## Project Health');
         sections.push(healthFormatted);
         // Count warnings and errors from health checks
-        issueCount += context.health.checks.filter(c => c.status === 'warning' || c.status === 'error').length;
+        issueCount += context.health.checks.filter((c) => c.status === 'warning' || c.status === 'error').length;
         sections.push('');
     }
     const envFormatted = formatEnvStatus(context.environment);
@@ -98,7 +98,9 @@ export function formatContext(context) {
     if (issueCount > 0) {
         summaryParts.push(`${issueCount} issue(s) to review`);
     }
-    const summary = summaryParts.length > 0 ? summaryParts.join(' | ') : 'Project context loaded';
+    const summary = summaryParts.length > 0
+        ? summaryParts.join(' | ')
+        : 'Project context loaded';
     return {
         full: sections.join('\n'),
         summary,
@@ -126,7 +128,7 @@ export function formatMinimalContext(context) {
     if (context.git.isRepo && context.git.branch) {
         parts.push(`Branch: ${context.git.branch}`);
     }
-    const healthWarnings = context.health.checks.filter(c => c.status === 'warning' || c.status === 'error');
+    const healthWarnings = context.health.checks.filter((c) => c.status === 'warning' || c.status === 'error');
     if (healthWarnings.length > 0) {
         parts.push(`${healthWarnings.length} health warning(s)`);
     }

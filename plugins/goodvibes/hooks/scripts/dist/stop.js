@@ -19,7 +19,10 @@ async function runStopHook() {
         const input = await readHookInput();
         debug('Stop hook received input', { session_id: input.session_id });
         const analytics = await loadAnalytics();
-        debug('Loaded analytics', { has_analytics: !!analytics, session_id: analytics?.session_id });
+        debug('Loaded analytics', {
+            has_analytics: !!analytics,
+            session_id: analytics?.session_id,
+        });
         if (analytics) {
             // Finalize analytics
             analytics.ended_at = new Date().toISOString();
@@ -35,7 +38,7 @@ async function runStopHook() {
                 session_id: analytics.session_id,
                 duration_minutes: durationMinutes,
                 tools_used: analytics.tool_usage.length,
-                unique_tools: [...new Set(analytics.tool_usage.map(u => u.tool))],
+                unique_tools: [...new Set(analytics.tool_usage.map((u) => u.tool))],
                 skills_recommended: analytics.skills_recommended.length,
                 validations_run: analytics.validations_run,
                 issues_found: analytics.issues_found,
@@ -60,7 +63,14 @@ async function runStopHook() {
     }
     catch (error) {
         logError('Stop main', error);
-        respond(createResponse({ systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}` }));
+        respond(createResponse({
+            systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`,
+        }));
     }
 }
-runStopHook();
+runStopHook().catch((error) => {
+    logError('Stop uncaught', error);
+    respond(createResponse({
+        systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`,
+    }));
+});

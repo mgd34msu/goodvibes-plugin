@@ -10,7 +10,9 @@ import { debug } from '../shared/logging.js';
  * Common development server ports to check.
  * Includes ports for Next.js, Vite, Express, and other popular frameworks.
  */
-export const COMMON_DEV_PORTS = [3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888];
+export const COMMON_DEV_PORTS = [
+    3000, 3001, 4000, 5000, 5173, 8000, 8080, 8888,
+];
 /**
  * Timeout for netstat/lsof commands in milliseconds.
  * Used for Unix-like systems port checking.
@@ -38,21 +40,25 @@ function parseWindowsNetstat(output, ports) {
     const lines = output.split('\n');
     for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('Proto'))
+        if (!trimmed || trimmed.startsWith('Proto')) {
             continue;
+        }
         // Format: TCP    0.0.0.0:3000    0.0.0.0:0    LISTENING    1234
         // Or: TCP    [::]:3000    [::]:0    LISTENING    1234
         const parts = trimmed.split(/\s+/);
-        if (parts.length < 4)
+        if (parts.length < 4) {
             continue;
+        }
         const localAddr = parts[1];
         const state = parts[3];
-        if (state !== 'LISTENING')
+        if (state !== 'LISTENING') {
             continue;
+        }
         // Extract port from address (handles both IPv4 and IPv6)
         const portMatch = localAddr.match(/:(\d+)$/);
-        if (!portMatch)
+        if (!portMatch) {
             continue;
+        }
         const port = parseInt(portMatch[1], 10);
         if (ports.includes(port)) {
             // Try to get PID and process name
@@ -71,7 +77,9 @@ function parseWindowsNetstat(output, ports) {
                     }
                 }
                 catch (error) {
-                    debug('parseWindowsNetstat tasklist failed', { error: String(error) });
+                    debug('parseWindowsNetstat tasklist failed', {
+                        error: String(error),
+                    });
                 }
             }
             portMap.set(port, processName || 'unknown');
@@ -91,18 +99,21 @@ function parseUnixLsof(output, ports) {
     const portMap = new Map();
     const lines = output.split('\n');
     for (const line of lines) {
-        if (!line.trim())
+        if (!line.trim()) {
             continue;
+        }
         // lsof -i output format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
         const parts = line.split(/\s+/);
-        if (parts.length < 9)
+        if (parts.length < 9) {
             continue;
+        }
         const command = parts[0];
         const name = parts[parts.length - 1];
         // Extract port from NAME column (e.g., *:3000 or localhost:3000)
         const portMatch = name.match(/:(\d+)/);
-        if (!portMatch)
+        if (!portMatch) {
             continue;
+        }
         const port = parseInt(portMatch[1], 10);
         if (ports.includes(port) && !portMap.has(port)) {
             portMap.set(port, command.toLowerCase());
@@ -123,8 +134,9 @@ function parseUnixNetstat(output, ports) {
     const lines = output.split('\n');
     for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || !trimmed.includes('LISTEN'))
+        if (!trimmed?.includes('LISTEN')) {
             continue;
+        }
         // Extract port from local address
         const parts = trimmed.split(/\s+/);
         for (const part of parts) {
@@ -163,7 +175,7 @@ function checkPortsWindows(ports) {
         return parseWindowsNetstat(output, ports);
     }
     catch (error) {
-        debug("checkPortsWindows failed", { error: String(error) });
+        debug('checkPortsWindows failed', { error: String(error) });
         return new Map();
     }
 }
@@ -177,7 +189,7 @@ function checkPortsWindows(ports) {
 function checkPortsUnix(ports) {
     // Try lsof first (more reliable for process names)
     try {
-        const portsArg = ports.map(p => `-i:${p}`).join(' ');
+        const portsArg = ports.map((p) => `-i:${p}`).join(' ');
         const output = execSync(`lsof ${portsArg} 2>/dev/null`, {
             encoding: 'utf-8',
             timeout: COMMAND_TIMEOUT,
@@ -195,7 +207,7 @@ function checkPortsUnix(ports) {
             return parseUnixNetstat(output, ports);
         }
         catch (error) {
-            debug("checkPortsUnix netstat failed", { error: String(error) });
+            debug('checkPortsUnix netstat failed', { error: String(error) });
             return new Map();
         }
     }
@@ -221,7 +233,7 @@ export async function checkPorts(_cwd) {
     else {
         activePortsMap = checkPortsUnix(COMMON_DEV_PORTS);
     }
-    return COMMON_DEV_PORTS.map(port => ({
+    return COMMON_DEV_PORTS.map((port) => ({
         port,
         inUse: activePortsMap.has(port),
         process: activePortsMap.get(port),
@@ -239,12 +251,12 @@ export async function checkPorts(_cwd) {
  * // Returns: "Active ports: 3000 (node), 5173 (vite)"
  */
 export function formatPortStatus(ports) {
-    const activePorts = ports.filter(p => p.inUse);
+    const activePorts = ports.filter((p) => p.inUse);
     if (activePorts.length === 0) {
         return 'No dev servers detected';
     }
     const portList = activePorts
-        .map(p => (p.process ? `${p.port} (${p.process})` : `${p.port}`))
+        .map((p) => (p.process ? `${p.port} (${p.process})` : `${p.port}`))
         .join(', ');
     return `Active ports: ${portList}`;
 }

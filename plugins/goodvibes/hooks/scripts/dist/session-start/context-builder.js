@@ -14,8 +14,8 @@
  */
 import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnvStatus, formatEnvStatus, scanTodos, formatTodos, checkProjectHealth, formatHealthStatus, analyzeFolderStructure, formatFolderAnalysis, isEmptyProject, formatEmptyProjectContext, checkPorts, formatPortStatus, } from '../context/index.js';
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
-import { formatRecoveryContext } from './crash-recovery.js';
 import { debug } from '../shared/index.js';
+import { formatRecoveryContext } from './crash-recovery.js';
 /** Width of section separator lines */
 const SECTION_SEPARATOR_LENGTH = 50;
 /** Creates an empty project context result */
@@ -44,22 +44,20 @@ export function createFailedContextResult(startTime) {
 }
 /** Formats the header section */
 function formatHeader() {
-    return [
-        '[GoodVibes SessionStart]',
-        '='.repeat(SECTION_SEPARATOR_LENGTH),
-        '',
-    ];
+    return ['[GoodVibes SessionStart]', '='.repeat(SECTION_SEPARATOR_LENGTH), ''];
 }
 /** Formats an optional section with header */
 function formatOptionalSection(header, content) {
-    if (!content)
+    if (!content) {
         return [];
+    }
     return [`## ${header}`, '', content, ''];
 }
 /** Formats the recovery section if needed */
 function formatRecoverySection(recoveryInfo) {
-    if (!recoveryInfo.needsRecovery)
+    if (!recoveryInfo.needsRecovery) {
         return [];
+    }
     const recoveryStr = formatRecoveryContext(recoveryInfo);
     return recoveryStr ? [recoveryStr, ''] : [];
 }
@@ -67,11 +65,13 @@ function formatRecoverySection(recoveryInfo) {
 function formatProjectOverviewSection(stackInfo, folderAnalysis) {
     const parts = ['## Project Overview', ''];
     const stackStr = formatStackInfo(stackInfo);
-    if (stackStr)
+    if (stackStr) {
         parts.push(stackStr);
+    }
     const folderStr = formatFolderAnalysis(folderAnalysis);
-    if (folderStr)
+    if (folderStr) {
         parts.push(folderStr);
+    }
     parts.push('');
     return parts;
 }
@@ -79,8 +79,9 @@ function formatProjectOverviewSection(stackInfo, folderAnalysis) {
 function formatGitSection(gitContext) {
     const parts = ['## Git Status', ''];
     const gitStr = formatGitContext(gitContext);
-    if (gitStr)
+    if (gitStr) {
         parts.push(gitStr);
+    }
     parts.push('');
     return parts;
 }
@@ -147,7 +148,7 @@ export async function gatherProjectContext(projectDir, recoveryInfo, startTime) 
         return createEmptyProjectResult(startTime);
     }
     // Gather all context in parallel for performance
-    const [stackInfo, gitContext, envStatus, todos, healthStatus, folderAnalysis, memory, portStatus] = await Promise.all([
+    const [stackInfo, gitContext, envStatus, todos, healthStatus, folderAnalysis, memory, portStatus,] = await Promise.all([
         detectStack(projectDir),
         getGitContext(projectDir),
         checkEnvStatus(projectDir),

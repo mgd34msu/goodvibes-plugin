@@ -10,7 +10,7 @@
  */
 import { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries, MAX_PHASE, } from '../shared/error-handling-core.js';
 // Re-export consolidated functions for backwards compatibility
-export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries };
+export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries, };
 /** Maximum length for error message in fix context. */
 const ERROR_PREVIEW_MAX_LENGTH = 200;
 /** Maximum length for documentation content in fix context. */
@@ -31,10 +31,13 @@ const RECENT_ATTEMPTS_COUNT = 3;
  */
 export function categorizeError(errorMessage) {
     const lower = errorMessage.toLowerCase();
-    if (lower.includes('eresolve') || lower.includes('npm') || lower.includes('peer dep')) {
+    if (lower.includes('eresolve') ||
+        lower.includes('npm') ||
+        lower.includes('peer dep')) {
         return 'npm_install';
     }
-    if (lower.includes('ts') && (lower.includes('error') || lower.includes('type'))) {
+    if (lower.includes('ts') &&
+        (lower.includes('error') || lower.includes('type'))) {
         return 'typescript_error';
     }
     if (lower.includes('test') && lower.includes('fail')) {
@@ -49,10 +52,14 @@ export function categorizeError(errorMessage) {
     if (lower.includes('conflict') || lower.includes('merge')) {
         return 'git_conflict';
     }
-    if (lower.includes('database') || lower.includes('prisma') || lower.includes('sql')) {
+    if (lower.includes('database') ||
+        lower.includes('prisma') ||
+        lower.includes('sql')) {
         return 'database_error';
     }
-    if (lower.includes('api') || lower.includes('fetch') || lower.includes('request')) {
+    if (lower.includes('api') ||
+        lower.includes('fetch') ||
+        lower.includes('request')) {
         return 'api_error';
     }
     return 'unknown';

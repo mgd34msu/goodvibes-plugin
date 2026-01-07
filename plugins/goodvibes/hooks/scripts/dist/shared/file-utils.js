@@ -134,9 +134,9 @@ export async function validateRegistries() {
     ];
     const results = await Promise.all(registries.map(async (reg) => ({
         reg,
-        exists: await fileExists(path.join(PLUGIN_ROOT, reg))
+        exists: await fileExists(path.join(PLUGIN_ROOT, reg)),
     })));
-    const missing = results.filter(r => !r.exists).map(r => r.reg);
+    const missing = results.filter((r) => !r.exists).map((r) => r.reg);
     return { valid: missing.length === 0, missing };
 }
 // =============================================================================
@@ -204,7 +204,10 @@ function isExecError(error) {
  */
 export function extractErrorOutput(error) {
     if (isExecError(error)) {
-        return error.stdout?.toString() || error.stderr?.toString() || error.message || 'Unknown error';
+        return (error.stdout?.toString() ||
+            error.stderr?.toString() ||
+            error.message ||
+            'Unknown error');
     }
     return String(error);
 }

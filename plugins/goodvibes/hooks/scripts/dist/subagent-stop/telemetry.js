@@ -10,7 +10,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ensureGoodVibesDir, parseTranscript, extractKeywords, fileExists } from '../shared/index.js';
+import { ensureGoodVibesDir, parseTranscript, extractKeywords, fileExists, } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
@@ -33,8 +33,9 @@ export async function saveAgentTracking(cwd, tracking) {
 /** Retrieves tracking data for a specific agent */
 export async function getAgentTracking(cwd, agentId) {
     const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
-    if (!(await fileExists(trackingPath)))
+    if (!(await fileExists(trackingPath))) {
         return null;
+    }
     try {
         const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
         return trackings[agentId] || null;
@@ -47,8 +48,9 @@ export async function getAgentTracking(cwd, agentId) {
 /** Removes tracking data for a specific agent */
 export async function removeAgentTracking(cwd, agentId) {
     const trackingPath = path.join(cwd, '.goodvibes', TRACKING_FILE);
-    if (!(await fileExists(trackingPath)))
+    if (!(await fileExists(trackingPath))) {
         return;
+    }
     try {
         const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
         delete trackings[agentId];

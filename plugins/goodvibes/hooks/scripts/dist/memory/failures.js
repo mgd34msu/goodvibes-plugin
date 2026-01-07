@@ -2,7 +2,7 @@
  * Failures memory module - stores failed approaches to avoid repeating.
  */
 import * as path from 'path';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
 const FAILURES_HEADER = `# Failed Approaches
 
 This file records approaches that were tried and failed.

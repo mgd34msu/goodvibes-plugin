@@ -32,7 +32,7 @@ const SCAFFOLDING_ONLY = [
 export async function isEmptyProject(cwd) {
     try {
         const files = await fs.readdir(cwd);
-        const meaningfulFiles = files.filter(f => {
+        const meaningfulFiles = files.filter((f) => {
             const lower = f.toLowerCase();
             return !SCAFFOLDING_ONLY.includes(lower) && !f.startsWith('.');
         });

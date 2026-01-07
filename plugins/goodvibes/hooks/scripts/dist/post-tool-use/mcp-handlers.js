@@ -35,7 +35,7 @@ export async function handleDetectStack(input) {
             debug(`Cached stack detection to ${cacheFile}`);
         }
         // Log usage
-        logToolUsage({
+        await logToolUsage({
             tool: 'detect_stack',
             timestamp: new Date().toISOString(),
             success: true,
@@ -63,9 +63,13 @@ export async function handleRecommendSkills(input) {
         if (analytics && input.tool_input) {
             // Track recommended skills from tool input
             const toolInput = input.tool_input;
-            if (toolInput.recommendations && Array.isArray(toolInput.recommendations)) {
+            if (toolInput.recommendations &&
+                Array.isArray(toolInput.recommendations)) {
                 const skillPaths = toolInput.recommendations
-                    .filter((r) => typeof r === 'object' && r !== null && 'path' in r && typeof r.path === 'string')
+                    .filter((r) => typeof r === 'object' &&
+                    r !== null &&
+                    'path' in r &&
+                    typeof r.path === 'string')
                     .map((r) => r.path);
                 analytics.skills_recommended.push(...skillPaths);
                 await saveAnalytics(analytics);
@@ -120,7 +124,8 @@ export async function handleValidateImplementation(input) {
             const toolInput = input.tool_input;
             if (toolInput?.summary) {
                 const summary = toolInput.summary;
-                analytics.issues_found += (summary.errors || 0) + (summary.warnings || 0);
+                analytics.issues_found +=
+                    (summary.errors || 0) + (summary.warnings || 0);
             }
             await saveAnalytics(analytics);
         }

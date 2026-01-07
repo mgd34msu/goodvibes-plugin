@@ -40,7 +40,7 @@ async function runSessionEndHook() {
                 session_id: analytics.session_id,
                 duration_minutes: durationMinutes,
                 tools_used: analytics.tool_usage.length,
-                unique_tools: [...new Set(analytics.tool_usage.map(u => u.tool))],
+                unique_tools: [...new Set(analytics.tool_usage.map((u) => u.tool))],
                 skills_recommended: analytics.skills_recommended.length,
                 validations_run: analytics.validations_run,
                 issues_found: analytics.issues_found,
@@ -55,4 +55,7 @@ async function runSessionEndHook() {
         respond(createResponse());
     }
 }
-runSessionEndHook();
+runSessionEndHook().catch((error) => {
+    logError('SessionEnd uncaught', error);
+    respond(createResponse());
+});

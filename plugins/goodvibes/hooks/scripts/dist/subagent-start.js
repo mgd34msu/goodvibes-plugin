@@ -12,10 +12,10 @@
  * - Returns additionalContext with project reminders
  */
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, } from './shared/index.js';
-import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from './telemetry.js';
-import { saveAgentTracking } from './subagent-stop/telemetry.js';
-import { buildSubagentContext } from './subagent-start/context-injection.js';
 import { loadState, saveState } from './state.js';
+import { buildSubagentContext } from './subagent-start/context-injection.js';
+import { saveAgentTracking } from './subagent-stop/telemetry.js';
+import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from './telemetry.js';
 /** Creates a hook response with optional system message and additional context. */
 function createResponse(options) {
     const response = {
@@ -37,7 +37,7 @@ async function runSubagentStartHook() {
         debug('Raw input shape:', Object.keys(rawInput || {}));
         const input = rawInput;
         // Extract subagent info (handle different field names)
-        const agentId = input.agent_id || input.subagent_id || ('agent_' + Date.now());
+        const agentId = input.agent_id || input.subagent_id || 'agent_' + Date.now();
         const agentType = input.agent_type || input.subagent_type || 'unknown';
         const taskDescription = input.task_description || input.task || '';
         const cwd = input.cwd || process.cwd();
@@ -111,10 +111,12 @@ async function runSubagentStartHook() {
         // Note: reminders always has at least one element (project name) so we always append
         let additionalContext;
         if (subagentContext.additionalContext) {
-            additionalContext = subagentContext.additionalContext + '\n\n' + reminders.join('\n');
+            additionalContext =
+                subagentContext.additionalContext + '\n\n' + reminders.join('\n');
         }
         else {
-            additionalContext = '[GoodVibes Project Context]\n' + reminders.join('\n');
+            additionalContext =
+                '[GoodVibes Project Context]\n' + reminders.join('\n');
         }
         // Build system message for GoodVibes agents
         const goodvibesAgents = [
@@ -131,9 +133,13 @@ async function runSubagentStartHook() {
         ];
         let systemMessage;
         if (goodvibesAgents.includes(agentType)) {
-            systemMessage = '[GoodVibes] Agent ' + agentType + ' starting. ' +
-                'Project: ' + projectName +
-                (gitInfo.branch ? ', Branch: ' + gitInfo.branch : '');
+            systemMessage =
+                '[GoodVibes] Agent ' +
+                    agentType +
+                    ' starting. ' +
+                    'Project: ' +
+                    projectName +
+                    (gitInfo.branch ? ', Branch: ' + gitInfo.branch : '');
         }
         else {
             // For non-GoodVibes agents, just log telemetry silently

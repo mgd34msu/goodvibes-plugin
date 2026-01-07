@@ -2,7 +2,7 @@
  * Decisions memory module - stores architectural decisions with rationale.
  */
 import * as path from 'path';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
 const DECISIONS_HEADER = `# Architectural Decisions
 
 This file records architectural decisions made for this project.

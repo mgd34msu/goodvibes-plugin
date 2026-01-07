@@ -8,9 +8,9 @@
  * @module automation/fix-loop
  * @see {@link ../post-tool-use-failure} for error pattern matching and recovery
  */
-import type { ErrorState, ErrorCategory } from '../types/errors.js';
 import { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries } from '../shared/error-handling-core.js';
-export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries };
+import type { ErrorState, ErrorCategory } from '../types/errors.js';
+export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhaustedRetries, };
 /**
  * Categorizes an error message into a known error category based on keywords.
  * Analyzes the error message content to determine the type of error for

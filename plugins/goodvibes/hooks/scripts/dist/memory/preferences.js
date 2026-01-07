@@ -2,7 +2,7 @@
  * Preferences memory module - stores user preferences for the project.
  */
 import * as path from 'path';
-import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry } from './parser.js';
+import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
 const PREFERENCES_HEADER = `# User Preferences
 
 This file stores user preferences for this project.

@@ -6,9 +6,8 @@
  */
 import { debug } from '../shared/index.js';
 // File tracking
-import { trackFileModification, trackFileCreation } from './file-tracker.js';
-// Automation runners
 import { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch, } from './automation-runners.js';
+import { trackFileModification, trackFileCreation } from './file-tracker.js';
 // Re-export automation runners for backward compatibility
 export { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch, } from './automation-runners.js';
 /**

@@ -9,8 +9,8 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared/logging.js';
 import { fileExists } from '../shared/file-utils.js';
+import { debug } from '../shared/logging.js';
 // =============================================================================
 // Constants
 // =============================================================================
@@ -56,8 +56,9 @@ const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
  */
 async function parseEnvFile(filePath) {
     try {
-        if (!await fileExists(filePath))
+        if (!(await fileExists(filePath))) {
             return [];
+        }
         const content = await fs.readFile(filePath, 'utf-8');
         return parseEnvVars(content);
     }
@@ -78,8 +79,9 @@ function parseEnvVars(content) {
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
         // Skip comments and empty lines
-        if (!trimmed || trimmed.startsWith('#'))
+        if (!trimmed || trimmed.startsWith('#')) {
             continue;
+        }
         // Extract variable name (support both KEY=value and KEY= formats)
         const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
         if (match) {
@@ -134,7 +136,7 @@ export async function checkEnvStatus(cwd) {
         else if (hasEnvPathExists) {
             definedVars = parseEnvVars(await fs.readFile(envPath, 'utf-8'));
         }
-        missingVars = requiredVars.filter(v => !definedVars.includes(v));
+        missingVars = requiredVars.filter((v) => !definedVars.includes(v));
         if (missingVars.length > 0) {
             warnings.push(`Missing env vars: ${missingVars.join(', ')}`);
         }

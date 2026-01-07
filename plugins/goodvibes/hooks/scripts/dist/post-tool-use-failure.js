@@ -7,12 +7,12 @@
  *   Phase 2: Include official documentation search hints
  *   Phase 3: Include community documentation search hints
  */
-import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, createResponse, PROJECT_ROOT, } from './shared/index.js';
-import { loadState, saveState, trackError, getErrorState } from './state.js';
 import { generateErrorSignature, categorizeError, createErrorState, buildFixContext, } from './automation/fix-loop.js';
+import { writeFailure } from './memory/failures.js';
 import { findMatchingPattern, getSuggestedFix, getResearchHints, } from './post-tool-use-failure/index.js';
 import { saveRetry, getRetryCount, getCurrentPhase, shouldEscalatePhase, getPhaseDescription, getRemainingAttempts, hasExhaustedRetries, generateErrorSignature as generateRetrySignature, } from './post-tool-use-failure/retry-tracker.js';
-import { writeFailure } from './memory/failures.js';
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, createResponse, PROJECT_ROOT, } from './shared/index.js';
+import { loadState, saveState, trackError, getErrorState } from './state.js';
 /**
  * Build research hints message based on phase
  */
@@ -52,7 +52,8 @@ async function runPostToolUseFailureHook() {
         // Extract error message safely - the error field is passed by Claude Code but not in our type
         let errorMessage = 'Unknown error';
         if (isRecord(input)) {
-            errorMessage = typeof input.error === 'string' ? input.error : 'Unknown error';
+            errorMessage =
+                typeof input.error === 'string' ? input.error : 'Unknown error';
         }
         const ERROR_PREVIEW_LENGTH = 200;
         debug('PostToolUseFailure received input', {
@@ -104,7 +105,10 @@ async function runPostToolUseFailureHook() {
         }
         // Step 5: Find matching recovery pattern
         const pattern = findMatchingPattern(category, errorMessage);
-        debug('Matching pattern', { found: !!pattern, category: pattern?.category });
+        debug('Matching pattern', {
+            found: !!pattern,
+            category: pattern?.category,
+        });
         // Step 6: Get suggested fix based on pattern
         const suggestedFix = getSuggestedFix(category, errorMessage, errorState);
         // Step 7: Build fix context with research hints
@@ -136,7 +140,9 @@ async function runPostToolUseFailureHook() {
                 await writeFailure(cwd, failure);
             }
             catch (writeError) {
-                debug('Failed to write failure to memory', { error: String(writeError) });
+                debug('Failed to write failure to memory', {
+                    error: String(writeError),
+                });
             }
         }
         // Save state
