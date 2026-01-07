@@ -7,15 +7,18 @@
  * - createTelemetryRecord: creating telemetry records from agent data
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import {
   ensureGoodVibesDirs,
   writeTelemetryRecord,
   createTelemetryRecord,
   type TelemetryRecord,
 } from '../../telemetry/records.js';
+
 import type { ActiveAgentEntry } from '../../telemetry/agents.js';
 import type { ParsedTranscript } from '../../telemetry/transcript.js';
 

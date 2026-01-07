@@ -5,7 +5,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { getResearchHints } from '../../post-tool-use-failure/research-hints.js';
+
 import type { ErrorCategory } from '../../types/errors.js';
 
 describe('getResearchHints', () => {

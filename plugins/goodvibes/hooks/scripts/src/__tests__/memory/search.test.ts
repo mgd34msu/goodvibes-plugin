@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import type { ProjectMemory } from '../../types/memory.js';
 
 // Mock all the dependencies before importing the module under test
@@ -34,11 +35,11 @@ vi.mock('../../memory/preferences.js', () => ({
 }));
 
 // Import the mocked modules and module under test
-import { getMemoryDir } from '../../memory/paths.js';
-import { fileExists } from '../../memory/directories.js';
 import { readDecisions } from '../../memory/decisions.js';
-import { readPatterns } from '../../memory/patterns.js';
+import { fileExists } from '../../memory/directories.js';
 import { readFailures } from '../../memory/failures.js';
+import { getMemoryDir } from '../../memory/paths.js';
+import { readPatterns } from '../../memory/patterns.js';
 import { readPreferences } from '../../memory/preferences.js';
 import {
   loadProjectMemory,

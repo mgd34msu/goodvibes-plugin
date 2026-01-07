@@ -19,18 +19,17 @@ import {
   saveAnalytics,
   debug,
   logError,
-  HookResponse,
 } from './shared/index.js';
-
+import { loadState, saveState } from './state.js';
+import { buildSubagentContext } from './subagent-start/context-injection.js';
+import { saveAgentTracking } from './subagent-stop/telemetry.js';
 import {
   cleanupStaleAgents,
   getGitInfo,
   deriveProjectName,
 } from './telemetry.js';
 
-import { saveAgentTracking } from './subagent-stop/telemetry.js';
-import { buildSubagentContext } from './subagent-start/context-injection.js';
-import { loadState, saveState } from './state.js';
+import type { HookResponse } from './shared/index.js';
 import type { TelemetryTracking } from './types/telemetry.js';
 
 // Extended hook input interface for SubagentStart

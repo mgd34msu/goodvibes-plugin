@@ -12,9 +12,9 @@
  * Target: 100% line and branch coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import type { Readable } from 'stream';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Import types and functions to test
 import type {
@@ -25,6 +25,7 @@ import type {
   ExtendedHookResponse,
   PermissionDecision,
 } from '../shared/hook-io.js';
+import type { Readable } from 'stream';
 
 // Create a mock stdin that extends EventEmitter
 class MockStdin extends EventEmitter {

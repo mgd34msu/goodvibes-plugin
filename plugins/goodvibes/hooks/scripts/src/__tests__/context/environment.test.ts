@@ -5,9 +5,10 @@
  * Aims for 100% line and branch coverage.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
-import { fileExists } from '../../shared/file-utils.js';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   checkEnvStatus,
   analyzeEnvironment,
@@ -17,6 +18,7 @@ import {
   type EnvStatus,
   type EnvironmentContext,
 } from '../../context/environment.js';
+import { fileExists } from '../../shared/file-utils.js';
 
 // Mock dependencies
 vi.mock('fs/promises');

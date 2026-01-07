@@ -6,10 +6,11 @@
  */
 
 import { exec, spawn } from 'child_process';
-import { promisify } from 'util';
 import * as path from 'path';
-import { debug } from '../shared/index.js';
+import { promisify } from 'util';
+
 import { fileExists } from '../shared/file-utils.js';
+import { debug } from '../shared/index.js';
 
 const execAsync = promisify(exec);
 

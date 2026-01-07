@@ -7,14 +7,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ensureGoodVibesDir } from '../shared/index.js';
-import { debug } from '../shared/logging.js';
-import {
-  PHASE_RETRY_LIMITS,
-  type ErrorCategory,
-  type ErrorState,
-} from '../types/errors.js';
-import type { HooksState } from '../types/state.js';
+
 import {
   generateErrorSignature as generateErrorSignatureCore,
   shouldEscalatePhase as shouldEscalatePhaseCore,
@@ -25,6 +18,15 @@ import {
   MAX_PHASE,
   DEFAULT_RETRY_LIMIT,
 } from '../shared/error-handling-core.js';
+import { ensureGoodVibesDir } from '../shared/index.js';
+import { debug } from '../shared/logging.js';
+import {
+  PHASE_RETRY_LIMITS,
+  type ErrorCategory,
+  type ErrorState,
+} from '../types/errors.js';
+
+import type { HooksState } from '../types/state.js';
 
 /** A single retry tracking entry */
 export interface RetryEntry {

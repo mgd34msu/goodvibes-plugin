@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   STACK_KEYWORD_CATEGORIES,
   TRANSCRIPT_KEYWORD_CATEGORIES,

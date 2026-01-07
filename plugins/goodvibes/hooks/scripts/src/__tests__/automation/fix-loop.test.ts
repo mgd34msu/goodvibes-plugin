@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { ErrorState } from '../../types/errors.js';
+
 import {
   categorizeError,
   createErrorState,
@@ -24,6 +24,8 @@ import {
   escalatePhase,
   hasExhaustedRetries,
 } from '../../automation/fix-loop.js';
+
+import type { ErrorState } from '../../types/errors.js';
 
 // =============================================================================
 // categorizeError tests

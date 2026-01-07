@@ -11,10 +11,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { handleBashTool } from '../../post-tool-use/bash-handler.js';
-import type { HooksState } from '../../types/state.js';
-import type { HookInput } from '../../shared/index.js';
 import { createMockBashToolInput } from '../test-utils/mock-factories/index.js';
+
+import type { HookInput } from '../../shared/index.js';
+import type { HooksState } from '../../types/state.js';
 
 // Mock the dev-server-monitor module
 vi.mock('../../post-tool-use/dev-server-monitor.js', () => ({

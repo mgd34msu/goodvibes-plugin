@@ -4,13 +4,12 @@
     "noEmit": true
   },
   "include": [
-    "*.ts",
     "src/**/*.ts",
-    "src/**/__tests__/**/*.ts"
+    "vitest.config.ts"
   ],
   "exclude": [
-    "node_modules/**",
-    "dist/**",
-    "coverage/**"
+    "node_modules",
+    "dist",
+    "coverage"
   ]
 }

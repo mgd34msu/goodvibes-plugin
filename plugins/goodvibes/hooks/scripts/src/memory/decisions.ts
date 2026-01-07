@@ -3,12 +3,14 @@
  */
 
 import * as path from 'path';
-import type { MemoryDecision } from '../types/memory.js';
+
 import {
   parseMemoryFile,
   ensureMemoryFile,
   appendMemoryEntry,
 } from './parser.js';
+
+import type { MemoryDecision } from '../types/memory.js';
 
 const DECISIONS_HEADER = `# Architectural Decisions
 

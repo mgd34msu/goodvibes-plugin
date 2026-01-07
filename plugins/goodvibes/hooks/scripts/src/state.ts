@@ -4,10 +4,12 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { HooksState } from './types/state.js';
-import { createDefaultState } from './types/state.js';
+
 import { ensureGoodVibesDir, fileExists } from './shared/index.js';
 import { debug } from './shared/logging.js';
+import { createDefaultState } from './types/state.js';
+
+import type { HooksState } from './types/state.js';
 
 /** Relative path to the state file within .goodvibes directory. */
 const STATE_FILE = 'state/hooks-state.json';

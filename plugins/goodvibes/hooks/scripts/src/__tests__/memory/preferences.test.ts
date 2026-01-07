@@ -5,10 +5,12 @@
  * including reading, writing, and formatting of user preferences.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fsSync from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import type { MemoryPreference } from '../../types/memory.js';
 
 // Mock the parser module

@@ -22,25 +22,20 @@ import {
   saveAnalytics,
   debug,
   logError,
-  HookResponse,
 } from './shared/index.js';
-
+import { loadState, saveState } from './state.js';
+import { validateAgentOutput } from './subagent-stop/output-validation.js';
 import {
   getAgentTracking,
   removeAgentTracking,
   writeTelemetryEntry,
   buildTelemetryEntry,
 } from './subagent-stop/telemetry.js';
+import { verifyAgentTests } from './subagent-stop/test-verification.js';
 
-import {
-  validateAgentOutput,
-  ValidationResult,
-} from './subagent-stop/output-validation.js';
-import {
-  verifyAgentTests,
-  TestVerificationResult,
-} from './subagent-stop/test-verification.js';
-import { loadState, saveState } from './state.js';
+import type { HookResponse } from './shared/index.js';
+import type { ValidationResult } from './subagent-stop/output-validation.js';
+import type { TestVerificationResult } from './subagent-stop/test-verification.js';
 
 // Extended hook input interface for SubagentStop
 interface SubagentStopInput {

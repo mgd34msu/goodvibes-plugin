@@ -3,22 +3,24 @@
  * Tests for 100% code coverage of all functions and branches.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { loadMemory, formatMemory } from '../../context/memory-loader.js';
 import {
-  loadMemory,
-  formatMemory,
+  createMockStats,
+  createMockReaddirStrings,
+} from '../test-utils/mock-factories.js';
+
+import type {
   ProjectMemory,
   Decision,
   Pattern,
   Failure,
   Preferences,
 } from '../../context/memory-loader.js';
-import {
-  createMockStats,
-  createMockReaddirStrings,
-} from '../test-utils/mock-factories.js';
 
 // Mock dependencies
 vi.mock('fs/promises');

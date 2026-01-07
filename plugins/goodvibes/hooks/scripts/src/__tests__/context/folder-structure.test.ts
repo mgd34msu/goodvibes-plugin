@@ -4,19 +4,22 @@
  * Tests folder structure analysis and architecture pattern detection.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   analyzeFolderStructure,
   formatFolderStructure,
 } from '../../context/folder-structure.js';
+import { fileExists } from '../../shared/file-utils.js';
+
 import type {
   FolderStructure,
   ArchitecturePattern,
   SpecialDirectories,
 } from '../../context/folder-structure.js';
-import { fileExists } from '../../shared/file-utils.js';
 
 // Mock dependencies
 vi.mock('fs/promises');

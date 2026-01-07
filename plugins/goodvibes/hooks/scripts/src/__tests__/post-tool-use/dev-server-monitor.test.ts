@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import {
   isDevServerCommand,
   registerDevServer,
@@ -6,8 +7,9 @@ import {
   recordDevServerError,
   parseDevServerErrors,
 } from '../../post-tool-use/dev-server-monitor.js';
-import type { HooksState } from '../../types/state.js';
 import { createDefaultState } from '../../types/state.js';
+
+import type { HooksState } from '../../types/state.js';
 
 describe('dev-server-monitor', () => {
   let state: HooksState;

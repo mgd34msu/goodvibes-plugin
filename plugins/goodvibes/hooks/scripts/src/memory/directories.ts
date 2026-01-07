@@ -7,10 +7,12 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { fileExists } from '../shared/file-utils.js';
 import { debug, logError, ensureGoodVibesDir } from '../shared/index.js';
 import { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
+
 import { getGoodVibesDir, getMemoryDir } from './paths.js';
-import { fileExists } from '../shared/file-utils.js';
 
 // Re-export fileExists for backwards compatibility
 export { fileExists };

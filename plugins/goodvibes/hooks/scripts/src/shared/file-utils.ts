@@ -7,6 +7,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import { PROJECT_ROOT, PLUGIN_ROOT } from './constants.js';
 import { debug } from './logging.js';
 

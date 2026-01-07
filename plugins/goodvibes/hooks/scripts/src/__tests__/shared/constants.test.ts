@@ -11,8 +11,9 @@
  * Target: 100% line and branch coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 describe('constants', () => {
   // Store original env values

@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
 import {
   createDefaultState,
   type HooksState,

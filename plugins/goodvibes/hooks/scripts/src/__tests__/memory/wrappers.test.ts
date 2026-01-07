@@ -38,20 +38,20 @@ vi.mock('../../shared/index.js', () => ({
 }));
 
 // Import mocked modules
-import { ensureMemoryDir } from '../../memory/directories.js';
 import { writeDecision } from '../../memory/decisions.js';
-import { writePattern } from '../../memory/patterns.js';
+import { ensureMemoryDir } from '../../memory/directories.js';
 import { writeFailure } from '../../memory/failures.js';
+import { writePattern } from '../../memory/patterns.js';
 import { writePreference } from '../../memory/preferences.js';
-import { debug, logError } from '../../shared/index.js';
-
-// Import the functions under test
 import {
   appendDecision,
   appendPattern,
   appendFailure,
   appendPreference,
 } from '../../memory/wrappers.js';
+import { debug, logError } from '../../shared/index.js';
+
+// Import the functions under test
 
 // Import actual types
 import type {

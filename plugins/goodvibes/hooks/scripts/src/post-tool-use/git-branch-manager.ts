@@ -10,7 +10,6 @@
  * @see {@link ./file-tracker} for file creation tracking
  */
 
-import type { HooksState } from '../types/state.js';
 import {
   detectMainBranch,
   getCurrentBranch,
@@ -18,6 +17,8 @@ import {
   mergeFeatureBranch as gitMergeBranch,
   hasUncommittedChanges,
 } from '../automation/git-operations.js';
+
+import type { HooksState } from '../types/state.js';
 
 /** Maximum length for feature branch name slugs */
 const BRANCH_NAME_MAX_LENGTH = 50;

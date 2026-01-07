@@ -3,8 +3,10 @@
  * Target: 100% line and branch coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   readHookInput,
   allowTool,

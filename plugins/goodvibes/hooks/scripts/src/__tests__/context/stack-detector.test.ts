@@ -9,15 +9,17 @@
  * - formatStackInfo output formatting
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
-import { fileExists } from '../../shared/file-utils.js';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   detectStack,
   formatStackInfo,
   clearStackCache,
   type StackInfo,
 } from '../../context/stack-detector.js';
+import { fileExists } from '../../shared/file-utils.js';
 
 // Mock dependencies
 vi.mock('fs/promises');

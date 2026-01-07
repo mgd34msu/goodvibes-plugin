@@ -6,6 +6,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import { fileExists } from '../shared/file-utils.js';
 
 /** Folder structure analysis results. */

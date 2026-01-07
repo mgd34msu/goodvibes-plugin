@@ -5,20 +5,22 @@
  * including all exported functions, error paths, and edge cases.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
-import * as path from 'path';
+import * as fs from 'fs/promises';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import {
   ensureMemoryDir,
   ensureSecurityGitignore,
   fileExists,
   ensureGoodVibesDir,
 } from '../../memory/directories.js';
-import { SECURITY_GITIGNORE_PATTERNS } from '../../shared/security-patterns.js';
-import * as sharedIndex from '../../shared/index.js';
 import * as fileUtils from '../../shared/file-utils.js';
+import * as sharedIndex from '../../shared/index.js';
+import { SECURITY_GITIGNORE_PATTERNS } from '../../shared/security-patterns.js';
 
 describe('memory/directories', () => {
   let testDir: string;

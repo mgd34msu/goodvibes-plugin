@@ -2,8 +2,9 @@
  * Unit tests for recent-activity.ts
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock dependencies
 vi.mock('child_process');

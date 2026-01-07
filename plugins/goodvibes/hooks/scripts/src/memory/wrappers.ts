@@ -7,11 +7,13 @@
  */
 
 import { debug, logError } from '../shared/index.js';
-import { ensureMemoryDir } from './directories.js';
+
 import { writeDecision } from './decisions.js';
-import { writePattern } from './patterns.js';
+import { ensureMemoryDir } from './directories.js';
 import { writeFailure } from './failures.js';
+import { writePattern } from './patterns.js';
 import { writePreference } from './preferences.js';
+
 import type {
   MemoryDecision,
   MemoryPattern,

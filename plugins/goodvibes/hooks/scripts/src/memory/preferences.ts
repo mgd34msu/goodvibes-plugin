@@ -3,12 +3,14 @@
  */
 
 import * as path from 'path';
-import type { MemoryPreference } from '../types/memory.js';
+
 import {
   parseMemoryFile,
   ensureMemoryFile,
   appendMemoryEntry,
 } from './parser.js';
+
+import type { MemoryPreference } from '../types/memory.js';
 
 const PREFERENCES_HEADER = `# User Preferences
 

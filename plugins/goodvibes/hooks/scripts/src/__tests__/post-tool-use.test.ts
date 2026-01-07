@@ -9,8 +9,9 @@
  * - Error handling paths
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock fs/promises before any imports
 vi.mock('fs/promises', () => ({
@@ -110,13 +111,9 @@ vi.mock('../post-tool-use/mcp-handlers.js', () => ({
 
 // Import mocked modules
 import * as fs from 'fs/promises';
-import { respond, readHookInput, debug, logError } from '../shared/index.js';
-import { loadState, saveState } from '../state.js';
-import { getDefaultConfig } from '../types/config.js';
-import { fileExists } from '../shared/file-utils.js';
-import { createResponse, combineMessages } from '../post-tool-use/response.js';
-import { processFileAutomation } from '../post-tool-use/file-automation.js';
+
 import { handleBashTool } from '../post-tool-use/bash-handler.js';
+import { processFileAutomation } from '../post-tool-use/file-automation.js';
 import {
   handleDetectStack,
   handleRecommendSkills,
@@ -125,6 +122,11 @@ import {
   handleRunSmokeTest,
   handleCheckTypes,
 } from '../post-tool-use/mcp-handlers.js';
+import { createResponse, combineMessages } from '../post-tool-use/response.js';
+import { fileExists } from '../shared/file-utils.js';
+import { respond, readHookInput, debug, logError } from '../shared/index.js';
+import { loadState, saveState } from '../state.js';
+import { getDefaultConfig } from '../types/config.js';
 
 // Create a default state for tests
 function createMockState() {

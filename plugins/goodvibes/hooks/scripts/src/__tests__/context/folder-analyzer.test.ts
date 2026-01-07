@@ -5,12 +5,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   analyzeFolderStructure,
   formatFolderAnalysis,
 } from '../../context/folder-analyzer.js';
-import type { FolderAnalysis } from '../../context/folder-analyzer.js';
 import { fileExists } from '../../shared/file-utils.js';
+
+import type { FolderAnalysis } from '../../context/folder-analyzer.js';
 
 // Mock dependencies
 vi.mock('../../shared/file-utils.js');

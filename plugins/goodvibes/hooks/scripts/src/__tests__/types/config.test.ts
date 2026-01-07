@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { getDefaultConfig, type GoodVibesConfig } from '../../types/config.js';
 
 describe('types/config', () => {

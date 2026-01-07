@@ -24,10 +24,11 @@ import {
   afterEach,
   type Mock,
 } from 'vitest';
+
+import type { GitGuardResult } from '../pre-tool-use/git-guards.js';
+import type { GateResult } from '../pre-tool-use/quality-gates.js';
 import type { HookInput } from '../shared/index.js';
 import type { HooksState } from '../types/state.js';
-import type { GateResult } from '../pre-tool-use/quality-gates.js';
-import type { GitGuardResult } from '../pre-tool-use/git-guards.js';
 
 // Mock all dependencies
 vi.mock('../shared/index.js', () => ({

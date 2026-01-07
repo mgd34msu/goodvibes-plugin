@@ -7,13 +7,9 @@
  * - Build errors
  */
 
-import {
-  respond,
-  readHookInput,
-  debug,
-  logError,
-  HookResponse,
-} from './shared/index.js';
+import { respond, readHookInput, debug, logError } from './shared/index.js';
+
+import type { HookResponse } from './shared/index.js';
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {

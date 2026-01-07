@@ -6,8 +6,9 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from './logging.js';
+
 import { fileExists } from './file-utils.js';
+import { debug } from './logging.js';
 
 /**
  * Timeout in milliseconds for waiting on stdin input before using defaults.

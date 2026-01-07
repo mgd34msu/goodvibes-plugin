@@ -12,9 +12,10 @@
  * Target: 100% line and branch coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock dependencies before importing the module
 vi.mock('fs/promises');
@@ -34,8 +35,8 @@ import {
   loadSharedConfig,
   type SharedConfig,
 } from '../../shared/config.js';
-import { debug } from '../../shared/logging.js';
 import { fileExists } from '../../shared/file-utils.js';
+import { debug } from '../../shared/logging.js';
 
 describe('config', () => {
   beforeEach(() => {

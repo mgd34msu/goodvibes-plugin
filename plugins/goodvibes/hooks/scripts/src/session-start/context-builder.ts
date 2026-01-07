@@ -31,10 +31,10 @@ import {
   checkPorts,
   formatPortStatus,
 } from '../context/index.js';
-
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
-import { formatRecoveryContext, type RecoveryInfo } from './crash-recovery.js';
 import { debug } from '../shared/index.js';
+
+import { formatRecoveryContext, type RecoveryInfo } from './crash-recovery.js';
 
 /** Width of section separator lines */
 const SECTION_SEPARATOR_LENGTH = 50;

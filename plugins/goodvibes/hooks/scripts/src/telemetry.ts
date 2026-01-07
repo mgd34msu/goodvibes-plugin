@@ -15,6 +15,7 @@
  */
 
 import * as path from 'path';
+
 import { PROJECT_ROOT } from './shared/constants.js';
 
 // Re-export all types and core functions from the telemetry module
@@ -30,6 +31,7 @@ import {
   ensureGoodVibesDirs as ensureGoodVibesDirsCore,
   writeTelemetryRecord as writeTelemetryRecordCore,
 } from './telemetry/index.js';
+
 import type {
   ActiveAgentsState,
   ActiveAgentEntry,

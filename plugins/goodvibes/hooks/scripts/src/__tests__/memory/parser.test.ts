@@ -6,11 +6,12 @@
  * ensureMemoryFile, and appendMemoryEntry functions.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
-import * as path from 'path';
+import * as fs from 'fs/promises';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock dependencies
 vi.mock('../../shared/logging.js', () => ({
@@ -21,15 +22,16 @@ vi.mock('../../shared/file-utils.js', () => ({
   fileExists: vi.fn(),
 }));
 
-import { debug } from '../../shared/logging.js';
-import { fileExists } from '../../shared/file-utils.js';
 import {
   parseMemoryFile,
   parseMemoryContent,
   ensureMemoryFile,
   appendMemoryEntry,
-  SectionParser,
 } from '../../memory/parser.js';
+import { fileExists } from '../../shared/file-utils.js';
+import { debug } from '../../shared/logging.js';
+
+import type { SectionParser } from '../../memory/parser.js';
 
 // Test interfaces
 interface TestDecision {

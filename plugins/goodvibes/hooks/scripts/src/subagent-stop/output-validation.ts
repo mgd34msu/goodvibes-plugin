@@ -10,10 +10,11 @@
  * @see {@link ../post-tool-use/file-tracker} for file tracking
  */
 
-import type { HooksState } from '../types/state.js';
-import { parseTranscript } from '../shared/index.js';
 import { runTypeCheck } from '../automation/build-runner.js';
 import { trackFileModification } from '../post-tool-use/file-tracker.js';
+import { parseTranscript } from '../shared/index.js';
+
+import type { HooksState } from '../types/state.js';
 
 /** Result of validating agent output */
 export interface ValidationResult {

@@ -3,8 +3,9 @@
  * Target: 100% coverage (lines, branches, functions)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // =============================================================================
 // Mock Setup

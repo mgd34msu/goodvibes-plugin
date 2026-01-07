@@ -10,10 +10,12 @@
  * Verifies memory survives across "sessions" and handles concurrent access
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import {
   loadMemory,
   appendDecision,

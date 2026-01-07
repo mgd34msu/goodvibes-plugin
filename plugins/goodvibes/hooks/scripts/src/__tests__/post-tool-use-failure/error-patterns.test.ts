@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   RECOVERY_PATTERNS,
   type ErrorSeverity,

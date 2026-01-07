@@ -12,9 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { HooksState } from '../../types/state.js';
-import type { GoodVibesConfig } from '../../types/config.js';
-import type { HookInput } from '../../shared/index.js';
+
 import {
   handleFileModification,
   processFileAutomation,
@@ -23,6 +21,10 @@ import {
   maybeCreateCheckpoint,
   maybeCreateBranch,
 } from '../../post-tool-use/file-automation.js';
+
+import type { HookInput } from '../../shared/index.js';
+import type { GoodVibesConfig } from '../../types/config.js';
+import type { HooksState } from '../../types/state.js';
 
 // Mock all external dependencies
 vi.mock('../../shared/index.js', () => ({

@@ -5,12 +5,13 @@
  * for categorizing errors and finding relevant recovery patterns.
  */
 
-import type { ErrorCategory } from '../types/errors.js';
 import {
   RECOVERY_PATTERNS,
   type RecoveryPattern,
   type ErrorSeverity,
 } from './error-patterns.js';
+
+import type { ErrorCategory } from '../types/errors.js';
 
 /** Maps ErrorCategory to pattern category names for lookup */
 export const ERROR_CATEGORY_MAP: Record<ErrorCategory, string[]> = {

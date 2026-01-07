@@ -10,9 +10,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { HooksState } from '../../types/state.js';
-import type { TranscriptData } from '../../shared/transcript.js';
+
 import type { BuildResult } from '../../automation/build-runner.js';
+import type { TranscriptData } from '../../shared/transcript.js';
+import type { HooksState } from '../../types/state.js';
 
 // Mock dependencies
 const mockParseTranscript = vi.fn<(path: string) => Promise<TranscriptData>>();

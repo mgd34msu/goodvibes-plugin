@@ -9,10 +9,13 @@
  * - Path utilities
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execSync } from 'child_process';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { debug, logError, fileExists } from '../../shared/index.js';
 import {
   STALE_AGENT_MAX_AGE_MS,
   getActiveAgentsFilePath,
@@ -24,12 +27,13 @@ import {
   popActiveAgent,
   cleanupStaleAgents,
   ActiveAgentEntry,
-  ActiveAgentsState,
 } from '../../telemetry/agents.js';
 import {
   createMockGitExecSync,
   createMockActiveAgentEntry,
 } from '../test-utils/mock-factories.js';
+
+import type { ActiveAgentsState } from '../../telemetry/agents.js';
 
 // Mock child_process module
 vi.mock('child_process', () => ({
@@ -54,7 +58,6 @@ vi.mock('../../shared/index.js', async () => {
 });
 
 // Import mocked functions for test assertions
-import { debug, logError, fileExists } from '../../shared/index.js';
 
 describe('telemetry/agents', () => {
   beforeEach(() => {

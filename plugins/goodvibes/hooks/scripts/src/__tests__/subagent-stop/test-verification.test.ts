@@ -11,8 +11,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { HooksState } from '../../types/state.js';
+
 import { createDefaultState } from '../../types/state.js';
+
+import type { HooksState } from '../../types/state.js';
 
 // Mock dependencies
 const mockFindTestsForFile = vi.fn();

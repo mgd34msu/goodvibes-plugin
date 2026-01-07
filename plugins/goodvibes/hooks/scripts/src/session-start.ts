@@ -12,6 +12,17 @@
  * - Saves state for future sessions
  */
 
+// Session-start specific modules
+import {
+  gatherProjectContext,
+  createFailedContextResult,
+  type ContextGatheringResult,
+} from './session-start/context-builder.js';
+import {
+  checkCrashRecovery,
+  type RecoveryInfo,
+} from './session-start/crash-recovery.js';
+import { buildSystemMessage } from './session-start/response-formatter.js';
 import {
   respond,
   readHookInput,
@@ -23,18 +34,6 @@ import {
   createResponse,
   PROJECT_ROOT,
 } from './shared/index.js';
-
-// Session-start specific modules
-import {
-  checkCrashRecovery,
-  type RecoveryInfo,
-} from './session-start/crash-recovery.js';
-import {
-  gatherProjectContext,
-  createFailedContextResult,
-  type ContextGatheringResult,
-} from './session-start/context-builder.js';
-import { buildSystemMessage } from './session-start/response-formatter.js';
 
 // State management
 import {

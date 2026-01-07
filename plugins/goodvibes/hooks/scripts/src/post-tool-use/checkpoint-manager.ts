@@ -10,16 +10,18 @@
  * @see {@link ../automation/git-operations} for git commit operations
  */
 
-import type { HooksState } from '../types/state.js';
 import {
   createCheckpoint as gitCheckpoint,
   hasUncommittedChanges,
 } from '../automation/git-operations.js';
 import { CHECKPOINT_TRIGGERS } from '../shared/index.js';
+
 import {
   clearCheckpointTracking,
   getModifiedFileCount,
 } from './file-tracker.js';
+
+import type { HooksState } from '../types/state.js';
 
 /** Result of checking whether a checkpoint should be created */
 export interface CheckpointTrigger {

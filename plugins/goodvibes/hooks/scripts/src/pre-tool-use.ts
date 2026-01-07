@@ -20,6 +20,18 @@
  */
 
 import path from 'node:path';
+
+import {
+  checkBranchGuard,
+  checkMergeReadiness,
+  isGitCommand,
+  isMergeCommand,
+} from './pre-tool-use/git-guards.js';
+import {
+  runQualityGates,
+  isCommitCommand,
+  formatGateResults,
+} from './pre-tool-use/quality-gates.js';
 import {
   respond,
   readHookInput,
@@ -29,21 +41,11 @@ import {
   fileExists,
   debug,
   logError,
-  HookInput,
 } from './shared/index.js';
 import { loadState } from './state.js';
 import { getDefaultConfig } from './types/config.js';
-import {
-  runQualityGates,
-  isCommitCommand,
-  formatGateResults,
-} from './pre-tool-use/quality-gates.js';
-import {
-  checkBranchGuard,
-  checkMergeReadiness,
-  isGitCommand,
-  isMergeCommand,
-} from './pre-tool-use/git-guards.js';
+
+import type { HookInput } from './shared/index.js';
 
 /**
  * Extract the bash command from tool input

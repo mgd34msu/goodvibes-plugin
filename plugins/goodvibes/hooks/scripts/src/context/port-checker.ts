@@ -6,6 +6,7 @@
 
 import { execSync } from 'child_process';
 import * as os from 'os';
+
 import { debug } from '../shared/logging.js';
 
 /** Information about a network port. */

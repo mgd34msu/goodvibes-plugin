@@ -12,6 +12,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import {
   respond,
   loadAnalytics,
@@ -21,9 +22,11 @@ import {
   debug,
   logError,
   CACHE_DIR,
-  HookInput,
 } from '../shared/index.js';
+
 import { createResponse } from './response.js';
+
+import type { HookInput } from '../shared/index.js';
 
 /**
  * Handles detect_stack tool results, caching stack info.

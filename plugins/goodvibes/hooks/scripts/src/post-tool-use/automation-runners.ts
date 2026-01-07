@@ -5,27 +5,27 @@
  * Each function checks configuration before executing automation.
  */
 
-import { debug, logError } from '../shared/index.js';
-import type { HooksState } from '../types/state.js';
-import type { GoodVibesConfig } from '../types/config.js';
-
 // File tracking
-import { getModifiedFileCount } from './file-tracker.js';
-
-// Git operations
-import { createCheckpointIfNeeded } from './checkpoint-manager.js';
-import { maybeCreateFeatureBranch } from './git-branch-manager.js';
-
-// Testing and building
+import { runTypeCheck, type BuildResult } from '../automation/build-runner.js';
 import {
   findTestsForFile,
   runTests,
   type TestResult,
 } from '../automation/test-runner.js';
-import { runTypeCheck, type BuildResult } from '../automation/build-runner.js';
+import { debug, logError } from '../shared/index.js';
+import { updateTestState, updateBuildState } from '../state.js';
+
+// Git operations
+import { createCheckpointIfNeeded } from './checkpoint-manager.js';
+import { getModifiedFileCount } from './file-tracker.js';
+import { maybeCreateFeatureBranch } from './git-branch-manager.js';
+
+import type { GoodVibesConfig } from '../types/config.js';
+import type { HooksState } from '../types/state.js';
+
+// Testing and building
 
 // State management
-import { updateTestState, updateBuildState } from '../state.js';
 
 /**
  * Run tests for modified files if test automation is enabled in config.

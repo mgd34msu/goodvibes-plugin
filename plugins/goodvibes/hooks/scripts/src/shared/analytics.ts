@@ -5,9 +5,10 @@
  */
 
 import * as fs from 'fs/promises';
+
 import { CACHE_DIR, ANALYTICS_FILE } from './constants.js';
-import { debug } from './logging.js';
 import { fileExists } from './file-utils.js';
+import { debug } from './logging.js';
 
 // =============================================================================
 // Analytics Types

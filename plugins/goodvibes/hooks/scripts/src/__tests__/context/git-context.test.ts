@@ -5,14 +5,16 @@
  * of all branches including error handling paths.
  */
 
+import * as childProcess from 'child_process';
+import * as fs from 'fs/promises';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   getGitContext,
   formatGitContext,
   type GitContext,
 } from '../../context/git-context.js';
-import * as childProcess from 'child_process';
-import * as fs from 'fs/promises';
 
 // Mock dependencies
 vi.mock('child_process');

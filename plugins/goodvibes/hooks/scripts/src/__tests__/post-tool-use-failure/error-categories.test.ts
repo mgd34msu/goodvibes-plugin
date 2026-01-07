@@ -13,11 +13,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ErrorCategory } from '../../types/errors.js';
+
 import type {
   RecoveryPattern,
   ErrorSeverity,
 } from '../../post-tool-use-failure/error-patterns.js';
+import type { ErrorCategory } from '../../types/errors.js';
 
 // Mock the error-patterns module
 const mockRecoveryPatterns: RecoveryPattern[] = [

@@ -11,27 +11,11 @@
  * - Process MCP tool results (detect_stack, validate_implementation, etc.)
  */
 
-import { respond, readHookInput, debug, logError } from './shared/index.js';
-
-// State management
-import { loadState, saveState } from './state.js';
-
-// Configuration
-import { getDefaultConfig, type GoodVibesConfig } from './types/config.js';
-import { fileExists } from './shared/file-utils.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-// Response utilities
-import { createResponse, combineMessages } from './post-tool-use/response.js';
-
-// File automation (Edit, Write tools)
-import { processFileAutomation } from './post-tool-use/file-automation.js';
-
-// Bash tool handling
 import { handleBashTool } from './post-tool-use/bash-handler.js';
-
-// MCP tool handlers
+import { processFileAutomation } from './post-tool-use/file-automation.js';
 import {
   handleDetectStack,
   handleRecommendSkills,
@@ -40,6 +24,23 @@ import {
   handleRunSmokeTest,
   handleCheckTypes,
 } from './post-tool-use/mcp-handlers.js';
+import { createResponse, combineMessages } from './post-tool-use/response.js';
+import { fileExists } from './shared/file-utils.js';
+import { respond, readHookInput, debug, logError } from './shared/index.js';
+
+// State management
+import { loadState, saveState } from './state.js';
+
+// Configuration
+import { getDefaultConfig, type GoodVibesConfig } from './types/config.js';
+
+// Response utilities
+
+// File automation (Edit, Write tools)
+
+// Bash tool handling
+
+// MCP tool handlers
 
 /**
  * Deep merge two objects

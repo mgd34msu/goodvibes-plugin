@@ -5,6 +5,7 @@
  */
 
 import { execSync } from 'child_process';
+
 import { debug } from '../shared/logging.js';
 
 /**

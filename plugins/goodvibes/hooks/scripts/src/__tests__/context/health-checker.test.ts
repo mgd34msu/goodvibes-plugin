@@ -7,14 +7,17 @@
  * - All edge cases and error paths
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import {
   checkProjectHealth,
   formatHealthStatus,
-  HealthStatus,
   HealthCheck,
 } from '../../context/health-checker.js';
+
+import type { HealthStatus } from '../../context/health-checker.js';
 
 // Mock dependencies
 vi.mock('fs/promises');

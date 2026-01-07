@@ -11,7 +11,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
+
 import {
   ensureGoodVibesDir,
   parseTranscript,
@@ -19,6 +19,8 @@ import {
   fileExists,
 } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
+
+import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
 
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';

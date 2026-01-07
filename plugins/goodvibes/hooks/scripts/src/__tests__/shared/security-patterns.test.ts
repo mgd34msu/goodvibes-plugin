@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { SECURITY_GITIGNORE_PATTERNS } from '../../shared/security-patterns.js';
 
 describe('security-patterns', () => {

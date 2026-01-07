@@ -5,8 +5,10 @@
  * path utilities module including constants and path resolution functions.
  */
 
-import { describe, it, expect } from 'vitest';
 import * as path from 'path';
+
+import { describe, it, expect } from 'vitest';
+
 import {
   GOODVIBES_DIR,
   MEMORY_DIR,
@@ -14,8 +16,9 @@ import {
   getGoodVibesDir,
   getMemoryDir,
   getMemoryFilePath,
-  MemoryFileType,
 } from '../../memory/paths.js';
+
+import type { MemoryFileType } from '../../memory/paths.js';
 
 describe('memory/paths', () => {
   // ==========================================================================

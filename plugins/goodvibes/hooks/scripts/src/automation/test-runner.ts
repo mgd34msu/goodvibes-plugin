@@ -5,9 +5,10 @@
  * failure information for automated debugging.
  */
 
+import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+
 import { extractErrorOutput } from '../shared/index.js';
 
 /** Number of lines to include after a test failure match for context. */

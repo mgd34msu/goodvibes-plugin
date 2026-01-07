@@ -6,16 +6,18 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { HooksState } from '../types/state.js';
-import { loadState, saveState } from '../state.js';
-import { createCheckpointIfNeeded } from '../post-tool-use/checkpoint-manager.js';
+
 import { hasUncommittedChanges } from '../automation/git-operations.js';
+import { createCheckpointIfNeeded } from '../post-tool-use/checkpoint-manager.js';
 import {
   ensureGoodVibesDir,
   debug,
   logError,
   fileExists,
 } from '../shared/index.js';
+import { loadState, saveState } from '../state.js';
+
+import type { HooksState } from '../types/state.js';
 
 /**
  * Creates a checkpoint commit before context compaction if there are uncommitted changes.

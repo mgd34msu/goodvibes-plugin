@@ -9,10 +9,12 @@
  * - buildTelemetryEntry: build telemetry entry from tracking data and transcript
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import type {
   TelemetryEntry,
   TelemetryTracking,

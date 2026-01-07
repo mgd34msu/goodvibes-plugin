@@ -3,12 +3,14 @@
  */
 
 import * as path from 'path';
-import type { MemoryPattern } from '../types/memory.js';
+
 import {
   parseMemoryFile,
   ensureMemoryFile,
   appendMemoryEntry,
 } from './parser.js';
+
+import type { MemoryPattern } from '../types/memory.js';
 
 const PATTERNS_HEADER = `# Project-Specific Patterns
 

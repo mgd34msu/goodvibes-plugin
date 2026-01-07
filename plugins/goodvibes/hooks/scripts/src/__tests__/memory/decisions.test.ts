@@ -5,11 +5,13 @@
  * including reading, writing, and formatting of architectural decisions.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
-import * as path from 'path';
+import * as fs from 'fs/promises';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import type { MemoryDecision } from '../../types/memory.js';
 
 // Mock the parser module

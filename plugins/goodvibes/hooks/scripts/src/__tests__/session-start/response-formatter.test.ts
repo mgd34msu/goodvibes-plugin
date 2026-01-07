@@ -12,7 +12,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { buildSystemMessage } from '../../session-start/response-formatter.js';
+
 import type { ContextGatheringResult } from '../../session-start/context-builder.js';
 
 describe('response-formatter', () => {

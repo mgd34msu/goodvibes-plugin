@@ -10,8 +10,9 @@
  * - QUALITY_GATES: default gate configuration
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock modules
 vi.mock('child_process');

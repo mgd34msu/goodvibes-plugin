@@ -6,7 +6,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { RECOVERY_PATTERNS } from '../../post-tool-use-failure/recovery-patterns.js';
+
 import type { RecoveryPattern } from '../../post-tool-use-failure/recovery-types.js';
 
 describe('recovery-patterns', () => {

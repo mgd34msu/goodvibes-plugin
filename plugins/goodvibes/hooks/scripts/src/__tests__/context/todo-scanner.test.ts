@@ -4,10 +4,11 @@
  * Achieves 100% line and branch coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { Dirent } from 'fs';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   scanTodos,
   formatTodos,
@@ -17,6 +18,8 @@ import {
   createMockReaddirResult,
   createMockDirent,
 } from '../test-utils/mock-factories';
+
+import type { Dirent } from 'fs';
 
 // Mock fs/promises
 vi.mock('fs/promises');

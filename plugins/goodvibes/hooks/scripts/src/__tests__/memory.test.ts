@@ -2,10 +2,12 @@
  * Tests for the Persistent Memory System
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import {
   loadMemory,
   appendDecision,
@@ -20,11 +22,9 @@ import {
   getGoodVibesDir,
   getMemoryDir,
   getMemoryFilePath,
-  Decision,
-  Pattern,
-  Failure,
-  Preference,
 } from '../memory.js';
+
+import type { Decision, Pattern, Failure, Preference } from '../memory.js';
 
 describe('memory', () => {
   let testDir: string;

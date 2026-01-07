@@ -10,6 +10,7 @@
  */
 
 import { findTestsForFile, runTests } from '../automation/test-runner.js';
+
 import type { HooksState } from '../types/state.js';
 
 /** Result of verifying tests for agent-modified files */

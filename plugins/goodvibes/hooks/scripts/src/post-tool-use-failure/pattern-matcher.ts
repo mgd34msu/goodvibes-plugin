@@ -5,9 +5,10 @@
  * provide suggested fixes based on error state.
  */
 
-import type { ErrorState, ErrorCategory } from '../types/errors.js';
-import type { RecoveryPattern, ErrorSeverity } from './recovery-types.js';
 import { RECOVERY_PATTERNS } from './recovery-patterns.js';
+
+import type { RecoveryPattern, ErrorSeverity } from './recovery-types.js';
+import type { ErrorState, ErrorCategory } from '../types/errors.js';
 
 /**
  * Maps ErrorCategory to pattern category names for lookup.

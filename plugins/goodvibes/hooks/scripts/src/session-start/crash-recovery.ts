@@ -11,13 +11,15 @@
  */
 
 import * as path from 'path';
-import type { HooksState } from '../types/state.js';
-import { loadState } from '../state.js';
+
 import {
   hasUncommittedChanges,
   getUncommittedFiles,
 } from '../automation/git-operations.js';
 import { fileExists } from '../shared/index.js';
+import { loadState } from '../state.js';
+
+import type { HooksState } from '../types/state.js';
 
 /** Information about a potential crash recovery scenario */
 export interface RecoveryInfo {

@@ -7,8 +7,9 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug } from '../shared/logging.js';
+
 import { fileExists } from '../shared/file-utils.js';
+import { debug } from '../shared/logging.js';
 
 /**
  * Check if a path is a directory (async).

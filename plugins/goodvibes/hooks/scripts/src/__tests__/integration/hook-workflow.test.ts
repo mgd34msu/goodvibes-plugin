@@ -8,10 +8,12 @@
  * - State persistence across hooks
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import type { HooksState } from '../../types/state.js';
 
 // These would normally be imported from the actual hook modules

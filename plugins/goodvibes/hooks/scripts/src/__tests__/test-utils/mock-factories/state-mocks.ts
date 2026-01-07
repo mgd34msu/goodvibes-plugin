@@ -4,8 +4,6 @@
  * Provides properly typed mock factory functions for state objects.
  */
 
-import type { FileState, HooksState } from '../../../types/state.js';
-import type { ErrorState, ErrorCategory } from '../../../types/errors.js';
 import type { HookInput } from '../../../shared/hook-io.js';
 import type {
   ActiveAgentEntry,
@@ -13,6 +11,8 @@ import type {
   ParsedTranscript,
   TelemetryRecord,
 } from '../../../telemetry/index.js';
+import type { ErrorState, ErrorCategory } from '../../../types/errors.js';
+import type { FileState, HooksState } from '../../../types/state.js';
 
 // ============================================================================
 // State Mocks

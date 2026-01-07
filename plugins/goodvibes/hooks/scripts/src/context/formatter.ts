@@ -5,13 +5,23 @@
  * for injection via additionalContext.
  */
 
-import { StackInfo, formatStackInfo } from './stack-detector.js';
-import { GitContext, formatGitContext } from './git-context.js';
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
-import { EnvStatus, formatEnvStatus } from './environment.js';
-import { TodoItem, formatTodos } from './todo-scanner.js';
-import { HealthStatus, formatHealthStatus } from './health-checker.js';
-import { FolderAnalysis, formatFolderAnalysis } from './folder-analyzer.js';
+
+import { formatEnvStatus } from './environment.js';
+import { formatFolderAnalysis } from './folder-analyzer.js';
+import { formatGitContext } from './git-context.js';
+import { formatHealthStatus } from './health-checker.js';
+import { formatStackInfo } from './stack-detector.js';
+
+import { formatTodos } from './todo-scanner.js';
+import type { EnvStatus } from './environment.js';
+import type { GitContext } from './git-context.js';
+import type { StackInfo } from './stack-detector.js';
+
+import type { TodoItem } from './todo-scanner.js';
+
+import type { HealthStatus } from './health-checker.js';
+import type { FolderAnalysis } from './folder-analyzer.js';
 import type { ProjectMemory } from '../types/memory.js';
 
 /**

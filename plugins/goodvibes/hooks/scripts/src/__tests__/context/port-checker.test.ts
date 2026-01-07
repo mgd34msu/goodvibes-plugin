@@ -2,9 +2,11 @@
  * Tests for port checker
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { execSync } from 'child_process';
 import * as os from 'os';
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import {
   checkPorts,
   formatPortStatus,

@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import type { HooksState } from '../../types/state.js';
 
 // Mock modules

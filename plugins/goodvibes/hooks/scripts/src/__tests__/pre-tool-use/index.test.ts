@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   // quality-gates exports
   QUALITY_GATES,

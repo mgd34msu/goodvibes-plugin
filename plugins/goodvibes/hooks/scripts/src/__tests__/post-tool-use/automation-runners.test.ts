@@ -11,10 +11,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createMockHooksState } from '../test-utils/mock-factories.js';
-import type { HooksState } from '../../types/state.js';
-import type { GoodVibesConfig } from '../../types/config.js';
+
 import { getDefaultConfig } from '../../types/config.js';
+import { createMockHooksState } from '../test-utils/mock-factories.js';
+
+import type { GoodVibesConfig } from '../../types/config.js';
+import type { HooksState } from '../../types/state.js';
 
 // Mock all external dependencies
 vi.mock('../../shared/index.js', () => ({

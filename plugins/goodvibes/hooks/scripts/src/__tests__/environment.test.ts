@@ -13,7 +13,7 @@ vi.mock('../shared/logging.js', () => ({
 }));
 
 import * as fs from 'fs/promises';
-import * as fileUtils from '../shared/file-utils.js';
+
 import {
   checkEnvStatus,
   analyzeEnvironment,
@@ -22,6 +22,7 @@ import {
   type EnvStatus,
   type EnvironmentContext,
 } from '../context/environment.js';
+import * as fileUtils from '../shared/file-utils.js';
 
 const mockedFs = vi.mocked(fs);
 const mockedFileUtils = vi.mocked(fileUtils);

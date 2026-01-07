@@ -5,6 +5,7 @@
  */
 
 import * as fs from 'fs/promises';
+
 import { debug } from './logging.js';
 
 /** Maximum length for transcript summary text. */

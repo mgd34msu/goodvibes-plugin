@@ -5,6 +5,7 @@
  */
 
 import * as fs from 'fs/promises';
+
 import { debug, logError, fileExists } from '../shared/index.js';
 import {
   TRANSCRIPT_KEYWORD_CATEGORIES,

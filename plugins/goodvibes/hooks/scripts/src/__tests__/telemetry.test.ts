@@ -13,11 +13,13 @@
  * - Edge cases: empty transcripts, missing fields, corrupted data
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import {
   ensureGoodVibesDirs,
   getGitInfo,
@@ -32,12 +34,16 @@ import {
   writeTelemetryRecord,
   createTelemetryRecord,
   KEYWORD_CATEGORIES,
+} from '../telemetry.js';
+
+import { createMockGitExecSync } from './test-utils/mock-factories.js';
+
+import type {
   ActiveAgentEntry,
   ActiveAgentsState,
   ParsedTranscript,
   TelemetryRecord,
 } from '../telemetry.js';
-import { createMockGitExecSync } from './test-utils/mock-factories.js';
 
 // Mock child_process module
 vi.mock('child_process', () => ({

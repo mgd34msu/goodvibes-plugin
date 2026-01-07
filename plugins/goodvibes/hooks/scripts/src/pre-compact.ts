@@ -7,6 +7,12 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import {
+  createPreCompactCheckpoint,
+  saveSessionSummary,
+  getFilesModifiedThisSession,
+} from './pre-compact/index.js';
 import {
   respond,
   readHookInput,
@@ -17,14 +23,10 @@ import {
   createResponse,
   parseTranscript,
   fileExists,
-  SessionAnalytics,
 } from './shared/index.js';
 import { loadState } from './state.js';
-import {
-  createPreCompactCheckpoint,
-  saveSessionSummary,
-  getFilesModifiedThisSession,
-} from './pre-compact/index.js';
+
+import type { SessionAnalytics } from './shared/index.js';
 
 /**
  * Generate a session summary from analytics and state

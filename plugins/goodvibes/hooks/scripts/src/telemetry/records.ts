@@ -6,7 +6,9 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import { debug, fileExists } from '../shared/index.js';
+
 import type { ActiveAgentEntry } from './agents.js';
 import type { ParsedTranscript } from './transcript.js';
 

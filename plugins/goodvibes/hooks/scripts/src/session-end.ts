@@ -7,6 +7,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import {
   respond,
   readHookInput,
@@ -15,8 +16,9 @@ import {
   debug,
   logError,
   CACHE_DIR,
-  HookResponse,
 } from './shared/index.js';
+
+import type { HookResponse } from './shared/index.js';
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {

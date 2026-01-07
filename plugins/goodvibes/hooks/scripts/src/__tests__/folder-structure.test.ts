@@ -2,9 +2,11 @@
  * Tests for folder structure analyzer
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import {
   analyzeFolderStructure,
   formatFolderStructure,

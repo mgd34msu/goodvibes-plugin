@@ -2,9 +2,10 @@
  * Tests for state management module
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock fs/promises module
 const mockAccess = vi.fn();

@@ -11,12 +11,14 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import {
   trackFileModification,
   trackFileCreation,
   clearCheckpointTracking,
   getModifiedFileCount,
 } from '../../post-tool-use/file-tracker.js';
+
 import type { HooksState } from '../../types/state.js';
 
 describe('file-tracker', () => {

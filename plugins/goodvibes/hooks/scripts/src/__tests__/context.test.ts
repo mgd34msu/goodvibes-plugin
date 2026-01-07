@@ -2,11 +2,12 @@
  * Unit tests for context injection modules.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
 import { execSync } from 'child_process';
-import { createMockReaddirStrings } from './test-utils/mock-factories.js';
+import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
+import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock fs, fs/promises, and child_process
 vi.mock('fs');
@@ -21,31 +22,30 @@ vi.mock('child_process');
 
 // Import modules under test
 import {
-  detectStack,
-  formatStackInfo,
-  clearStackCache,
-  StackInfo,
-} from '../context/stack-detector';
-import {
-  getGitContext,
-  formatGitContext,
-  GitContext,
-} from '../context/git-context';
-import {
-  checkProjectHealth,
-  formatHealthStatus,
-  HealthStatus,
-} from '../context/health-checker';
-import {
-  checkEnvStatus as checkEnvironment,
-  formatEnvStatus,
-  EnvStatus,
-} from '../context/environment';
-import {
   isEmptyProject,
   formatEmptyProjectContext,
 } from '../context/empty-project';
-import * as fsPromises from 'fs/promises';
+import {
+  checkEnvStatus as checkEnvironment,
+  formatEnvStatus,
+} from '../context/environment';
+import { getGitContext, formatGitContext } from '../context/git-context';
+import {
+  checkProjectHealth,
+  formatHealthStatus,
+} from '../context/health-checker';
+import {
+  detectStack,
+  formatStackInfo,
+  clearStackCache,
+} from '../context/stack-detector';
+
+import { createMockReaddirStrings } from './test-utils/mock-factories.js';
+
+import type { EnvStatus } from '../context/environment';
+import type { GitContext } from '../context/git-context';
+import type { HealthStatus } from '../context/health-checker';
+import type { StackInfo } from '../context/stack-detector';
 
 // Type the mocked modules
 const mockedFs = vi.mocked(fs);

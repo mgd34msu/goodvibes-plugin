@@ -9,14 +9,16 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { ErrorCategory, ErrorState } from '../../types/errors.js';
-import type { RecoveryPattern } from '../../post-tool-use-failure/recovery-types.js';
+
 import {
   findMatchingPattern,
   findAllMatchingPatterns,
   getHighestSeverity,
   getSuggestedFix,
 } from '../../post-tool-use-failure/pattern-matcher.js';
+
+import type { RecoveryPattern } from '../../post-tool-use-failure/recovery-types.js';
+import type { ErrorCategory, ErrorState } from '../../types/errors.js';
 
 describe('pattern-matcher', () => {
   describe('findMatchingPattern', () => {

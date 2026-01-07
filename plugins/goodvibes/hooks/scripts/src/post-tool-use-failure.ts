@@ -9,22 +9,12 @@
  */
 
 import {
-  respond,
-  readHookInput,
-  loadAnalytics,
-  saveAnalytics,
-  debug,
-  logError,
-  createResponse,
-  PROJECT_ROOT,
-} from './shared/index.js';
-import { loadState, saveState, trackError, getErrorState } from './state.js';
-import {
   generateErrorSignature,
   categorizeError,
   createErrorState,
   buildFixContext,
 } from './automation/fix-loop.js';
+import { writeFailure } from './memory/failures.js';
 import {
   findMatchingPattern,
   getSuggestedFix,
@@ -40,7 +30,18 @@ import {
   hasExhaustedRetries,
   generateErrorSignature as generateRetrySignature,
 } from './post-tool-use-failure/retry-tracker.js';
-import { writeFailure } from './memory/failures.js';
+import {
+  respond,
+  readHookInput,
+  loadAnalytics,
+  saveAnalytics,
+  debug,
+  logError,
+  createResponse,
+  PROJECT_ROOT,
+} from './shared/index.js';
+import { loadState, saveState, trackError, getErrorState } from './state.js';
+
 import type { ErrorCategory } from './types/errors.js';
 import type { MemoryFailure } from './types/memory.js';
 

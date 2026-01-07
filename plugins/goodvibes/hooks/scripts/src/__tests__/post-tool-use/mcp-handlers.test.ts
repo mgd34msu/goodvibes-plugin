@@ -5,9 +5,11 @@
  * Tests all branches, error paths, and edge cases.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   handleDetectStack,
   handleRecommendSkills,
@@ -16,6 +18,7 @@ import {
   handleRunSmokeTest,
   handleCheckTypes,
 } from '../../post-tool-use/mcp-handlers.js';
+
 import type { HookInput } from '../../shared/index.js';
 
 // Mock all external dependencies

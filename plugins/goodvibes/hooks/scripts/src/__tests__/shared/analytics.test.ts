@@ -3,8 +3,10 @@
  * Target: 100% line and branch coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   ensureCacheDir,
   loadAnalytics,
@@ -14,8 +16,8 @@ import {
   type SessionAnalytics,
   type ToolUsage,
 } from '../../shared/analytics.js';
-import * as fileUtils from '../../shared/file-utils.js';
 import { CACHE_DIR, ANALYTICS_FILE } from '../../shared/constants.js';
+import * as fileUtils from '../../shared/file-utils.js';
 
 // Mock dependencies
 vi.mock('fs/promises');

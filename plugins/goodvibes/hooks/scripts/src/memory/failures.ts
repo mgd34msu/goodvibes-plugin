@@ -3,12 +3,14 @@
  */
 
 import * as path from 'path';
-import type { MemoryFailure } from '../types/memory.js';
+
 import {
   parseMemoryFile,
   ensureMemoryFile,
   appendMemoryEntry,
 } from './parser.js';
+
+import type { MemoryFailure } from '../types/memory.js';
 
 const FAILURES_HEADER = `# Failed Approaches
 

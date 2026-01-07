@@ -9,11 +9,12 @@
  * @see {@link ../automation/git-operations} for git command execution
  */
 
-import type { HooksState } from '../types/state.js';
 import {
   getCurrentBranch,
   hasUncommittedChanges,
 } from '../automation/git-operations.js';
+
+import type { HooksState } from '../types/state.js';
 
 /** Result of a git guard check */
 export interface GitGuardResult {

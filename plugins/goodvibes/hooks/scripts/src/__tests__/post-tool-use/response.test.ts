@@ -12,10 +12,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   createResponse,
   combineMessages,
 } from '../../post-tool-use/response.js';
+
 import type { AutomationMessages } from '../../post-tool-use/response.js';
 
 describe('post-tool-use/response utilities', () => {

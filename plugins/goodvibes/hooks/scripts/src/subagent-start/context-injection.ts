@@ -10,6 +10,7 @@
  */
 
 import * as path from 'path';
+
 import { loadSharedConfig } from '../shared/index.js';
 import { getDefaultConfig as getAutomationConfig } from '../types/config.js';
 

@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   // recovery-types exports (types)
   type ErrorSeverity,

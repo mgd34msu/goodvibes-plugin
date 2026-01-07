@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   // agents exports
   STALE_AGENT_MAX_AGE_MS,

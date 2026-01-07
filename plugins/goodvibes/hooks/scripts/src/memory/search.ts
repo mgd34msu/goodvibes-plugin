@@ -2,19 +2,20 @@
  * Search and summary functions for project memory.
  */
 
-import type { ProjectMemory } from '../types/memory.js';
+import { readDecisions } from './decisions.js';
+import { fileExists } from './directories.js';
+import { readFailures } from './failures.js';
+import { getMemoryDir } from './paths.js';
+import { readPatterns } from './patterns.js';
+import { readPreferences } from './preferences.js';
+
 import type {
   MemoryDecision,
   MemoryPattern,
   MemoryFailure,
   MemoryPreference,
 } from '../types/memory.js';
-import { getMemoryDir } from './paths.js';
-import { fileExists } from './directories.js';
-import { readDecisions } from './decisions.js';
-import { readPatterns } from './patterns.js';
-import { readFailures } from './failures.js';
-import { readPreferences } from './preferences.js';
+import type { ProjectMemory } from '../types/memory.js';
 
 /**
  * Loads all project memory (decisions, patterns, failures, preferences).

@@ -5,13 +5,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { StackInfo } from '../../context/stack-detector.js';
-import type { GitContext } from '../../context/git-context.js';
-import type { ProjectMemory } from '../../types/memory.js';
+
 import type { EnvStatus } from '../../context/environment.js';
-import type { TodoItem } from '../../context/todo-scanner.js';
-import type { HealthStatus } from '../../context/health-checker.js';
 import type { FolderAnalysis } from '../../context/folder-analyzer.js';
+import type { GitContext } from '../../context/git-context.js';
+import type { HealthStatus } from '../../context/health-checker.js';
+import type { StackInfo } from '../../context/stack-detector.js';
+import type { TodoItem } from '../../context/todo-scanner.js';
+import type { ProjectMemory } from '../../types/memory.js';
 
 // Mock all external dependencies
 vi.mock('../../context/stack-detector.js');

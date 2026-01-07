@@ -13,8 +13,9 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { debug, logError } from '../shared/logging.js';
+
 import { fileExists } from '../shared/file-utils.js';
+import { debug, logError } from '../shared/logging.js';
 
 /** Configuration for a quality gate check */
 export interface QualityGate {

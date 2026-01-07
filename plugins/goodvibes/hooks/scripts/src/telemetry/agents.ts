@@ -4,9 +4,10 @@
  * Provides active agent state tracking for SubagentStart/Stop correlation.
  */
 
+import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execSync } from 'child_process';
+
 import { debug, logError, fileExists } from '../shared/index.js';
 
 // ============================================================================

@@ -5,22 +5,22 @@
  * for Edit and Write tools.
  */
 
-import { debug, HookInput } from '../shared/index.js';
-import type { HooksState } from '../types/state.js';
-import type { GoodVibesConfig } from '../types/config.js';
+import { debug } from '../shared/index.js';
 
 // File tracking
-import { trackFileModification, trackFileCreation } from './file-tracker.js';
-
-// Automation runners
 import {
   maybeRunTests,
   maybeRunBuild,
   maybeCreateCheckpoint,
   maybeCreateBranch,
 } from './automation-runners.js';
+import { trackFileModification, trackFileCreation } from './file-tracker.js';
 
+// Automation runners
 import type { AutomationMessages } from './response.js';
+import type { HookInput } from '../shared/index.js';
+import type { GoodVibesConfig } from '../types/config.js';
+import type { HooksState } from '../types/state.js';
 
 // Re-export automation runners for backward compatibility
 export {
