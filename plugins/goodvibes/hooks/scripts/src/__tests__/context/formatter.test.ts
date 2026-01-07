@@ -6,6 +6,20 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { formatEnvStatus } from '../../context/environment.js';
+import { formatFolderAnalysis } from '../../context/folder-analyzer.js';
+import {
+  formatContext,
+  formatMinimalContext,
+  type GatheredContext,
+  type FormattedContext,
+} from '../../context/formatter.js';
+import { formatGitContext } from '../../context/git-context.js';
+import { formatHealthStatus } from '../../context/health-checker.js';
+import { formatStackInfo } from '../../context/stack-detector.js';
+import { formatTodos } from '../../context/todo-scanner.js';
+import { formatMemoryContext } from '../../memory/index.js';
+
 import type { EnvStatus } from '../../context/environment.js';
 import type { FolderAnalysis } from '../../context/folder-analyzer.js';
 import type { GitContext } from '../../context/git-context.js';
@@ -22,23 +36,6 @@ vi.mock('../../context/environment.js');
 vi.mock('../../context/todo-scanner.js');
 vi.mock('../../context/health-checker.js');
 vi.mock('../../context/folder-analyzer.js');
-
-// Import the functions under test
-import {
-  formatContext,
-  formatMinimalContext,
-  type GatheredContext,
-  type FormattedContext,
-} from '../../context/formatter.js';
-
-// Import mocked formatters
-import { formatStackInfo } from '../../context/stack-detector.js';
-import { formatGitContext } from '../../context/git-context.js';
-import { formatMemoryContext } from '../../memory/index.js';
-import { formatEnvStatus } from '../../context/environment.js';
-import { formatTodos } from '../../context/todo-scanner.js';
-import { formatHealthStatus } from '../../context/health-checker.js';
-import { formatFolderAnalysis } from '../../context/folder-analyzer.js';
 
 // Type the mocked functions
 const mockedFormatStackInfo = vi.mocked(formatStackInfo);

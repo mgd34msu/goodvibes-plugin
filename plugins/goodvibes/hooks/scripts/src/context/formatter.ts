@@ -12,16 +12,14 @@ import { formatFolderAnalysis } from './folder-analyzer.js';
 import { formatGitContext } from './git-context.js';
 import { formatHealthStatus } from './health-checker.js';
 import { formatStackInfo } from './stack-detector.js';
-
 import { formatTodos } from './todo-scanner.js';
+
 import type { EnvStatus } from './environment.js';
-import type { GitContext } from './git-context.js';
-import type { StackInfo } from './stack-detector.js';
-
-import type { TodoItem } from './todo-scanner.js';
-
-import type { HealthStatus } from './health-checker.js';
 import type { FolderAnalysis } from './folder-analyzer.js';
+import type { GitContext } from './git-context.js';
+import type { HealthStatus } from './health-checker.js';
+import type { StackInfo } from './stack-detector.js';
+import type { TodoItem } from './todo-scanner.js';
 import type { ProjectMemory } from '../types/memory.js';
 
 /**

@@ -5,11 +5,60 @@ import importPlugin from 'eslint-plugin-import-x';
 import globals from 'globals';
 
 /**
+ * Shared plugins used across all configurations
+ * WHY: Extracting plugins reduces duplication and ensures consistency
+ */
+const sharedPlugins = {
+  '@typescript-eslint': tseslint.plugin,
+  'import-x': importPlugin,
+};
+
+/**
+ * Shared language options for TypeScript parsing
+ * WHY: Consistent parser configuration across all TypeScript files
+ */
+const sharedLanguageOptions = {
+  parser: tseslint.parser,
+  parserOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+  },
+  globals: {
+    ...globals.node,
+  },
+};
+
+/**
+ * Rules disabled across all configurations
+ * WHY: These rules are disabled for the following reasons:
+ * - strict-boolean-expressions: Produces too many false positives in common
+ *   JavaScript/TypeScript patterns (truthy/falsy checks) and makes code more
+ *   verbose without significant safety benefits
+ * - no-undef: TypeScript's compiler already checks for undefined variables,
+ *   making this rule redundant and sometimes incorrect in TypeScript contexts
+ */
+const disabledRules = {
+  '@typescript-eslint/strict-boolean-expressions': 'off',
+  'no-undef': 'off',
+};
+
+/**
+ * Rules disabled only in test configurations
+ * WHY: unbound-method is disabled because test frameworks like Vitest use
+ * method extraction patterns (e.g., expect.any(), vi.fn()) that intentionally
+ * use unbound methods. This is safe in test contexts and required for the API.
+ */
+const testOnlyDisabledRules = {
+  '@typescript-eslint/unbound-method': 'off',
+};
+
+/**
  * Shared rules that apply to all TypeScript configurations
  * WHY: Extracting these rules reduces duplication and ensures consistency
  * across source, test, and config files while making maintenance easier.
  */
 const sharedRules = {
+  'no-unused-vars': 'off',
   '@typescript-eslint/no-unused-vars': [
     'warn',
     {
@@ -95,6 +144,8 @@ export default [
       'node_modules/**',
       'coverage/**',
       'temp_check/**',
+      '*.js',
+      '*.mjs',
     ],
   },
 
@@ -114,40 +165,20 @@ export default [
     files: ['src/**/*.ts'],
     ignores: ['src/**/__tests__/**', 'src/**/*.test.ts'],
     languageOptions: {
-      parser: tseslint.parser,
+      ...sharedLanguageOptions,
       parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module',
+        ...sharedLanguageOptions.parserOptions,
         project: './tsconfig.eslint.json',
       },
-      /**
-       * Node.js global variables
-       * WHY: Using the globals package provides a comprehensive and maintained
-       * list of Node.js globals, reducing manual maintenance and preventing errors.
-       */
-      globals: {
-        ...globals.node,
-      },
     },
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
-      'import-x': importPlugin,
-    },
+    plugins: sharedPlugins,
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
       ...prettierConfig.rules,
       ...sharedRules,
       ...typeAwareRules,
-
-      /**
-       * Disabled Rules
-       * WHY: strict-boolean-expressions is disabled because it produces too many
-       * false positives in common JavaScript/TypeScript patterns (truthy/falsy checks)
-       * and makes code more verbose without significant safety benefits.
-       */
-      '@typescript-eslint/strict-boolean-expressions': 'off',
-      'no-undef': 'off',
+      ...disabledRules,
     },
   },
 
@@ -158,25 +189,13 @@ export default [
    */
   {
     files: ['vitest.config.ts'],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module',
-      },
-      globals: {
-        ...globals.node,
-      },
-    },
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
-      'import-x': importPlugin,
-    },
+    languageOptions: sharedLanguageOptions,
+    plugins: sharedPlugins,
     rules: {
       ...tseslint.configs.recommended.rules,
       ...prettierConfig.rules,
       ...sharedRules,
-      'no-undef': 'off',
+      ...disabledRules,
     },
   },
 
@@ -191,45 +210,27 @@ export default [
   {
     files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts'],
     languageOptions: {
-      parser: tseslint.parser,
+      ...sharedLanguageOptions,
       parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module',
+        ...sharedLanguageOptions.parserOptions,
         project: './tsconfig.eslint.json',
       },
-      globals: {
-        ...globals.node,
-      },
     },
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
-      'import-x': importPlugin,
-    },
+    plugins: sharedPlugins,
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
       ...prettierConfig.rules,
       ...sharedRules,
       ...typeAwareRules,
+      ...disabledRules,
 
       /**
        * Test-specific adjustments
        */
       '@typescript-eslint/only-throw-error': 'warn',
-
-      /**
-       * Disabled Rules
-       * WHY: strict-boolean-expressions is disabled because it produces too many
-       * false positives in common JavaScript/TypeScript patterns (truthy/falsy checks)
-       * and makes code more verbose without significant safety benefits.
-       *
-       * WHY unbound-method is disabled: Test frameworks like Vitest use method
-       * extraction patterns (e.g., expect.any(), vi.fn()) that intentionally
-       * use unbound methods. This is safe in test contexts and required for the API.
-       */
-      '@typescript-eslint/strict-boolean-expressions': 'off',
-      '@typescript-eslint/unbound-method': 'off',
-      'no-undef': 'off',
+      '@typescript-eslint/require-await': 'off',
+      ...testOnlyDisabledRules,
     },
   },
 ];

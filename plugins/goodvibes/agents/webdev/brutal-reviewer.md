@@ -182,6 +182,26 @@ These skills were created specifically for brutal-reviewer to enhance code revie
 - Load **security-audit-checklist** when analyzing security-sensitive code (auth, payments, user data)
 - Load **code-smell-detector** when evaluating maintainability and SOLID/DRY categories
 
+### Code Review Issue Detection Skills
+
+These skills define the specific issues you should detect during reviews. Other agents use these skills proactively to fix issues before you review their work. Access them from `plugins/goodvibes/skills/common/review/`:
+
+| Skill | Priority | What to Detect |
+|-------|----------|----------------|
+| **type-safety** | P0 Critical | Unsafe member access, unsafe assignments, unsafe returns, unsafe calls, `any` usage |
+| **error-handling** | P0 Critical | Floating promises, silent catches, throwing non-Error objects |
+| **async-patterns** | P1 Major | Unnecessary async, sequential operations that could parallelize, await on non-promises |
+| **import-ordering** | P2 Minor | Disordered imports (node builtins, external, internal, relative, types) |
+| **documentation** | P2 Minor | Missing JSDoc on public functions, missing module comments, missing @returns tags |
+| **code-organization** | P1 Major | High cyclomatic complexity (>10), large files (>300 lines), deep nesting (>4 levels) |
+| **naming-conventions** | P2 Minor | Unused variables, single-letter names, abbreviations, inconsistent casing |
+| **config-hygiene** | P2 Minor | Missing gitignore entries, eslint config issues, hook scripts missing |
+
+**Use these skills to:**
+- Know exactly what deductions to apply for each issue type
+- Provide file:line references matching the detection patterns
+- Give consistent feedback aligned with what agents should have self-checked
+
 ---
 
 ## Scoring System

@@ -1,2 +1,40 @@
+# Build output
+dist/
+
 # Test coverage output
 coverage/
+
+# Dependencies
+node_modules/
+
+# ESLint cache
+.eslintcache
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Temporary
+temp_check/
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Report artifacts
+*.txt
+!README.txt

@@ -1,908 +1,173 @@
-# Code Fix Plan: Brutal Code Review Issues
-
-**Source:** `code-review.md` (Score: 8.7/10)
-**Target:** 10.0/10
-**Base Path:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src`
-
----
+# Code Fix Plan
 
 ## Objective Summary
 
-**Goal:** Fix all issues identified in the brutal code review to achieve a perfect 10/10 score
+**Goal**: Address all issues identified in the code review to improve the codebase score from 8.7/10 to 10.0/10
 
-**Scope:** All P1, P2, P3 issues and nitpicks - deprecation removal, type safety improvements, performance optimizations, code quality refactoring, and documentation gaps
+**Scope**: Fix all P0 through P3 issues identified in `code-review.md`, including linting errors, documentation updates, code refactoring, type safety improvements, and test coverage enhancements. Does NOT include architectural changes or feature additions beyond what is necessary to address the identified issues.
 
-**Success Criteria:**
-- [ ] All 5 deprecated functions removed
-- [ ] All 156 `as any` assertions replaced with proper types
-- [ ] Sequential async operations parallelized
-- [ ] Long functions refactored
-- [ ] Switch statements replaced with handler maps
-- [ ] All underscore-prefixed unused params addressed
-- [ ] All catch blocks properly typed
-- [ ] JSDoc coverage increased to 100%
-- [ ] All tests pass after changes
-
----
-
-## Phase 1: Deprecation Removal (P1-High)
-
-### Task 1.1: Migrate `formatter.ts` away from `env-checker.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\context\formatter.ts`
-
-**Current (Line 11):**
-```typescript
-import { EnvStatus, formatEnvStatus } from './env-checker.js';
-```
-
-**Change to:**
-```typescript
-import { EnvStatus, formatEnvStatus } from './environment.js';
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
+**Success Criteria**:
+- [ ] Zero ESLint errors (currently 14 import ordering errors)
+- [ ] README test count updated to reflect actual 3,780 tests
+- [ ] All `any` types in source files replaced with proper types
+- [ ] All files under 350 lines (excluding data files)
+- [ ] Empty/placeholder functions either implemented or removed
+- [ ] 100% test coverage including `src/memory/index.ts` barrel file
+- [ ] All JSDoc comments include `@returns` descriptions
+- [ ] Single-letter variable names replaced with descriptive names in arrow functions
 
 ---
 
-### Task 1.2: Update test imports from `env-checker.ts` to `environment.ts`
-
-**Files to update:**
-
-1. `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context.test.ts`
-   - Line 26: Change `import { checkEnvironment, formatEnvStatus, EnvStatus } from '../context/env-checker';`
-   - To: `import { checkEnvStatus as checkEnvironment, formatEnvStatus, EnvStatus } from '../context/environment';`
-   - Note: Tests use `checkEnvironment` which maps to `checkEnvStatus` for EnvStatus return type
-
-2. `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context\formatter.test.ts`
-   - Line 11: Change `import type { EnvStatus } from '../../context/env-checker.js';`
-   - To: `import type { EnvStatus } from '../../context/environment.js';`
-   - Line 20: Change `vi.mock('../../context/env-checker.js');`
-   - To: `vi.mock('../../context/environment.js');`
-   - Line 37: Change `import { formatEnvStatus } from '../../context/env-checker.js';`
-   - To: `import { formatEnvStatus } from '../../context/environment.js';`
-
-3. `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context\index.test.ts`
-   - Line 22: The `checkEnvironment` import will fail after env-checker deletion
-   - Need to verify if this test is for deprecated function or should use `checkEnvStatus`
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
-
----
-
-### Task 1.3: Delete `env-checker.ts` file
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\context\env-checker.ts`
-
-**Action:** Delete this entire file (35 lines)
-
-**Pre-requisite:** Tasks 1.1 and 1.2 must be complete
-
-**Also delete test file:**
-`C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context\env-checker.test.ts`
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
-
----
-
-### Task 1.4: Remove deprecated `checkEnvironment` alias from `environment.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\context\environment.ts`
-
-**Remove (Lines 254-263):**
-```typescript
-/**
- * Check environment configuration (comprehensive).
- *
- * @deprecated Use {@link analyzeEnvironment} for clarity. This is an alias for backwards compatibility.
- * @param cwd - Working directory to analyze
- * @returns Promise resolving to EnvironmentContext
- */
-export async function checkEnvironment(cwd: string): Promise<EnvironmentContext> {
-  return analyzeEnvironment(cwd);
-}
-```
-
-**Pre-requisite:** All callers must be migrated to use `analyzeEnvironment()` or `checkEnvStatus()` directly
-
-**Update tests:**
-- `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\environment.test.ts` - Lines 20, 641-648
-- `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context\environment.test.ts` - Lines 14, 659-680
-
-These tests verify the deprecated alias works - they should be removed or converted to test `analyzeEnvironment` directly.
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
-
----
-
-### Task 1.5: Remove deprecated `respond` function from `hook-io.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\shared\hook-io.ts`
-
-**Current Pattern (used 60+ times across codebase):**
-```typescript
-respond(createResponse());
-respond(allowTool('PreToolUse'));
-respond(blockTool('PreToolUse', 'reason'), true);
-```
-
-**Target Pattern:**
-```typescript
-console.log(formatResponse(createResponse()));
-process.exit(0);
-```
-
-**This is a MAJOR change** affecting 15+ source files. Consider these options:
-
-**Option A (Recommended):** Keep `respond()` but remove `@deprecated` tag
-- The function is working correctly and used consistently
-- Removing it would require 60+ manual refactors with no functional benefit
-- The deprecation note says to use `formatResponse()` + manual exit, but `respond()` encapsulates this correctly
-
-**Option B:** Create a migration plan to replace all 60+ usages
-- This would be a massive refactor for minimal benefit
-- High risk of introducing bugs
-
-**Recommendation:** Remove the `@deprecated` tag from `respond()` since it's the canonical pattern used throughout the codebase. Document it as the preferred approach.
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
-
----
-
-## Phase 2: Test Type Safety (P1-Medium)
-
-### Task 2.1: Extend `mock-factories.ts` with additional mock helpers
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\test-utils\mock-factories.ts`
-
-**Add these new factory functions:**
-
-```typescript
-// ============================================================================
-// fs.readdir Mock Helpers (for withFileTypes: true)
-// ============================================================================
-
-/**
- * Creates a mock readdir result for directory listings with file types.
- * Use this when mocking `fs.promises.readdir()` called with `{ withFileTypes: true }`.
- *
- * @param entries - Array of file/directory entries
- * @returns Array of properly typed Dirent objects
- *
- * @example
- * vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
- *   if (dirPath === '/test/project') {
- *     return createMockReaddirResult([
- *       { name: 'src', type: 'directory' },
- *       { name: 'file.ts', type: 'file' },
- *     ]);
- *   }
- *   return [];
- * });
- */
-export function createMockReaddirResult(
-  entries: Array<{ name: string; type: 'file' | 'directory' }>
-): Dirent[] {
-  return entries.map(entry => createMockDirent(entry.name, {
-    isFile: entry.type === 'file',
-    isDirectory: entry.type === 'directory',
-  }));
-}
-
-/**
- * Creates a mock fs.Stats object for stat operations.
- *
- * @param options - Stats options (isDirectory, isFile, etc.)
- * @returns A properly typed Stats object
- *
- * @example
- * vi.mocked(fs.stat).mockResolvedValue(createMockStats({ isDirectory: true }));
- */
-export function createMockStats(options?: {
-  isFile?: boolean;
-  isDirectory?: boolean;
-  size?: number;
-  mtime?: Date;
-}): import('fs').Stats {
-  const isFile = options?.isFile ?? !options?.isDirectory;
-  const isDirectory = options?.isDirectory ?? false;
-
-  return {
-    isFile: () => isFile,
-    isDirectory: () => isDirectory,
-    isBlockDevice: () => false,
-    isCharacterDevice: () => false,
-    isSymbolicLink: () => false,
-    isFIFO: () => false,
-    isSocket: () => false,
-    dev: 0,
-    ino: 0,
-    mode: 0,
-    nlink: 1,
-    uid: 0,
-    gid: 0,
-    rdev: 0,
-    size: options?.size ?? 0,
-    blksize: 4096,
-    blocks: 0,
-    atimeMs: Date.now(),
-    mtimeMs: Date.now(),
-    ctimeMs: Date.now(),
-    birthtimeMs: Date.now(),
-    atime: new Date(),
-    mtime: options?.mtime ?? new Date(),
-    ctime: new Date(),
-    birthtime: new Date(),
-  } as import('fs').Stats;
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
-
----
-
-### Task 2.2: Replace `as any` in `todo-scanner.test.ts` (95 instances)
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context\todo-scanner.test.ts`
-
-**Pattern to replace:**
-
-**Before:**
-```typescript
-vi.mocked(fs.readdir).mockImplementation(async (dirPath: any) => {
-  if (dirPath === mockCwd) {
-    return [
-      { name: 'file1.ts', isDirectory: () => false, isFile: () => true },
-    ] as any;
-  }
-  return [] as any;
-});
-```
-
-**After:**
-```typescript
-import { createMockDirentsWithTypes } from '../test-utils/mock-factories';
-
-vi.mocked(fs.readdir).mockImplementation(async (dirPath: string | Buffer | URL) => {
-  if (dirPath === mockCwd) {
-    return createMockDirentsWithTypes([
-      { name: 'file1.ts', isFile: true },
-    ]);
-  }
-  return [];
-});
-```
-
-**Common patterns to fix:**
-1. `(dirPath: any)` -> `(dirPath: string | Buffer | URL)`
-2. `{ name: '...', isDirectory: () => ..., isFile: () => ... } as any` -> `createMockDirentsWithTypes([...])`
-3. `return [] as any` -> `return []`
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm test -- src/__tests__/context/todo-scanner.test.ts
-```
-
----
-
-### Task 2.3: Replace `as any` in `memory-loader.test.ts` (24 instances)
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\context\memory-loader.test.ts`
-
-**Pattern to replace:**
-
-**Before:**
-```typescript
-mockedFsPromises.readFile.mockImplementation(async (filePath: any) => {
-  if (filePath.endsWith('decisions.json')) return JSON.stringify(decisions);
-  throw new Error('File not found');
-});
-```
-
-**After:**
-```typescript
-mockedFsPromises.readFile.mockImplementation(async (filePath: PathLike | FileHandle) => {
-  const pathStr = filePath.toString();
-  if (pathStr.endsWith('decisions.json')) return JSON.stringify(decisions);
-  throw new Error('File not found');
-});
-```
-
-**Also fix:**
-- `mockedFsPromises.stat.mockImplementation(async (filePath: any) => {...})`
-- `return { isDirectory: () => true } as any` -> use `createMockStats({ isDirectory: true })`
-- `mockedFsPromises.readdir.mockResolvedValue(['note1.md', 'note2.txt'] as any)` -> proper typing
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm test -- src/__tests__/context/memory-loader.test.ts
-```
-
----
-
-### Task 2.4: Replace `as any` in remaining test files (61 instances)
-
-**Files to fix (in order of instance count):**
-1. `retry-tracker.test.ts` - 4 instances
-2. Various other test files with 1-3 instances each
-
-**Apply same patterns as Tasks 2.2 and 2.3**
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm test
-```
-
----
-
-## Phase 3: Code Quality (P2)
-
-### Task 3.1: Parallelize sequential file checks in `environment.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\context\environment.ts`
-
-**Current (Lines 193-201):**
-```typescript
-// Check which env files exist
-for (const envFile of ENV_FILES) {
-  const filePath = path.join(cwd, envFile);
-  if (await fileExists(filePath)) {
-    envFiles.push(envFile);
-    const vars = await parseEnvFile(filePath);
-    definedVars = [...definedVars, ...vars];
-  }
-}
-```
-
-**Change to:**
-```typescript
-// Check which env files exist (parallel)
-const fileChecks = await Promise.all(
-  ENV_FILES.map(async (envFile) => {
-    const filePath = path.join(cwd, envFile);
-    const exists = await fileExists(filePath);
-    if (exists) {
-      const vars = await parseEnvFile(filePath);
-      return { envFile, vars };
-    }
-    return null;
-  })
-);
-
-for (const result of fileChecks) {
-  if (result) {
-    envFiles.push(result.envFile);
-    definedVars = [...definedVars, ...result.vars];
-  }
-}
-```
-
-**Current (Lines 209-217):**
-```typescript
-// Check for .env.example
-for (const exampleFile of ENV_EXAMPLE_FILES) {
-  const filePath = path.join(cwd, exampleFile);
-  if (await fileExists(filePath)) {
-    hasEnvExample = true;
-    exampleVars = await parseEnvFile(filePath);
-    break;
-  }
-}
-```
-
-**Change to:**
-```typescript
-// Check for .env.example (parallel check, sequential processing)
-const exampleChecks = await Promise.all(
-  ENV_EXAMPLE_FILES.map(async (exampleFile) => {
-    const filePath = path.join(cwd, exampleFile);
-    const exists = await fileExists(filePath);
-    return { exampleFile, filePath, exists };
-  })
-);
-
-for (const check of exampleChecks) {
-  if (check.exists) {
-    hasEnvExample = true;
-    exampleVars = await parseEnvFile(check.filePath);
-    break;
-  }
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/context/environment.test.ts
-```
-
----
-
-### Task 3.2: Refactor `formatContextSections` in `context-builder.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\session-start\context-builder.ts`
-
-**Current:** 103-line function (Lines 87-190)
-
-**Refactor into smaller functions:**
-
-```typescript
-/** Formats the header section */
-function formatHeader(): string[] {
-  return [
-    '[GoodVibes SessionStart]',
-    '='.repeat(SECTION_SEPARATOR_LENGTH),
-    '',
-  ];
-}
-
-/** Formats an optional section with header */
-function formatOptionalSection(
-  header: string,
-  content: string | null
-): string[] {
-  if (!content) return [];
-  return [`## ${header}`, '', content, ''];
-}
-
-/** Formats the recovery section if needed */
-function formatRecoverySection(recoveryInfo: RecoveryInfo): string[] {
-  if (!recoveryInfo.needsRecovery) return [];
-  const recoveryStr = formatRecoveryContext(recoveryInfo);
-  return recoveryStr ? [recoveryStr, ''] : [];
-}
-
-/** Formats the project overview section */
-function formatProjectOverviewSection(
-  stackInfo: StackInfo,
-  folderAnalysis: FolderAnalysis
-): string[] {
-  const parts: string[] = ['## Project Overview', ''];
-
-  const stackStr = formatStackInfo(stackInfo);
-  if (stackStr) parts.push(stackStr);
-
-  const folderStr = formatFolderAnalysis(folderAnalysis);
-  if (folderStr) parts.push(folderStr);
-
-  parts.push('');
-  return parts;
-}
-
-/** Formats the git status section */
-function formatGitSection(gitContext: GitContext): string[] {
-  const parts: string[] = ['## Git Status', ''];
-  const gitStr = formatGitContext(gitContext);
-  if (gitStr) parts.push(gitStr);
-  parts.push('');
-  return parts;
-}
-
-/** Formats the context sections into a single string */
-function formatContextSections(
-  recoveryInfo: RecoveryInfo,
-  stackInfo: StackInfo,
-  folderAnalysis: FolderAnalysis,
-  gitContext: GitContext,
-  envStatus: EnvStatus,
-  portStatus: PortStatus,
-  memory: ProjectMemory,
-  todos: TodoItem[],
-  healthStatus: HealthStatus
-): string {
-  const contextParts: string[] = [
-    ...formatHeader(),
-    ...formatRecoverySection(recoveryInfo),
-    ...formatProjectOverviewSection(stackInfo, folderAnalysis),
-    ...formatGitSection(gitContext),
-    ...formatOptionalSection('Environment', formatEnvStatus(envStatus)),
-    ...formatOptionalSection('Dev Servers', formatPortStatusIfActive(portStatus)),
-    ...formatOptionalSection('Project Memory', formatMemoryContext(memory)),
-    ...formatOptionalSection('Code TODOs', formatTodos(todos)),
-    ...formatOptionalSection('Health Checks', formatHealthIfWarning(healthStatus)),
-    '='.repeat(SECTION_SEPARATOR_LENGTH),
-  ];
-
-  return contextParts.join('\n');
-}
-
-// Helper for conditional port status
-function formatPortStatusIfActive(portStatus: PortStatus): string | null {
-  const portStr = formatPortStatus(portStatus);
-  return portStr && portStr !== 'No dev servers detected' ? portStr : null;
-}
-
-// Helper for conditional health status
-function formatHealthIfWarning(healthStatus: HealthStatus): string | null {
-  const healthStr = formatHealthStatus(healthStatus);
-  return healthStr && healthStr !== 'Health: All good' ? healthStr : null;
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/session-start/context-builder.test.ts
-```
-
----
-
-### Task 3.3: Replace switch statement with handler map in `pre-tool-use.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\pre-tool-use.ts`
-
-**Current (Lines 259-278):**
-```typescript
-switch (toolName) {
-  case 'detect_stack':
-    await validateDetectStack(input);
-    break;
-  case 'get_schema':
-    await validateGetSchema(input);
-    break;
-  case 'run_smoke_test':
-    await validateRunSmokeTest(input);
-    break;
-  case 'check_types':
-    await validateCheckTypes(input);
-    break;
-  case 'validate_implementation':
-    await validateImplementation(input);
-    break;
-  default:
-    debug(`Unknown tool '${toolName}', allowing by default`);
-    respond(allowTool('PreToolUse'));
-}
-```
-
-**Change to:**
-```typescript
-/** Tool validators keyed by tool name */
-const TOOL_VALIDATORS: Record<string, (input: HookInput) => Promise<void>> = {
-  detect_stack: validateDetectStack,
-  get_schema: validateGetSchema,
-  run_smoke_test: validateRunSmokeTest,
-  check_types: validateCheckTypes,
-  validate_implementation: validateImplementation,
-};
-
-// In runPreToolUseHook:
-const validator = TOOL_VALIDATORS[toolName];
-if (validator) {
-  await validator(input);
-} else {
-  debug(`Unknown tool '${toolName}', allowing by default`);
-  respond(allowTool('PreToolUse'));
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/pre-tool-use.test.ts
-```
-
----
-
-### Task 3.4: Extract generic update state helper in `state.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\state.ts`
-
-**Current (Lines 94-171):** 4 nearly identical functions
-
-**Add generic helper:**
-```typescript
-/**
- * Generic helper to update a nested state property.
- * @internal
- */
-function updateNestedState<K extends keyof HooksState>(
-  state: HooksState,
-  key: K,
-  updates: Partial<HooksState[K]>
-): HooksState {
-  return {
-    ...state,
-    [key]: { ...state[key], ...updates },
-  };
-}
-
-/** Updates session-related state with partial data. */
-export function updateSessionState(
-  state: HooksState,
-  updates: Partial<HooksState['session']>
-): HooksState {
-  return updateNestedState(state, 'session', updates);
-}
-
-/** Updates test-related state with partial data. */
-export function updateTestState(
-  state: HooksState,
-  updates: Partial<HooksState['tests']>
-): HooksState {
-  return updateNestedState(state, 'tests', updates);
-}
-
-/** Updates build-related state with partial data. */
-export function updateBuildState(
-  state: HooksState,
-  updates: Partial<HooksState['build']>
-): HooksState {
-  return updateNestedState(state, 'build', updates);
-}
-
-/** Updates git-related state with partial data. */
-export function updateGitState(
-  state: HooksState,
-  updates: Partial<HooksState['git']>
-): HooksState {
-  return updateNestedState(state, 'git', updates);
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/state.test.ts
-```
-
----
-
-## Phase 4: Polish (P3)
-
-### Task 4.1: Fix underscore-prefixed unused parameters in `pre-tool-use.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\pre-tool-use.ts`
-
-**Lines 175 and 184:**
-
-**Current:**
-```typescript
-export async function validateDetectStack(_input: HookInput): Promise<void> {
-```
-
-**Options:**
-1. If `input` is genuinely unused, use destructuring: `export async function validateDetectStack(_: HookInput): Promise<void> {`
-2. If it might be used in future, add `// eslint-disable-next-line @typescript-eslint/no-unused-vars` above
-3. If it should be used, actually use `input.cwd` instead of relying on `fileExistsRelative`
-
-**Recommended change:** Since these functions use `fileExistsRelative()` which internally uses process.cwd(), they should use `input.cwd`:
-
-```typescript
-export async function validateDetectStack(input: HookInput): Promise<void> {
-  const cwd = input.cwd || process.cwd();
-  if (!(await fileExists(path.join(cwd, 'package.json')))) {
-    respond(blockTool('PreToolUse', 'No package.json found in project root. Cannot detect stack.'), true);
-    return;
-  }
-  respond(allowTool('PreToolUse'));
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/pre-tool-use.test.ts
-```
-
----
-
-### Task 4.2: Fix catch block typing in `memory-loader.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\context\memory-loader.ts`
-
-**Line 20:**
-
-**Current:**
-```typescript
-} catch (error) {
-  debug(`Directory check failed for ${filePath}: ${error}`);
-  return false;
-}
-```
-
-**Change to:**
-```typescript
-} catch (error: unknown) {
-  debug(`Directory check failed for ${filePath}: ${error}`);
-  return false;
-}
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/context/memory-loader.test.ts
-```
-
----
-
-### Task 4.3: Fix `_error` pattern in `todo-scanner.ts`
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\context\todo-scanner.ts`
-
-**Lines 50 and 83:**
-
-**Current:**
-```typescript
-} catch (_error) {
-  // Skip directories we can't read (permission errors, etc.)
-}
-```
-
-**Change to:**
-```typescript
-} catch (error: unknown) {
-  // Skip directories we can't read (permission errors, etc.)
-  // Intentionally silent - this is expected for permission-denied directories
-  debug('Directory scan skipped', { error: String(error) });
-}
-```
-
-**Note:** Need to import debug from shared/logging.js
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test -- src/__tests__/context/todo-scanner.test.ts
-```
-
----
-
-### Task 4.4: Split `mock-factories.ts` into multiple files
-
-**File:** `C:\Users\buzzkill\Documents\vibeplug\plugins\goodvibes\hooks\scripts\src\__tests__\test-utils\mock-factories.ts`
-
-**Current:** 445 lines
-
-**Create new structure:**
-```
-src/__tests__/test-utils/
-  mock-factories/
-    index.ts         # Re-exports all
-    fs-mocks.ts      # Dirent, Stats, Buffer mocks
-    state-mocks.ts   # HooksState, FileState mocks
-    telemetry-mocks.ts  # ActiveAgentEntry, TelemetryRecord mocks
-    git-mocks.ts     # Git command mocks
-  mock-factories.ts  # Keep as barrel file for backwards compatibility
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build && npm test
-```
-
----
-
-### Task 4.5: Add JSDoc to remaining source files
-
-**Target:** Increase from 45.5% (46/101 files) to 100% (81+ files)
-
-**Priority files (modules without any JSDoc):**
-1. `src/memory/*.ts` - 5 files
-2. Other utility files
-
-**JSDoc template to add:**
-```typescript
-/**
- * [Module Name]
- *
- * [One-line description of what this module does]
- *
- * @module [module-name]
- * @see [related-modules]
- */
-```
-
-**For each exported function/interface, add:**
-```typescript
-/**
- * [Brief description]
- *
- * @param paramName - Description of parameter
- * @returns Description of return value
- *
- * @example
- * const result = functionName(param);
- */
-```
-
-**Verification:**
-```bash
-cd plugins/goodvibes/hooks/scripts && npm run build
-```
-
----
-
-### Task 4.6: Update JSDoc examples to use return values instead of console.log
-
-**Locations:** 65 instances across codebase
-
-**Pattern to fix:**
-
-**Before:**
-```typescript
-/**
- * @example
- * const input = await readHookInput();
- * console.log(input.hook_event_name);
- */
-```
-
-**After:**
-```typescript
-/**
- * @example
- * const input = await readHookInput();
- * // input.hook_event_name === 'PreToolUse'
- * // input.tool_name === 'Bash'
- */
-```
-
----
-
-## Dependency Graph
-
-```
-Phase 1 (Deprecation Removal):
-  1.1 (formatter.ts migration) ─────┐
-                                    ├──> 1.3 (delete env-checker.ts)
-  1.2 (test import updates) ────────┘
-
-  1.4 (remove checkEnvironment alias) - independent
-  1.5 (assess respond deprecation) - independent
-
-Phase 2 (Test Type Safety):
-  2.1 (extend mock-factories) ──> 2.2, 2.3, 2.4 (replace as any)
-
-Phase 3 (Code Quality):
-  3.1, 3.2, 3.3, 3.4 - all independent
-
-Phase 4 (Polish):
-  4.1, 4.2, 4.3, 4.4, 4.5, 4.6 - all independent
-```
+## Task Breakdown
+
+| # | Task Name | Specialist Agent | Files/Areas | Dependencies | Complexity |
+|---|-----------|------------------|-------------|--------------|------------|
+| 1 | Fix 14 ESLint import ordering errors | code-architect | 12 files (8 test + 4 source) | None | Simple |
+| 2 | Update README test count from 262 to 3,780 | content-platform | `plugins/goodvibes/README.md` | None | Simple |
+| 3 | Replace `any` types in source files with proper types | backend-engineer | ~10 source files | None | Medium |
+| 4 | Extract keyword data from keywords.ts to JSON config | code-architect | `plugins/goodvibes/hooks/scripts/src/shared/keywords.ts` | None | Medium |
+| 5 | Extract shared hook runner pattern from entry points | code-architect | 10 entry point files in `src/*.ts` | None | Medium |
+| 6 | Add tests for memory/index.ts barrel file | test-engineer | `plugins/goodvibes/hooks/scripts/src/__tests__/memory/` | None | Simple |
+| 7 | Implement or remove empty validateImplementation function | backend-engineer | `plugins/goodvibes/hooks/scripts/src/pre-tool-use.ts:291-294` | None | Simple |
+| 8 | Replace single-letter variable names with descriptive names | code-architect | Multiple files (12 occurrences) | None | Simple |
+| 9 | Add @returns to all JSDoc comments missing them | content-platform | Various files (8 functions) | None | Simple |
+| 10 | Pre-compile regex map for keyword matching performance | backend-engineer | `plugins/goodvibes/hooks/scripts/src/shared/keywords.ts:350-355` | Task 4 | Medium |
+| 11 | Refactor folder-structure.ts to reduce line count | code-architect | `plugins/goodvibes/hooks/scripts/src/context/folder-structure.ts` (392 lines) | None | Medium |
+| 12 | Refactor retry-tracker.ts to reduce line count | code-architect | `plugins/goodvibes/hooks/scripts/src/post-tool-use-failure/retry-tracker.ts` (391 lines) | None | Medium |
+| 13 | Refactor recent-activity.ts to reduce line count | code-architect | `plugins/goodvibes/hooks/scripts/src/context/recent-activity.ts` (382 lines) | None | Medium |
+| 14 | Refactor environment.ts to reduce line count | code-architect | `plugins/goodvibes/hooks/scripts/src/context/environment.ts` (353 lines) | None | Medium |
+| 15 | Fix or log unused error variable in folder-structure.ts catch block | code-architect | `plugins/goodvibes/hooks/scripts/src/context/folder-structure.ts:90-93` | Task 11 | Simple |
+| 16 | Address unused variable in clearError destructuring pattern | code-architect | `plugins/goodvibes/hooks/scripts/src/state.ts:233` | None | Simple |
+| 17 | Run full test suite to verify all changes | test-engineer | All test files | Tasks 1-16 | Simple |
+| 18 | Run final lint and quality checks | code-architect | All source files | Task 17 | Simple |
 
 ---
 
 ## Parallel Execution Groups
 
-### Group 1 (Start Immediately)
-- Task 1.1: Migrate formatter.ts imports
-- Task 1.2: Update test imports
-- Task 2.1: Extend mock-factories.ts
-- Task 3.3: Replace switch with handler map
-- Task 3.4: Extract generic state helper
+### Group 1 (Start Immediately - Independent Quick Fixes)
+- Task 1: Fix 14 ESLint import ordering errors -> code-architect
+- Task 2: Update README test count from 262 to 3,780 -> content-platform
+- Task 6: Add tests for memory/index.ts barrel file -> test-engineer
+- Task 7: Implement or remove empty validateImplementation function -> backend-engineer
+- Task 8: Replace single-letter variable names with descriptive names -> code-architect
+- Task 9: Add @returns to all JSDoc comments missing them -> content-platform
+- Task 16: Address unused variable in clearError destructuring pattern -> code-architect
 
-### Group 2 (After Group 1)
-- Task 1.3: Delete env-checker.ts (requires 1.1, 1.2)
-- Task 2.2: Replace as any in todo-scanner.test.ts (requires 2.1)
-- Task 2.3: Replace as any in memory-loader.test.ts (requires 2.1)
-- Task 3.1: Parallelize environment.ts
-- Task 3.2: Refactor context-builder.ts
+### Group 2 (After Group 1 - Type Safety and Refactoring)
+- Task 3: Replace `any` types in source files with proper types -> backend-engineer
+- Task 4: Extract keyword data from keywords.ts to JSON config -> code-architect
+- Task 5: Extract shared hook runner pattern from entry points -> code-architect
+- Task 11: Refactor folder-structure.ts to reduce line count -> code-architect
+- Task 12: Refactor retry-tracker.ts to reduce line count -> code-architect
+- Task 13: Refactor recent-activity.ts to reduce line count -> code-architect
+- Task 14: Refactor environment.ts to reduce line count -> code-architect
 
-### Group 3 (After Group 2)
-- Task 1.4: Remove checkEnvironment alias (requires 1.3)
-- Task 2.4: Replace as any in remaining tests (requires 2.2, 2.3)
-- Task 4.1: Fix unused params
-- Task 4.2: Fix catch typing
-- Task 4.3: Fix _error pattern
+### Group 3 (After Group 2 - Dependent Tasks)
+- Task 10: Pre-compile regex map for keyword matching performance -> backend-engineer
+- Task 15: Fix or log unused error variable in folder-structure.ts catch block -> code-architect
 
-### Group 4 (Final)
-- Task 1.5: Assess respond deprecation
-- Task 4.4: Split mock-factories.ts
-- Task 4.5: Add JSDoc coverage
-- Task 4.6: Update JSDoc examples
+### Group 4 (Final - Verification)
+- Task 17: Run full test suite to verify all changes -> test-engineer
+
+### Group 5 (Final - Quality Gate)
+- Task 18: Run final lint and quality checks -> code-architect
+
+---
+
+## Detailed Task Specifications
+
+### Task 1: Fix 14 ESLint Import Ordering Errors
+
+**Files to modify:**
+1. `plugins/goodvibes/hooks/scripts/src/__tests__/environment.test.ts:15`
+2. `plugins/goodvibes/hooks/scripts/src/__tests__/memory/decisions.test.ts:15`
+3. `plugins/goodvibes/hooks/scripts/src/__tests__/memory/failures.test.ts:14`
+4. `plugins/goodvibes/hooks/scripts/src/__tests__/memory/patterns.test.ts:12`
+5. `plugins/goodvibes/hooks/scripts/src/__tests__/memory/preferences.test.ts:23-24`
+6. `plugins/goodvibes/hooks/scripts/src/__tests__/memory/search.test.ts:10`
+7. `plugins/goodvibes/hooks/scripts/src/__tests__/post-tool-use.test.ts:113`
+8. `plugins/goodvibes/hooks/scripts/src/__tests__/post-tool-use/mcp-handlers.test.ts:44,54`
+9. `plugins/goodvibes/hooks/scripts/src/post-tool-use.ts:29,32`
+10. `plugins/goodvibes/hooks/scripts/src/session-start.ts:26`
+11. `plugins/goodvibes/hooks/scripts/src/telemetry.ts:19`
+
+**Action:** Run `npm run lint:fix` in `plugins/goodvibes/hooks/scripts/` or manually reorder imports to comply with ESLint rules.
+
+### Task 2: Update README Test Count
+
+**File:** `plugins/goodvibes/README.md`
+**Line:** 122
+**Change:** Replace "262 tests" with "3,780 tests"
+
+### Task 3: Replace `any` Types
+
+**Action:** Search source files for `any` type usage and replace with proper types:
+- Use `unknown` for truly unknown types with type guards
+- Create proper interfaces for structured data
+- Use union types where appropriate
+
+### Task 4: Extract Keyword Data to JSON
+
+**File:** `plugins/goodvibes/hooks/scripts/src/shared/keywords.ts`
+**Action:**
+- Create `plugins/goodvibes/hooks/scripts/src/shared/keywords-data.json`
+- Move `STACK_KEYWORD_CATEGORIES` and `TRANSCRIPT_KEYWORD_CATEGORIES` to JSON
+- Update `keywords.ts` to import from JSON file
+- Reduces 407-line file to approximately 150 lines
+
+### Task 5: Extract Shared Hook Runner Pattern
+
+**Files:** All `src/*.ts` entry point files
+**Action:**
+- Create `plugins/goodvibes/hooks/scripts/src/shared/hook-runner.ts`
+- Extract common boilerplate (input reading, error handling, main module detection)
+- Update entry points to use shared runner
+
+### Task 6: Add Tests for memory/index.ts
+
+**File to create:** `plugins/goodvibes/hooks/scripts/src/__tests__/memory/index.test.ts`
+**Action:** Add tests to verify all exports from the barrel file are properly exposed
+
+### Task 7: validateImplementation Function
+
+**File:** `plugins/goodvibes/hooks/scripts/src/pre-tool-use.ts:291-294`
+**Current code:**
+```typescript
+export async function validateImplementation(input: HookInput): Promise<void> {
+  // Just allow and let the tool handle validation
+  respond(allowTool('PreToolUse'));
+}
+```
+**Action:** Either implement actual validation or remove the function and its entry in `TOOL_VALIDATORS`
+
+### Task 8: Replace Single-Letter Variables
+
+**Action:** Find occurrences like `.filter((e) => ...)` and replace with descriptive names like `.filter((entry) => ...)` or `.filter((dirent) => ...)`
+
+### Task 9: Add @returns to JSDoc
+
+**Action:** Find JSDoc comments missing `@returns` descriptions and add them
+
+### Task 10: Pre-compile Regex Map
+
+**File:** `plugins/goodvibes/hooks/scripts/src/shared/keywords.ts:350-355`
+**Action:** Create a pre-compiled regex map at module initialization instead of creating regex per keyword during matching
+
+### Tasks 11-14: Refactor Large Files
+
+**Action for each:** Extract helper functions, types, or constants into separate modules to reduce file size below 350 lines
+
+### Task 15: Fix Unused Error Variable
+
+**File:** `plugins/goodvibes/hooks/scripts/src/context/folder-structure.ts:90-93`
+**Action:** Either use the error in debug logging or replace with `_` to indicate intentionally unused
+
+### Task 16: Address Unused Variable in Destructuring
+
+**File:** `plugins/goodvibes/hooks/scripts/src/state.ts:233`
+**Current code:** `const { [signature]: _, ...remainingErrors } = state.errors;`
+**Action:** Add comment explaining the pattern or use a more explicit approach
 
 ---
 
@@ -910,30 +175,57 @@ Phase 4 (Polish):
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Breaking changes when removing deprecated functions | Medium | High | Run full test suite after each deprecation removal |
-| Type errors after removing `as any` | Medium | Medium | Fix incrementally, run tests after each file |
-| Regressions in parallel async changes | Low | High | Test performance with real directory structures |
-| Mock factory changes break existing tests | Low | Medium | Keep backwards compatibility exports |
+| Refactoring introduces regressions | Medium | High | Run full test suite after each refactoring task |
+| Import order fixes break circular dependency assumptions | Low | Medium | Verify with `madge` after import reordering |
+| JSON extraction breaks keyword functionality | Low | High | Maintain type safety with TypeScript JSON imports |
+| Hook runner extraction changes behavior | Medium | Medium | Create comprehensive tests before extracting |
+| `any` type replacements cause type errors | Medium | Medium | Fix incrementally, run typecheck after each file |
 
 ---
 
-## Verification Checklist
+## Complexity Assessment
 
-After completing all tasks, verify:
+**Overall**: Medium
 
-- [ ] `npm run build` passes with no errors
-- [ ] `npm test` passes with 100% coverage maintained
-- [ ] `npm run lint` passes (if configured)
-- [ ] No TypeScript strict mode violations
-- [ ] All deprecated code removed
-- [ ] No `as any` remaining in test files (grep check)
-- [ ] JSDoc coverage at 100%
+**Factors**:
+- Files affected: 25-35 files across source and tests
+- Agents needed: 4 (code-architect, backend-engineer, test-engineer, content-platform)
+- Dependency graph: Branching with two independent tracks converging at verification
+- Risk level: Medium (changes touch core functionality but have excellent test coverage)
+- Unknowns: Few (issues are clearly identified with specific locations)
 
-```bash
-# Final verification commands
-cd plugins/goodvibes/hooks/scripts
-npm run build
-npm test
-grep -r "as any" src/__tests__/ | wc -l  # Should be 0
-grep -r "@deprecated" src/ | wc -l  # Should be 0
-```
+**Confidence Level**: High
+
+The code review provides precise file locations and line numbers for each issue. The existing 3,780 tests provide a strong safety net for detecting regressions. The issues are well-understood code quality improvements rather than complex feature changes.
+
+---
+
+## Cumulative Score Projection
+
+| Phase | Actions | Points Gained | Running Total |
+|-------|---------|---------------|---------------|
+| Start | - | - | 8.7/10 |
+| Group 1 | 7 quick fixes (Tasks 1-2, 6-9, 16) | +0.4 | 9.1/10 |
+| Group 2 | 7 refactors (Tasks 3-5, 11-14) | +0.4 | 9.5/10 |
+| Group 3 | 2 dependent tasks (Tasks 10, 15) | +0.2 | 9.7/10 |
+| Group 4-5 | Verification (Tasks 17-18) | +0.3 | 10.0/10 |
+
+---
+
+## Notes for Execution
+
+1. **Task 1 is highest priority** - Run `npm run lint:fix` first as it may auto-fix most import ordering issues
+
+2. **For refactoring tasks (11-14)**, consider these extraction strategies:
+   - Extract type definitions to separate files in `types/`
+   - Extract constants to dedicated constants files
+   - Extract helper functions to `shared/` utilities
+
+3. **For Task 4 (keyword JSON extraction)**, TypeScript supports JSON imports with `resolveJsonModule` enabled in tsconfig
+
+4. **All changes should be verified** with:
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm test`
+
+5. **The `@vitest/coverage-v8` and `lint-staged` dependencies** flagged as unused are false positives - they are used by scripts and Husky respectively

@@ -48,7 +48,7 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ## Skills Library
 
-Access specialized knowledge from `.claude/skills/webdev/` for:
+Access specialized knowledge from `plugins/goodvibes/skills/` for:
 
 ### Testing Tools
 - **vitest** - Vite-native unit testing
@@ -59,6 +59,18 @@ Access specialized knowledge from `.claude/skills/webdev/` for:
 - **msw** - API mocking
 - **storybook** - Component development
 - **chromatic** - Visual regression testing
+
+
+### Code Review Skills (MANDATORY)
+Located at `plugins/goodvibes/skills/common/review/`:
+- **type-safety** - Fix unsafe member access, assignments, returns, calls, and `any` usage
+- **error-handling** - Fix floating promises, silent catches, throwing non-Error objects
+- **async-patterns** - Fix unnecessary async, sequential operations, await non-promises
+- **import-ordering** - Auto-fix import organization with ESLint
+- **documentation** - Add missing JSDoc, module comments, @returns tags
+- **code-organization** - Fix high complexity, large files, deep nesting
+- **naming-conventions** - Fix unused variables, single-letter names, abbreviations
+- **config-hygiene** - Fix gitignore, ESLint config, hook scripts
 
 ## Decision Frameworks
 
@@ -537,46 +549,52 @@ Before completing test work, verify:
 - [ ] Mocks are reset between tests
 - [ ] Coverage meets project requirements
 
-## Post-Change Code Review Workflow
+## Post-Edit Review Workflow (MANDATORY)
 
-**MANDATORY: After every code change, run the code-review-checks skill to catch issues early.**
+**After every code edit, proactively check your work using the review skills to catch issues before brutal-reviewer does.**
+
+### Skill-to-Edit Mapping
+
+| Edit Type | Review Skills to Run |
+|-----------|---------------------|
+| TypeScript/JavaScript code | type-safety, error-handling, async-patterns |
+| API routes, handlers | type-safety, error-handling, async-patterns |
+| Configuration files | config-hygiene |
+| Any new file | import-ordering, documentation |
+| Refactoring | code-organization, naming-conventions |
 
 ### Workflow
 
-After making any code changes (creating, editing, or deleting files):
+After making any code changes:
 
-1. **Run code review checks on modified files**
-   ```bash
-   node .claude/skills/code-review-checks/scripts/check-all.js --path src/
-   ```
+1. **Identify which review skills apply** based on the edit type above
 
-2. **If issues are found:**
-   - Review the output for each category (Critical, Major, Minor)
-   - Fix issues starting with Critical (P0), then Major (P1)
-   - Re-run the checks after each fix
+2. **Read and apply the relevant skill** from `plugins/goodvibes/skills/common/review/`
+   - Load the SKILL.md file to understand the patterns and fixes
+   - Check your code against the skill's detection patterns
+   - Apply the recommended fixes
 
-3. **Repeat until clean**
-   ```bash
-   # Keep running until no issues remain
-   node .claude/skills/code-review-checks/scripts/check-all.js --path src/
-   ```
+3. **Fix issues by priority**
+   - **P0 Critical**: Fix immediately (type-safety issues, floating promises)
+   - **P1 Major**: Fix before completing task (error handling, async patterns)
+   - **P2/P3 Minor**: Fix if time permits (documentation, naming)
 
-4. **For targeted checks on specific files:**
-   ```bash
-   # Check only critical issues on changed files
-   git diff --name-only HEAD | grep '\.ts$' > /tmp/changed.txt
-   node .claude/skills/code-review-checks/scripts/check-all.js --files /tmp/changed.txt --category critical
-   ```
+4. **Re-check until clean**
+   - After each fix, verify the issue is resolved
+   - Move to next priority level
 
-### Issue Categories to Watch
+### Pre-Commit Checklist
 
-| Priority | Issues | Action |
-|----------|--------|--------|
-| P0 Critical | `as any`, hardcoded secrets, `@deprecated` | Fix immediately before proceeding |
-| P1 Major | Sequential async, functions >50 lines, silent catches | Fix before completing task |
-| P2 Minor | Files >300 lines, missing barrel files, magic numbers | Fix if time permits |
+Before considering your work complete:
 
-**Do not consider a code change complete until code-review-checks passes with no Critical or Major issues.**
+- [ ] type-safety: No `any` types, all unknowns validated
+- [ ] error-handling: No floating promises, no silent catches
+- [ ] async-patterns: Parallelized where possible
+- [ ] import-ordering: Imports organized (auto-fix: `npx eslint --fix`)
+- [ ] documentation: Public functions have JSDoc
+- [ ] naming-conventions: No unused variables, descriptive names
+
+**Goal: Achieve higher scores on brutal-reviewer assessments by catching issues proactively.**
 
 ## Guardrails
 
