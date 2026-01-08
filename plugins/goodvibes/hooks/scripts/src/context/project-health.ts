@@ -107,8 +107,11 @@ async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
   try {
     const content = await fs.readFile(tsconfigPath, 'utf-8');
     const jsonContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
-    const tsconfig = JSON.parse(jsonContent);
-    const compilerOptions = tsconfig.compilerOptions || {};
+    const tsconfig: unknown = JSON.parse(jsonContent);
+    const compilerOptions =
+      typeof tsconfig === 'object' && tsconfig !== null && 'compilerOptions' in tsconfig
+        ? ((tsconfig as { compilerOptions?: Record<string, unknown> }).compilerOptions ?? {})
+        : {};
 
     return {
       hasConfig: true,
@@ -119,7 +122,7 @@ async function checkTypeScript(cwd: string): Promise<TypeScriptHealth | null> {
       noImplicitAny:
         compilerOptions.noImplicitAny === true ||
         compilerOptions.strict === true,
-      target: compilerOptions.target || null,
+      target: typeof compilerOptions.target === 'string' ? compilerOptions.target : null,
     };
   } catch (error: unknown) {
     debug('project-health failed', { error: String(error) });
@@ -149,8 +152,12 @@ async function getScripts(cwd: string): Promise<string[]> {
 
   try {
     const content = await fs.readFile(packageJsonPath, 'utf-8');
-    const packageJson = JSON.parse(content);
-    return Object.keys(packageJson.scripts || {});
+    const packageJson: unknown = JSON.parse(content);
+    if (typeof packageJson === 'object' && packageJson !== null && 'scripts' in packageJson) {
+      const scripts = (packageJson as { scripts?: Record<string, unknown> }).scripts;
+      return Object.keys(scripts ?? {});
+    }
+    return [];
   } catch (error: unknown) {
     debug('project-health failed', { error: String(error) });
     return [];
@@ -320,8 +327,8 @@ export function formatProjectHealth(health: ProjectHealth): string | null {
   }
 
   if (health.scripts.length > 0) {
-    const importantScripts = health.scripts.filter((s) =>
-      ['dev', 'build', 'start', 'test', 'lint', 'typecheck'].includes(s)
+    const importantScripts = health.scripts.filter((script) =>
+      ['dev', 'build', 'start', 'test', 'lint', 'typecheck'].includes(script)
     );
     if (importantScripts.length > 0) {
       sections.push(`**Scripts:** ${importantScripts.join(', ')}`);
@@ -329,16 +336,16 @@ export function formatProjectHealth(health: ProjectHealth): string | null {
   }
 
   if (health.warnings.length > 0) {
-    const warningLines = health.warnings.map((w) => {
+    const warningLines = health.warnings.map((warning) => {
       const icon =
-        w.type === 'error' ? '[!]' : w.type === 'warning' ? '[*]' : '[i]';
-      return `${icon} ${w.message}`;
+        warning.type === 'error' ? '[!]' : warning.type === 'warning' ? '[*]' : '[i]';
+      return `${icon} ${warning.message}`;
     });
     sections.push(`**Health Issues:**\n${warningLines.join('\n')}`);
   }
 
   if (health.suggestions.length > 0) {
-    const suggestionLines = health.suggestions.map((s) => `- ${s}`);
+    const suggestionLines = health.suggestions.map((suggestion) => `- ${suggestion}`);
     sections.push(`**Suggestions:**\n${suggestionLines.join('\n')}`);
   }
 

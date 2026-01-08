@@ -11,8 +11,6 @@ import * as path from 'path';
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import type { MemoryFailure } from '../../types/memory.js';
-
 // Mock the parser module
 vi.mock('../../memory/parser.js', () => ({
   parseMemoryFile: vi.fn(),
@@ -22,6 +20,8 @@ vi.mock('../../memory/parser.js', () => ({
 
 import { readFailures, writeFailure } from '../../memory/failures.js';
 import * as parser from '../../memory/parser.js';
+
+import type { MemoryFailure } from '../../types/memory.js';
 
 describe('memory/failures', () => {
   let testDir: string;

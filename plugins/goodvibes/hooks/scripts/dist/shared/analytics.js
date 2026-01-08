@@ -46,7 +46,11 @@ export async function loadAnalytics() {
     if (await fileExists(ANALYTICS_FILE)) {
         try {
             const content = await fs.readFile(ANALYTICS_FILE, 'utf-8');
-            return JSON.parse(content);
+            const parsed = JSON.parse(content);
+            if (typeof parsed === 'object' && parsed !== null && 'session_id' in parsed) {
+                return parsed;
+            }
+            return null;
         }
         catch (error) {
             debug('loadAnalytics failed', { error: String(error) });

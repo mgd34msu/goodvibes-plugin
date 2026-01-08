@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-01-07T20:54:33.638Z'
+generated: '2026-01-08T01:18:20.343Z'
 total: 11
 categories:
   _items:
@@ -153,8 +153,8 @@ categories:
           - from
           - webhook
           - integration
-      - name: brutal-reviewer
-        path: webdev/brutal-reviewer
+      - name: brutally-honest-reviewer
+        path: webdev/brutally-honest-reviewer
         description: >-
           Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate, critique, feedback,
           score, rate, check my code, how does this look, is this good, technical debt, code smell, best practices,
@@ -164,7 +164,8 @@ categories:
           code", "review this", "what do you think", "is this okay", "any issues", "spot problems", "find bugs", "code
           health", "codebase quality", "overall assessment", "grade this", "rate this code".
         triggers: &ref_3
-          - brutal
+          - brutally
+          - honest
           - reviewer
           - proactively
           - user
@@ -200,7 +201,6 @@ categories:
           - second
           - opinion
           - roast
-          - honest
           - what
           - wrong
           - improve
@@ -907,9 +907,9 @@ search_index:
       "protect routes", "fix server error", "optimize queries", "N+1 problem", "add caching", "implement auth", "secure
       endpoint", "database design", "data model", "API design", "backend for", "server logic", "handle requests",
       "process data", "store data", "fetch from database", "webhook", "API integration".
-  - name: brutal-reviewer
+  - name: brutally-honest-reviewer
     keywords: *ref_3
-    path: webdev/brutal-reviewer
+    path: webdev/brutally-honest-reviewer
     description: >-
       Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate, critique, feedback,
       score, rate, check my code, how does this look, is this good, technical debt, code smell, best practices, clean

@@ -17,11 +17,6 @@
 import * as path from 'path';
 
 import { PROJECT_ROOT } from './shared/constants.js';
-
-// Re-export all types and core functions from the telemetry module
-export * from './telemetry/index.js';
-
-// Import core functions for the wrappers
 import {
   loadActiveAgents as loadActiveAgentsCore,
   saveActiveAgents as saveActiveAgentsCore,
@@ -37,6 +32,9 @@ import type {
   ActiveAgentEntry,
   TelemetryRecord,
 } from './telemetry/index.js';
+
+// Re-export all types and core functions from the telemetry module
+export * from './telemetry/index.js';
 
 // =============================================================================
 // Constants and Paths

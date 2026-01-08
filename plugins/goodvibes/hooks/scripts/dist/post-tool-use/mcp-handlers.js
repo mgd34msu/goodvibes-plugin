@@ -70,7 +70,7 @@ export async function handleRecommendSkills(input) {
                     r !== null &&
                     'path' in r &&
                     typeof r.path === 'string')
-                    .map((r) => r.path);
+                    .map((rec) => rec.path);
                 analytics.skills_recommended.push(...skillPaths);
                 await saveAnalytics(analytics);
             }

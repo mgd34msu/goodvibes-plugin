@@ -9,3 +9,9 @@ export type { SessionState, TestState, BuildState, GitState, FileState, DevServe
 export { createDefaultState } from './state.js';
 export type { GoodVibesConfig } from './config.js';
 export { getDefaultConfig } from './config.js';
+export type { ArchitecturePattern, SpecialDirectories, FolderStructure, } from './folder-structure.js';
+export { PATTERN_NAMES } from './folder-structure.js';
+export type { RetryEntry, RetryData } from './retry.js';
+export { isRetryData, isErrorState, DEFAULT_MAX_AGE_HOURS } from './retry.js';
+export type { RecentActivity, FileChange, Hotspot, RecentCommit, } from './recent-activity.js';
+export type { EnvStatus, EnvironmentContext } from './environment.js';

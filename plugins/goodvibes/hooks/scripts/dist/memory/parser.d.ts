@@ -83,6 +83,7 @@ export declare function parseMemoryContent<T>(content: string, parser: SectionPa
  *
  * @param filePath - Absolute path to the memory file
  * @param header - Markdown header content to write
+ * @returns A promise that resolves when the file is created or already exists
  */
 export declare function ensureMemoryFile(filePath: string, header: string): Promise<void>;
 /**
@@ -90,5 +91,6 @@ export declare function ensureMemoryFile(filePath: string, header: string): Prom
  *
  * @param filePath - Absolute path to the memory file
  * @param entry - Formatted markdown entry to append
+ * @returns A promise that resolves when the entry is appended
  */
 export declare function appendMemoryEntry(filePath: string, entry: string): Promise<void>;

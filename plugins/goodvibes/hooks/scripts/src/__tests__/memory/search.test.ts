@@ -7,8 +7,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { ProjectMemory } from '../../types/memory.js';
-
 // Mock all the dependencies before importing the module under test
 vi.mock('../../memory/paths.js', () => ({
   getMemoryDir: vi.fn((cwd: string) => `${cwd}/.goodvibes/memory`),
@@ -50,6 +48,8 @@ import {
   formatMemoryContext,
   getCurrentDate,
 } from '../../memory/search.js';
+
+import type { ProjectMemory } from '../../types/memory.js';
 
 describe('memory/search', () => {
   beforeEach(() => {

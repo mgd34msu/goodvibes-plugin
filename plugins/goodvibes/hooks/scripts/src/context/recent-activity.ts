@@ -8,87 +8,28 @@ import { execSync } from 'child_process';
 
 import { debug } from '../shared/logging.js';
 
-/**
- * Maximum buffer size for git command output (10MB).
- * Prevents memory issues when processing large git histories.
- */
-const GIT_MAX_BUFFER = 10 * 1024 * 1024;
-/**
- * Default number of days to look back for recent changes.
- * Used to determine what counts as "recent" file modifications.
- */
-const DEFAULT_DAYS_LOOKBACK = 7;
-/**
- * Default number of commits to analyze for hotspots.
- * More commits provide better hotspot accuracy but slower processing.
- */
-const DEFAULT_COMMITS_FOR_HOTSPOTS = 50;
-/**
- * Default number of recent commits to retrieve.
- * Displayed in the recent activity summary.
- */
-const DEFAULT_RECENT_COMMITS = 5;
-/**
- * Maximum recently modified files to return.
- * Limits the number of files in the recent changes list.
- */
-const MAX_RECENT_FILES = 10;
-/**
- * Maximum hotspots to return.
- * Limits the number of frequently-changed files reported.
- */
-const MAX_HOTSPOTS = 5;
-/**
- * Minimum hotspot threshold multiplier.
- * Files changed in at least this fraction of commits are considered hotspots.
- */
-const HOTSPOT_THRESHOLD_MULTIPLIER = 0.1;
-/**
- * Minimum absolute hotspot threshold.
- * Files must be changed at least this many times to be a hotspot.
- */
-const MIN_HOTSPOT_THRESHOLD = 3;
-/**
- * Maximum recent commits to display in formatted output.
- * Prevents overwhelming output with too many commits.
- */
-const MAX_DISPLAY_COMMITS = 3;
-/**
- * Maximum recently modified files to display.
- * Limits files shown in formatted output.
- */
-const MAX_DISPLAY_FILES = 5;
+import {
+  GIT_MAX_BUFFER,
+  DEFAULT_DAYS_LOOKBACK,
+  DEFAULT_COMMITS_FOR_HOTSPOTS,
+  DEFAULT_RECENT_COMMITS,
+  MAX_RECENT_FILES,
+  MAX_HOTSPOTS,
+  HOTSPOT_THRESHOLD_MULTIPLIER,
+  MIN_HOTSPOT_THRESHOLD,
+  MAX_DISPLAY_COMMITS,
+  MAX_DISPLAY_FILES,
+} from './constants/recent-activity.js';
 
-/** Aggregated recent git activity for the project. */
-export interface RecentActivity {
-  recentlyModifiedFiles: FileChange[];
-  hotspots: Hotspot[];
-  recentCommits: RecentCommit[];
-  activeContributors: string[];
-}
+import type {
+  RecentActivity,
+  FileChange,
+  Hotspot,
+  RecentCommit,
+} from '../types/recent-activity.js';
 
-/** A file change summary with modification type. */
-export interface FileChange {
-  file: string;
-  changes: number;
-  type: 'added' | 'modified' | 'deleted';
-}
-
-/** A frequently changed file that may need attention. */
-export interface Hotspot {
-  file: string;
-  changeCount: number;
-  reason: string;
-}
-
-/** Summary of a recent git commit. */
-export interface RecentCommit {
-  hash: string;
-  message: string;
-  author: string;
-  date: string;
-  filesChanged: number;
-}
+// Re-export types for consumers
+export type { RecentActivity, FileChange, Hotspot, RecentCommit };
 
 /**
  * Execute a git command and return output.
@@ -108,7 +49,6 @@ function gitExec(cwd: string, args: string): string | null {
       timeout: 30000,
     }).trim();
   } catch (error: unknown) {
-    // Git command failed - log for debugging but return null as this is expected
     debug(`recent-activity: Git command failed: git ${args}`, error);
     return null;
   }
@@ -116,19 +56,70 @@ function gitExec(cwd: string, args: string): string | null {
 
 /**
  * Check if directory is a git repository.
- * Uses git rev-parse to verify the directory is within a git working tree.
  *
  * @param cwd - The directory path to check
  * @returns True if the directory is inside a git repository, false otherwise
  */
 function isGitRepo(cwd: string): boolean {
-  const result = gitExec(cwd, 'rev-parse --is-inside-work-tree');
-  return result === 'true';
+  return gitExec(cwd, 'rev-parse --is-inside-work-tree') === 'true';
+}
+
+/**
+ * Determine file change type based on counts.
+ *
+ * @param counts - Object with added, modified, deleted counts
+ * @returns The dominant change type
+ */
+function determineChangeType(counts: {
+  added: number;
+  modified: number;
+  deleted: number;
+}): FileChange['type'] {
+  if (counts.added > counts.modified && counts.added > counts.deleted) {
+    return 'added';
+  }
+  if (counts.deleted > counts.modified) {
+    return 'deleted';
+  }
+  return 'modified';
+}
+
+/**
+ * Parse a git status line and update file changes map.
+ *
+ * @param line - The git log line to parse
+ * @param fileChanges - Map to update with file changes
+ */
+function parseStatusLine(
+  line: string,
+  fileChanges: Map<string, { added: number; modified: number; deleted: number }>
+): void {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return;
+  }
+
+  const match = trimmed.match(/^([AMD])\t(.+)$/);
+  if (!match) {
+    return;
+  }
+
+  const [, status, file] = match;
+  const current = fileChanges.get(file) ?? { added: 0, modified: 0, deleted: 0 };
+
+  if (status === 'A') {
+    current.added++;
+  } else if (status === 'M') {
+    current.modified++;
+  } else if (status === 'D') {
+    current.deleted++;
+  }
+
+  fileChanges.set(file, current);
 }
 
 /**
  * Get files changed in recent commits.
- * Analyzes git log to find files modified in the specified time period.
  *
  * @param cwd - The current working directory (repository root)
  * @param days - Number of days to look back (default: 7)
@@ -156,59 +147,36 @@ function getRecentlyModifiedFiles(
   >();
 
   for (const line of result.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    const match = trimmed.match(/^([AMD])\t(.+)$/);
-    if (match) {
-      const status = match[1];
-      const file = match[2];
-      const current = fileChanges.get(file) || {
-        added: 0,
-        modified: 0,
-        deleted: 0,
-      };
-
-      switch (status) {
-        case 'A':
-          current.added++;
-          break;
-        case 'M':
-          current.modified++;
-          break;
-        case 'D':
-          current.deleted++;
-          break;
-      }
-
-      fileChanges.set(file, current);
-    }
+    parseStatusLine(line, fileChanges);
   }
 
   const changes: FileChange[] = [];
   for (const [file, counts] of fileChanges) {
     const total = counts.added + counts.modified + counts.deleted;
-    let type: 'added' | 'modified' | 'deleted' = 'modified';
-
-    if (counts.added > counts.modified && counts.added > counts.deleted) {
-      type = 'added';
-    } else if (counts.deleted > counts.modified) {
-      type = 'deleted';
-    }
-
-    changes.push({ file, changes: total, type });
+    changes.push({ file, changes: total, type: determineChangeType(counts) });
   }
 
-  return changes
-    .sort((a, b) => b.changes - a.changes)
-    .slice(0, MAX_RECENT_FILES);
+  return changes.sort((a, b) => b.changes - a.changes).slice(0, MAX_RECENT_FILES);
+}
+
+/**
+ * Check if a file should be excluded from hotspot analysis.
+ *
+ * @param file - The file path to check
+ * @returns True if file should be excluded
+ */
+function shouldExcludeFromHotspots(file: string): boolean {
+  const excludePatterns = ['node_modules/', 'dist/', '.lock'];
+  const excludeExtensions = ['.json', '.md'];
+
+  return (
+    excludePatterns.some((p) => file.includes(p)) ||
+    excludeExtensions.some((ext) => file.endsWith(ext))
+  );
 }
 
 /**
  * Identify hotspots (frequently changed files).
- * Files that change often may indicate instability or active development areas.
  *
  * @param cwd - The current working directory (repository root)
  * @param commits - Number of recent commits to analyze (default: 50)
@@ -227,21 +195,10 @@ function getHotspots(
 
   for (const line of result.split('\n')) {
     const file = line.trim();
-    if (!file) {
+    if (!file || shouldExcludeFromHotspots(file)) {
       continue;
     }
-
-    if (
-      file.includes('node_modules/') ||
-      file.includes('dist/') ||
-      file.includes('.lock') ||
-      file.endsWith('.json') ||
-      file.endsWith('.md')
-    ) {
-      continue;
-    }
-
-    fileCount.set(file, (fileCount.get(file) || 0) + 1);
+    fileCount.set(file, (fileCount.get(file) ?? 0) + 1);
   }
 
   const threshold = Math.max(
@@ -260,14 +217,11 @@ function getHotspots(
     }
   }
 
-  return hotspots
-    .sort((a, b) => b.changeCount - a.changeCount)
-    .slice(0, MAX_HOTSPOTS);
+  return hotspots.sort((a, b) => b.changeCount - a.changeCount).slice(0, MAX_HOTSPOTS);
 }
 
 /**
  * Get recent commits summary.
- * Retrieves abbreviated commit information for display in context.
  *
  * @param cwd - The current working directory (repository root)
  * @param count - Number of recent commits to retrieve (default: 5)
@@ -284,7 +238,6 @@ function getRecentCommits(
   }
 
   const commits: RecentCommit[] = [];
-
   for (const line of result.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) {
@@ -294,10 +247,10 @@ function getRecentCommits(
     const parts = trimmed.split('|');
     if (parts.length >= 4) {
       commits.push({
-        hash: parts[0] || '',
-        message: parts[1] || '',
-        author: parts[2] || '',
-        date: parts[3] || '',
+        hash: parts[0] ?? '',
+        message: parts[1] ?? '',
+        author: parts[2] ?? '',
+        date: parts[3] ?? '',
         filesChanged: 0,
       });
     }
@@ -308,18 +261,11 @@ function getRecentCommits(
 
 /**
  * Gather all recent git activity context for the project.
- * Analyzes git history to identify recently modified files, hotspots, and commits.
  *
  * @param cwd - The current working directory (project root)
  * @returns Promise resolving to RecentActivity with all git activity data
- *
- * @example
- * const activity = await getRecentActivity('/my-repo');
- * if (activity.hotspots.length > 0) {
- *   console.log('Frequently changed files:', activity.hotspots);
- * }
  */
-export async function getRecentActivity(cwd: string): Promise<RecentActivity> {
+export function getRecentActivity(cwd: string): RecentActivity {
   if (!isGitRepo(cwd)) {
     return {
       recentlyModifiedFiles: [],
@@ -329,28 +275,19 @@ export async function getRecentActivity(cwd: string): Promise<RecentActivity> {
     };
   }
 
-  const recentlyModifiedFiles = getRecentlyModifiedFiles(cwd);
-  const hotspots = getHotspots(cwd);
-  const recentCommits = getRecentCommits(cwd);
-
   return {
-    recentlyModifiedFiles,
-    hotspots,
-    recentCommits,
+    recentlyModifiedFiles: getRecentlyModifiedFiles(cwd),
+    hotspots: getHotspots(cwd),
+    recentCommits: getRecentCommits(cwd),
     activeContributors: [],
   };
 }
 
 /**
  * Format recent activity for display in context output.
- * Creates a human-readable summary of recent commits, hotspots, and file changes.
  *
  * @param activity - The RecentActivity object to format
  * @returns Formatted string with commits, hotspots, and recent files, or null if no activity
- *
- * @example
- * const formatted = formatRecentActivity(activity);
- * // Returns formatted sections with recent commits, hotspots, and modified files
  */
 export function formatRecentActivity(activity: RecentActivity): string | null {
   const sections: string[] = [];
@@ -366,9 +303,7 @@ export function formatRecentActivity(activity: RecentActivity): string | null {
     const hotspotLines = activity.hotspots.map(
       (h) => `- \`${h.file}\` (${h.changeCount} changes)`
     );
-    sections.push(
-      `**Hotspots (frequently changed):**\n${hotspotLines.join('\n')}`
-    );
+    sections.push(`**Hotspots (frequently changed):**\n${hotspotLines.join('\n')}`);
   }
 
   if (activity.recentlyModifiedFiles.length > 0) {

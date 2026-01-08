@@ -16,65 +16,29 @@ import {
   getPhaseDescription as getPhaseDescriptionCore,
   getRemainingAttemptsInPhase,
   MAX_PHASE,
-  DEFAULT_RETRY_LIMIT,
 } from '../shared/error-handling-core.js';
 import { ensureGoodVibesDir } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
+import { PHASE_RETRY_LIMITS, type ErrorCategory, type ErrorState } from '../types/errors.js';
 import {
-  PHASE_RETRY_LIMITS,
-  type ErrorCategory,
-  type ErrorState,
-} from '../types/errors.js';
+  type RetryEntry,
+  type RetryData,
+  isRetryData,
+  isErrorState,
+  DEFAULT_MAX_AGE_HOURS,
+} from '../types/retry.js';
 
 import type { HooksState } from '../types/state.js';
 
-/** A single retry tracking entry */
-export interface RetryEntry {
-  /** Unique signature identifying the error */
-  signature: string;
-  /** Number of retry attempts */
-  attempts: number;
-  /** ISO timestamp of the last attempt */
-  lastAttempt: string;
-  /** Current escalation phase (1-3) */
-  phase: number;
-}
+// Re-export types for backwards compatibility
+export type { RetryEntry, RetryData };
 
-/** Map of error signatures to retry entries */
-export type RetryData = Record<string, RetryEntry>;
-
-/** Type guard to check if a value is a RetryData object */
-function isRetryData(value: unknown): value is RetryData {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-  const obj = value as Record<string, unknown>;
-  return Object.values(obj).every(
-    (entry) =>
-      entry !== null &&
-      typeof entry === 'object' &&
-      'signature' in entry &&
-      'attempts' in entry &&
-      'lastAttempt' in entry &&
-      'phase' in entry &&
-      typeof (entry as RetryEntry).signature === 'string' &&
-      typeof (entry as RetryEntry).attempts === 'number' &&
-      typeof (entry as RetryEntry).lastAttempt === 'string' &&
-      typeof (entry as RetryEntry).phase === 'number'
-  );
-}
-
-/** Type guard to check if a value is an ErrorState object */
-function isErrorState(value: unknown): value is ErrorState {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    'category' in value &&
-    'phase' in value &&
-    'attemptsThisPhase' in value
-  );
-}
-
+/**
+ * Gets the path to the retries.json file.
+ *
+ * @param cwd - The current working directory
+ * @returns Path to the retries file
+ */
 function getRetriesPath(cwd: string): string {
   return path.join(cwd, '.goodvibes', 'state', 'retries.json');
 }
@@ -89,20 +53,30 @@ export async function loadRetries(cwd: string): Promise<RetryData> {
   const retriesPath = getRetriesPath(cwd);
   try {
     await fs.access(retriesPath);
-  } catch (error) {
-    debug(`Retries file access check failed for ${retriesPath}: ${error}`);
+  } catch {
     return {};
   }
   try {
     const content = await fs.readFile(retriesPath, 'utf-8');
     const parsed: unknown = JSON.parse(content);
-    if (isRetryData(parsed)) {
-      return parsed;
-    }
-    return {};
+    return isRetryData(parsed) ? parsed : {};
   } catch (error: unknown) {
     debug('loadRetries failed', { error: String(error) });
     return {};
+  }
+}
+
+/**
+ * Saves retry data to disk.
+ *
+ * @param retriesPath - Path to the retries file
+ * @param retries - Retry data to save
+ */
+async function writeRetries(retriesPath: string, retries: RetryData): Promise<void> {
+  try {
+    await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
+  } catch (error: unknown) {
+    debug('writeRetryData failed', { error: String(error) });
   }
 }
 
@@ -133,30 +107,20 @@ export async function saveRetry(
       phase = 1;
     }
   }
+
   await ensureGoodVibesDir(cwd);
   const retriesPath = getRetriesPath(cwd);
   const retries = await loadRetries(cwd);
   const existing = retries[signature];
-  if (existing) {
-    retries[signature] = {
-      signature,
-      attempts: existing.attempts + 1,
-      lastAttempt: new Date().toISOString(),
-      phase: Math.max(existing.phase, phase),
-    };
-  } else {
-    retries[signature] = {
-      signature,
-      attempts: 1,
-      lastAttempt: new Date().toISOString(),
-      phase,
-    };
-  }
-  try {
-    await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-  } catch (error: unknown) {
-    debug('saveRetry failed', { error: String(error) });
-  }
+
+  retries[signature] = {
+    signature,
+    attempts: existing ? existing.attempts + 1 : 1,
+    lastAttempt: new Date().toISOString(),
+    phase: existing ? Math.max(existing.phase, phase) : phase,
+  };
+
+  await writeRetries(retriesPath, retries);
 }
 
 /**
@@ -166,10 +130,7 @@ export async function saveRetry(
  * @param signature - Unique error signature
  * @returns Promise resolving to retry count or 0 if not found
  */
-export async function getRetryCount(
-  cwd: string,
-  signature: string
-): Promise<number> {
+export async function getRetryCount(cwd: string, signature: string): Promise<number> {
   const retries = await loadRetries(cwd);
   return retries[signature]?.attempts ?? 0;
 }
@@ -181,10 +142,7 @@ export async function getRetryCount(
  * @param signature - Unique error signature
  * @returns Promise resolving to phase number (1-3) or 1 if not found
  */
-export async function getCurrentPhase(
-  cwd: string,
-  signature: string
-): Promise<number> {
+export async function getCurrentPhase(cwd: string, signature: string): Promise<number> {
   const retries = await loadRetries(cwd);
   return retries[signature]?.phase ?? 1;
 }
@@ -205,18 +163,13 @@ export async function shouldEscalatePhase(
   category: ErrorCategory = 'unknown'
 ): Promise<boolean> {
   if (typeof cwdOrErrorState === 'string') {
-    const cwd = cwdOrErrorState;
-    const retries = await loadRetries(cwd);
+    const retries = await loadRetries(cwdOrErrorState);
     const entry = retries[signature!];
-    if (!entry) {
-      return false;
-    }
+    if (!entry) {return false;}
     const limit = PHASE_RETRY_LIMITS[category];
     return entry.attempts >= limit && (currentPhase ?? entry.phase) < MAX_PHASE;
-  } else if (isErrorState(cwdOrErrorState)) {
-    return shouldEscalatePhaseCore(cwdOrErrorState);
   }
-  return false;
+  return isErrorState(cwdOrErrorState) ? shouldEscalatePhaseCore(cwdOrErrorState) : false;
 }
 
 /**
@@ -243,18 +196,13 @@ export async function hasExhaustedRetries(
   category: ErrorCategory = 'unknown'
 ): Promise<boolean> {
   if (typeof cwdOrErrorState === 'string') {
-    const cwd = cwdOrErrorState;
-    const retries = await loadRetries(cwd);
+    const retries = await loadRetries(cwdOrErrorState);
     const entry = retries[signature!];
-    if (!entry) {
-      return false;
-    }
+    if (!entry) {return false;}
     const limit = PHASE_RETRY_LIMITS[category];
     return entry.phase >= MAX_PHASE && entry.attempts >= limit;
-  } else if (isErrorState(cwdOrErrorState)) {
-    return hasExhaustedRetriesCore(cwdOrErrorState);
   }
-  return false;
+  return isErrorState(cwdOrErrorState) ? hasExhaustedRetriesCore(cwdOrErrorState) : false;
 }
 
 /**
@@ -280,19 +228,13 @@ export async function getRemainingAttempts(
   signature?: string,
   category: ErrorCategory = 'unknown'
 ): Promise<number> {
+  const limit = PHASE_RETRY_LIMITS[category];
   if (typeof cwdOrErrorState === 'string') {
-    const cwd = cwdOrErrorState;
-    const retries = await loadRetries(cwd);
+    const retries = await loadRetries(cwdOrErrorState);
     const entry = retries[signature!];
-    const limit = PHASE_RETRY_LIMITS[category];
-    if (!entry) {
-      return limit;
-    }
-    return Math.max(0, limit - entry.attempts);
-  } else if (isErrorState(cwdOrErrorState)) {
-    return getRemainingAttemptsInPhase(cwdOrErrorState);
+    return entry ? Math.max(0, limit - entry.attempts) : limit;
   }
-  return PHASE_RETRY_LIMITS[category];
+  return isErrorState(cwdOrErrorState) ? getRemainingAttemptsInPhase(cwdOrErrorState) : limit;
 }
 
 /**
@@ -302,10 +244,7 @@ export async function getRemainingAttempts(
  * @param toolName - The name of the tool that failed (optional)
  * @returns Unique error signature string
  */
-export function generateErrorSignature(
-  error: string,
-  toolName?: string
-): string {
+export function generateErrorSignature(error: string, toolName?: string): string {
   return generateErrorSignatureCore(error, toolName);
 }
 
@@ -316,23 +255,14 @@ export function generateErrorSignature(
  * @param signature - Unique error signature to clear
  * @returns Promise that resolves when retry is cleared
  */
-export async function clearRetry(
-  cwd: string,
-  signature: string
-): Promise<void> {
+export async function clearRetry(cwd: string, signature: string): Promise<void> {
   const retriesPath = getRetriesPath(cwd);
   const retries = await loadRetries(cwd);
   if (retries[signature]) {
     delete retries[signature];
-    try {
-      await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-    } catch (error: unknown) {
-      debug('writeRetryData failed', { error: String(error) });
-    }
+    await writeRetries(retriesPath, retries);
   }
 }
-
-const DEFAULT_MAX_AGE_HOURS = 24;
 
 /**
  * Removes retry tracking data older than specified hours.
@@ -349,20 +279,17 @@ export async function pruneOldRetries(
   const retries = await loadRetries(cwd);
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - maxAgeHours);
+
   let changed = false;
   for (const [signature, entry] of Object.entries(retries)) {
-    const lastAttempt = new Date(entry.lastAttempt);
-    if (lastAttempt < cutoff) {
+    if (new Date(entry.lastAttempt) < cutoff) {
       delete retries[signature];
       changed = true;
     }
   }
+
   if (changed) {
-    try {
-      await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-    } catch (error: unknown) {
-      debug('writeRetryData failed', { error: String(error) });
-    }
+    await writeRetries(retriesPath, retries);
   }
 }
 

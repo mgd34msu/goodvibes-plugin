@@ -5,20 +5,9 @@
  * Stores retry data in .goodvibes/state/retries.json.
  */
 import { type ErrorCategory, type ErrorState } from '../types/errors.js';
+import { type RetryEntry, type RetryData } from '../types/retry.js';
 import type { HooksState } from '../types/state.js';
-/** A single retry tracking entry */
-export interface RetryEntry {
-    /** Unique signature identifying the error */
-    signature: string;
-    /** Number of retry attempts */
-    attempts: number;
-    /** ISO timestamp of the last attempt */
-    lastAttempt: string;
-    /** Current escalation phase (1-3) */
-    phase: number;
-}
-/** Map of error signatures to retry entries */
-export type RetryData = Record<string, RetryEntry>;
+export type { RetryEntry, RetryData };
 /**
  * Loads retry tracking data from disk.
  *

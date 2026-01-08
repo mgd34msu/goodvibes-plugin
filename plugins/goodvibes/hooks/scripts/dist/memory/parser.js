@@ -185,6 +185,7 @@ function parseBlock(block, parser) {
  *
  * @param filePath - Absolute path to the memory file
  * @param header - Markdown header content to write
+ * @returns A promise that resolves when the file is created or already exists
  */
 export async function ensureMemoryFile(filePath, header) {
     if (!(await fileExists(filePath))) {
@@ -200,6 +201,7 @@ export async function ensureMemoryFile(filePath, header) {
  *
  * @param filePath - Absolute path to the memory file
  * @param entry - Formatted markdown entry to append
+ * @returns A promise that resolves when the entry is appended
  */
 export async function appendMemoryEntry(filePath, entry) {
     await fs.appendFile(filePath, entry);

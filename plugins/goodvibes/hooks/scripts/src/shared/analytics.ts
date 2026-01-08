@@ -94,7 +94,11 @@ export async function loadAnalytics(): Promise<SessionAnalytics | null> {
   if (await fileExists(ANALYTICS_FILE)) {
     try {
       const content = await fs.readFile(ANALYTICS_FILE, 'utf-8');
-      return JSON.parse(content);
+      const parsed: unknown = JSON.parse(content);
+      if (typeof parsed === 'object' && parsed !== null && 'session_id' in parsed) {
+        return parsed as SessionAnalytics;
+      }
+      return null;
     } catch (error: unknown) {
       debug('loadAnalytics failed', { error: String(error) });
       return null;

@@ -9,70 +9,27 @@ import * as path from 'path';
 
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/logging.js';
+import { PATTERN_NAMES } from '../types/folder-structure.js';
 
-/** Folder structure analysis results. */
-export interface FolderStructure {
-  pattern: ArchitecturePattern;
-  confidence: 'high' | 'medium' | 'low';
-  topLevelDirs: string[];
-  srcDir: string | null;
-  specialDirs: SpecialDirectories;
-  depth: number;
-}
+import {
+  LAYER_INDICATORS,
+  FEATURE_INDICATORS,
+  ATOMIC_INDICATORS,
+  DDD_INDICATORS,
+  MIN_INDICATOR_MATCH,
+  HIGH_CONFIDENCE_THRESHOLD,
+  DEFAULT_MAX_DEPTH,
+  FLAT_STRUCTURE_THRESHOLD,
+} from './folder-structure-constants.js';
 
-/** Recognized architecture patterns for project organization. */
-export type ArchitecturePattern =
-  | 'next-app-router'
-  | 'next-pages-router'
-  | 'feature-based'
-  | 'layer-based'
-  | 'domain-driven'
-  | 'atomic-design'
-  | 'component-based'
-  | 'flat'
-  | 'unknown';
+import type {
+  ArchitecturePattern,
+  FolderStructure,
+  SpecialDirectories,
+} from '../types/folder-structure.js';
 
-/** Flags indicating presence of common special directories. */
-export interface SpecialDirectories {
-  hasComponents: boolean;
-  hasPages: boolean;
-  hasApp: boolean;
-  hasApi: boolean;
-  hasLib: boolean;
-  hasUtils: boolean;
-  hasHooks: boolean;
-  hasServices: boolean;
-  hasTypes: boolean;
-  hasTests: boolean;
-}
-
-const LAYER_INDICATORS = [
-  'controllers',
-  'services',
-  'repositories',
-  'models',
-  'middleware',
-  'routes',
-];
-const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
-const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];
-const DDD_INDICATORS = [
-  'domain',
-  'infrastructure',
-  'application',
-  'aggregates',
-  'entities',
-  'value-objects',
-];
-
-/** Minimum indicator matches for pattern detection. */
-const MIN_INDICATOR_MATCH = 2;
-/** Minimum matches for high confidence pattern detection. */
-const HIGH_CONFIDENCE_THRESHOLD = 3;
-/** Maximum folder depth to traverse. */
-const DEFAULT_MAX_DEPTH = 5;
-/** Minimum top-level directories before considering structure flat. */
-const FLAT_STRUCTURE_THRESHOLD = 3;
+// Re-export types for backwards compatibility
+export type { ArchitecturePattern, FolderStructure, SpecialDirectories };
 
 /**
  * Get immediate subdirectories of a path.
@@ -85,8 +42,8 @@ async function getSubdirs(dirPath: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name.toLowerCase());
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name.toLowerCase());
   } catch (error: unknown) {
     debug('folder-structure failed', { error: String(error) });
     return [];
@@ -102,7 +59,7 @@ async function getSubdirs(dirPath: string): Promise<string[]> {
  * @returns Count of matching indicators found
  */
 function hasIndicators(dirs: string[], indicators: string[]): number {
-  return dirs.filter((d) => indicators.includes(d)).length;
+  return dirs.filter((dir) => indicators.includes(dir)).length;
 }
 
 /**
@@ -132,13 +89,13 @@ async function detectPattern(
 
     if (await fileExists(appPath)) {
       const appContents = await getSubdirs(appPath);
-      if (appContents.some((d) => d.startsWith('(') || d === 'api')) {
+      if (appContents.some((dir) => dir.startsWith('(') || dir === 'api')) {
         return { pattern: 'next-app-router', confidence: 'high' };
       }
       try {
         const files = await fs.readdir(appPath);
         if (
-          files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))
+          files.some((file) => file.startsWith('page.') || file.startsWith('layout.'))
         ) {
           return { pattern: 'next-app-router', confidence: 'high' };
         }
@@ -320,18 +277,7 @@ export async function analyzeFolderStructure(
  * @returns Human-readable name for the pattern
  */
 function getPatternName(pattern: ArchitecturePattern): string {
-  const names: Record<ArchitecturePattern, string> = {
-    'next-app-router': 'Next.js App Router',
-    'next-pages-router': 'Next.js Pages Router',
-    'feature-based': 'Feature-based / Module-based',
-    'layer-based': 'Layer-based (MVC-like)',
-    'domain-driven': 'Domain-Driven Design',
-    'atomic-design': 'Atomic Design',
-    'component-based': 'Component-based',
-    flat: 'Flat structure',
-    unknown: 'Unknown',
-  };
-  return names[pattern] || pattern;
+  return PATTERN_NAMES[pattern] || pattern;
 }
 
 /**
@@ -349,7 +295,6 @@ export function formatFolderStructure(
   structure: FolderStructure
 ): string | null {
   const sections: string[] = [];
-
   const patternName = getPatternName(structure.pattern);
   sections.push(
     `**Architecture:** ${patternName} (${structure.confidence} confidence)`
@@ -358,27 +303,13 @@ export function formatFolderStructure(
   const keyDirs: string[] = [];
   const special = structure.specialDirs;
 
-  if (special.hasApp) {
-    keyDirs.push('app/');
-  }
-  if (special.hasPages) {
-    keyDirs.push('pages/');
-  }
-  if (special.hasComponents) {
-    keyDirs.push('components/');
-  }
-  if (special.hasLib) {
-    keyDirs.push('lib/');
-  }
-  if (special.hasServices) {
-    keyDirs.push('services/');
-  }
-  if (special.hasHooks) {
-    keyDirs.push('hooks/');
-  }
-  if (special.hasApi) {
-    keyDirs.push('api/');
-  }
+  if (special.hasApp) {keyDirs.push('app/');}
+  if (special.hasPages) {keyDirs.push('pages/');}
+  if (special.hasComponents) {keyDirs.push('components/');}
+  if (special.hasLib) {keyDirs.push('lib/');}
+  if (special.hasServices) {keyDirs.push('services/');}
+  if (special.hasHooks) {keyDirs.push('hooks/');}
+  if (special.hasApi) {keyDirs.push('api/');}
 
   if (keyDirs.length > 0) {
     sections.push(`**Key Dirs:** ${keyDirs.join(', ')}`);

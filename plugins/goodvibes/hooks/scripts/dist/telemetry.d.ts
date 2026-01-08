@@ -13,8 +13,8 @@
  * New code should import directly from './telemetry/index.js' for the
  * core functions that take explicit path parameters.
  */
-export * from './telemetry/index.js';
 import type { ActiveAgentsState, ActiveAgentEntry, TelemetryRecord } from './telemetry/index.js';
+export * from './telemetry/index.js';
 /**
  * Ensure .goodvibes directories exist (backward compatible wrapper)
  */

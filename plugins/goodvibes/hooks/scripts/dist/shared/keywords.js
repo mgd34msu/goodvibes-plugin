@@ -7,7 +7,9 @@
  * - Task categorization
  *
  * This is the single authoritative source for keyword categories.
+ * Keyword data is stored in keywords-data.json for maintainability.
  */
+import keywordData from './keywords-data.json';
 // =============================================================================
 // Stack Detection Keywords (for tech stack identification)
 // =============================================================================
@@ -15,62 +17,7 @@
  * Keyword categories optimized for tech stack detection.
  * Used by shared.ts for extractKeywords() and stack detection.
  */
-export const STACK_KEYWORD_CATEGORIES = {
-    frameworks_frontend: [
-        'react',
-        'nextjs',
-        'next.js',
-        'vue',
-        'nuxt',
-        'svelte',
-        'sveltekit',
-        'angular',
-        'solid',
-        'solidjs',
-        'qwik',
-        'astro',
-        'remix',
-        'gatsby',
-    ],
-    frameworks_backend: ['express', 'fastify', 'hono', 'koa', 'nest', 'nestjs'],
-    languages: ['typescript', 'javascript', 'python', 'rust', 'go', 'golang'],
-    databases: [
-        'postgresql',
-        'postgres',
-        'mysql',
-        'sqlite',
-        'mongodb',
-        'redis',
-        'supabase',
-        'firebase',
-        'turso',
-    ],
-    orms: ['prisma', 'drizzle', 'typeorm', 'sequelize', 'knex', 'kysely'],
-    api: ['rest', 'graphql', 'trpc', 'grpc', 'websocket', 'socket.io'],
-    auth: ['clerk', 'nextauth', 'auth.js', 'lucia', 'auth0', 'jwt', 'oauth'],
-    ui: [
-        'tailwind',
-        'tailwindcss',
-        'shadcn',
-        'radix',
-        'chakra',
-        'mantine',
-        'mui',
-    ],
-    state: ['zustand', 'redux', 'jotai', 'recoil', 'mobx', 'valtio'],
-    testing: ['vitest', 'jest', 'playwright', 'cypress', 'testing-library'],
-    build: ['vite', 'webpack', 'esbuild', 'rollup', 'turbopack', 'bun'],
-    devops: [
-        'docker',
-        'kubernetes',
-        'vercel',
-        'netlify',
-        'cloudflare',
-        'aws',
-        'railway',
-    ],
-    ai: ['openai', 'anthropic', 'claude', 'gpt', 'llm', 'langchain', 'vercel-ai'],
-};
+export const STACK_KEYWORD_CATEGORIES = keywordData.stackKeywords;
 // =============================================================================
 // Transcript Classification Keywords (for task/content analysis)
 // =============================================================================
@@ -78,204 +25,7 @@ export const STACK_KEYWORD_CATEGORIES = {
  * Keyword categories optimized for transcript and task classification.
  * More comprehensive coverage for understanding what tasks are about.
  */
-export const TRANSCRIPT_KEYWORD_CATEGORIES = {
-    // Frameworks (frontend + backend combined)
-    frameworks: [
-        'react',
-        'next',
-        'nextjs',
-        'vue',
-        'angular',
-        'svelte',
-        'remix',
-        'astro',
-        'express',
-        'fastify',
-        'hono',
-        'koa',
-        'nest',
-        'nestjs',
-        'django',
-        'flask',
-        'fastapi',
-        'rails',
-        'laravel',
-        'spring',
-        'springboot',
-    ],
-    // Databases (includes hosted services and ORMs)
-    databases: [
-        'postgres',
-        'postgresql',
-        'mysql',
-        'mariadb',
-        'sqlite',
-        'mongodb',
-        'mongo',
-        'redis',
-        'dynamodb',
-        'supabase',
-        'planetscale',
-        'turso',
-        'neon',
-        'prisma',
-        'drizzle',
-        'kysely',
-        'typeorm',
-        'sequelize',
-    ],
-    // Authentication
-    auth: [
-        'auth',
-        'authentication',
-        'authorization',
-        'oauth',
-        'jwt',
-        'session',
-        'clerk',
-        'auth0',
-        'nextauth',
-        'lucia',
-        'passport',
-        'login',
-        'signup',
-        'password',
-        'token',
-    ],
-    // Testing
-    testing: [
-        'test',
-        'testing',
-        'jest',
-        'vitest',
-        'mocha',
-        'chai',
-        'playwright',
-        'cypress',
-        'puppeteer',
-        'unit test',
-        'integration test',
-        'e2e',
-        'coverage',
-    ],
-    // API
-    api: [
-        'api',
-        'rest',
-        'graphql',
-        'trpc',
-        'grpc',
-        'endpoint',
-        'route',
-        'handler',
-        'middleware',
-        'openapi',
-        'swagger',
-        'apollo',
-    ],
-    // DevOps / Infrastructure
-    devops: [
-        'docker',
-        'kubernetes',
-        'k8s',
-        'terraform',
-        'ansible',
-        'ci',
-        'cd',
-        'pipeline',
-        'deploy',
-        'deployment',
-        'aws',
-        'gcp',
-        'azure',
-        'vercel',
-        'netlify',
-        'railway',
-        'github actions',
-        'gitlab ci',
-    ],
-    // Frontend / UI
-    frontend: [
-        'css',
-        'tailwind',
-        'styled-components',
-        'sass',
-        'scss',
-        'component',
-        'ui',
-        'ux',
-        'responsive',
-        'animation',
-        'form',
-        'modal',
-        'table',
-        'button',
-        'input',
-    ],
-    // State Management
-    state: [
-        'state',
-        'redux',
-        'zustand',
-        'jotai',
-        'recoil',
-        'mobx',
-        'context',
-        'provider',
-        'store',
-    ],
-    // TypeScript
-    typescript: [
-        'typescript',
-        'type',
-        'interface',
-        'generic',
-        'enum',
-        'zod',
-        'yup',
-        'io-ts',
-        'validation',
-        'schema',
-    ],
-    // Performance
-    performance: [
-        'performance',
-        'optimization',
-        'cache',
-        'caching',
-        'lazy',
-        'bundle',
-        'minify',
-        'compress',
-        'speed',
-    ],
-    // Security
-    security: [
-        'security',
-        'xss',
-        'csrf',
-        'sql injection',
-        'sanitize',
-        'encrypt',
-        'hash',
-        'ssl',
-        'https',
-        'cors',
-    ],
-    // File Operations
-    files: [
-        'file',
-        'upload',
-        'download',
-        'stream',
-        'buffer',
-        'read',
-        'write',
-        'create',
-        'delete',
-        'modify',
-    ],
-};
+export const TRANSCRIPT_KEYWORD_CATEGORIES = keywordData.transcriptKeywords;
 // =============================================================================
 // Unified Access
 // =============================================================================
@@ -299,10 +49,8 @@ export const ALL_KEYWORDS = [
     ...new Set([...ALL_STACK_KEYWORDS, ...ALL_TRANSCRIPT_KEYWORDS]),
 ];
 // =============================================================================
-// Utility Functions
+// Pre-compiled Regex Maps (Performance Optimization)
 // =============================================================================
-/** Maximum number of keywords to extract from text. */
-const MAX_EXTRACTED_KEYWORDS = 50;
 /**
  * Escape special regex characters in a string.
  */
@@ -310,7 +58,29 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 /**
+ * Pre-compiled regex patterns for stack keywords.
+ * Created at module initialization to avoid repeated regex compilation.
+ */
+const STACK_KEYWORD_REGEX_MAP = new Map(ALL_STACK_KEYWORDS.map((keyword) => [
+    keyword,
+    new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i'),
+]));
+/**
+ * Pre-compiled regex patterns for transcript keywords.
+ * Created at module initialization to avoid repeated regex compilation.
+ */
+const TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(ALL_TRANSCRIPT_KEYWORDS.map((keyword) => [
+    keyword,
+    new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i'),
+]));
+// =============================================================================
+// Utility Functions
+// =============================================================================
+/** Maximum number of keywords to extract from text. */
+const MAX_EXTRACTED_KEYWORDS = 50;
+/**
  * Extract known keywords from text using stack detection categories.
+ * Uses pre-compiled regex patterns for performance.
  *
  * @param text - Text to search for keywords
  * @returns Array of found keywords (max 50)
@@ -319,8 +89,7 @@ export function extractStackKeywords(text) {
     const found = new Set();
     const lowerText = text.toLowerCase();
     for (const keyword of ALL_STACK_KEYWORDS) {
-        const regex = new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i');
-        if (regex.test(lowerText)) {
+        if (STACK_KEYWORD_REGEX_MAP.get(keyword)?.test(lowerText)) {
             found.add(keyword);
         }
     }
@@ -329,6 +98,7 @@ export function extractStackKeywords(text) {
 /**
  * Extract keywords from text with category metadata.
  * Used for transcript classification.
+ * Uses pre-compiled regex patterns for performance.
  *
  * @param taskDescription - Optional task description
  * @param transcriptContent - Optional transcript content
@@ -338,18 +108,17 @@ export function extractStackKeywords(text) {
 export function extractTranscriptKeywords(taskDescription, transcriptContent, agentType) {
     const keywords = new Set();
     const searchText = [
-        taskDescription || '',
-        transcriptContent || '',
-        agentType || '',
+        taskDescription ?? '',
+        transcriptContent ?? '',
+        agentType ?? '',
     ]
         .join(' ')
         .toLowerCase();
-    // Check for each keyword category
+    // Check for each keyword category using pre-compiled regex patterns
     for (const [category, categoryKeywords] of Object.entries(TRANSCRIPT_KEYWORD_CATEGORIES)) {
         for (const keyword of categoryKeywords) {
-            // Use word boundary matching for accuracy
-            const pattern = new RegExp('\\b' + escapeRegex(keyword) + '\\b', 'i');
-            if (pattern.test(searchText)) {
+            // Use pre-compiled regex pattern for performance
+            if (TRANSCRIPT_KEYWORD_REGEX_MAP.get(keyword)?.test(searchText)) {
                 keywords.add(keyword);
                 // Also add the category as a meta-keyword
                 keywords.add('category:' + category);

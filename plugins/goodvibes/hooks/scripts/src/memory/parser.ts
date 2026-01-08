@@ -249,6 +249,7 @@ function parseBlock<T>(block: string, parser: SectionParser<T>): Partial<T> {
  *
  * @param filePath - Absolute path to the memory file
  * @param header - Markdown header content to write
+ * @returns A promise that resolves when the file is created or already exists
  */
 export async function ensureMemoryFile(
   filePath: string,
@@ -268,6 +269,7 @@ export async function ensureMemoryFile(
  *
  * @param filePath - Absolute path to the memory file
  * @param entry - Formatted markdown entry to append
+ * @returns A promise that resolves when the entry is appended
  */
 export async function appendMemoryEntry(
   filePath: string,

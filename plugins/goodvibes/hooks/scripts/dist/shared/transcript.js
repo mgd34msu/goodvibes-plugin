@@ -34,18 +34,24 @@ export async function parseTranscript(transcriptPath) {
         for (const line of lines) {
             try {
                 const event = JSON.parse(line);
-                if (event.type === 'tool_use') {
-                    toolsUsed.add(event.name);
-                    if (['Write', 'Edit'].includes(event.name) &&
-                        event.input?.file_path) {
-                        filesModified.push(event.input.file_path);
+                if (typeof event !== 'object' || event === null) {
+                    continue;
+                }
+                const eventObj = event;
+                if (eventObj.type === 'tool_use' && typeof eventObj.name === 'string') {
+                    toolsUsed.add(eventObj.name);
+                    if (['Write', 'Edit'].includes(eventObj.name)) {
+                        const input = eventObj.input;
+                        if (input?.file_path && typeof input.file_path === 'string') {
+                            filesModified.push(input.file_path);
+                        }
                     }
                 }
-                if (event.role === 'assistant' && event.content) {
+                if (eventObj.role === 'assistant' && eventObj.content) {
                     lastAssistantMessage =
-                        typeof event.content === 'string'
-                            ? event.content
-                            : JSON.stringify(event.content);
+                        typeof eventObj.content === 'string'
+                            ? eventObj.content
+                            : JSON.stringify(eventObj.content);
                 }
             }
             catch (error) {

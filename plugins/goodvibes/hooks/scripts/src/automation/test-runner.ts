@@ -47,7 +47,7 @@ export function findTestsForFile(sourceFile: string): string[] {
     sourceFile.replace(/src\/(.*)\.tsx?$/, 'tests/$1.test.ts'),
   ];
 
-  return testPatterns.filter((p) => fs.existsSync(p));
+  return testPatterns.filter((pattern) => fs.existsSync(pattern));
 }
 
 /**

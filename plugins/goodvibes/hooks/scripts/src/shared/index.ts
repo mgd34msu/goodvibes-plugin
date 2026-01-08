@@ -116,3 +116,9 @@ export {
   extractStackKeywords as extractKeywords,
   extractTranscriptKeywords,
 } from './keywords.js';
+
+// =============================================================================
+// Hook Runner
+// =============================================================================
+export type { HookHandler, RunHookOptions } from './hook-runner.js';
+export { runHook, runHookSync, isMainModule } from './hook-runner.js';

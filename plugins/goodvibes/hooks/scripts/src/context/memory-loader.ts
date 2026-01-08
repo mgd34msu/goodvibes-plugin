@@ -215,17 +215,17 @@ export function formatMemory(memory: ProjectMemory): string | null {
   if (memory.patterns.length > 0) {
     const patternLines = memory.patterns
       .slice(0, MAX_PATTERNS_DISPLAY)
-      .map((p) => `- **${p.name}:** ${p.description}`);
+      .map((pattern) => `- **${pattern.name}:** ${pattern.description}`);
     sections.push(`**Project Patterns:**\n${patternLines.join('\n')}`);
   }
 
   // Recent failures
   if (memory.failures.length > 0) {
     const recent = memory.failures.slice(-RECENT_FAILURES_LIMIT);
-    const failureLines = recent.map((f) => {
-      let line = `- ${f.error}`;
-      if (f.resolution) {
-        line += ` -> Resolved: ${f.resolution}`;
+    const failureLines = recent.map((failure) => {
+      let line = `- ${failure.error}`;
+      if (failure.resolution) {
+        line += ` -> Resolved: ${failure.resolution}`;
       }
       return line;
     });

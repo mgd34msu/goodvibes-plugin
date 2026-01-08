@@ -201,8 +201,11 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
   if (await fileExists(tsconfigPath)) {
     try {
       const content = await fs.readFile(tsconfigPath, 'utf-8');
-      const config = JSON.parse(content);
-      isStrict = config.compilerOptions?.strict === true;
+      const config: unknown = JSON.parse(content);
+      if (typeof config === 'object' && config !== null && 'compilerOptions' in config) {
+        const compilerOptions = (config as { compilerOptions?: { strict?: boolean } }).compilerOptions;
+        isStrict = compilerOptions?.strict === true;
+      }
     } catch (error: unknown) {
       // tsconfig.json might have comments or invalid JSON - ignore parse errors
       debug('stack-detector: Failed to parse tsconfig.json', error);

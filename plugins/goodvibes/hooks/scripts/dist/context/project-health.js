@@ -67,7 +67,9 @@ async function checkTypeScript(cwd) {
         const content = await fs.readFile(tsconfigPath, 'utf-8');
         const jsonContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
         const tsconfig = JSON.parse(jsonContent);
-        const compilerOptions = tsconfig.compilerOptions || {};
+        const compilerOptions = typeof tsconfig === 'object' && tsconfig !== null && 'compilerOptions' in tsconfig
+            ? (tsconfig.compilerOptions ?? {})
+            : {};
         return {
             hasConfig: true,
             strict: compilerOptions.strict === true,
@@ -75,7 +77,7 @@ async function checkTypeScript(cwd) {
                 compilerOptions.strict === true,
             noImplicitAny: compilerOptions.noImplicitAny === true ||
                 compilerOptions.strict === true,
-            target: compilerOptions.target || null,
+            target: typeof compilerOptions.target === 'string' ? compilerOptions.target : null,
         };
     }
     catch (error) {
@@ -104,7 +106,11 @@ async function getScripts(cwd) {
     try {
         const content = await fs.readFile(packageJsonPath, 'utf-8');
         const packageJson = JSON.parse(content);
-        return Object.keys(packageJson.scripts || {});
+        if (typeof packageJson === 'object' && packageJson !== null && 'scripts' in packageJson) {
+            const scripts = packageJson.scripts;
+            return Object.keys(scripts ?? {});
+        }
+        return [];
     }
     catch (error) {
         debug('project-health failed', { error: String(error) });
@@ -247,20 +253,20 @@ export function formatProjectHealth(health) {
         sections.push(line);
     }
     if (health.scripts.length > 0) {
-        const importantScripts = health.scripts.filter((s) => ['dev', 'build', 'start', 'test', 'lint', 'typecheck'].includes(s));
+        const importantScripts = health.scripts.filter((script) => ['dev', 'build', 'start', 'test', 'lint', 'typecheck'].includes(script));
         if (importantScripts.length > 0) {
             sections.push(`**Scripts:** ${importantScripts.join(', ')}`);
         }
     }
     if (health.warnings.length > 0) {
-        const warningLines = health.warnings.map((w) => {
-            const icon = w.type === 'error' ? '[!]' : w.type === 'warning' ? '[*]' : '[i]';
-            return `${icon} ${w.message}`;
+        const warningLines = health.warnings.map((warning) => {
+            const icon = warning.type === 'error' ? '[!]' : warning.type === 'warning' ? '[*]' : '[i]';
+            return `${icon} ${warning.message}`;
         });
         sections.push(`**Health Issues:**\n${warningLines.join('\n')}`);
     }
     if (health.suggestions.length > 0) {
-        const suggestionLines = health.suggestions.map((s) => `- ${s}`);
+        const suggestionLines = health.suggestions.map((suggestion) => `- ${suggestion}`);
         sections.push(`**Suggestions:**\n${suggestionLines.join('\n')}`);
     }
     return sections.length > 0 ? sections.join('\n') : null;

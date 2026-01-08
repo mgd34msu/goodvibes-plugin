@@ -9,8 +9,6 @@ import * as path from 'path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { MemoryPattern } from '../../types/memory.js';
-
 // Mock the parser module before importing the module under test
 vi.mock('../../memory/parser.js', () => ({
   parseMemoryFile: vi.fn(),

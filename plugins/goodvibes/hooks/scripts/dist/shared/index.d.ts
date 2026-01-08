@@ -18,3 +18,5 @@ export { fileExists, fileExistsRelative, commandExists, validateRegistries, ensu
 export type { TranscriptData } from './transcript.js';
 export { parseTranscript } from './transcript.js';
 export { KEYWORD_CATEGORIES, ALL_KEYWORDS, STACK_KEYWORD_CATEGORIES, TRANSCRIPT_KEYWORD_CATEGORIES, ALL_STACK_KEYWORDS, ALL_TRANSCRIPT_KEYWORDS, extractStackKeywords, extractStackKeywords as extractKeywords, extractTranscriptKeywords, } from './keywords.js';
+export type { HookHandler, RunHookOptions } from './hook-runner.js';
+export { runHook, runHookSync, isMainModule } from './hook-runner.js';

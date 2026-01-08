@@ -14,77 +14,45 @@ import * as path from 'path';
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/logging.js';
 
-// =============================================================================
-// Types
-// =============================================================================
+import {
+  SENSITIVE_PATTERNS,
+  ENV_FILES,
+  ENV_EXAMPLE_FILES,
+} from './constants/environment.js';
 
-/**
- * Lightweight environment status for quick checks.
- * Used by consumers that need basic env file presence information.
- */
-export interface EnvStatus {
-  hasEnvFile: boolean;
-  hasEnvExample: boolean;
-  missingVars: string[];
-  warnings: string[];
-}
+import type { EnvStatus, EnvironmentContext } from '../types/environment.js';
 
-/**
- * Comprehensive environment analysis results.
- * Includes sensitive variable detection and detailed file information.
- */
-export interface EnvironmentContext {
-  envFiles: string[];
-  hasEnvExample: boolean;
-  missingVars: string[];
-  definedVars: string[];
-  sensitiveVarsExposed: string[];
-}
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Common sensitive variable patterns for security detection.
- * Used to identify environment variables that should not be committed.
- */
-const SENSITIVE_PATTERNS = [
-  /api[_-]?key/i,
-  /secret|password|token/i,
-  /private[_-]?key/i,
-  /credentials/i,
-  /auth/i,
-];
-
-/**
- * All env file variants to check for.
- * Includes development, production, test, and local variants.
- */
-const ENV_FILES = [
-  '.env',
-  '.env.local',
-  '.env.development',
-  '.env.development.local',
-  '.env.production',
-  '.env.production.local',
-  '.env.test',
-  '.env.test.local',
-];
-
-/**
- * Example/template env files to check for required variables.
- * These files document the required environment variables.
- */
-const ENV_EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template'];
+// Re-export types for consumers
+export type { EnvStatus, EnvironmentContext };
 
 // =============================================================================
 // Internal Helpers
 // =============================================================================
 
 /**
- * Parse an env file and extract variable names (async version).
- * Reads the file and extracts all environment variable names.
+ * Parse env content and extract variable names.
+ *
+ * @param content - The raw content of an env file
+ * @returns Array of environment variable names
+ */
+function parseEnvVars(content: string): string[] {
+  const vars: string[] = [];
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
+    if (match) {
+      vars.push(match[1]);
+    }
+  }
+  return vars;
+}
+
+/**
+ * Parse an env file and extract variable names.
  *
  * @param filePath - The absolute path to the .env file
  * @returns Promise resolving to array of variable names
@@ -94,7 +62,6 @@ async function parseEnvFile(filePath: string): Promise<string[]> {
     if (!(await fileExists(filePath))) {
       return [];
     }
-
     const content = await fs.readFile(filePath, 'utf-8');
     return parseEnvVars(content);
   } catch (error: unknown) {
@@ -104,41 +71,29 @@ async function parseEnvFile(filePath: string): Promise<string[]> {
 }
 
 /**
- * Parse env content and extract variable names.
- * Handles comments and various env file formats.
- *
- * @param content - The raw content of an env file
- * @returns Array of environment variable names
- */
-function parseEnvVars(content: string): string[] {
-  const vars: string[] = [];
-
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    // Skip comments and empty lines
-    if (!trimmed || trimmed.startsWith('#')) {
-      continue;
-    }
-
-    // Extract variable name (support both KEY=value and KEY= formats)
-    const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=/i);
-    if (match) {
-      vars.push(match[1]);
-    }
-  }
-
-  return vars;
-}
-
-/**
  * Check if a variable name looks sensitive.
- * Matches against common patterns for API keys, secrets, tokens, etc.
  *
  * @param varName - The environment variable name to check
- * @returns True if the variable name matches sensitive patterns, false otherwise
+ * @returns True if the variable name matches sensitive patterns
  */
 function isSensitiveVar(varName: string): boolean {
   return SENSITIVE_PATTERNS.some((pattern) => pattern.test(varName));
+}
+
+/**
+ * Check if an env file is ignored by gitignore.
+ *
+ * @param gitignore - The gitignore file contents
+ * @param envFile - The env file name to check
+ * @returns True if the file is ignored
+ */
+function isEnvFileIgnored(gitignore: string, envFile: string): boolean {
+  return (
+    gitignore.includes(envFile) ||
+    gitignore.includes('.env') ||
+    gitignore.includes('.env*') ||
+    gitignore.includes('.env.*')
+  );
 }
 
 // =============================================================================
@@ -147,10 +102,6 @@ function isSensitiveVar(varName: string): boolean {
 
 /**
  * Quick environment check returning basic status.
- *
- * This is the lightweight check that returns basic status. For comprehensive
- * environment analysis including sensitive variable detection, use
- * {@link analyzeEnvironment} instead.
  *
  * @param cwd - Working directory to check
  * @returns Promise resolving to EnvStatus
@@ -185,7 +136,6 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
     }
 
     missingVars = requiredVars.filter((v) => !definedVars.includes(v));
-
     if (missingVars.length > 0) {
       warnings.push(`Missing env vars: ${missingVars.join(', ')}`);
     }
@@ -199,30 +149,22 @@ export async function checkEnvStatus(cwd: string): Promise<EnvStatus> {
 // =============================================================================
 
 /**
- * Comprehensive environment analysis including security checks.
- *
- * Performs full analysis including:
- * - Detection of all .env file variants
- * - Missing variable detection against example files
- * - Sensitive variable exposure detection (not in .gitignore)
+ * Collect env files and their variables from the project.
  *
  * @param cwd - Working directory to analyze
- * @returns Promise resolving to EnvironmentContext
+ * @returns Object with envFiles array and definedVars array
  */
-export async function analyzeEnvironment(
+async function collectEnvFiles(
   cwd: string
-): Promise<EnvironmentContext> {
+): Promise<{ envFiles: string[]; definedVars: string[] }> {
   const envFiles: string[] = [];
   let definedVars: string[] = [];
 
-  // Check which env files exist (parallel)
   const fileChecks = await Promise.all(
     ENV_FILES.map(async (envFile) => {
       const filePath = path.join(cwd, envFile);
-      const exists = await fileExists(filePath);
-      if (exists) {
-        const vars = await parseEnvFile(filePath);
-        return { envFile, vars };
+      if (await fileExists(filePath)) {
+        return { envFile, vars: await parseEnvFile(filePath) };
       }
       return null;
     })
@@ -235,63 +177,88 @@ export async function analyzeEnvironment(
     }
   }
 
-  // Deduplicate
-  definedVars = [...new Set(definedVars)];
+  return { envFiles, definedVars: [...new Set(definedVars)] };
+}
 
-  // Check for .env.example (parallel check, sequential processing)
-  let hasEnvExample = false;
-  let exampleVars: string[] = [];
-
+/**
+ * Find example env file and its variables.
+ *
+ * @param cwd - Working directory to check
+ * @returns Object with hasEnvExample flag and exampleVars array
+ */
+async function findExampleEnvFile(
+  cwd: string
+): Promise<{ hasEnvExample: boolean; exampleVars: string[] }> {
   const exampleChecks = await Promise.all(
     ENV_EXAMPLE_FILES.map(async (exampleFile) => {
       const filePath = path.join(cwd, exampleFile);
-      const exists = await fileExists(filePath);
-      return { exampleFile, filePath, exists };
+      return { filePath, exists: await fileExists(filePath) };
     })
   );
 
   for (const check of exampleChecks) {
     if (check.exists) {
-      hasEnvExample = true;
-      exampleVars = await parseEnvFile(check.filePath);
-      break;
+      return {
+        hasEnvExample: true,
+        exampleVars: await parseEnvFile(check.filePath),
+      };
     }
   }
 
-  // Find missing vars (in example but not in any env file)
-  const missingVars = exampleVars.filter((v) => !definedVars.includes(v));
+  return { hasEnvExample: false, exampleVars: [] };
+}
 
-  // Check for sensitive vars that might be in version control
+/**
+ * Check for sensitive vars that might be in version control.
+ *
+ * @param cwd - Working directory
+ * @param envFiles - List of env files found
+ * @returns Array of exposed sensitive variable descriptions
+ */
+async function checkSensitiveVarsExposed(
+  cwd: string,
+  envFiles: string[]
+): Promise<string[]> {
   const sensitiveVarsExposed: string[] = [];
-
   const gitignorePath = path.join(cwd, '.gitignore');
-  if (await fileExists(gitignorePath)) {
-    const gitignore = await fs.readFile(gitignorePath, 'utf-8');
 
-    for (const envFile of envFiles) {
-      // Simple check - see if the file pattern is in gitignore
-      const isIgnored =
-        gitignore.includes(envFile) ||
-        gitignore.includes('.env') ||
-        gitignore.includes('.env*') ||
-        gitignore.includes('.env.*');
+  if (!(await fileExists(gitignorePath))) {
+    return [];
+  }
 
-      if (!isIgnored && envFile !== '.env.example') {
-        const vars = await parseEnvFile(path.join(cwd, envFile));
-        const sensitive = vars.filter(isSensitiveVar);
-        sensitiveVarsExposed.push(
-          ...sensitive.map((v) => `${v} (in ${envFile})`)
-        );
-      }
+  const gitignore = await fs.readFile(gitignorePath, 'utf-8');
+
+  for (const envFile of envFiles) {
+    if (!isEnvFileIgnored(gitignore, envFile) && envFile !== '.env.example') {
+      const vars = await parseEnvFile(path.join(cwd, envFile));
+      const sensitive = vars.filter(isSensitiveVar);
+      sensitiveVarsExposed.push(...sensitive.map((v) => `${v} (in ${envFile})`));
     }
   }
+
+  return [...new Set(sensitiveVarsExposed)];
+}
+
+/**
+ * Comprehensive environment analysis including security checks.
+ *
+ * @param cwd - Working directory to analyze
+ * @returns Promise resolving to EnvironmentContext
+ */
+export async function analyzeEnvironment(
+  cwd: string
+): Promise<EnvironmentContext> {
+  const { envFiles, definedVars } = await collectEnvFiles(cwd);
+  const { hasEnvExample, exampleVars } = await findExampleEnvFile(cwd);
+  const missingVars = exampleVars.filter((v) => !definedVars.includes(v));
+  const sensitiveVarsExposed = await checkSensitiveVarsExposed(cwd, envFiles);
 
   return {
     envFiles,
     hasEnvExample,
     missingVars,
     definedVars,
-    sensitiveVarsExposed: [...new Set(sensitiveVarsExposed)],
+    sensitiveVarsExposed,
   };
 }
 
@@ -328,13 +295,11 @@ export function formatEnvStatus(status: EnvStatus): string {
  * @returns Formatted string or null if no env files
  */
 export function formatEnvironment(context: EnvironmentContext): string | null {
-  const lines: string[] = [];
-
   if (context.envFiles.length === 0) {
     return null;
   }
 
-  lines.push(`**Env Files:** ${context.envFiles.join(', ')}`);
+  const lines: string[] = [`**Env Files:** ${context.envFiles.join(', ')}`];
 
   if (context.missingVars.length > 0) {
     lines.push(
@@ -348,6 +313,5 @@ export function formatEnvironment(context: EnvironmentContext): string | null {
     );
   }
 
-  // lines always has at least one element here since we return early if envFiles is empty
   return lines.join('\n');
 }

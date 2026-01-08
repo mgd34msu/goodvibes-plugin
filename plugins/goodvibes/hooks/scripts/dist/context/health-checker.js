@@ -55,7 +55,10 @@ export async function checkProjectHealth(cwd) {
         try {
             const content = await fs.readFile(tsconfigPath, 'utf-8');
             const config = JSON.parse(content);
-            if (!config.compilerOptions?.strict) {
+            const compilerOptions = typeof config === 'object' && config !== null && 'compilerOptions' in config
+                ? config.compilerOptions
+                : undefined;
+            if (!compilerOptions?.strict) {
                 checks.push({
                     check: 'typescript',
                     status: 'info',

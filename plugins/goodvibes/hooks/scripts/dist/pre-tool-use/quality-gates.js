@@ -62,7 +62,11 @@ async function toolExists(tool, cwd) {
         const content = await fs.readFile(packageJson, 'utf-8');
         const pkg = JSON.parse(content);
         const scriptName = tool.replace('npm ', '').replace('run ', '');
-        return !!pkg.scripts?.[scriptName];
+        if (typeof pkg === 'object' && pkg !== null && 'scripts' in pkg) {
+            const scripts = pkg.scripts;
+            return !!scripts?.[scriptName];
+        }
+        return false;
     }
     // For other commands (e.g., system tools), assume they exist and let execution fail if not
     return true;
@@ -195,6 +199,6 @@ export function isCommitCommand(command) {
  */
 export function formatGateResults(results) {
     return results
-        .map((r) => `${r.gate}: ${r.status}${r.message ? ` (${r.message})` : ''}`)
+        .map((result) => `${result.gate}: ${result.status}${result.message ? ` (${result.message})` : ''}`)
         .join(', ');
 }

@@ -81,7 +81,7 @@ export async function searchMemory(
   preferences: MemoryPreference[];
 }> {
   const memory = await loadMemory(cwd);
-  const lowerKeywords = keywords.map((k) => k.toLowerCase());
+  const lowerKeywords = keywords.map((keyword) => keyword.toLowerCase());
 
   const matchesKeywords = (text: string): boolean => {
     const lowerText = text.toLowerCase();

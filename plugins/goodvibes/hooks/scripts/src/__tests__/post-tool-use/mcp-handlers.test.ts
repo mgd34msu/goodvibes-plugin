@@ -10,17 +10,6 @@ import * as path from 'path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import {
-  handleDetectStack,
-  handleRecommendSkills,
-  handleSearch,
-  handleValidateImplementation,
-  handleRunSmokeTest,
-  handleCheckTypes,
-} from '../../post-tool-use/mcp-handlers.js';
-
-import type { HookInput } from '../../shared/index.js';
-
 // Mock all external dependencies
 vi.mock('fs/promises');
 vi.mock('../../shared/index.js', () => ({
@@ -42,6 +31,15 @@ vi.mock('../../post-tool-use/response.js', () => ({
 
 // Import mocked modules
 import {
+  handleDetectStack,
+  handleRecommendSkills,
+  handleSearch,
+  handleValidateImplementation,
+  handleRunSmokeTest,
+  handleCheckTypes,
+} from '../../post-tool-use/mcp-handlers.js';
+import { createResponse } from '../../post-tool-use/response.js';
+import {
   respond,
   loadAnalytics,
   saveAnalytics,
@@ -51,7 +49,8 @@ import {
   logError,
   CACHE_DIR,
 } from '../../shared/index.js';
-import { createResponse } from '../../post-tool-use/response.js';
+
+import type { HookInput } from '../../shared/index.js';
 
 describe('MCP Handlers', () => {
   beforeEach(() => {

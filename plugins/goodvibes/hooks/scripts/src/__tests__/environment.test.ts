@@ -3,6 +3,8 @@
  * Target: 100% line and branch coverage
  */
 
+import * as fs from 'fs/promises';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies BEFORE importing the module under test
@@ -11,8 +13,6 @@ vi.mock('../shared/file-utils.js');
 vi.mock('../shared/logging.js', () => ({
   debug: vi.fn(),
 }));
-
-import * as fs from 'fs/promises';
 
 import {
   checkEnvStatus,

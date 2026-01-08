@@ -15,10 +15,9 @@
  */
 import * as path from 'path';
 import { PROJECT_ROOT } from './shared/constants.js';
+import { loadActiveAgents as loadActiveAgentsCore, saveActiveAgents as saveActiveAgentsCore, registerActiveAgent as registerActiveAgentCore, popActiveAgent as popActiveAgentCore, cleanupStaleAgents as cleanupStaleAgentsCore, ensureGoodVibesDirs as ensureGoodVibesDirsCore, writeTelemetryRecord as writeTelemetryRecordCore, } from './telemetry/index.js';
 // Re-export all types and core functions from the telemetry module
 export * from './telemetry/index.js';
-// Import core functions for the wrappers
-import { loadActiveAgents as loadActiveAgentsCore, saveActiveAgents as saveActiveAgentsCore, registerActiveAgent as registerActiveAgentCore, popActiveAgent as popActiveAgentCore, cleanupStaleAgents as cleanupStaleAgentsCore, ensureGoodVibesDirs as ensureGoodVibesDirsCore, writeTelemetryRecord as writeTelemetryRecordCore, } from './telemetry/index.js';
 // =============================================================================
 // Constants and Paths
 // =============================================================================

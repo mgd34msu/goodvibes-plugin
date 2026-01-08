@@ -12,6 +12,15 @@ import { debug, logError, fileExists } from '../shared/index.js';
 // ============================================================================
 /** Maximum age in ms for stale agent cleanup (24 hours). */
 export const STALE_AGENT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/** Type guard to check if a value is a valid ActiveAgentsState */
+function isActiveAgentsState(value) {
+    return (typeof value === 'object' &&
+        value !== null &&
+        'agents' in value &&
+        'last_updated' in value &&
+        typeof value.agents === 'object' &&
+        typeof value.last_updated === 'string');
+}
 // ============================================================================
 // Path Utilities
 // ============================================================================
@@ -84,7 +93,10 @@ export async function loadActiveAgents(activeAgentsFile) {
     if (await fileExists(activeAgentsFile)) {
         try {
             const content = await fs.readFile(activeAgentsFile, 'utf-8');
-            return JSON.parse(content);
+            const parsed = JSON.parse(content);
+            if (isActiveAgentsState(parsed)) {
+                return parsed;
+            }
         }
         catch (error) {
             logError('loadActiveAgents', error);

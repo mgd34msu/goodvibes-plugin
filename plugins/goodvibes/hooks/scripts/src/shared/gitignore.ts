@@ -65,7 +65,7 @@ export async function ensureSecureGitignore(cwd: string): Promise<void> {
   for (const [section, patterns] of Object.entries(
     SECURITY_GITIGNORE_ENTRIES
   )) {
-    const missing = patterns.filter((p) => !content.includes(p));
+    const missing = patterns.filter((pattern) => !content.includes(pattern));
     if (missing.length > 0) {
       entriesToAdd.push(`\n# ${section}`);
       entriesToAdd.push(...missing);

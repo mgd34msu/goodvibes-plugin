@@ -111,6 +111,7 @@ export declare function formatResponse(response: HookResponse): string;
  *
  * @param response - The HookResponse object to output
  * @param block - If true, exits with code 2 to indicate a blocking action
+ * @returns never - This function exits the process and never returns
  *
  * @example
  * // Allow the tool to proceed

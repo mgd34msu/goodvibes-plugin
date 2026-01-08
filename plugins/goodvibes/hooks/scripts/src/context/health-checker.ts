@@ -76,8 +76,12 @@ export async function checkProjectHealth(cwd: string): Promise<HealthStatus> {
   if (await fileExists(tsconfigPath)) {
     try {
       const content = await fs.readFile(tsconfigPath, 'utf-8');
-      const config = JSON.parse(content);
-      if (!config.compilerOptions?.strict) {
+      const config: unknown = JSON.parse(content);
+      const compilerOptions =
+        typeof config === 'object' && config !== null && 'compilerOptions' in config
+          ? (config as { compilerOptions?: { strict?: boolean } }).compilerOptions
+          : undefined;
+      if (!compilerOptions?.strict) {
         checks.push({
           check: 'typescript',
           status: 'info',

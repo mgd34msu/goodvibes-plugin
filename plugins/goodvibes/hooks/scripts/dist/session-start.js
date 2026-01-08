@@ -16,7 +16,6 @@ import { gatherProjectContext, createFailedContextResult, } from './session-star
 import { checkCrashRecovery, } from './session-start/crash-recovery.js';
 import { buildSystemMessage } from './session-start/response-formatter.js';
 import { respond, readHookInput, validateRegistries, ensureCacheDir, saveAnalytics, debug, logError, createResponse, PROJECT_ROOT, } from './shared/index.js';
-// State management
 import { loadState, saveState, updateSessionState, initializeSession, } from './state.js';
 import { createDefaultState } from './types/state.js';
 /** Default recovery info when crash recovery check fails */

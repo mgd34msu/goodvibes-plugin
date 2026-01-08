@@ -40,6 +40,18 @@ export interface ActiveAgentsState {
   last_updated: string;
 }
 
+/** Type guard to check if a value is a valid ActiveAgentsState */
+function isActiveAgentsState(value: unknown): value is ActiveAgentsState {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'agents' in value &&
+    'last_updated' in value &&
+    typeof (value as ActiveAgentsState).agents === 'object' &&
+    typeof (value as ActiveAgentsState).last_updated === 'string'
+  );
+}
+
 /** Git branch and commit information. */
 export interface GitInfo {
   branch?: string;
@@ -140,7 +152,10 @@ export async function loadActiveAgents(
   if (await fileExists(activeAgentsFile)) {
     try {
       const content = await fs.readFile(activeAgentsFile, 'utf-8');
-      return JSON.parse(content);
+      const parsed: unknown = JSON.parse(content);
+      if (isActiveAgentsState(parsed)) {
+        return parsed;
+      }
     } catch (error: unknown) {
       logError('loadActiveAgents', error);
     }

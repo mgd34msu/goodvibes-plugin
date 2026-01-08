@@ -30,7 +30,7 @@ export function findTestsForFile(sourceFile) {
         sourceFile.replace(/src\/(.*)\.tsx?$/, 'src/__tests__/$1.test.ts'),
         sourceFile.replace(/src\/(.*)\.tsx?$/, 'tests/$1.test.ts'),
     ];
-    return testPatterns.filter((p) => fs.existsSync(p));
+    return testPatterns.filter((pattern) => fs.existsSync(pattern));
 }
 /**
  * Runs tests for specific test files and returns structured results.

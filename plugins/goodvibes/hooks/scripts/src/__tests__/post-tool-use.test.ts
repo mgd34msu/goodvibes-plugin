@@ -9,6 +9,7 @@
  * - Error handling paths
  */
 
+import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -110,8 +111,6 @@ vi.mock('../post-tool-use/mcp-handlers.js', () => ({
 }));
 
 // Import mocked modules
-import * as fs from 'fs/promises';
-
 import { handleBashTool } from '../post-tool-use/bash-handler.js';
 import { processFileAutomation } from '../post-tool-use/file-automation.js';
 import {

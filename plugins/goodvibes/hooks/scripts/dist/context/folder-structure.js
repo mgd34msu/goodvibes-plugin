@@ -7,32 +7,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/logging.js';
-const LAYER_INDICATORS = [
-    'controllers',
-    'services',
-    'repositories',
-    'models',
-    'middleware',
-    'routes',
-];
-const FEATURE_INDICATORS = ['features', 'modules', 'domains'];
-const ATOMIC_INDICATORS = ['atoms', 'molecules', 'organisms', 'templates'];
-const DDD_INDICATORS = [
-    'domain',
-    'infrastructure',
-    'application',
-    'aggregates',
-    'entities',
-    'value-objects',
-];
-/** Minimum indicator matches for pattern detection. */
-const MIN_INDICATOR_MATCH = 2;
-/** Minimum matches for high confidence pattern detection. */
-const HIGH_CONFIDENCE_THRESHOLD = 3;
-/** Maximum folder depth to traverse. */
-const DEFAULT_MAX_DEPTH = 5;
-/** Minimum top-level directories before considering structure flat. */
-const FLAT_STRUCTURE_THRESHOLD = 3;
+import { PATTERN_NAMES } from '../types/folder-structure.js';
+import { LAYER_INDICATORS, FEATURE_INDICATORS, ATOMIC_INDICATORS, DDD_INDICATORS, MIN_INDICATOR_MATCH, HIGH_CONFIDENCE_THRESHOLD, DEFAULT_MAX_DEPTH, FLAT_STRUCTURE_THRESHOLD, } from './folder-structure-constants.js';
 /**
  * Get immediate subdirectories of a path.
  * Only returns directories, not files, and converts names to lowercase.
@@ -44,8 +20,8 @@ async function getSubdirs(dirPath) {
     try {
         const entries = await fs.readdir(dirPath, { withFileTypes: true });
         return entries
-            .filter((e) => e.isDirectory())
-            .map((e) => e.name.toLowerCase());
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name.toLowerCase());
     }
     catch (error) {
         debug('folder-structure failed', { error: String(error) });
@@ -61,7 +37,7 @@ async function getSubdirs(dirPath) {
  * @returns Count of matching indicators found
  */
 function hasIndicators(dirs, indicators) {
-    return dirs.filter((d) => indicators.includes(d)).length;
+    return dirs.filter((dir) => indicators.includes(dir)).length;
 }
 /**
  * Detect the architecture pattern.
@@ -81,12 +57,12 @@ async function detectPattern(cwd, topLevelDirs, srcDirs) {
             : path.join(cwd, 'src', 'app');
         if (await fileExists(appPath)) {
             const appContents = await getSubdirs(appPath);
-            if (appContents.some((d) => d.startsWith('(') || d === 'api')) {
+            if (appContents.some((dir) => dir.startsWith('(') || dir === 'api')) {
                 return { pattern: 'next-app-router', confidence: 'high' };
             }
             try {
                 const files = await fs.readdir(appPath);
-                if (files.some((f) => f.startsWith('page.') || f.startsWith('layout.'))) {
+                if (files.some((file) => file.startsWith('page.') || file.startsWith('layout.'))) {
                     return { pattern: 'next-app-router', confidence: 'high' };
                 }
             }
@@ -236,18 +212,7 @@ export async function analyzeFolderStructure(cwd) {
  * @returns Human-readable name for the pattern
  */
 function getPatternName(pattern) {
-    const names = {
-        'next-app-router': 'Next.js App Router',
-        'next-pages-router': 'Next.js Pages Router',
-        'feature-based': 'Feature-based / Module-based',
-        'layer-based': 'Layer-based (MVC-like)',
-        'domain-driven': 'Domain-Driven Design',
-        'atomic-design': 'Atomic Design',
-        'component-based': 'Component-based',
-        flat: 'Flat structure',
-        unknown: 'Unknown',
-    };
-    return names[pattern] || pattern;
+    return PATTERN_NAMES[pattern] || pattern;
 }
 /**
  * Format folder structure for display.

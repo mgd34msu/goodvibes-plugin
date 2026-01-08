@@ -50,9 +50,11 @@ export async function parseTranscript(transcriptPath) {
         for (const line of lines) {
             try {
                 const entry = JSON.parse(line);
-                processTranscriptEntry(entry, result);
+                if (typeof entry === 'object' && entry !== null) {
+                    processTranscriptEntry(entry, result);
+                }
             }
-            catch (parseError) {
+            catch {
                 // Not JSON, try to parse as plain text
                 debug('Line not JSON, parsing as plain text');
                 processPlainTextLine(line, result);

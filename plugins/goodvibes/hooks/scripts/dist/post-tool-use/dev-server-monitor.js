@@ -31,7 +31,7 @@ const DEV_SERVER_PATTERNS = [
  * isDevServerCommand('npm install');  // false
  */
 export function isDevServerCommand(command) {
-    return DEV_SERVER_PATTERNS.some((p) => p.test(command));
+    return DEV_SERVER_PATTERNS.some((pattern) => pattern.test(command));
 }
 /**
  * Registers a new dev server in the session state.

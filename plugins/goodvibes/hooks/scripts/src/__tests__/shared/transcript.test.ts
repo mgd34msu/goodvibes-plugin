@@ -395,8 +395,8 @@ describe('transcript utilities', () => {
       const { parseTranscript } = await import('../../shared/transcript.js');
       const result = await parseTranscript('/path/to/transcript.jsonl');
 
-      // The code adds undefined to the Set when name is missing
-      expect(result.toolsUsed).toEqual([undefined, 'Bash']);
+      // The code now validates name is a string before adding to toolsUsed
+      expect(result.toolsUsed).toEqual(['Bash']);
     });
 
     it('should handle empty string content in assistant messages', async () => {

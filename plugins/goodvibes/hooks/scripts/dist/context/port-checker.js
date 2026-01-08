@@ -189,7 +189,7 @@ function checkPortsWindows(ports) {
 function checkPortsUnix(ports) {
     // Try lsof first (more reliable for process names)
     try {
-        const portsArg = ports.map((p) => `-i:${p}`).join(' ');
+        const portsArg = ports.map((port) => `-i:${port}`).join(' ');
         const output = execSync(`lsof ${portsArg} 2>/dev/null`, {
             encoding: 'utf-8',
             timeout: COMMAND_TIMEOUT,
@@ -251,12 +251,12 @@ export async function checkPorts(_cwd) {
  * // Returns: "Active ports: 3000 (node), 5173 (vite)"
  */
 export function formatPortStatus(ports) {
-    const activePorts = ports.filter((p) => p.inUse);
+    const activePorts = ports.filter((port) => port.inUse);
     if (activePorts.length === 0) {
         return 'No dev servers detected';
     }
     const portList = activePorts
-        .map((p) => (p.process ? `${p.port} (${p.process})` : `${p.port}`))
+        .map((port) => (port.process ? `${port.port} (${port.process})` : `${port.port}`))
         .join(', ');
     return `Active ports: ${portList}`;
 }

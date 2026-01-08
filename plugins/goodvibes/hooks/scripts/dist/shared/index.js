@@ -32,3 +32,4 @@ export { parseTranscript } from './transcript.js';
 // Keywords
 // =============================================================================
 export { KEYWORD_CATEGORIES, ALL_KEYWORDS, STACK_KEYWORD_CATEGORIES, TRANSCRIPT_KEYWORD_CATEGORIES, ALL_STACK_KEYWORDS, ALL_TRANSCRIPT_KEYWORDS, extractStackKeywords, extractStackKeywords as extractKeywords, extractTranscriptKeywords, } from './keywords.js';
+export { runHook, runHookSync, isMainModule } from './hook-runner.js';

@@ -15,7 +15,7 @@
     "./agents/factory.md",
     "./agents/skill-creator.md",
     "./agents/webdev/backend-engineer.md",
-    "./agents/webdev/brutal-reviewer.md",
+    "./agents/webdev/brutally-honest-reviewer.md",
     "./agents/webdev/code-architect.md",
     "./agents/webdev/content-platform.md",
     "./agents/webdev/devops-deployer.md",

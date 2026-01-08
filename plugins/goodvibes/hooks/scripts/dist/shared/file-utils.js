@@ -136,7 +136,7 @@ export async function validateRegistries() {
         reg,
         exists: await fileExists(path.join(PLUGIN_ROOT, reg)),
     })));
-    const missing = results.filter((r) => !r.exists).map((r) => r.reg);
+    const missing = results.filter((result) => !result.exists).map((result) => result.reg);
     return { valid: missing.length === 0, missing };
 }
 // =============================================================================

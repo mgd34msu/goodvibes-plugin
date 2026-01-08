@@ -89,9 +89,8 @@ describe('retry-tracker', () => {
       const result = await loadRetries(testCwd);
 
       expect(result).toEqual({});
-      expect(mockDebug).toHaveBeenCalledWith(
-        expect.stringContaining('Retries file access check failed')
-      );
+      // No debug log when file doesn't exist - it's a normal case
+      expect(mockDebug).not.toHaveBeenCalled();
     });
 
     it('should return empty object when file contains invalid JSON', async () => {
@@ -415,7 +414,7 @@ describe('retry-tracker', () => {
       await saveRetry(testCwd, 'sig1', 1);
 
       expect(mockDebug).toHaveBeenCalledWith(
-        'saveRetry failed',
+        'writeRetryData failed',
         expect.anything()
       );
     });

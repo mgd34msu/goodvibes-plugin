@@ -25,7 +25,7 @@ export async function verifyAgentTests(cwd, filesModified, state) {
     const result = await runTests(uniqueTests, cwd);
     // Update state
     if (result.passed) {
-        state.tests.passingFiles.push(...uniqueTests.filter((t) => !state.tests.passingFiles.includes(t)));
+        state.tests.passingFiles.push(...uniqueTests.filter((test) => !state.tests.passingFiles.includes(test)));
     }
     else {
         for (const failure of result.failures) {

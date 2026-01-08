@@ -7,33 +7,10 @@
  * - `checkEnvStatus()` - Quick check returning {@link EnvStatus} (basic presence/missing vars)
  * - `analyzeEnvironment()` - Comprehensive analysis returning {@link EnvironmentContext}
  */
-/**
- * Lightweight environment status for quick checks.
- * Used by consumers that need basic env file presence information.
- */
-export interface EnvStatus {
-    hasEnvFile: boolean;
-    hasEnvExample: boolean;
-    missingVars: string[];
-    warnings: string[];
-}
-/**
- * Comprehensive environment analysis results.
- * Includes sensitive variable detection and detailed file information.
- */
-export interface EnvironmentContext {
-    envFiles: string[];
-    hasEnvExample: boolean;
-    missingVars: string[];
-    definedVars: string[];
-    sensitiveVarsExposed: string[];
-}
+import type { EnvStatus, EnvironmentContext } from '../types/environment.js';
+export type { EnvStatus, EnvironmentContext };
 /**
  * Quick environment check returning basic status.
- *
- * This is the lightweight check that returns basic status. For comprehensive
- * environment analysis including sensitive variable detection, use
- * {@link analyzeEnvironment} instead.
  *
  * @param cwd - Working directory to check
  * @returns Promise resolving to EnvStatus
@@ -41,11 +18,6 @@ export interface EnvironmentContext {
 export declare function checkEnvStatus(cwd: string): Promise<EnvStatus>;
 /**
  * Comprehensive environment analysis including security checks.
- *
- * Performs full analysis including:
- * - Detection of all .env file variants
- * - Missing variable detection against example files
- * - Sensitive variable exposure detection (not in .gitignore)
  *
  * @param cwd - Working directory to analyze
  * @returns Promise resolving to EnvironmentContext

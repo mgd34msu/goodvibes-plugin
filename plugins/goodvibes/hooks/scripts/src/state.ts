@@ -37,8 +37,11 @@ export async function loadState(cwd: string): Promise<HooksState> {
 
   try {
     const content = await fs.readFile(statePath, 'utf-8');
-    const state = JSON.parse(content) as HooksState;
-    return state;
+    const parsed: unknown = JSON.parse(content);
+    if (typeof parsed === 'object' && parsed !== null && 'session' in parsed) {
+      return parsed as HooksState;
+    }
+    return createDefaultState();
   } catch (error: unknown) {
     debug('Failed to load state, using defaults', error);
     return createDefaultState();
@@ -230,7 +233,9 @@ export function trackError(
  * const newState = clearError(state, 'build-failed-abc123');
  */
 export function clearError(state: HooksState, signature: string): HooksState {
-  const { [signature]: _, ...remainingErrors } = state.errors;
+  // Intentional: Using destructuring to omit the error with matching signature
+  // The underscore is a common convention for intentionally unused variables
+  const { [signature]: _omitted, ...remainingErrors } = state.errors;
   return {
     ...state,
     errors: remainingErrors,

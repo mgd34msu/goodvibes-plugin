@@ -102,7 +102,7 @@ export async function handleRecommendSkills(input: HookInput): Promise<void> {
               'path' in r &&
               typeof (r as Record<string, unknown>).path === 'string'
           )
-          .map((r) => r.path);
+          .map((rec) => rec.path);
         analytics.skills_recommended.push(...skillPaths);
         await saveAnalytics(analytics);
       }

@@ -22,6 +22,13 @@ import { debug } from '../shared/logging.js';
 
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
 
+/** Type guard to check if a value is a valid trackings record */
+function isTrackingsRecord(
+  value: unknown
+): value is Record<string, TelemetryTracking> {
+  return typeof value === 'object' && value !== null;
+}
+
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 
@@ -36,7 +43,10 @@ export async function saveAgentTracking(
   let trackings: Record<string, TelemetryTracking> = {};
   if (await fileExists(trackingPath)) {
     try {
-      trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+      const parsed: unknown = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+      if (isTrackingsRecord(parsed)) {
+        trackings = parsed;
+      }
     } catch (error: unknown) {
       debug('telemetry operation failed', { error: String(error) });
     }
@@ -58,8 +68,11 @@ export async function getAgentTracking(
   }
 
   try {
-    const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
-    return trackings[agentId] || null;
+    const parsed: unknown = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+    if (isTrackingsRecord(parsed)) {
+      return parsed[agentId] ?? null;
+    }
+    return null;
   } catch (error: unknown) {
     debug('getAgentTracking failed', { error: String(error) });
     return null;
@@ -78,9 +91,11 @@ export async function removeAgentTracking(
   }
 
   try {
-    const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
-    delete trackings[agentId];
-    await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
+    const parsed: unknown = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+    if (isTrackingsRecord(parsed)) {
+      delete parsed[agentId];
+      await fs.writeFile(trackingPath, JSON.stringify(parsed, null, 2));
+    }
   } catch (error: unknown) {
     debug('telemetry operation failed', { error: String(error) });
   }

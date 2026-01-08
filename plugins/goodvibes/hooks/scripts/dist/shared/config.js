@@ -132,7 +132,14 @@ export async function loadSharedConfig(cwd) {
     try {
         const content = await fs.readFile(configPath, 'utf-8');
         const userConfig = JSON.parse(content);
-        return deepMerge(defaults, userConfig.goodvibes || userConfig);
+        if (typeof userConfig === 'object' && userConfig !== null) {
+            const configObj = userConfig;
+            const config = ('goodvibes' in configObj && typeof configObj.goodvibes === 'object' && configObj.goodvibes !== null)
+                ? configObj.goodvibes
+                : configObj;
+            return deepMerge(defaults, config);
+        }
+        return defaults;
     }
     catch (error) {
         debug('loadSharedConfig failed', { error: String(error) });

@@ -11,8 +11,6 @@ import * as path from 'path';
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import type { MemoryPreference } from '../../types/memory.js';
-
 // Mock the parser module
 vi.mock('../../memory/parser.js', () => ({
   parseMemoryFile: vi.fn(),
@@ -20,8 +18,10 @@ vi.mock('../../memory/parser.js', () => ({
   appendMemoryEntry: vi.fn(),
 }));
 
-import { readPreferences, writePreference } from '../../memory/preferences.js';
 import * as parser from '../../memory/parser.js';
+import { readPreferences, writePreference } from '../../memory/preferences.js';
+
+import type { MemoryPreference } from '../../types/memory.js';
 
 describe('memory/preferences', () => {
   let testDir: string;

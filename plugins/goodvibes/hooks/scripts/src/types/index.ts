@@ -33,3 +33,26 @@ export { createDefaultState } from './state.js';
 // Config types
 export type { GoodVibesConfig } from './config.js';
 export { getDefaultConfig } from './config.js';
+
+// Folder structure types
+export type {
+  ArchitecturePattern,
+  SpecialDirectories,
+  FolderStructure,
+} from './folder-structure.js';
+export { PATTERN_NAMES } from './folder-structure.js';
+
+// Retry types
+export type { RetryEntry, RetryData } from './retry.js';
+export { isRetryData, isErrorState, DEFAULT_MAX_AGE_HOURS } from './retry.js';
+
+// Recent activity types
+export type {
+  RecentActivity,
+  FileChange,
+  Hotspot,
+  RecentCommit,
+} from './recent-activity.js';
+
+// Environment types
+export type { EnvStatus, EnvironmentContext } from './environment.js';

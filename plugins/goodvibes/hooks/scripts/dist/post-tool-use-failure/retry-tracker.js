@@ -9,32 +9,14 @@ import * as path from 'path';
 import { generateErrorSignature as generateErrorSignatureCore, shouldEscalatePhase as shouldEscalatePhaseCore, escalatePhase as escalatePhaseCore, hasExhaustedRetries as hasExhaustedRetriesCore, getPhaseDescription as getPhaseDescriptionCore, getRemainingAttemptsInPhase, MAX_PHASE, } from '../shared/error-handling-core.js';
 import { ensureGoodVibesDir } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
-import { PHASE_RETRY_LIMITS, } from '../types/errors.js';
-/** Type guard to check if a value is a RetryData object */
-function isRetryData(value) {
-    if (!value || typeof value !== 'object') {
-        return false;
-    }
-    const obj = value;
-    return Object.values(obj).every((entry) => entry !== null &&
-        typeof entry === 'object' &&
-        'signature' in entry &&
-        'attempts' in entry &&
-        'lastAttempt' in entry &&
-        'phase' in entry &&
-        typeof entry.signature === 'string' &&
-        typeof entry.attempts === 'number' &&
-        typeof entry.lastAttempt === 'string' &&
-        typeof entry.phase === 'number');
-}
-/** Type guard to check if a value is an ErrorState object */
-function isErrorState(value) {
-    return (value !== null &&
-        typeof value === 'object' &&
-        'category' in value &&
-        'phase' in value &&
-        'attemptsThisPhase' in value);
-}
+import { PHASE_RETRY_LIMITS } from '../types/errors.js';
+import { isRetryData, isErrorState, DEFAULT_MAX_AGE_HOURS, } from '../types/retry.js';
+/**
+ * Gets the path to the retries.json file.
+ *
+ * @param cwd - The current working directory
+ * @returns Path to the retries file
+ */
 function getRetriesPath(cwd) {
     return path.join(cwd, '.goodvibes', 'state', 'retries.json');
 }
@@ -49,21 +31,31 @@ export async function loadRetries(cwd) {
     try {
         await fs.access(retriesPath);
     }
-    catch (error) {
-        debug(`Retries file access check failed for ${retriesPath}: ${error}`);
+    catch {
         return {};
     }
     try {
         const content = await fs.readFile(retriesPath, 'utf-8');
         const parsed = JSON.parse(content);
-        if (isRetryData(parsed)) {
-            return parsed;
-        }
-        return {};
+        return isRetryData(parsed) ? parsed : {};
     }
     catch (error) {
         debug('loadRetries failed', { error: String(error) });
         return {};
+    }
+}
+/**
+ * Saves retry data to disk.
+ *
+ * @param retriesPath - Path to the retries file
+ * @param retries - Retry data to save
+ */
+async function writeRetries(retriesPath, retries) {
+    try {
+        await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
+    }
+    catch (error) {
+        debug('writeRetryData failed', { error: String(error) });
     }
 }
 /**
@@ -95,28 +87,13 @@ export async function saveRetry(stateOrCwd, signature, errorStateOrPhase) {
     const retriesPath = getRetriesPath(cwd);
     const retries = await loadRetries(cwd);
     const existing = retries[signature];
-    if (existing) {
-        retries[signature] = {
-            signature,
-            attempts: existing.attempts + 1,
-            lastAttempt: new Date().toISOString(),
-            phase: Math.max(existing.phase, phase),
-        };
-    }
-    else {
-        retries[signature] = {
-            signature,
-            attempts: 1,
-            lastAttempt: new Date().toISOString(),
-            phase,
-        };
-    }
-    try {
-        await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-    }
-    catch (error) {
-        debug('saveRetry failed', { error: String(error) });
-    }
+    retries[signature] = {
+        signature,
+        attempts: existing ? existing.attempts + 1 : 1,
+        lastAttempt: new Date().toISOString(),
+        phase: existing ? Math.max(existing.phase, phase) : phase,
+    };
+    await writeRetries(retriesPath, retries);
 }
 /**
  * Gets the number of retry attempts for an error signature.
@@ -151,8 +128,7 @@ export async function getCurrentPhase(cwd, signature) {
  */
 export async function shouldEscalatePhase(cwdOrErrorState, signature, currentPhase, category = 'unknown') {
     if (typeof cwdOrErrorState === 'string') {
-        const cwd = cwdOrErrorState;
-        const retries = await loadRetries(cwd);
+        const retries = await loadRetries(cwdOrErrorState);
         const entry = retries[signature];
         if (!entry) {
             return false;
@@ -160,10 +136,7 @@ export async function shouldEscalatePhase(cwdOrErrorState, signature, currentPha
         const limit = PHASE_RETRY_LIMITS[category];
         return entry.attempts >= limit && (currentPhase ?? entry.phase) < MAX_PHASE;
     }
-    else if (isErrorState(cwdOrErrorState)) {
-        return shouldEscalatePhaseCore(cwdOrErrorState);
-    }
-    return false;
+    return isErrorState(cwdOrErrorState) ? shouldEscalatePhaseCore(cwdOrErrorState) : false;
 }
 /**
  * Escalates error state to the next phase.
@@ -184,8 +157,7 @@ export function escalatePhase(errorState) {
  */
 export async function hasExhaustedRetries(cwdOrErrorState, signature, category = 'unknown') {
     if (typeof cwdOrErrorState === 'string') {
-        const cwd = cwdOrErrorState;
-        const retries = await loadRetries(cwd);
+        const retries = await loadRetries(cwdOrErrorState);
         const entry = retries[signature];
         if (!entry) {
             return false;
@@ -193,10 +165,7 @@ export async function hasExhaustedRetries(cwdOrErrorState, signature, category =
         const limit = PHASE_RETRY_LIMITS[category];
         return entry.phase >= MAX_PHASE && entry.attempts >= limit;
     }
-    else if (isErrorState(cwdOrErrorState)) {
-        return hasExhaustedRetriesCore(cwdOrErrorState);
-    }
-    return false;
+    return isErrorState(cwdOrErrorState) ? hasExhaustedRetriesCore(cwdOrErrorState) : false;
 }
 /**
  * Gets a human-readable description of a fix phase.
@@ -216,20 +185,13 @@ export function getPhaseDescription(phase) {
  * @returns Promise resolving to number of remaining attempts
  */
 export async function getRemainingAttempts(cwdOrErrorState, signature, category = 'unknown') {
+    const limit = PHASE_RETRY_LIMITS[category];
     if (typeof cwdOrErrorState === 'string') {
-        const cwd = cwdOrErrorState;
-        const retries = await loadRetries(cwd);
+        const retries = await loadRetries(cwdOrErrorState);
         const entry = retries[signature];
-        const limit = PHASE_RETRY_LIMITS[category];
-        if (!entry) {
-            return limit;
-        }
-        return Math.max(0, limit - entry.attempts);
+        return entry ? Math.max(0, limit - entry.attempts) : limit;
     }
-    else if (isErrorState(cwdOrErrorState)) {
-        return getRemainingAttemptsInPhase(cwdOrErrorState);
-    }
-    return PHASE_RETRY_LIMITS[category];
+    return isErrorState(cwdOrErrorState) ? getRemainingAttemptsInPhase(cwdOrErrorState) : limit;
 }
 /**
  * Generates a unique signature for an error based on its message and tool.
@@ -253,15 +215,9 @@ export async function clearRetry(cwd, signature) {
     const retries = await loadRetries(cwd);
     if (retries[signature]) {
         delete retries[signature];
-        try {
-            await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-        }
-        catch (error) {
-            debug('writeRetryData failed', { error: String(error) });
-        }
+        await writeRetries(retriesPath, retries);
     }
 }
-const DEFAULT_MAX_AGE_HOURS = 24;
 /**
  * Removes retry tracking data older than specified hours.
  *
@@ -276,19 +232,13 @@ export async function pruneOldRetries(cwd, maxAgeHours = DEFAULT_MAX_AGE_HOURS) 
     cutoff.setHours(cutoff.getHours() - maxAgeHours);
     let changed = false;
     for (const [signature, entry] of Object.entries(retries)) {
-        const lastAttempt = new Date(entry.lastAttempt);
-        if (lastAttempt < cutoff) {
+        if (new Date(entry.lastAttempt) < cutoff) {
             delete retries[signature];
             changed = true;
         }
     }
     if (changed) {
-        try {
-            await fs.writeFile(retriesPath, JSON.stringify(retries, null, 2));
-        }
-        catch (error) {
-            debug('writeRetryData failed', { error: String(error) });
-        }
+        await writeRetries(retriesPath, retries);
     }
 }
 /**

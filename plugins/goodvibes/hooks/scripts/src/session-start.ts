@@ -34,8 +34,6 @@ import {
   createResponse,
   PROJECT_ROOT,
 } from './shared/index.js';
-
-// State management
 import {
   loadState,
   saveState,

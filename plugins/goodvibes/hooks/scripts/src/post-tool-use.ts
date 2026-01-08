@@ -27,20 +27,8 @@ import {
 import { createResponse, combineMessages } from './post-tool-use/response.js';
 import { fileExists } from './shared/file-utils.js';
 import { respond, readHookInput, debug, logError } from './shared/index.js';
-
-// State management
 import { loadState, saveState } from './state.js';
-
-// Configuration
 import { getDefaultConfig, type GoodVibesConfig } from './types/config.js';
-
-// Response utilities
-
-// File automation (Edit, Write tools)
-
-// Bash tool handling
-
-// MCP tool handlers
 
 /**
  * Deep merge two objects
@@ -79,8 +67,11 @@ async function loadAutomationConfig(cwd: string): Promise<GoodVibesConfig> {
 
   try {
     const content = await fs.readFile(configPath, 'utf-8');
-    const userConfig = JSON.parse(content);
-    return deepMerge(defaults, userConfig);
+    const userConfig: unknown = JSON.parse(content);
+    if (typeof userConfig === 'object' && userConfig !== null) {
+      return deepMerge(defaults, userConfig as Partial<GoodVibesConfig>);
+    }
+    return defaults;
   } catch (error: unknown) {
     debug('loadAutomationConfig failed', { error: String(error) });
     return defaults;

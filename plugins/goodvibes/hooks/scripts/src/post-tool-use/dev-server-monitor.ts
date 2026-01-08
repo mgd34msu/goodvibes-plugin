@@ -35,7 +35,7 @@ const DEV_SERVER_PATTERNS = [
  * isDevServerCommand('npm install');  // false
  */
 export function isDevServerCommand(command: string): boolean {
-  return DEV_SERVER_PATTERNS.some((p) => p.test(command));
+  return DEV_SERVER_PATTERNS.some((pattern) => pattern.test(command));
 }
 
 /**

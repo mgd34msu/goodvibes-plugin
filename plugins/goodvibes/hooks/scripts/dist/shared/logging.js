@@ -11,6 +11,7 @@
  *
  * @param message - The debug message to log
  * @param data - Optional data object to include (will be JSON-stringified)
+ * @returns void - Output is written to stderr
  *
  * @example
  * // Simple message
@@ -42,6 +43,7 @@ export function debug(message, data) {
  *
  * @param context - A description of where the error occurred (e.g., 'readConfig', 'validateInput')
  * @param error - The error object or any value that was thrown
+ * @returns void - Output is written to stderr
  *
  * @example
  * try {

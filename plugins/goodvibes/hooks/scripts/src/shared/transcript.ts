@@ -48,23 +48,28 @@ export async function parseTranscript(
 
     for (const line of lines) {
       try {
-        const event = JSON.parse(line);
+        const event: unknown = JSON.parse(line);
+        if (typeof event !== 'object' || event === null) {
+          continue;
+        }
 
-        if (event.type === 'tool_use') {
-          toolsUsed.add(event.name);
-          if (
-            ['Write', 'Edit'].includes(event.name) &&
-            event.input?.file_path
-          ) {
-            filesModified.push(event.input.file_path);
+        const eventObj = event as Record<string, unknown>;
+
+        if (eventObj.type === 'tool_use' && typeof eventObj.name === 'string') {
+          toolsUsed.add(eventObj.name);
+          if (['Write', 'Edit'].includes(eventObj.name)) {
+            const input = eventObj.input as Record<string, unknown> | undefined;
+            if (input?.file_path && typeof input.file_path === 'string') {
+              filesModified.push(input.file_path);
+            }
           }
         }
 
-        if (event.role === 'assistant' && event.content) {
+        if (eventObj.role === 'assistant' && eventObj.content) {
           lastAssistantMessage =
-            typeof event.content === 'string'
-              ? event.content
-              : JSON.stringify(event.content);
+            typeof eventObj.content === 'string'
+              ? eventObj.content
+              : JSON.stringify(eventObj.content);
         }
       } catch (error: unknown) {
         debug('parseTranscript line parse failed', { error: String(error) });

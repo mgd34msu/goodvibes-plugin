@@ -7,6 +7,7 @@
  * - Task categorization
  *
  * This is the single authoritative source for keyword categories.
+ * Keyword data is stored in keywords-data.json for maintainability.
  */
 /**
  * Keyword categories optimized for tech stack detection.
@@ -37,6 +38,7 @@ export declare const ALL_TRANSCRIPT_KEYWORDS: string[];
 export declare const ALL_KEYWORDS: string[];
 /**
  * Extract known keywords from text using stack detection categories.
+ * Uses pre-compiled regex patterns for performance.
  *
  * @param text - Text to search for keywords
  * @returns Array of found keywords (max 50)
@@ -45,6 +47,7 @@ export declare function extractStackKeywords(text: string): string[];
 /**
  * Extract keywords from text with category metadata.
  * Used for transcript classification.
+ * Uses pre-compiled regex patterns for performance.
  *
  * @param taskDescription - Optional task description
  * @param transcriptContent - Optional transcript content

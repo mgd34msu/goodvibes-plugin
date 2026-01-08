@@ -51,7 +51,7 @@ export async function getMemorySummary(cwd) {
 /** Search memory for entries matching any of the provided keywords (case-insensitive). */
 export async function searchMemory(cwd, keywords) {
     const memory = await loadMemory(cwd);
-    const lowerKeywords = keywords.map((k) => k.toLowerCase());
+    const lowerKeywords = keywords.map((keyword) => keyword.toLowerCase());
     const matchesKeywords = (text) => {
         const lowerText = text.toLowerCase();
         return lowerKeywords.some((keyword) => lowerText.includes(keyword));

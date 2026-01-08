@@ -88,11 +88,11 @@ export async function maybeRunTests(
         lastQuickRun: new Date().toISOString(),
         failingFiles: [...new Set([...state.tests.failingFiles, ...testFiles])],
         passingFiles: state.tests.passingFiles.filter(
-          (f) => !testFiles.includes(f)
+          (file) => !testFiles.includes(file)
         ),
-        pendingFixes: result.failures.map((f) => ({
-          testFile: f.testFile,
-          error: f.error,
+        pendingFixes: result.failures.map((failure) => ({
+          testFile: failure.testFile,
+          error: failure.error,
           fixAttempts: 0,
         })),
       });

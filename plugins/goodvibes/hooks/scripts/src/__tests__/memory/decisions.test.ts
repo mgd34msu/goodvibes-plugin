@@ -12,8 +12,6 @@ import * as path from 'path';
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import type { MemoryDecision } from '../../types/memory.js';
-
 // Mock the parser module
 vi.mock('../../memory/parser.js', () => ({
   parseMemoryFile: vi.fn(),
@@ -23,6 +21,8 @@ vi.mock('../../memory/parser.js', () => ({
 
 import { readDecisions, writeDecision } from '../../memory/decisions.js';
 import * as parser from '../../memory/parser.js';
+
+import type { MemoryDecision } from '../../types/memory.js';
 
 describe('memory/decisions', () => {
   let testDir: string;

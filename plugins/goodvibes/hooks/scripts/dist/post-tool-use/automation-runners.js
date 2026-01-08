@@ -62,10 +62,10 @@ export async function maybeRunTests(state, config, filePath, cwd) {
             state = updateTestState(state, {
                 lastQuickRun: new Date().toISOString(),
                 failingFiles: [...new Set([...state.tests.failingFiles, ...testFiles])],
-                passingFiles: state.tests.passingFiles.filter((f) => !testFiles.includes(f)),
-                pendingFixes: result.failures.map((f) => ({
-                    testFile: f.testFile,
-                    error: f.error,
+                passingFiles: state.tests.passingFiles.filter((file) => !testFiles.includes(file)),
+                pendingFixes: result.failures.map((failure) => ({
+                    testFile: failure.testFile,
+                    error: failure.error,
                     fixAttempts: 0,
                 })),
             });

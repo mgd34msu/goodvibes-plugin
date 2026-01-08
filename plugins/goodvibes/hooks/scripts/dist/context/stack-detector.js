@@ -167,7 +167,10 @@ export async function detectStack(cwd) {
         try {
             const content = await fs.readFile(tsconfigPath, 'utf-8');
             const config = JSON.parse(content);
-            isStrict = config.compilerOptions?.strict === true;
+            if (typeof config === 'object' && config !== null && 'compilerOptions' in config) {
+                const compilerOptions = config.compilerOptions;
+                isStrict = compilerOptions?.strict === true;
+            }
         }
         catch (error) {
             // tsconfig.json might have comments or invalid JSON - ignore parse errors

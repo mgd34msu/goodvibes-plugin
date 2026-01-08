@@ -72,7 +72,7 @@ export async function readHookInput(): Promise<HookInput> {
     });
     process.stdin.on('end', () => {
       try {
-        const parsed = JSON.parse(data);
+        const parsed: unknown = JSON.parse(data);
         if (!isValidHookInput(parsed)) {
           reject(new Error('Invalid hook input structure'));
           return;
@@ -190,6 +190,7 @@ export function formatResponse(response: HookResponse): string {
  *
  * @param response - The HookResponse object to output
  * @param block - If true, exits with code 2 to indicate a blocking action
+ * @returns never - This function exits the process and never returns
  *
  * @example
  * // Allow the tool to proceed

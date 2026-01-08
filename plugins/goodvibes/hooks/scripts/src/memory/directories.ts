@@ -31,6 +31,7 @@ export { ensureGoodVibesDir };
  * Also ensures the parent .goodvibes directory exists.
  *
  * @param cwd - The current working directory (project root)
+ * @returns A promise that resolves when the memory directory exists
  * @throws Error if the directory cannot be created
  *
  * @example
@@ -59,6 +60,7 @@ export async function ensureMemoryDir(cwd: string): Promise<void> {
  * patterns that are not already present.
  *
  * @param cwd - The current working directory (project root)
+ * @returns A promise that resolves when the gitignore is updated
  *
  * @example
  * await ensureSecurityGitignore('/path/to/project');

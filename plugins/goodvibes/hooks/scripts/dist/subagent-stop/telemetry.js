@@ -12,6 +12,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ensureGoodVibesDir, parseTranscript, extractKeywords, fileExists, } from '../shared/index.js';
 import { debug } from '../shared/logging.js';
+/** Type guard to check if a value is a valid trackings record */
+function isTrackingsRecord(value) {
+    return typeof value === 'object' && value !== null;
+}
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 /** Persists agent tracking data to disk */
@@ -21,7 +25,10 @@ export async function saveAgentTracking(cwd, tracking) {
     let trackings = {};
     if (await fileExists(trackingPath)) {
         try {
-            trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+            const parsed = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+            if (isTrackingsRecord(parsed)) {
+                trackings = parsed;
+            }
         }
         catch (error) {
             debug('telemetry operation failed', { error: String(error) });
@@ -37,8 +44,11 @@ export async function getAgentTracking(cwd, agentId) {
         return null;
     }
     try {
-        const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
-        return trackings[agentId] || null;
+        const parsed = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+        if (isTrackingsRecord(parsed)) {
+            return parsed[agentId] ?? null;
+        }
+        return null;
     }
     catch (error) {
         debug('getAgentTracking failed', { error: String(error) });
@@ -52,9 +62,11 @@ export async function removeAgentTracking(cwd, agentId) {
         return;
     }
     try {
-        const trackings = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
-        delete trackings[agentId];
-        await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
+        const parsed = JSON.parse(await fs.readFile(trackingPath, 'utf-8'));
+        if (isTrackingsRecord(parsed)) {
+            delete parsed[agentId];
+            await fs.writeFile(trackingPath, JSON.stringify(parsed, null, 2));
+        }
     }
     catch (error) {
         debug('telemetry operation failed', { error: String(error) });
