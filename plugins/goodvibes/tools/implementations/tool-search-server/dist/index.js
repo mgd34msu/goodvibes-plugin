@@ -25778,10 +25778,6 @@ var LIBRARY_APIS = {
     { name: "API Routes", description: "Backend API endpoints", url: "https://nextjs.org/docs/app/building-your-application/routing/route-handlers" },
     { name: "Middleware", description: "Request/response middleware", url: "https://nextjs.org/docs/app/building-your-application/routing/middleware" }
   ],
-  "nextjs": [
-    { name: "App Router", description: "File-based routing in app directory", url: "https://nextjs.org/docs/app" },
-    { name: "Server Components", description: "React Server Components", url: "https://nextjs.org/docs/app/building-your-application/rendering/server-components" }
-  ],
   "prisma": [
     { name: "Schema", description: "Prisma schema language", url: "https://www.prisma.io/docs/concepts/components/prisma-schema" },
     { name: "Client", description: "Prisma Client API", url: "https://www.prisma.io/docs/concepts/components/prisma-client" },
@@ -25809,7 +25805,8 @@ var LIBRARY_APIS = {
 };
 function getCommonApiReferences(library, topic) {
   const refs = [];
-  const libraryRefs = LIBRARY_APIS[library] || [];
+  const normalizedLibrary = library === "nextjs" ? "next" : library;
+  const libraryRefs = LIBRARY_APIS[normalizedLibrary] || [];
   if (topic) {
     const topicLower = topic.toLowerCase();
     const filtered = libraryRefs.filter(
