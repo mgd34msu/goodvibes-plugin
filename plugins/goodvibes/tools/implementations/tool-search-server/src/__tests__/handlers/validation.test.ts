@@ -656,8 +656,9 @@ export const z = eval('3');
 
       await handleCheckTypes({ files: ['src/a.ts', 'src/b.ts'] });
 
+      // Files are resolved to absolute paths in the command
       expect(safeExec).toHaveBeenCalledWith(
-        expect.stringContaining('src/a.ts src/b.ts'),
+        expect.stringMatching(/a.ts.*b.ts/),
         expect.any(String),
         expect.any(Number)
       );

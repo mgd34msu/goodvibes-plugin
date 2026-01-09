@@ -273,6 +273,7 @@ describe('utils', () => {
   describe('safeExec', () => {
     it('should return stdout and stderr on successful execution', async () => {
       vi.mocked(exec).mockImplementation(
+      // @ts-expect-error - Node.js v25+ changed callback type signature
         (cmd: string, opts: unknown, cb?: (err: unknown, result: { stdout: string; stderr: string }) => void) => {
           if (cb) cb(null, { stdout: 'test output\n', stderr: 'warning\n' });
           return {} as ReturnType<typeof exec>;
@@ -289,6 +290,7 @@ describe('utils', () => {
 
     it('should handle command errors and return error property', async () => {
       vi.mocked(exec).mockImplementation(
+      // @ts-expect-error - Node.js v25+ changed callback type signature
         (cmd: string, opts: unknown, cb?: (err: unknown, result: { stdout: string; stderr: string }) => void) => {
           if (cb) {
             const execError = {
@@ -313,6 +315,7 @@ describe('utils', () => {
 
     it('should handle errors without stdout/stderr properties', async () => {
       vi.mocked(exec).mockImplementation(
+      // @ts-expect-error - Node.js v25+ changed callback type signature
         (cmd: string, opts: unknown, cb?: (err: unknown, result: { stdout: string; stderr: string }) => void) => {
           if (cb) {
             const execError = {
@@ -335,6 +338,7 @@ describe('utils', () => {
 
     it('should handle errors without any properties', async () => {
       vi.mocked(exec).mockImplementation(
+      // @ts-expect-error - Node.js v25+ changed callback type signature
         (cmd: string, opts: unknown, cb?: (err: unknown, result: { stdout: string; stderr: string }) => void) => {
           if (cb) {
             cb({}, { stdout: '', stderr: '' });
@@ -458,6 +462,7 @@ describe('utils', () => {
       const mockRes = createMockResponse({ data: 'test content' });
       const mockReq = createMockRequest({});
 
+      // @ts-expect-error - Node.js v25+ changed callback type signature
       vi.mocked(https.get).mockImplementation((url: string, cb: (res: unknown) => void) => {
         cb(mockRes);
         return mockReq as unknown as ReturnType<typeof https.get>;
@@ -473,6 +478,7 @@ describe('utils', () => {
       const mockRes = createMockResponse({ data: 'http content' });
       const mockReq = createMockRequest({});
 
+      // @ts-expect-error - Node.js v25+ changed callback type signature
       vi.mocked(http.get).mockImplementation((url: string, cb: (res: unknown) => void) => {
         cb(mockRes);
         return mockReq as unknown as ReturnType<typeof http.get>;
@@ -497,6 +503,7 @@ describe('utils', () => {
       const mockReq2 = createMockRequest({});
 
       let callCount = 0;
+      // @ts-expect-error - Node.js v25+ changed callback type signature
       vi.mocked(https.get).mockImplementation((url: string, cb: (res: unknown) => void) => {
         callCount++;
         if (callCount === 1) {
@@ -517,6 +524,7 @@ describe('utils', () => {
       const networkError = new Error('Network error');
       const mockReq = createMockRequest({ emitError: networkError });
 
+      // @ts-expect-error - Node.js v25+ changed callback type signature
       vi.mocked(https.get).mockImplementation((url: string, cb: (res: unknown) => void) => {
         // Don't call cb - just return the request that will error
         return mockReq as unknown as ReturnType<typeof https.get>;
@@ -530,6 +538,7 @@ describe('utils', () => {
       const mockRes = createMockResponse({ emitError: responseError });
       const mockReq = createMockRequest({});
 
+      // @ts-expect-error - Node.js v25+ changed callback type signature
       vi.mocked(https.get).mockImplementation((url: string, cb: (res: unknown) => void) => {
         cb(mockRes);
         return mockReq as unknown as ReturnType<typeof https.get>;
@@ -548,6 +557,7 @@ describe('utils', () => {
 
       const mockReq = createMockRequest({});
 
+      // @ts-expect-error - Node.js v25+ changed callback type signature
       vi.mocked(https.get).mockImplementation((url: string, cb: (res: unknown) => void) => {
         cb(res);
         // Emit multiple chunks

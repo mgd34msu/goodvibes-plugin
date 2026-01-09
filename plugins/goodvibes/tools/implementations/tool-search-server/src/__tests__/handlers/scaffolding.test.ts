@@ -273,17 +273,15 @@ describe('scaffolding handlers', () => {
       };
 
       let readdirCallCount = 0;
-      vi.mocked(fs.promises.readdir).mockImplementation(async () => {
+      vi.mocked(fs.promises.readdir).mockImplementation((async () => {
         readdirCallCount++;
         if (readdirCallCount === 1) {
           // First call - return directory
-          // @ts-expect-error - Vitest mock type inference issue
           return [mockDirDirent];
         }
         // Second call (inside src dir) - return file
-        // @ts-expect-error - Vitest mock type inference issue
         return [mockFileDirent];
-      });
+      }) as unknown as typeof fs.promises.readdir);
 
       vi.mocked(fs.promises.readFile).mockImplementation(async (p) => {
         if (String(p).includes('template.yaml')) {
