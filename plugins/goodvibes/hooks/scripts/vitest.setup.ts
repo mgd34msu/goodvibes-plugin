@@ -44,8 +44,3 @@ afterEach(() => {
   processExitMock?.mockRestore();
   vi.clearAllMocks();
 });
-
-// Export the mock accessor for tests that need it
-export function getProcessExitMock() {
-  return processExitMock;
-}

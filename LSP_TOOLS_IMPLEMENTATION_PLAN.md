@@ -11,103 +11,133 @@ Implement 33 MCP tools to give Claude Code semantic understanding of codebases, 
 
 ---
 
+## Implementation Types
+
+Tools fall into three categories:
+
+### 🔧 Static Analysis (TypeScript API)
+Uses the TypeScript Language Service API directly. These are the same APIs VS Code uses - rock solid, well-documented, deterministic results.
+
+### 🔧 Static Analysis (Custom)
+Pattern matching, AST parsing, file system analysis. Standard programming techniques.
+
+### 🤖 LLM-Powered
+Spawns a headless Claude session with gathered context. The MCP tool becomes an orchestration layer that:
+1. Gathers relevant context (code, types, related files)
+2. Spawns Claude with a focused prompt
+3. Returns structured output
+
+This approach turns "hard" static analysis problems into "context gathering + reasoning" - leveraging the fact that we're already running on top of an LLM.
+
+---
+
 ## Tool Inventory
 
 ### 1. LSP Tools (15 tools)
 
 Core TypeScript Language Service integration for semantic code understanding.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `find_references` | file, line, column | Array of locations where symbol is used | P0 |
-| `go_to_definition` | file, line, column | Location(s) of symbol definition | P0 |
-| `rename_symbol` | file, line, column, newName | File edits to apply | P0 |
-| `get_code_actions` | file, line, column (or range) | Available quick fixes | P0 |
-| `apply_code_action` | file, action_id | File edits to apply | P0 |
-| `get_call_hierarchy` | file, line, column, direction | Incoming/outgoing call tree | P1 |
-| `get_symbol_info` | file, line, column | Type info, documentation, definition | P1 |
-| `get_document_symbols` | file | Structural outline (classes, functions, etc.) | P1 |
-| `get_signature_help` | file, line, column | Function parameter info | P1 |
-| `analyze_impact` | file, line, column | Affected files, tests, modules | P1 |
-| `find_dead_code` | file or directory | Unused exports/functions | P2 |
-| `get_api_surface` | file or directory | Public vs internal API | P2 |
-| `detect_breaking_changes` | before_ref, after_ref | Breaking API changes | P2 |
-| `semantic_diff` | before_ref, after_ref | Type-aware diff | P2 |
-| `get_diagnostics` | files (optional) | All errors with fixes | P1 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `find_references` | 🔧 TS API | file, line, column | Array of locations where symbol is used | P0 |
+| `go_to_definition` | 🔧 TS API | file, line, column | Location(s) of symbol definition | P0 |
+| `rename_symbol` | 🔧 TS API | file, line, column, newName | File edits to apply | P0 |
+| `get_code_actions` | 🔧 TS API | file, line, column (or range) | Available quick fixes | P0 |
+| `apply_code_action` | 🔧 TS API | file, action_id | File edits to apply | P0 |
+| `get_call_hierarchy` | 🔧 TS API | file, line, column, direction | Incoming/outgoing call tree | P1 |
+| `get_symbol_info` | 🔧 TS API | file, line, column | Type info, documentation, definition | P1 |
+| `get_document_symbols` | 🔧 TS API | file | Structural outline (classes, functions, etc.) | P1 |
+| `get_signature_help` | 🔧 TS API | file, line, column | Function parameter info | P1 |
+| `analyze_impact` | 🤖 LLM | file, line, column | Affected files, tests, modules + reasoning | P1 |
+| `find_dead_code` | 🔧 TS API | file or directory | Unused exports/functions | P2 |
+| `get_api_surface` | 🔧 TS API | file or directory | Public vs internal API | P2 |
+| `detect_breaking_changes` | 🤖 LLM | before_ref, after_ref | Breaking API changes + migration advice | P2 |
+| `semantic_diff` | 🤖 LLM | before_ref, after_ref | Type-aware diff + impact explanation | P2 |
+| `get_diagnostics` | 🔧 TS API | files (optional) | All errors with fixes | P1 |
 
 ### 2. Test Intelligence (3 tools)
 
 Understanding test coverage and suggesting test cases.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `find_tests_for_file` | file | Test files that cover this file | P1 |
-| `get_test_coverage` | file, function (optional) | Coverage percentage, uncovered lines | P2 |
-| `suggest_test_cases` | file, function | Edge cases to test | P2 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `find_tests_for_file` | 🔧 Custom | file | Test files that cover this file | P1 |
+| `get_test_coverage` | 🔧 Custom | file, function (optional) | Coverage percentage, uncovered lines | P2 |
+| `suggest_test_cases` | 🤖 LLM | file, function | Edge cases to test with rationale | P2 |
 
 ### 3. Dependency Intelligence (2 tools)
 
 Package and import analysis.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `analyze_dependencies` | - | Used/unused/outdated/vulnerable packages | P1 |
-| `find_circular_deps` | - | Import cycles with paths | P1 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `analyze_dependencies` | 🔧 Custom | - | Used/unused/outdated/vulnerable packages | P1 |
+| `find_circular_deps` | 🔧 Custom | - | Import cycles with paths | P1 |
 
 ### 4. Schema Intelligence (3 tools)
 
 Database, API, and GraphQL schema understanding.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `get_database_schema` | - | Tables, columns, relations (Prisma, Drizzle, SQL) | P1 |
-| `get_api_routes` | - | REST endpoints (Express, Next.js, Fastify) | P1 |
-| `get_graphql_schema` | - | Types, queries, mutations, subscriptions | P2 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `get_database_schema` | 🔧 Custom | - | Tables, columns, relations (Prisma, Drizzle, SQL) | P1 |
+| `get_api_routes` | 🔧 Custom | - | REST endpoints (Express, Next.js, Fastify) | P1 |
+| `get_graphql_schema` | 🔧 Custom | - | Types, queries, mutations, subscriptions | P2 |
 
 ### 5. Project Intelligence (2 tools)
 
 Convention and configuration discovery.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `get_conventions` | - | Naming, imports, patterns used in codebase | P2 |
-| `get_env_config` | - | Required/optional env vars with usage | P1 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `get_conventions` | 🤖 LLM | - | Naming, imports, patterns + why they're used | P2 |
+| `get_env_config` | 🔧 Custom | - | Required/optional env vars with usage | P1 |
 
 ### 6. Error Intelligence (2 tools)
 
 Error parsing and explanation.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `parse_error_stack` | error_text | Root cause, call stack, suggestions | P1 |
-| `explain_type_error` | error_code, error_message | Human explanation with fixes | P1 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `parse_error_stack` | 🤖 LLM | error_text | Root cause analysis, call stack, fix suggestions | P1 |
+| `explain_type_error` | 🤖 LLM | error_code, error_message, context | Human explanation with contextual fixes | P1 |
 
 ### 7. Build Intelligence (1 tool)
 
 Bundle analysis.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `analyze_bundle` | - | Size breakdown, duplicates, tree-shaking issues | P2 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `analyze_bundle` | 🔧 Custom | - | Size breakdown, duplicates, tree-shaking issues | P2 |
 
 ### 8. Security Intelligence (2 tools)
 
 Security scanning.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `scan_for_secrets` | files (optional) | Leaked credentials with locations | P1 |
-| `check_permissions` | file | File/network/system access analysis | P2 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `scan_for_secrets` | 🔧 Custom | files (optional) | Leaked credentials with locations | P1 |
+| `check_permissions` | 🤖 LLM | file | File/network/system access analysis + risks | P2 |
 
 ### 9. Framework-Specific (3 tools)
 
 Framework-aware analysis.
 
-| Tool | Input | Output | Priority |
-|------|-------|--------|----------|
-| `get_react_component_tree` | file (optional) | Component hierarchy with props | P2 |
-| `get_nextjs_routes` | - | Pages, API routes, middleware, layouts | P2 |
-| `get_prisma_operations` | - | DB queries, N+1 detection, missing indexes | P2 |
+| Tool | Type | Input | Output | Priority |
+|------|------|-------|--------|----------|
+| `get_react_component_tree` | 🔧 Custom | file (optional) | Component hierarchy with props | P2 |
+| `get_nextjs_routes` | 🔧 Custom | - | Pages, API routes, middleware, layouts | P2 |
+| `get_prisma_operations` | 🤖 LLM | - | DB queries, N+1 detection + optimization advice | P2 |
+
+### Summary by Implementation Type
+
+| Type | Count | Tools |
+|------|-------|-------|
+| 🔧 TS API | 12 | find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_call_hierarchy, get_symbol_info, get_document_symbols, get_signature_help, find_dead_code, get_api_surface, get_diagnostics |
+| 🔧 Custom | 12 | find_tests_for_file, get_test_coverage, analyze_dependencies, find_circular_deps, get_database_schema, get_api_routes, get_graphql_schema, get_env_config, analyze_bundle, scan_for_secrets, get_react_component_tree, get_nextjs_routes |
+| 🤖 LLM | 9 | analyze_impact, detect_breaking_changes, semantic_diff, suggest_test_cases, get_conventions, parse_error_stack, explain_type_error, check_permissions, get_prisma_operations |
+
+**Total: 33 tools** (12 TS API + 12 Custom + 9 LLM-powered)
 
 ---
 
@@ -716,6 +746,247 @@ export async function handleGetCodeActions(args: GetCodeActionsArgs) {
       }, null, 2),
     }],
   };
+}
+```
+
+### suggest_test_cases.ts (LLM-powered)
+
+```typescript
+import { spawnHeadlessClaude } from '../llm/spawn-claude.js';
+import { languageServiceManager } from './language-service.js';
+import { PROJECT_ROOT } from '../../config.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+interface SuggestTestCasesArgs {
+  file: string;
+  function: string;
+}
+
+interface TestCase {
+  name: string;
+  description: string;
+  input: unknown;
+  expected: unknown;
+  rationale: string;
+  category: 'happy_path' | 'edge_case' | 'error_case' | 'boundary';
+}
+
+export async function handleSuggestTestCases(args: SuggestTestCasesArgs) {
+  const filePath = path.resolve(PROJECT_ROOT, args.file);
+
+  // 1. Gather context
+  const fileContent = await fs.readFile(filePath, 'utf-8');
+  const { service } = await languageServiceManager.getServiceForFile(filePath);
+
+  // Extract the function and its types
+  const functionMatch = extractFunction(fileContent, args.function);
+  if (!functionMatch) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ error: `Function '${args.function}' not found` }, null, 2),
+      }],
+    };
+  }
+
+  // Get type information
+  const typeInfo = await getRelatedTypes(service, filePath, args.function);
+
+  // Find existing tests for context
+  const existingTests = await findExistingTests(filePath, args.function);
+
+  // 2. Spawn headless Claude with focused prompt
+  const result = await spawnHeadlessClaude({
+    prompt: `You are analyzing a TypeScript function to suggest comprehensive test cases.
+
+## Function to Test
+\`\`\`typescript
+${functionMatch.code}
+\`\`\`
+
+## Related Types
+\`\`\`typescript
+${typeInfo}
+\`\`\`
+
+## Existing Tests (for reference, don't duplicate)
+${existingTests.length > 0 ? existingTests.map(t => `- ${t}`).join('\n') : 'None found'}
+
+## Task
+Suggest test cases that cover:
+1. **Happy path** - Normal expected usage
+2. **Edge cases** - Empty strings, null, undefined, empty arrays, zero, negative numbers
+3. **Boundary conditions** - Max values, min values, length limits
+4. **Error cases** - Invalid inputs that should throw or return errors
+
+For each test case, provide:
+- A descriptive name
+- The input values
+- The expected output/behavior
+- Why this case is important (rationale)
+
+Return ONLY valid JSON in this exact format:
+{
+  "test_cases": [
+    {
+      "name": "should handle empty string input",
+      "description": "Tests behavior when input is empty",
+      "input": { "param1": "" },
+      "expected": { "result": null },
+      "rationale": "Empty strings are common edge cases that often cause bugs",
+      "category": "edge_case"
+    }
+  ]
+}`,
+    outputFormat: 'json',
+    maxTokens: 4000,
+  });
+
+  // 3. Parse and validate response
+  let testCases: TestCase[];
+  try {
+    const parsed = JSON.parse(result);
+    testCases = parsed.test_cases;
+  } catch {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ error: 'Failed to parse LLM response', raw: result }, null, 2),
+      }],
+    };
+  }
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        function: args.function,
+        file: args.file,
+        test_cases: testCases,
+        count: testCases.length,
+        by_category: {
+          happy_path: testCases.filter(t => t.category === 'happy_path').length,
+          edge_case: testCases.filter(t => t.category === 'edge_case').length,
+          error_case: testCases.filter(t => t.category === 'error_case').length,
+          boundary: testCases.filter(t => t.category === 'boundary').length,
+        },
+      }, null, 2),
+    }],
+  };
+}
+
+// Helper functions
+function extractFunction(content: string, functionName: string): { code: string } | null {
+  // Simple regex for function extraction - could be enhanced with AST
+  const patterns = [
+    new RegExp(`(export\\s+)?(async\\s+)?function\\s+${functionName}\\s*\\([^)]*\\)[^{]*\\{[^}]*\\}`, 's'),
+    new RegExp(`(export\\s+)?const\\s+${functionName}\\s*=\\s*(async\\s+)?\\([^)]*\\)[^=]*=>\\s*\\{[^}]*\\}`, 's'),
+    new RegExp(`(export\\s+)?const\\s+${functionName}\\s*=\\s*(async\\s+)?\\([^)]*\\)[^=]*=>[^;]+`, 's'),
+  ];
+
+  for (const pattern of patterns) {
+    const match = content.match(pattern);
+    if (match) {
+      return { code: match[0] };
+    }
+  }
+  return null;
+}
+
+async function getRelatedTypes(
+  service: ts.LanguageService,
+  filePath: string,
+  functionName: string
+): Promise<string> {
+  // Get type information for the function's parameters and return type
+  // This would use the TS API to extract relevant type definitions
+  // Simplified for example
+  return '// Types would be extracted here';
+}
+
+async function findExistingTests(filePath: string, functionName: string): Promise<string[]> {
+  // Look for test files that might already test this function
+  const testPatterns = [
+    filePath.replace('.ts', '.test.ts'),
+    filePath.replace('.ts', '.spec.ts'),
+    filePath.replace('/src/', '/tests/').replace('.ts', '.test.ts'),
+  ];
+
+  const existingTests: string[] = [];
+  for (const testPath of testPatterns) {
+    try {
+      const content = await fs.readFile(testPath, 'utf-8');
+      // Find test names that mention the function
+      const testMatches = content.matchAll(/it\(['"]([^'"]*${functionName}[^'"]*)['"]/g);
+      for (const match of testMatches) {
+        existingTests.push(match[1]);
+      }
+    } catch {
+      // Test file doesn't exist
+    }
+  }
+  return existingTests;
+}
+```
+
+### LLM Spawning Infrastructure
+
+```typescript
+// llm/spawn-claude.ts
+
+import { spawn } from 'child_process';
+
+interface SpawnClaudeOptions {
+  prompt: string;
+  outputFormat?: 'json' | 'text';
+  maxTokens?: number;
+  timeout?: number;
+}
+
+/**
+ * Spawns a headless Claude Code session and returns the result.
+ * Uses the Claude CLI in non-interactive mode.
+ */
+export async function spawnHeadlessClaude(options: SpawnClaudeOptions): Promise<string> {
+  const { prompt, outputFormat = 'text', maxTokens = 4000, timeout = 60000 } = options;
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '--print',           // Non-interactive, print result
+      '--output-format', outputFormat === 'json' ? 'json' : 'text',
+      '--max-tokens', String(maxTokens),
+      '-p', prompt,        // Prompt
+    ];
+
+    const proc = spawn('claude', args, {
+      timeout,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve(stdout.trim());
+      } else {
+        reject(new Error(`Claude exited with code ${code}: ${stderr}`));
+      }
+    });
+
+    proc.on('error', (err) => {
+      reject(err);
+    });
+  });
 }
 ```
 
