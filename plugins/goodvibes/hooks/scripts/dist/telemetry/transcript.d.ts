@@ -31,7 +31,16 @@ export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
  */
 export declare function parseTranscript(transcriptPath: string): Promise<ParsedTranscript>;
 /**
- * Extract keywords from task description and transcript content.
+ * Extracts keywords from task description and transcript content.
  * Delegates to the consolidated keywords module.
+ *
+ * @param taskDescription - Optional task description to extract keywords from
+ * @param transcriptContent - Optional transcript content to scan
+ * @param agentType - Optional agent type for categorization
+ * @returns Array of extracted keyword strings
+ *
+ * @example
+ * const keywords = extractKeywords('Build authentication API', content, 'backend-engineer');
+ * // Returns: ['backend', 'api', 'authentication', ...]
  */
 export declare function extractKeywords(taskDescription?: string, transcriptContent?: string, agentType?: string): string[];

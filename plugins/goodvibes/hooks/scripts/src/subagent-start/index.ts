@@ -115,7 +115,7 @@ function createTrackingEntry(
   sessionId: string,
   cwd: string,
   projectName: string,
-  gitInfo: { branch: string | null; commit: string | null }
+  gitInfo: { branch?: string; commit?: string }
 ): TelemetryTracking {
   return {
     agent_id: agentId,
@@ -154,7 +154,7 @@ async function trackInAnalytics(
 /** Builds project reminders for context injection. */
 function buildReminders(
   projectName: string,
-  gitBranch: string | null,
+  gitBranch: string | undefined,
   stackInfo: unknown
 ): string[] {
   const reminders: string[] = [];
@@ -186,7 +186,7 @@ function buildAdditionalContext(
 function buildSystemMessage(
   agentType: string,
   projectName: string,
-  gitBranch: string | null
+  gitBranch: string | undefined
 ): string | undefined {
   if (!GOODVIBES_AGENTS.has(agentType)) {
     debug('Non-GoodVibes agent started: ' + agentType);

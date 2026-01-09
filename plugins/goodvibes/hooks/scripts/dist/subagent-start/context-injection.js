@@ -11,7 +11,19 @@
 import * as path from 'path';
 import { loadSharedConfig } from '../shared/index.js';
 import { getDefaultConfig as getAutomationConfig } from '../types/config.js';
-/** Builds context for a subagent based on agent type and project */
+/**
+ * Builds context for a subagent based on agent type and project.
+ * Adds agent-specific reminders (write-local, test quality, scoring, etc.).
+ *
+ * @param cwd - The current working directory (project root)
+ * @param agentType - The type of agent (e.g., 'backend-engineer', 'test-engineer')
+ * @param _sessionId - The session ID (reserved for future use)
+ * @returns Promise resolving to SubagentContext with additional context string
+ *
+ * @example
+ * const context = await buildSubagentContext(cwd, 'backend-engineer', sessionId);
+ * // Returns context with write-local reminder
+ */
 export async function buildSubagentContext(cwd, agentType, _sessionId) {
     // Load shared config for telemetry settings (unused currently but available)
     const _sharedConfig = await loadSharedConfig(cwd);

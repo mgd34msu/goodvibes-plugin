@@ -285,7 +285,7 @@ node_modules/
       expect(writtenContent).toContain('logs/');
 
       // Should not duplicate existing entries
-      const envCount = (writtenContent.match(/^\.env$/gm) || []).length;
+      const envCount = (writtenContent.match(/^\.env$/gm) ?? []).length;
       expect(envCount).toBe(1);
     });
 

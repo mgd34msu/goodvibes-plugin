@@ -280,19 +280,11 @@ describe('shared/notification', () => {
     it('should handle truly uncaught promise rejections (lines 47-48)', async () => {
       vi.resetModules();
 
-      // Create a mock that rejects asynchronously
+      // Create a mock that rejects
       const error = new Error('Truly uncaught error');
-      mockReadHookInput.mockReturnValue(
-        new Promise((_, reject) => {
-          // Reject asynchronously - will be caught by try/catch in runNotificationHook
-          setImmediate(() => reject(error));
-        })
-      );
+      mockReadHookInput.mockRejectedValue(error);
 
       await setupMocksAndImport();
-
-      // Wait longer for async error to propagate
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Error is caught by main try/catch, not the .catch() handler
       expect(mockLogError).toHaveBeenCalledWith('Notification main', error);
@@ -306,16 +298,9 @@ describe('shared/notification', () => {
       vi.resetModules();
 
       const errorString = 'Truly uncaught string error';
-      mockReadHookInput.mockReturnValue(
-        new Promise((_, reject) => {
-          setImmediate(() => reject(errorString));
-        })
-      );
+      mockReadHookInput.mockRejectedValue(errorString);
 
       await setupMocksAndImport();
-
-      // Wait for async error to propagate
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Error is caught by main try/catch, not the .catch() handler
       expect(mockLogError).toHaveBeenCalledWith(

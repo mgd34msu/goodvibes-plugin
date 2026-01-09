@@ -58,14 +58,14 @@ describe('quality-gates', () => {
             }
           }
           cb(
-            error || null,
-            options.execStdout || '',
-            options.execStderr || ''
+            error ?? null,
+            options.execStdout ?? '',
+            options.execStderr ?? ''
           );
         }
         return {} as ReturnType<typeof actual.exec>;
       }),
-      execSync: options.execSync || vi.fn().mockReturnValue(''),
+      execSync: options.execSync ?? vi.fn().mockReturnValue(''),
     };
   };
 

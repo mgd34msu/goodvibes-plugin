@@ -346,14 +346,9 @@ describe('session-end hook', () => {
 
   describe('uncaught promise rejection', () => {
     it('should handle uncaught promise rejections (lines 87-90)', async () => {
-      // Create a mock that rejects asynchronously to trigger .catch() handler
+      // Create a mock that rejects to trigger .catch() handler
       const error = new Error('Uncaught async error');
-      mockReadHookInput.mockReturnValue(
-        new Promise((_, reject) => {
-          // Reject asynchronously to trigger .catch() handler
-          setImmediate(() => reject(error));
-        })
-      );
+      mockReadHookInput.mockRejectedValue(error);
 
       await setupMocksAndImport();
 
@@ -366,11 +361,7 @@ describe('session-end hook', () => {
 
     it('should handle uncaught non-Error rejections', async () => {
       const errorString = 'Uncaught string error';
-      mockReadHookInput.mockReturnValue(
-        new Promise((_, reject) => {
-          setImmediate(() => reject(errorString));
-        })
-      );
+      mockReadHookInput.mockRejectedValue(errorString);
 
       await setupMocksAndImport();
 

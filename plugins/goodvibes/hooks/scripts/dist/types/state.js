@@ -5,7 +5,17 @@
  * session information, test results, build status, git operations, and more.
  * State is persisted to disk and restored between sessions.
  */
-/** Creates a new default state object with sensible defaults. */
+/**
+ * Creates a new default state object with sensible defaults.
+ * Used when initializing a new session or when no existing state is found.
+ *
+ * @returns A new HooksState with default values for all properties
+ *
+ * @example
+ * const state = createDefaultState();
+ * state.session.id = newSessionId;
+ * await saveState(cwd, state);
+ */
 export function createDefaultState() {
     return {
         session: {

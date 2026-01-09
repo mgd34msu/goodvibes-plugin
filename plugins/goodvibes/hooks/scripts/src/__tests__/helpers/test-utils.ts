@@ -222,7 +222,7 @@ export function createSharedMock(options: {
   const extractErrorOutputMock =
     typeof options.extractErrorOutput === 'function'
       ? vi.fn().mockImplementation(options.extractErrorOutput)
-      : vi.fn().mockReturnValue(options.extractErrorOutput || '');
+      : vi.fn().mockReturnValue(options.extractErrorOutput ?? '');
 
   return {
     fileExists: fileExistsMock,

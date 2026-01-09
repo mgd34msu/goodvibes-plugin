@@ -20,7 +20,19 @@ export interface SubagentContext {
   additionalContext: string;
 }
 
-/** Builds context for a subagent based on agent type and project */
+/**
+ * Builds context for a subagent based on agent type and project.
+ * Adds agent-specific reminders (write-local, test quality, scoring, etc.).
+ *
+ * @param cwd - The current working directory (project root)
+ * @param agentType - The type of agent (e.g., 'backend-engineer', 'test-engineer')
+ * @param _sessionId - The session ID (reserved for future use)
+ * @returns Promise resolving to SubagentContext with additional context string
+ *
+ * @example
+ * const context = await buildSubagentContext(cwd, 'backend-engineer', sessionId);
+ * // Returns context with write-local reminder
+ */
 export async function buildSubagentContext(
   cwd: string,
   agentType: string,

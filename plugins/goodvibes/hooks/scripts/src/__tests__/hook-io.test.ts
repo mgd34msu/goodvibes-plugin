@@ -831,7 +831,7 @@ describe('hook-io', () => {
 
       // Empty string is falsy, so reason won't be added
       expect(
-        'permissionDecisionReason' in (result.hookSpecificOutput || {})
+        'permissionDecisionReason' in (result.hookSpecificOutput ?? {})
       ).toBe(false);
     });
 
@@ -841,7 +841,7 @@ describe('hook-io', () => {
       const result = createPermissionResponse('allow', undefined);
 
       expect(
-        'permissionDecisionReason' in (result.hookSpecificOutput || {})
+        'permissionDecisionReason' in (result.hookSpecificOutput ?? {})
       ).toBe(false);
     });
   });

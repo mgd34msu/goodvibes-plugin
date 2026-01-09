@@ -244,7 +244,7 @@ describe('response-formatter', () => {
         const message = buildSystemMessage('test-session', context);
 
         // Count the number of pipe characters - should only have them in the base message parts
-        const pipeCount = (message.match(/\|/g) || []).length;
+        const pipeCount = (message.match(/\|/g) ?? []).length;
         expect(pipeCount).toBe(0); // No context summary or recovery, so no pipes
       });
     });

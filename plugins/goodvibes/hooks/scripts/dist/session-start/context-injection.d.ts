@@ -16,5 +16,17 @@ export interface ContextInjectionResult {
     /** Whether the project is empty */
     isEmpty: boolean;
 }
-/** Gathers project context and formats it for session injection */
+/**
+ * Gathers project context and formats it for session injection.
+ * Collects stack info, git status, environment, TODOs, health checks, and memory.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to ContextInjectionResult with formatted context
+ *
+ * @example
+ * const result = await gatherAndFormatContext('/path/to/project');
+ * if (!result.isEmpty) {
+ *   console.log(result.context);
+ * }
+ */
 export declare function gatherAndFormatContext(cwd: string): Promise<ContextInjectionResult>;

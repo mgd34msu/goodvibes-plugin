@@ -203,7 +203,11 @@ function processPlainTextLine(line, result) {
     }
 }
 /**
- * Extract the last assistant output from transcript
+ * Extracts the last assistant output from transcript.
+ * Searches for the final assistant message in various formats.
+ *
+ * @param content - The full transcript content
+ * @returns Last output text (truncated to MAX_OUTPUT_LENGTH), or undefined
  */
 function extractLastOutput(content) {
     // Try to find the last assistant message in various formats
@@ -228,8 +232,17 @@ function extractLastOutput(content) {
 // Keyword Extraction
 // ============================================================================
 /**
- * Extract keywords from task description and transcript content.
+ * Extracts keywords from task description and transcript content.
  * Delegates to the consolidated keywords module.
+ *
+ * @param taskDescription - Optional task description to extract keywords from
+ * @param transcriptContent - Optional transcript content to scan
+ * @param agentType - Optional agent type for categorization
+ * @returns Array of extracted keyword strings
+ *
+ * @example
+ * const keywords = extractKeywords('Build authentication API', content, 'backend-engineer');
+ * // Returns: ['backend', 'api', 'authentication', ...]
  */
 export function extractKeywords(taskDescription, transcriptContent, agentType) {
     return extractTranscriptKeywords(taskDescription, transcriptContent, agentType);

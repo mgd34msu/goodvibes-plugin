@@ -201,22 +201,15 @@ describe('user-prompt-submit hook', () => {
     it('should handle async rejections in main function', async () => {
       vi.resetModules();
 
-      // Create a mock that rejects asynchronously
+      // Create a mock that rejects
       const error = new Error('Async error');
-      mockReadHookInput.mockReturnValue(
-        new Promise((_, reject) => {
-          setImmediate(() => reject(error));
-        })
-      );
+      mockReadHookInput.mockRejectedValue(error);
 
       mockCreateResponse.mockImplementation(() => ({
         continue: true,
       }));
 
       await setupMocksAndImport();
-
-      // Wait for async error to propagate
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // The error is caught by the try-catch in the main function
       expect(mockLogError).toHaveBeenCalledWith(
@@ -231,20 +224,13 @@ describe('user-prompt-submit hook', () => {
       vi.resetModules();
 
       const errorString = 'Async string error';
-      mockReadHookInput.mockReturnValue(
-        new Promise((_, reject) => {
-          setImmediate(() => reject(errorString));
-        })
-      );
+      mockReadHookInput.mockRejectedValue(errorString);
 
       mockCreateResponse.mockImplementation(() => ({
         continue: true,
       }));
 
       await setupMocksAndImport();
-
-      // Wait for async error to propagate
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // The error is caught by the try-catch in the main function
       expect(mockLogError).toHaveBeenCalledWith(

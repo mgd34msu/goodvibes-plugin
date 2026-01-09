@@ -619,8 +619,8 @@ Also has rationale
         transform: (entry) => ({
           title: entry.title!,
           date: entry.date!,
-          rationale: entry.rationale || 'No rationale',
-          alternatives: entry.alternatives || [],
+          rationale: entry.rationale ?? 'No rationale',
+          alternatives: entry.alternatives ?? [],
           agent: entry.agent,
           context: entry.context,
         }),

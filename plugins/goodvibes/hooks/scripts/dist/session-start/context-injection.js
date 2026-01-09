@@ -13,7 +13,19 @@ import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnv
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
 /** Width of the separator line in context output */
 const SEPARATOR_WIDTH = 50;
-/** Gathers project context and formats it for session injection */
+/**
+ * Gathers project context and formats it for session injection.
+ * Collects stack info, git status, environment, TODOs, health checks, and memory.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to ContextInjectionResult with formatted context
+ *
+ * @example
+ * const result = await gatherAndFormatContext('/path/to/project');
+ * if (!result.isEmpty) {
+ *   console.log(result.context);
+ * }
+ */
 export async function gatherAndFormatContext(cwd) {
     // Check for empty project first
     if (await isEmptyProject(cwd)) {

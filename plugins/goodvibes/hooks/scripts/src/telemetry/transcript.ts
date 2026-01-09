@@ -143,12 +143,12 @@ function processToolUsage(
   entry: Record<string, unknown>,
   result: ParsedTranscript
 ): void {
-  const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
+  const isToolUse = entry.type === 'tool_use' || Boolean(entry.tool_name ?? entry.name);
   if (!isToolUse) {
     return;
   }
 
-  const toolName = (entry.tool_name || entry.name) as string;
+  const toolName = (entry.tool_name ?? entry.name) as string;
   if (!toolName) {
     return;
   }
@@ -180,13 +180,13 @@ function processToolUsage(
 function extractFilePathFromEntry(
   entry: Record<string, unknown>
 ): string | null {
-  const input = entry.tool_input || entry.input || entry.parameters;
+  const input = entry.tool_input ?? entry.input ?? entry.parameters;
   if (!input || typeof input !== 'object') {
     return null;
   }
 
   const inputObj = input as Record<string, unknown>;
-  const filePath = inputObj.file_path || inputObj.path || inputObj.file;
+  const filePath = inputObj.file_path ?? inputObj.path ?? inputObj.file;
 
   return typeof filePath === 'string' ? filePath : null;
 }
@@ -219,7 +219,7 @@ function processSuccessIndicators(
   result: ParsedTranscript
 ): void {
   const text = String(
-    entry.content || entry.text || entry.message || ''
+    entry.content ?? entry.text ?? entry.message ?? ''
   ).toLowerCase();
   const hasSuccessIndicator =
     text.includes('successfully') ||
@@ -308,8 +308,17 @@ function extractLastOutput(content: string): string | undefined {
 // ============================================================================
 
 /**
- * Extract keywords from task description and transcript content.
+ * Extracts keywords from task description and transcript content.
  * Delegates to the consolidated keywords module.
+ *
+ * @param taskDescription - Optional task description to extract keywords from
+ * @param transcriptContent - Optional transcript content to scan
+ * @param agentType - Optional agent type for categorization
+ * @returns Array of extracted keyword strings
+ *
+ * @example
+ * const keywords = extractKeywords('Build authentication API', content, 'backend-engineer');
+ * // Returns: ['backend', 'api', 'authentication', ...]
  */
 export function extractKeywords(
   taskDescription?: string,

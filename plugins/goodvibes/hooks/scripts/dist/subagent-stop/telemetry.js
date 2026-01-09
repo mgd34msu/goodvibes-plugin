@@ -150,7 +150,7 @@ export async function buildTelemetryEntry(tracking, transcriptPath, status) {
     const allText = transcriptData.summary + ' ' + transcriptData.filesModified.join(' ');
     const keywords = extractKeywords(allText);
     // Add agent type as keyword
-    const agentName = tracking.agent_type.split(':').pop() || tracking.agent_type;
+    const agentName = tracking.agent_type.split(':').pop() ?? tracking.agent_type;
     if (!keywords.includes(agentName)) {
         keywords.unshift(agentName);
     }

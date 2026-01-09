@@ -496,7 +496,7 @@ describe('context-injection', () => {
         expect(result.context).toContain(separator);
         // Should have header and footer separators
         const separatorCount = (
-          result.context.match(new RegExp(separator, 'g')) || []
+          result.context.match(new RegExp(separator, 'g')) ?? []
         ).length;
         expect(separatorCount).toBe(2);
       });

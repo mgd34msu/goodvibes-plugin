@@ -12,7 +12,21 @@
 import { runTypeCheck } from '../automation/build-runner.js';
 import { trackFileModification } from '../post-tool-use/file-tracker.js';
 import { parseTranscript } from '../shared/index.js';
-/** Validates agent output by checking type errors in modified files */
+/**
+ * Validates agent output by checking type errors in modified files.
+ * Parses the transcript to track file modifications and runs type checks.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param transcriptPath - Path to the agent's transcript file
+ * @param state - Current HooksState to update with file tracking
+ * @returns Promise resolving to ValidationResult with updated state
+ *
+ * @example
+ * const result = await validateAgentOutput(cwd, '/path/to/transcript.jsonl', state);
+ * if (!result.valid) {
+ *   console.log('Validation errors:', result.errors);
+ * }
+ */
 export async function validateAgentOutput(cwd, transcriptPath, state) {
     const transcriptData = await parseTranscript(transcriptPath);
     const errors = [];
