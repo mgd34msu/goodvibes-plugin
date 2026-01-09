@@ -104,6 +104,20 @@ describe('hook-runner', () => {
       const importMetaUrl = 'file:///c/test/path/script.js';
       expect(isMainModule(importMetaUrl)).toBe(false);
     });
+
+    it('should add file:// prefix to Unix paths (line 76-77 branch)', () => {
+      // Unix path without drive letter - triggers else-if branch
+      process.argv = ['node', '/home/user/project/script.js'];
+      const importMetaUrl = 'file:///home/user/project/script.js';
+      expect(isMainModule(importMetaUrl)).toBe(true);
+    });
+
+    it('should not add prefix when path already starts with file://', () => {
+      // Path already has file:// prefix - neither branch is taken
+      process.argv = ['node', 'file:///home/user/project/script.js'];
+      const importMetaUrl = 'file:///home/user/project/script.js';
+      expect(isMainModule(importMetaUrl)).toBe(true);
+    });
   });
 
   describe('runHook', () => {

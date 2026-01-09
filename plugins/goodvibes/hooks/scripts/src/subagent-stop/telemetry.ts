@@ -191,8 +191,7 @@ export async function buildTelemetryEntry(
   const keywords = extractKeywords(allText);
 
   // Add agent type as keyword
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string should fall back to full agent_type
-  const agentName = tracking.agent_type.split(':').pop() || tracking.agent_type;
+  const agentName = tracking.agent_type.split(':').pop() ?? tracking.agent_type;
   if (!keywords.includes(agentName)) {
     keywords.unshift(agentName);
   }
