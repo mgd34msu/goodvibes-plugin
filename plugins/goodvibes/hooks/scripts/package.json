@@ -7,7 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/bundle.js", "build:tsc": "tsc", "build:bundle": "node scripts/bundle.js",
     "watch": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -27,6 +27,7 @@
     "@eslint/js": "^9.39.2",
     "@types/node": "^25.0.3",
     "@vitest/coverage-v8": "^4.0.16",
+    "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.6.2",
