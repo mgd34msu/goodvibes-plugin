@@ -164,14 +164,44 @@ export async function handleValidateImplementation(args: ValidateImplementationA
 }
 
 /**
+ * Finds the nearest tsconfig.json file from the given directory.
+ * Walks up the directory tree until it finds one or hits the root.
+ *
+ * @param startDir - Directory to start searching from
+ * @returns Path to tsconfig.json or null if not found
+ */
+async function findTsConfig(startDir: string): Promise<string | null> {
+  let dir = startDir;
+  const root = path.parse(dir).root;
+
+  while (dir !== root) {
+    const tsconfigPath = path.join(dir, 'tsconfig.json');
+    if (await fileExists(tsconfigPath)) {
+      return tsconfigPath;
+    }
+    dir = path.dirname(dir);
+  }
+
+  // Check root directory as well
+  const rootTsconfig = path.join(root, 'tsconfig.json');
+  if (await fileExists(rootTsconfig)) {
+    return rootTsconfig;
+  }
+
+  return null;
+}
+
+/**
  * Handles the check_types MCP tool call.
  *
  * Runs TypeScript type checking on the project or specific files using
- * `tsc --noEmit`. Parses TypeScript error output and returns structured results.
+ * `tsc --noEmit`. Automatically detects and uses the project's tsconfig.json
+ * to ensure proper resolution of path aliases, JSX settings, and other
+ * project-specific TypeScript configuration.
  *
  * @param args - The check_types tool arguments
  * @param args.files - Specific files to check (defaults to all)
- * @param args.strict - Whether to run with --strict flag
+ * @param args.strict - Whether to run with --strict flag (overrides tsconfig)
  * @param args.include_suggestions - Whether to include fix suggestions
  * @returns MCP tool response with type errors and summary
  *
@@ -180,7 +210,7 @@ export async function handleValidateImplementation(args: ValidateImplementationA
  * // Returns: {
  * //   valid: false,
  * //   errors: [{ file: 'src/api.ts', line: 42, code: 'TS2345', message: '...' }],
- * //   summary: { files_checked: 'all', errors: 3, warnings: 0 }
+ * //   summary: { files_checked: 'all', errors: 3, warnings: 0, tsconfig: 'tsconfig.json' }
  * // }
  *
  * @example
@@ -188,11 +218,37 @@ export async function handleValidateImplementation(args: ValidateImplementationA
  * // Type checks only the specified file with suggestions
  */
 export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolResponse> {
-  const filesArg = args.files?.length ? args.files.join(' ') : '';
-  const strictFlag = args.strict ? '--strict' : '';
+  // Find the project's tsconfig.json
+  const tsconfigPath = await findTsConfig(PROJECT_ROOT);
+
+  // Build the tsc command with proper flags
+  const cmdParts = ['npx', 'tsc', '--noEmit'];
+
+  // Use --project to respect the project's tsconfig.json
+  if (tsconfigPath) {
+    cmdParts.push('--project', `"${tsconfigPath}"`);
+  }
+
+  // Only add --strict if explicitly requested (overrides tsconfig)
+  if (args.strict) {
+    cmdParts.push('--strict');
+  }
+
+  // Add specific files if provided
+  if (args.files?.length) {
+    // When checking specific files with a tsconfig, we need to ensure
+    // the files are resolved relative to the project root
+    const resolvedFiles = args.files.map(f => {
+      const resolved = path.resolve(PROJECT_ROOT, f);
+      return `"${resolved}"`;
+    });
+    cmdParts.push(...resolvedFiles);
+  }
+
+  const command = cmdParts.join(' ') + ' 2>&1';
 
   const result = await safeExec(
-    `npx tsc --noEmit ${strictFlag} ${filesArg} 2>&1`,
+    command,
     PROJECT_ROOT,
     60000
   );
@@ -211,13 +267,19 @@ export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolRespon
   let match;
 
   while ((match = errorRegex.exec(result.stdout + result.stderr)) !== null) {
+    // Normalize file path to be relative to project root for cleaner output
+    let filePath = match[1];
+    if (path.isAbsolute(filePath)) {
+      filePath = path.relative(PROJECT_ROOT, filePath);
+    }
+
     errors.push({
-      file: match[1],
+      file: filePath,
       line: parseInt(match[2]),
       column: parseInt(match[3]),
       code: match[4],
       message: match[5],
-      suggestion: args.include_suggestions ? 'Check type definitions' : '',
+      suggestion: args.include_suggestions ? getSuggestionForError(match[4], match[5]) : '',
     });
   }
 
@@ -231,8 +293,40 @@ export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolRespon
           files_checked: args.files?.length || 'all',
           errors: errors.length,
           warnings: 0,
+          tsconfig: tsconfigPath ? path.relative(PROJECT_ROOT, tsconfigPath) : null,
         },
       }, null, 2),
     }],
   };
+}
+
+/**
+ * Provides helpful suggestions based on TypeScript error codes.
+ *
+ * @param errorCode - The TypeScript error code (e.g., 'TS2345')
+ * @param message - The error message
+ * @returns A suggestion string for fixing the error
+ */
+function getSuggestionForError(errorCode: string, message: string): string {
+  const suggestions: Record<string, string> = {
+    'TS2307': 'Check module path and ensure the file exists. Verify path aliases in tsconfig.json.',
+    'TS2304': 'Import the missing type or declare it. Check if @types package is needed.',
+    'TS2345': 'Check argument types match parameter types. May need type assertion or conversion.',
+    'TS2322': 'Type mismatch in assignment. Check if types are compatible or need conversion.',
+    'TS2339': 'Property does not exist. Check spelling or add to interface/type definition.',
+    'TS2551': 'Property name typo. Check the suggestion in the error message.',
+    'TS2769': 'No matching overload. Check argument count and types for the function call.',
+    'TS7006': 'Parameter needs explicit type. Add type annotation to parameter.',
+    'TS7031': 'Binding element needs type. Add type annotation to destructured parameter.',
+    'TS2532': 'Object possibly undefined. Add null check or use optional chaining (?.).',
+    'TS2531': 'Object possibly null. Add null check or use optional chaining (?.).',
+    'TS18046': 'Value is of type unknown. Add type guard or assertion.',
+    'TS2352': 'Type conversion error. Use proper type assertion or conversion.',
+    'TS6133': 'Unused variable/import. Remove or use the variable, or prefix with underscore.',
+    'TS2554': 'Wrong number of arguments. Check function signature.',
+    'TS2741': 'Missing required property. Add the property to the object.',
+    'TS2740': 'Missing multiple properties. Add all required properties.',
+  };
+
+  return suggestions[errorCode] || 'Check type definitions and ensure types are compatible.';
 }

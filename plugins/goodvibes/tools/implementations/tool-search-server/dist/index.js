@@ -3574,62 +3574,62 @@ var require_fast_uri = __commonJS({
     function normalize(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
-        serialize(parse4(uri, options), options);
+        serialize(parse5(uri, options), options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse4(serialize(uri, options), options);
+        parse5(serialize(uri, options), options);
       }
       return uri;
     }
     function resolve9(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
-      const resolved = resolveComponent(parse4(baseURI, schemelessOptions), parse4(relativeURI, schemelessOptions), schemelessOptions, true);
+      const resolved = resolveComponent(parse5(baseURI, schemelessOptions), parse5(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative3, options, skipNormalization) {
+    function resolveComponent(base, relative4, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse4(serialize(base, options), options);
-        relative3 = parse4(serialize(relative3, options), options);
+        base = parse5(serialize(base, options), options);
+        relative4 = parse5(serialize(relative4, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative3.scheme) {
-        target.scheme = relative3.scheme;
-        target.userinfo = relative3.userinfo;
-        target.host = relative3.host;
-        target.port = relative3.port;
-        target.path = removeDotSegments(relative3.path || "");
-        target.query = relative3.query;
+      if (!options.tolerant && relative4.scheme) {
+        target.scheme = relative4.scheme;
+        target.userinfo = relative4.userinfo;
+        target.host = relative4.host;
+        target.port = relative4.port;
+        target.path = removeDotSegments(relative4.path || "");
+        target.query = relative4.query;
       } else {
-        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
-          target.userinfo = relative3.userinfo;
-          target.host = relative3.host;
-          target.port = relative3.port;
-          target.path = removeDotSegments(relative3.path || "");
-          target.query = relative3.query;
+        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
+          target.userinfo = relative4.userinfo;
+          target.host = relative4.host;
+          target.port = relative4.port;
+          target.path = removeDotSegments(relative4.path || "");
+          target.query = relative4.query;
         } else {
-          if (!relative3.path) {
+          if (!relative4.path) {
             target.path = base.path;
-            if (relative3.query !== void 0) {
-              target.query = relative3.query;
+            if (relative4.query !== void 0) {
+              target.query = relative4.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative3.path[0] === "/") {
-              target.path = removeDotSegments(relative3.path);
+            if (relative4.path[0] === "/") {
+              target.path = removeDotSegments(relative4.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative3.path;
+                target.path = "/" + relative4.path;
               } else if (!base.path) {
-                target.path = relative3.path;
+                target.path = relative4.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative3.query;
+            target.query = relative4.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3637,19 +3637,19 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative3.fragment;
+      target.fragment = relative4.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
       if (typeof uriA === "string") {
         uriA = unescape(uriA);
-        uriA = serialize(normalizeComponentEncoding(parse4(uriA, options), true), { ...options, skipEscape: true });
+        uriA = serialize(normalizeComponentEncoding(parse5(uriA, options), true), { ...options, skipEscape: true });
       } else if (typeof uriA === "object") {
         uriA = serialize(normalizeComponentEncoding(uriA, true), { ...options, skipEscape: true });
       }
       if (typeof uriB === "string") {
         uriB = unescape(uriB);
-        uriB = serialize(normalizeComponentEncoding(parse4(uriB, options), true), { ...options, skipEscape: true });
+        uriB = serialize(normalizeComponentEncoding(parse5(uriB, options), true), { ...options, skipEscape: true });
       } else if (typeof uriB === "object") {
         uriB = serialize(normalizeComponentEncoding(uriB, true), { ...options, skipEscape: true });
       }
@@ -3718,7 +3718,7 @@ var require_fast_uri = __commonJS({
       return uriTokens.join("");
     }
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
-    function parse4(uri, opts) {
+    function parse5(uri, opts) {
       const options = Object.assign({}, opts);
       const parsed = {
         scheme: void 0,
@@ -3812,7 +3812,7 @@ var require_fast_uri = __commonJS({
       resolveComponent,
       equal,
       serialize,
-      parse: parse4
+      parse: parse5
     };
     module.exports = fastUri;
     module.exports.default = fastUri;
@@ -26765,11 +26765,41 @@ async function handleValidateImplementation(args) {
     }]
   };
 }
+async function findTsConfig(startDir) {
+  let dir = startDir;
+  const root = path14.parse(dir).root;
+  while (dir !== root) {
+    const tsconfigPath = path14.join(dir, "tsconfig.json");
+    if (await fileExists(tsconfigPath)) {
+      return tsconfigPath;
+    }
+    dir = path14.dirname(dir);
+  }
+  const rootTsconfig = path14.join(root, "tsconfig.json");
+  if (await fileExists(rootTsconfig)) {
+    return rootTsconfig;
+  }
+  return null;
+}
 async function handleCheckTypes(args) {
-  const filesArg = args.files?.length ? args.files.join(" ") : "";
-  const strictFlag = args.strict ? "--strict" : "";
+  const tsconfigPath = await findTsConfig(PROJECT_ROOT);
+  const cmdParts = ["npx", "tsc", "--noEmit"];
+  if (tsconfigPath) {
+    cmdParts.push("--project", `"${tsconfigPath}"`);
+  }
+  if (args.strict) {
+    cmdParts.push("--strict");
+  }
+  if (args.files?.length) {
+    const resolvedFiles = args.files.map((f) => {
+      const resolved = path14.resolve(PROJECT_ROOT, f);
+      return `"${resolved}"`;
+    });
+    cmdParts.push(...resolvedFiles);
+  }
+  const command = cmdParts.join(" ") + " 2>&1";
   const result = await safeExec(
-    `npx tsc --noEmit ${strictFlag} ${filesArg} 2>&1`,
+    command,
     PROJECT_ROOT,
     6e4
   );
@@ -26777,13 +26807,17 @@ async function handleCheckTypes(args) {
   const errorRegex = /(.+)\((\d+),(\d+)\):\s+error\s+(TS\d+):\s+(.+)/g;
   let match;
   while ((match = errorRegex.exec(result.stdout + result.stderr)) !== null) {
+    let filePath = match[1];
+    if (path14.isAbsolute(filePath)) {
+      filePath = path14.relative(PROJECT_ROOT, filePath);
+    }
     errors.push({
-      file: match[1],
+      file: filePath,
       line: parseInt(match[2]),
       column: parseInt(match[3]),
       code: match[4],
       message: match[5],
-      suggestion: args.include_suggestions ? "Check type definitions" : ""
+      suggestion: args.include_suggestions ? getSuggestionForError(match[4], match[5]) : ""
     });
   }
   return {
@@ -26795,11 +26829,34 @@ async function handleCheckTypes(args) {
         summary: {
           files_checked: args.files?.length || "all",
           errors: errors.length,
-          warnings: 0
+          warnings: 0,
+          tsconfig: tsconfigPath ? path14.relative(PROJECT_ROOT, tsconfigPath) : null
         }
       }, null, 2)
     }]
   };
+}
+function getSuggestionForError(errorCode, message) {
+  const suggestions = {
+    "TS2307": "Check module path and ensure the file exists. Verify path aliases in tsconfig.json.",
+    "TS2304": "Import the missing type or declare it. Check if @types package is needed.",
+    "TS2345": "Check argument types match parameter types. May need type assertion or conversion.",
+    "TS2322": "Type mismatch in assignment. Check if types are compatible or need conversion.",
+    "TS2339": "Property does not exist. Check spelling or add to interface/type definition.",
+    "TS2551": "Property name typo. Check the suggestion in the error message.",
+    "TS2769": "No matching overload. Check argument count and types for the function call.",
+    "TS7006": "Parameter needs explicit type. Add type annotation to parameter.",
+    "TS7031": "Binding element needs type. Add type annotation to destructured parameter.",
+    "TS2532": "Object possibly undefined. Add null check or use optional chaining (?.).",
+    "TS2531": "Object possibly null. Add null check or use optional chaining (?.).",
+    "TS18046": "Value is of type unknown. Add type guard or assertion.",
+    "TS2352": "Type conversion error. Use proper type assertion or conversion.",
+    "TS6133": "Unused variable/import. Remove or use the variable, or prefix with underscore.",
+    "TS2554": "Wrong number of arguments. Check function signature.",
+    "TS2741": "Missing required property. Add the property to the object.",
+    "TS2740": "Missing multiple properties. Add all required properties."
+  };
+  return suggestions[errorCode] || "Check type definitions and ensure types are compatible.";
 }
 
 // src/handlers/smoke-test.ts
