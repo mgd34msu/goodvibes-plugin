@@ -22,7 +22,12 @@ import { debug } from '../shared/logging.js';
 
 import type { TelemetryEntry, TelemetryTracking } from '../types/telemetry.js';
 
-/** Type guard to check if a value is a valid trackings record */
+/**
+ * Type guard to check if a value is a valid trackings record.
+ *
+ * @param value - The value to validate
+ * @returns True if value is a Record<string, TelemetryTracking>
+ */
 function isTrackingsRecord(
   value: unknown
 ): value is Record<string, TelemetryTracking> {
@@ -32,7 +37,21 @@ function isTrackingsRecord(
 /** Relative path to the agent tracking file within .goodvibes */
 const TRACKING_FILE = 'state/agent-tracking.json';
 
-/** Persists agent tracking data to disk */
+/**
+ * Persists agent tracking data to disk.
+ * Stores tracking entry keyed by agent_id for later retrieval.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param tracking - The telemetry tracking data to save
+ * @returns Promise that resolves when data is saved
+ *
+ * @example
+ * await saveAgentTracking(cwd, {
+ *   agent_id: 'agent-123',
+ *   agent_type: 'backend-engineer',
+ *   // ...other fields
+ * });
+ */
 export async function saveAgentTracking(
   cwd: string,
   tracking: TelemetryTracking
@@ -56,7 +75,19 @@ export async function saveAgentTracking(
   await fs.writeFile(trackingPath, JSON.stringify(trackings, null, 2));
 }
 
-/** Retrieves tracking data for a specific agent */
+/**
+ * Retrieves tracking data for a specific agent.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param agentId - The unique identifier of the agent
+ * @returns Promise resolving to tracking data, or null if not found
+ *
+ * @example
+ * const tracking = await getAgentTracking(cwd, 'agent-123');
+ * if (tracking) {
+ *   console.log(`Agent ${tracking.agent_type} started at ${tracking.started_at}`);
+ * }
+ */
 export async function getAgentTracking(
   cwd: string,
   agentId: string
@@ -79,7 +110,14 @@ export async function getAgentTracking(
   }
 }
 
-/** Removes tracking data for a specific agent */
+/**
+ * Removes tracking data for a specific agent.
+ * Called after agent completion to clean up tracking state.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param agentId - The unique identifier of the agent to remove
+ * @returns Promise that resolves when tracking is removed
+ */
 export async function removeAgentTracking(
   cwd: string,
   agentId: string
@@ -101,7 +139,21 @@ export async function removeAgentTracking(
   }
 }
 
-/** Appends a telemetry entry to the monthly log file */
+/**
+ * Appends a telemetry entry to the monthly log file.
+ * Creates JSONL files organized by year-month (e.g., 2024-01.jsonl).
+ *
+ * @param cwd - The current working directory (project root)
+ * @param entry - The telemetry entry to write
+ * @returns Promise that resolves when entry is written
+ *
+ * @example
+ * await writeTelemetryEntry(cwd, {
+ *   event: 'subagent_complete',
+ *   agent_id: 'agent-123',
+ *   // ...other fields
+ * });
+ */
 export async function writeTelemetryEntry(
   cwd: string,
   entry: TelemetryEntry
@@ -115,7 +167,19 @@ export async function writeTelemetryEntry(
   await fs.appendFile(telemetryPath, JSON.stringify(entry) + '\n');
 }
 
-/** Builds a telemetry entry from tracking data and transcript */
+/**
+ * Builds a telemetry entry from tracking data and transcript.
+ * Parses the transcript to extract files modified, tools used, and keywords.
+ *
+ * @param tracking - The telemetry tracking data from agent start
+ * @param transcriptPath - Path to the agent's transcript file
+ * @param status - Final status of the agent ('completed' or 'failed')
+ * @returns Promise resolving to complete TelemetryEntry
+ *
+ * @example
+ * const entry = await buildTelemetryEntry(tracking, '/path/to/transcript.jsonl', 'completed');
+ * await writeTelemetryEntry(cwd, entry);
+ */
 export async function buildTelemetryEntry(
   tracking: TelemetryTracking,
   transcriptPath: string,
@@ -127,7 +191,7 @@ export async function buildTelemetryEntry(
   const keywords = extractKeywords(allText);
 
   // Add agent type as keyword
-  const agentName = tracking.agent_type.split(':').pop() || tracking.agent_type;
+  const agentName = tracking.agent_type.split(':').pop() ?? tracking.agent_type;
   if (!keywords.includes(agentName)) {
     keywords.unshift(agentName);
   }

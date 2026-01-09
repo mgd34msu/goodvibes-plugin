@@ -66,7 +66,7 @@ export function generateWarnings(health: Partial<ProjectHealth>): HealthWarning[
 export function generateSuggestions(health: Partial<ProjectHealth>): string[] {
   const suggestions: string[] = [];
   /* v8 ignore next -- @preserve defensive: scripts is always set by checkProjectHealth */
-  const scripts = health.scripts || [];
+  const scripts = health.scripts ?? [];
 
   if (!scripts.includes('lint') && !scripts.includes('eslint')) {
     suggestions.push('Add a `lint` script to catch code issues');

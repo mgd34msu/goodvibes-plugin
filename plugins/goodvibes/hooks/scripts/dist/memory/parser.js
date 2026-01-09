@@ -83,101 +83,130 @@ export function parseMemoryContent(content, parser) {
     }
     return results;
 }
-/**
- * Parses a single block (section) from the memory file.
- */
-function parseBlock(block, parser) {
-    const lines = block.split('\n');
-    const entry = {};
-    // First line is the primary field (title, name, key, approach)
-    const primaryValue = lines[0]?.trim() || '';
-    entry[parser.primaryField] = primaryValue;
-    let currentSection = null;
-    let inCodeBlock = false;
-    let codeContent = '';
-    for (const line of lines.slice(1)) {
-        // Skip separator lines (but not inside code blocks)
-        if (!inCodeBlock && line.trim() === '---') {
-            continue;
-        }
-        // Handle code block markers
-        if (line.startsWith('```')) {
-            inCodeBlock = !inCodeBlock;
-            if (currentSection && parser.fields[currentSection] === 'code') {
-                codeContent += line + '\n';
-            }
-            if (!inCodeBlock && currentSection) {
-                // End of code block - save the content
-                entry[currentSection] = codeContent.trim();
-                codeContent = '';
-                currentSection = null;
-            }
-            continue;
-        }
-        // If we're inside a code block, accumulate content
-        if (inCodeBlock &&
-            currentSection &&
-            parser.fields[currentSection] === 'code') {
-            codeContent += line + '\n';
-            continue;
-        }
-        // Check for field markers
-        const fieldMatch = line.match(/^\*\*([^:]+):\*\*(.*)$/);
-        if (fieldMatch) {
-            const fieldName = fieldMatch[1].toLowerCase().trim();
-            const fieldValue = fieldMatch[2].trim();
-            // Find the matching field in the parser config
-            const matchingField = Object.keys(parser.fields).find((key) => key.toLowerCase() === fieldName);
-            if (matchingField) {
-                const fieldType = parser.fields[matchingField];
-                if (fieldType === 'inline') {
-                    // Inline field - value is on the same line
-                    entry[matchingField] = fieldValue;
-                }
-                else {
-                    // Text, list, or code field - start accumulating
-                    currentSection = matchingField;
-                    if (fieldType === 'code') {
-                        codeContent = '';
-                    }
-                }
-            }
-            continue;
-        }
-        // Process content based on current section
-        if (currentSection) {
-            const fieldType = parser.fields[currentSection];
-            if (fieldType === 'list' && line.startsWith('- ')) {
-                // List item
-                const listValue = line.replace('- ', '').trim();
-                const currentValue = entry[currentSection];
-                if (Array.isArray(currentValue)) {
-                    currentValue.push(listValue);
-                }
-                else {
-                    entry[currentSection] = [listValue];
-                }
-            }
-            else if (fieldType === 'text' && line.trim()) {
-                // Multi-line text
-                const textValue = line.trim() + ' ';
-                const currentValue = entry[currentSection];
-                if (typeof currentValue === 'string') {
-                    entry[currentSection] = (currentValue + textValue);
-                }
-                else {
-                    entry[currentSection] = textValue;
-                }
-            }
+/** Handles code block markers and returns whether to continue to next line. */
+function handleCodeBlockMarker(line, entry, state, parser) {
+    if (!line.startsWith('```')) {
+        return false;
+    }
+    state.inCodeBlock = !state.inCodeBlock;
+    if (state.currentSection && parser.fields[state.currentSection] === 'code') {
+        state.codeContent += line + '\n';
+    }
+    if (!state.inCodeBlock && state.currentSection) {
+        entry[state.currentSection] = state.codeContent.trim();
+        state.codeContent = '';
+        state.currentSection = null;
+    }
+    return true;
+}
+/** Handles code block content accumulation. */
+function handleCodeBlockContent(line, state, parser) {
+    if (!state.inCodeBlock || !state.currentSection) {
+        return false;
+    }
+    if (parser.fields[state.currentSection] === 'code') {
+        state.codeContent += line + '\n';
+        return true;
+    }
+    return false;
+}
+/** Handles field marker lines (e.g., **Date:** value). */
+function handleFieldMarker(line, entry, state, parser) {
+    const fieldMatch = line.match(/^\*\*([^:]+):\*\*(.*)$/);
+    if (!fieldMatch) {
+        return false;
+    }
+    const fieldName = fieldMatch[1].toLowerCase().trim();
+    const fieldValue = fieldMatch[2].trim();
+    const matchingField = Object.keys(parser.fields).find((key) => key.toLowerCase() === fieldName);
+    if (!matchingField) {
+        return true;
+    }
+    const fieldType = parser.fields[matchingField];
+    if (fieldType === 'inline') {
+        entry[matchingField] = fieldValue;
+    }
+    else {
+        state.currentSection = matchingField;
+        if (fieldType === 'code') {
+            state.codeContent = '';
         }
     }
-    // Trim accumulated text fields
+    return true;
+}
+/** Handles list item content. */
+function handleListContent(line, entry, currentSection) {
+    const listValue = line.replace('- ', '').trim();
+    const currentValue = entry[currentSection];
+    if (Array.isArray(currentValue)) {
+        currentValue.push(listValue);
+    }
+    else {
+        entry[currentSection] = [listValue];
+    }
+}
+/** Handles multi-line text content. */
+function handleTextContent(line, entry, currentSection) {
+    const textValue = line.trim() + ' ';
+    const currentValue = entry[currentSection];
+    if (typeof currentValue === 'string') {
+        entry[currentSection] = (currentValue + textValue);
+    }
+    else {
+        entry[currentSection] = textValue;
+    }
+}
+/** Processes content based on current section type. */
+function handleSectionContent(line, entry, state, parser) {
+    if (!state.currentSection) {
+        return;
+    }
+    const fieldType = parser.fields[state.currentSection];
+    if (fieldType === 'list' && line.startsWith('- ')) {
+        handleListContent(line, entry, state.currentSection);
+    }
+    else if (fieldType === 'text' && line.trim()) {
+        handleTextContent(line, entry, state.currentSection);
+    }
+}
+/** Trims all string values in the entry. */
+function trimStringFields(entry) {
     for (const field of Object.keys(entry)) {
         const value = entry[field];
         if (typeof value === 'string') {
             entry[field] = value.trim();
         }
     }
+}
+/**
+ * Parses a single block (section) from the memory file.
+ */
+function parseBlock(block, parser) {
+    const lines = block.split('\n');
+    const entry = {};
+    const primaryValue = lines[0]?.trim() || '';
+    entry[parser.primaryField] = primaryValue;
+    const state = {
+        currentSection: null,
+        inCodeBlock: false,
+        codeContent: '',
+    };
+    for (const line of lines.slice(1)) {
+        if (!state.inCodeBlock && line.trim() === '---') {
+            continue;
+        }
+        if (handleCodeBlockMarker(line, entry, state, parser)) {
+            continue;
+        }
+        if (handleCodeBlockContent(line, state, parser)) {
+            continue;
+        }
+        if (handleFieldMarker(line, entry, state, parser)) {
+            continue;
+        }
+        handleSectionContent(line, entry, state, parser);
+    }
+    trimStringFields(entry);
     return entry;
 }
 /**

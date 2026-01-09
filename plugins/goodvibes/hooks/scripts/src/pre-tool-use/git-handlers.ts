@@ -40,7 +40,7 @@ export function extractBashCommand(input: HookInput): string | null {
     return null;
   }
   const toolInput = input.tool_input as { command?: string } | undefined;
-  return toolInput?.command || null;
+  return toolInput?.command ?? null;
 }
 
 /**
@@ -129,7 +129,7 @@ export async function handleGitCommand(
 
   if (!branchGuard.allowed) {
     respond(
-      blockTool('PreToolUse', branchGuard.reason || 'Git operation blocked'),
+      blockTool('PreToolUse', branchGuard.reason ?? 'Git operation blocked'),
       true
     );
     return;
@@ -141,7 +141,7 @@ export async function handleGitCommand(
 
     if (!mergeGuard.allowed) {
       respond(
-        blockTool('PreToolUse', mergeGuard.reason || 'Merge blocked'),
+        blockTool('PreToolUse', mergeGuard.reason ?? 'Merge blocked'),
         true
       );
       return;

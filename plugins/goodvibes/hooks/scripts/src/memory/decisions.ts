@@ -52,7 +52,7 @@ export async function readDecisions(cwd: string): Promise<MemoryDecision[]> {
     transform: (entry) => ({
       title: entry.title!,
       date: entry.date!,
-      alternatives: entry.alternatives || [],
+      alternatives: entry.alternatives ?? [],
       rationale: entry.rationale!,
       agent: entry.agent,
       context: entry.context,

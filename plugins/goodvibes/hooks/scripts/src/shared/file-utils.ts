@@ -235,9 +235,9 @@ function isExecError(
 export function extractErrorOutput(error: unknown): string {
   if (isExecError(error)) {
     return (
-      error.stdout?.toString() ||
-      error.stderr?.toString() ||
-      error.message ||
+      error.stdout?.toString() ??
+      error.stderr?.toString() ??
+      error.message ??
       'Unknown error'
     );
   }

@@ -55,7 +55,15 @@ export const KEYWORD_CATEGORIES = TRANSCRIPT_KEYWORD_CATEGORIES;
 // ============================================================================
 
 /**
- * Parse a transcript file to extract useful information
+ * Parses a transcript file to extract useful information.
+ * Handles both JSON and plain text formats.
+ *
+ * @param transcriptPath - Path to the transcript file
+ * @returns Promise resolving to ParsedTranscript with extracted data
+ *
+ * @example
+ * const transcript = await parseTranscript('/path/to/transcript.jsonl');
+ * console.log(`Modified ${transcript.files_modified.length} files`);
  */
 export async function parseTranscript(
   transcriptPath: string
@@ -109,7 +117,11 @@ export async function parseTranscript(
 }
 
 /**
- * Process a single transcript entry (JSON format)
+ * Processes a single transcript entry (JSON format).
+ * Extracts tool usage, errors, and success indicators.
+ *
+ * @param entry - The parsed JSON entry object
+ * @param result - The ParsedTranscript to populate
  */
 function processTranscriptEntry(
   entry: Record<string, unknown>,
@@ -121,7 +133,11 @@ function processTranscriptEntry(
 }
 
 /**
- * Extract and process tool usage from a transcript entry
+ * Extracts and processes tool usage from a transcript entry.
+ * Identifies tool calls and tracks file modifications.
+ *
+ * @param entry - The transcript entry to process
+ * @param result - The ParsedTranscript to populate
  */
 function processToolUsage(
   entry: Record<string, unknown>,
@@ -155,7 +171,11 @@ function processToolUsage(
 }
 
 /**
- * Extract file path from a tool entry
+ * Extracts file path from a tool entry.
+ * Checks common parameter names for file paths.
+ *
+ * @param entry - The tool entry to extract from
+ * @returns File path string, or null if not found
  */
 function extractFilePathFromEntry(
   entry: Record<string, unknown>
@@ -172,7 +192,11 @@ function extractFilePathFromEntry(
 }
 
 /**
- * Process error indicators from a transcript entry
+ * Processes error indicators from a transcript entry.
+ * Increments error count when errors are detected.
+ *
+ * @param entry - The transcript entry to check
+ * @param result - The ParsedTranscript to update
  */
 function processErrors(
   entry: Record<string, unknown>,
@@ -184,7 +208,11 @@ function processErrors(
 }
 
 /**
- * Process success indicators from a transcript entry
+ * Processes success indicators from a transcript entry.
+ * Looks for keywords like 'successfully', 'completed', 'done'.
+ *
+ * @param entry - The transcript entry to check
+ * @param result - The ParsedTranscript to update
  */
 function processSuccessIndicators(
   entry: Record<string, unknown>,
@@ -204,7 +232,11 @@ function processSuccessIndicators(
 }
 
 /**
- * Process a plain text line from transcript
+ * Processes a plain text line from transcript.
+ * Extracts tool usage, file modifications, and errors from non-JSON content.
+ *
+ * @param line - The plain text line to process
+ * @param result - The ParsedTranscript to update
  */
 function processPlainTextLine(line: string, result: ParsedTranscript): void {
   const lowerLine = line.toLowerCase();
@@ -241,7 +273,11 @@ function processPlainTextLine(line: string, result: ParsedTranscript): void {
 }
 
 /**
- * Extract the last assistant output from transcript
+ * Extracts the last assistant output from transcript.
+ * Searches for the final assistant message in various formats.
+ *
+ * @param content - The full transcript content
+ * @returns Last output text (truncated to MAX_OUTPUT_LENGTH), or undefined
  */
 function extractLastOutput(content: string): string | undefined {
   // Try to find the last assistant message in various formats

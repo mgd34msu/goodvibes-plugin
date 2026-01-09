@@ -39,6 +39,75 @@ async function getSubdirs(dirPath) {
 function hasIndicators(dirs, indicators) {
     return dirs.filter((dir) => indicators.includes(dir)).length;
 }
+/** Checks if app directory contains Next.js App Router indicators. */
+async function isNextAppRouter(appPath) {
+    if (!(await fileExists(appPath))) {
+        return false;
+    }
+    const appContents = await getSubdirs(appPath);
+    if (appContents.some((dir) => dir.startsWith('(') || dir === 'api')) {
+        return true;
+    }
+    try {
+        const files = await fs.readdir(appPath);
+        return files.some((file) => file.startsWith('page.') || file.startsWith('layout.'));
+    }
+    catch (error) {
+        debug('folder-structure failed', { error: String(error) });
+        return false;
+    }
+}
+/** Checks for Next.js App Router pattern. */
+async function checkNextAppRouter(cwd, topLevelDirs, srcDirs) {
+    if (!topLevelDirs.includes('app') && !srcDirs.includes('app')) {
+        return null;
+    }
+    const appPath = topLevelDirs.includes('app')
+        ? path.join(cwd, 'app')
+        : path.join(cwd, 'src', 'app');
+    if (await isNextAppRouter(appPath)) {
+        return { pattern: 'next-app-router', confidence: 'high' };
+    }
+    return null;
+}
+/** Checks for Next.js Pages Router pattern. */
+function checkNextPagesRouter(topLevelDirs, srcDirs) {
+    if (topLevelDirs.includes('pages') || srcDirs.includes('pages')) {
+        return { pattern: 'next-pages-router', confidence: 'high' };
+    }
+    return null;
+}
+/** Determines confidence level based on indicator count. */
+function getConfidenceFromCount(count) {
+    return count >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium';
+}
+/** Checks for indicator-based patterns (atomic, DDD, layer-based). */
+function checkIndicatorPatterns(allDirs) {
+    const atomicCount = hasIndicators(allDirs, ATOMIC_INDICATORS);
+    if (atomicCount >= MIN_INDICATOR_MATCH) {
+        return { pattern: 'atomic-design', confidence: getConfidenceFromCount(atomicCount) };
+    }
+    const dddCount = hasIndicators(allDirs, DDD_INDICATORS);
+    if (dddCount >= MIN_INDICATOR_MATCH) {
+        return { pattern: 'domain-driven', confidence: getConfidenceFromCount(dddCount) };
+    }
+    const layerCount = hasIndicators(allDirs, LAYER_INDICATORS);
+    if (layerCount >= MIN_INDICATOR_MATCH) {
+        return { pattern: 'layer-based', confidence: getConfidenceFromCount(layerCount) };
+    }
+    return null;
+}
+/** Checks for feature-based and component-based patterns. */
+function checkSimplePatterns(allDirs) {
+    const featureCount = hasIndicators(allDirs, FEATURE_INDICATORS);
+    if (featureCount >= 1) {
+        return { pattern: 'feature-based', confidence: 'medium' };
+    }
+    if (allDirs.includes('components')) {
+        return { pattern: 'component-based', confidence: 'medium' };
+    }
+    return null;
+}
 /**
  * Detect the architecture pattern.
  * Analyzes directory structure to determine the architecture pattern used in the project.
@@ -50,65 +119,26 @@ function hasIndicators(dirs, indicators) {
  */
 async function detectPattern(cwd, topLevelDirs, srcDirs) {
     const allDirs = [...topLevelDirs, ...srcDirs];
-    // Check for Next.js App Router
-    if (topLevelDirs.includes('app') || srcDirs.includes('app')) {
-        const appPath = topLevelDirs.includes('app')
-            ? path.join(cwd, 'app')
-            : path.join(cwd, 'src', 'app');
-        if (await fileExists(appPath)) {
-            const appContents = await getSubdirs(appPath);
-            if (appContents.some((dir) => dir.startsWith('(') || dir === 'api')) {
-                return { pattern: 'next-app-router', confidence: 'high' };
-            }
-            try {
-                const files = await fs.readdir(appPath);
-                if (files.some((file) => file.startsWith('page.') || file.startsWith('layout.'))) {
-                    return { pattern: 'next-app-router', confidence: 'high' };
-                }
-            }
-            catch (error) {
-                debug('folder-structure failed', { error: String(error) });
-            }
-        }
+    // Check Next.js patterns (highest priority, framework-specific)
+    const nextAppRouter = await checkNextAppRouter(cwd, topLevelDirs, srcDirs);
+    if (nextAppRouter) {
+        return nextAppRouter;
     }
-    // Check for Next.js Pages Router
-    if (topLevelDirs.includes('pages') || srcDirs.includes('pages')) {
-        return { pattern: 'next-pages-router', confidence: 'high' };
+    const nextPagesRouter = checkNextPagesRouter(topLevelDirs, srcDirs);
+    if (nextPagesRouter) {
+        return nextPagesRouter;
     }
-    // Check for Atomic Design
-    const atomicCount = hasIndicators(allDirs, ATOMIC_INDICATORS);
-    if (atomicCount >= MIN_INDICATOR_MATCH) {
-        return {
-            pattern: 'atomic-design',
-            confidence: atomicCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
-        };
+    // Check indicator-based patterns
+    const indicatorPattern = checkIndicatorPatterns(allDirs);
+    if (indicatorPattern) {
+        return indicatorPattern;
     }
-    // Check for Domain-Driven Design
-    const dddCount = hasIndicators(allDirs, DDD_INDICATORS);
-    if (dddCount >= MIN_INDICATOR_MATCH) {
-        return {
-            pattern: 'domain-driven',
-            confidence: dddCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
-        };
+    // Check simple patterns
+    const simplePattern = checkSimplePatterns(allDirs);
+    if (simplePattern) {
+        return simplePattern;
     }
-    // Check for Layer-based
-    const layerCount = hasIndicators(allDirs, LAYER_INDICATORS);
-    if (layerCount >= MIN_INDICATOR_MATCH) {
-        return {
-            pattern: 'layer-based',
-            confidence: layerCount >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : 'medium',
-        };
-    }
-    // Check for Feature-based
-    const featureCount = hasIndicators(allDirs, FEATURE_INDICATORS);
-    if (featureCount >= 1) {
-        return { pattern: 'feature-based', confidence: 'medium' };
-    }
-    // Check for component-based
-    if (allDirs.includes('components')) {
-        return { pattern: 'component-based', confidence: 'medium' };
-    }
-    // Flat structure
+    // Fallback patterns
     if (topLevelDirs.length < FLAT_STRUCTURE_THRESHOLD) {
         return { pattern: 'flat', confidence: 'low' };
     }

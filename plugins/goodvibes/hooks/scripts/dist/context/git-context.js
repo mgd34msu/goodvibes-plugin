@@ -88,7 +88,7 @@ export async function getGitContext(cwd) {
         execGit('git log -5 --format="- %s"', cwd),
         execGit('git rev-list --left-right --count HEAD...@{u}', cwd),
     ]);
-    const uncommittedFiles = (status || '').split('\n').filter(Boolean);
+    const uncommittedFiles = (status ?? '').split('\n').filter(Boolean);
     const recentCommits = recentCommitsRaw ? recentCommitsRaw.split('\n') : [];
     let aheadBehind = null;
     if (abRaw) {
@@ -121,7 +121,7 @@ export function formatGitContext(context) {
         return 'Git: Not a git repository';
     }
     const parts = [];
-    parts.push(`Git: ${context.branch || GIT_DETACHED_HEAD} branch`);
+    parts.push(`Git: ${context.branch ?? GIT_DETACHED_HEAD} branch`);
     if (context.hasUncommittedChanges) {
         parts.push(`${context.uncommittedFileCount} uncommitted files`);
     }

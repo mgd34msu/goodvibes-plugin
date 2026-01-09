@@ -62,7 +62,7 @@ async function runPostToolUseFailureHook(): Promise<void> {
     debug('PostToolUseFailure hook starting');
 
     const input = await readHookInput();
-    const cwd = input.cwd || PROJECT_ROOT;
+    const cwd = input.cwd ?? PROJECT_ROOT;
     const toolName = input.tool_name || 'unknown';
 
     // Extract error message safely - the error field is passed by Claude Code but not in our type
@@ -138,7 +138,7 @@ async function runPostToolUseFailureHook(): Promise<void> {
     const _fixContext = buildFixContext(errorState, errorMessage);
 
     // Build research hints for current phase
-    const effectiveCategory = (pattern?.category || category) as ErrorCategory;
+    const effectiveCategory = (pattern?.category ?? category) as ErrorCategory;
     const hints = getResearchHints(effectiveCategory, errorMessage, errorState.phase);
     const researchHints = buildResearchHintsMessage(hints, errorState.phase);
 
@@ -181,9 +181,7 @@ async function runPostToolUseFailureHook(): Promise<void> {
     // Track the failure in analytics
     const analytics = await loadAnalytics();
     if (analytics) {
-      if (!analytics.tool_failures) {
-        analytics.tool_failures = [];
-      }
+      analytics.tool_failures ??= [];
       analytics.tool_failures.push({
         tool: toolName,
         error: errorMessage,

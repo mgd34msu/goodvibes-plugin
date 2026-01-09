@@ -77,6 +77,132 @@ function createResponse(options?: {
   return response;
 }
 
+/** Known GoodVibes agent types that receive system messages. */
+const GOODVIBES_AGENTS = new Set([
+  'goodvibes:factory',
+  'goodvibes:skill-creator',
+  'goodvibes:backend-engineer',
+  'goodvibes:content-platform',
+  'goodvibes:devops-deployer',
+  'goodvibes:frontend-architect',
+  'goodvibes:fullstack-integrator',
+  'goodvibes:test-engineer',
+  'goodvibes:brutal-reviewer',
+  'goodvibes:workflow-planner',
+]);
+
+/** Extracts normalized input fields from raw hook input. */
+function extractStartInputFields(input: SubagentStartInput): {
+  agentId: string;
+  agentType: string;
+  taskDescription: string;
+  cwd: string;
+  sessionId: string;
+} {
+  return {
+    agentId: input.agent_id ?? input.subagent_id ?? 'agent_' + Date.now(),
+    agentType: input.agent_type ?? input.subagent_type ?? 'unknown',
+    taskDescription: input.task_description ?? input.task ?? '',
+    cwd: input.cwd ?? process.cwd(),
+    sessionId: input.session_id ?? '',
+  };
+}
+
+/** Creates a telemetry tracking entry. */
+function createTrackingEntry(
+  agentId: string,
+  agentType: string,
+  sessionId: string,
+  cwd: string,
+  projectName: string,
+  gitInfo: { branch: string | null; commit: string | null }
+): TelemetryTracking {
+  return {
+    agent_id: agentId,
+    agent_type: agentType,
+    session_id: sessionId,
+    project: cwd,
+    project_name: projectName,
+    git_branch: gitInfo.branch,
+    git_commit: gitInfo.commit,
+    started_at: new Date().toISOString(),
+  };
+}
+
+/** Tracks subagent spawn in analytics. */
+async function trackInAnalytics(
+  agentType: string,
+  taskDescription: string,
+  startedAt: string
+): Promise<Awaited<ReturnType<typeof loadAnalytics>>> {
+  const analytics = await loadAnalytics();
+  if (!analytics) {
+    return null;
+  }
+
+  const TASK_MAX_LENGTH = 200;
+  analytics.subagents_spawned ??= [];
+  analytics.subagents_spawned.push({
+    type: agentType,
+    task: taskDescription?.substring(0, TASK_MAX_LENGTH),
+    started_at: startedAt,
+  });
+  await saveAnalytics(analytics);
+  return analytics;
+}
+
+/** Builds project reminders for context injection. */
+function buildReminders(
+  projectName: string,
+  gitBranch: string | null,
+  stackInfo: unknown
+): string[] {
+  const reminders: string[] = [];
+
+  if (stackInfo) {
+    reminders.push('Detected stack: ' + JSON.stringify(stackInfo));
+  }
+
+  if (gitBranch) {
+    reminders.push('Git branch: ' + gitBranch);
+  }
+
+  reminders.push('Project: ' + projectName);
+  return reminders;
+}
+
+/** Combines subagent context with project reminders. */
+function buildAdditionalContext(
+  subagentContext: Awaited<ReturnType<typeof buildSubagentContext>>,
+  reminders: string[]
+): string {
+  if (subagentContext.additionalContext) {
+    return subagentContext.additionalContext + '\n\n' + reminders.join('\n');
+  }
+  return '[GoodVibes Project Context]\n' + reminders.join('\n');
+}
+
+/** Builds system message for GoodVibes agents. */
+function buildSystemMessage(
+  agentType: string,
+  projectName: string,
+  gitBranch: string | null
+): string | undefined {
+  if (!GOODVIBES_AGENTS.has(agentType)) {
+    debug('Non-GoodVibes agent started: ' + agentType);
+    return undefined;
+  }
+
+  return (
+    '[GoodVibes] Agent ' +
+    agentType +
+    ' starting. ' +
+    'Project: ' +
+    projectName +
+    (gitBranch ? ', Branch: ' + gitBranch : '')
+  );
+}
+
 /** Main entry point for subagent-start hook. Captures telemetry and injects project context. */
 async function runSubagentStartHook(): Promise<void> {
   try {
@@ -86,13 +212,7 @@ async function runSubagentStartHook(): Promise<void> {
     debug('Raw input shape:', Object.keys(rawInput || {}));
     const input = rawInput as unknown as SubagentStartInput;
 
-    // Extract subagent info (handle different field names)
-    const agentId =
-      input.agent_id || input.subagent_id || 'agent_' + Date.now();
-    const agentType = input.agent_type || input.subagent_type || 'unknown';
-    const taskDescription = input.task_description || input.task || '';
-    const cwd = input.cwd || process.cwd();
-    const sessionId = input.session_id || '';
+    const { agentId, agentType, taskDescription, cwd, sessionId } = extractStartInputFields(input);
 
     const TASK_PREVIEW_LENGTH = 100;
     debug('SubagentStart received input', {
@@ -103,51 +223,25 @@ async function runSubagentStartHook(): Promise<void> {
       cwd,
     });
 
-    // Clean up any stale agent entries (from crashed sessions)
+    // Clean up stale agent entries
     const goodvibesDir = path.join(cwd, '.goodvibes');
     const stateDir = path.join(goodvibesDir, 'state');
     const activeAgentsFile = getActiveAgentsFilePath(goodvibesDir, stateDir);
     await cleanupStaleAgents(activeAgentsFile);
 
-    // Get git information
     const gitInfo = await getGitInfo(cwd);
     debug('Git info', gitInfo);
 
-    // Derive project name
     const projectName = deriveProjectName(cwd);
     debug('Project name', projectName);
 
-    // Create telemetry tracking entry for correlation with SubagentStop
-    const tracking: TelemetryTracking = {
-      agent_id: agentId,
-      agent_type: agentType,
-      session_id: sessionId,
-      project: cwd,
-      project_name: projectName,
-      git_branch: gitInfo.branch,
-      git_commit: gitInfo.commit,
-      started_at: new Date().toISOString(),
-    };
-
-    // Save tracking data for correlation with SubagentStop
+    const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo);
     await saveAgentTracking(cwd, tracking);
     debug('Saved agent tracking', { agent_id: agentId });
 
-    // Track subagent spawns in session analytics
-    const analytics = await loadAnalytics();
-    if (analytics) {
-      // Ensure array exists with proper typing
-      const TASK_MAX_LENGTH = 200;
-      analytics.subagents_spawned = analytics.subagents_spawned || [];
-      analytics.subagents_spawned.push({
-        type: agentType,
-        task: taskDescription?.substring(0, TASK_MAX_LENGTH),
-        started_at: tracking.started_at,
-      });
-      await saveAnalytics(analytics);
-    }
+    const analytics = await trackInAnalytics(agentType, taskDescription, tracking.started_at);
 
-    // Load state to track session info
+    // Update session state if needed
     const state = await loadState(cwd);
     if (!state.session.id && sessionId) {
       state.session.id = sessionId;
@@ -155,76 +249,12 @@ async function runSubagentStartHook(): Promise<void> {
       await saveState(cwd, state);
     }
 
-    // Build additional context for the subagent
-    const subagentContext = await buildSubagentContext(
-      cwd,
-      agentType,
-      sessionId
-    );
+    const subagentContext = await buildSubagentContext(cwd, agentType, sessionId);
+    const reminders = buildReminders(projectName, gitInfo.branch, analytics?.detected_stack);
+    const additionalContext = buildAdditionalContext(subagentContext, reminders);
+    const systemMessage = buildSystemMessage(agentType, projectName, gitInfo.branch);
 
-    // Build project reminders for the context
-    const reminders: string[] = [];
-
-    // Add stack info if available
-    const stackInfo = analytics?.detected_stack;
-    if (stackInfo) {
-      reminders.push('Detected stack: ' + JSON.stringify(stackInfo));
-    }
-
-    // Add git context
-    if (gitInfo.branch) {
-      reminders.push('Git branch: ' + gitInfo.branch);
-    }
-
-    // Add project context
-    reminders.push('Project: ' + projectName);
-
-    // Combine context
-    // Note: reminders always has at least one element (project name) so we always append
-    let additionalContext: string | undefined;
-    if (subagentContext.additionalContext) {
-      additionalContext =
-        subagentContext.additionalContext + '\n\n' + reminders.join('\n');
-    } else {
-      additionalContext =
-        '[GoodVibes Project Context]\n' + reminders.join('\n');
-    }
-
-    // Build system message for GoodVibes agents
-    const goodvibesAgents = [
-      'goodvibes:factory',
-      'goodvibes:skill-creator',
-      'goodvibes:backend-engineer',
-      'goodvibes:content-platform',
-      'goodvibes:devops-deployer',
-      'goodvibes:frontend-architect',
-      'goodvibes:fullstack-integrator',
-      'goodvibes:test-engineer',
-      'goodvibes:brutal-reviewer',
-      'goodvibes:workflow-planner',
-    ];
-
-    let systemMessage: string | undefined;
-
-    if (goodvibesAgents.includes(agentType)) {
-      systemMessage =
-        '[GoodVibes] Agent ' +
-        agentType +
-        ' starting. ' +
-        'Project: ' +
-        projectName +
-        (gitInfo.branch ? ', Branch: ' + gitInfo.branch : '');
-    } else {
-      // For non-GoodVibes agents, just log telemetry silently
-      debug('Non-GoodVibes agent started: ' + agentType);
-    }
-
-    respond(
-      createResponse({
-        systemMessage,
-        additionalContext,
-      })
-    );
+    respond(createResponse({ systemMessage, additionalContext }));
   } catch (error: unknown) {
     logError('SubagentStart main', error);
     respond(createResponse());

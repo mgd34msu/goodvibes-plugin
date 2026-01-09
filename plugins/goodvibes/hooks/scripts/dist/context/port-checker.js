@@ -84,7 +84,7 @@ async function parseWindowsNetstat(output, ports) {
                     });
                 }
             }
-            portMap.set(port, processName || 'unknown');
+            portMap.set(port, processName ?? 'unknown');
         }
     }
     return portMap;

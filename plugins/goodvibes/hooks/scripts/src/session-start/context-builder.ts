@@ -57,7 +57,13 @@ export interface ContextGatheringResult {
   needsRecovery: boolean;
 }
 
-/** Creates an empty project context result */
+/**
+ * Creates a context result for an empty project.
+ * Used when the project directory has no significant content.
+ *
+ * @param startTime - Timestamp when context gathering started (for timing)
+ * @returns ContextGatheringResult configured for an empty project
+ */
 function createEmptyProjectResult(startTime: number): ContextGatheringResult {
   return {
     additionalContext: formatEmptyProjectContext(),
@@ -70,7 +76,13 @@ function createEmptyProjectResult(startTime: number): ContextGatheringResult {
   };
 }
 
-/** Creates a failed context result */
+/**
+ * Creates a context result when context gathering fails.
+ * Used as a fallback when an error occurs during context collection.
+ *
+ * @param startTime - Timestamp when context gathering started (for timing)
+ * @returns ContextGatheringResult with empty/default values
+ */
 export function createFailedContextResult(
   startTime: number
 ): ContextGatheringResult {
@@ -85,12 +97,23 @@ export function createFailedContextResult(
   };
 }
 
-/** Formats the header section */
+/**
+ * Formats the header section for context output.
+ *
+ * @returns Array of strings containing header lines
+ */
 function formatHeader(): string[] {
   return ['[GoodVibes SessionStart]', '='.repeat(SECTION_SEPARATOR_LENGTH), ''];
 }
 
-/** Formats an optional section with header */
+/**
+ * Formats an optional section with a header.
+ * Returns empty array if content is null or empty.
+ *
+ * @param header - The section header text
+ * @param content - The section content, or null to skip
+ * @returns Array of strings for the section, or empty array
+ */
 function formatOptionalSection(
   header: string,
   content: string | null
@@ -101,7 +124,12 @@ function formatOptionalSection(
   return [`## ${header}`, '', content, ''];
 }
 
-/** Formats the recovery section if needed */
+/**
+ * Formats the recovery section if crash recovery is needed.
+ *
+ * @param recoveryInfo - Recovery information from crash detection
+ * @returns Array of strings for recovery section, or empty if no recovery needed
+ */
 function formatRecoverySection(recoveryInfo: RecoveryInfo): string[] {
   if (!recoveryInfo.needsRecovery) {
     return [];
@@ -110,7 +138,13 @@ function formatRecoverySection(recoveryInfo: RecoveryInfo): string[] {
   return recoveryStr ? [recoveryStr, ''] : [];
 }
 
-/** Formats the project overview section */
+/**
+ * Formats the project overview section with stack and folder info.
+ *
+ * @param stackInfo - Stack detection results (frameworks, package manager, etc.)
+ * @param folderAnalysis - Folder structure analysis results
+ * @returns Array of strings for the project overview section
+ */
 function formatProjectOverviewSection(
   stackInfo: Awaited<ReturnType<typeof detectStack>>,
   folderAnalysis: Awaited<ReturnType<typeof analyzeFolderStructure>>
@@ -131,7 +165,12 @@ function formatProjectOverviewSection(
   return parts;
 }
 
-/** Formats the git status section */
+/**
+ * Formats the git status section.
+ *
+ * @param gitContext - Git context including branch, changes, and recent commits
+ * @returns Array of strings for the git status section
+ */
 function formatGitSection(
   gitContext: Awaited<ReturnType<typeof getGitContext>>
 ): string[] {
@@ -144,7 +183,13 @@ function formatGitSection(
   return parts;
 }
 
-/** Helper for conditional port status */
+/**
+ * Formats port status if any dev servers are detected.
+ * Returns null if no active servers found.
+ *
+ * @param portStatus - Port check results
+ * @returns Formatted port status string, or null if no servers
+ */
 function formatPortStatusIfActive(
   portStatus: Awaited<ReturnType<typeof checkPorts>>
 ): string | null {
@@ -152,7 +197,13 @@ function formatPortStatusIfActive(
   return portStr && portStr !== 'No dev servers detected' ? portStr : null;
 }
 
-/** Helper for conditional health status */
+/**
+ * Formats health status if there are warnings or errors.
+ * Returns null if project health is good.
+ *
+ * @param healthStatus - Project health check results
+ * @returns Formatted health status string, or null if all good
+ */
 function formatHealthIfWarning(
   healthStatus: Awaited<ReturnType<typeof checkProjectHealth>>
 ): string | null {
@@ -160,7 +211,22 @@ function formatHealthIfWarning(
   return healthStr && healthStr !== 'Health: All good' ? healthStr : null;
 }
 
-/** Formats the context sections into a single string */
+/**
+ * Formats all context sections into a single string.
+ * Combines recovery, project overview, git, environment, dev servers,
+ * memory, TODOs, and health check sections.
+ *
+ * @param recoveryInfo - Crash recovery information
+ * @param stackInfo - Stack detection results
+ * @param folderAnalysis - Folder structure analysis
+ * @param gitContext - Git context information
+ * @param envStatus - Environment file status
+ * @param portStatus - Dev server port status
+ * @param memory - Project memory (decisions, patterns, failures)
+ * @param todos - Code TODOs found in the project
+ * @param healthStatus - Project health check results
+ * @returns Complete formatted context string
+ */
 function formatContextSections(
   recoveryInfo: RecoveryInfo,
   stackInfo: Awaited<ReturnType<typeof detectStack>>,
@@ -194,7 +260,15 @@ function formatContextSections(
   return contextParts.join('\n');
 }
 
-/** Builds the summary string from gathered context */
+/**
+ * Builds the summary string from gathered context.
+ * Creates a brief one-line summary of project state.
+ *
+ * @param stackInfo - Stack detection results
+ * @param gitContext - Git context information
+ * @param issueCount - Total number of detected issues
+ * @returns Brief summary string (e.g., "Next.js, React | on main | 3 uncommitted")
+ */
 function buildContextSummary(
   stackInfo: Awaited<ReturnType<typeof detectStack>>,
   gitContext: Awaited<ReturnType<typeof getGitContext>>,
@@ -221,7 +295,15 @@ function buildContextSummary(
   return summaryParts.join(' | ') || 'Project analyzed';
 }
 
-/** Calculates the total issue count from health status, env warnings, and todos */
+/**
+ * Calculates the total issue count from health status, env warnings, and todos.
+ * Counts warnings/errors from health checks, env warnings, and code TODOs.
+ *
+ * @param healthStatus - Project health check results
+ * @param envStatus - Environment file status
+ * @param todos - Code TODOs found in the project
+ * @returns Total number of detected issues
+ */
 function calculateIssueCount(
   healthStatus: Awaited<ReturnType<typeof checkProjectHealth>>,
   envStatus: Awaited<ReturnType<typeof checkEnvStatus>>,
@@ -241,6 +323,16 @@ function calculateIssueCount(
  *
  * This function orchestrates the parallel gathering of all context types
  * and formats them into a cohesive context string for the session.
+ *
+ * @param projectDir - The project directory to analyze
+ * @param recoveryInfo - Crash recovery information from previous session
+ * @param startTime - Timestamp when gathering started (for performance metrics)
+ * @returns Promise resolving to ContextGatheringResult with all context data
+ *
+ * @example
+ * const recoveryInfo = await checkCrashRecovery(cwd);
+ * const result = await gatherProjectContext(cwd, recoveryInfo, Date.now());
+ * console.log(result.additionalContext);
  */
 export async function gatherProjectContext(
   projectDir: string,

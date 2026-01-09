@@ -111,7 +111,7 @@ async function parseWindowsNetstat(
         }
       }
 
-      portMap.set(port, processName || 'unknown');
+      portMap.set(port, processName ?? 'unknown');
     }
   }
 

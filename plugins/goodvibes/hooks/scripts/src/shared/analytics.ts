@@ -175,7 +175,7 @@ export async function getSessionId(): Promise<string> {
  */
 export async function logToolUsage(usage: ToolUsage): Promise<void> {
   const existingAnalytics = await loadAnalytics();
-  const analytics = existingAnalytics || {
+  const analytics = existingAnalytics ?? {
     session_id: await getSessionId(),
     started_at: new Date().toISOString(),
     tool_usage: [],

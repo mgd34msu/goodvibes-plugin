@@ -14,7 +14,12 @@ const exec = promisify(execCallback);
 // ============================================================================
 /** Maximum age in ms for stale agent cleanup (24 hours). */
 export const STALE_AGENT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-/** Type guard to check if a value is a valid ActiveAgentsState */
+/**
+ * Type guard to check if a value is a valid ActiveAgentsState.
+ *
+ * @param value - The value to validate
+ * @returns True if value conforms to ActiveAgentsState interface
+ */
 function isActiveAgentsState(value) {
     return (typeof value === 'object' &&
         value !== null &&
@@ -27,7 +32,15 @@ function isActiveAgentsState(value) {
 // Path Utilities
 // ============================================================================
 /**
- * Get the path to the active agents file
+ * Gets the path to the active agents file.
+ *
+ * @param goodVibesDir - Path to the .goodvibes directory
+ * @param stateDir - Name of the state subdirectory
+ * @returns Full path to the active-agents.json file
+ *
+ * @example
+ * const filePath = getActiveAgentsFilePath('/project/.goodvibes', 'state');
+ * // Returns: '/project/.goodvibes/state/active-agents.json'
  */
 export function getActiveAgentsFilePath(goodVibesDir, stateDir) {
     return path.join(goodVibesDir, stateDir, 'active-agents.json');
@@ -36,7 +49,15 @@ export function getActiveAgentsFilePath(goodVibesDir, stateDir) {
 // Git Utilities
 // ============================================================================
 /**
- * Get git branch and commit info for the current directory
+ * Gets git branch and commit info for the current directory.
+ * Returns partial results if git commands fail.
+ *
+ * @param cwd - The current working directory
+ * @returns Promise resolving to GitInfo with branch and/or commit
+ *
+ * @example
+ * const gitInfo = await getGitInfo('/path/to/project');
+ * // Returns: { branch: 'main', commit: 'abc123' }
  */
 export async function getGitInfo(cwd) {
     const result = {};
@@ -69,7 +90,15 @@ export async function getGitInfo(cwd) {
     return result;
 }
 /**
- * Derive project name from working directory path
+ * Derives project name from working directory path.
+ * Falls back to parent directory name for temp directories.
+ *
+ * @param cwd - The current working directory
+ * @returns Project name string (directory name or 'unknown-project')
+ *
+ * @example
+ * deriveProjectName('/home/user/my-project');
+ * // Returns: 'my-project'
  */
 export function deriveProjectName(cwd) {
     // Get the directory name
@@ -89,7 +118,14 @@ export function deriveProjectName(cwd) {
 // Active Agents State Management
 // ============================================================================
 /**
- * Load active agents state from file
+ * Loads active agents state from file.
+ * Returns empty state if file doesn't exist or is invalid.
+ *
+ * @param activeAgentsFile - Path to the active-agents.json file
+ * @returns Promise resolving to ActiveAgentsState
+ *
+ * @example
+ * const state = await loadActiveAgents('/project/.goodvibes/state/active-agents.json');
  */
 export async function loadActiveAgents(activeAgentsFile) {
     if (await fileExists(activeAgentsFile)) {
@@ -110,7 +146,12 @@ export async function loadActiveAgents(activeAgentsFile) {
     };
 }
 /**
- * Save active agents state to file
+ * Saves active agents state to file.
+ * Updates the last_updated timestamp automatically.
+ *
+ * @param activeAgentsFile - Path to the active-agents.json file
+ * @param state - The ActiveAgentsState to save
+ * @returns Promise that resolves when state is saved
  */
 export async function saveActiveAgents(activeAgentsFile, state) {
     try {
@@ -122,7 +163,20 @@ export async function saveActiveAgents(activeAgentsFile, state) {
     }
 }
 /**
- * Register a new active agent
+ * Registers a new active agent.
+ * Adds the agent entry to the active agents state file.
+ *
+ * @param activeAgentsFile - Path to the active-agents.json file
+ * @param entry - The agent entry to register
+ * @returns Promise that resolves when agent is registered
+ *
+ * @example
+ * await registerActiveAgent(filePath, {
+ *   agent_id: 'agent-123',
+ *   agent_type: 'backend-engineer',
+ *   session_id: 'session-456',
+ *   // ...other fields
+ * });
  */
 export async function registerActiveAgent(activeAgentsFile, entry) {
     const state = await loadActiveAgents(activeAgentsFile);
@@ -131,7 +185,18 @@ export async function registerActiveAgent(activeAgentsFile, entry) {
     debug('Registered active agent: ' + entry.agent_id + ' (' + entry.agent_type + ')');
 }
 /**
- * Look up and remove an active agent entry
+ * Looks up and removes an active agent entry.
+ * Used when an agent completes to retrieve its start data and clean up.
+ *
+ * @param activeAgentsFile - Path to the active-agents.json file
+ * @param agentId - The unique identifier of the agent to pop
+ * @returns Promise resolving to the agent entry, or null if not found
+ *
+ * @example
+ * const entry = await popActiveAgent(filePath, 'agent-123');
+ * if (entry) {
+ *   const duration = Date.now() - new Date(entry.started_at).getTime();
+ * }
  */
 export async function popActiveAgent(activeAgentsFile, agentId) {
     const state = await loadActiveAgents(activeAgentsFile);
@@ -145,7 +210,17 @@ export async function popActiveAgent(activeAgentsFile, agentId) {
     debug('Agent not found in active agents: ' + agentId);
     return null;
 }
-/** Removes agent entries older than 24 hours. Returns count of removed entries. */
+/**
+ * Removes agent entries older than 24 hours.
+ * Cleans up orphaned agents that were never properly stopped.
+ *
+ * @param activeAgentsFile - Path to the active-agents.json file
+ * @returns Promise resolving to count of removed entries
+ *
+ * @example
+ * const removed = await cleanupStaleAgents(filePath);
+ * console.log(`Cleaned up ${removed} stale agents`);
+ */
 export async function cleanupStaleAgents(activeAgentsFile) {
     const state = await loadActiveAgents(activeAgentsFile);
     const now = Date.now();

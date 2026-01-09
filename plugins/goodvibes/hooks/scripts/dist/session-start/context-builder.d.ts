@@ -30,12 +30,28 @@ export interface ContextGatheringResult {
     /** Whether crash recovery is needed */
     needsRecovery: boolean;
 }
-/** Creates a failed context result */
+/**
+ * Creates a context result when context gathering fails.
+ * Used as a fallback when an error occurs during context collection.
+ *
+ * @param startTime - Timestamp when context gathering started (for timing)
+ * @returns ContextGatheringResult with empty/default values
+ */
 export declare function createFailedContextResult(startTime: number): ContextGatheringResult;
 /**
  * Gathers all project context and formats it for session injection.
  *
  * This function orchestrates the parallel gathering of all context types
  * and formats them into a cohesive context string for the session.
+ *
+ * @param projectDir - The project directory to analyze
+ * @param recoveryInfo - Crash recovery information from previous session
+ * @param startTime - Timestamp when gathering started (for performance metrics)
+ * @returns Promise resolving to ContextGatheringResult with all context data
+ *
+ * @example
+ * const recoveryInfo = await checkCrashRecovery(cwd);
+ * const result = await gatherProjectContext(cwd, recoveryInfo, Date.now());
+ * console.log(result.additionalContext);
  */
 export declare function gatherProjectContext(projectDir: string, recoveryInfo: RecoveryInfo, startTime: number): Promise<ContextGatheringResult>;

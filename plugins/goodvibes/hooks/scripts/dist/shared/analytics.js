@@ -123,7 +123,7 @@ export async function getSessionId() {
  */
 export async function logToolUsage(usage) {
     const existingAnalytics = await loadAnalytics();
-    const analytics = existingAnalytics || {
+    const analytics = existingAnalytics ?? {
         session_id: await getSessionId(),
         started_at: new Date().toISOString(),
         tool_usage: [],

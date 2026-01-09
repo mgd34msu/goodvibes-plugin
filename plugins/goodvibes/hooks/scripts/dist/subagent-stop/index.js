@@ -32,6 +32,72 @@ function createResponse(options) {
     }
     return response;
 }
+/** Extracts normalized input fields from raw hook input. */
+function extractInputFields(input) {
+    return {
+        agentId: input.agent_id ?? input.subagent_id ?? '',
+        agentType: input.agent_type ?? input.subagent_type ?? 'unknown',
+        transcriptPath: input.agent_transcript_path ?? input.subagent_transcript_path ?? '',
+        cwd: input.cwd ?? process.cwd(),
+    };
+}
+/** Validates agent output and runs tests on modified files. */
+async function validateAndTest(cwd, transcriptPath, state) {
+    if (!transcriptPath) {
+        return { validationResult: undefined, testResult: undefined, updatedState: state };
+    }
+    const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
+    const validationResult = validationOutput;
+    const updatedState = validationOutput.state;
+    debug('Validation result', {
+        valid: validationResult.valid,
+        filesModified: validationResult.filesModified.length,
+        errors: validationResult.errors.length,
+    });
+    let testResult;
+    if (validationResult.filesModified.length > 0) {
+        testResult = await verifyAgentTests(cwd, validationResult.filesModified, updatedState);
+        debug('Test verification result', {
+            ran: testResult.ran,
+            passed: testResult.passed,
+            summary: testResult.summary,
+        });
+    }
+    return { validationResult, testResult, updatedState };
+}
+/** Updates analytics with subagent completion info. */
+async function updateAnalytics(tracking, status) {
+    const analytics = await loadAnalytics();
+    if (!analytics?.subagents_spawned) {
+        return;
+    }
+    const subagentEntry = analytics.subagents_spawned.find((s) => s.type === tracking.agent_type && s.started_at === tracking.started_at);
+    if (subagentEntry) {
+        subagentEntry.completed_at = new Date().toISOString();
+        subagentEntry.success = status === 'completed';
+        await saveAnalytics(analytics);
+    }
+}
+/** Determines the completion status based on validation and test results. */
+function determineStatus(validationResult, testResult) {
+    const hasValidationErrors = validationResult?.valid === false;
+    const hasTestFailures = testResult?.passed === false;
+    return hasValidationErrors || hasTestFailures ? 'failed' : 'completed';
+}
+/** Builds a system message summarizing any issues found. */
+function buildIssuesMessage(agentType, validationResult, testResult) {
+    const issues = [];
+    if (validationResult && !validationResult.valid) {
+        issues.push('Validation errors: ' + validationResult.errors.join(', '));
+    }
+    if (testResult && !testResult.passed) {
+        issues.push('Test failures: ' + testResult.summary);
+    }
+    if (issues.length === 0) {
+        return undefined;
+    }
+    return '[GoodVibes] Agent ' + agentType + ' completed with issues: ' + issues.join('; ');
+}
 /** Main entry point for subagent-stop hook. Correlates with start, validates output, writes telemetry. */
 async function runSubagentStopHook() {
     try {
@@ -39,25 +105,18 @@ async function runSubagentStopHook() {
         const rawInput = await readHookInput();
         debug('Raw input shape:', Object.keys(rawInput || {}));
         const input = rawInput;
-        // Extract subagent info (handle different field names)
-        const agentId = input.agent_id || input.subagent_id || '';
-        const agentType = input.agent_type || input.subagent_type || 'unknown';
-        const transcriptPath = input.agent_transcript_path || input.subagent_transcript_path || '';
-        const cwd = input.cwd || process.cwd();
+        const { agentId, agentType, transcriptPath, cwd } = extractInputFields(input);
         debug('SubagentStop received input', {
             agent_id: agentId,
             agent_type: agentType,
             session_id: input.session_id,
             transcript_path: transcriptPath,
         });
-        // Load state for validation and test tracking
         let state = await loadState(cwd);
-        // Initialize output results
         let validationResult;
         let testResult;
         let telemetryWritten = false;
         let durationMs = 0;
-        // Get agent tracking from start
         const tracking = agentId ? await getAgentTracking(cwd, agentId) : null;
         if (tracking) {
             debug('Found matching tracking entry', {
@@ -65,35 +124,13 @@ async function runSubagentStopHook() {
                 agent_type: tracking.agent_type,
                 started_at: tracking.started_at,
             });
-            // Calculate duration
-            const startedAt = new Date(tracking.started_at).getTime();
-            durationMs = Date.now() - startedAt;
-            // Validate agent output (type check if TS files modified)
-            if (transcriptPath) {
-                const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
-                validationResult = validationOutput;
-                state = validationOutput.state;
-                debug('Validation result', {
-                    valid: validationResult.valid,
-                    filesModified: validationResult.filesModified.length,
-                    errors: validationResult.errors.length,
-                });
-                // Verify tests for modified files
-                if (validationResult.filesModified.length > 0) {
-                    testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
-                    debug('Test verification result', {
-                        ran: testResult.ran,
-                        passed: testResult.passed,
-                        summary: testResult.summary,
-                    });
-                }
-            }
-            // Build telemetry entry with keywords, files, tools, summary
-            const status = validationResult?.valid !== false && testResult?.passed !== false
-                ? 'completed'
-                : 'failed';
+            durationMs = Date.now() - new Date(tracking.started_at).getTime();
+            const validated = await validateAndTest(cwd, transcriptPath, state);
+            validationResult = validated.validationResult;
+            testResult = validated.testResult;
+            state = validated.updatedState;
+            const status = determineStatus(validationResult, testResult);
             const telemetryEntry = await buildTelemetryEntry(tracking, transcriptPath, status);
-            // Write telemetry to monthly JSONL file
             await writeTelemetryEntry(cwd, telemetryEntry);
             telemetryWritten = true;
             debug('Telemetry entry written', {
@@ -101,57 +138,22 @@ async function runSubagentStopHook() {
                 duration_ms: telemetryEntry.duration_ms,
                 status: telemetryEntry.status,
             });
-            // Remove tracking entry
             await removeAgentTracking(cwd, agentId);
             debug('Removed agent tracking', { agent_id: agentId });
-            // Update session analytics
-            const analytics = await loadAnalytics();
-            if (analytics?.subagents_spawned) {
-                // Find and update the matching subagent entry
-                const subagentEntry = analytics.subagents_spawned.find((s) => s.type === tracking.agent_type &&
-                    s.started_at === tracking.started_at);
-                if (subagentEntry) {
-                    subagentEntry.completed_at = new Date().toISOString();
-                    subagentEntry.success = status === 'completed';
-                    await saveAnalytics(analytics);
-                }
-            }
-            // Save updated state
+            await updateAnalytics(tracking, status);
             await saveState(cwd, state);
         }
         else {
-            debug('No matching tracking entry found', {
-                agent_id: agentId,
-                agent_type: agentType,
-            });
-            // Even without a tracking entry, we can still validate if transcript exists
+            debug('No matching tracking entry found', { agent_id: agentId, agent_type: agentType });
+            const validated = await validateAndTest(cwd, transcriptPath, state);
+            validationResult = validated.validationResult;
+            testResult = validated.testResult;
+            state = validated.updatedState;
             if (transcriptPath) {
-                const validationOutput = await validateAgentOutput(cwd, transcriptPath, state);
-                validationResult = validationOutput;
-                state = validationOutput.state;
-                if (validationResult.filesModified.length > 0) {
-                    testResult = await verifyAgentTests(cwd, validationResult.filesModified, state);
-                }
                 await saveState(cwd, state);
             }
         }
-        // Build system message summarizing results
-        let systemMessage;
-        const issues = [];
-        if (validationResult && !validationResult.valid) {
-            issues.push('Validation errors: ' + validationResult.errors.join(', '));
-        }
-        if (testResult && !testResult.passed) {
-            issues.push('Test failures: ' + testResult.summary);
-        }
-        if (issues.length > 0) {
-            systemMessage =
-                '[GoodVibes] Agent ' +
-                    agentType +
-                    ' completed with issues: ' +
-                    issues.join('; ');
-        }
-        // Return validation results in output
+        const systemMessage = buildIssuesMessage(agentType, validationResult, testResult);
         respond(createResponse({
             systemMessage,
             output: {

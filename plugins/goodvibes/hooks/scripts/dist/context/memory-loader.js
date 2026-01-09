@@ -126,10 +126,10 @@ export async function loadMemory(cwd) {
         loadTextFiles(cwd, 'context'),
     ]);
     return {
-        decisions: decisions || [],
-        patterns: patterns || [],
-        failures: failures || [],
-        preferences: preferences || {},
+        decisions: decisions ?? [],
+        patterns: patterns ?? [],
+        failures: failures ?? [],
+        preferences: preferences ?? {},
         customContext,
     };
 }

@@ -162,7 +162,7 @@ export async function handleRunSmokeTest(input) {
         const toolInput = input.tool_input;
         if (toolInput?.passed === false) {
             const summary = toolInput.summary;
-            const failed = summary?.failed || 0;
+            const failed = summary?.failed ?? 0;
             respond(createResponse(`Smoke test: ${failed} check(s) failed. Review output for details.`));
             return;
         }

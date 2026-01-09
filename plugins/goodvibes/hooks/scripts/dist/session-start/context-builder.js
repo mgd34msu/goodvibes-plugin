@@ -18,7 +18,13 @@ import { debug } from '../shared/index.js';
 import { formatRecoveryContext } from './crash-recovery.js';
 /** Width of section separator lines */
 const SECTION_SEPARATOR_LENGTH = 50;
-/** Creates an empty project context result */
+/**
+ * Creates a context result for an empty project.
+ * Used when the project directory has no significant content.
+ *
+ * @param startTime - Timestamp when context gathering started (for timing)
+ * @returns ContextGatheringResult configured for an empty project
+ */
 function createEmptyProjectResult(startTime) {
     return {
         additionalContext: formatEmptyProjectContext(),
@@ -30,7 +36,13 @@ function createEmptyProjectResult(startTime) {
         needsRecovery: false,
     };
 }
-/** Creates a failed context result */
+/**
+ * Creates a context result when context gathering fails.
+ * Used as a fallback when an error occurs during context collection.
+ *
+ * @param startTime - Timestamp when context gathering started (for timing)
+ * @returns ContextGatheringResult with empty/default values
+ */
 export function createFailedContextResult(startTime) {
     return {
         additionalContext: '',
@@ -42,18 +54,34 @@ export function createFailedContextResult(startTime) {
         needsRecovery: false,
     };
 }
-/** Formats the header section */
+/**
+ * Formats the header section for context output.
+ *
+ * @returns Array of strings containing header lines
+ */
 function formatHeader() {
     return ['[GoodVibes SessionStart]', '='.repeat(SECTION_SEPARATOR_LENGTH), ''];
 }
-/** Formats an optional section with header */
+/**
+ * Formats an optional section with a header.
+ * Returns empty array if content is null or empty.
+ *
+ * @param header - The section header text
+ * @param content - The section content, or null to skip
+ * @returns Array of strings for the section, or empty array
+ */
 function formatOptionalSection(header, content) {
     if (!content) {
         return [];
     }
     return [`## ${header}`, '', content, ''];
 }
-/** Formats the recovery section if needed */
+/**
+ * Formats the recovery section if crash recovery is needed.
+ *
+ * @param recoveryInfo - Recovery information from crash detection
+ * @returns Array of strings for recovery section, or empty if no recovery needed
+ */
 function formatRecoverySection(recoveryInfo) {
     if (!recoveryInfo.needsRecovery) {
         return [];
@@ -61,7 +89,13 @@ function formatRecoverySection(recoveryInfo) {
     const recoveryStr = formatRecoveryContext(recoveryInfo);
     return recoveryStr ? [recoveryStr, ''] : [];
 }
-/** Formats the project overview section */
+/**
+ * Formats the project overview section with stack and folder info.
+ *
+ * @param stackInfo - Stack detection results (frameworks, package manager, etc.)
+ * @param folderAnalysis - Folder structure analysis results
+ * @returns Array of strings for the project overview section
+ */
 function formatProjectOverviewSection(stackInfo, folderAnalysis) {
     const parts = ['## Project Overview', ''];
     const stackStr = formatStackInfo(stackInfo);
@@ -75,7 +109,12 @@ function formatProjectOverviewSection(stackInfo, folderAnalysis) {
     parts.push('');
     return parts;
 }
-/** Formats the git status section */
+/**
+ * Formats the git status section.
+ *
+ * @param gitContext - Git context including branch, changes, and recent commits
+ * @returns Array of strings for the git status section
+ */
 function formatGitSection(gitContext) {
     const parts = ['## Git Status', ''];
     const gitStr = formatGitContext(gitContext);
@@ -85,17 +124,44 @@ function formatGitSection(gitContext) {
     parts.push('');
     return parts;
 }
-/** Helper for conditional port status */
+/**
+ * Formats port status if any dev servers are detected.
+ * Returns null if no active servers found.
+ *
+ * @param portStatus - Port check results
+ * @returns Formatted port status string, or null if no servers
+ */
 function formatPortStatusIfActive(portStatus) {
     const portStr = formatPortStatus(portStatus);
     return portStr && portStr !== 'No dev servers detected' ? portStr : null;
 }
-/** Helper for conditional health status */
+/**
+ * Formats health status if there are warnings or errors.
+ * Returns null if project health is good.
+ *
+ * @param healthStatus - Project health check results
+ * @returns Formatted health status string, or null if all good
+ */
 function formatHealthIfWarning(healthStatus) {
     const healthStr = formatHealthStatus(healthStatus);
     return healthStr && healthStr !== 'Health: All good' ? healthStr : null;
 }
-/** Formats the context sections into a single string */
+/**
+ * Formats all context sections into a single string.
+ * Combines recovery, project overview, git, environment, dev servers,
+ * memory, TODOs, and health check sections.
+ *
+ * @param recoveryInfo - Crash recovery information
+ * @param stackInfo - Stack detection results
+ * @param folderAnalysis - Folder structure analysis
+ * @param gitContext - Git context information
+ * @param envStatus - Environment file status
+ * @param portStatus - Dev server port status
+ * @param memory - Project memory (decisions, patterns, failures)
+ * @param todos - Code TODOs found in the project
+ * @param healthStatus - Project health check results
+ * @returns Complete formatted context string
+ */
 function formatContextSections(recoveryInfo, stackInfo, folderAnalysis, gitContext, envStatus, portStatus, memory, todos, healthStatus) {
     const contextParts = [
         ...formatHeader(),
@@ -111,7 +177,15 @@ function formatContextSections(recoveryInfo, stackInfo, folderAnalysis, gitConte
     ];
     return contextParts.join('\n');
 }
-/** Builds the summary string from gathered context */
+/**
+ * Builds the summary string from gathered context.
+ * Creates a brief one-line summary of project state.
+ *
+ * @param stackInfo - Stack detection results
+ * @param gitContext - Git context information
+ * @param issueCount - Total number of detected issues
+ * @returns Brief summary string (e.g., "Next.js, React | on main | 3 uncommitted")
+ */
 function buildContextSummary(stackInfo, gitContext, issueCount) {
     const summaryParts = [];
     const MAX_FRAMEWORKS_IN_SUMMARY = 3;
@@ -129,7 +203,15 @@ function buildContextSummary(stackInfo, gitContext, issueCount) {
     }
     return summaryParts.join(' | ') || 'Project analyzed';
 }
-/** Calculates the total issue count from health status, env warnings, and todos */
+/**
+ * Calculates the total issue count from health status, env warnings, and todos.
+ * Counts warnings/errors from health checks, env warnings, and code TODOs.
+ *
+ * @param healthStatus - Project health check results
+ * @param envStatus - Environment file status
+ * @param todos - Code TODOs found in the project
+ * @returns Total number of detected issues
+ */
 function calculateIssueCount(healthStatus, envStatus, todos) {
     return (healthStatus.checks.filter((c) => c.status === 'warning' || c.status === 'error').length +
         envStatus.warnings.length +
@@ -140,6 +222,16 @@ function calculateIssueCount(healthStatus, envStatus, todos) {
  *
  * This function orchestrates the parallel gathering of all context types
  * and formats them into a cohesive context string for the session.
+ *
+ * @param projectDir - The project directory to analyze
+ * @param recoveryInfo - Crash recovery information from previous session
+ * @param startTime - Timestamp when gathering started (for performance metrics)
+ * @returns Promise resolving to ContextGatheringResult with all context data
+ *
+ * @example
+ * const recoveryInfo = await checkCrashRecovery(cwd);
+ * const result = await gatherProjectContext(cwd, recoveryInfo, Date.now());
+ * console.log(result.additionalContext);
  */
 export async function gatherProjectContext(projectDir, recoveryInfo, startTime) {
     // Check for empty project first

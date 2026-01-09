@@ -205,7 +205,7 @@ export async function handleRunSmokeTest(input: HookInput): Promise<void> {
     const toolInput = input.tool_input as Record<string, unknown>;
     if (toolInput?.passed === false) {
       const summary = toolInput.summary as Record<string, number> | undefined;
-      const failed = summary?.failed || 0;
+      const failed = summary?.failed ?? 0;
       respond(
         createResponse(
           `Smoke test: ${failed} check(s) failed. Review output for details.`

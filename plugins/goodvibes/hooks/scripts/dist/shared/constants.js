@@ -18,12 +18,12 @@ export const LOCKFILES = [
  * Root directory of the GoodVibes plugin itself.
  * Uses official Claude Code environment variable or falls back to parent directory.
  */
-export const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), '..');
+export const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT ?? path.resolve(process.cwd(), '..');
 /**
  * Root directory of the user's project.
  * Uses official Claude Code environment variable or falls back to current working directory.
  */
-export const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+export const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 /**
  * Cache directory for temporary plugin data.
  * Located at PLUGIN_ROOT/.cache for storing analytics and other ephemeral data.

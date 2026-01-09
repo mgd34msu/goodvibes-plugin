@@ -107,7 +107,7 @@ export async function getGitContext(cwd: string): Promise<GitContext> {
     execGit('git rev-list --left-right --count HEAD...@{u}', cwd),
   ]);
 
-  const uncommittedFiles = (status || '').split('\n').filter(Boolean);
+  const uncommittedFiles = (status ?? '').split('\n').filter(Boolean);
   const recentCommits = recentCommitsRaw ? recentCommitsRaw.split('\n') : [];
 
   let aheadBehind: { ahead: number; behind: number } | null = null;
@@ -144,7 +144,7 @@ export function formatGitContext(context: GitContext): string {
   }
 
   const parts: string[] = [];
-  parts.push(`Git: ${context.branch || GIT_DETACHED_HEAD} branch`);
+  parts.push(`Git: ${context.branch ?? GIT_DETACHED_HEAD} branch`);
 
   if (context.hasUncommittedChanges) {
     parts.push(`${context.uncommittedFileCount} uncommitted files`);

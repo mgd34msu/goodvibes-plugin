@@ -80,9 +80,7 @@ async function checkDependencies(cwd: string): Promise<{
   for (const [file, manager] of Object.entries(LOCKFILES)) {
     if (await fileExists(path.join(cwd, file))) {
       lockfiles.push(file);
-      if (!packageManager) {
-        packageManager = manager;
-      }
+      packageManager ??= manager;
     }
   }
 

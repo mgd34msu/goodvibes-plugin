@@ -19,7 +19,15 @@ export interface ParsedTranscript {
  */
 export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /**
- * Parse a transcript file to extract useful information
+ * Parses a transcript file to extract useful information.
+ * Handles both JSON and plain text formats.
+ *
+ * @param transcriptPath - Path to the transcript file
+ * @returns Promise resolving to ParsedTranscript with extracted data
+ *
+ * @example
+ * const transcript = await parseTranscript('/path/to/transcript.jsonl');
+ * console.log(`Modified ${transcript.files_modified.length} files`);
  */
 export declare function parseTranscript(transcriptPath: string): Promise<ParsedTranscript>;
 /**

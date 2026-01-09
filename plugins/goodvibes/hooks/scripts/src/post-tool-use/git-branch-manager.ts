@@ -77,7 +77,7 @@ export async function maybeCreateFeatureBranch(
     return { created: false, branchName: null };
   }
 
-  const name = featureName || state.session.featureDescription || 'feature';
+  const name = featureName ?? state.session.featureDescription ?? 'feature';
   const branchName = `feature/${name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')

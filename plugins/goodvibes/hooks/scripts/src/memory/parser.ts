@@ -132,6 +132,156 @@ export function parseMemoryContent<T>(
   return results;
 }
 
+/** State for tracking parsing progress within a block. */
+interface ParseState<T> {
+  currentSection: keyof T | null;
+  inCodeBlock: boolean;
+  codeContent: string;
+}
+
+/** Handles code block markers and returns whether to continue to next line. */
+function handleCodeBlockMarker<T>(
+  line: string,
+  entry: Partial<T>,
+  state: ParseState<T>,
+  parser: SectionParser<T>
+): boolean {
+  if (!line.startsWith('```')) {
+    return false;
+  }
+
+  state.inCodeBlock = !state.inCodeBlock;
+
+  if (state.currentSection && parser.fields[state.currentSection] === 'code') {
+    state.codeContent += line + '\n';
+  }
+
+  if (!state.inCodeBlock && state.currentSection) {
+    entry[state.currentSection] = state.codeContent.trim() as T[keyof T];
+    state.codeContent = '';
+    state.currentSection = null;
+  }
+
+  return true;
+}
+
+/** Handles code block content accumulation. */
+function handleCodeBlockContent<T>(
+  line: string,
+  state: ParseState<T>,
+  parser: SectionParser<T>
+): boolean {
+  if (!state.inCodeBlock || !state.currentSection) {
+    return false;
+  }
+
+  if (parser.fields[state.currentSection] === 'code') {
+    state.codeContent += line + '\n';
+    return true;
+  }
+
+  return false;
+}
+
+/** Handles field marker lines (e.g., **Date:** value). */
+function handleFieldMarker<T>(
+  line: string,
+  entry: Partial<T>,
+  state: ParseState<T>,
+  parser: SectionParser<T>
+): boolean {
+  const fieldMatch = line.match(/^\*\*([^:]+):\*\*(.*)$/);
+  if (!fieldMatch) {
+    return false;
+  }
+
+  const fieldName = fieldMatch[1].toLowerCase().trim();
+  const fieldValue = fieldMatch[2].trim();
+
+  const matchingField = Object.keys(parser.fields).find(
+    (key) => key.toLowerCase() === fieldName
+  ) as keyof T | undefined;
+
+  if (!matchingField) {
+    return true;
+  }
+
+  const fieldType = parser.fields[matchingField];
+
+  if (fieldType === 'inline') {
+    entry[matchingField] = fieldValue as T[keyof T];
+  } else {
+    state.currentSection = matchingField;
+    if (fieldType === 'code') {
+      state.codeContent = '';
+    }
+  }
+
+  return true;
+}
+
+/** Handles list item content. */
+function handleListContent<T>(
+  line: string,
+  entry: Partial<T>,
+  currentSection: keyof T
+): void {
+  const listValue = line.replace('- ', '').trim();
+  const currentValue = entry[currentSection] as unknown;
+
+  if (Array.isArray(currentValue)) {
+    currentValue.push(listValue);
+  } else {
+    entry[currentSection] = [listValue] as T[keyof T];
+  }
+}
+
+/** Handles multi-line text content. */
+function handleTextContent<T>(
+  line: string,
+  entry: Partial<T>,
+  currentSection: keyof T
+): void {
+  const textValue = line.trim() + ' ';
+  const currentValue = entry[currentSection] as unknown;
+
+  if (typeof currentValue === 'string') {
+    entry[currentSection] = (currentValue + textValue) as T[keyof T];
+  } else {
+    entry[currentSection] = textValue as T[keyof T];
+  }
+}
+
+/** Processes content based on current section type. */
+function handleSectionContent<T>(
+  line: string,
+  entry: Partial<T>,
+  state: ParseState<T>,
+  parser: SectionParser<T>
+): void {
+  if (!state.currentSection) {
+    return;
+  }
+
+  const fieldType = parser.fields[state.currentSection];
+
+  if (fieldType === 'list' && line.startsWith('- ')) {
+    handleListContent(line, entry, state.currentSection);
+  } else if (fieldType === 'text' && line.trim()) {
+    handleTextContent(line, entry, state.currentSection);
+  }
+}
+
+/** Trims all string values in the entry. */
+function trimStringFields<T>(entry: Partial<T>): void {
+  for (const field of Object.keys(entry) as Array<keyof T>) {
+    const value = entry[field];
+    if (typeof value === 'string') {
+      entry[field] = value.trim() as T[keyof T];
+    }
+  }
+}
+
 /**
  * Parses a single block (section) from the memory file.
  */
@@ -139,108 +289,36 @@ function parseBlock<T>(block: string, parser: SectionParser<T>): Partial<T> {
   const lines = block.split('\n');
   const entry: Partial<T> = {} as Partial<T>;
 
-  // First line is the primary field (title, name, key, approach)
   const primaryValue = lines[0]?.trim() || '';
   entry[parser.primaryField] = primaryValue as T[keyof T];
 
-  let currentSection: keyof T | null = null;
-  let inCodeBlock = false;
-  let codeContent = '';
+  const state: ParseState<T> = {
+    currentSection: null,
+    inCodeBlock: false,
+    codeContent: '',
+  };
 
   for (const line of lines.slice(1)) {
-    // Skip separator lines (but not inside code blocks)
-    if (!inCodeBlock && line.trim() === '---') {
+    if (!state.inCodeBlock && line.trim() === '---') {
       continue;
     }
 
-    // Handle code block markers
-    if (line.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      if (currentSection && parser.fields[currentSection] === 'code') {
-        codeContent += line + '\n';
-      }
-      if (!inCodeBlock && currentSection) {
-        // End of code block - save the content
-        entry[currentSection] = codeContent.trim() as T[keyof T];
-        codeContent = '';
-        currentSection = null;
-      }
+    if (handleCodeBlockMarker(line, entry, state, parser)) {
       continue;
     }
 
-    // If we're inside a code block, accumulate content
-    if (
-      inCodeBlock &&
-      currentSection &&
-      parser.fields[currentSection] === 'code'
-    ) {
-      codeContent += line + '\n';
+    if (handleCodeBlockContent(line, state, parser)) {
       continue;
     }
 
-    // Check for field markers
-    const fieldMatch = line.match(/^\*\*([^:]+):\*\*(.*)$/);
-    if (fieldMatch) {
-      const fieldName = fieldMatch[1].toLowerCase().trim();
-      const fieldValue = fieldMatch[2].trim();
-
-      // Find the matching field in the parser config
-      const matchingField = Object.keys(parser.fields).find(
-        (key) => key.toLowerCase() === fieldName
-      ) as keyof T | undefined;
-
-      if (matchingField) {
-        const fieldType = parser.fields[matchingField];
-
-        if (fieldType === 'inline') {
-          // Inline field - value is on the same line
-          entry[matchingField] = fieldValue as T[keyof T];
-        } else {
-          // Text, list, or code field - start accumulating
-          currentSection = matchingField;
-
-          if (fieldType === 'code') {
-            codeContent = '';
-          }
-        }
-      }
+    if (handleFieldMarker(line, entry, state, parser)) {
       continue;
     }
 
-    // Process content based on current section
-    if (currentSection) {
-      const fieldType = parser.fields[currentSection];
-
-      if (fieldType === 'list' && line.startsWith('- ')) {
-        // List item
-        const listValue = line.replace('- ', '').trim();
-        const currentValue = entry[currentSection] as unknown;
-        if (Array.isArray(currentValue)) {
-          currentValue.push(listValue);
-        } else {
-          entry[currentSection] = [listValue] as T[keyof T];
-        }
-      } else if (fieldType === 'text' && line.trim()) {
-        // Multi-line text
-        const textValue = line.trim() + ' ';
-        const currentValue = entry[currentSection] as unknown;
-        if (typeof currentValue === 'string') {
-          entry[currentSection] = (currentValue + textValue) as T[keyof T];
-        } else {
-          entry[currentSection] = textValue as T[keyof T];
-        }
-      }
-    }
+    handleSectionContent(line, entry, state, parser);
   }
 
-  // Trim accumulated text fields
-  for (const field of Object.keys(entry) as Array<keyof T>) {
-    const value = entry[field];
-    if (typeof value === 'string') {
-      entry[field] = value.trim() as T[keyof T];
-    }
-  }
-
+  trimStringFields(entry);
   return entry;
 }
 

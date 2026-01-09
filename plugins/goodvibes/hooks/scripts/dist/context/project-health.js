@@ -40,9 +40,7 @@ async function checkDependencies(cwd) {
     for (const [file, manager] of Object.entries(LOCKFILES)) {
         if (await fileExists(path.join(cwd, file))) {
             lockfiles.push(file);
-            if (!packageManager) {
-                packageManager = manager;
-            }
+            packageManager ??= manager;
         }
     }
     return { hasNodeModules, lockfiles, packageManager };

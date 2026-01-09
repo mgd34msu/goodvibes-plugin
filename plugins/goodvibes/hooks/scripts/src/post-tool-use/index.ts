@@ -103,9 +103,9 @@ async function runPostToolUseHook(): Promise<void> {
     // Extract tool name (handle both MCP and built-in tools)
     // MCP tools: "mcp__goodvibes-tools__detect_stack" -> "detect_stack"
     // Built-in tools: "Edit", "Write", "Bash"
-    const fullToolName = input.tool_name || '';
+    const fullToolName = input.tool_name ?? '';
     const toolName = fullToolName.includes('__')
-      ? fullToolName.split('__').pop() || ''
+      ? fullToolName.split('__').pop() ?? ''
       : fullToolName;
 
     debug(`Processing tool: ${toolName} (full: ${fullToolName})`);

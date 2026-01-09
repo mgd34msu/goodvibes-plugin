@@ -18,6 +18,64 @@ const DOCS_CONTENT_MAX_LENGTH = 2000;
 /** Number of recent fix attempts to show in context. */
 const RECENT_ATTEMPTS_COUNT = 3;
 /**
+ * Ordered list of error category matchers.
+ * Earlier entries have higher priority.
+ */
+const ERROR_CATEGORY_MATCHERS = [
+    {
+        category: 'npm_install',
+        keywords: ['eresolve', 'npm', 'peer dep'],
+    },
+    {
+        category: 'typescript_error',
+        compound: [['ts', 'error'], ['ts', 'type']],
+    },
+    {
+        category: 'test_failure',
+        compound: [['test', 'fail']],
+    },
+    {
+        category: 'build_failure',
+        keywords: ['build', 'compile'],
+    },
+    {
+        category: 'file_not_found',
+        keywords: ['enoent', 'not found'],
+    },
+    {
+        category: 'git_conflict',
+        keywords: ['conflict', 'merge'],
+    },
+    {
+        category: 'database_error',
+        keywords: ['database', 'prisma', 'sql'],
+    },
+    {
+        category: 'api_error',
+        keywords: ['api', 'fetch', 'request'],
+    },
+];
+/**
+ * Checks if all keywords in a compound rule are present in the message.
+ */
+function matchesCompoundRule(lower, rule) {
+    return rule.every((keyword) => lower.includes(keyword));
+}
+/**
+ * Checks if a matcher matches the given error message.
+ */
+function matchesCategoryMatcher(lower, matcher) {
+    // Check simple keywords (any match)
+    if (matcher.keywords?.some((keyword) => lower.includes(keyword))) {
+        return true;
+    }
+    // Check compound rules (all keywords in a rule must match)
+    if (matcher.compound?.some((rule) => matchesCompoundRule(lower, rule))) {
+        return true;
+    }
+    return false;
+}
+/**
  * Categorizes an error message into a known error category based on keywords.
  * Analyzes the error message content to determine the type of error for
  * appropriate fix strategy selection.
@@ -31,36 +89,10 @@ const RECENT_ATTEMPTS_COUNT = 3;
  */
 export function categorizeError(errorMessage) {
     const lower = errorMessage.toLowerCase();
-    if (lower.includes('eresolve') ||
-        lower.includes('npm') ||
-        lower.includes('peer dep')) {
-        return 'npm_install';
-    }
-    if (lower.includes('ts') &&
-        (lower.includes('error') || lower.includes('type'))) {
-        return 'typescript_error';
-    }
-    if (lower.includes('test') && lower.includes('fail')) {
-        return 'test_failure';
-    }
-    if (lower.includes('build') || lower.includes('compile')) {
-        return 'build_failure';
-    }
-    if (lower.includes('enoent') || lower.includes('not found')) {
-        return 'file_not_found';
-    }
-    if (lower.includes('conflict') || lower.includes('merge')) {
-        return 'git_conflict';
-    }
-    if (lower.includes('database') ||
-        lower.includes('prisma') ||
-        lower.includes('sql')) {
-        return 'database_error';
-    }
-    if (lower.includes('api') ||
-        lower.includes('fetch') ||
-        lower.includes('request')) {
-        return 'api_error';
+    for (const matcher of ERROR_CATEGORY_MATCHERS) {
+        if (matchesCategoryMatcher(lower, matcher)) {
+            return matcher.category;
+        }
     }
     return 'unknown';
 }

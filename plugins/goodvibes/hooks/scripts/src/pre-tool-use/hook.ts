@@ -89,7 +89,7 @@ export async function runPreToolUseHook(): Promise<void> {
     }
 
     // Extract tool name from the full MCP tool name (e.g., "mcp__goodvibes-tools__detect_stack")
-    const toolName = input.tool_name?.split('__').pop() || '';
+    const toolName = input.tool_name?.split('__').pop() ?? '';
     debug(`Extracted tool name: ${toolName}`);
 
     const validator = TOOL_VALIDATORS[toolName];

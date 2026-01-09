@@ -30,7 +30,15 @@ export const KEYWORD_CATEGORIES = TRANSCRIPT_KEYWORD_CATEGORIES;
 // Transcript Parsing
 // ============================================================================
 /**
- * Parse a transcript file to extract useful information
+ * Parses a transcript file to extract useful information.
+ * Handles both JSON and plain text formats.
+ *
+ * @param transcriptPath - Path to the transcript file
+ * @returns Promise resolving to ParsedTranscript with extracted data
+ *
+ * @example
+ * const transcript = await parseTranscript('/path/to/transcript.jsonl');
+ * console.log(`Modified ${transcript.files_modified.length} files`);
  */
 export async function parseTranscript(transcriptPath) {
     const result = {
@@ -76,7 +84,11 @@ export async function parseTranscript(transcriptPath) {
     return result;
 }
 /**
- * Process a single transcript entry (JSON format)
+ * Processes a single transcript entry (JSON format).
+ * Extracts tool usage, errors, and success indicators.
+ *
+ * @param entry - The parsed JSON entry object
+ * @param result - The ParsedTranscript to populate
  */
 function processTranscriptEntry(entry, result) {
     processToolUsage(entry, result);
@@ -84,7 +96,11 @@ function processTranscriptEntry(entry, result) {
     processSuccessIndicators(entry, result);
 }
 /**
- * Extract and process tool usage from a transcript entry
+ * Extracts and processes tool usage from a transcript entry.
+ * Identifies tool calls and tracks file modifications.
+ *
+ * @param entry - The transcript entry to process
+ * @param result - The ParsedTranscript to populate
  */
 function processToolUsage(entry, result) {
     const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
@@ -109,7 +125,11 @@ function processToolUsage(entry, result) {
     }
 }
 /**
- * Extract file path from a tool entry
+ * Extracts file path from a tool entry.
+ * Checks common parameter names for file paths.
+ *
+ * @param entry - The tool entry to extract from
+ * @returns File path string, or null if not found
  */
 function extractFilePathFromEntry(entry) {
     const input = entry.tool_input || entry.input || entry.parameters;
@@ -121,7 +141,11 @@ function extractFilePathFromEntry(entry) {
     return typeof filePath === 'string' ? filePath : null;
 }
 /**
- * Process error indicators from a transcript entry
+ * Processes error indicators from a transcript entry.
+ * Increments error count when errors are detected.
+ *
+ * @param entry - The transcript entry to check
+ * @param result - The ParsedTranscript to update
  */
 function processErrors(entry, result) {
     if (entry.type === 'error' || entry.error) {
@@ -129,7 +153,11 @@ function processErrors(entry, result) {
     }
 }
 /**
- * Process success indicators from a transcript entry
+ * Processes success indicators from a transcript entry.
+ * Looks for keywords like 'successfully', 'completed', 'done'.
+ *
+ * @param entry - The transcript entry to check
+ * @param result - The ParsedTranscript to update
  */
 function processSuccessIndicators(entry, result) {
     const text = String(entry.content || entry.text || entry.message || '').toLowerCase();
@@ -141,7 +169,11 @@ function processSuccessIndicators(entry, result) {
     }
 }
 /**
- * Process a plain text line from transcript
+ * Processes a plain text line from transcript.
+ * Extracts tool usage, file modifications, and errors from non-JSON content.
+ *
+ * @param line - The plain text line to process
+ * @param result - The ParsedTranscript to update
  */
 function processPlainTextLine(line, result) {
     const lowerLine = line.toLowerCase();

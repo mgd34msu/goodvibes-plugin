@@ -180,10 +180,10 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
     ]);
 
   return {
-    decisions: decisions || [],
-    patterns: patterns || [],
-    failures: failures || [],
-    preferences: preferences || {},
+    decisions: decisions ?? [],
+    patterns: patterns ?? [],
+    failures: failures ?? [],
+    preferences: preferences ?? {},
     customContext,
   };
 }

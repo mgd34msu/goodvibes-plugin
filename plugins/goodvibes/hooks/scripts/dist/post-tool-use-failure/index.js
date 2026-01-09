@@ -26,7 +26,7 @@ async function runPostToolUseFailureHook() {
     try {
         debug('PostToolUseFailure hook starting');
         const input = await readHookInput();
-        const cwd = input.cwd || PROJECT_ROOT;
+        const cwd = input.cwd ?? PROJECT_ROOT;
         const toolName = input.tool_name || 'unknown';
         // Extract error message safely - the error field is passed by Claude Code but not in our type
         let errorMessage = 'Unknown error';
@@ -91,7 +91,7 @@ async function runPostToolUseFailureHook() {
         // Step 7: Build fix context with research hints
         const _fixContext = buildFixContext(errorState, errorMessage);
         // Build research hints for current phase
-        const effectiveCategory = (pattern?.category || category);
+        const effectiveCategory = (pattern?.category ?? category);
         const hints = getResearchHints(effectiveCategory, errorMessage, errorState.phase);
         const researchHints = buildResearchHintsMessage(hints, errorState.phase);
         // Step 8: Save retry attempt (both to state and file-based tracker)
@@ -128,9 +128,7 @@ async function runPostToolUseFailureHook() {
         // Track the failure in analytics
         const analytics = await loadAnalytics();
         if (analytics) {
-            if (!analytics.tool_failures) {
-                analytics.tool_failures = [];
-            }
+            analytics.tool_failures ??= [];
             analytics.tool_failures.push({
                 tool: toolName,
                 error: errorMessage,

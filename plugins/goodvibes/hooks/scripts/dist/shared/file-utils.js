@@ -206,9 +206,9 @@ function isExecError(error) {
  */
 export function extractErrorOutput(error) {
     if (isExecError(error)) {
-        return (error.stdout?.toString() ||
-            error.stderr?.toString() ||
-            error.message ||
+        return (error.stdout?.toString() ??
+            error.stderr?.toString() ??
+            error.message ??
             'Unknown error');
     }
     return String(error);
