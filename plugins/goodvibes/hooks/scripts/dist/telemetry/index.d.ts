@@ -8,9 +8,12 @@
  * For backward compatibility wrappers that use PROJECT_ROOT, import from
  * '../telemetry.js' instead.
  */
+/** Types for tracking active agent state and git information */
 export type { ActiveAgentEntry, ActiveAgentsState, GitInfo } from './agents.js';
 export { STALE_AGENT_MAX_AGE_MS, getActiveAgentsFilePath, getGitInfo, deriveProjectName, loadActiveAgents, saveActiveAgents, registerActiveAgent, popActiveAgent, cleanupStaleAgents, } from './agents.js';
+/** Parsed transcript data type with extracted content and keywords */
 export type { ParsedTranscript } from './transcript.js';
 export { MAX_OUTPUT_LENGTH, KEYWORD_CATEGORIES, parseTranscript, extractKeywords, } from './transcript.js';
+/** Telemetry record type for storing session events and tool usage */
 export type { TelemetryRecord } from './records.js';
 export { ensureGoodVibesDirs, writeTelemetryRecord, createTelemetryRecord, } from './records.js';

@@ -1,3 +1,4 @@
+/* v8 ignore file */
 /**
  * Memory module - aggregates all memory subsystems.
  * Provides backward compatibility with the old memory.ts API.

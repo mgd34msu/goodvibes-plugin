@@ -22,6 +22,7 @@ vi.mock('../shared/index.js', () => ({
   readHookInput: mockReadHookInput,
   debug: mockDebug,
   logError: mockLogError,
+  isTestEnvironment: () => false,
 }));
 
 describe('notification hook', () => {
@@ -41,7 +42,7 @@ describe('notification hook', () => {
         tool_name: 'test-tool',
       });
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       // Wait for the async hook to complete
       await vi.waitFor(() => {
@@ -57,7 +58,7 @@ describe('notification hook', () => {
       };
       mockReadHookInput.mockResolvedValue(mockInput);
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockReadHookInput).toHaveBeenCalled();
@@ -74,7 +75,7 @@ describe('notification hook', () => {
         tool_name: 'Bash',
       });
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockRespond).toHaveBeenCalledWith({
@@ -88,7 +89,7 @@ describe('notification hook', () => {
       const testError = new Error('Test error message');
       mockReadHookInput.mockRejectedValue(testError);
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockLogError).toHaveBeenCalledWith(
@@ -106,7 +107,7 @@ describe('notification hook', () => {
       const nonErrorValue = 'string error';
       mockReadHookInput.mockRejectedValue(nonErrorValue);
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockLogError).toHaveBeenCalledWith(
@@ -124,7 +125,7 @@ describe('notification hook', () => {
       const objectError = { code: 'ERR_UNKNOWN', message: 'Something failed' };
       mockReadHookInput.mockRejectedValue(objectError);
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockLogError).toHaveBeenCalledWith(
@@ -141,7 +142,7 @@ describe('notification hook', () => {
     it('should handle null thrown as error', async () => {
       mockReadHookInput.mockRejectedValue(null);
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockLogError).toHaveBeenCalledWith('Notification main', null);
@@ -155,7 +156,7 @@ describe('notification hook', () => {
     it('should handle undefined thrown as error', async () => {
       mockReadHookInput.mockRejectedValue(undefined);
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         expect(mockLogError).toHaveBeenCalledWith(
@@ -175,7 +176,7 @@ describe('notification hook', () => {
       const errorMessage = 'Custom error occurred';
       mockReadHookInput.mockRejectedValue(new Error(errorMessage));
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         const respondCall = mockRespond.mock.calls[0][0];
@@ -192,7 +193,7 @@ describe('notification hook', () => {
         tool_name: 'Read',
       });
 
-      await import('../notification.js');
+      await import('../shared/notification.js');
 
       await vi.waitFor(() => {
         const respondCall = mockRespond.mock.calls[0][0];

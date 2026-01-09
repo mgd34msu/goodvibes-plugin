@@ -67,9 +67,17 @@ export interface RunHookOptions {
  */
 export function isMainModule(importMetaUrl: string): boolean {
   // Normalize paths for cross-platform comparison
-  const normalizedUrl = importMetaUrl.replace(/\\/g, '/');
-  const normalizedArgv = process.argv[1]?.replace(/\\/g, '/') || '';
-  return normalizedUrl === `file://${normalizedArgv}`;
+  const normalizedUrl = importMetaUrl.replace(/\\/g, '/').toLowerCase();
+  let normalizedArgv = process.argv[1]?.replace(/\\/g, '/').toLowerCase() || '';
+
+  // Handle Windows absolute paths (C:/path) by adding file:/// prefix
+  if (normalizedArgv.match(/^[a-z]:/i)) {
+    normalizedArgv = `file:///${normalizedArgv}`;
+  } else if (!normalizedArgv.startsWith('file://')) {
+    normalizedArgv = `file://${normalizedArgv}`;
+  }
+
+  return normalizedUrl === normalizedArgv;
 }
 
 /**
@@ -142,6 +150,7 @@ export async function runHook<TResponse extends HookResponse = HookResponse>(
     }
   };
 
+  /* v8 ignore start - defensive error handler */
   if (catchUncaught) {
     execute().catch((error: unknown) => {
       handleError('uncaught', error);
@@ -149,6 +158,7 @@ export async function runHook<TResponse extends HookResponse = HookResponse>(
   } else {
     await execute();
   }
+  /* v8 ignore stop */
 }
 
 /**
@@ -169,6 +179,6 @@ export async function runHookSync<
   await runHook(hookName, handler, { ...options, catchUncaught: false });
 }
 
-// Re-export commonly used types and functions for convenience
+/** Re-export of commonly used types and functions for hook development convenience */
 export type { HookInput, HookResponse, CreateResponseOptions };
 export { createResponse, debug, logError };

@@ -40,7 +40,7 @@ describe('state management', () => {
     it('should return default state when no file exists', async () => {
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
-      const { loadState } = await import('../state.js');
+      const { loadState } = await import('../state/index.js');
       const state = await loadState(tempDir);
 
       expect(state.session.id).toBe('');
@@ -96,7 +96,7 @@ describe('state management', () => {
       mockAccess.mockResolvedValue(undefined);
       mockReadFile.mockResolvedValue(JSON.stringify(existingState));
 
-      const { loadState } = await import('../state.js');
+      const { loadState } = await import('../state/index.js');
       const state = await loadState(tempDir);
 
       expect(state.session.id).toBe('test-session-123');
@@ -114,7 +114,7 @@ describe('state management', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      const { loadState } = await import('../state.js');
+      const { loadState } = await import('../state/index.js');
       const state = await loadState(tempDir);
 
       expect(state.session.id).toBe('');
@@ -132,7 +132,7 @@ describe('state management', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      const { loadState } = await import('../state.js');
+      const { loadState } = await import('../state/index.js');
       const state = await loadState(tempDir);
 
       expect(state.session.id).toBe('');
@@ -187,7 +187,7 @@ describe('state management', () => {
       mockWriteFile.mockResolvedValue(undefined);
       mockRename.mockResolvedValue(undefined);
 
-      const { saveState } = await import('../state.js');
+      const { saveState } = await import('../state/index.js');
       await saveState(tempDir, stateToSave);
 
       // Should write to temp file first
@@ -243,7 +243,7 @@ describe('state management', () => {
       mockWriteFile.mockResolvedValue(undefined);
       mockRename.mockResolvedValue(undefined);
 
-      const { saveState } = await import('../state.js');
+      const { saveState } = await import('../state/index.js');
       await saveState(tempDir, stateToSave);
 
       expect(mockMkdir).toHaveBeenCalledWith(
@@ -299,7 +299,7 @@ describe('state management', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      const { saveState } = await import('../state.js');
+      const { saveState } = await import('../state/index.js');
       // Should not throw
       await expect(saveState(tempDir, stateToSave)).resolves.not.toThrow();
 
@@ -397,7 +397,7 @@ describe('state management', () => {
       });
       mockRename.mockResolvedValue(undefined);
 
-      const { saveState, loadState } = await import('../state.js');
+      const { saveState, loadState } = await import('../state/index.js');
       await saveState(tempDir, originalState);
 
       expect(savedContent).not.toBeNull();
@@ -420,7 +420,7 @@ describe('state management', () => {
 
   describe('trackError', () => {
     it('should return new state with added error immutably', async () => {
-      const { trackError } = await import('../state.js');
+      const { trackError } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -449,7 +449,7 @@ describe('state management', () => {
     });
 
     it('should update existing error state immutably', async () => {
-      const { trackError } = await import('../state.js');
+      const { trackError } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -499,7 +499,7 @@ describe('state management', () => {
     });
 
     it('should track multiple independent errors immutably', async () => {
-      const { trackError } = await import('../state.js');
+      const { trackError } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -538,7 +538,7 @@ describe('state management', () => {
 
   describe('getErrorState', () => {
     it('should retrieve existing error state', async () => {
-      const { trackError, getErrorState } = await import('../state.js');
+      const { trackError, getErrorState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -566,7 +566,7 @@ describe('state management', () => {
     });
 
     it('should return undefined for non-existent error', async () => {
-      const { getErrorState } = await import('../state.js');
+      const { getErrorState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -580,7 +580,7 @@ describe('state management', () => {
   describe('clearError', () => {
     it('should return new state with error removed immutably', async () => {
       const { trackError, clearError, getErrorState } =
-        await import('../state.js');
+        await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -787,7 +787,7 @@ describe('file tracking (from file-tracker)', () => {
 describe('session management', () => {
   describe('initializeSession', () => {
     it('should return new state with session id and cleared session files', async () => {
-      const { initializeSession } = await import('../state.js');
+      const { initializeSession } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -806,7 +806,7 @@ describe('session management', () => {
     });
 
     it('should set startedAt timestamp immutably', async () => {
-      const { initializeSession } = await import('../state.js');
+      const { initializeSession } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -824,7 +824,7 @@ describe('session management', () => {
 
   describe('resetForNewSession', () => {
     it('should return new default state', async () => {
-      const { resetForNewSession } = await import('../state.js');
+      const { resetForNewSession } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -842,7 +842,7 @@ describe('session management', () => {
     });
 
     it('should preserve git state across session reset', async () => {
-      const { resetForNewSession } = await import('../state.js');
+      const { resetForNewSession } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -864,7 +864,7 @@ describe('session management', () => {
     });
 
     it('should preserve error history across session reset', async () => {
-      const { resetForNewSession, trackError } = await import('../state.js');
+      const { resetForNewSession, trackError } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       let state = createDefaultState();
@@ -888,7 +888,7 @@ describe('session management', () => {
     });
 
     it('should clear session-specific data', async () => {
-      const { resetForNewSession } = await import('../state.js');
+      const { resetForNewSession } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const state = createDefaultState();
@@ -913,7 +913,7 @@ describe('session management', () => {
 describe('update state helpers', () => {
   describe('updateSessionState', () => {
     it('should return new state with updated session data', async () => {
-      const { updateSessionState } = await import('../state.js');
+      const { updateSessionState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -930,7 +930,7 @@ describe('update state helpers', () => {
     });
 
     it('should update multiple session fields immutably', async () => {
-      const { updateSessionState } = await import('../state.js');
+      const { updateSessionState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -950,7 +950,7 @@ describe('update state helpers', () => {
 
   describe('updateTestState', () => {
     it('should return new state with updated test data immutably', async () => {
-      const { updateTestState } = await import('../state.js');
+      const { updateTestState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -971,7 +971,7 @@ describe('update state helpers', () => {
 
   describe('updateBuildState', () => {
     it('should return new state with updated build data immutably', async () => {
-      const { updateBuildState } = await import('../state.js');
+      const { updateBuildState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();
@@ -992,7 +992,7 @@ describe('update state helpers', () => {
 
   describe('updateGitState', () => {
     it('should return new state with updated git data immutably', async () => {
-      const { updateGitState } = await import('../state.js');
+      const { updateGitState } = await import('../state/index.js');
       const { createDefaultState } = await import('../types/state.js');
 
       const originalState = createDefaultState();

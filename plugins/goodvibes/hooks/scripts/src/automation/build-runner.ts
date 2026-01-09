@@ -5,11 +5,14 @@
  * parsing output to extract structured error information.
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 
 import { extractErrorOutput, fileExists } from '../shared/index.js';
+
+const execAsync = promisify(exec);
 
 /** Result of a build or type check operation. */
 export interface BuildResult {
@@ -84,7 +87,7 @@ export async function runBuild(cwd: string): Promise<BuildResult> {
   const command = await detectBuildCommand(cwd);
 
   try {
-    execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
+    await execAsync(command, { cwd, timeout: 120000 });
     return { passed: true, summary: 'Build passed', errors: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);
@@ -101,17 +104,17 @@ export async function runBuild(cwd: string): Promise<BuildResult> {
  * Returns structured results with parsed error information.
  *
  * @param cwd - The current working directory (project root)
- * @returns A BuildResult object containing pass/fail status, summary, and parsed type errors
+ * @returns Promise resolving to a BuildResult object containing pass/fail status, summary, and parsed type errors
  *
  * @example
- * const result = runTypeCheck('/my-project');
+ * const result = await runTypeCheck('/my-project');
  * if (!result.passed) {
  *   result.errors.forEach(e => console.error(`${e.file}:${e.line}: ${e.message}`));
  * }
  */
-export function runTypeCheck(cwd: string): BuildResult {
+export async function runTypeCheck(cwd: string): Promise<BuildResult> {
   try {
-    execSync(TYPECHECK_COMMAND, { cwd, stdio: 'pipe', timeout: 120000 });
+    await execAsync(TYPECHECK_COMMAND, { cwd, timeout: 120000 });
     return { passed: true, summary: 'Type check passed', errors: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);

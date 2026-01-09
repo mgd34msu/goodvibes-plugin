@@ -305,6 +305,50 @@ describe('project-health', () => {
       });
     });
 
+    it('should handle TypeScript config with null compilerOptions (line 113 branch)', async () => {
+      // Test the ?? {} operator on line 113 when compilerOptions is explicitly null
+      mockedFileExists.mockImplementation(async (p: string) => {
+        return p.includes('tsconfig.json');
+      });
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: null,
+        })
+      );
+
+      const result = await checkProjectHealth('/test/project');
+
+      expect(result.typescript).toEqual({
+        hasConfig: true,
+        strict: false,
+        strictNullChecks: false,
+        noImplicitAny: false,
+        target: null,
+      });
+    });
+
+    it('should handle TypeScript config with undefined compilerOptions (line 113 branch)', async () => {
+      // Test the ?? {} operator on line 113 when compilerOptions is undefined
+      mockedFileExists.mockImplementation(async (p: string) => {
+        return p.includes('tsconfig.json');
+      });
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          compilerOptions: undefined,
+        })
+      );
+
+      const result = await checkProjectHealth('/test/project');
+
+      expect(result.typescript).toEqual({
+        hasConfig: true,
+        strict: false,
+        strictNullChecks: false,
+        noImplicitAny: false,
+        target: null,
+      });
+    });
+
     it('should handle invalid TypeScript config JSON', async () => {
       mockedFileExists.mockImplementation(async (p: string) => {
         return p.includes('tsconfig.json');
@@ -411,6 +455,40 @@ describe('project-health', () => {
       mockedFs.readFile.mockResolvedValue(
         JSON.stringify({
           name: 'my-package',
+        })
+      );
+
+      const result = await checkProjectHealth('/test/project');
+
+      expect(result.scripts).toEqual([]);
+    });
+
+    it('should handle package.json with null scripts (line 158 branch)', async () => {
+      // Test the ?? {} operator on line 158 when scripts is explicitly null
+      mockedFileExists.mockImplementation(async (p: string) => {
+        return p.includes('package.json');
+      });
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          name: 'my-package',
+          scripts: null,
+        })
+      );
+
+      const result = await checkProjectHealth('/test/project');
+
+      expect(result.scripts).toEqual([]);
+    });
+
+    it('should handle package.json with undefined scripts (line 158 branch)', async () => {
+      // Test the ?? {} operator on line 158 when scripts is undefined
+      mockedFileExists.mockImplementation(async (p: string) => {
+        return p.includes('package.json');
+      });
+      mockedFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          name: 'my-package',
+          scripts: undefined,
         })
       );
 

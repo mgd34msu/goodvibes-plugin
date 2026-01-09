@@ -3,6 +3,13 @@
  *
  * Functions for reading hook input from stdin and responding with hook output.
  */
+/**
+ * Checks if the current process is running in a test environment.
+ * This is used to prevent hook scripts from executing when being imported by tests.
+ *
+ * @returns true if running in test mode, false otherwise
+ */
+export declare function isTestEnvironment(): boolean;
 /** Hook input from stdin (provided by Claude Code). */
 export interface HookInput {
     session_id: string;

@@ -3,11 +3,13 @@
  *
  * File system utilities including existence checks and command detection.
  */
-import { execSync } from 'child_process';
+import { exec as execCallback } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 import { PROJECT_ROOT, PLUGIN_ROOT } from './constants.js';
 import { debug } from './logging.js';
+const exec = promisify(execCallback);
 // =============================================================================
 // File Existence Utilities
 // =============================================================================
@@ -81,25 +83,25 @@ export async function fileExistsRelative(filePath, baseDir = PROJECT_ROOT) {
  * - Unix/Mac: `which <cmd>`
  *
  * @param cmd - The command name to check (e.g., 'git', 'npm', 'node')
- * @returns True if the command is available in PATH, false otherwise
+ * @returns Promise resolving to true if the command is available in PATH, false otherwise
  *
  * @example
- * if (commandExists('git')) {
+ * if (await commandExists('git')) {
  *   console.log('Git is available');
  * }
  *
  * @example
  * // Check before running a tool
- * if (!commandExists('pnpm')) {
+ * if (!(await commandExists('pnpm'))) {
  *   console.log('pnpm not found, falling back to npm');
  * }
  */
-export function commandExists(cmd) {
+export async function commandExists(cmd) {
     try {
         // Use 'where' on Windows, 'which' on Unix/Mac
         const isWindows = process.platform === 'win32';
         const checkCmd = isWindows ? `where ${cmd}` : `which ${cmd}`;
-        execSync(checkCmd, { stdio: 'ignore', timeout: 30000 });
+        await exec(checkCmd, { timeout: 30000, maxBuffer: 1024 * 1024 });
         return true;
     }
     catch (error) {

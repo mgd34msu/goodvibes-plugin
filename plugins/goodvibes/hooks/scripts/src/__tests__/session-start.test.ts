@@ -17,194 +17,123 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock fs/promises module
-const mockAccess = vi.fn();
-const mockMkdir = vi.fn();
-const mockReadFile = vi.fn();
-const mockWriteFile = vi.fn();
-const mockRename = vi.fn();
-
-vi.mock('fs/promises', () => ({
-  access: (...args: unknown[]) => mockAccess(...args),
-  mkdir: (...args: unknown[]) => mockMkdir(...args),
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-  rename: (...args: unknown[]) => mockRename(...args),
-}));
-
-// Mock shared module
-const mockRespond = vi.fn();
-const mockReadHookInput = vi.fn();
-const mockValidateRegistries = vi.fn();
-const mockEnsureCacheDir = vi.fn();
-const mockSaveAnalytics = vi.fn();
-const mockDebug = vi.fn();
-const mockLogError = vi.fn();
-const mockCreateResponse = vi.fn((opts) => ({
-  continue: true,
-  systemMessage: opts?.systemMessage,
-  additionalContext: opts?.additionalContext,
-}));
-
-vi.mock('../shared/index.js', () => ({
-  respond: (...args: unknown[]) => mockRespond(...args),
-  readHookInput: () => mockReadHookInput(),
-  validateRegistries: () => mockValidateRegistries(),
-  ensureCacheDir: () => mockEnsureCacheDir(),
-  saveAnalytics: (...args: unknown[]) => mockSaveAnalytics(...args),
-  debug: (...args: unknown[]) => mockDebug(...args),
-  logError: (...args: unknown[]) => mockLogError(...args),
-  createResponse: (...args: unknown[]) => mockCreateResponse(...args),
-  PROJECT_ROOT: '/mock/project/root',
-}));
-
-// Mock crash-recovery module
-const mockCheckCrashRecovery = vi.fn();
-
-vi.mock('../session-start/crash-recovery.js', () => ({
-  checkCrashRecovery: (...args: unknown[]) => mockCheckCrashRecovery(...args),
-}));
-
-// Mock context-builder module
-const mockGatherProjectContext = vi.fn();
-const mockCreateFailedContextResult = vi.fn((startTime: number) => ({
-  additionalContext: '',
-  summary: 'Context gathering failed',
-  isEmptyProject: false,
-  hasIssues: false,
-  issueCount: 0,
-  gatherTimeMs: Date.now() - startTime,
-  needsRecovery: false,
-}));
-
-vi.mock('../session-start/context-builder.js', () => ({
-  gatherProjectContext: (...args: unknown[]) =>
-    mockGatherProjectContext(...args),
-  createFailedContextResult: (startTime: number) =>
-    mockCreateFailedContextResult(startTime),
-}));
-
-// Mock response-formatter module
-const mockBuildSystemMessage = vi.fn();
-
-vi.mock('../session-start/response-formatter.js', () => ({
-  buildSystemMessage: (...args: unknown[]) => mockBuildSystemMessage(...args),
-}));
-
-// Mock state module
-const mockLoadState = vi.fn();
-const mockSaveState = vi.fn();
-const mockUpdateSessionState = vi.fn((state, updates) => ({
-  ...state,
-  session: { ...state.session, ...updates },
-}));
-const mockInitializeSession = vi.fn((state, sessionId) => ({
-  ...state,
-  session: {
-    ...state.session,
-    id: sessionId,
-    startedAt: new Date().toISOString(),
-  },
-  files: { ...state.files, modifiedThisSession: [], createdThisSession: [] },
-}));
-
-vi.mock('../state.js', () => ({
-  loadState: (...args: unknown[]) => mockLoadState(...args),
-  saveState: (...args: unknown[]) => mockSaveState(...args),
-  updateSessionState: (...args: unknown[]) => mockUpdateSessionState(...args),
-  initializeSession: (...args: unknown[]) => mockInitializeSession(...args),
-}));
-
-// Mock types/state module
-const mockCreateDefaultState = vi.fn(() => ({
-  session: {
-    id: '',
-    startedAt: new Date().toISOString(),
-    mode: 'default',
-    featureDescription: null,
-  },
-  errors: {},
-  tests: {
-    lastFullRun: null,
-    lastQuickRun: null,
-    passingFiles: [],
-    failingFiles: [],
-    pendingFixes: [],
-  },
-  build: {
-    lastRun: null,
-    status: 'unknown',
-    errors: [],
-    fixAttempts: 0,
-  },
-  git: {
-    mainBranch: 'main',
-    currentBranch: 'main',
-    featureBranch: null,
-    featureStartedAt: null,
-    featureDescription: null,
-    checkpoints: [],
-    pendingMerge: false,
-  },
-  files: {
-    modifiedSinceCheckpoint: [],
-    modifiedThisSession: [],
-    createdThisSession: [],
-  },
-  devServers: {},
-}));
-
-vi.mock('../types/state.js', () => ({
-  createDefaultState: () => mockCreateDefaultState(),
-}));
-
 describe('session-start hook', () => {
   const originalDateNow = Date.now;
   const fixedTimestamp = new Date('2025-01-15T12:30:00Z').getTime();
+
+  // Mock functions
+  let mockAccess: ReturnType<typeof vi.fn>;
+  let mockMkdir: ReturnType<typeof vi.fn>;
+  let mockReadFile: ReturnType<typeof vi.fn>;
+  let mockWriteFile: ReturnType<typeof vi.fn>;
+  let mockRename: ReturnType<typeof vi.fn>;
+  let mockRespond: ReturnType<typeof vi.fn>;
+  let mockReadHookInput: ReturnType<typeof vi.fn>;
+  let mockValidateRegistries: ReturnType<typeof vi.fn>;
+  let mockEnsureCacheDir: ReturnType<typeof vi.fn>;
+  let mockSaveAnalytics: ReturnType<typeof vi.fn>;
+  let mockDebug: ReturnType<typeof vi.fn>;
+  let mockLogError: ReturnType<typeof vi.fn>;
+  let mockCreateResponse: ReturnType<typeof vi.fn>;
+  let mockCheckCrashRecovery: ReturnType<typeof vi.fn>;
+  let mockGatherProjectContext: ReturnType<typeof vi.fn>;
+  let mockCreateFailedContextResult: ReturnType<typeof vi.fn>;
+  let mockBuildSystemMessage: ReturnType<typeof vi.fn>;
+  let mockLoadState: ReturnType<typeof vi.fn>;
+  let mockSaveState: ReturnType<typeof vi.fn>;
+  let mockUpdateSessionState: ReturnType<typeof vi.fn>;
+  let mockInitializeSession: ReturnType<typeof vi.fn>;
+  let mockCreateDefaultState: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
 
-    // Mock Date.now for consistent timing
-    Date.now = vi.fn(() => fixedTimestamp);
-
-    // Default mock implementations
-    mockReadHookInput.mockResolvedValue({
-      session_id: 'test-session-123',
-      cwd: '/test/project',
-      hook_event_name: 'SessionStart',
-      transcript_path: '/test/transcript',
-      permission_mode: 'default',
-    });
-
-    mockValidateRegistries.mockResolvedValue({ valid: true, missing: [] });
-    mockEnsureCacheDir.mockResolvedValue(undefined);
-    mockLoadState.mockResolvedValue(mockCreateDefaultState());
-    mockSaveState.mockResolvedValue(undefined);
-
-    mockCheckCrashRecovery.mockResolvedValue({
-      needsRecovery: false,
-      previousFeature: null,
-      onBranch: null,
-      uncommittedFiles: [],
-      pendingIssues: [],
-      lastCheckpoint: null,
-    });
-
-    mockGatherProjectContext.mockResolvedValue({
-      additionalContext: 'test context',
-      summary: 'Test project summary',
+    // Initialize mock functions
+    mockAccess = vi.fn();
+    mockMkdir = vi.fn();
+    mockReadFile = vi.fn();
+    mockWriteFile = vi.fn();
+    mockRename = vi.fn();
+    mockRespond = vi.fn();
+    mockReadHookInput = vi.fn();
+    mockValidateRegistries = vi.fn();
+    mockEnsureCacheDir = vi.fn();
+    mockSaveAnalytics = vi.fn();
+    mockDebug = vi.fn();
+    mockLogError = vi.fn();
+    mockCreateResponse = vi.fn((opts) => ({
+      continue: true,
+      systemMessage: opts?.systemMessage,
+      additionalContext: opts?.additionalContext,
+    }));
+    mockCheckCrashRecovery = vi.fn();
+    mockGatherProjectContext = vi.fn();
+    mockCreateFailedContextResult = vi.fn((startTime: number) => ({
+      additionalContext: '',
+      summary: 'Context gathering failed',
       isEmptyProject: false,
       hasIssues: false,
       issueCount: 0,
-      gatherTimeMs: 100,
+      gatherTimeMs: Date.now() - startTime,
       needsRecovery: false,
-    });
+    }));
+    mockBuildSystemMessage = vi.fn();
+    mockLoadState = vi.fn();
+    mockSaveState = vi.fn();
+    mockUpdateSessionState = vi.fn((state, updates) => ({
+      ...state,
+      session: { ...state.session, ...updates },
+    }));
+    mockInitializeSession = vi.fn((state, sessionId) => ({
+      ...state,
+      session: {
+        ...state.session,
+        id: sessionId,
+        startedAt: new Date().toISOString(),
+      },
+      files: { ...state.files, modifiedThisSession: [], createdThisSession: [] },
+    }));
+    mockCreateDefaultState = vi.fn(() => ({
+      session: {
+        id: '',
+        startedAt: new Date().toISOString(),
+        mode: 'default',
+        featureDescription: null,
+      },
+      errors: {},
+      tests: {
+        lastFullRun: null,
+        lastQuickRun: null,
+        passingFiles: [],
+        failingFiles: [],
+        pendingFixes: [],
+      },
+      build: {
+        lastRun: null,
+        status: 'unknown',
+        errors: [],
+        fixAttempts: 0,
+      },
+      git: {
+        mainBranch: 'main',
+        currentBranch: 'main',
+        featureBranch: null,
+        featureStartedAt: null,
+        featureDescription: null,
+        checkpoints: [],
+        pendingMerge: false,
+      },
+      files: {
+        modifiedSinceCheckpoint: [],
+        modifiedThisSession: [],
+        createdThisSession: [],
+      },
+      devServers: {},
+    }));
 
-    mockBuildSystemMessage.mockReturnValue(
-      'GoodVibes plugin v2.1.0 initialized.'
-    );
+    // Mock Date.now for consistent timing
+    Date.now = vi.fn(() => fixedTimestamp);
   });
 
   afterEach(() => {
@@ -212,13 +141,161 @@ describe('session-start hook', () => {
     vi.resetModules();
   });
 
+  async function setupMocksAndImport() {
+    // Set default mock implementations if not already set
+    if (!mockReadHookInput.getMockImplementation()) {
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'test-session-123',
+        cwd: '/test/project',
+        hook_event_name: 'SessionStart',
+        transcript_path: '/test/transcript',
+        permission_mode: 'default',
+      });
+    }
+
+    if (!mockValidateRegistries.getMockImplementation()) {
+      mockValidateRegistries.mockResolvedValue({ valid: true, missing: [] });
+    }
+
+    if (!mockEnsureCacheDir.getMockImplementation()) {
+      mockEnsureCacheDir.mockResolvedValue(undefined);
+    }
+
+    if (!mockLoadState.getMockImplementation()) {
+      mockLoadState.mockResolvedValue(mockCreateDefaultState());
+    }
+
+    if (!mockSaveState.getMockImplementation()) {
+      mockSaveState.mockResolvedValue(undefined);
+    }
+
+    if (!mockCheckCrashRecovery.getMockImplementation()) {
+      mockCheckCrashRecovery.mockResolvedValue({
+        needsRecovery: false,
+        previousFeature: null,
+        onBranch: null,
+        uncommittedFiles: [],
+        pendingIssues: [],
+        lastCheckpoint: null,
+      });
+    }
+
+    if (!mockGatherProjectContext.getMockImplementation()) {
+      mockGatherProjectContext.mockResolvedValue({
+        additionalContext: 'test context',
+        summary: 'Test project summary',
+        isEmptyProject: false,
+        hasIssues: false,
+        issueCount: 0,
+        gatherTimeMs: 100,
+        needsRecovery: false,
+      });
+    }
+
+    if (!mockBuildSystemMessage.getMockImplementation()) {
+      mockBuildSystemMessage.mockReturnValue(
+        'GoodVibes plugin v2.1.0 initialized.'
+      );
+    }
+
+    // Mock fs/promises
+    vi.doMock('fs/promises', () => ({
+      access: mockAccess,
+      mkdir: mockMkdir,
+      readFile: mockReadFile,
+      writeFile: mockWriteFile,
+      rename: mockRename,
+    }));
+
+    // Mock shared module with isTestEnvironment = false so hook runs
+    vi.doMock('../shared/index.js', () => ({
+      respond: mockRespond,
+      readHookInput: mockReadHookInput,
+      validateRegistries: mockValidateRegistries,
+      ensureCacheDir: mockEnsureCacheDir,
+      ensureGoodVibesDir: vi.fn().mockResolvedValue(undefined),
+      fileExists: vi.fn().mockResolvedValue(true),
+      saveAnalytics: mockSaveAnalytics,
+      debug: mockDebug,
+      logError: mockLogError,
+      createResponse: mockCreateResponse,
+      PROJECT_ROOT: '/mock/project/root',
+      isTestEnvironment: () => false,
+    }));
+
+    // Mock crash-recovery module
+    vi.doMock('../session-start/crash-recovery.js', () => ({
+      checkCrashRecovery: mockCheckCrashRecovery,
+    }));
+
+    // Mock context-builder module
+    vi.doMock('../session-start/context-builder.js', () => ({
+      gatherProjectContext: mockGatherProjectContext,
+      createFailedContextResult: mockCreateFailedContextResult,
+    }));
+
+    // Mock response-formatter module
+    vi.doMock('../session-start/response-formatter.js', () => ({
+      buildSystemMessage: mockBuildSystemMessage,
+    }));
+
+    // Mock state module
+    vi.doMock('../state/index.js', () => ({
+      loadState: mockLoadState,
+      saveState: mockSaveState,
+      updateSessionState: mockUpdateSessionState,
+      initializeSession: mockInitializeSession,
+    }));
+
+    // Mock types/state module
+    vi.doMock('../types/state.js', () => ({
+      createDefaultState: mockCreateDefaultState,
+    }));
+
+    // Import the module (this triggers the hook)
+    await import('../session-start/index.js');
+
+    // Allow async operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await vi.waitFor(() => expect(mockRespond).toHaveBeenCalled(), { timeout: 1000 });
+  }
+
   describe('runSessionStartHook', () => {
     it('should complete successful initialization with all steps', async () => {
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
+      // Set up all mocks before importing
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'test-session-123',
+        cwd: '/test/project',
+        hook_event_name: 'SessionStart',
+        transcript_path: '/test/transcript',
+        permission_mode: 'default',
       });
+      mockValidateRegistries.mockResolvedValue({ valid: true, missing: [] });
+      mockEnsureCacheDir.mockResolvedValue(undefined);
+      mockLoadState.mockResolvedValue(mockCreateDefaultState());
+      mockSaveState.mockResolvedValue(undefined);
+      mockCheckCrashRecovery.mockResolvedValue({
+        needsRecovery: false,
+        previousFeature: null,
+        onBranch: null,
+        uncommittedFiles: [],
+        pendingIssues: [],
+        lastCheckpoint: null,
+      });
+      mockGatherProjectContext.mockResolvedValue({
+        additionalContext: 'test context',
+        summary: 'Test project summary',
+        isEmptyProject: false,
+        hasIssues: false,
+        issueCount: 0,
+        gatherTimeMs: 100,
+        needsRecovery: false,
+      });
+      mockBuildSystemMessage.mockReturnValue(
+        'GoodVibes plugin v2.1.0 initialized.'
+      );
+
+      await setupMocksAndImport();
 
       // Verify initialization sequence
       expect(mockDebug).toHaveBeenCalledWith('SessionStart hook starting');
@@ -294,11 +371,7 @@ describe('session-start hook', () => {
         permission_mode: 'default',
       });
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should use PROJECT_ROOT (/mock/project/root) instead of input.cwd
       expect(mockLoadState).toHaveBeenCalledWith('/mock/project/root');
@@ -316,11 +389,7 @@ describe('session-start hook', () => {
         permission_mode: 'default',
       });
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should generate a session ID with the format session_{timestamp}
       expect(mockInitializeSession).toHaveBeenCalledWith(
@@ -335,11 +404,7 @@ describe('session-start hook', () => {
         missing: ['agents-registry.json', 'tools-registry.json'],
       });
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify warning response for missing registries
       expect(mockCreateResponse).toHaveBeenCalledWith({
@@ -364,11 +429,7 @@ describe('session-start hook', () => {
         needsRecovery: false,
       });
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // When additionalContext is empty string, it should be undefined in response
       expect(mockCreateResponse).toHaveBeenCalledWith({
@@ -382,11 +443,7 @@ describe('session-start hook', () => {
     it('should return default state when loadState throws', async () => {
       mockLoadState.mockRejectedValue(new Error('Failed to load state'));
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith(
@@ -408,11 +465,7 @@ describe('session-start hook', () => {
         new Error('Crash recovery check failed')
       );
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith(
@@ -442,11 +495,7 @@ describe('session-start hook', () => {
         new Error('Context gathering failed')
       );
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith(
@@ -466,11 +515,7 @@ describe('session-start hook', () => {
     it('should continue when saveState throws', async () => {
       mockSaveState.mockRejectedValue(new Error('Failed to save state'));
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith(
@@ -488,11 +533,7 @@ describe('session-start hook', () => {
     it('should handle and report Error instances in main catch block', async () => {
       mockReadHookInput.mockRejectedValue(new Error('Input read failed'));
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith(
@@ -509,11 +550,7 @@ describe('session-start hook', () => {
     it('should handle non-Error types in main catch block', async () => {
       mockReadHookInput.mockRejectedValue('String error');
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error response with "Unknown error" message
       expect(mockCreateResponse).toHaveBeenCalledWith({
@@ -534,11 +571,7 @@ describe('session-start hook', () => {
         needsRecovery: true,
       });
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveAnalytics).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -565,11 +598,7 @@ describe('session-start hook', () => {
 
   describe('debug logging', () => {
     it('should log project directory', async () => {
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'Project directory: /test/project'
@@ -577,11 +606,7 @@ describe('session-start hook', () => {
     });
 
     it('should log context gathering start', async () => {
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'Gathering project context from: /test/project'
@@ -598,11 +623,7 @@ describe('session-start hook', () => {
         lastCheckpoint: null,
       });
 
-      await import('../session-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith('Crash recovery check', {
         needsRecovery: true,

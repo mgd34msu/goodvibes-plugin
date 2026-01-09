@@ -8,6 +8,7 @@
  * - `analyzeEnvironment()` - Comprehensive analysis returning {@link EnvironmentContext}
  */
 import type { EnvStatus, EnvironmentContext } from '../types/environment.js';
+/** Re-export of environment status types for consumer convenience. */
 export type { EnvStatus, EnvironmentContext };
 /**
  * Quick environment check returning basic status.

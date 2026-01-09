@@ -21,6 +21,7 @@ vi.mock('../../shared/index.js', () => ({
   debug: vi.fn(),
   logError: vi.fn(),
   CACHE_DIR: '/mock/.goodvibes',
+  isTestEnvironment: () => false,
 }));
 vi.mock('../../post-tool-use/response.js', () => ({
   createResponse: vi.fn((msg?: string) => ({

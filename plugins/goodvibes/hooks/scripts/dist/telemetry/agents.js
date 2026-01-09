@@ -3,10 +3,12 @@
  *
  * Provides active agent state tracking for SubagentStart/Stop correlation.
  */
-import { execSync } from 'child_process';
+import { exec as execCallback } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 import { debug, logError, fileExists } from '../shared/index.js';
+const exec = promisify(execCallback);
 // ============================================================================
 // Constants and Paths
 // ============================================================================
@@ -36,30 +38,30 @@ export function getActiveAgentsFilePath(goodVibesDir, stateDir) {
 /**
  * Get git branch and commit info for the current directory
  */
-export function getGitInfo(cwd) {
+export async function getGitInfo(cwd) {
     const result = {};
     try {
         // Get current branch
-        const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+        const { stdout: branch } = await exec('git rev-parse --abbrev-ref HEAD', {
             cwd,
             encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
             timeout: 30000,
-        }).trim();
-        result.branch = branch;
+            maxBuffer: 1024 * 1024,
+        });
+        result.branch = branch.trim();
     }
     catch (error) {
         debug('Git branch unavailable:', error instanceof Error ? error.message : 'unknown');
     }
     try {
         // Get current commit (short hash)
-        const commit = execSync('git rev-parse --short HEAD', {
+        const { stdout: commit } = await exec('git rev-parse --short HEAD', {
             cwd,
             encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
             timeout: 30000,
-        }).trim();
-        result.commit = commit;
+            maxBuffer: 1024 * 1024,
+        });
+        result.commit = commit.trim();
     }
     catch (error) {
         debug('Git commit unavailable:', error instanceof Error ? error.message : 'unknown');

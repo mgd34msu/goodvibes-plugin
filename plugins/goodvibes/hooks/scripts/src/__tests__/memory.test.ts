@@ -22,9 +22,9 @@ import {
   getGoodVibesDir,
   getMemoryDir,
   getMemoryFilePath,
-} from '../memory.js';
+} from '../memory/index.js';
 
-import type { Decision, Pattern, Failure, Preference } from '../memory.js';
+import type { Decision, Pattern, Failure, Preference } from '../memory/index.js';
 
 describe('memory', () => {
   let testDir: string;

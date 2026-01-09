@@ -2,29 +2,71 @@
  * Tests for port checker
  */
 
-import { execSync } from 'child_process';
-import * as os from 'os';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+// Mock dependencies - must be before imports
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+}));
 
-import {
-  checkPorts,
-  formatPortStatus,
-  COMMON_DEV_PORTS,
-  type PortInfo,
-} from '../../context/port-checker.js';
+// Mock promisify to properly convert callback-style to promise-style
+vi.mock('util', () => ({
+  promisify: (fn: any) => {
+    return (command: string, options: any) => {
+      return new Promise((resolve, reject) => {
+        fn(command, options, (error: Error | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve({ stdout, stderr });
+          }
+        });
+      });
+    };
+  },
+}));
 
-vi.mock('child_process');
-vi.mock('os');
+// Mock os module
+vi.mock('os', () => ({
+  platform: vi.fn(),
+}));
+
+// Mock logging
 vi.mock('../../shared/logging.js', () => ({
   debug: vi.fn(),
 }));
 
+import * as childProcess from 'child_process';
+import * as os from 'os';
+
+import type { PortInfo } from '../../context/port-checker.js';
+
+// Get reference to the mocked functions
+const mockExec = vi.mocked(childProcess.exec);
+
 describe('port-checker', () => {
   const mockCwd = '/test/project';
 
-  beforeEach(() => {
+  // Import after mocks are set up
+  let checkPorts: (cwd: string) => Promise<PortInfo[]>;
+  let formatPortStatus: (ports: PortInfo[]) => string;
+  let COMMON_DEV_PORTS: number[];
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+
+    // Reset mock implementation - default to empty output
+    // promisify turns this into async function that returns Promise<{stdout, stderr}>
+    mockExec.mockImplementation((command: string, options: any, callback: Function) => {
+      callback(null, '', '');
+      return {} as any; // Return ChildProcess-like object for exec
+    });
+
+    // Dynamically import to get fresh module with mocks
+    const module = await import('../../context/port-checker.js');
+    checkPorts = module.checkPorts;
+    formatPortStatus = module.formatPortStatus;
+    COMMON_DEV_PORTS = module.COMMON_DEV_PORTS;
   });
 
   describe('checkPorts - Windows', () => {
@@ -40,15 +82,14 @@ describe('port-checker', () => {
 `;
       const tasklistOutput = '"node.exe","1234","Console","1","12,345 K"';
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('netstat')) {
-          return netstatOutput;
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, tasklistOutput, '');
+        } else {
+          callback(null, '', '');
         }
-        if (cmdStr.includes('tasklist')) {
-          return tasklistOutput;
-        }
-        return '';
       });
 
       const result = await checkPorts(mockCwd);
@@ -66,15 +107,14 @@ describe('port-checker', () => {
   TCP    [::]:3000              [::]:0                 LISTENING       1234
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('netstat')) {
-          return netstatOutput;
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","1234","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
         }
-        if (cmdStr.includes('tasklist')) {
-          return '"node.exe","1234","Console","1","12,345 K"';
-        }
-        return '';
       });
 
       const result = await checkPorts(mockCwd);
@@ -88,15 +128,14 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('netstat')) {
-          return netstatOutput;
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(new Error('Tasklist failed'), '', '');
+        } else {
+          callback(null, '', '');
         }
-        if (cmdStr.includes('tasklist')) {
-          throw new Error('Tasklist failed');
-        }
-        return '';
       });
 
       const result = await checkPorts(mockCwd);
@@ -107,8 +146,8 @@ describe('port-checker', () => {
     });
 
     it('should handle netstat failure on Windows', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('Netstat failed');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(new Error('Netstat failed'), '', '');
       });
 
       const result = await checkPorts(mockCwd);
@@ -123,7 +162,9 @@ describe('port-checker', () => {
   TCP    0.0.0.0:8080           0.0.0.0:0              TIME_WAIT       5678
 `;
 
-      vi.mocked(execSync).mockReturnValue(netstatOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, netstatOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 
@@ -136,7 +177,9 @@ describe('port-checker', () => {
   INVALID DATA
 `;
 
-      vi.mocked(execSync).mockReturnValue(netstatOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, netstatOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 
@@ -145,103 +188,194 @@ describe('port-checker', () => {
     });
 
     it('should handle netstat line without port in address', async () => {
-      // Tests line 53: if (!portMatch) continue
       const netstatOutput = `
   Proto  Local Address          Foreign Address        State           PID
   TCP    invalidaddress         0.0.0.0:0              LISTENING       1234
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       5678
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('netstat')) {
-          return netstatOutput;
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","5678","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
         }
-        if (cmdStr.includes('tasklist')) {
-          return '"node.exe","5678","Console","1","12,345 K"';
-        }
-        return '';
       });
 
       const result = await checkPorts(mockCwd);
 
-      // Port 3000 should still be detected
       const port3000 = result.find((p) => p.port === 3000);
       expect(port3000?.inUse).toBe(true);
     });
 
     it('should handle netstat line with empty PID', async () => {
-      // Tests lines 59-61: pid handling when parts[4] is undefined
       const netstatOutput = `
   Proto  Local Address          Foreign Address        State
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING
 `;
 
-      vi.mocked(execSync).mockReturnValue(netstatOutput);
-
-      const result = await checkPorts(mockCwd);
-
-      const port3000 = result.find((p) => p.port === 3000);
-      expect(port3000?.inUse).toBe(true);
-      // Should fallback to 'unknown' when no PID (line 77)
-      expect(port3000?.process).toBe('unknown');
-    });
-
-    it('should handle tasklist output without matching process name', async () => {
-      // Tests line 77: processName || 'unknown' when tasklist returns no match
-      const netstatOutput = `
-  Proto  Local Address          Foreign Address        State           PID
-  TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
-`;
-
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('netstat')) {
-          return netstatOutput;
-        }
-        // Return output that doesn't match the expected CSV format
-        if (cmdStr.includes('tasklist')) {
-          return 'INFO: No tasks are running which match the specified criteria.';
-        }
-        return '';
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, netstatOutput, '');
       });
 
       const result = await checkPorts(mockCwd);
 
       const port3000 = result.find((p) => p.port === 3000);
       expect(port3000?.inUse).toBe(true);
-      // Should use PID:1234 since tasklist didn't return a proper name
+      expect(port3000?.process).toBe('unknown');
+    });
+
+    it('should handle tasklist output without matching process name', async () => {
+      const netstatOutput = `
+  Proto  Local Address          Foreign Address        State           PID
+  TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(
+            null,
+            'INFO: No tasks are running which match the specified criteria.',
+            ''
+          );
+        } else {
+          callback(null, '', '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
       expect(port3000?.process).toBe('PID:1234');
     });
 
     it('should ignore ports not in COMMON_DEV_PORTS on Windows', async () => {
-      // Tests line 56: if (ports.includes(port)) - the false branch
       const netstatOutput = `
   Proto  Local Address          Foreign Address        State           PID
   TCP    0.0.0.0:9999           0.0.0.0:0              LISTENING       1234
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       5678
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('netstat')) {
-          return netstatOutput;
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","5678","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
         }
-        if (cmdStr.includes('tasklist')) {
-          return '"node.exe","5678","Console","1","12,345 K"';
-        }
-        return '';
       });
 
       const result = await checkPorts(mockCwd);
 
-      // Port 9999 is not in COMMON_DEV_PORTS, so should not be marked as in use
       const port9999 = result.find((p) => p.port === 9999);
       expect(port9999).toBeUndefined();
 
-      // Port 3000 should be detected
       const port3000 = result.find((p) => p.port === 3000);
       expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should handle lines without enough parts', async () => {
+      const netstatOutput = `
+  Proto  Local Address
+  TCP
+  TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","1234","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should handle header lines', async () => {
+      const netstatOutput = `
+  Proto  Local Address          Foreign Address        State           PID
+  TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","1234","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should handle empty lines in netstat output', async () => {
+      const netstatOutput = `
+
+  Proto  Local Address          Foreign Address        State           PID
+
+  TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
+
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","1234","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should handle multiple ports for the same process', async () => {
+      const netstatOutput = `
+  Proto  Local Address          Foreign Address        State           PID
+  TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
+  TCP    0.0.0.0:8080           0.0.0.0:0              LISTENING       1234
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('netstat')) {
+          callback(null, netstatOutput, '');
+        } else if (cmd.toString().includes('tasklist')) {
+          callback(null, '"node.exe","1234","Console","1","12,345 K"', '');
+        } else {
+          callback(null, '', '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      const port8080 = result.find((p) => p.port === 8080);
+
+      expect(port3000?.inUse).toBe(true);
+      expect(port3000?.process).toBe('node');
+      expect(port8080?.inUse).toBe(true);
+      expect(port8080?.process).toBe('node');
     });
   });
 
@@ -254,7 +388,9 @@ describe('port-checker', () => {
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
 npm      5678 user   13u  IPv4  67890      0t0  TCP localhost:8080(LISTEN)`;
 
-      vi.mocked(execSync).mockReturnValue(lsofOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 
@@ -271,7 +407,9 @@ npm      5678 user   13u  IPv4  67890      0t0  TCP localhost:8080(LISTEN)`;
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
 node     5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
 
-      vi.mocked(execSync).mockReturnValue(lsofOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 
@@ -286,12 +424,12 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN
 tcp6       0      0 :::8080                 :::*                    LISTEN
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('lsof')) {
-          throw new Error('lsof not found');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
         }
-        return netstatOutput;
       });
 
       const result = await checkPorts(mockCwd);
@@ -309,12 +447,12 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      
 tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('lsof')) {
-          throw new Error('lsof not found');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
         }
-        return netstatOutput;
       });
 
       const result = await checkPorts(mockCwd);
@@ -325,8 +463,8 @@ tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      
     });
 
     it('should handle both lsof and netstat failure', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('Command failed');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(new Error('Command failed'), '', '');
       });
 
       const result = await checkPorts(mockCwd);
@@ -341,12 +479,12 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               ESTABLISHED
 tcp        0      0 0.0.0.0:8080            0.0.0.0:*               TIME_WAIT
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('lsof')) {
-          throw new Error('lsof not found');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
         }
-        return netstatOutput;
       });
 
       const result = await checkPorts(mockCwd);
@@ -361,7 +499,9 @@ COMMAND PID
 INCOMPLETE LINE
 `;
 
-      vi.mocked(execSync).mockReturnValue(lsofOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 
@@ -369,66 +509,172 @@ INCOMPLETE LINE
     });
 
     it('should skip lsof lines where name has no port', async () => {
-      // Tests line 103: if (!portMatch) continue
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:noport(LISTEN)
 npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
 
-      vi.mocked(execSync).mockReturnValue(lsofOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 
-      // Only port 3000 should be detected
       const port3000 = result.find((p) => p.port === 3000);
       expect(port3000?.inUse).toBe(true);
       expect(port3000?.process).toBe('npm');
     });
 
     it('should skip netstat lines with ports not in COMMON_DEV_PORTS', async () => {
-      // Tests line 131: if (ports.includes(port))
       const netstatOutput = `
 tcp        0      0 0.0.0.0:9999            0.0.0.0:*               LISTEN      1234/node
 tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('lsof')) {
-          throw new Error('lsof not found');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
         }
-        return netstatOutput;
       });
 
       const result = await checkPorts(mockCwd);
 
-      // Port 9999 is not in COMMON_DEV_PORTS, so should not be in results
       const port9999 = result.find((p) => p.port === 9999);
       expect(port9999).toBeUndefined();
 
-      // Port 3000 should be detected
       const port3000 = result.find((p) => p.port === 3000);
       expect(port3000?.inUse).toBe(true);
     });
 
     it('should skip netstat parts without port match', async () => {
-      // Tests that the loop continues when part doesn't have a port match
       const netstatOutput = `
 tcp        0      0 noport                  0.0.0.0:*               LISTEN      1234/node
 tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      vi.mocked(execSync).mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('lsof')) {
-          throw new Error('lsof not found');
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
         }
-        return netstatOutput;
       });
 
       const result = await checkPorts(mockCwd);
 
-      // Port 3000 should be detected
       const port3000 = result.find((p) => p.port === 3000);
       expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should skip lsof lines with fewer than 9 parts', async () => {
+      const lsofOutput = `COMMAND PID USER FD TYPE
+npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should skip netstat lines that do not contain LISTEN', async () => {
+      const netstatOutput = `
+Proto Recv-Q Send-Q Local Address           Foreign Address         State
+tcp        0      0 0.0.0.0:3000            0.0.0.0:*               CLOSE_WAIT
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      expect(result.every((p) => !p.inUse)).toBe(true);
+    });
+
+    it('should handle empty lsof lines', async () => {
+      const lsofOutput = `
+
+node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
+
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
+      expect(port3000?.process).toBe('node');
+    });
+
+    it('should handle netstat without process names (no -p flag)', async () => {
+      const netstatOutput = `
+Proto Recv-Q Send-Q Local Address           Foreign Address         State
+tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN
+tcp6       0      0 :::8080                 :::*                    LISTEN
+`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        if (cmd.toString().includes('lsof')) {
+          callback(new Error('lsof not found'), '', '');
+        } else {
+          callback(null, netstatOutput, '');
+        }
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      const port8080 = result.find((p) => p.port === 8080);
+
+      expect(port3000?.inUse).toBe(true);
+      expect(port3000?.process).toBe('unknown');
+      expect(port8080?.inUse).toBe(true);
+      expect(port8080?.process).toBe('unknown');
+    });
+
+    it('should ignore lsof lines where port is not in COMMON_DEV_PORTS', async () => {
+      const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:9999(LISTEN)
+npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port9999 = result.find((p) => p.port === 9999);
+      expect(port9999).toBeUndefined();
+
+      const port3000 = result.find((p) => p.port === 3000);
+      expect(port3000?.inUse).toBe(true);
+    });
+
+    it('should convert process names to lowercase', async () => {
+      const lsofOutput = `NODE     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
+NPM      5678 user   13u  IPv4  67890      0t0  TCP *:8080(LISTEN)`;
+
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
+
+      const result = await checkPorts(mockCwd);
+
+      const port3000 = result.find((p) => p.port === 3000);
+      const port8080 = result.find((p) => p.port === 8080);
+
+      expect(port3000?.process).toBe('node');
+      expect(port8080?.process).toBe('npm');
     });
   });
 
@@ -440,7 +686,9 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      
     it('should work on macOS using lsof', async () => {
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)`;
 
-      vi.mocked(execSync).mockReturnValue(lsofOutput);
+      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+        callback(null, lsofOutput, '');
+      });
 
       const result = await checkPorts(mockCwd);
 

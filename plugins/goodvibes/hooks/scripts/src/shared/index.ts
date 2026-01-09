@@ -8,6 +8,7 @@
 // =============================================================================
 // Hook I/O
 // =============================================================================
+/** Core hook input/output types for all hook implementations */
 export type {
   HookInput,
   HookResponse,
@@ -24,6 +25,7 @@ export {
   respond,
   createResponse,
   createPermissionResponse,
+  isTestEnvironment,
 } from './hook-io.js';
 
 // =============================================================================
@@ -34,6 +36,7 @@ export { debug, logError } from './logging.js';
 // =============================================================================
 // Configuration
 // =============================================================================
+/** Configuration type for shared hook settings */
 export type { SharedConfig } from './config.js';
 export {
   STDIN_TIMEOUT_MS,
@@ -70,6 +73,7 @@ export {
 // =============================================================================
 // Analytics
 // =============================================================================
+/** Analytics data types for tracking tool usage and session metrics */
 export type {
   ToolUsage,
   ToolFailure,
@@ -99,6 +103,7 @@ export {
 // =============================================================================
 // Transcript Parsing
 // =============================================================================
+/** Transcript parsing data types */
 export type { TranscriptData } from './transcript.js';
 export { parseTranscript } from './transcript.js';
 
@@ -120,5 +125,6 @@ export {
 // =============================================================================
 // Hook Runner
 // =============================================================================
+/** Hook runner types for standardized hook execution */
 export type { HookHandler, RunHookOptions } from './hook-runner.js';
 export { runHook, runHookSync, isMainModule } from './hook-runner.js';

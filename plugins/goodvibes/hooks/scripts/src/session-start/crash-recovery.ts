@@ -17,7 +17,7 @@ import {
   getUncommittedFiles,
 } from '../automation/git-operations.js';
 import { fileExists } from '../shared/index.js';
-import { loadState } from '../state.js';
+import { loadState } from '../state/index.js';
 
 import type { HooksState } from '../types/state.js';
 

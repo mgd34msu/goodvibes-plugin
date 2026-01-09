@@ -9,7 +9,7 @@
  * - Path utilities
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -29,7 +29,6 @@ import {
   ActiveAgentEntry,
 } from '../../telemetry/agents.js';
 import {
-  createMockGitExecSync,
   createMockActiveAgentEntry,
 } from '../test-utils/mock-factories.js';
 
@@ -37,8 +36,17 @@ import type { ActiveAgentsState } from '../../telemetry/agents.js';
 
 // Mock child_process module
 vi.mock('child_process', () => ({
-  execSync: vi.fn(),
+  exec: vi.fn(),
 }));
+
+// Mock util.promisify to return the mocked exec directly (so it returns promises)
+vi.mock('util', async () => {
+  const actual = await vi.importActual('util');
+  return {
+    ...actual,
+    promisify: (fn: any) => fn, // Return the function as-is, assuming it already returns promises
+  };
+});
 
 // Mock fs/promises module
 vi.mock('fs/promises', () => ({
@@ -58,6 +66,42 @@ vi.mock('../../shared/index.js', async () => {
 });
 
 // Import mocked functions for test assertions
+
+/**
+ * Helper to create a mock implementation for async exec that handles git commands
+ * Since we mock util.promisify to return the function as-is, we just return promises directly
+ */
+function createMockGitExec(config: {
+  branch?: string;
+  commit?: string;
+  errors?: {
+    branch?: boolean;
+    commit?: boolean;
+  };
+}) {
+  return (command: string, options?: any): Promise<{ stdout: string; stderr: string }> => {
+    // Handle branch command
+    if (command.includes('--abbrev-ref HEAD')) {
+      if (config.errors?.branch) {
+        return Promise.reject(new Error('git error: not a git repository'));
+      } else {
+        return Promise.resolve({ stdout: (config.branch ?? 'main') + '\n', stderr: '' });
+      }
+    }
+
+    // Handle commit command
+    if (command.includes('--short HEAD')) {
+      if (config.errors?.commit) {
+        return Promise.reject(new Error('git error: no commits'));
+      } else {
+        return Promise.resolve({ stdout: (config.commit ?? 'abc1234') + '\n', stderr: '' });
+      }
+    }
+
+    // Unknown command
+    return Promise.reject(new Error('Unknown git command: ' + command));
+  };
+}
 
 describe('telemetry/agents', () => {
   beforeEach(() => {
@@ -101,101 +145,104 @@ describe('telemetry/agents', () => {
   });
 
   describe('getGitInfo', () => {
-    it('should return branch and commit when git commands succeed', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ branch: 'main', commit: 'abc1234' })
+    it('should return branch and commit when git commands succeed', async () => {
+      vi.mocked(exec).mockImplementation(
+        createMockGitExec({ branch: 'main', commit: 'abc1234' }) as any
       );
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBe('main');
       expect(info.commit).toBe('abc1234');
     });
 
-    it('should return empty object when both git commands fail', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ errors: { branch: true, commit: true } })
+    it('should return empty object when both git commands fail', async () => {
+      vi.mocked(exec).mockImplementation(
+        createMockGitExec({ errors: { branch: true, commit: true } }) as any
       );
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBeUndefined();
       expect(info.commit).toBeUndefined();
       expect(debug).toHaveBeenCalledTimes(2);
     });
 
-    it('should return only branch when commit command fails', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({
+    it('should return only branch when commit command fails', async () => {
+      vi.mocked(exec).mockImplementation(
+        createMockGitExec({
           branch: 'feature-branch',
           errors: { commit: true },
-        })
+        }) as any
       );
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBe('feature-branch');
       expect(info.commit).toBeUndefined();
     });
 
-    it('should return only commit when branch command fails', () => {
-      vi.mocked(execSync).mockImplementation((command: string) => {
-        if (String(command).includes('--abbrev-ref HEAD')) {
-          throw new Error('not a git repository');
-        }
-        if (String(command).includes('--short HEAD')) {
-          return 'def5678\n';
-        }
-        throw new Error('Unknown command');
-      });
+    it('should return only commit when branch command fails', async () => {
+      vi.mocked(exec).mockImplementation(
+        createMockGitExec({
+          commit: 'def5678',
+          errors: { branch: true },
+        }) as any
+      );
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBeUndefined();
       expect(info.commit).toBe('def5678');
     });
 
-    it('should trim whitespace from git output', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ branch: '  develop  ', commit: '  def5678  ' })
+    it('should trim whitespace from git output', async () => {
+      vi.mocked(exec).mockImplementation(
+        createMockGitExec({ branch: '  develop  ', commit: '  def5678  ' }) as any
       );
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBe('develop');
       expect(info.commit).toBe('def5678');
     });
 
-    it('should handle non-Error exceptions for branch command', () => {
-      vi.mocked(execSync).mockImplementation((command: string) => {
-        if (String(command).includes('--abbrev-ref HEAD')) {
-          throw 'string error'; // Non-Error exception
+    it('should handle non-Error exceptions for branch command', async () => {
+      vi.mocked(exec).mockImplementation(((
+        command: string,
+        options?: any
+      ): Promise<{ stdout: string; stderr: string }> => {
+        if (command.includes('--abbrev-ref HEAD')) {
+          return Promise.reject('string error'); // Non-Error exception
+        } else if (command.includes('--short HEAD')) {
+          return Promise.resolve({ stdout: 'abc1234\n', stderr: '' });
+        } else {
+          return Promise.reject(new Error('Unknown command'));
         }
-        if (String(command).includes('--short HEAD')) {
-          return 'abc1234\n';
-        }
-        throw new Error('Unknown command');
-      });
+      }) as any);
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBeUndefined();
       expect(info.commit).toBe('abc1234');
       expect(debug).toHaveBeenCalledWith('Git branch unavailable:', 'unknown');
     });
 
-    it('should handle non-Error exceptions for commit command', () => {
-      vi.mocked(execSync).mockImplementation((command: string) => {
-        if (String(command).includes('--abbrev-ref HEAD')) {
-          return 'main\n';
+    it('should handle non-Error exceptions for commit command', async () => {
+      vi.mocked(exec).mockImplementation(((
+        command: string,
+        options?: any
+      ): Promise<{ stdout: string; stderr: string }> => {
+        if (command.includes('--abbrev-ref HEAD')) {
+          return Promise.resolve({ stdout: 'main\n', stderr: '' });
+        } else if (command.includes('--short HEAD')) {
+          return Promise.reject({ message: 'object error' }); // Non-Error exception
+        } else {
+          return Promise.reject(new Error('Unknown command'));
         }
-        if (String(command).includes('--short HEAD')) {
-          throw { message: 'object error' }; // Non-Error exception without Error instance
-        }
-        throw new Error('Unknown command');
-      });
+      }) as any);
 
-      const info = getGitInfo('/test/project');
+      const info = await getGitInfo('/test/project');
 
       expect(info.branch).toBe('main');
       expect(info.commit).toBeUndefined();

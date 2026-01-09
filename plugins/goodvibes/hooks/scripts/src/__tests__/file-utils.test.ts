@@ -24,8 +24,24 @@ vi.mock('fs/promises', () => ({
 }));
 
 const mockExecSync = vi.fn();
+const mockExecCallback = vi.fn();
+const mockExec = vi.fn();
+
+// Mock exec as a callback-style function that can be promisified
+mockExecCallback.mockImplementation((cmd, options, callback) => {
+  // If called with 2 args (no options), shift callback
+  if (typeof options === 'function') {
+    callback = options;
+  }
+  // Call the promisified mock to get result
+  mockExec(cmd, options)
+    .then((result) => callback?.(null, result))
+    .catch((err) => callback?.(err));
+});
+
 vi.mock('child_process', () => ({
   execSync: mockExecSync,
+  exec: mockExecCallback,
 }));
 
 // Mock the gitignore module
@@ -173,17 +189,18 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockReturnValue(
-        Buffer.from('C:\\Program Files\\Git\\cmd\\git.exe')
-      );
+      mockExec.mockResolvedValue({
+        stdout: 'C:\\Program Files\\Git\\cmd\\git.exe',
+        stderr: '',
+      });
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('git');
+      const result = await commandExists('git');
 
       expect(result).toBe(true);
-      expect(mockExecSync).toHaveBeenCalledWith('where git', {
-        stdio: 'ignore',
+      expect(mockExec).toHaveBeenCalledWith('where git', {
         timeout: 30000,
+        maxBuffer: 1024 * 1024,
       });
     });
 
@@ -193,15 +210,18 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockReturnValue(Buffer.from('/usr/bin/git'));
+      mockExec.mockResolvedValue({
+        stdout: '/usr/bin/git',
+        stderr: '',
+      });
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('git');
+      const result = await commandExists('git');
 
       expect(result).toBe(true);
-      expect(mockExecSync).toHaveBeenCalledWith('which git', {
-        stdio: 'ignore',
+      expect(mockExec).toHaveBeenCalledWith('which git', {
         timeout: 30000,
+        maxBuffer: 1024 * 1024,
       });
     });
 
@@ -211,12 +231,10 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockImplementation(() => {
-        throw new Error('Command not found');
-      });
+      mockExec.mockRejectedValue(new Error('Command not found'));
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('nonexistent');
+      const result = await commandExists('nonexistent');
 
       expect(result).toBe(false);
     });
@@ -227,28 +245,24 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockImplementation(() => {
-        throw new Error('Command not found');
-      });
+      mockExec.mockRejectedValue(new Error('Command not found'));
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('nonexistent');
+      const result = await commandExists('nonexistent');
 
       expect(result).toBe(false);
     });
 
-    it('should handle execSync throwing non-Error object', async () => {
+    it('should handle exec throwing non-Error object', async () => {
       Object.defineProperty(process, 'platform', {
         value: 'linux',
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockImplementation(() => {
-        throw 'string error';
-      });
+      mockExec.mockRejectedValue('string error');
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('cmd');
+      const result = await commandExists('cmd');
 
       expect(result).toBe(false);
     });
@@ -259,15 +273,13 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockImplementation(() => {
-        const error: any = new Error('Command timed out');
-        error.killed = true;
-        error.signal = 'SIGTERM';
-        throw error;
-      });
+      const error: any = new Error('Command timed out');
+      error.killed = true;
+      error.signal = 'SIGTERM';
+      mockExec.mockRejectedValue(error);
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('slow-command');
+      const result = await commandExists('slow-command');
 
       expect(result).toBe(false);
     });
@@ -653,10 +665,13 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      mockExecSync.mockReturnValue(Buffer.from('/usr/bin/node-v18'));
+      mockExec.mockResolvedValue({
+        stdout: '/usr/bin/node-v18',
+        stderr: '',
+      });
 
       const { commandExists } = await import('../shared/file-utils.js');
-      const result = commandExists('node-v18');
+      const result = await commandExists('node-v18');
 
       expect(result).toBe(true);
     });

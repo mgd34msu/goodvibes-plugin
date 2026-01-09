@@ -30,7 +30,7 @@ import {
 
 import type { HooksState } from '../types/state.js';
 
-// Re-export types for backwards compatibility
+/** Re-export of retry types for backwards compatibility */
 export type { RetryEntry, RetryData };
 
 /**

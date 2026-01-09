@@ -727,5 +727,34 @@ describe('transcript utilities', () => {
         'I have updated the config file as requested.'
       );
     });
+
+    it('should handle non-object JSON (line 53)', async () => {
+      // Test parsing when JSON.parse returns non-object types (null, array, primitives)
+      const transcriptContent = [
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Bash',
+          input: { command: 'ls' },
+        }),
+        'null', // Valid JSON but returns null (line 53 check)
+        '"string"', // Valid JSON but returns string
+        '123', // Valid JSON but returns number
+        'true', // Valid JSON but returns boolean
+        JSON.stringify({
+          type: 'tool_use',
+          name: 'Write',
+          input: { file_path: '/src/test.ts' },
+        }),
+      ].join('\n');
+
+      mockReadFile.mockResolvedValue(transcriptContent);
+
+      const { parseTranscript } = await import('../../shared/transcript.js');
+      const result = await parseTranscript('/path/to/transcript.jsonl');
+
+      // Only the valid tool_use events should be processed
+      expect(result.toolsUsed).toEqual(['Bash', 'Write']);
+      expect(result.filesModified).toEqual(['/src/test.ts']);
+    });
   });
 });

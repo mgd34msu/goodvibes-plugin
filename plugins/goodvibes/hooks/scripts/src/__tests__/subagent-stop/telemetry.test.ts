@@ -33,6 +33,7 @@ vi.mock('../../shared/index.js', () => ({
   parseTranscript: (...args: unknown[]) => mockParseTranscript(...args),
   extractKeywords: (...args: unknown[]) => mockExtractKeywords(...args),
   fileExists: (...args: unknown[]) => mockFileExists(...args),
+  isTestEnvironment: () => false,
 }));
 
 // Mock shared/logging.js
@@ -336,6 +337,41 @@ describe('subagent-stop/telemetry', () => {
         'getAgentTracking failed',
         expect.any(Object)
       );
+    });
+
+    it('should handle type guard returning false when parsed is not a record (line 75)', async () => {
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
+      // Create a file with an array (not a record)
+      await fs.writeFile(trackingPath, JSON.stringify(['not', 'a', 'record']));
+      mockFileExists.mockResolvedValue(true);
+
+      const { getAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
+      const result = await getAgentTracking(testDir, 'any-agent');
+
+      // Should return null when type guard fails (line 75 returns null)
+      expect(result).toBeNull();
+    });
+
+    it('should handle null JSON in getAgentTracking (line 75)', async () => {
+      const trackingPath = path.join(
+        goodvibesDir,
+        'state',
+        'agent-tracking.json'
+      );
+      await fs.writeFile(trackingPath, 'null');
+      mockFileExists.mockResolvedValue(true);
+
+      const { getAgentTracking } =
+        await import('../../subagent-stop/telemetry.js');
+      const result = await getAgentTracking(testDir, 'test');
+
+      // Should return null when JSON is null
+      expect(result).toBeNull();
     });
   });
 

@@ -28,7 +28,7 @@ import type {
   SpecialDirectories,
 } from '../types/folder-structure.js';
 
-// Re-export types for backwards compatibility
+/** Re-export of folder structure types for backwards compatibility. */
 export type { ArchitecturePattern, FolderStructure, SpecialDirectories };
 
 /**

@@ -18,9 +18,19 @@ import {
   debug,
   logError,
   CACHE_DIR,
-  createResponse,
   fileExists,
-} from './shared/index.js';
+  isTestEnvironment,
+} from '../shared/index.js';
+
+import type { HookResponse } from '../shared/index.js';
+
+/** Creates a hook response with optional system message. */
+function createResponse(options?: { systemMessage?: string }): HookResponse {
+  return {
+    continue: true,
+    systemMessage: options?.systemMessage,
+  };
+}
 
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
@@ -92,7 +102,7 @@ async function runStopHook(): Promise<void> {
     }
 
     // Respond with success
-    respond(createResponse());
+    respond(createResponse({}));
   } catch (error: unknown) {
     logError('Stop main', error);
     respond(
@@ -103,11 +113,16 @@ async function runStopHook(): Promise<void> {
   }
 }
 
-runStopHook().catch((error: unknown) => {
-  logError('Stop uncaught', error);
-  respond(
-    createResponse({
-      systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`,
-    })
-  );
-});
+// Only run the hook if not in test mode
+/* v8 ignore start - test environment guard */
+if (!isTestEnvironment()) {
+  runStopHook().catch((error: unknown) => {
+    logError('Stop uncaught', error);
+    respond(
+      createResponse({
+        systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`,
+      })
+    );
+  });
+}
+/* v8 ignore stop */

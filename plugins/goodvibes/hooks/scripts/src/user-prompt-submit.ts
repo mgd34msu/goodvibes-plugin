@@ -1,38 +1,10 @@
+/* v8 ignore file */
 /**
- * User Prompt Submit Hook (GoodVibes)
+ * User Prompt Submit Hook Entry Point
  *
- * Runs before Claude processes user input.
- * Can add context or validate prompts.
+ * This is a thin entry point that re-exports from the lifecycle module.
+ * The actual implementation lives in src/lifecycle/user-prompt-submit.ts
  */
 
-import {
-  respond,
-  readHookInput,
-  debug,
-  logError,
-  createResponse,
-} from './shared/index.js';
-
-/** Main entry point for user-prompt-submit hook. Can add context or validate prompts. */
-async function runUserPromptSubmitHook(): Promise<void> {
-  try {
-    debug('UserPromptSubmit hook starting');
-
-    const input = await readHookInput();
-    debug('UserPromptSubmit received input', {
-      session_id: input.session_id,
-    });
-
-    // Could add context injection here based on prompt content
-    // For now, just continue
-    respond(createResponse());
-  } catch (error: unknown) {
-    logError('UserPromptSubmit main', error);
-    respond(createResponse());
-  }
-}
-
-runUserPromptSubmitHook().catch((error: unknown) => {
-  logError('UserPromptSubmit uncaught', error);
-  respond(createResponse());
-});
+// Re-export and execute the user prompt submit hook
+import './lifecycle/user-prompt-submit.js';

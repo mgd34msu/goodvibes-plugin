@@ -21,9 +21,10 @@ const mockGetUncommittedFiles = vi.fn();
 
 vi.mock('../shared/index.js', () => ({
   fileExists: mockFileExistsAsync,
+  isTestEnvironment: () => true,
 }));
 
-vi.mock('../state.js', () => ({
+vi.mock('../state/index.js', () => ({
   loadState: mockLoadState,
 }));
 

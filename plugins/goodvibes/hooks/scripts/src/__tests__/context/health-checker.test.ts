@@ -27,6 +27,7 @@ vi.mock('../../shared/logging.js', () => ({
 vi.mock('../../shared/index.js', () => ({
   LOCKFILES: ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'bun.lockb'],
   fileExists: vi.fn(),
+  isTestEnvironment: () => false,
 }));
 
 const mockedFs = vi.mocked(fs);

@@ -29,6 +29,7 @@ import type { HooksState } from '../../types/state.js';
 // Mock all external dependencies
 vi.mock('../../shared/index.js', () => ({
   debug: vi.fn(),
+  isTestEnvironment: () => false,
 }));
 
 vi.mock('../../post-tool-use/file-tracker.js', () => ({

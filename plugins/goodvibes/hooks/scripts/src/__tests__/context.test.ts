@@ -2,12 +2,12 @@
  * Unit tests for context injection modules.
  */
 
-import { execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest';
 
 // Mock fs, fs/promises, and child_process
 vi.mock('fs');
@@ -18,7 +18,43 @@ vi.mock('fs/promises', async () => {
     readFile: vi.fn(),
   };
 });
-vi.mock('child_process');
+// Create a handler that will be used by the exec mock - must be at module level
+let execHandler: (cmd: string) => { error: Error | null; stdout: string; stderr: string } = () => ({
+  error: new Error('Command not found'),
+  stdout: '',
+  stderr: '',
+});
+
+vi.mock('child_process', async () => {
+  const { promisify } = await import('util');
+
+  // Create the mock exec function with callback support
+  const mockExec = vi.fn((cmd: string, options: any, callback: any) => {
+    const cb = typeof options === 'function' ? options : callback;
+    const result = execHandler(cmd);
+    setImmediate(() => {
+      cb(result.error, result.stdout, result.stderr);
+    });
+    return {} as any;
+  });
+
+  // Add custom promisify support - this is required for promisify(exec) to work
+  (mockExec as any)[promisify.custom] = (cmd: string, options?: any) => {
+    return new Promise((resolve, reject) => {
+      const result = execHandler(cmd);
+      if (result.error) {
+        reject(result.error);
+      } else {
+        resolve({ stdout: result.stdout, stderr: result.stderr });
+      }
+    });
+  };
+
+  return {
+    exec: mockExec,
+    execSync: vi.fn(),
+  };
+});
 
 // Import modules under test
 import {
@@ -50,6 +86,7 @@ import type { StackInfo } from '../context/stack-detector';
 // Type the mocked modules
 const mockedFs = vi.mocked(fs);
 const mockedFsPromises = vi.mocked(fsPromises);
+const mockedExec = vi.mocked(exec);
 const mockedExecSync = vi.mocked(execSync);
 
 describe('stack-detector', () => {
@@ -451,14 +488,23 @@ describe('stack-detector', () => {
 
 describe('git-context', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset only specific mocks
+    mockedFsPromises.access.mockReset();
+    mockedExecSync.mockReset();
 
     // Set up default mock behavior for fs/promises
     mockedFsPromises.access.mockRejectedValue(new Error('ENOENT'));
 
-    // Set up default mock behavior
+    // Set up default mock behavior for execSync
     mockedExecSync.mockImplementation(() => {
       throw new Error('Command not found');
+    });
+
+    // Reset exec handler to default - tests will override this
+    execHandler = () => ({
+      error: new Error('Command not found'),
+      stdout: '',
+      stderr: '',
     });
   });
 
@@ -479,24 +525,21 @@ describe('git-context', () => {
 
     it('should return full git context for a repo', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
-      mockedExecSync.mockImplementation((cmd: string) => {
+
+      execHandler = (cmd: string) => {
         if (cmd.includes('branch --show-current')) {
-          return 'main\n';
+          return { error: null, stdout: 'main\n', stderr: '' };
+        } else if (cmd.includes('status --porcelain')) {
+          return { error: null, stdout: 'M file1.ts\nA file2.ts\n', stderr: '' };
+        } else if (cmd.includes('log -1')) {
+          return { error: null, stdout: 'Fix bug (2 hours ago)\n', stderr: '' };
+        } else if (cmd.includes('log -5')) {
+          return { error: null, stdout: '- Fix bug\n- Add feature\n- Initial commit\n', stderr: '' };
+        } else if (cmd.includes('rev-list')) {
+          return { error: null, stdout: '2\t1\n', stderr: '' };
         }
-        if (cmd.includes('status --porcelain')) {
-          return 'M file1.ts\nA file2.ts\n';
-        }
-        if (cmd.includes('log -1')) {
-          return 'Fix bug (2 hours ago)\n';
-        }
-        if (cmd.includes('log -5')) {
-          return '- Fix bug\n- Add feature\n- Initial commit\n';
-        }
-        if (cmd.includes('rev-list')) {
-          return '2\t1\n';
-        }
-        return '';
-      });
+        return { error: null, stdout: '', stderr: '' };
+      };
 
       const result = await getGitContext('/test/project-git-full');
 
@@ -511,24 +554,21 @@ describe('git-context', () => {
 
     it('should handle clean repo with no changes', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
-      mockedExecSync.mockImplementation((cmd: string) => {
+
+      execHandler = (cmd: string) => {
         if (cmd.includes('branch --show-current')) {
-          return 'develop\n';
+          return { error: null, stdout: 'develop\n', stderr: '' };
+        } else if (cmd.includes('status --porcelain')) {
+          return { error: null, stdout: '', stderr: '' };
+        } else if (cmd.includes('log -1')) {
+          return { error: null, stdout: 'Last commit (1 day ago)\n', stderr: '' };
+        } else if (cmd.includes('log -5')) {
+          return { error: null, stdout: '- Last commit\n', stderr: '' };
+        } else if (cmd.includes('rev-list')) {
+          return { error: null, stdout: '0\t0\n', stderr: '' };
         }
-        if (cmd.includes('status --porcelain')) {
-          return '';
-        }
-        if (cmd.includes('log -1')) {
-          return 'Last commit (1 day ago)\n';
-        }
-        if (cmd.includes('log -5')) {
-          return '- Last commit\n';
-        }
-        if (cmd.includes('rev-list')) {
-          return '0\t0\n';
-        }
-        return '';
-      });
+        return { error: null, stdout: '', stderr: '' };
+      };
 
       const result = await getGitContext('/test/project-git-clean');
 
@@ -539,20 +579,11 @@ describe('git-context', () => {
 
     it('should handle git command failures gracefully', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
-      mockedExecSync.mockImplementation((cmd: string) => {
-        if (cmd.includes('branch --show-current')) {
-          throw new Error('git error');
-        }
-        if (cmd.includes('status --porcelain')) {
-          throw new Error('git error');
-        }
-        if (cmd.includes('log')) {
-          throw new Error('git error');
-        }
-        if (cmd.includes('rev-list')) {
-          throw new Error('git error');
-        }
-        throw new Error('git error');
+
+      execHandler = () => ({
+        error: new Error('git error'),
+        stdout: '',
+        stderr: '',
       });
 
       const result = await getGitContext('/test/project-git-full');
@@ -567,24 +598,21 @@ describe('git-context', () => {
 
     it('should handle missing upstream for ahead/behind', async () => {
       mockedFsPromises.access.mockResolvedValue(undefined);
-      mockedExecSync.mockImplementation((cmd: string) => {
+
+      execHandler = (cmd: string) => {
         if (cmd.includes('branch --show-current')) {
-          return 'feature-branch\n';
+          return { error: null, stdout: 'feature-branch\n', stderr: '' };
+        } else if (cmd.includes('status --porcelain')) {
+          return { error: null, stdout: '', stderr: '' };
+        } else if (cmd.includes('log -1')) {
+          return { error: null, stdout: 'Initial commit (5 mins ago)\n', stderr: '' };
+        } else if (cmd.includes('log -5')) {
+          return { error: null, stdout: '- Initial commit\n', stderr: '' };
+        } else if (cmd.includes('rev-list')) {
+          return { error: new Error('no upstream'), stdout: '', stderr: '' };
         }
-        if (cmd.includes('status --porcelain')) {
-          return '';
-        }
-        if (cmd.includes('log -1')) {
-          return 'Initial commit (5 mins ago)\n';
-        }
-        if (cmd.includes('log -5')) {
-          return '- Initial commit\n';
-        }
-        if (cmd.includes('rev-list')) {
-          throw new Error('no upstream');
-        }
-        return '';
-      });
+        return { error: null, stdout: '', stderr: '' };
+      };
 
       const result = await getGitContext('/test/project');
 

@@ -30,7 +30,7 @@ import {
   type Pattern,
   type Failure,
   type Preference,
-} from '../../memory.js';
+} from '../../memory/index.js';
 
 describe('memory-persistence integration', () => {
   let testDir: string;

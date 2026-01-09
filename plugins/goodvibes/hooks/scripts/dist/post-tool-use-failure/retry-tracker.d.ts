@@ -7,6 +7,7 @@
 import { type ErrorCategory, type ErrorState } from '../types/errors.js';
 import { type RetryEntry, type RetryData } from '../types/retry.js';
 import type { HooksState } from '../types/state.js';
+/** Re-export of retry types for backwards compatibility */
 export type { RetryEntry, RetryData };
 /**
  * Loads retry tracking data from disk.

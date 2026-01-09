@@ -5,10 +5,37 @@
  * of all branches including error handling paths.
  */
 
-import * as childProcess from 'child_process';
 import * as fs from 'fs/promises';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Mock dependencies - must be before imports
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+}));
+
+vi.mock('util', () => ({
+  promisify: (fn: any) => {
+    return (command: string, options: any) => {
+      return new Promise((resolve, reject) => {
+        fn(command, options, (error: Error | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve({ stdout, stderr });
+          }
+        });
+      });
+    };
+  },
+}));
+
+vi.mock('fs/promises');
+vi.mock('../../shared/logging.js', () => ({
+  debug: vi.fn(),
+}));
+
+import * as childProcess from 'child_process';
 
 import {
   getGitContext,
@@ -16,12 +43,32 @@ import {
   type GitContext,
 } from '../../context/git-context.js';
 
-// Mock dependencies
-vi.mock('child_process');
-vi.mock('fs/promises');
-vi.mock('../../shared/logging.js', () => ({
-  debug: vi.fn(),
-}));
+// Get reference to the mocked exec function
+const mockExec = vi.mocked(childProcess.exec);
+
+/**
+ * Helper to create exec mock implementation for git commands
+ */
+function createGitExecMock(handlers: Record<string, string | Error>) {
+  return (command: string, options: any, callback: Function) => {
+    const cmd = String(command);
+
+    for (const [key, value] of Object.entries(handlers)) {
+      if (cmd.includes(key)) {
+        if (value instanceof Error) {
+          callback(value, '', '');
+        } else {
+          callback(null, value, '');
+        }
+        return {} as any;
+      }
+    }
+
+    // Default: empty output
+    callback(null, '', '');
+    return {} as any;
+  };
+}
 
 describe('git-context', () => {
   const mockCwd = '/test/project';
@@ -60,26 +107,14 @@ describe('git-context', () => {
       });
 
       it('should return full git context with all data available', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'main\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return ' M file1.ts\n M file2.ts\n';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'Fix bug (2 hours ago)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- Fix bug\n- Add feature\n- Initial commit\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '3\t1\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'main\n',
+            'status --porcelain': ' M file1.ts\n M file2.ts\n',
+            'log -1 --format': 'Fix bug (2 hours ago)\n',
+            'log -5 --format': '- Fix bug\n- Add feature\n- Initial commit\n',
+            'rev-list --left-right': '3\t1\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -96,26 +131,14 @@ describe('git-context', () => {
       });
 
       it('should handle empty branch (detached HEAD state)', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return '\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'Detached commit (1 day ago)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- Detached commit\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              throw new Error('No upstream');
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': '\n',
+            'status --porcelain': '',
+            'log -1 --format': 'Detached commit (1 day ago)\n',
+            'log -5 --format': '- Detached commit\n',
+            'rev-list --left-right': new Error('No upstream'),
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -125,26 +148,14 @@ describe('git-context', () => {
       });
 
       it('should handle null branch when git command fails', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              throw new Error('Git error');
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return '';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              throw new Error('No upstream');
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': new Error('Git error'),
+            'status --porcelain': '',
+            'log -1 --format': '',
+            'log -5 --format': '',
+            'rev-list --left-right': new Error('No upstream'),
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -153,26 +164,14 @@ describe('git-context', () => {
       });
 
       it('should handle empty status (no uncommitted changes)', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'main\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'Last commit (1 hour ago)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- Last commit\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '0\t0\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'main\n',
+            'status --porcelain': '',
+            'log -1 --format': 'Last commit (1 hour ago)\n',
+            'log -5 --format': '- Last commit\n',
+            'rev-list --left-right': '0\t0\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -182,26 +181,14 @@ describe('git-context', () => {
       });
 
       it('should handle status command returning null (failure)', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'main\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              throw new Error('Status failed');
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'Commit\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- Commit\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '0\t0\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'main\n',
+            'status --porcelain': new Error('Status failed'),
+            'log -1 --format': 'Commit\n',
+            'log -5 --format': '- Commit\n',
+            'rev-list --left-right': '0\t0\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -212,26 +199,14 @@ describe('git-context', () => {
       });
 
       it('should handle null lastCommit when log command fails', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'main\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              throw new Error('No commits');
-            }
-            if (cmd.includes('log -5 --format')) {
-              throw new Error('No commits');
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              throw new Error('No upstream');
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'main\n',
+            'status --porcelain': '',
+            'log -1 --format': new Error('No commits'),
+            'log -5 --format': new Error('No commits'),
+            'rev-list --left-right': new Error('No upstream'),
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -241,26 +216,14 @@ describe('git-context', () => {
       });
 
       it('should handle null recentCommitsRaw returning empty array', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'feature\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'First commit (now)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              throw new Error('Log failed');
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '1\t0\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'feature\n',
+            'status --porcelain': '',
+            'log -1 --format': 'First commit (now)\n',
+            'log -5 --format': new Error('Log failed'),
+            'rev-list --left-right': '1\t0\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -269,26 +232,14 @@ describe('git-context', () => {
       });
 
       it('should handle ahead/behind when no upstream is configured', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'feature-branch\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'Add feature (5 min ago)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- Add feature\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              throw new Error('No upstream configured');
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'feature-branch\n',
+            'status --porcelain': '',
+            'log -1 --format': 'Add feature (5 min ago)\n',
+            'log -5 --format': '- Add feature\n',
+            'rev-list --left-right': new Error('No upstream configured'),
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -297,26 +248,15 @@ describe('git-context', () => {
       });
 
       it('should handle multiple uncommitted files', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'develop\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return ' M src/file1.ts\n M src/file2.ts\nA  new-file.ts\n?? untracked.txt\nD  deleted.ts\n';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'WIP (just now)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- WIP\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '5\t2\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'develop\n',
+            'status --porcelain':
+              ' M src/file1.ts\n M src/file2.ts\nA  new-file.ts\n?? untracked.txt\nD  deleted.ts\n',
+            'log -1 --format': 'WIP (just now)\n',
+            'log -5 --format': '- WIP\n',
+            'rev-list --left-right': '5\t2\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -326,26 +266,14 @@ describe('git-context', () => {
       });
 
       it('should correctly parse ahead/behind values', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'main\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'Sync (1 min ago)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- Sync\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '10\t5\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'main\n',
+            'status --porcelain': '',
+            'log -1 --format': 'Sync (1 min ago)\n',
+            'log -5 --format': '- Sync\n',
+            'rev-list --left-right': '10\t5\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);
@@ -354,26 +282,14 @@ describe('git-context', () => {
       });
 
       it('should handle zero ahead/behind', async () => {
-        vi.mocked(childProcess.execSync).mockImplementation(
-          (command: string) => {
-            const cmd = String(command);
-            if (cmd.includes('branch --show-current')) {
-              return 'main\n';
-            }
-            if (cmd.includes('status --porcelain')) {
-              return '';
-            }
-            if (cmd.includes('log -1 --format')) {
-              return 'In sync (2 days ago)\n';
-            }
-            if (cmd.includes('log -5 --format')) {
-              return '- In sync\n';
-            }
-            if (cmd.includes('rev-list --left-right')) {
-              return '0\t0\n';
-            }
-            return '';
-          }
+        mockExec.mockImplementation(
+          createGitExecMock({
+            'branch --show-current': 'main\n',
+            'status --porcelain': '',
+            'log -1 --format': 'In sync (2 days ago)\n',
+            'log -5 --format': '- In sync\n',
+            'rev-list --left-right': '0\t0\n',
+          })
         );
 
         const result = await getGitContext(mockCwd);

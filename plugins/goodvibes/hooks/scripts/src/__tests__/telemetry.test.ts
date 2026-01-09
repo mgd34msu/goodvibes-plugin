@@ -13,7 +13,6 @@
  * - Edge cases: empty transcripts, missing fields, corrupted data
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -34,21 +33,42 @@ import {
   writeTelemetryRecord,
   createTelemetryRecord,
   KEYWORD_CATEGORIES,
-} from '../telemetry.js';
-
-import { createMockGitExecSync } from './test-utils/mock-factories.js';
+} from '../telemetry/index.js';
 
 import type {
   ActiveAgentEntry,
   ActiveAgentsState,
   ParsedTranscript,
   TelemetryRecord,
-} from '../telemetry.js';
+} from '../telemetry/index.js';
 
-// Mock child_process module
+// Mock child_process module - getGitInfo now uses promisified exec
+const mockExec = vi.fn();
 vi.mock('child_process', () => ({
-  execSync: vi.fn(),
+  exec: vi.fn((cmd, options, callback) => {
+    // Support both callback and promise-based usage
+    if (callback) {
+      const result = mockExec(cmd, options);
+      callback(result.error, result.stdout, result.stderr);
+    }
+  }),
 }));
+
+vi.mock('util', async () => {
+  const actual = await vi.importActual('util');
+  return {
+    ...actual,
+    promisify: (fn: unknown) => {
+      return async (...args: unknown[]) => {
+        const result = mockExec(...args);
+        if (result.error) {
+          throw result.error;
+        }
+        return { stdout: result.stdout, stderr: result.stderr };
+      };
+    },
+  };
+});
 
 // Mock the shared module to prevent actual logging during tests
 vi.mock('../shared/index.js', async () => {
@@ -57,6 +77,7 @@ vi.mock('../shared/index.js', async () => {
     ...actual,
     debug: vi.fn(),
     logError: vi.fn(),
+    isTestEnvironment: () => true,
   };
 });
 
@@ -90,8 +111,8 @@ describe('telemetry', () => {
       }
     }
 
-    // Clear mock calls but not implementations
-    vi.mocked(execSync).mockClear();
+    // Clear mock calls
+    mockExec.mockClear();
   });
 
   afterEach(() => {
@@ -122,7 +143,7 @@ describe('telemetry', () => {
 
   describe('ensureGoodVibesDirs', () => {
     it('should create all required directories', async () => {
-      await ensureGoodVibesDirs();
+      await ensureGoodVibesDirs(goodvibesDir, 'state', 'telemetry');
 
       // Verify directories were created in PROJECT_ROOT (scripts directory during tests)
       const stateDir = path.join(goodvibesDir, 'state');
@@ -134,58 +155,72 @@ describe('telemetry', () => {
     });
 
     it('should be idempotent - calling multiple times is safe', async () => {
-      await ensureGoodVibesDirs();
-      await ensureGoodVibesDirs();
-      await ensureGoodVibesDirs();
+      await ensureGoodVibesDirs(goodvibesDir, 'state', 'telemetry');
+      await ensureGoodVibesDirs(goodvibesDir, 'state', 'telemetry');
+      await ensureGoodVibesDirs(goodvibesDir, 'state', 'telemetry');
 
       expect(fs.existsSync(goodvibesDir)).toBe(true);
     });
   });
 
   describe('getGitInfo', () => {
-    it('should return branch and commit when git is available', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ branch: 'main', commit: 'abc1234' })
-      );
+    it('should return branch and commit when git is available', async () => {
+      mockExec.mockImplementation((cmd: string) => {
+        if (cmd.includes('rev-parse --abbrev-ref HEAD')) {
+          return { stdout: 'main\n', stderr: '', error: null };
+        }
+        if (cmd.includes('rev-parse --short HEAD')) {
+          return { stdout: 'abc1234\n', stderr: '', error: null };
+        }
+        return { stdout: '', stderr: '', error: new Error('Unknown command') };
+      });
 
-      const info = getGitInfo(testDir);
+      const info = await getGitInfo(testDir);
 
       expect(info.branch).toBe('main');
       expect(info.commit).toBe('abc1234');
     });
 
-    it('should handle missing git repository gracefully', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ errors: { branch: true, commit: true } })
-      );
+    it('should handle missing git repository gracefully', async () => {
+      mockExec.mockImplementation(() => {
+        return { stdout: '', stderr: '', error: new Error('Not a git repository') };
+      });
 
-      const info = getGitInfo(testDir);
+      const info = await getGitInfo(testDir);
 
       expect(info.branch).toBeUndefined();
       expect(info.commit).toBeUndefined();
     });
 
-    it('should handle partial git availability - branch only', () => {
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({
-          branch: 'feature-branch',
-          errors: { commit: true },
-        })
-      );
+    it('should handle partial git availability - branch only', async () => {
+      mockExec.mockImplementation((cmd: string) => {
+        if (cmd.includes('rev-parse --abbrev-ref HEAD')) {
+          return { stdout: 'feature-branch\n', stderr: '', error: null };
+        }
+        if (cmd.includes('rev-parse --short HEAD')) {
+          return { stdout: '', stderr: '', error: new Error('Not a git repository') };
+        }
+        return { stdout: '', stderr: '', error: new Error('Unknown command') };
+      });
 
-      const info = getGitInfo(testDir);
+      const info = await getGitInfo(testDir);
 
       expect(info.branch).toBe('feature-branch');
       expect(info.commit).toBeUndefined();
     });
 
-    it('should trim whitespace from git output', () => {
-      // Custom implementation to test whitespace trimming behavior
-      vi.mocked(execSync).mockImplementation(
-        createMockGitExecSync({ branch: '  develop  ', commit: '  def5678  ' })
-      );
+    it('should trim whitespace from git output', async () => {
+      mockExec.mockImplementation((cmd: string) => {
+        if (cmd.includes('rev-parse --abbrev-ref HEAD')) {
+          return { stdout: '  develop  \n', stderr: '', error: null };
+        }
+        if (cmd.includes('rev-parse --short HEAD')) {
+          return { stdout: '  def5678  \n', stderr: '', error: null };
+        }
+        return { stdout: '', stderr: '', error: new Error('Unknown command') };
+      });
 
-      const info = getGitInfo(testDir);
+      const info = await getGitInfo(testDir);
 
       expect(info.branch).toBe('develop');
       expect(info.commit).toBe('def5678');
@@ -241,7 +276,7 @@ describe('telemetry', () => {
     describe('loadActiveAgents', () => {
       it('should return empty state when file does not exist', async () => {
         // Mock ensureGoodVibesDirs to not create files
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
 
         expect(state.agents).toEqual({});
         expect(state.last_updated).toBeDefined();
@@ -264,7 +299,7 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(existingState));
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
 
         expect(state.agents['agent-1']).toBeDefined();
         expect(state.agents['agent-1'].agent_type).toBe('test-engineer');
@@ -273,7 +308,7 @@ describe('telemetry', () => {
       it('should handle corrupted JSON gracefully', async () => {
         fs.writeFileSync(activeAgentsFile, 'invalid json {{{');
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
 
         expect(state.agents).toEqual({});
         expect(state.last_updated).toBeDefined();
@@ -282,7 +317,7 @@ describe('telemetry', () => {
       it('should handle empty file', async () => {
         fs.writeFileSync(activeAgentsFile, '');
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
 
         expect(state.agents).toEqual({});
       });
@@ -306,7 +341,7 @@ describe('telemetry', () => {
           last_updated: '2025-01-01T00:00:00Z',
         };
 
-        await saveActiveAgents(state);
+        await saveActiveAgents(activeAgentsFile, state);
 
         expect(fs.existsSync(activeAgentsFile)).toBe(true);
 
@@ -322,7 +357,7 @@ describe('telemetry', () => {
         };
 
         const beforeSave = Date.now();
-        await saveActiveAgents(state);
+        await saveActiveAgents(activeAgentsFile, state);
         const afterSave = Date.now();
 
         const saved = JSON.parse(fs.readFileSync(activeAgentsFile, 'utf-8'));
@@ -355,7 +390,7 @@ describe('telemetry', () => {
           last_updated: '2025-01-01T00:00:00Z',
         };
 
-        await saveActiveAgents(state);
+        await saveActiveAgents(activeAgentsFile, state);
 
         const saved = JSON.parse(fs.readFileSync(activeAgentsFile, 'utf-8'));
         expect(Object.keys(saved.agents)).toHaveLength(2);
@@ -375,9 +410,9 @@ describe('telemetry', () => {
           started_at: new Date().toISOString(),
         };
 
-        await registerActiveAgent(entry);
+        await registerActiveAgent(activeAgentsFile, entry);
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
         expect(state.agents['agent-123']).toBeDefined();
         expect(state.agents['agent-123'].agent_type).toBe('test-engineer');
       });
@@ -395,9 +430,9 @@ describe('telemetry', () => {
           task_description: 'Implement new API endpoint',
         };
 
-        await registerActiveAgent(entry);
+        await registerActiveAgent(activeAgentsFile, entry);
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
         expect(state.agents['agent-git'].git_branch).toBe(
           'feature/new-feature'
         );
@@ -426,10 +461,10 @@ describe('telemetry', () => {
           started_at: '2025-01-01T01:00:00Z',
         };
 
-        await registerActiveAgent(entry1);
-        await registerActiveAgent(entry2);
+        await registerActiveAgent(activeAgentsFile, entry1);
+        await registerActiveAgent(activeAgentsFile, entry2);
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
         expect(Object.keys(state.agents)).toHaveLength(1);
         expect(state.agents['agent-dup'].agent_type).toBe('backend-engineer');
         expect(state.agents['agent-dup'].session_id).toBe('session-2');
@@ -465,30 +500,30 @@ describe('telemetry', () => {
       });
 
       it('should return and remove agent from state', async () => {
-        const entry = await popActiveAgent('agent-1');
+        const entry = await popActiveAgent(activeAgentsFile, 'agent-1');
 
         expect(entry).toBeDefined();
         expect(entry?.agent_id).toBe('agent-1');
         expect(entry?.agent_type).toBe('test-engineer');
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
         expect(state.agents['agent-1']).toBeUndefined();
         expect(state.agents['agent-2']).toBeDefined();
       });
 
       it('should return null for non-existent agent', async () => {
-        const entry = await popActiveAgent('non-existent');
+        const entry = await popActiveAgent(activeAgentsFile, 'non-existent');
 
         expect(entry).toBeNull();
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
         expect(Object.keys(state.agents)).toHaveLength(2);
       });
 
       it('should preserve other agents when popping one', async () => {
-        await popActiveAgent('agent-1');
+        await popActiveAgent(activeAgentsFile, 'agent-1');
 
-        const state = await loadActiveAgents();
+        const state = await loadActiveAgents(activeAgentsFile);
         expect(state.agents['agent-2']).toBeDefined();
         expect(state.agents['agent-2'].agent_type).toBe('backend-engineer');
       });
@@ -524,11 +559,11 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
 
-        const removed = await cleanupStaleAgents();
+        const removed = await cleanupStaleAgents(activeAgentsFile);
 
         expect(removed).toBe(1);
 
-        const updatedState = await loadActiveAgents();
+        const updatedState = await loadActiveAgents(activeAgentsFile);
         expect(updatedState.agents['stale-agent']).toBeUndefined();
         expect(updatedState.agents['fresh-agent']).toBeDefined();
       });
@@ -553,7 +588,7 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
 
-        const removed = await cleanupStaleAgents();
+        const removed = await cleanupStaleAgents(activeAgentsFile);
 
         expect(removed).toBe(0);
       });
@@ -566,7 +601,7 @@ describe('telemetry', () => {
 
         fs.writeFileSync(activeAgentsFile, JSON.stringify(state));
 
-        const removed = await cleanupStaleAgents();
+        const removed = await cleanupStaleAgents(activeAgentsFile);
 
         expect(removed).toBe(0);
       });
@@ -930,7 +965,7 @@ describe('telemetry', () => {
         success: true,
       };
 
-      await writeTelemetryRecord(record);
+      await writeTelemetryRecord(telemetryDir, record);
 
       // Verify the file was created in the actual PROJECT_ROOT
       const now = new Date();
@@ -968,8 +1003,8 @@ describe('telemetry', () => {
         ended_at: '2025-01-01T01:30:00Z',
       };
 
-      await writeTelemetryRecord(record1);
-      await writeTelemetryRecord(record2);
+      await writeTelemetryRecord(telemetryDir, record1);
+      await writeTelemetryRecord(telemetryDir, record2);
 
       // Verify both were written to the same file
       const now = new Date();
@@ -1004,7 +1039,7 @@ describe('telemetry', () => {
         final_summary: 'Successfully implemented and tested the new endpoint',
       };
 
-      await writeTelemetryRecord(record);
+      await writeTelemetryRecord(telemetryDir, record);
 
       expect(record.git_branch).toBe('feature/new-api');
       expect(record.task_description).toBe('Implement new REST endpoint');

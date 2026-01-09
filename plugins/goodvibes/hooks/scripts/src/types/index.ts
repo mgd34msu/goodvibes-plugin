@@ -2,10 +2,10 @@
  * Central export point for all type definitions.
  */
 
-// Telemetry types
+/** Telemetry tracking types for session analytics */
 export type { TelemetryEntry, TelemetryTracking } from './telemetry.js';
 
-// Memory types
+/** Memory types for storing project learnings and decisions */
 export type {
   MemoryDecision,
   MemoryPattern,
@@ -14,11 +14,11 @@ export type {
   ProjectMemory,
 } from './memory.js';
 
-// Error types
+/** Error tracking types for retry and escalation logic */
 export type { ErrorState, ErrorCategory } from './errors.js';
 export { PHASE_RETRY_LIMITS } from './errors.js';
 
-// State types
+/** Hook state types for persisting session data */
 export type {
   SessionState,
   TestState,
@@ -30,11 +30,11 @@ export type {
 } from './state.js';
 export { createDefaultState } from './state.js';
 
-// Config types
+/** Configuration types for automation behavior */
 export type { GoodVibesConfig } from './config.js';
 export { getDefaultConfig } from './config.js';
 
-// Folder structure types
+/** Folder structure types for architecture pattern detection */
 export type {
   ArchitecturePattern,
   SpecialDirectories,
@@ -42,11 +42,11 @@ export type {
 } from './folder-structure.js';
 export { PATTERN_NAMES } from './folder-structure.js';
 
-// Retry types
+/** Retry tracking types for error recovery */
 export type { RetryEntry, RetryData } from './retry.js';
 export { isRetryData, isErrorState, DEFAULT_MAX_AGE_HOURS } from './retry.js';
 
-// Recent activity types
+/** Recent git activity types for hotspot detection */
 export type {
   RecentActivity,
   FileChange,
@@ -54,5 +54,5 @@ export type {
   RecentCommit,
 } from './recent-activity.js';
 
-// Environment types
+/** Environment configuration types for .env file management */
 export type { EnvStatus, EnvironmentContext } from './environment.js';

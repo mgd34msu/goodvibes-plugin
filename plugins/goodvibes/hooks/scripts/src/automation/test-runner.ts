@@ -5,11 +5,14 @@
  * failure information for automated debugging.
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { promisify } from 'util';
 
 import { extractErrorOutput } from '../shared/index.js';
+
+const execAsync = promisify(exec);
 
 /** Number of lines to include after a test failure match for context. */
 const FAILURE_CONTEXT_LINES = 5;
@@ -56,24 +59,23 @@ export function findTestsForFile(sourceFile: string): string[] {
  *
  * @param testFiles - Array of test file paths to run
  * @param cwd - The current working directory (project root)
- * @returns A TestResult object with pass/fail status, summary, and parsed failures
+ * @returns Promise resolving to a TestResult object with pass/fail status, summary, and parsed failures
  *
  * @example
- * const result = runTests(['src/utils/helper.test.ts'], '/my-project');
+ * const result = await runTests(['src/utils/helper.test.ts'], '/my-project');
  * if (!result.passed) {
  *   result.failures.forEach(f => console.error(`${f.testFile}: ${f.error}`));
  * }
  */
-export function runTests(testFiles: string[], cwd: string): TestResult {
+export async function runTests(testFiles: string[], cwd: string): Promise<TestResult> {
   if (testFiles.length === 0) {
     return { passed: true, summary: 'No tests to run', failures: [] };
   }
 
   try {
     const fileArgs = testFiles.join(' ');
-    execSync(`npm test -- ${fileArgs}`, {
+    await execAsync(`npm test -- ${fileArgs}`, {
       cwd,
-      stdio: 'pipe',
       timeout: 300000,
     });
     return {
@@ -96,15 +98,15 @@ export function runTests(testFiles: string[], cwd: string): TestResult {
  * Returns structured results with parsed failure information.
  *
  * @param cwd - The current working directory (project root)
- * @returns A TestResult object with pass/fail status, summary, and parsed failures
+ * @returns Promise resolving to a TestResult object with pass/fail status, summary, and parsed failures
  *
  * @example
- * const result = runFullTestSuite('/my-project');
+ * const result = await runFullTestSuite('/my-project');
  * console.log(result.summary); // 'All tests passed' or 'Tests failed'
  */
-export function runFullTestSuite(cwd: string): TestResult {
+export async function runFullTestSuite(cwd: string): Promise<TestResult> {
   try {
-    execSync('npm test', { cwd, stdio: 'pipe', timeout: 600000 });
+    await execAsync('npm test', { cwd, timeout: 600000 });
     return { passed: true, summary: 'All tests passed', failures: [] };
   } catch (error: unknown) {
     const output = extractErrorOutput(error);

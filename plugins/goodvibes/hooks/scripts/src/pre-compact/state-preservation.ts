@@ -15,7 +15,7 @@ import {
   logError,
   fileExists,
 } from '../shared/index.js';
-import { loadState, saveState } from '../state.js';
+import { loadState, saveState } from '../state/index.js';
 
 import type { HooksState } from '../types/state.js';
 

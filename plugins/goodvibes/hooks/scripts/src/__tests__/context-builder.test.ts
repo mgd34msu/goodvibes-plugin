@@ -77,6 +77,7 @@ const mockDebug = vi.fn();
 
 vi.mock('../shared/index.js', () => ({
   debug: mockDebug,
+  isTestEnvironment: () => true,
 }));
 
 describe('context-builder', () => {

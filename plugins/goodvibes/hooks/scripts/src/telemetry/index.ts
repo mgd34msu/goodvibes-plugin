@@ -12,6 +12,7 @@
 // =============================================================================
 // Agent State Management
 // =============================================================================
+/** Types for tracking active agent state and git information */
 export type { ActiveAgentEntry, ActiveAgentsState, GitInfo } from './agents.js';
 export {
   STALE_AGENT_MAX_AGE_MS,
@@ -28,6 +29,7 @@ export {
 // =============================================================================
 // Transcript Parsing
 // =============================================================================
+/** Parsed transcript data type with extracted content and keywords */
 export type { ParsedTranscript } from './transcript.js';
 export {
   MAX_OUTPUT_LENGTH,
@@ -39,6 +41,7 @@ export {
 // =============================================================================
 // Telemetry Records
 // =============================================================================
+/** Telemetry record type for storing session events and tool usage */
 export type { TelemetryRecord } from './records.js';
 export {
   ensureGoodVibesDirs,

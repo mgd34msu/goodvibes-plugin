@@ -39,6 +39,7 @@ vi.mock('fs/promises', () => ({
 const mockEnsureGoodVibesDir = vi.fn();
 vi.mock('../../shared/index.js', () => ({
   ensureGoodVibesDir: mockEnsureGoodVibesDir,
+  isTestEnvironment: () => false,
 }));
 
 // Mock logging

@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as path from 'path';
 
 import type { RecoveryInfo } from '../../session-start/crash-recovery.js';
 
@@ -77,6 +78,7 @@ const mockDebug = vi.fn();
 
 vi.mock('../../shared/index.js', () => ({
   debug: mockDebug,
+  isTestEnvironment: () => false,
 }));
 
 describe('context-builder', () => {
@@ -136,6 +138,8 @@ describe('context-builder', () => {
   });
 
   describe('gatherProjectContext', () => {
+    const testCwd = path.join('/', 'test', 'project');
+
     it('should detect empty project and return early', async () => {
       mockIsEmptyProject.mockResolvedValue(true);
 
@@ -152,7 +156,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -183,17 +187,17 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      await gatherProjectContext(testCwd, recoveryInfo, startTime);
 
       // All context functions should be called
-      expect(mockDetectStack).toHaveBeenCalledWith('/test/project');
-      expect(mockGetGitContext).toHaveBeenCalledWith('/test/project');
-      expect(mockCheckEnvStatus).toHaveBeenCalledWith('/test/project');
-      expect(mockScanTodos).toHaveBeenCalledWith('/test/project');
-      expect(mockCheckProjectHealth).toHaveBeenCalledWith('/test/project');
-      expect(mockAnalyzeFolderStructure).toHaveBeenCalledWith('/test/project');
-      expect(mockLoadProjectMemory).toHaveBeenCalledWith('/test/project');
-      expect(mockCheckPorts).toHaveBeenCalledWith('/test/project');
+      expect(mockDetectStack).toHaveBeenCalledWith(testCwd);
+      expect(mockGetGitContext).toHaveBeenCalledWith(testCwd);
+      expect(mockCheckEnvStatus).toHaveBeenCalledWith(testCwd);
+      expect(mockScanTodos).toHaveBeenCalledWith(testCwd);
+      expect(mockCheckProjectHealth).toHaveBeenCalledWith(testCwd);
+      expect(mockAnalyzeFolderStructure).toHaveBeenCalledWith(testCwd);
+      expect(mockLoadProjectMemory).toHaveBeenCalledWith(testCwd);
+      expect(mockCheckPorts).toHaveBeenCalledWith(testCwd);
     });
 
     it('should build correct summary with frameworks and git info', async () => {
@@ -222,7 +226,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -254,7 +258,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -295,7 +299,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -326,7 +330,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -361,7 +365,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -387,7 +391,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -408,7 +412,7 @@ describe('context-builder', () => {
         lastCheckpoint: null,
       };
 
-      await gatherProjectContext('/test/project', recoveryInfo, startTime);
+      await gatherProjectContext(testCwd, recoveryInfo, startTime);
 
       expect(mockDebug).toHaveBeenCalled();
       const debugCall = mockDebug.mock.calls[0];
@@ -441,7 +445,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -467,7 +471,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -500,7 +504,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -542,7 +546,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -566,7 +570,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -590,7 +594,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -614,7 +618,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -638,7 +642,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -662,7 +666,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -685,7 +689,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -708,7 +712,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -746,6 +750,8 @@ describe('context-builder', () => {
   });
 
   describe('conditional section rendering', () => {
+    const testCwd = path.join('/', 'test', 'project');
+
     it('should skip stack info when formatStackInfo returns empty', async () => {
       mockFormatStackInfo.mockReturnValue('');
 
@@ -762,7 +768,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -790,7 +796,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -818,7 +824,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -846,7 +852,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -872,7 +878,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -899,7 +905,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -923,7 +929,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -933,6 +939,8 @@ describe('context-builder', () => {
   });
 
   describe('edge cases', () => {
+    const testCwd = path.join('/', 'test', 'project');
+
     it('should handle empty stack frameworks array', async () => {
       mockDetectStack.mockResolvedValue({
         frameworks: [],
@@ -953,7 +961,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -983,7 +991,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -1013,7 +1021,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -1043,7 +1051,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -1066,7 +1074,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -1091,7 +1099,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -1117,7 +1125,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );
@@ -1144,7 +1152,7 @@ describe('context-builder', () => {
       };
 
       const result = await gatherProjectContext(
-        '/test/project',
+        testCwd,
         recoveryInfo,
         startTime
       );

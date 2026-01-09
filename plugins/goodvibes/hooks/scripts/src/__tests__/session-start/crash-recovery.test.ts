@@ -10,8 +10,36 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as path from 'path';
 
 import type { HooksState } from '../../types/state.js';
+
+// Mock child_process for git operations
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+  spawn: vi.fn(),
+}));
+
+// Mock promisify to properly convert callback-style to promise-style
+vi.mock('util', () => ({
+  promisify: (fn: any) => {
+    return (command: string, options: any) => {
+      return new Promise((resolve, reject) => {
+        fn(
+          command,
+          options,
+          (error: Error | null, stdout: string, stderr: string) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve({ stdout, stderr });
+            }
+          }
+        );
+      });
+    };
+  },
+}));
 
 // Mock dependencies
 const mockFileExistsAsync = vi.fn();
@@ -21,9 +49,10 @@ const mockGetUncommittedFiles = vi.fn();
 
 vi.mock('../../shared/index.js', () => ({
   fileExists: mockFileExistsAsync,
+  isTestEnvironment: () => false,
 }));
 
-vi.mock('../../state.js', () => ({
+vi.mock('../../state/index.js', () => ({
   loadState: mockLoadState,
 }));
 
@@ -42,7 +71,7 @@ describe('crash-recovery', () => {
   });
 
   describe('checkCrashRecovery', () => {
-    const cwd = '/test/project';
+    const cwd = path.join('/', 'test', 'project');
 
     it('should return no recovery needed when state file does not exist', async () => {
       mockFileExistsAsync.mockResolvedValue(false);

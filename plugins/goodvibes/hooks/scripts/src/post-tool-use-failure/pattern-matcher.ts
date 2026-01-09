@@ -5,35 +5,11 @@
  * provide suggested fixes based on error state.
  */
 
+import { ERROR_CATEGORY_MAP } from './error-categories.js';
 import { RECOVERY_PATTERNS } from './recovery-patterns.js';
 
 import type { RecoveryPattern, ErrorSeverity } from './recovery-types.js';
 import type { ErrorState, ErrorCategory } from '../types/errors.js';
-
-/**
- * Maps ErrorCategory to pattern category names for lookup.
- */
-const CATEGORY_MAP: Record<ErrorCategory, string[]> = {
-  npm_install: ['missing_import', 'npm_error'],
-  typescript_error: [
-    'typescript_type_error',
-    'typescript_config_error',
-    'type_mismatch',
-  ],
-  test_failure: ['test_failure'],
-  build_failure: ['build_failure'],
-  file_not_found: ['file_not_found'],
-  git_conflict: ['git_error'],
-  database_error: ['database_error'],
-  api_error: ['api_error'],
-  unknown: [
-    'undefined_reference',
-    'lint_error',
-    'permission_error',
-    'resource_error',
-    'syntax_error',
-  ],
-};
 
 /**
  * Find a matching recovery pattern for the given error category and message.
@@ -54,7 +30,7 @@ export function findMatchingPattern(
   category: ErrorCategory,
   errorMessage: string
 ): RecoveryPattern | null {
-  const patternCategories = CATEGORY_MAP[category] || [];
+  const patternCategories = ERROR_CATEGORY_MAP[category] || [];
 
   // First try to match by mapped category
   for (const pattern of RECOVERY_PATTERNS) {

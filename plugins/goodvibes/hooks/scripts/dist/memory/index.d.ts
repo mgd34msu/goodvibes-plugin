@@ -15,6 +15,7 @@ export { loadProjectMemory, loadMemory, hasMemory, getMemorySummary, searchMemor
 import type { ProjectMemory } from '../types/memory.js';
 /** Aggregated project memory containing all memory types */
 export type { ProjectMemory };
+/** Type aliases for backward compatibility with legacy memory API */
 export type { MemoryDecision as Decision, MemoryPattern as Pattern, MemoryFailure as Failure, MemoryPreference as Preference, } from '../types/memory.js';
 export { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
 export { appendDecision, appendPattern, appendFailure, appendPreference, } from './wrappers.js';

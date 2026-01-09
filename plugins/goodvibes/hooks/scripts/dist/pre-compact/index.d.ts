@@ -1,11 +1,7 @@
 /**
- * @module pre-compact
+ * Pre-Compact Hook (GoodVibes)
  *
- * Pre-compact hook utilities for preserving state before context compaction.
- *
- * This module re-exports functionality for:
- * - Preserving session state across context compactions
- * - Maintaining critical workflow data
- * - Ensuring continuity of automated operations
+ * Runs before context compression (auto or manual).
+ * Can save important context before it's compacted.
  */
-export * from './state-preservation.js';
+export { createPreCompactCheckpoint, saveSessionSummary, getFilesModifiedThisSession } from './state-preservation.js';

@@ -4,7 +4,7 @@
  * Central export point for all shared hook utilities.
  * This is the canonical barrel file - all imports should come from here.
  */
-export { readHookInput, allowTool, blockTool, formatResponse, respond, createResponse, createPermissionResponse, } from './hook-io.js';
+export { readHookInput, allowTool, blockTool, formatResponse, respond, createResponse, createPermissionResponse, isTestEnvironment, } from './hook-io.js';
 // =============================================================================
 // Logging
 // =============================================================================

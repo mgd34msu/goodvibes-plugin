@@ -34,7 +34,7 @@ export declare function getActiveAgentsFilePath(goodVibesDir: string, stateDir: 
 /**
  * Get git branch and commit info for the current directory
  */
-export declare function getGitInfo(cwd: string): GitInfo;
+export declare function getGitInfo(cwd: string): Promise<GitInfo>;
 /**
  * Derive project name from working directory path
  */

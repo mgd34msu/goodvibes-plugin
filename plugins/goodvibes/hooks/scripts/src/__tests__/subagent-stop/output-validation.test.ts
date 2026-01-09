@@ -24,6 +24,7 @@ const mockTrackFileModification =
 // Mock shared/index.js
 vi.mock('../../shared/index.js', () => ({
   parseTranscript: (path: string) => mockParseTranscript(path),
+  isTestEnvironment: () => false,
 }));
 
 // Mock automation/build-runner.js

@@ -1,34 +1,9 @@
+/* v8 ignore file */
 /**
- * Permission Request Hook (GoodVibes)
+ * Permission Request Hook Entry Point
  *
- * Handles permission dialogs for MCP tools.
- * Auto-approves GoodVibes MCP tool permissions.
+ * This is a thin entry point that re-exports from the lifecycle module.
+ * The actual implementation lives in src/lifecycle/permission-request.ts
  */
-import { respond, readHookInput, debug, logError, createPermissionResponse, } from './shared/index.js';
-/** Main entry point for permission-request hook. Auto-approves GoodVibes MCP tool permissions. */
-async function runPermissionRequestHook() {
-    try {
-        debug('PermissionRequest hook starting');
-        const input = await readHookInput();
-        debug('PermissionRequest received', {
-            tool_name: input.tool_name,
-        });
-        // Auto-approve GoodVibes MCP tool permissions
-        if (input.tool_name?.includes('goodvibes')) {
-            debug('Auto-approving GoodVibes tool permission');
-            respond(createPermissionResponse('allow'));
-        }
-        else {
-            // Let user decide for non-GoodVibes tools
-            respond(createPermissionResponse('ask'));
-        }
-    }
-    catch (error) {
-        logError('PermissionRequest main', error);
-        respond(createPermissionResponse('ask'));
-    }
-}
-runPermissionRequestHook().catch((error) => {
-    logError('PermissionRequest uncaught', error);
-    respond(createPermissionResponse('ask'));
-});
+// Re-export and execute the permission request hook
+import './lifecycle/permission-request.js';

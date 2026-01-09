@@ -2,15 +2,34 @@
  * Unit tests for recent-activity.ts
  */
 
-import { execSync } from 'child_process';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// Mock dependencies - must be before imports
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+}));
 
-// Mock dependencies
-vi.mock('child_process');
+vi.mock('util', () => ({
+  promisify: (fn: any) => {
+    return (command: string, options: any) => {
+      return new Promise((resolve, reject) => {
+        fn(command, options, (error: Error | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve({ stdout, stderr });
+          }
+        });
+      });
+    };
+  },
+}));
+
 vi.mock('../../shared/logging.js', () => ({
   debug: vi.fn(),
 }));
+
+import * as childProcess from 'child_process';
 
 // Import modules under test
 import {
@@ -22,28 +41,27 @@ import {
   type RecentCommit,
 } from '../../context/recent-activity.js';
 
-// Type the mocked modules
-const mockedExecSync = vi.mocked(execSync);
+// Get reference to the mocked exec function
+const mockExec = vi.mocked(childProcess.exec);
 
 /**
- * Helper to create a comprehensive mock for git commands.
- * The implementation calls multiple git commands:
+ * Helper to create a comprehensive mock implementation for git commands.
+ * The implementation uses promisify(exec) which is async and returns {stdout, stderr}.
+ *
+ * Commands executed:
  * 1. rev-parse --is-inside-work-tree
  * 2. log --since=... --name-status (for recently modified files)
  * 3. log -50 --name-only (for hotspots)
  * 4. log -5 --format=... (for recent commits)
  *
  * Each mock must handle ALL commands, not just the one being tested.
- *
- * Note: The implementation uses encoding: 'utf-8', so execSync returns a string,
- * not a Buffer. The implementation also calls .trim() on the result.
  */
-function createGitMock(options: {
+function createGitMockImplementation(options: {
   isGitRepo?: boolean;
   nameStatusOutput?: string;
   nameOnlyOutput?: string;
   formatOutput?: string;
-}): (cmd: string | Buffer) => string {
+}) {
   const {
     isGitRepo = true,
     nameStatusOutput = '',
@@ -51,37 +69,50 @@ function createGitMock(options: {
     formatOutput = '',
   } = options;
 
-  return (cmd: string | Buffer) => {
-    const cmdStr = cmd.toString();
-
-    // git rev-parse --is-inside-work-tree
-    if (cmdStr.includes('rev-parse --is-inside-work-tree')) {
-      if (!isGitRepo) {
-        throw new Error('not a git repository');
+  return (
+    cmd: string,
+    _options: object,
+    callback: (error: Error | null, stdout: string, stderr: string) => void
+  ) => {
+    // Call callback asynchronously to match real exec behavior
+    setImmediate(() => {
+      // git rev-parse --is-inside-work-tree
+      if (cmd.includes('rev-parse --is-inside-work-tree')) {
+        if (!isGitRepo) {
+          callback(new Error('not a git repository'), '', 'fatal: not a git repository');
+        } else {
+          callback(null, 'true\n', '');
+        }
+        return;
       }
-      return 'true\n';
-    }
 
-    // git log --since for recently modified files (with --name-status)
-    if (cmdStr.includes('log') && cmdStr.includes('--name-status')) {
-      return nameStatusOutput;
-    }
+      // git log --since for recently modified files (with --name-status)
+      if (cmd.includes('log') && cmd.includes('--name-status')) {
+        callback(null, nameStatusOutput, '');
+        return;
+      }
 
-    // git log for hotspots (with --name-only, no --format)
-    if (
-      cmdStr.includes('log -') &&
-      cmdStr.includes('--name-only') &&
-      !cmdStr.includes('--format')
-    ) {
-      return nameOnlyOutput;
-    }
+      // git log for hotspots (with --name-only, no --format)
+      if (
+        cmd.includes('log -') &&
+        cmd.includes('--name-only') &&
+        !cmd.includes('--format=')
+      ) {
+        callback(null, nameOnlyOutput, '');
+        return;
+      }
 
-    // git log for recent commits (with --format=)
-    if (cmdStr.includes('log -') && cmdStr.includes('--format=')) {
-      return formatOutput;
-    }
+      // git log for recent commits (with --format=)
+      if (cmd.includes('log -') && cmd.includes('--format=')) {
+        callback(null, formatOutput, '');
+        return;
+      }
 
-    return '';
+      callback(null, '', '');
+    });
+
+    // Return a minimal ChildProcess-like object
+    return {} as any;
   };
 }
 
@@ -89,18 +120,27 @@ describe('recent-activity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default: not a git repo
-    mockedExecSync.mockImplementation(() => {
-      throw new Error('Command failed');
-    });
+    // Default: not a git repo (callback with error)
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _options: object,
+        callback: (error: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        callback(new Error('Command failed'), '', '');
+        return {} as any; // exec returns a ChildProcess object
+      }
+    );
   });
 
   describe('getRecentActivity', () => {
     it('should return empty activity for non-git repository', async () => {
       // git rev-parse --is-inside-work-tree fails
-      mockedExecSync.mockImplementation(() => {
-        throw new Error('not a git repository');
-      });
+      mockExec.mockImplementation(
+        createGitMockImplementation({
+          isGitRepo: false,
+        })
+      );
 
       const result = await getRecentActivity('/test/not-a-repo');
 
@@ -114,7 +154,20 @@ describe('recent-activity', () => {
 
     it('should return empty activity when git command returns false', async () => {
       // git rev-parse returns 'false' (not inside work tree)
-      mockedExecSync.mockReturnValue('false\n');
+      mockExec.mockImplementation(
+        (
+          cmd: string,
+          _options: object,
+          callback: (error: Error | null, stdout: string, stderr: string) => void
+        ) => {
+          if (cmd.includes('rev-parse')) {
+            callback(null, 'false\n', '');
+          } else {
+            callback(null, '', '');
+          }
+          return {} as any;
+        }
+      );
 
       const result = await getRecentActivity('/test/not-work-tree');
 
@@ -128,8 +181,8 @@ describe('recent-activity', () => {
 
     it('should gather full activity for git repository', async () => {
       // Hotspot threshold is Math.max(3, 50 * 0.1) = 5, so file must appear 5+ times
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'M\tfile1.ts\nA\tfile2.ts\nD\tfile3.ts\n',
           nameOnlyOutput:
@@ -152,8 +205,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle git commands that return empty output', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: '',
           nameOnlyOutput: '',
@@ -169,16 +222,22 @@ describe('recent-activity', () => {
     });
 
     it('should handle git commands that fail after repo check', async () => {
-      mockedExecSync.mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
+      mockExec.mockImplementation(
+        (
+          cmd: string,
+          _options: object,
+          callback: (error: Error | null, stdout: string, stderr: string) => void
+        ) => {
+          if (cmd.includes('rev-parse --is-inside-work-tree')) {
+            callback(null, 'true\n', '');
+            return {} as any;
+          }
 
-        if (cmdStr.includes('rev-parse --is-inside-work-tree')) {
-          return 'true\n';
+          // All other commands fail
+          callback(new Error('git command failed'), '', '');
+          return {} as any;
         }
-
-        // All other commands fail
-        throw new Error('git command failed');
-      });
+      );
 
       const result = await getRecentActivity('/test/failing-repo');
 
@@ -190,8 +249,8 @@ describe('recent-activity', () => {
 
   describe('getRecentlyModifiedFiles', () => {
     it('should parse modified files with M status', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'M\tfile1.ts\nM\tfile2.ts\n',
         })
@@ -204,8 +263,8 @@ describe('recent-activity', () => {
     });
 
     it('should parse added files with A status', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'A\tnewfile.ts\nA\tanother.ts\n',
         })
@@ -218,8 +277,8 @@ describe('recent-activity', () => {
     });
 
     it('should parse deleted files with D status', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'D\toldfile.ts\nD\tlegacy.ts\n',
         })
@@ -231,8 +290,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle mixed file statuses', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'M\tmodified.ts\nA\tadded.ts\nD\tdeleted.ts\n',
         })
@@ -248,8 +307,8 @@ describe('recent-activity', () => {
     });
 
     it('should aggregate multiple changes to same file', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'M\tfile.ts\nM\tfile.ts\nA\tfile.ts\n',
         })
@@ -262,8 +321,8 @@ describe('recent-activity', () => {
     });
 
     it('should determine type based on most frequent status', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'D\tfile.ts\nD\tfile.ts\nM\tfile.ts\n',
         })
@@ -275,8 +334,8 @@ describe('recent-activity', () => {
     });
 
     it('should prefer added type when adds exceed other types', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'A\tfile.ts\nA\tfile.ts\nM\tfile.ts\n',
         })
@@ -288,8 +347,8 @@ describe('recent-activity', () => {
     });
 
     it('should default to modified when counts are equal', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'A\tfile.ts\nM\tfile.ts\nD\tfile.ts\n',
         })
@@ -301,8 +360,8 @@ describe('recent-activity', () => {
     });
 
     it('should sort files by change count descending', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput:
             'M\tfile1.ts\nM\tfile2.ts\nM\tfile2.ts\nM\tfile2.ts\nM\tfile3.ts\nM\tfile3.ts\n',
@@ -322,8 +381,8 @@ describe('recent-activity', () => {
       const files = Array.from({ length: 15 }, (_, i) => `M\tfile${i}.ts`).join(
         '\n'
       );
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: files + '\n',
         })
@@ -335,8 +394,8 @@ describe('recent-activity', () => {
     });
 
     it('should skip empty lines in git output', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: '\n\nM\tfile.ts\n\n\nA\tfile2.ts\n\n',
         })
@@ -348,8 +407,8 @@ describe('recent-activity', () => {
     });
 
     it('should skip lines that do not match status pattern', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput:
             'M\tfile.ts\nInvalid line\nA\tfile2.ts\nNo tab here\n',
@@ -364,13 +423,30 @@ describe('recent-activity', () => {
         'file2.ts',
       ]);
     });
+
+    it('should handle unknown status codes (line 118 branch)', async () => {
+      // Test parseStatusLine with a status that is not A, M, or D
+      // This exercises the else branch on line 118 (no change is recorded)
+      mockExec.mockImplementation(
+        createGitMockImplementation({
+          isGitRepo: true,
+          nameStatusOutput: 'R\toldfile.ts\tnewfile.ts\nT\tfile.ts\nM\tfile2.ts\n',
+        })
+      );
+
+      const result = await getRecentActivity('/test/repo');
+
+      // R (rename) and T (type change) are not handled, so only file2.ts should be counted
+      expect(result.recentlyModifiedFiles).toHaveLength(1);
+      expect(result.recentlyModifiedFiles[0].file).toBe('file2.ts');
+    });
   });
 
   describe('getHotspots', () => {
     it('should identify hotspots from frequently changed files', async () => {
       // File appears 6 times (threshold for 50 commits is 5)
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput:
             'hotspot.ts\n\nhotspot.ts\n\nhotspot.ts\n\nhotspot.ts\n\nhotspot.ts\n\nhotspot.ts\n',
@@ -392,8 +468,8 @@ describe('recent-activity', () => {
         { length: 10 },
         () => 'node_modules/package/file.js\n'
       ).join('');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: files,
         })
@@ -408,8 +484,8 @@ describe('recent-activity', () => {
       const files = Array.from({ length: 10 }, () => 'dist/bundle.js\n').join(
         ''
       );
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: files,
         })
@@ -424,8 +500,8 @@ describe('recent-activity', () => {
       const files =
         Array.from({ length: 10 }, () => 'package-lock.json\n').join('') +
         Array.from({ length: 10 }, () => 'yarn.lock\n').join('');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: files,
         })
@@ -438,8 +514,8 @@ describe('recent-activity', () => {
 
     it('should filter out json files', async () => {
       const files = Array.from({ length: 10 }, () => 'config.json\n').join('');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: files,
         })
@@ -452,8 +528,8 @@ describe('recent-activity', () => {
 
     it('should filter out markdown files', async () => {
       const files = Array.from({ length: 10 }, () => 'README.md\n').join('');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: files,
         })
@@ -467,8 +543,8 @@ describe('recent-activity', () => {
     it('should use threshold of 5 with default 50 commits (threshold = max(3, 50*0.1))', async () => {
       // With 50 commits, threshold is Math.max(3, 50*0.1) = Math.max(3, 5) = 5
       // File appears 5 times - exactly at threshold, should be included
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: 'file.ts\nfile.ts\nfile.ts\nfile.ts\nfile.ts\n',
         })
@@ -482,8 +558,8 @@ describe('recent-activity', () => {
 
     it('should exclude files below threshold', async () => {
       // File appears only 2 times (below threshold)
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: 'file.ts\n\nfile.ts\n',
         })
@@ -500,8 +576,8 @@ describe('recent-activity', () => {
         Array.from({ length: 6 }, () => 'file1.ts\n').join('') +
         Array.from({ length: 10 }, () => 'file2.ts\n').join('') +
         Array.from({ length: 8 }, () => 'file3.ts\n').join('');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: output,
         })
@@ -520,8 +596,8 @@ describe('recent-activity', () => {
       const output = Array.from({ length: 8 }, (_, i) =>
         Array.from({ length: 10 }, () => `file${i}.ts\n`).join('')
       ).join('\n');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput: output,
         })
@@ -534,8 +610,8 @@ describe('recent-activity', () => {
 
     it('should skip empty lines', async () => {
       // File needs to appear at least 5 times to meet threshold
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameOnlyOutput:
             '\n\nfile.ts\n\nfile.ts\n\nfile.ts\n\nfile.ts\n\nfile.ts\n\n',
@@ -550,8 +626,8 @@ describe('recent-activity', () => {
 
   describe('getRecentCommits', () => {
     it('should parse recent commits', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput:
             'abc123|Fix bug|John Doe|2 hours ago\ndef456|Add feature|Jane Smith|1 day ago\n',
@@ -571,8 +647,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle commits with pipe characters in message', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput: 'abc|Fix bug | Update tests|John|2 hours ago\n',
         })
@@ -590,8 +666,8 @@ describe('recent-activity', () => {
     });
 
     it('should skip empty lines', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput:
             '\nabc|Fix bug|John|2 hours ago\n\n\ndef|Add feature|Jane|1 day ago\n\n',
@@ -604,8 +680,8 @@ describe('recent-activity', () => {
     });
 
     it('should skip lines with insufficient parts', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput: 'abc|Fix bug|John\ndef|Add feature|Jane|1 day ago\n',
         })
@@ -618,8 +694,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle empty parts gracefully', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput: '||||\n',
         })
@@ -637,14 +713,34 @@ describe('recent-activity', () => {
       });
     });
 
+    it('should handle missing array elements with ?? operator (lines 254-257)', async () => {
+      // Test the nullish coalescing operators on lines 254-257
+      // This happens when parts[] array has exactly 4 elements but they could be undefined
+      mockExec.mockImplementation(
+        createGitMockImplementation({
+          isGitRepo: true,
+          formatOutput: '|||\n',  // 4 empty parts (split by | gives ['', '', '', ''])
+        })
+      );
+
+      const result = await getRecentActivity('/test/repo');
+
+      expect(result.recentCommits).toHaveLength(1);
+      // All parts should default to empty string via ?? operator
+      expect(result.recentCommits[0].hash).toBe('');
+      expect(result.recentCommits[0].message).toBe('');
+      expect(result.recentCommits[0].author).toBe('');
+      expect(result.recentCommits[0].date).toBe('');
+    });
+
     it('should limit results to requested count', async () => {
       // Return more than 5 commits - the implementation limits to count param (default 5)
       const commits = Array.from(
         { length: 8 },
         (_, i) => `hash${i}|message${i}|author${i}|date${i}`
       ).join('\n');
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput: commits + '\n',
         })
@@ -893,15 +989,22 @@ describe('recent-activity', () => {
 
   describe('gitExec error handling', () => {
     it('should handle timeout errors', async () => {
-      mockedExecSync.mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('rev-parse')) {
-          return 'true\n';
+      mockExec.mockImplementation(
+        (
+          cmd: string,
+          _options: object,
+          callback: (error: Error | null, stdout: string, stderr: string) => void
+        ) => {
+          if (cmd.includes('rev-parse')) {
+            callback(null, 'true\n', '');
+            return {} as any;
+          }
+          const error: any = new Error('Command timed out');
+          error.code = 'ETIMEDOUT';
+          callback(error, '', '');
+          return {} as any;
         }
-        const error: any = new Error('Command timed out');
-        error.code = 'ETIMEDOUT';
-        throw error;
-      });
+      );
 
       const result = await getRecentActivity('/test/repo');
 
@@ -911,14 +1014,21 @@ describe('recent-activity', () => {
       expect(result.recentCommits).toEqual([]);
     });
 
-    it('should handle non-Error exceptions', async () => {
-      mockedExecSync.mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('rev-parse')) {
-          return 'true\n';
+    it('should handle non-Error exceptions by returning null from gitExec', async () => {
+      mockExec.mockImplementation(
+        (
+          cmd: string,
+          _options: object,
+          callback: (error: Error | null, stdout: string, stderr: string) => void
+        ) => {
+          if (cmd.includes('rev-parse')) {
+            callback(null, 'true\n', '');
+            return {} as any;
+          }
+          callback(new Error('String error'), '', '');
+          return {} as any;
         }
-        throw 'string error';
-      });
+      );
 
       const result = await getRecentActivity('/test/repo');
 
@@ -927,14 +1037,21 @@ describe('recent-activity', () => {
       expect(result.recentCommits).toEqual([]);
     });
 
-    it('should handle null/undefined exceptions', async () => {
-      mockedExecSync.mockImplementation((cmd: string | Buffer) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('rev-parse')) {
-          return 'true\n';
+    it('should handle command errors gracefully', async () => {
+      mockExec.mockImplementation(
+        (
+          cmd: string,
+          _options: object,
+          callback: (error: Error | null, stdout: string, stderr: string) => void
+        ) => {
+          if (cmd.includes('rev-parse')) {
+            callback(null, 'true\n', '');
+            return {} as any;
+          }
+          callback(new Error('Command failed'), '', '');
+          return {} as any;
         }
-        throw null;
-      });
+      );
 
       const result = await getRecentActivity('/test/repo');
 
@@ -945,8 +1062,8 @@ describe('recent-activity', () => {
   describe('edge cases and boundary conditions', () => {
     it('should handle very long file paths', async () => {
       const longPath = 'a/'.repeat(100) + 'file.ts';
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: `M\t${longPath}\n`,
         })
@@ -958,8 +1075,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle file names with special characters', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput:
             'M\tfile with spaces.ts\nA\tfile-with-dashes.ts\nD\tfile_with_underscores.ts\n',
@@ -980,8 +1097,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle commit messages with special characters', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput: 'abc|Fix: bug with "quotes" & <tags>|John|1h\n',
         })
@@ -995,8 +1112,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle author names with special characters', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           formatOutput: 'abc|Fix bug|Jose Garcia-Perez|1h\n',
         })
@@ -1008,8 +1125,8 @@ describe('recent-activity', () => {
     });
 
     it('should handle Windows-style paths in files', async () => {
-      mockedExecSync.mockImplementation(
-        createGitMock({
+      mockExec.mockImplementation(
+        createGitMockImplementation({
           isGitRepo: true,
           nameStatusOutput: 'M\tsrc\\components\\Button.tsx\n',
         })

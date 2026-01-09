@@ -92,6 +92,20 @@ export function generateErrorSignature(errorOrToolName, errorMessage) {
 // Phase Escalation
 // =============================================================================
 /**
+ * Type guard to validate if a number is a valid phase (1, 2, or 3).
+ *
+ * @param phase - The phase number to validate
+ * @returns True if the phase is 1, 2, or 3
+ *
+ * @example
+ * if (isValidPhase(nextPhase)) {
+ *   // nextPhase is type-narrowed to 1 | 2 | 3
+ * }
+ */
+function isValidPhase(phase) {
+    return phase === 1 || phase === 2 || phase === 3;
+}
+/**
  * Determines if the current phase should escalate based on retry limits.
  *
  * Escalation occurs when the number of attempts in the current phase
@@ -127,8 +141,8 @@ export function escalatePhase(state) {
         return state;
     }
     const nextPhase = state.phase + 1;
-    // Type-safe phase validation (must be 1, 2, or 3)
-    if (nextPhase === 1 || nextPhase === 2 || nextPhase === 3) {
+    // Type-safe phase validation using type guard
+    if (isValidPhase(nextPhase)) {
         return {
             ...state,
             phase: nextPhase,

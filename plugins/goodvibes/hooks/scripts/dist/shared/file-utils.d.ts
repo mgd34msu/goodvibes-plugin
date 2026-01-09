@@ -59,20 +59,20 @@ export declare function fileExistsRelative(filePath: string, baseDir?: string): 
  * - Unix/Mac: `which <cmd>`
  *
  * @param cmd - The command name to check (e.g., 'git', 'npm', 'node')
- * @returns True if the command is available in PATH, false otherwise
+ * @returns Promise resolving to true if the command is available in PATH, false otherwise
  *
  * @example
- * if (commandExists('git')) {
+ * if (await commandExists('git')) {
  *   console.log('Git is available');
  * }
  *
  * @example
  * // Check before running a tool
- * if (!commandExists('pnpm')) {
+ * if (!(await commandExists('pnpm'))) {
  *   console.log('pnpm not found, falling back to npm');
  * }
  */
-export declare function commandExists(cmd: string): boolean;
+export declare function commandExists(cmd: string): Promise<boolean>;
 /**
  * Validates that all required registry files exist in the plugin.
  *

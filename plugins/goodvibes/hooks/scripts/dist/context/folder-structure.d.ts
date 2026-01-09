@@ -4,6 +4,7 @@
  * Detects the architecture pattern used in the project.
  */
 import type { ArchitecturePattern, FolderStructure, SpecialDirectories } from '../types/folder-structure.js';
+/** Re-export of folder structure types for backwards compatibility. */
 export type { ArchitecturePattern, FolderStructure, SpecialDirectories };
 /**
  * Analyze the folder structure of a project.

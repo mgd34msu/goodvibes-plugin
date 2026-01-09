@@ -15,108 +15,73 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Create mock functions that persist across module resets
-const mockReadHookInput = vi.fn();
-const mockLoadAnalytics = vi.fn();
-const mockSaveAnalytics = vi.fn();
-const mockDebug = vi.fn();
-const mockLogError = vi.fn();
-const mockCreateResponse = vi.fn((opts: unknown) => ({
-  continue: true,
-  ...opts,
-}));
-const mockRespond = vi.fn();
-const mockLoadState = vi.fn();
-const mockSaveState = vi.fn();
-const mockTrackError = vi.fn((state: unknown) => state);
-const mockGetErrorState = vi.fn();
-const mockGenerateErrorSignature = vi.fn();
-const mockCategorizeError = vi.fn();
-const mockCreateErrorState = vi.fn();
-const mockBuildFixContext = vi.fn();
-const mockFindMatchingPattern = vi.fn();
-const mockGetSuggestedFix = vi.fn();
-const mockGetResearchHints = vi.fn();
-const mockSaveRetry = vi.fn();
-const mockGetRetryCount = vi.fn();
-const mockGetCurrentPhase = vi.fn();
-const mockShouldEscalatePhase = vi.fn();
-const mockGetPhaseDescription = vi.fn();
-const mockGetRemainingAttempts = vi.fn();
-const mockHasExhaustedRetries = vi.fn();
-const mockGenerateRetrySignature = vi.fn();
-const mockWriteFailure = vi.fn();
-
-// Mock all external dependencies before any imports
-vi.mock('fs/promises', () => ({
-  readFile: vi.fn().mockResolvedValue('{}'),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-  access: vi.fn().mockResolvedValue(undefined),
-  mkdir: vi.fn().mockResolvedValue(undefined),
-  rename: vi.fn().mockResolvedValue(undefined),
-}));
-
-// Mock shared module
-vi.mock('../shared/index.js', () => ({
-  respond: (...args: unknown[]) => mockRespond(...args),
-  readHookInput: () => mockReadHookInput(),
-  loadAnalytics: () => mockLoadAnalytics(),
-  saveAnalytics: (...args: unknown[]) => mockSaveAnalytics(...args),
-  debug: (...args: unknown[]) => mockDebug(...args),
-  logError: (...args: unknown[]) => mockLogError(...args),
-  createResponse: (...args: unknown[]) => mockCreateResponse(...args),
-  PROJECT_ROOT: '/test/project',
-}));
-
-// Mock state module
-vi.mock('../state.js', () => ({
-  loadState: (...args: unknown[]) => mockLoadState(...args),
-  saveState: (...args: unknown[]) => mockSaveState(...args),
-  trackError: (...args: unknown[]) => mockTrackError(...args),
-  getErrorState: (...args: unknown[]) => mockGetErrorState(...args),
-}));
-
-// Mock fix-loop module
-vi.mock('../automation/fix-loop.js', () => ({
-  generateErrorSignature: (...args: unknown[]) =>
-    mockGenerateErrorSignature(...args),
-  categorizeError: (...args: unknown[]) => mockCategorizeError(...args),
-  createErrorState: (...args: unknown[]) => mockCreateErrorState(...args),
-  buildFixContext: (...args: unknown[]) => mockBuildFixContext(...args),
-}));
-
-// Mock post-tool-use-failure index
-vi.mock('../post-tool-use-failure/index.js', () => ({
-  findMatchingPattern: (...args: unknown[]) => mockFindMatchingPattern(...args),
-  getSuggestedFix: (...args: unknown[]) => mockGetSuggestedFix(...args),
-  getResearchHints: (...args: unknown[]) => mockGetResearchHints(...args),
-}));
-
-// Mock retry-tracker module
-vi.mock('../post-tool-use-failure/retry-tracker.js', () => ({
-  saveRetry: (...args: unknown[]) => mockSaveRetry(...args),
-  getRetryCount: (...args: unknown[]) => mockGetRetryCount(...args),
-  getCurrentPhase: (...args: unknown[]) => mockGetCurrentPhase(...args),
-  shouldEscalatePhase: (...args: unknown[]) => mockShouldEscalatePhase(...args),
-  getPhaseDescription: (...args: unknown[]) => mockGetPhaseDescription(...args),
-  getRemainingAttempts: (...args: unknown[]) =>
-    mockGetRemainingAttempts(...args),
-  hasExhaustedRetries: (...args: unknown[]) => mockHasExhaustedRetries(...args),
-  generateErrorSignature: (...args: unknown[]) =>
-    mockGenerateRetrySignature(...args),
-}));
-
-// Mock memory failures module
-vi.mock('../memory/failures.js', () => ({
-  writeFailure: (...args: unknown[]) => mockWriteFailure(...args),
-}));
-
 describe('post-tool-use-failure hook', () => {
+  // Mock functions
+  let mockReadHookInput: ReturnType<typeof vi.fn>;
+  let mockLoadAnalytics: ReturnType<typeof vi.fn>;
+  let mockSaveAnalytics: ReturnType<typeof vi.fn>;
+  let mockDebug: ReturnType<typeof vi.fn>;
+  let mockLogError: ReturnType<typeof vi.fn>;
+  let mockCreateResponse: ReturnType<typeof vi.fn>;
+  let mockRespond: ReturnType<typeof vi.fn>;
+  let mockLoadState: ReturnType<typeof vi.fn>;
+  let mockSaveState: ReturnType<typeof vi.fn>;
+  let mockTrackError: ReturnType<typeof vi.fn>;
+  let mockGetErrorState: ReturnType<typeof vi.fn>;
+  let mockGenerateErrorSignature: ReturnType<typeof vi.fn>;
+  let mockCategorizeError: ReturnType<typeof vi.fn>;
+  let mockCreateErrorState: ReturnType<typeof vi.fn>;
+  let mockBuildFixContext: ReturnType<typeof vi.fn>;
+  let mockFindMatchingPattern: ReturnType<typeof vi.fn>;
+  let mockGetSuggestedFix: ReturnType<typeof vi.fn>;
+  let mockGetResearchHints: ReturnType<typeof vi.fn>;
+  let mockSaveRetry: ReturnType<typeof vi.fn>;
+  let mockGetRetryCount: ReturnType<typeof vi.fn>;
+  let mockGetCurrentPhase: ReturnType<typeof vi.fn>;
+  let mockShouldEscalatePhase: ReturnType<typeof vi.fn>;
+  let mockGetPhaseDescription: ReturnType<typeof vi.fn>;
+  let mockGetRemainingAttempts: ReturnType<typeof vi.fn>;
+  let mockHasExhaustedRetries: ReturnType<typeof vi.fn>;
+  let mockGenerateRetrySignature: ReturnType<typeof vi.fn>;
+  let mockWriteFailure: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.resetModules();
 
-    // Reset default implementations
+    // Initialize mock functions
+    mockReadHookInput = vi.fn();
+    mockLoadAnalytics = vi.fn();
+    mockSaveAnalytics = vi.fn();
+    mockDebug = vi.fn();
+    mockLogError = vi.fn();
+    mockCreateResponse = vi.fn((opts: unknown) => ({
+      continue: true,
+      ...opts,
+    }));
+    mockRespond = vi.fn();
+    mockLoadState = vi.fn();
+    mockSaveState = vi.fn();
+    mockTrackError = vi.fn((state: unknown) => state);
+    mockGetErrorState = vi.fn();
+    mockGenerateErrorSignature = vi.fn();
+    mockCategorizeError = vi.fn();
+    mockCreateErrorState = vi.fn();
+    mockBuildFixContext = vi.fn();
+    mockFindMatchingPattern = vi.fn();
+    mockGetSuggestedFix = vi.fn();
+    mockGetResearchHints = vi.fn();
+    mockSaveRetry = vi.fn();
+    mockGetRetryCount = vi.fn();
+    mockGetCurrentPhase = vi.fn();
+    mockShouldEscalatePhase = vi.fn();
+    mockGetPhaseDescription = vi.fn();
+    mockGetRemainingAttempts = vi.fn();
+    mockHasExhaustedRetries = vi.fn();
+    mockGenerateRetrySignature = vi.fn();
+    mockWriteFailure = vi.fn();
+
+    // Default mock implementations
+    mockRespond.mockReturnValue(undefined);
     mockCreateResponse.mockImplementation((opts: unknown) => ({
       continue: true,
       ...opts,
@@ -146,6 +111,80 @@ describe('post-tool-use-failure hook', () => {
   afterEach(() => {
     vi.resetModules();
   });
+
+  async function setupMocksAndImport() {
+    // Mock fs/promises
+    vi.doMock('fs/promises', () => ({
+      readFile: vi.fn().mockResolvedValue('{}'),
+      writeFile: vi.fn().mockResolvedValue(undefined),
+      access: vi.fn().mockResolvedValue(undefined),
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      rename: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    // Mock shared module with isTestEnvironment = false so hook runs
+    vi.doMock('../shared/index.js', () => ({
+      respond: mockRespond,
+      readHookInput: mockReadHookInput,
+      loadAnalytics: mockLoadAnalytics,
+      saveAnalytics: mockSaveAnalytics,
+      debug: mockDebug,
+      logError: mockLogError,
+      createResponse: mockCreateResponse,
+      PROJECT_ROOT: '/test/project',
+      isTestEnvironment: () => false,
+    }));
+
+    // Mock state module
+    vi.doMock('../state/index.js', () => ({
+      loadState: mockLoadState,
+      saveState: mockSaveState,
+      trackError: mockTrackError,
+      getErrorState: mockGetErrorState,
+    }));
+
+    // Mock fix-loop module
+    vi.doMock('../automation/fix-loop.js', () => ({
+      generateErrorSignature: mockGenerateErrorSignature,
+      categorizeError: mockCategorizeError,
+      createErrorState: mockCreateErrorState,
+      buildFixContext: mockBuildFixContext,
+    }));
+
+    // Mock post-tool-use-failure pattern-matcher
+    vi.doMock('../post-tool-use-failure/pattern-matcher.js', () => ({
+      findMatchingPattern: mockFindMatchingPattern,
+      getSuggestedFix: mockGetSuggestedFix,
+    }));
+
+    // Mock post-tool-use-failure research-hints
+    vi.doMock('../post-tool-use-failure/research-hints.js', () => ({
+      getResearchHints: mockGetResearchHints,
+    }));
+
+    // Mock retry-tracker module
+    vi.doMock('../post-tool-use-failure/retry-tracker.js', () => ({
+      saveRetry: mockSaveRetry,
+      getRetryCount: mockGetRetryCount,
+      getCurrentPhase: mockGetCurrentPhase,
+      shouldEscalatePhase: mockShouldEscalatePhase,
+      getPhaseDescription: mockGetPhaseDescription,
+      getRemainingAttempts: mockGetRemainingAttempts,
+      hasExhaustedRetries: mockHasExhaustedRetries,
+      generateErrorSignature: mockGenerateRetrySignature,
+    }));
+
+    // Mock memory failures module
+    vi.doMock('../memory/failures.js', () => ({
+      writeFailure: mockWriteFailure,
+    }));
+
+    // Import the module (this triggers the hook)
+    await import('../post-tool-use-failure/index.js');
+
+    // Allow async operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 
   describe('runPostToolUseFailureHook main flow', () => {
     it('should process hook input and generate response for phase 1', async () => {
@@ -186,11 +225,7 @@ describe('post-tool-use-failure hook', () => {
         tool_failures: [],
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockReadHookInput).toHaveBeenCalled();
       expect(mockLoadState).toHaveBeenCalledWith('/test/project');
@@ -225,11 +260,7 @@ describe('post-tool-use-failure hook', () => {
         unofficialDocsContent: '',
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should use PROJECT_ROOT (/test/project) when cwd is empty
       expect(mockLoadState).toHaveBeenCalledWith('/test/project');
@@ -261,11 +292,7 @@ describe('post-tool-use-failure hook', () => {
         unofficialDocsContent: '',
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockGenerateErrorSignature).toHaveBeenCalledWith(
         'unknown',
@@ -299,11 +326,7 @@ describe('post-tool-use-failure hook', () => {
         unofficialDocsContent: '',
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockCategorizeError).toHaveBeenCalledWith('Unknown error');
     });
@@ -347,11 +370,7 @@ describe('post-tool-use-failure hook', () => {
       mockGetCurrentPhase.mockResolvedValue(2);
       mockGetRetryCount.mockResolvedValue(3);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockGetErrorState).toHaveBeenCalled();
       expect(mockDebug).toHaveBeenCalledWith(
@@ -392,11 +411,7 @@ describe('post-tool-use-failure hook', () => {
       mockGetCurrentPhase.mockResolvedValue(1);
       mockShouldEscalatePhase.mockResolvedValue(true);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockShouldEscalatePhase).toHaveBeenCalled();
       expect(mockDebug).toHaveBeenCalledWith('Escalated to phase', {
@@ -436,11 +451,7 @@ describe('post-tool-use-failure hook', () => {
       mockGetCurrentPhase.mockResolvedValue(3);
       mockShouldEscalatePhase.mockResolvedValue(true);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should not have escalated since phase is already 3
       expect(mockDebug).not.toHaveBeenCalledWith(
@@ -476,11 +487,7 @@ describe('post-tool-use-failure hook', () => {
       });
       mockHasExhaustedRetries.mockResolvedValue(true);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockWriteFailure).toHaveBeenCalledWith(
         '/test',
@@ -523,11 +530,7 @@ describe('post-tool-use-failure hook', () => {
       mockHasExhaustedRetries.mockResolvedValue(true);
       mockWriteFailure.mockRejectedValue(new Error('Write failed'));
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'Failed to write failure to memory',
@@ -570,11 +573,7 @@ describe('post-tool-use-failure hook', () => {
       });
       mockLoadAnalytics.mockResolvedValue(analytics);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -619,11 +618,7 @@ describe('post-tool-use-failure hook', () => {
       });
       mockLoadAnalytics.mockResolvedValue(analytics);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -665,11 +660,7 @@ describe('post-tool-use-failure hook', () => {
         suggestedFix: 'npm install lodash',
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Check that response includes the detected pattern category
       expect(mockCreateResponse).toHaveBeenCalledWith(
@@ -729,11 +720,7 @@ describe('post-tool-use-failure hook', () => {
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockCreateResponse).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -777,11 +764,7 @@ describe('post-tool-use-failure hook', () => {
         community: [],
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockCreateResponse).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -825,11 +808,7 @@ describe('post-tool-use-failure hook', () => {
         community: ['stackoverflow database errors', 'github ORM issues'],
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockCreateResponse).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -865,11 +844,7 @@ describe('post-tool-use-failure hook', () => {
       });
       mockHasExhaustedRetries.mockResolvedValue(true);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockCreateResponse).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -881,11 +856,7 @@ describe('post-tool-use-failure hook', () => {
     it('should handle main hook errors gracefully', async () => {
       mockReadHookInput.mockRejectedValue(new Error('stdin read failed'));
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockLogError).toHaveBeenCalledWith(
         'PostToolUseFailure main',
@@ -924,11 +895,7 @@ describe('post-tool-use-failure hook', () => {
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(5); // Invalid high value
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Phase should be clamped to 3 (max valid value)
       expect(mockDebug).toHaveBeenCalledWith(
@@ -970,11 +937,7 @@ describe('post-tool-use-failure hook', () => {
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(0); // Invalid low value
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Phase should be clamped to 1 (min valid value)
       expect(mockDebug).toHaveBeenCalledWith(
@@ -1015,14 +978,11 @@ describe('post-tool-use-failure hook', () => {
       });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
+      mockFindMatchingPattern.mockReturnValue(null);
       // file_not_found has empty official hints
       mockGetResearchHints.mockReturnValue({ official: [], community: [] });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Response should not include Phase 2 hints section since they are empty
       const call = mockCreateResponse.mock.calls[0][0];
@@ -1059,14 +1019,11 @@ describe('post-tool-use-failure hook', () => {
       });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(3);
+      mockFindMatchingPattern.mockReturnValue(null);
       // file_not_found has empty community hints
       mockGetResearchHints.mockReturnValue({ official: [], community: [] });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Response should not include Phase 3 hints section since they are empty
       const call = mockCreateResponse.mock.calls[0][0];
@@ -1102,11 +1059,7 @@ describe('post-tool-use-failure hook', () => {
       });
       mockHasExhaustedRetries.mockResolvedValue(true);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Error message should be truncated in failure.approach
       expect(mockWriteFailure).toHaveBeenCalledWith(
@@ -1145,11 +1098,7 @@ describe('post-tool-use-failure hook', () => {
         unofficialDocsContent: '',
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Debug should log truncated error
       expect(mockDebug).toHaveBeenCalledWith(
@@ -1188,11 +1137,7 @@ describe('post-tool-use-failure hook', () => {
       mockCategorizeError.mockReturnValue('unknown');
       mockFindMatchingPattern.mockReturnValue(null);
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockCreateResponse).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1231,6 +1176,7 @@ describe('post-tool-use-failure hook', () => {
       });
       mockGetErrorState.mockReturnValue(existingErrorState);
       mockGetCurrentPhase.mockResolvedValue(2);
+      mockCategorizeError.mockReturnValue('npm_install');
       // Pattern found with different category
       mockFindMatchingPattern.mockReturnValue({
         category: 'missing_import',
@@ -1242,11 +1188,7 @@ describe('post-tool-use-failure hook', () => {
         community: [],
       });
 
-      await import('../post-tool-use-failure.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // getResearchHints should be called with the pattern's category
       expect(mockGetResearchHints).toHaveBeenCalledWith(

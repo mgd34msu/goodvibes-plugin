@@ -16,17 +16,9 @@ import {
   debug,
   logError,
   CACHE_DIR,
-} from './shared/index.js';
-
-import type { HookResponse } from './shared/index.js';
-
-/** Creates a hook response with optional system message. */
-function createResponse(systemMessage?: string): HookResponse {
-  return {
-    continue: true,
-    systemMessage,
-  };
-}
+  createResponse,
+  isTestEnvironment,
+} from '../shared/index.js';
 
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
@@ -90,7 +82,11 @@ async function runSessionEndHook(): Promise<void> {
   }
 }
 
-runSessionEndHook().catch((error: unknown) => {
-  logError('SessionEnd uncaught', error);
-  respond(createResponse());
-});
+// Only run the hook if not in test mode
+/* v8 ignore next 5 - test environment check */
+if (!isTestEnvironment()) {
+  runSessionEndHook().catch((error: unknown) => {
+    logError('SessionEnd uncaught', error);
+    respond(createResponse());
+  });
+}

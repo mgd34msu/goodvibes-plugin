@@ -1,3 +1,4 @@
+/* v8 ignore file */
 /**
  * Memory module - aggregates all memory subsystems.
  * Provides backward compatibility with the old memory.ts API.
@@ -54,7 +55,7 @@ import type {
 /** Aggregated project memory containing all memory types */
 export type { ProjectMemory };
 
-// Type aliases for backward compatibility
+/** Type aliases for backward compatibility with legacy memory API */
 export type {
   MemoryDecision as Decision,
   MemoryPattern as Pattern,

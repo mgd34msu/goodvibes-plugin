@@ -10,17 +10,63 @@
  * - QUALITY_GATES: default gate configuration
  */
 
-import { execSync } from 'child_process';
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock modules
-vi.mock('child_process');
+vi.mock('child_process', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('child_process')>();
+  return {
+    ...actual,
+    exec: vi.fn((cmd, opts, callback) => {
+      // Handle both exec(cmd, callback) and exec(cmd, options, callback) signatures
+      const cb = typeof opts === 'function' ? opts : callback;
+      if (typeof cb === 'function') {
+        cb(null, '', '');
+      }
+      return {} as any;
+    }),
+    execSync: vi.fn().mockReturnValue(''),
+  };
+});
 vi.mock('fs/promises');
 vi.mock('../shared/logging.js');
 vi.mock('../shared/file-utils.js');
 
 describe('quality-gates', () => {
+  // Helper to create a proper child_process mock with exec support
+  const mockChildProcess = (options: {
+    execSync?: any;
+    execError?: Error | null;
+    execStdout?: string;
+    execStderr?: string;
+  } = {}) => {
+    return {
+      exec: vi.fn((cmd, opts, callback) => {
+        // Handle both exec(cmd, callback) and exec(cmd, options, callback) signatures
+        const cb = typeof opts === 'function' ? opts : callback;
+        if (typeof cb === 'function') {
+          // Try to derive error from execSync behavior for the specific command
+          let error = options.execError;
+          if (options.execSync && !error) {
+            try {
+              options.execSync(cmd);
+            } catch (err) {
+              error = err as Error;
+            }
+          }
+          cb(
+            error || null,
+            options.execStdout || '',
+            options.execStderr || ''
+          );
+        }
+        return {} as any;
+      }),
+      execSync: options.execSync || vi.fn().mockReturnValue(''),
+    };
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -99,9 +145,7 @@ describe('quality-gates', () => {
         ),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       // Access internal function through module evaluation
@@ -117,9 +161,7 @@ describe('quality-gates', () => {
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn(),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -144,9 +186,7 @@ describe('quality-gates', () => {
         ),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -167,9 +207,7 @@ describe('quality-gates', () => {
         readFile: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn(),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -194,9 +232,7 @@ describe('quality-gates', () => {
         ),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn(),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -221,9 +257,7 @@ describe('quality-gates', () => {
         ),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -252,9 +286,7 @@ describe('quality-gates', () => {
         readFile: vi.fn().mockResolvedValue('{}'),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
 
@@ -290,7 +322,7 @@ describe('quality-gates', () => {
         readFile: vi.fn().mockResolvedValue('{}'),
       }));
 
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation(() => {
           throw new Error('Lint failed');
         }),
@@ -314,9 +346,7 @@ describe('quality-gates', () => {
   describe('runCheck', () => {
     it('should return true when command succeeds', async () => {
       const mockExecSync = vi.fn().mockReturnValue('');
-      vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
-      }));
+      vi.doMock('child_process', () => mockChildProcess({ execSync: mockExecSync }));
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -343,9 +373,7 @@ describe('quality-gates', () => {
         throw new Error('Command failed');
       });
 
-      vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
-      }));
+      vi.doMock('child_process', () => mockChildProcess({ execSync: mockExecSync }));
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -368,9 +396,13 @@ describe('quality-gates', () => {
     });
 
     it('should execute command in correct working directory', async () => {
-      const mockExecSync = vi.fn().mockReturnValue('');
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        const cb = typeof opts === 'function' ? opts : callback;
+        cb(null, '', '');
+      });
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
+        execSync: vi.fn().mockReturnValue(''),
       }));
 
       vi.doMock('../shared/file-utils.js', () => ({
@@ -388,17 +420,24 @@ describe('quality-gates', () => {
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       await qualityGates.runQualityGates('/custom/project');
 
-      // Check that execSync was called with correct cwd
-      expect(mockExecSync).toHaveBeenCalledWith(
+      // Check that exec was called with correct cwd
+      expect(mockExec).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ cwd: '/custom/project' })
+        expect.objectContaining({ cwd: '/custom/project' }),
+        expect.any(Function)
       );
     });
 
     it('should use stdio pipe for command output', async () => {
-      const mockExecSync = vi.fn().mockReturnValue('');
+      // Note: exec with promisify doesn't use stdio option - it's handled internally
+      // This test verifies that exec is called (stdio is not a param for exec)
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        const cb = typeof opts === 'function' ? opts : callback;
+        cb(null, '', '');
+      });
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
+        execSync: vi.fn().mockReturnValue(''),
       }));
 
       vi.doMock('../shared/file-utils.js', () => ({
@@ -416,17 +455,18 @@ describe('quality-gates', () => {
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       await qualityGates.runQualityGates('/test/project');
 
-      // Check that stdio is piped
-      expect(mockExecSync).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ stdio: 'pipe' })
-      );
+      // Verify exec was called (stdio is handled by promisify internally)
+      expect(mockExec).toHaveBeenCalled();
     });
 
     it('should have 120 second timeout', async () => {
-      const mockExecSync = vi.fn().mockReturnValue('');
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        const cb = typeof opts === 'function' ? opts : callback;
+        cb(null, '', '');
+      });
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
+        execSync: vi.fn().mockReturnValue(''),
       }));
 
       vi.doMock('../shared/file-utils.js', () => ({
@@ -445,18 +485,17 @@ describe('quality-gates', () => {
       await qualityGates.runQualityGates('/test/project');
 
       // Check timeout is 120000ms (2 minutes)
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ timeout: 120000 })
+        expect.objectContaining({ timeout: 120000 }),
+        expect.any(Function)
       );
     });
   });
 
   describe('runQualityGates', () => {
     it('should return allPassed true when all gates pass', async () => {
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -479,7 +518,7 @@ describe('quality-gates', () => {
     });
 
     it('should return allPassed false when any gate fails', async () => {
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation(() => {
           throw new Error('Failed');
         }),
@@ -504,7 +543,7 @@ describe('quality-gates', () => {
     });
 
     it('should set blocking true when a blocking gate fails', async () => {
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation(() => {
           throw new Error('Failed');
         }),
@@ -531,7 +570,7 @@ describe('quality-gates', () => {
 
     it('should not set blocking when only non-blocking gates fail', async () => {
       let callCount = 0;
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation((cmd: string) => {
           callCount++;
           // Let TypeScript, ESLint, and Tests pass (first 3 checks + any re-checks)
@@ -568,9 +607,7 @@ describe('quality-gates', () => {
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn(),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -597,9 +634,7 @@ describe('quality-gates', () => {
         return '';
       });
 
-      vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
-      }));
+      vi.doMock('child_process', () => mockChildProcess({ execSync: mockExecSync }));
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -629,9 +664,7 @@ describe('quality-gates', () => {
         return '';
       });
 
-      vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
-      }));
+      vi.doMock('child_process', () => mockChildProcess({ execSync: mockExecSync }));
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -669,9 +702,7 @@ describe('quality-gates', () => {
         return '';
       });
 
-      vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
-      }));
+      vi.doMock('child_process', () => mockChildProcess({ execSync: mockExecSync }));
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -695,7 +726,7 @@ describe('quality-gates', () => {
     });
 
     it('should mark as failed when gate has no auto-fix', async () => {
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation((cmd: string) => {
           if (cmd.includes('tsc')) {
             throw new Error('TypeScript failed');
@@ -726,7 +757,7 @@ describe('quality-gates', () => {
     });
 
     it('should run all gates even if some fail', async () => {
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation((cmd: string) => {
           if (cmd.includes('tsc')) {
             throw new Error('TypeScript failed');
@@ -755,9 +786,7 @@ describe('quality-gates', () => {
     });
 
     it('should return results array with all gate results', async () => {
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -784,9 +813,7 @@ describe('quality-gates', () => {
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn(),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -965,7 +992,7 @@ describe('quality-gates', () => {
 
   describe('edge cases and error handling', () => {
     it('should handle execSync throwing non-Error objects', async () => {
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation(() => {
           throw 'string error';
         }),
@@ -1005,9 +1032,7 @@ describe('quality-gates', () => {
         }),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
 
@@ -1031,9 +1056,7 @@ describe('quality-gates', () => {
         ),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -1056,9 +1079,7 @@ describe('quality-gates', () => {
         ),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(''),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/test/project');
@@ -1099,9 +1120,7 @@ describe('quality-gates', () => {
         return '';
       });
 
-      vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
-      }));
+      vi.doMock('child_process', () => mockChildProcess({ execSync: mockExecSync }));
 
       vi.doMock('../shared/file-utils.js', () => ({
         fileExists: vi.fn().mockResolvedValue(true),
@@ -1140,9 +1159,7 @@ describe('quality-gates', () => {
         fileExists: vi.fn().mockResolvedValue(false),
       }));
 
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn(),
-      }));
+      vi.doMock('child_process', () => mockChildProcess());
 
       const qualityGates = await import('../pre-tool-use/quality-gates.js');
       const result = await qualityGates.runQualityGates('/empty/project');
@@ -1153,7 +1170,7 @@ describe('quality-gates', () => {
     });
 
     it('should handle timeout errors in check execution', async () => {
-      vi.doMock('child_process', () => ({
+      vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation(() => {
           const error = new Error('Command timed out') as NodeJS.ErrnoException;
           error.code = 'ETIMEDOUT';

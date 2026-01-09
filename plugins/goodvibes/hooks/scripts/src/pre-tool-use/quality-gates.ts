@@ -10,12 +10,15 @@
  * @see {@link ../automation/build-runner} for type checking
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 
 import { fileExists } from '../shared/file-utils.js';
 import { debug, logError } from '../shared/logging.js';
+
+const execAsync = promisify(exec);
 
 /** Configuration for a quality gate check */
 export interface QualityGate {
@@ -103,11 +106,11 @@ async function toolExists(tool: string, cwd: string): Promise<boolean> {
  *
  * @param command - The command to execute
  * @param cwd - The current working directory
- * @returns True if the command succeeded (exit code 0), false otherwise
+ * @returns Promise resolving to true if the command succeeded (exit code 0), false otherwise
  */
-function runCheck(command: string, cwd: string): boolean {
+async function runCheck(command: string, cwd: string): Promise<boolean> {
   try {
-    execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
+    await execAsync(command, { cwd, timeout: 120000 });
     return true;
   } catch (error: unknown) {
     debug(`Quality gate check failed: ${command} - ${error}`);
@@ -158,16 +161,16 @@ export async function runQualityGates(
     }
 
     // Run the check
-    const passed = runCheck(gate.check, cwd);
+    const passed = await runCheck(gate.check, cwd);
 
     if (passed) {
       results.push({ gate: gate.name, status: 'passed' });
     } else if (gate.autoFix) {
       // Try auto-fix
       try {
-        execSync(gate.autoFix, { cwd, stdio: 'pipe', timeout: 120000 });
+        await execAsync(gate.autoFix, { cwd, timeout: 120000 });
         // Re-check
-        const fixedPassed = runCheck(gate.check, cwd);
+        const fixedPassed = await runCheck(gate.check, cwd);
         if (fixedPassed) {
           results.push({ gate: gate.name, status: 'auto-fixed' });
         } else {

@@ -3,10 +3,12 @@
  *
  * Retrieves git repository information including branch, status, and commits.
  */
-import { execSync } from 'child_process';
+import { exec as execCallback } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 import { debug } from '../shared/logging.js';
+const exec = promisify(execCallback);
 /**
  * Constant for detached HEAD state.
  * Used when formatting git context for a repository in detached HEAD mode.
@@ -18,16 +20,17 @@ const GIT_DETACHED_HEAD = 'detached';
  *
  * @param command - The git command to execute
  * @param cwd - The current working directory (repository root)
- * @returns The trimmed command output, or null if the command failed
+ * @returns Promise resolving to the trimmed command output, or null if the command failed
  */
-function execGit(command, cwd) {
+async function execGit(command, cwd) {
     try {
-        return execSync(command, {
+        const { stdout } = await exec(command, {
             cwd,
             encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
             timeout: 30000,
-        }).trim();
+            maxBuffer: 1024 * 1024,
+        });
+        return stdout.trim();
     }
     catch (error) {
         // Git command failed - this is expected for some operations (e.g., no upstream)
@@ -78,14 +81,16 @@ export async function getGitContext(cwd) {
             aheadBehind: null,
         };
     }
-    const branch = execGit('git branch --show-current', cwd);
-    const status = execGit('git status --porcelain', cwd) || '';
-    const uncommittedFiles = status.split('\n').filter(Boolean);
-    const lastCommit = execGit('git log -1 --format="%s (%ar)"', cwd);
-    const recentCommitsRaw = execGit('git log -5 --format="- %s"', cwd);
+    const [branch, status, lastCommit, recentCommitsRaw, abRaw] = await Promise.all([
+        execGit('git branch --show-current', cwd),
+        execGit('git status --porcelain', cwd),
+        execGit('git log -1 --format="%s (%ar)"', cwd),
+        execGit('git log -5 --format="- %s"', cwd),
+        execGit('git rev-list --left-right --count HEAD...@{u}', cwd),
+    ]);
+    const uncommittedFiles = (status || '').split('\n').filter(Boolean);
     const recentCommits = recentCommitsRaw ? recentCommitsRaw.split('\n') : [];
     let aheadBehind = null;
-    const abRaw = execGit('git rev-list --left-right --count HEAD...@{u}', cwd);
     if (abRaw) {
         const [ahead, behind] = abRaw.split('\t').map(Number);
         aheadBehind = { ahead, behind };

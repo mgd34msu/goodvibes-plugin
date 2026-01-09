@@ -7,9 +7,15 @@
  * - Build errors
  */
 
-import { respond, readHookInput, debug, logError } from './shared/index.js';
+import {
+  respond,
+  readHookInput,
+  debug,
+  logError,
+  isTestEnvironment,
+} from './index.js';
 
-import type { HookResponse } from './shared/index.js';
+import type { HookResponse } from './index.js';
 
 /** Creates a hook response with optional system message. */
 function createResponse(systemMessage?: string): HookResponse {
@@ -43,11 +49,16 @@ async function runNotificationHook(): Promise<void> {
   }
 }
 
-runNotificationHook().catch((error: unknown) => {
-  logError('Notification uncaught', error);
-  respond(
-    createResponse(
-      `Notification error: ${error instanceof Error ? error.message : String(error)}`
-    )
-  );
-});
+// Only run the hook if not in test mode
+/* v8 ignore start - test environment guard */
+if (!isTestEnvironment()) {
+  runNotificationHook().catch((error: unknown) => {
+    logError('Notification uncaught', error);
+    respond(
+      createResponse(
+        `Notification error: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
+  });
+}
+/* v8 ignore stop */

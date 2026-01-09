@@ -13,7 +13,7 @@ import {
   type TestResult,
 } from '../automation/test-runner.js';
 import { debug, logError } from '../shared/index.js';
-import { updateTestState, updateBuildState } from '../state.js';
+import { updateTestState, updateBuildState } from '../state/index.js';
 
 // Git operations
 import { createCheckpointIfNeeded } from './checkpoint-manager.js';

@@ -7,6 +7,22 @@
 import { STDIN_TIMEOUT_MS } from './config.js';
 
 /**
+ * Checks if the current process is running in a test environment.
+ * This is used to prevent hook scripts from executing when being imported by tests.
+ *
+ * @returns true if running in test mode, false otherwise
+ */
+export function isTestEnvironment(): boolean {
+  return (
+    /* v8 ignore next */
+    process.env.NODE_ENV === 'test' ||
+    process.env.VITEST === 'true' ||
+    typeof (globalThis as { __vitest_worker__?: unknown }).__vitest_worker__ !==
+      'undefined'
+  );
+}
+
+/**
  * Type guard to validate hook input structure at runtime
  */
 function isValidHookInput(value: unknown): value is HookInput {

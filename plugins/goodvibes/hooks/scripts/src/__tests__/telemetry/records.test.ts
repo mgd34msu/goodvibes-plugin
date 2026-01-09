@@ -35,6 +35,7 @@ vi.mock('../../shared/index.js', async () => {
 vi.mock('fs/promises', () => ({
   mkdir: vi.fn(),
   appendFile: vi.fn(),
+  isTestEnvironment: () => false,
 }));
 
 // Get mock references

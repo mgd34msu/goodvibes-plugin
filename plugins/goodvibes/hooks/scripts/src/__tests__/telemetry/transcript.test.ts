@@ -21,6 +21,7 @@ vi.mock('../../shared/index.js', () => ({
   debug: mockDebug,
   logError: mockLogError,
   fileExists: mockFileExists,
+  isTestEnvironment: () => false,
 }));
 
 // Mock shared/keywords.js

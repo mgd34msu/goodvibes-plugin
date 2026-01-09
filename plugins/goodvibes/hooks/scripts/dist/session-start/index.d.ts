@@ -1,15 +1,17 @@
 /**
- * @module session-start
+ * Session Start Hook
  *
- * Session-start hook utilities for initializing new Claude Code sessions.
- *
- * This module re-exports all session initialization functionality including:
- * - Context building (stack detection, environment analysis, health checks)
- * - Context injection into session prompts
- * - Crash recovery from previous failed sessions
- * - Response formatting for session startup
+ * Initializes the GoodVibes plugin:
+ * - Loads or initializes persistent state
+ * - Checks for crash recovery scenarios
+ * - Validates registries exist
+ * - Creates cache directory
+ * - Initializes analytics
+ * - Gathers and injects project context (Smart Context Injection)
+ * - Updates session state (increment session count, record start time)
+ * - Saves state for future sessions
  */
-export * from './context-builder.js';
-export * from './context-injection.js';
-export * from './crash-recovery.js';
-export * from './response-formatter.js';
+export { formatRecoveryContext, checkCrashRecovery } from './crash-recovery.js';
+export { buildSystemMessage } from './response-formatter.js';
+export { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
+export { gatherAndFormatContext } from './context-injection.js';

@@ -1,7 +1,7 @@
 /**
- * User Prompt Submit Hook (GoodVibes)
+ * User Prompt Submit Hook Entry Point
  *
- * Runs before Claude processes user input.
- * Can add context or validate prompts.
+ * This is a thin entry point that re-exports from the lifecycle module.
+ * The actual implementation lives in src/lifecycle/user-prompt-submit.ts
  */
-export {};
+import './lifecycle/user-prompt-submit.js';

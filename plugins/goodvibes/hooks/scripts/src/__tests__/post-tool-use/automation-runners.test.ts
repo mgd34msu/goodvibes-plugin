@@ -22,6 +22,7 @@ import type { HooksState } from '../../types/state.js';
 vi.mock('../../shared/index.js', () => ({
   debug: vi.fn(),
   logError: vi.fn(),
+  isTestEnvironment: () => false,
 }));
 
 vi.mock('../../post-tool-use/file-tracker.js', () => ({
@@ -45,7 +46,7 @@ vi.mock('../../automation/build-runner.js', () => ({
   runTypeCheck: vi.fn(),
 }));
 
-vi.mock('../../state.js', () => ({
+vi.mock('../../state/index.js', () => ({
   updateTestState: vi.fn((state: HooksState, updates: any) => ({
     ...state,
     tests: {
@@ -191,7 +192,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
       const { debug } = await import('../../shared/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
@@ -219,7 +220,7 @@ describe('automation-runners', () => {
       expect(result.ran).toBe(true);
       expect(result.result).toEqual(testResult);
 
-      // Verify state update for passing tests
+      // Verify state update for passing tests (lines 78-86)
       expect(updateTestState).toHaveBeenCalledWith(mockState, {
         lastQuickRun: expect.any(String),
         passingFiles: testFiles,
@@ -232,7 +233,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
       const stateWithExistingPassing = createMockHooksState({
@@ -277,7 +278,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
       const stateWithFailingFile = createMockHooksState({
@@ -313,7 +314,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
       const testResult = {
@@ -340,7 +341,7 @@ describe('automation-runners', () => {
       expect(result.ran).toBe(true);
       expect(result.result).toEqual(testResult);
 
-      // Verify state update for failing tests
+      // Verify state update for failing tests (lines 87-99)
       expect(updateTestState).toHaveBeenCalledWith(mockState, {
         lastQuickRun: expect.any(String),
         failingFiles: testFiles,
@@ -360,7 +361,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
       const stateWithExistingFailing = createMockHooksState({
@@ -411,7 +412,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
 
       const testFiles = ['/src/__tests__/utils.test.ts'];
       const stateWithPassingFile = createMockHooksState({
@@ -452,7 +453,7 @@ describe('automation-runners', () => {
         await import('../../post-tool-use/automation-runners.js');
       const { findTestsForFile, runTests } =
         await import('../../automation/test-runner.js');
-      const { updateTestState } = await import('../../state.js');
+      const { updateTestState } = await import('../../state/index.js');
 
       const testFiles = [
         '/src/__tests__/utils.test.ts',
@@ -607,7 +608,7 @@ describe('automation-runners', () => {
       const { getModifiedFileCount } =
         await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const { updateBuildState } = await import('../../state.js');
+      const { updateBuildState } = await import('../../state/index.js');
       const { debug } = await import('../../shared/index.js');
 
       vi.mocked(getModifiedFileCount).mockReturnValue(5);
@@ -667,7 +668,7 @@ describe('automation-runners', () => {
       const { getModifiedFileCount } =
         await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const { updateBuildState } = await import('../../state.js');
+      const { updateBuildState } = await import('../../state/index.js');
 
       vi.mocked(getModifiedFileCount).mockReturnValue(5);
       vi.mocked(runTypeCheck).mockResolvedValue({
@@ -692,7 +693,7 @@ describe('automation-runners', () => {
       const { getModifiedFileCount } =
         await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const { updateBuildState } = await import('../../state.js');
+      const { updateBuildState } = await import('../../state/index.js');
 
       const stateWithFailedBuild = createMockHooksState({
         build: {
@@ -730,7 +731,7 @@ describe('automation-runners', () => {
       const { getModifiedFileCount } =
         await import('../../post-tool-use/file-tracker.js');
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const { updateBuildState } = await import('../../state.js');
+      const { updateBuildState } = await import('../../state/index.js');
 
       const stateWithFailedBuild = createMockHooksState({
         build: {

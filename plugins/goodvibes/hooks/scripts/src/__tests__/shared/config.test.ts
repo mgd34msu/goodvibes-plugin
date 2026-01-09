@@ -584,5 +584,29 @@ describe('config', () => {
       // Restore JSON
       vi.unstubAllGlobals();
     });
+
+    it('should handle non-object userConfig at root level (line 188)', async () => {
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      // Test when userConfig is not an object - should return defaults
+      vi.spyOn(fs, 'readFile').mockResolvedValue('[]'); // Array instead of object
+
+      const config = await loadSharedConfig(mockCwd);
+
+      // Should fall through and return defaults
+      expect(config).toEqual(getDefaultSharedConfig());
+    });
+
+    it('should handle null userConfig (line 188)', async () => {
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      // Test when userConfig is null - should return defaults
+      vi.spyOn(fs, 'readFile').mockResolvedValue('null');
+
+      const config = await loadSharedConfig(mockCwd);
+
+      // Should fall through and return defaults
+      expect(config).toEqual(getDefaultSharedConfig());
+    });
   });
 });

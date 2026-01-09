@@ -12,70 +12,50 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock fs/promises module
-const mockWriteFile = vi.fn();
-
-vi.mock('fs/promises', () => ({
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-}));
-
-// Mock shared module
-const mockRespond = vi.fn();
-const mockReadHookInput = vi.fn();
-const mockLoadAnalytics = vi.fn();
-const mockDebug = vi.fn();
-const mockLogError = vi.fn();
-const mockCreateResponse = vi.fn((opts) => ({
-  continue: true,
-  systemMessage: opts?.systemMessage,
-}));
-const mockParseTranscript = vi.fn();
-const mockFileExists = vi.fn();
-const mockCACHE_DIR = '/mock/cache/dir';
-
-vi.mock('../shared/index.js', () => ({
-  respond: (...args: unknown[]) => mockRespond(...args),
-  readHookInput: () => mockReadHookInput(),
-  loadAnalytics: () => mockLoadAnalytics(),
-  debug: (...args: unknown[]) => mockDebug(...args),
-  logError: (...args: unknown[]) => mockLogError(...args),
-  createResponse: (...args: unknown[]) => mockCreateResponse(...args),
-  parseTranscript: (...args: unknown[]) => mockParseTranscript(...args),
-  fileExists: (...args: unknown[]) => mockFileExists(...args),
-  CACHE_DIR: mockCACHE_DIR,
-}));
-
-// Mock state module
-const mockLoadState = vi.fn();
-
-vi.mock('../state.js', () => ({
-  loadState: (...args: unknown[]) => mockLoadState(...args),
-}));
-
-// Mock pre-compact/index module
-const mockCreatePreCompactCheckpoint = vi.fn();
-const mockSaveSessionSummary = vi.fn();
-const mockGetFilesModifiedThisSession = vi.fn();
-
-vi.mock('../pre-compact/index.js', () => ({
-  createPreCompactCheckpoint: (...args: unknown[]) =>
-    mockCreatePreCompactCheckpoint(...args),
-  saveSessionSummary: (...args: unknown[]) => mockSaveSessionSummary(...args),
-  getFilesModifiedThisSession: (...args: unknown[]) =>
-    mockGetFilesModifiedThisSession(...args),
-}));
-
 describe('pre-compact hook', () => {
+  // Mock functions
+  let mockWriteFile: ReturnType<typeof vi.fn>;
+  let mockRespond: ReturnType<typeof vi.fn>;
+  let mockReadHookInput: ReturnType<typeof vi.fn>;
+  let mockLoadAnalytics: ReturnType<typeof vi.fn>;
+  let mockDebug: ReturnType<typeof vi.fn>;
+  let mockLogError: ReturnType<typeof vi.fn>;
+  let mockCreateResponse: ReturnType<typeof vi.fn>;
+  let mockParseTranscript: ReturnType<typeof vi.fn>;
+  let mockFileExists: ReturnType<typeof vi.fn>;
+  let mockLoadState: ReturnType<typeof vi.fn>;
+  let mockCreatePreCompactCheckpoint: ReturnType<typeof vi.fn>;
+  let mockSaveSessionSummary: ReturnType<typeof vi.fn>;
+  let mockGetFilesModifiedThisSession: ReturnType<typeof vi.fn>;
+
   const originalProcessCwd = process.cwd;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.resetModules();
+
+    // Initialize mock functions
+    mockWriteFile = vi.fn();
+    mockRespond = vi.fn();
+    mockReadHookInput = vi.fn();
+    mockLoadAnalytics = vi.fn();
+    mockDebug = vi.fn();
+    mockLogError = vi.fn();
+    mockCreateResponse = vi.fn((opts) => ({
+      continue: true,
+      systemMessage: opts?.systemMessage,
+    }));
+    mockParseTranscript = vi.fn();
+    mockFileExists = vi.fn();
+    mockLoadState = vi.fn();
+    mockCreatePreCompactCheckpoint = vi.fn();
+    mockSaveSessionSummary = vi.fn();
+    mockGetFilesModifiedThisSession = vi.fn();
 
     // Mock process.cwd
     process.cwd = vi.fn(() => '/default/cwd');
 
     // Default mock implementations
+    mockRespond.mockReturnValue(undefined);
     mockReadHookInput.mockResolvedValue({
       hook_event_name: 'PreCompact',
       cwd: '/test/project',
@@ -114,6 +94,48 @@ describe('pre-compact hook', () => {
     vi.resetModules();
   });
 
+  async function setupMocksAndImport() {
+    // Mock fs/promises
+    vi.doMock('fs/promises', () => ({
+      writeFile: mockWriteFile,
+      access: vi.fn(),
+      mkdir: vi.fn(),
+      readFile: vi.fn(),
+    }));
+
+    // Mock shared module with isTestEnvironment = false so hook runs
+    vi.doMock('../shared/index.js', () => ({
+      respond: mockRespond,
+      readHookInput: mockReadHookInput,
+      loadAnalytics: mockLoadAnalytics,
+      debug: mockDebug,
+      logError: mockLogError,
+      createResponse: mockCreateResponse,
+      parseTranscript: mockParseTranscript,
+      fileExists: mockFileExists,
+      CACHE_DIR: '/mock/cache/dir',
+      isTestEnvironment: () => false,
+    }));
+
+    // Mock state module
+    vi.doMock('../state/index.js', () => ({
+      loadState: mockLoadState,
+    }));
+
+    // Mock pre-compact/state-preservation module
+    vi.doMock('../pre-compact/state-preservation.js', () => ({
+      createPreCompactCheckpoint: mockCreatePreCompactCheckpoint,
+      saveSessionSummary: mockSaveSessionSummary,
+      getFilesModifiedThisSession: mockGetFilesModifiedThisSession,
+    }));
+
+    // Import the module (this triggers the hook)
+    await import('../pre-compact/index.js');
+
+    // Allow async operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
   describe('runPreCompactHook', () => {
     it('should complete successful hook execution with all data present', async () => {
       mockLoadAnalytics.mockResolvedValue({
@@ -136,11 +158,7 @@ describe('pre-compact hook', () => {
         summary: 'Working on feature X',
       });
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify initialization
       expect(mockDebug).toHaveBeenCalledWith('PreCompact hook starting');
@@ -192,11 +210,7 @@ describe('pre-compact hook', () => {
         transcript_path: '/test/transcript.json',
       });
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should use process.cwd() (/default/cwd) instead of input.cwd
       expect(mockCreatePreCompactCheckpoint).toHaveBeenCalledWith(
@@ -212,11 +226,7 @@ describe('pre-compact hook', () => {
         transcript_path: undefined,
       });
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should not attempt to parse transcript
       expect(mockParseTranscript).not.toHaveBeenCalled();
@@ -225,11 +235,7 @@ describe('pre-compact hook', () => {
     it('should skip transcript parsing when transcript file does not exist', async () => {
       mockFileExists.mockResolvedValue(false);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should check file exists but not parse
       expect(mockFileExists).toHaveBeenCalledWith('/test/transcript.json');
@@ -239,11 +245,7 @@ describe('pre-compact hook', () => {
     it('should handle null analytics without creating backup', async () => {
       mockLoadAnalytics.mockResolvedValue(null);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should not write backup file when analytics is null
       expect(mockWriteFile).not.toHaveBeenCalled();
@@ -255,11 +257,7 @@ describe('pre-compact hook', () => {
     it('should handle errors in main catch block', async () => {
       mockReadHookInput.mockRejectedValue(new Error('Input read failed'));
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith(
@@ -293,11 +291,7 @@ describe('pre-compact hook', () => {
         summary: 'Context summary here',
       });
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -326,11 +320,7 @@ describe('pre-compact hook', () => {
 
       mockGetFilesModifiedThisSession.mockReturnValue([]);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -356,11 +346,7 @@ describe('pre-compact hook', () => {
       );
       mockGetFilesModifiedThisSession.mockReturnValue(manyFiles);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -384,11 +370,7 @@ describe('pre-compact hook', () => {
 
       mockGetFilesModifiedThisSession.mockReturnValue([]);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -410,11 +392,7 @@ describe('pre-compact hook', () => {
       mockFileExists.mockResolvedValue(true);
       mockParseTranscript.mockResolvedValue({ summary: '' });
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -428,11 +406,7 @@ describe('pre-compact hook', () => {
       mockFileExists.mockResolvedValue(true);
       mockParseTranscript.mockResolvedValue({ summary: 'Some context' });
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -464,11 +438,7 @@ describe('pre-compact hook', () => {
         '/src/b.ts',
       ]);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockWriteFile).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const writeCall = mockWriteFile.mock.calls[0];
       const backupContent = JSON.parse(writeCall[1]);
@@ -496,11 +466,7 @@ describe('pre-compact hook', () => {
       );
       mockGetFilesModifiedThisSession.mockReturnValue(exactlyTwentyFiles);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];
@@ -513,11 +479,7 @@ describe('pre-compact hook', () => {
       mockLoadAnalytics.mockResolvedValue(null);
       mockGetFilesModifiedThisSession.mockReturnValue([]);
 
-      await import('../pre-compact.js');
-
-      await vi.waitFor(() => {
-        expect(mockSaveSessionSummary).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const summaryCall = mockSaveSessionSummary.mock.calls[0];
       const summary = summaryCall[1];

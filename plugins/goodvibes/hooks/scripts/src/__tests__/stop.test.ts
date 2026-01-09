@@ -83,10 +83,11 @@ describe('stop hook', () => {
       CACHE_DIR: '/mock/cache',
       createResponse: mockCreateResponse,
       fileExists: mockFileExists,
+      isTestEnvironment: () => false,
     }));
 
     // Import the module (this triggers runStopHook)
-    await import('../stop.js');
+    await import('../lifecycle/stop.js');
 
     // Allow async operations to complete
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -255,22 +256,26 @@ describe('stop hook', () => {
     it('should handle errors and respond with error message', async () => {
       const testError = new Error('Test error during stop');
       mockReadHookInput.mockRejectedValue(testError);
+      mockFileExists.mockResolvedValue(false);
 
       await setupMocksAndImport();
 
       // Verify error was logged
       expect(mockLogError).toHaveBeenCalledWith('Stop main', testError);
 
-      // Verify error response was created and sent
-      expect(mockCreateResponse).toHaveBeenCalledWith({
-        systemMessage: 'Cleanup error: Test error during stop',
-      });
-      expect(mockRespond).toHaveBeenCalled();
+      // Verify error response was sent (createResponse is local, not mocked)
+      expect(mockRespond).toHaveBeenCalledWith(
+        expect.objectContaining({
+          continue: true,
+          systemMessage: 'Cleanup error: Test error during stop',
+        })
+      );
     });
 
     it('should handle non-Error objects in catch block', async () => {
       const stringError = 'String error message';
       mockReadHookInput.mockRejectedValue(stringError);
+      mockFileExists.mockResolvedValue(false);
 
       await setupMocksAndImport();
 
@@ -278,9 +283,12 @@ describe('stop hook', () => {
       expect(mockLogError).toHaveBeenCalledWith('Stop main', stringError);
 
       // Verify error message uses String() for non-Error objects
-      expect(mockCreateResponse).toHaveBeenCalledWith({
-        systemMessage: 'Cleanup error: String error message',
-      });
+      expect(mockRespond).toHaveBeenCalledWith(
+        expect.objectContaining({
+          continue: true,
+          systemMessage: 'Cleanup error: String error message',
+        })
+      );
     });
 
     it('should handle analytics save failure', async () => {
@@ -300,14 +308,19 @@ describe('stop hook', () => {
       });
       mockLoadAnalytics.mockResolvedValue(mockAnalytics);
       mockSaveAnalytics.mockRejectedValue(new Error('Save failed'));
+      mockFileExists.mockResolvedValue(false);
+      mockWriteFile.mockResolvedValue(undefined);
 
       await setupMocksAndImport();
 
       // Verify error handling was triggered
       expect(mockLogError).toHaveBeenCalledWith('Stop main', expect.any(Error));
-      expect(mockCreateResponse).toHaveBeenCalledWith({
-        systemMessage: 'Cleanup error: Save failed',
-      });
+      expect(mockRespond).toHaveBeenCalledWith(
+        expect.objectContaining({
+          continue: true,
+          systemMessage: 'Cleanup error: Save failed',
+        })
+      );
     });
   });
 

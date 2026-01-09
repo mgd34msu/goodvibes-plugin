@@ -16,6 +16,7 @@ const mockLoadSharedConfig = vi.fn();
 
 vi.mock('../../shared/index.js', () => ({
   loadSharedConfig: mockLoadSharedConfig,
+  isTestEnvironment: () => false,
 }));
 
 // Mock types/config.js

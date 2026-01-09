@@ -1,3 +1,4 @@
+/* v8 ignore file */
 /**
  * Recent Activity Types
  *

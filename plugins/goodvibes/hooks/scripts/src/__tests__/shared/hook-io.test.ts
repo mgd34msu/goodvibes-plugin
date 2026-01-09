@@ -28,7 +28,67 @@ describe('hook-io', () => {
   let mockStdin: EventEmitter & { setEncoding: ReturnType<typeof vi.fn> };
   let originalStdin: typeof process.stdin;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let processExitSpy: ReturnType<typeof vi.spyOn>;
+
+  describe('isTestEnvironment', () => {
+    it('should return true when NODE_ENV is test', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'test';
+
+      // Need to re-import to get fresh isTestEnvironment
+      const { isTestEnvironment } = require('../../shared/hook-io.js');
+      expect(isTestEnvironment()).toBe(true);
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should return true when VITEST is true', () => {
+      const originalVitest = process.env.VITEST;
+      delete process.env.NODE_ENV;
+      process.env.VITEST = 'true';
+
+      const { isTestEnvironment } = require('../../shared/hook-io.js');
+      expect(isTestEnvironment()).toBe(true);
+
+      if (originalVitest) {
+        process.env.VITEST = originalVitest;
+      } else {
+        delete process.env.VITEST;
+      }
+    });
+
+    it('should return true when __vitest_worker__ is defined (line 16)', () => {
+      const originalEnv = process.env.NODE_ENV;
+      const originalVitest = process.env.VITEST;
+      delete process.env.NODE_ENV;
+      delete process.env.VITEST;
+
+      // Set __vitest_worker__ on globalThis
+      (globalThis as any).__vitest_worker__ = { id: 1 };
+
+      const { isTestEnvironment } = require('../../shared/hook-io.js');
+      expect(isTestEnvironment()).toBe(true);
+
+      // Clean up
+      delete (globalThis as any).__vitest_worker__;
+      if (originalEnv) process.env.NODE_ENV = originalEnv;
+      if (originalVitest) process.env.VITEST = originalVitest;
+    });
+
+    it('should return false when none of the conditions are met', () => {
+      const originalEnv = process.env.NODE_ENV;
+      const originalVitest = process.env.VITEST;
+      delete process.env.NODE_ENV;
+      delete process.env.VITEST;
+      delete (globalThis as any).__vitest_worker__;
+
+      const { isTestEnvironment } = require('../../shared/hook-io.js');
+      expect(isTestEnvironment()).toBe(false);
+
+      if (originalEnv) process.env.NODE_ENV = originalEnv;
+      if (originalVitest) process.env.VITEST = originalVitest;
+    });
+  });
+
 
   beforeEach(() => {
     // Create a mock stdin
@@ -45,11 +105,9 @@ describe('hook-io', () => {
       configurable: true,
     });
 
-    // Mock console.log and process.exit
+    // Mock console.log
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('process.exit called');
-    });
+    // Note: process.exit is mocked globally in vitest.setup.ts
   });
 
   afterEach(() => {
@@ -61,7 +119,6 @@ describe('hook-io', () => {
     });
 
     vi.clearAllMocks();
-    vi.restoreAllMocks();
   });
 
   describe('readHookInput', () => {
@@ -431,35 +488,35 @@ describe('hook-io', () => {
     it('should output JSON and exit with code 0 for non-blocking response', () => {
       const response = allowTool('PreToolUse');
 
-      expect(() => respond(response)).toThrow('process.exit called');
+      respond(response);
 
       expect(consoleLogSpy).toHaveBeenCalledWith(JSON.stringify(response));
-      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(process.exit).toHaveBeenCalledWith(0);
     });
 
     it('should output JSON and exit with code 2 for blocking response', () => {
       const response = blockTool('PreToolUse', 'Blocked');
 
-      expect(() => respond(response, true)).toThrow('process.exit called');
+      respond(response, true);
 
       expect(consoleLogSpy).toHaveBeenCalledWith(JSON.stringify(response));
-      expect(processExitSpy).toHaveBeenCalledWith(2);
+      expect(process.exit).toHaveBeenCalledWith(2);
     });
 
     it('should default to non-blocking (exit 0) when block is not specified', () => {
       const response: HookResponse = { continue: true };
 
-      expect(() => respond(response)).toThrow('process.exit called');
+      respond(response);
 
-      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(process.exit).toHaveBeenCalledWith(0);
     });
 
     it('should handle false block parameter explicitly', () => {
       const response: HookResponse = { continue: true };
 
-      expect(() => respond(response, false)).toThrow('process.exit called');
+      respond(response, false);
 
-      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(process.exit).toHaveBeenCalledWith(0);
     });
   });
 

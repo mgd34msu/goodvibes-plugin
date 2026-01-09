@@ -11,6 +11,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  createChildProcessMock,
+  createChildProcessFailureMock,
+  createSharedMock,
+} from '../helpers/test-utils.js';
 
 describe('build-runner', () => {
   beforeEach(() => {
@@ -198,13 +203,12 @@ describe('build-runner', () => {
   // =============================================================================
   describe('runBuild', () => {
     it('should return passed result when build succeeds', async () => {
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn().mockResolvedValue(false),
-        extractErrorOutput: vi.fn(),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('Build successful')),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ fileExists: [] })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessMock('Build successful')
+      );
 
       const { runBuild } = await import('../../automation/build-runner.js');
       const result = await runBuild('/test/project');
@@ -221,15 +225,15 @@ describe('build-runner', () => {
 src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.
 src/utils.ts(25,10): error TS2304: Cannot find name 'foo'.
 `;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn().mockResolvedValue(false),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Build failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({
+          fileExists: [],
+          extractErrorOutput: () => errorOutput,
+        })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Build failed', '', errorOutput)
+      );
 
       const { runBuild } = await import('../../automation/build-runner.js');
       const result = await runBuild('/test/project');
@@ -250,50 +254,52 @@ src/utils.ts(25,10): error TS2304: Cannot find name 'foo'.
     });
 
     it('should use detected build command', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from(''));
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn().mockImplementation((filePath: string) => {
-          return Promise.resolve(filePath.endsWith('next.config.js'));
-        }),
-        extractErrorOutput: vi.fn(),
-      }));
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, '', '');
+      });
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({
+          fileExists: ['next.config.js'],
+        })
+      );
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runBuild } = await import('../../automation/build-runner.js');
       await runBuild('/test/project');
 
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         'npm run build',
         expect.objectContaining({
           cwd: '/test/project',
-          stdio: 'pipe',
           timeout: 120000,
-        })
+        }),
+        expect.any(Function)
       );
     });
 
-    it('should pass cwd and timeout to execSync', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from(''));
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn().mockResolvedValue(false),
-        extractErrorOutput: vi.fn(),
-      }));
+    it('should pass cwd and timeout to exec', async () => {
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, '', '');
+      });
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ fileExists: [] })
+      );
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runBuild } = await import('../../automation/build-runner.js');
       await runBuild('/my/custom/path');
 
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           cwd: '/my/custom/path',
-          stdio: 'pipe',
           timeout: 120000,
-        })
+        }),
+        expect.any(Function)
       );
     });
   });
@@ -303,16 +309,11 @@ src/utils.ts(25,10): error TS2304: Cannot find name 'foo'.
   // =============================================================================
   describe('runTypeCheck', () => {
     it('should return passed result when type check succeeds', async () => {
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn(),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('')),
-      }));
+      vi.doMock('../../shared/index.js', () => createSharedMock());
+      vi.doMock('child_process', () => createChildProcessMock(''));
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result).toEqual({
         passed: true,
@@ -325,18 +326,17 @@ src/utils.ts(25,10): error TS2304: Cannot find name 'foo'.
       const errorOutput = `
 src/components/Button.tsx(15,3): error TS2741: Property 'onClick' is missing in type '{}' but required in type 'ButtonProps'.
 `;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({
+          extractErrorOutput: () => errorOutput,
+        })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.summary).toBe('Type errors found');
@@ -350,49 +350,47 @@ src/components/Button.tsx(15,3): error TS2741: Property 'onClick' is missing in 
     });
 
     it('should use TYPECHECK_COMMAND', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from(''));
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn(),
-      }));
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, '', '');
+      });
+      vi.doMock('../../shared/index.js', () => createSharedMock());
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runTypeCheck, TYPECHECK_COMMAND } =
         await import('../../automation/build-runner.js');
-      runTypeCheck('/test/project');
+      await runTypeCheck('/test/project');
 
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         TYPECHECK_COMMAND,
         expect.objectContaining({
           cwd: '/test/project',
-          stdio: 'pipe',
           timeout: 120000,
-        })
+        }),
+        expect.any(Function)
       );
     });
 
-    it('should pass cwd and timeout to execSync', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from(''));
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn(),
-      }));
+    it('should pass cwd and timeout to exec', async () => {
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, '', '');
+      });
+      vi.doMock('../../shared/index.js', () => createSharedMock());
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      runTypeCheck('/my/project/path');
+      await runTypeCheck('/my/project/path');
 
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           cwd: '/my/project/path',
-          stdio: 'pipe',
           timeout: 120000,
-        })
+        }),
+        expect.any(Function)
       );
     });
   });
@@ -407,72 +405,62 @@ src/a.ts(1,1): error TS1001: First error
 src/b.ts(2,2): error TS1002: Second error
 src/c.ts(3,3): error TS1003: Third error
 `;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({
+          extractErrorOutput: () => errorOutput,
+        })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(3);
     });
 
     it('should extract file path correctly from error', async () => {
       const errorOutput = `path/to/deep/nested/file.ts(42,10): error TS2345: Argument of type 'string' is not assignable.`;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors[0].file).toBe('path/to/deep/nested/file.ts');
     });
 
     it('should extract line number correctly from error', async () => {
       const errorOutput = `src/file.ts(123,5): error TS2345: Some error message.`;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors[0].line).toBe(123);
     });
 
     it('should extract error message correctly', async () => {
       const errorOutput = `src/file.ts(1,1): error TS2345: This is a detailed error message with special chars: 'string' | number.`;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors[0].message).toBe(
         "This is a detailed error message with special chars: 'string' | number."
@@ -487,18 +475,15 @@ Some random output
 Warning: something happened
 Build completed with errors.
 `;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].message).toBe('Actual error.');
@@ -509,53 +494,44 @@ Build completed with errors.
 Build failed due to unknown reason.
 No TypeScript errors in standard format.
 `;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(0);
     });
 
     it('should handle empty output', async () => {
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(''),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => '' })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', '')
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(0);
     });
 
     it('should handle Windows-style paths', async () => {
       const errorOutput = `C:\\Users\\dev\\project\\src\\file.ts(10,5): error TS2322: Type error.`;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].file).toBe(
@@ -571,36 +547,30 @@ file.ts(3,1): error TS123: Error with three digit code.
 file.ts(4,1): error TS1234: Error with four digit code.
 file.ts(5,1): error TS12345: Error with five digit code.
 `;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors).toHaveLength(5);
     });
 
     it('should handle file paths with special characters', async () => {
       const errorOutput = `src/components/my-component.test.tsx(5,10): error TS2345: Error in test file.`;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn(),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Type check failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => errorOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Type check failed', '', errorOutput)
+      );
 
       const { runTypeCheck } = await import('../../automation/build-runner.js');
-      const result = runTypeCheck('/test/project');
+      const result = await runTypeCheck('/test/project');
 
       expect(result.errors[0].file).toBe(
         'src/components/my-component.test.tsx'
@@ -613,13 +583,10 @@ file.ts(5,1): error TS12345: Error with five digit code.
   // =============================================================================
   describe('BuildResult interface', () => {
     it('should have correct structure for passed result', async () => {
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn().mockResolvedValue(false),
-        extractErrorOutput: vi.fn(),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('')),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ fileExists: [] })
+      );
+      vi.doMock('child_process', () => createChildProcessMock(''));
 
       const { runBuild } = await import('../../automation/build-runner.js');
       const result = await runBuild('/test/project');
@@ -634,15 +601,15 @@ file.ts(5,1): error TS12345: Error with five digit code.
 
     it('should have correct error structure for failed result', async () => {
       const errorOutput = `src/file.ts(10,5): error TS2322: Type error.`;
-      vi.doMock('../../shared/index.js', () => ({
-        fileExists: vi.fn().mockResolvedValue(false),
-        extractErrorOutput: vi.fn().mockReturnValue(errorOutput),
-      }));
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Build failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({
+          fileExists: [],
+          extractErrorOutput: () => errorOutput,
+        })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Build failed', '', errorOutput)
+      );
 
       const { runBuild } = await import('../../automation/build-runner.js');
       const result = await runBuild('/test/project');

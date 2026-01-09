@@ -4,31 +4,8 @@
  * Functions to match error messages against recovery patterns and
  * provide suggested fixes based on error state.
  */
+import { ERROR_CATEGORY_MAP } from './error-categories.js';
 import { RECOVERY_PATTERNS } from './recovery-patterns.js';
-/**
- * Maps ErrorCategory to pattern category names for lookup.
- */
-const CATEGORY_MAP = {
-    npm_install: ['missing_import', 'npm_error'],
-    typescript_error: [
-        'typescript_type_error',
-        'typescript_config_error',
-        'type_mismatch',
-    ],
-    test_failure: ['test_failure'],
-    build_failure: ['build_failure'],
-    file_not_found: ['file_not_found'],
-    git_conflict: ['git_error'],
-    database_error: ['database_error'],
-    api_error: ['api_error'],
-    unknown: [
-        'undefined_reference',
-        'lint_error',
-        'permission_error',
-        'resource_error',
-        'syntax_error',
-    ],
-};
 /**
  * Find a matching recovery pattern for the given error category and message.
  * First attempts to match by category mapping, then falls back to pattern matching.
@@ -45,7 +22,7 @@ const CATEGORY_MAP = {
  * }
  */
 export function findMatchingPattern(category, errorMessage) {
-    const patternCategories = CATEGORY_MAP[category] || [];
+    const patternCategories = ERROR_CATEGORY_MAP[category] || [];
     // First try to match by mapped category
     for (const pattern of RECOVERY_PATTERNS) {
         if (patternCategories.includes(pattern.category)) {

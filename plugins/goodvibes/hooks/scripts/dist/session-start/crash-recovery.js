@@ -12,7 +12,7 @@
 import * as path from 'path';
 import { hasUncommittedChanges, getUncommittedFiles, } from '../automation/git-operations.js';
 import { fileExists } from '../shared/index.js';
-import { loadState } from '../state.js';
+import { loadState } from '../state/index.js';
 /** Checks if crash recovery is needed based on previous session state */
 export async function checkCrashRecovery(cwd) {
     const stateFile = path.join(cwd, '.goodvibes', 'state', 'hooks-state.json');

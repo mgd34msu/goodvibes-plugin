@@ -58,19 +58,19 @@ const testOnlyDisabledRules = {
  * across source, test, and config files while making maintenance easier.
  */
 const sharedRules = {
-  'no-unused-vars': 'off',
+  'no-unused-vars': 'error',
   '@typescript-eslint/no-unused-vars': [
-    'warn',
+    'error',
     {
       argsIgnorePattern: '^_',
       varsIgnorePattern: '^_',
     },
   ],
 
-  '@typescript-eslint/no-explicit-any': 'warn',
+  '@typescript-eslint/no-explicit-any': 'error',
   '@typescript-eslint/no-unused-expressions': 'error',
   '@typescript-eslint/consistent-type-imports': [
-    'warn',
+    'error',
     {
       prefer: 'type-imports',
       fixStyle: 'separate-type-imports',
@@ -108,8 +108,8 @@ const sharedRules = {
  * reducing duplication while maintaining the same type-safety standards.
  */
 const typeAwareRules = {
-  '@typescript-eslint/no-floating-promises': 'warn',
-  '@typescript-eslint/no-misused-promises': 'warn',
+  '@typescript-eslint/no-floating-promises': 'error',
+  '@typescript-eslint/no-misused-promises': 'error',
   '@typescript-eslint/await-thenable': 'warn',
   '@typescript-eslint/no-unnecessary-type-assertion': 'error',
   '@typescript-eslint/restrict-template-expressions': 'warn',

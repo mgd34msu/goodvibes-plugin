@@ -9,11 +9,13 @@
  * @see {@link ../automation/test-runner} for test execution
  * @see {@link ../automation/build-runner} for type checking
  */
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 import { fileExists } from '../shared/file-utils.js';
 import { debug, logError } from '../shared/logging.js';
+const execAsync = promisify(exec);
 /** Default quality gates for TypeScript projects */
 export const QUALITY_GATES = [
     {
@@ -76,11 +78,11 @@ async function toolExists(tool, cwd) {
  *
  * @param command - The command to execute
  * @param cwd - The current working directory
- * @returns True if the command succeeded (exit code 0), false otherwise
+ * @returns Promise resolving to true if the command succeeded (exit code 0), false otherwise
  */
-function runCheck(command, cwd) {
+async function runCheck(command, cwd) {
     try {
-        execSync(command, { cwd, stdio: 'pipe', timeout: 120000 });
+        await execAsync(command, { cwd, timeout: 120000 });
         return true;
     }
     catch (error) {
@@ -122,16 +124,16 @@ export async function runQualityGates(cwd, gates = QUALITY_GATES) {
             continue;
         }
         // Run the check
-        const passed = runCheck(gate.check, cwd);
+        const passed = await runCheck(gate.check, cwd);
         if (passed) {
             results.push({ gate: gate.name, status: 'passed' });
         }
         else if (gate.autoFix) {
             // Try auto-fix
             try {
-                execSync(gate.autoFix, { cwd, stdio: 'pipe', timeout: 120000 });
+                await execAsync(gate.autoFix, { cwd, timeout: 120000 });
                 // Re-check
-                const fixedPassed = runCheck(gate.check, cwd);
+                const fixedPassed = await runCheck(gate.check, cwd);
                 if (fixedPassed) {
                     results.push({ gate: gate.name, status: 'auto-fixed' });
                 }

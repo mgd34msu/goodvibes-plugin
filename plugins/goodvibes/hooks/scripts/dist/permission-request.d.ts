@@ -1,7 +1,7 @@
 /**
- * Permission Request Hook (GoodVibes)
+ * Permission Request Hook Entry Point
  *
- * Handles permission dialogs for MCP tools.
- * Auto-approves GoodVibes MCP tool permissions.
+ * This is a thin entry point that re-exports from the lifecycle module.
+ * The actual implementation lives in src/lifecycle/permission-request.ts
  */
-export {};
+import './lifecycle/permission-request.js';

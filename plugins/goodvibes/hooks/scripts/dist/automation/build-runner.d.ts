@@ -49,12 +49,12 @@ export declare function runBuild(cwd: string): Promise<BuildResult>;
  * Returns structured results with parsed error information.
  *
  * @param cwd - The current working directory (project root)
- * @returns A BuildResult object containing pass/fail status, summary, and parsed type errors
+ * @returns Promise resolving to a BuildResult object containing pass/fail status, summary, and parsed type errors
  *
  * @example
- * const result = runTypeCheck('/my-project');
+ * const result = await runTypeCheck('/my-project');
  * if (!result.passed) {
  *   result.errors.forEach(e => console.error(`${e.file}:${e.line}: ${e.message}`));
  * }
  */
-export declare function runTypeCheck(cwd: string): BuildResult;
+export declare function runTypeCheck(cwd: string): Promise<BuildResult>;

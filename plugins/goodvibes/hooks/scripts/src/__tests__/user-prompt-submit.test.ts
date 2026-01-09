@@ -56,6 +56,7 @@ describe('user-prompt-submit hook', () => {
       debug: mockDebug,
       logError: mockLogError,
       createResponse: mockCreateResponse,
+      isTestEnvironment: () => false,
     }));
 
     // Import the module (this triggers runUserPromptSubmitHook)
@@ -195,4 +196,63 @@ describe('user-prompt-submit hook', () => {
       expect(debugCalls[1][0]).toBe('UserPromptSubmit received input');
     });
   });
+
+  describe('async error handling', () => {
+    it('should handle async rejections in main function', async () => {
+      vi.resetModules();
+
+      // Create a mock that rejects asynchronously
+      const error = new Error('Async error');
+      mockReadHookInput.mockImplementation(() => {
+        return new Promise((_, reject) => {
+          setImmediate(() => reject(error));
+        });
+      });
+
+      mockCreateResponse.mockImplementation(() => ({
+        continue: true,
+      }));
+
+      await setupMocksAndImport();
+
+      // Wait for async error to propagate
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // The error is caught by the try-catch in the main function
+      expect(mockLogError).toHaveBeenCalledWith(
+        'UserPromptSubmit main',
+        error
+      );
+      expect(mockCreateResponse).toHaveBeenCalledWith();
+      expect(mockRespond).toHaveBeenCalled();
+    });
+
+    it('should handle async non-Error rejections', async () => {
+      vi.resetModules();
+
+      const errorString = 'Async string error';
+      mockReadHookInput.mockImplementation(() => {
+        return new Promise((_, reject) => {
+          setImmediate(() => reject(errorString));
+        });
+      });
+
+      mockCreateResponse.mockImplementation(() => ({
+        continue: true,
+      }));
+
+      await setupMocksAndImport();
+
+      // Wait for async error to propagate
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // The error is caught by the try-catch in the main function
+      expect(mockLogError).toHaveBeenCalledWith(
+        'UserPromptSubmit main',
+        errorString
+      );
+      expect(mockRespond).toHaveBeenCalled();
+    });
+  });
+
 });

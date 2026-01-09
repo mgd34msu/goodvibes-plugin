@@ -1653,6 +1653,12 @@ describe('git-operations', () => {
 describe('build-runner', () => {
   beforeEach(() => {
     vi.resetModules();
+    // Mock child_process for all build-runner tests
+    vi.doMock('child_process', () => ({
+      exec: vi.fn(),
+      execSync: vi.fn(),
+      spawn: vi.fn(),
+    }));
   });
 
   afterEach(() => {
@@ -1783,20 +1789,27 @@ describe('build-runner', () => {
             }
           ),
         fileExists: vi.fn().mockResolvedValue(false),
+        isTestEnvironment: vi.fn().mockReturnValue(true),
       }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Build failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from('');
-          error.stderr = Buffer.from(
-            "src/index.ts(10,5): error TS2304: Cannot find name 'foo'"
-          );
-          throw error;
-        }),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            const error = new Error('Build failed') as Error & {
+              stdout?: string;
+              stderr?: string;
+            };
+            error.stdout = '';
+            error.stderr = "src/index.ts(10,5): error TS2304: Cannot find name 'foo'";
+            callback(error, { stdout: '', stderr: error.stderr });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
@@ -1816,12 +1829,15 @@ describe('build-runner', () => {
         access: vi.fn().mockRejectedValue(new Error('ENOENT')),
       }));
 
+      const tsErrors = `src/a.ts(5,3): error TS2322: Type 'string' is not assignable
+src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
+
       // Mock shared module for extractErrorOutput
       vi.doMock('../shared/index.js', () => ({
         extractErrorOutput: vi
           .fn()
           .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+            (error: Error & { stdout?: string; stderr?: string }) => {
               return (
                 error.stdout?.toString() ||
                 error.stderr?.toString() ||
@@ -1830,21 +1846,27 @@ describe('build-runner', () => {
             }
           ),
         fileExists: vi.fn().mockResolvedValue(false),
+        isTestEnvironment: vi.fn().mockReturnValue(true),
       }));
 
-      const tsErrors = `src/a.ts(5,3): error TS2322: Type 'string' is not assignable
-src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
-
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Build failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(tsErrors);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            const error = new Error('Build failed') as Error & {
+              stdout?: string;
+              stderr?: string;
+            };
+            error.stdout = tsErrors;
+            error.stderr = '';
+            callback(error, { stdout: error.stdout, stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
@@ -1868,7 +1890,7 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
         extractErrorOutput: vi
           .fn()
           .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+            (error: Error & { stdout?: string; stderr?: string }) => {
               return (
                 error.stdout?.toString() ||
                 error.stderr?.toString() ||
@@ -1877,18 +1899,27 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
             }
           ),
         fileExists: vi.fn().mockResolvedValue(false),
+        isTestEnvironment: vi.fn().mockReturnValue(true),
       }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Build failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from('Some other error format');
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            const error = new Error('Build failed') as Error & {
+              stdout?: string;
+              stderr?: string;
+            };
+            error.stdout = 'Some other error format';
+            error.stderr = '';
+            callback(error, { stdout: error.stdout, stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
@@ -1904,7 +1935,17 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
       }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('Build successful')),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            callback(null, { stdout: 'Build successful', stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runBuild } = await import('../automation/build-runner.js');
@@ -1923,6 +1964,12 @@ src/b.ts(20,10): error TS2304: Cannot find name 'bar'`;
 describe('test-runner', () => {
   beforeEach(() => {
     vi.resetModules();
+    // Mock child_process for all test-runner tests
+    vi.doMock('child_process', () => ({
+      exec: vi.fn(),
+      execSync: vi.fn(),
+      spawn: vi.fn(),
+    }));
   });
 
   afterEach(() => {
@@ -2019,7 +2066,7 @@ describe('test-runner', () => {
         extractErrorOutput: vi
           .fn()
           .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+            (error: Error & { stdout?: string; stderr?: string }) => {
               return (
                 error.stdout?.toString() ||
                 error.stderr?.toString() ||
@@ -2027,22 +2074,31 @@ describe('test-runner', () => {
               );
             }
           ),
+        isTestEnvironment: vi.fn().mockReturnValue(true),
       }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(testOutput);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            const error = new Error('Tests failed') as Error & {
+              stdout?: string;
+              stderr?: string;
+            };
+            error.stdout = testOutput;
+            error.stderr = '';
+            callback(error, { stdout: error.stdout, stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runTests } = await import('../automation/test-runner.js');
-      const result = runTests(['src/utils/format.test.ts'], '/test/project');
+      const result = await runTests(['src/utils/format.test.ts'], '/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.failures).toHaveLength(1);
@@ -2060,7 +2116,7 @@ FAIL src/b.test.tsx
         extractErrorOutput: vi
           .fn()
           .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+            (error: Error & { stdout?: string; stderr?: string }) => {
               return (
                 error.stdout?.toString() ||
                 error.stderr?.toString() ||
@@ -2068,22 +2124,31 @@ FAIL src/b.test.tsx
               );
             }
           ),
+        isTestEnvironment: vi.fn().mockReturnValue(true),
       }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(testOutput);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            const error = new Error('Tests failed') as Error & {
+              stdout?: string;
+              stderr?: string;
+            };
+            error.stdout = testOutput;
+            error.stderr = '';
+            callback(error, { stdout: error.stdout, stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runTests } = await import('../automation/test-runner.js');
-      const result = runTests(
+      const result = await runTests(
         ['src/a.test.ts', 'src/b.test.tsx'],
         '/test/project'
       );
@@ -2109,7 +2174,7 @@ FAIL src/b.test.tsx
         extractErrorOutput: vi
           .fn()
           .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
+            (error: Error & { stdout?: string; stderr?: string }) => {
               return (
                 error.stdout?.toString() ||
                 error.stderr?.toString() ||
@@ -2117,22 +2182,31 @@ FAIL src/b.test.tsx
               );
             }
           ),
+        isTestEnvironment: vi.fn().mockReturnValue(true),
       }));
 
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(testOutput);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            const error = new Error('Tests failed') as Error & {
+              stdout?: string;
+              stderr?: string;
+            };
+            error.stdout = testOutput;
+            error.stderr = '';
+            callback(error, { stdout: error.stdout, stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runTests } = await import('../automation/test-runner.js');
-      const result = runTests(['src/test.test.ts'], '/test/project');
+      const result = await runTests(['src/test.test.ts'], '/test/project');
 
       // Should include FAIL line + 4 more lines (5 total)
       expect(result.failures[0].error).toContain('FAIL src/test.test.ts');
@@ -2144,11 +2218,21 @@ FAIL src/b.test.tsx
 
     it('should return success when tests pass', async () => {
       vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('All tests passed')),
+        exec: vi.fn().mockImplementation(
+          (
+            _cmd: string,
+            _opts: unknown,
+            callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+          ) => {
+            callback(null, { stdout: 'All tests passed', stderr: '' });
+          }
+        ),
+        execSync: vi.fn(),
+        spawn: vi.fn(),
       }));
 
       const { runTests } = await import('../automation/test-runner.js');
-      const result = runTests(['src/test.test.ts'], '/test/project');
+      const result = await runTests(['src/test.test.ts'], '/test/project');
 
       expect(result.passed).toBe(true);
       expect(result.failures).toHaveLength(0);
@@ -2156,7 +2240,7 @@ FAIL src/b.test.tsx
 
     it('should handle empty test file list', async () => {
       const { runTests } = await import('../automation/test-runner.js');
-      const result = runTests([], '/test/project');
+      const result = await runTests([], '/test/project');
 
       expect(result.passed).toBe(true);
       expect(result.summary).toBe('No tests to run');

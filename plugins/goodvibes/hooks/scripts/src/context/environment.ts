@@ -22,7 +22,7 @@ import {
 
 import type { EnvStatus, EnvironmentContext } from '../types/environment.js';
 
-// Re-export types for consumers
+/** Re-export of environment status types for consumer convenience. */
 export type { EnvStatus, EnvironmentContext };
 
 // =============================================================================

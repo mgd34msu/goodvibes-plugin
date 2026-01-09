@@ -36,7 +36,7 @@ vi.mock('fs/promises', () => ({
 }));
 
 // Mock state module
-vi.mock('../../state.js', () => ({
+vi.mock('../../state/index.js', () => ({
   loadState: (...args: unknown[]) => mockLoadState(...args),
   saveState: (...args: unknown[]) => mockSaveState(...args),
 }));
@@ -59,6 +59,7 @@ vi.mock('../../shared/index.js', () => ({
   debug: (...args: unknown[]) => mockDebug(...args),
   logError: (...args: unknown[]) => mockLogError(...args),
   fileExists: (...args: unknown[]) => mockFileExists(...args),
+  isTestEnvironment: () => false,
 }));
 
 describe('state-preservation', () => {

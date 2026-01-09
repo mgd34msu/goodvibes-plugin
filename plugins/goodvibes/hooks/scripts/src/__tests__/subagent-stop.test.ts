@@ -17,60 +17,22 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock respond function to capture responses
-const mockRespond = vi.fn();
-const mockReadHookInput = vi.fn();
-const mockLoadAnalytics = vi.fn();
-const mockSaveAnalytics = vi.fn();
-const mockDebug = vi.fn();
-const mockLogError = vi.fn();
-
-vi.mock('../shared/index.js', () => ({
-  respond: (...args: unknown[]) => mockRespond(...args),
-  readHookInput: () => mockReadHookInput(),
-  loadAnalytics: () => mockLoadAnalytics(),
-  saveAnalytics: (...args: unknown[]) => mockSaveAnalytics(...args),
-  debug: (...args: unknown[]) => mockDebug(...args),
-  logError: (...args: unknown[]) => mockLogError(...args),
-}));
-
-// Mock telemetry module
-const mockGetAgentTracking = vi.fn();
-const mockRemoveAgentTracking = vi.fn();
-const mockWriteTelemetryEntry = vi.fn();
-const mockBuildTelemetryEntry = vi.fn();
-
-vi.mock('../subagent-stop/telemetry.js', () => ({
-  getAgentTracking: (...args: unknown[]) => mockGetAgentTracking(...args),
-  removeAgentTracking: (...args: unknown[]) => mockRemoveAgentTracking(...args),
-  writeTelemetryEntry: (...args: unknown[]) => mockWriteTelemetryEntry(...args),
-  buildTelemetryEntry: (...args: unknown[]) => mockBuildTelemetryEntry(...args),
-}));
-
-// Mock output validation module
-const mockValidateAgentOutput = vi.fn();
-
-vi.mock('../subagent-stop/output-validation.js', () => ({
-  validateAgentOutput: (...args: unknown[]) => mockValidateAgentOutput(...args),
-}));
-
-// Mock test verification module
-const mockVerifyAgentTests = vi.fn();
-
-vi.mock('../subagent-stop/test-verification.js', () => ({
-  verifyAgentTests: (...args: unknown[]) => mockVerifyAgentTests(...args),
-}));
-
-// Mock state module
-const mockLoadState = vi.fn();
-const mockSaveState = vi.fn();
-
-vi.mock('../state.js', () => ({
-  loadState: (...args: unknown[]) => mockLoadState(...args),
-  saveState: (...args: unknown[]) => mockSaveState(...args),
-}));
-
 describe('subagent-stop hook', () => {
+  // Mock functions
+  let mockRespond: ReturnType<typeof vi.fn>;
+  let mockReadHookInput: ReturnType<typeof vi.fn>;
+  let mockLoadAnalytics: ReturnType<typeof vi.fn>;
+  let mockSaveAnalytics: ReturnType<typeof vi.fn>;
+  let mockDebug: ReturnType<typeof vi.fn>;
+  let mockLogError: ReturnType<typeof vi.fn>;
+  let mockGetAgentTracking: ReturnType<typeof vi.fn>;
+  let mockRemoveAgentTracking: ReturnType<typeof vi.fn>;
+  let mockWriteTelemetryEntry: ReturnType<typeof vi.fn>;
+  let mockBuildTelemetryEntry: ReturnType<typeof vi.fn>;
+  let mockValidateAgentOutput: ReturnType<typeof vi.fn>;
+  let mockVerifyAgentTests: ReturnType<typeof vi.fn>;
+  let mockLoadState: ReturnType<typeof vi.fn>;
+  let mockSaveState: ReturnType<typeof vi.fn>;
   const defaultState = {
     session: {
       id: 'test-session',
@@ -136,52 +98,137 @@ describe('subagent-stop hook', () => {
     vi.clearAllMocks();
     vi.resetModules();
 
-    // Default mock implementations
-    mockReadHookInput.mockResolvedValue({
-      session_id: 'session-456',
-      transcript_path: '/test/transcript',
-      cwd: '/workspace/project',
-      permission_mode: 'default',
-      hook_event_name: 'SubagentStop',
-      agent_id: 'agent-123',
-      agent_type: 'test-engineer',
-      agent_transcript_path: '/path/to/agent/transcript.jsonl',
-    });
-
-    mockLoadState.mockResolvedValue(defaultState);
-    mockSaveState.mockResolvedValue(undefined);
-    mockGetAgentTracking.mockResolvedValue(defaultTracking);
-    mockRemoveAgentTracking.mockResolvedValue(undefined);
-    mockWriteTelemetryEntry.mockResolvedValue(undefined);
-    mockBuildTelemetryEntry.mockResolvedValue(defaultTelemetryEntry);
-    mockLoadAnalytics.mockResolvedValue(null);
-    mockSaveAnalytics.mockResolvedValue(undefined);
-
-    mockValidateAgentOutput.mockResolvedValue({
-      valid: true,
-      filesModified: ['/src/test.ts'],
-      errors: [],
-      state: defaultState,
-    });
-
-    mockVerifyAgentTests.mockResolvedValue({
-      ran: true,
-      passed: true,
-      summary: 'All tests passed',
-    });
+    // Initialize mock functions
+    mockRespond = vi.fn();
+    mockReadHookInput = vi.fn();
+    mockLoadAnalytics = vi.fn();
+    mockSaveAnalytics = vi.fn();
+    mockDebug = vi.fn();
+    mockLogError = vi.fn();
+    mockGetAgentTracking = vi.fn();
+    mockRemoveAgentTracking = vi.fn();
+    mockWriteTelemetryEntry = vi.fn();
+    mockBuildTelemetryEntry = vi.fn();
+    mockValidateAgentOutput = vi.fn();
+    mockVerifyAgentTests = vi.fn();
+    mockLoadState = vi.fn();
+    mockSaveState = vi.fn();
   });
 
   afterEach(() => {
     vi.resetModules();
   });
 
+  async function setupMocksAndImport() {
+    // Set default mock implementations if not already set
+    if (!mockReadHookInput.getMockImplementation()) {
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'session-456',
+        transcript_path: '/test/transcript',
+        cwd: '/workspace/project',
+        permission_mode: 'default',
+        hook_event_name: 'SubagentStop',
+        agent_id: 'agent-123',
+        agent_type: 'test-engineer',
+        agent_transcript_path: '/path/to/agent/transcript.jsonl',
+      });
+    }
+
+    if (!mockLoadState.getMockImplementation()) {
+      mockLoadState.mockResolvedValue(defaultState);
+    }
+
+    if (!mockSaveState.getMockImplementation()) {
+      mockSaveState.mockResolvedValue(undefined);
+    }
+
+    if (!mockGetAgentTracking.getMockImplementation()) {
+      mockGetAgentTracking.mockResolvedValue(defaultTracking);
+    }
+
+    if (!mockRemoveAgentTracking.getMockImplementation()) {
+      mockRemoveAgentTracking.mockResolvedValue(undefined);
+    }
+
+    if (!mockWriteTelemetryEntry.getMockImplementation()) {
+      mockWriteTelemetryEntry.mockResolvedValue(undefined);
+    }
+
+    if (!mockBuildTelemetryEntry.getMockImplementation()) {
+      mockBuildTelemetryEntry.mockResolvedValue(defaultTelemetryEntry);
+    }
+
+    if (!mockLoadAnalytics.getMockImplementation()) {
+      mockLoadAnalytics.mockResolvedValue(null);
+    }
+
+    if (!mockSaveAnalytics.getMockImplementation()) {
+      mockSaveAnalytics.mockResolvedValue(undefined);
+    }
+
+    if (!mockValidateAgentOutput.getMockImplementation()) {
+      mockValidateAgentOutput.mockResolvedValue({
+        valid: true,
+        filesModified: ['/src/test.ts'],
+        errors: [],
+        state: defaultState,
+      });
+    }
+
+    if (!mockVerifyAgentTests.getMockImplementation()) {
+      mockVerifyAgentTests.mockResolvedValue({
+        ran: true,
+        passed: true,
+        summary: 'All tests passed',
+      });
+    }
+
+    // Mock shared module with isTestEnvironment = false so hook runs
+    vi.doMock('../shared/index.js', () => ({
+      respond: mockRespond,
+      readHookInput: mockReadHookInput,
+      loadAnalytics: mockLoadAnalytics,
+      saveAnalytics: mockSaveAnalytics,
+      debug: mockDebug,
+      logError: mockLogError,
+      isTestEnvironment: () => false,
+    }));
+
+    // Mock telemetry module
+    vi.doMock('../subagent-stop/telemetry.js', () => ({
+      getAgentTracking: mockGetAgentTracking,
+      removeAgentTracking: mockRemoveAgentTracking,
+      writeTelemetryEntry: mockWriteTelemetryEntry,
+      buildTelemetryEntry: mockBuildTelemetryEntry,
+    }));
+
+    // Mock output validation module
+    vi.doMock('../subagent-stop/output-validation.js', () => ({
+      validateAgentOutput: mockValidateAgentOutput,
+    }));
+
+    // Mock test verification module
+    vi.doMock('../subagent-stop/test-verification.js', () => ({
+      verifyAgentTests: mockVerifyAgentTests,
+    }));
+
+    // Mock state module
+    vi.doMock('../state/index.js', () => ({
+      loadState: mockLoadState,
+      saveState: mockSaveState,
+    }));
+
+    // Import the module (this triggers the hook)
+    await import('../subagent-stop/index.js');
+
+    // Allow async operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await vi.waitFor(() => expect(mockRespond).toHaveBeenCalled(), { timeout: 1000 });
+  }
+
   describe('runSubagentStopHook', () => {
     it('should complete successfully with tracking and transcript', async () => {
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify debug logging
       expect(mockDebug).toHaveBeenCalledWith('SubagentStop hook starting');
@@ -284,11 +331,7 @@ describe('subagent-stop hook', () => {
         agent_type: 'backend-engineer',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockGetAgentTracking).toHaveBeenCalledWith(
         '/workspace/project',
@@ -313,11 +356,7 @@ describe('subagent-stop hook', () => {
         agent_transcript_path: '/path/to/transcript.jsonl',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should use process.cwd() which is the current directory
       expect(mockLoadState).toHaveBeenCalledWith(process.cwd());
@@ -326,11 +365,7 @@ describe('subagent-stop hook', () => {
     it('should handle tracking not found but transcript exists', async () => {
       mockGetAgentTracking.mockResolvedValue(null);
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should log no matching tracking entry
       expect(mockDebug).toHaveBeenCalledWith(
@@ -367,11 +402,7 @@ describe('subagent-stop hook', () => {
 
       mockGetAgentTracking.mockResolvedValue(null);
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should NOT call validation or telemetry
       expect(mockValidateAgentOutput).not.toHaveBeenCalled();
@@ -395,11 +426,7 @@ describe('subagent-stop hook', () => {
         agent_transcript_path: '',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should NOT call validation since no transcript
       expect(mockValidateAgentOutput).not.toHaveBeenCalled();
@@ -418,11 +445,7 @@ describe('subagent-stop hook', () => {
         state: defaultState,
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should build telemetry with failed status
       expect(mockBuildTelemetryEntry).toHaveBeenCalledWith(
@@ -445,11 +468,7 @@ describe('subagent-stop hook', () => {
         summary: '3 tests failed',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should build telemetry with failed status
       expect(mockBuildTelemetryEntry).toHaveBeenCalledWith(
@@ -479,11 +498,7 @@ describe('subagent-stop hook', () => {
         summary: 'Tests failed',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const responseCall = mockRespond.mock.calls[0][0];
       expect(responseCall.systemMessage).toContain('Validation errors');
@@ -500,11 +515,7 @@ describe('subagent-stop hook', () => {
         ],
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should update analytics
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
@@ -528,11 +539,7 @@ describe('subagent-stop hook', () => {
         ],
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should NOT call saveAnalytics since no matching entry
       expect(mockSaveAnalytics).not.toHaveBeenCalled();
@@ -541,11 +548,7 @@ describe('subagent-stop hook', () => {
     it('should not update analytics when analytics is null', async () => {
       mockLoadAnalytics.mockResolvedValue(null);
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).not.toHaveBeenCalled();
     });
@@ -555,11 +558,7 @@ describe('subagent-stop hook', () => {
         session_id: 'session-456',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).not.toHaveBeenCalled();
     });
@@ -572,11 +571,7 @@ describe('subagent-stop hook', () => {
         state: defaultState,
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should NOT call test verification
       expect(mockVerifyAgentTests).not.toHaveBeenCalled();
@@ -585,11 +580,7 @@ describe('subagent-stop hook', () => {
     it('should handle error in main catch block', async () => {
       mockReadHookInput.mockRejectedValue(new Error('Read input failed'));
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should log error
       expect(mockLogError).toHaveBeenCalledWith(
@@ -613,11 +604,7 @@ describe('subagent-stop hook', () => {
         agent_transcript_path: '/path/to/transcript.jsonl',
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const responseCall = mockRespond.mock.calls[0][0];
       expect(responseCall.output.agentType).toBe('unknown');
@@ -632,11 +619,7 @@ describe('subagent-stop hook', () => {
         state: defaultState,
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should call test verification even without tracking
       expect(mockVerifyAgentTests).toHaveBeenCalledWith(
@@ -658,11 +641,7 @@ describe('subagent-stop hook', () => {
         state: defaultState,
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should NOT call test verification since no files modified
       expect(mockVerifyAgentTests).not.toHaveBeenCalled();
@@ -675,11 +654,7 @@ describe('subagent-stop hook', () => {
       mockReadHookInput.mockResolvedValue(null);
       mockGetAgentTracking.mockResolvedValue(null);
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should still respond with continue: true
       const responseCall = mockRespond.mock.calls[0][0];
@@ -700,11 +675,7 @@ describe('subagent-stop hook', () => {
         state: defaultState,
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should update analytics with success: false
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
@@ -729,11 +700,7 @@ describe('subagent-stop hook', () => {
 
       mockGetAgentTracking.mockResolvedValue(null);
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const responseCall = mockRespond.mock.calls[0][0];
       expect(responseCall.continue).toBe(true);
@@ -747,11 +714,7 @@ describe('subagent-stop hook', () => {
         state: defaultState,
       });
 
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const responseCall = mockRespond.mock.calls[0][0];
       expect(responseCall.systemMessage).toBeDefined();
@@ -759,11 +722,7 @@ describe('subagent-stop hook', () => {
     });
 
     it('should include output with all fields', async () => {
-      await import('../subagent-stop.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const responseCall = mockRespond.mock.calls[0][0];
       expect(responseCall.output).toBeDefined();

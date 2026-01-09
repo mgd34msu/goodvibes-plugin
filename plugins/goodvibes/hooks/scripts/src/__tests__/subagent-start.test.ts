@@ -20,150 +20,60 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock fs/promises module
-const mockAccess = vi.fn();
-const mockMkdir = vi.fn();
-const mockReadFile = vi.fn();
-const mockWriteFile = vi.fn();
-const mockRename = vi.fn();
-
-vi.mock('fs/promises', () => ({
-  access: (...args: unknown[]) => mockAccess(...args),
-  mkdir: (...args: unknown[]) => mockMkdir(...args),
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-  rename: (...args: unknown[]) => mockRename(...args),
-}));
-
-// Mock shared module
-const mockRespond = vi.fn();
-const mockReadHookInput = vi.fn();
-const mockDebug = vi.fn();
-const mockLogError = vi.fn();
-const mockLoadAnalytics = vi.fn();
-const mockSaveAnalytics = vi.fn();
-
-vi.mock('../shared/index.js', () => ({
-  respond: (...args: unknown[]) => mockRespond(...args),
-  readHookInput: () => mockReadHookInput(),
-  debug: (...args: unknown[]) => mockDebug(...args),
-  logError: (...args: unknown[]) => mockLogError(...args),
-  loadAnalytics: () => mockLoadAnalytics(),
-  saveAnalytics: (...args: unknown[]) => mockSaveAnalytics(...args),
-}));
-
-// Mock telemetry module
-const mockCleanupStaleAgents = vi.fn();
-const mockGetGitInfo = vi.fn();
-const mockDeriveProjectName = vi.fn();
-
-vi.mock('../telemetry.js', () => ({
-  cleanupStaleAgents: () => mockCleanupStaleAgents(),
-  getGitInfo: (...args: unknown[]) => mockGetGitInfo(...args),
-  deriveProjectName: (...args: unknown[]) => mockDeriveProjectName(...args),
-}));
-
-// Mock subagent-stop/telemetry module
-const mockSaveAgentTracking = vi.fn();
-
-vi.mock('../subagent-stop/telemetry.js', () => ({
-  saveAgentTracking: (...args: unknown[]) => mockSaveAgentTracking(...args),
-}));
-
-// Mock subagent-start/context-injection module
-const mockBuildSubagentContext = vi.fn();
-
-vi.mock('../subagent-start/context-injection.js', () => ({
-  buildSubagentContext: (...args: unknown[]) =>
-    mockBuildSubagentContext(...args),
-}));
-
-// Mock state module
-const mockLoadState = vi.fn();
-const mockSaveState = vi.fn();
-
-vi.mock('../state.js', () => ({
-  loadState: (...args: unknown[]) => mockLoadState(...args),
-  saveState: (...args: unknown[]) => mockSaveState(...args),
-}));
-
 describe('subagent-start hook', () => {
   const originalDateNow = Date.now;
   const originalProcessCwd = process.cwd;
   const fixedTimestamp = 1704067200000; // 2024-01-01T00:00:00.000Z
 
+  // Mock functions
+  let mockAccess: ReturnType<typeof vi.fn>;
+  let mockMkdir: ReturnType<typeof vi.fn>;
+  let mockReadFile: ReturnType<typeof vi.fn>;
+  let mockWriteFile: ReturnType<typeof vi.fn>;
+  let mockRename: ReturnType<typeof vi.fn>;
+  let mockRespond: ReturnType<typeof vi.fn>;
+  let mockReadHookInput: ReturnType<typeof vi.fn>;
+  let mockDebug: ReturnType<typeof vi.fn>;
+  let mockLogError: ReturnType<typeof vi.fn>;
+  let mockLoadAnalytics: ReturnType<typeof vi.fn>;
+  let mockSaveAnalytics: ReturnType<typeof vi.fn>;
+  let mockCleanupStaleAgents: ReturnType<typeof vi.fn>;
+  let mockGetGitInfo: ReturnType<typeof vi.fn>;
+  let mockDeriveProjectName: ReturnType<typeof vi.fn>;
+  let mockSaveAgentTracking: ReturnType<typeof vi.fn>;
+  let mockBuildSubagentContext: ReturnType<typeof vi.fn>;
+  let mockLoadState: ReturnType<typeof vi.fn>;
+  let mockSaveState: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+
+    // Initialize mock functions
+    mockAccess = vi.fn();
+    mockMkdir = vi.fn();
+    mockReadFile = vi.fn();
+    mockWriteFile = vi.fn();
+    mockRename = vi.fn();
+    mockRespond = vi.fn();
+    mockReadHookInput = vi.fn();
+    mockDebug = vi.fn();
+    mockLogError = vi.fn();
+    mockLoadAnalytics = vi.fn();
+    mockSaveAnalytics = vi.fn();
+    mockCleanupStaleAgents = vi.fn();
+    mockGetGitInfo = vi.fn();
+    mockDeriveProjectName = vi.fn();
+    mockSaveAgentTracking = vi.fn();
+    mockBuildSubagentContext = vi.fn();
+    mockLoadState = vi.fn();
+    mockSaveState = vi.fn();
 
     // Mock Date.now for consistent timestamps
     Date.now = vi.fn(() => fixedTimestamp);
 
     // Mock process.cwd for fallback testing
     process.cwd = vi.fn(() => '/fallback/cwd');
-
-    // Default mock implementations
-    mockReadHookInput.mockResolvedValue({
-      session_id: 'test-session-123',
-      cwd: '/test/project',
-      hook_event_name: 'SubagentStart',
-      transcript_path: '/test/transcript',
-      permission_mode: 'default',
-      agent_id: 'agent-abc',
-      agent_type: 'test-engineer',
-      task_description: 'Run unit tests for the login module',
-    });
-
-    mockCleanupStaleAgents.mockResolvedValue(0);
-    mockGetGitInfo.mockReturnValue({ branch: 'main', commit: 'abc1234' });
-    mockDeriveProjectName.mockReturnValue('test-project');
-    mockSaveAgentTracking.mockResolvedValue(undefined);
-    mockLoadAnalytics.mockResolvedValue({
-      session_id: 'test-session-123',
-      started_at: '2024-01-01T00:00:00.000Z',
-      tool_usage: [],
-      skills_recommended: [],
-      validations_run: 0,
-      issues_found: 0,
-      subagents_spawned: [],
-    });
-    mockSaveAnalytics.mockResolvedValue(undefined);
-    mockLoadState.mockResolvedValue({
-      session: {
-        id: '',
-        startedAt: '',
-        mode: 'default',
-        featureDescription: null,
-      },
-      errors: {},
-      tests: {
-        lastFullRun: null,
-        lastQuickRun: null,
-        passingFiles: [],
-        failingFiles: [],
-        pendingFixes: [],
-      },
-      build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
-      git: {
-        mainBranch: 'main',
-        currentBranch: 'main',
-        featureBranch: null,
-        featureStartedAt: null,
-        featureDescription: null,
-        checkpoints: [],
-        pendingMerge: false,
-      },
-      files: {
-        modifiedSinceCheckpoint: [],
-        modifiedThisSession: [],
-        createdThisSession: [],
-      },
-      devServers: {},
-    });
-    mockSaveState.mockResolvedValue(undefined);
-    mockBuildSubagentContext.mockResolvedValue({
-      additionalContext: '[GoodVibes] Project: test-project\nMode: autonomous',
-    });
   });
 
   afterEach(() => {
@@ -172,13 +82,153 @@ describe('subagent-start hook', () => {
     vi.resetModules();
   });
 
+  async function setupMocksAndImport() {
+    // Set default mock implementations if not already set
+    if (!mockReadHookInput.getMockImplementation()) {
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'test-session-123',
+        cwd: '/test/project',
+        hook_event_name: 'SubagentStart',
+        transcript_path: '/test/transcript',
+        permission_mode: 'default',
+        agent_id: 'agent-abc',
+        agent_type: 'test-engineer',
+        task_description: 'Run unit tests for the login module',
+      });
+    }
+
+    if (!mockCleanupStaleAgents.getMockImplementation()) {
+      mockCleanupStaleAgents.mockResolvedValue(0);
+    }
+
+    if (!mockGetGitInfo.getMockImplementation()) {
+      mockGetGitInfo.mockReturnValue({ branch: 'main', commit: 'abc1234' });
+    }
+
+    if (!mockDeriveProjectName.getMockImplementation()) {
+      mockDeriveProjectName.mockReturnValue('test-project');
+    }
+
+    if (!mockSaveAgentTracking.getMockImplementation()) {
+      mockSaveAgentTracking.mockResolvedValue(undefined);
+    }
+
+    if (!mockLoadAnalytics.getMockImplementation()) {
+      mockLoadAnalytics.mockResolvedValue({
+        session_id: 'test-session-123',
+        started_at: '2024-01-01T00:00:00.000Z',
+        tool_usage: [],
+        skills_recommended: [],
+        validations_run: 0,
+        issues_found: 0,
+        subagents_spawned: [],
+      });
+    }
+
+    if (!mockSaveAnalytics.getMockImplementation()) {
+      mockSaveAnalytics.mockResolvedValue(undefined);
+    }
+
+    if (!mockLoadState.getMockImplementation()) {
+      mockLoadState.mockResolvedValue({
+        session: {
+          id: '',
+          startedAt: '',
+          mode: 'default',
+          featureDescription: null,
+        },
+        errors: {},
+        tests: {
+          lastFullRun: null,
+          lastQuickRun: null,
+          passingFiles: [],
+          failingFiles: [],
+          pendingFixes: [],
+        },
+        build: { lastRun: null, status: 'unknown', errors: [], fixAttempts: 0 },
+        git: {
+          mainBranch: 'main',
+          currentBranch: 'main',
+          featureBranch: null,
+          featureStartedAt: null,
+          featureDescription: null,
+          checkpoints: [],
+          pendingMerge: false,
+        },
+        files: {
+          modifiedSinceCheckpoint: [],
+          modifiedThisSession: [],
+          createdThisSession: [],
+        },
+        devServers: {},
+      });
+    }
+
+    if (!mockSaveState.getMockImplementation()) {
+      mockSaveState.mockResolvedValue(undefined);
+    }
+
+    if (!mockBuildSubagentContext.getMockImplementation()) {
+      mockBuildSubagentContext.mockResolvedValue({
+        additionalContext: '[GoodVibes] Project: test-project\nMode: autonomous',
+      });
+    }
+
+    // Mock fs/promises
+    vi.doMock('fs/promises', () => ({
+      access: mockAccess,
+      mkdir: mockMkdir,
+      readFile: mockReadFile,
+      writeFile: mockWriteFile,
+      rename: mockRename,
+    }));
+
+    // Mock shared module with isTestEnvironment = false so hook runs
+    vi.doMock('../shared/index.js', () => ({
+      respond: mockRespond,
+      readHookInput: mockReadHookInput,
+      debug: mockDebug,
+      logError: mockLogError,
+      loadAnalytics: mockLoadAnalytics,
+      saveAnalytics: mockSaveAnalytics,
+      isTestEnvironment: () => false,
+    }));
+
+    // Mock telemetry module
+    vi.doMock('../telemetry/index.js', () => ({
+      cleanupStaleAgents: mockCleanupStaleAgents,
+      getGitInfo: mockGetGitInfo,
+      deriveProjectName: mockDeriveProjectName,
+      getActiveAgentsFilePath: vi.fn(() => '/test/.goodvibes/state/active-agents.json'),
+    }));
+
+    // Mock subagent-stop/telemetry module
+    vi.doMock('../subagent-stop/telemetry.js', () => ({
+      saveAgentTracking: mockSaveAgentTracking,
+    }));
+
+    // Mock subagent-start/context-injection module
+    vi.doMock('../subagent-start/context-injection.js', () => ({
+      buildSubagentContext: mockBuildSubagentContext,
+    }));
+
+    // Mock state module
+    vi.doMock('../state/index.js', () => ({
+      loadState: mockLoadState,
+      saveState: mockSaveState,
+    }));
+
+    // Import the module (this triggers the hook)
+    await import('../subagent-start/index.js');
+
+    // Allow async operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await vi.waitFor(() => expect(mockRespond).toHaveBeenCalled(), { timeout: 1000 });
+  }
+
   describe('runSubagentStartHook', () => {
     it('should complete successful initialization with all steps', async () => {
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Verify initialization sequence
       expect(mockDebug).toHaveBeenCalledWith('SubagentStart hook starting');
@@ -266,11 +316,7 @@ describe('subagent-start hook', () => {
         agent_type: 'backend-engineer',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -290,11 +336,7 @@ describe('subagent-start hook', () => {
         agent_type: 'frontend-architect',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should generate agent_id with timestamp format
       expect(mockDebug).toHaveBeenCalledWith(
@@ -316,11 +358,7 @@ describe('subagent-start hook', () => {
         subagent_type: 'devops-deployer',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -340,11 +378,7 @@ describe('subagent-start hook', () => {
         agent_id: 'agent-abc',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -366,11 +400,7 @@ describe('subagent-start hook', () => {
         task: 'Alternative task field',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -391,11 +421,7 @@ describe('subagent-start hook', () => {
         agent_type: 'test-engineer',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -415,11 +441,7 @@ describe('subagent-start hook', () => {
         agent_type: 'test-engineer',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockGetGitInfo).toHaveBeenCalledWith('/fallback/cwd');
       expect(mockDeriveProjectName).toHaveBeenCalledWith('/fallback/cwd');
@@ -435,11 +457,7 @@ describe('subagent-start hook', () => {
         agent_type: 'test-engineer',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -462,11 +480,7 @@ describe('subagent-start hook', () => {
         task_description: longTask,
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'SubagentStart received input',
@@ -489,11 +503,7 @@ describe('subagent-start hook', () => {
         task_description: longTask,
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -509,11 +519,7 @@ describe('subagent-start hook', () => {
     it('should handle null analytics gracefully', async () => {
       mockLoadAnalytics.mockResolvedValue(null);
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should not attempt to save analytics when loadAnalytics returns null
       expect(mockSaveAnalytics).not.toHaveBeenCalled();
@@ -530,11 +536,7 @@ describe('subagent-start hook', () => {
         // subagents_spawned is undefined
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -581,11 +583,7 @@ describe('subagent-start hook', () => {
         devServers: {},
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveState).toHaveBeenCalledWith(
         '/test/project',
@@ -631,11 +629,7 @@ describe('subagent-start hook', () => {
         devServers: {},
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockSaveState).not.toHaveBeenCalled();
     });
@@ -684,11 +678,7 @@ describe('subagent-start hook', () => {
         devServers: {},
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should not save state when sessionId is empty
       expect(mockSaveState).not.toHaveBeenCalled();
@@ -708,11 +698,7 @@ describe('subagent-start hook', () => {
         detected_stack: { framework: 'react', language: 'typescript' },
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).toContain('Detected stack:');
@@ -725,11 +711,7 @@ describe('subagent-start hook', () => {
         commit: 'def5678',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).toContain(
@@ -740,11 +722,7 @@ describe('subagent-start hook', () => {
     it('should not add git branch reminder when branch is undefined', async () => {
       mockGetGitInfo.mockReturnValue({ commit: 'abc1234' });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).not.toContain('Git branch:');
@@ -753,11 +731,7 @@ describe('subagent-start hook', () => {
     it('should add project name to reminders', async () => {
       mockDeriveProjectName.mockReturnValue('my-awesome-project');
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).toContain(
@@ -771,11 +745,7 @@ describe('subagent-start hook', () => {
           '[GoodVibes] Project: test-project\nMode: autonomous',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       // Should contain both the original context and reminders
@@ -790,11 +760,7 @@ describe('subagent-start hook', () => {
         additionalContext: '',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).toContain(
@@ -805,11 +771,7 @@ describe('subagent-start hook', () => {
     it('should handle undefined additionalContext from subagent context', async () => {
       mockBuildSubagentContext.mockResolvedValue({});
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).toContain(
@@ -834,6 +796,7 @@ describe('subagent-start hook', () => {
 
     for (const agentType of goodvibesAgentTypes) {
       it(`should generate system message for GoodVibes agent: ${agentType}`, async () => {
+        // Set up mock for this specific agent type
         mockReadHookInput.mockResolvedValue({
           session_id: 'test-session-123',
           cwd: '/test/project',
@@ -844,11 +807,8 @@ describe('subagent-start hook', () => {
           agent_type: agentType,
         });
 
-        await import('../subagent-start.js');
-
-        await vi.waitFor(() => {
-          expect(mockRespond).toHaveBeenCalled();
-        });
+        // Use setupMocksAndImport to ensure proper module reset and mock setup
+        await setupMocksAndImport();
 
         const respondCall = mockRespond.mock.calls[0][0];
         expect(respondCall.systemMessage).toContain('[GoodVibes]');
@@ -856,10 +816,6 @@ describe('subagent-start hook', () => {
           `Agent ${agentType} starting`
         );
         expect(respondCall.systemMessage).toContain('Project: test-project');
-
-        // Reset for next iteration
-        vi.clearAllMocks();
-        vi.resetModules();
       });
     }
 
@@ -878,11 +834,7 @@ describe('subagent-start hook', () => {
         commit: 'abc123',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.systemMessage).toContain('Branch: feature/branch');
@@ -900,11 +852,7 @@ describe('subagent-start hook', () => {
       });
       mockGetGitInfo.mockReturnValue({ commit: 'abc123' });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.systemMessage).not.toContain('Branch:');
@@ -921,11 +869,7 @@ describe('subagent-start hook', () => {
         agent_type: 'custom-agent',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'Non-GoodVibes agent started: custom-agent'
@@ -946,11 +890,7 @@ describe('subagent-start hook', () => {
         agent_type: 'unknown',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockDebug).toHaveBeenCalledWith(
         'Non-GoodVibes agent started: unknown'
@@ -962,11 +902,7 @@ describe('subagent-start hook', () => {
     it('should handle error in main hook and respond with continue: true', async () => {
       mockReadHookInput.mockRejectedValue(new Error('Input read failed'));
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockLogError).toHaveBeenCalledWith(
         'SubagentStart main',
@@ -980,11 +916,7 @@ describe('subagent-start hook', () => {
     it('should handle non-Error thrown values in catch block', async () => {
       mockReadHookInput.mockRejectedValue('String error');
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       expect(mockLogError).toHaveBeenCalledWith(
         'SubagentStart main',
@@ -998,11 +930,7 @@ describe('subagent-start hook', () => {
       // This tests the fallback in Object.keys(rawInput || {})
       mockReadHookInput.mockResolvedValue(null);
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       // Should log with empty array for null input
       expect(mockDebug).toHaveBeenCalledWith('Raw input shape:', []);
@@ -1028,11 +956,7 @@ describe('subagent-start hook', () => {
         // No detected_stack
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       // Should contain the original context plus the project reminder
@@ -1059,11 +983,7 @@ describe('subagent-start hook', () => {
       mockLoadAnalytics.mockResolvedValue(null);
       mockGetGitInfo.mockReturnValue({});
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.continue).toBe(true);
@@ -1080,11 +1000,7 @@ describe('subagent-start hook', () => {
         agent_type: 'goodvibes:factory',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.systemMessage).toBeDefined();
@@ -1092,11 +1008,7 @@ describe('subagent-start hook', () => {
     });
 
     it('should include additionalContext when provided', async () => {
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       expect(respondCall.additionalContext).toBeDefined();
@@ -1113,11 +1025,7 @@ describe('subagent-start hook', () => {
         agent_type: 'random-non-goodvibes-agent',
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       // systemMessage should be undefined for non-GoodVibes agents
@@ -1137,11 +1045,7 @@ describe('subagent-start hook', () => {
         // No detected_stack
       });
 
-      await import('../subagent-start.js');
-
-      await vi.waitFor(() => {
-        expect(mockRespond).toHaveBeenCalled();
-      });
+      await setupMocksAndImport();
 
       const respondCall = mockRespond.mock.calls[0][0];
       // Should still have project reminder

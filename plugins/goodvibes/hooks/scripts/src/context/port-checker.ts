@@ -4,10 +4,13 @@
  * Checks for active development server ports on common ports.
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as os from 'os';
+import { promisify } from 'util';
 
 import { debug } from '../shared/logging.js';
+
+const execAsync = promisify(exec);
 
 /** Information about a network port. */
 export interface PortInfo {
@@ -46,12 +49,12 @@ const TASKLIST_TIMEOUT = 5000;
  *
  * @param output - Raw netstat command output
  * @param ports - Array of port numbers to look for
- * @returns Map of port numbers to process names
+ * @returns Promise resolving to a map of port numbers to process names
  */
-function parseWindowsNetstat(
+async function parseWindowsNetstat(
   output: string,
   ports: number[]
-): Map<number, string> {
+): Promise<Map<number, string>> {
   const portMap = new Map<number, string>();
   const lines = output.split('\n');
 
@@ -89,7 +92,7 @@ function parseWindowsNetstat(
 
       if (pid) {
         try {
-          const tasklistOutput = execSync(
+          const { stdout } = await execAsync(
             `tasklist /FI "PID eq ${pid}" /FO CSV /NH`,
             {
               encoding: 'utf-8',
@@ -97,7 +100,7 @@ function parseWindowsNetstat(
               windowsHide: true,
             }
           );
-          const match = tasklistOutput.match(/"([^"]+)"/);
+          const match = stdout.match(/"([^"]+)"/);
           if (match) {
             processName = match[1].replace('.exe', '');
           }
@@ -206,16 +209,16 @@ function parseUnixNetstat(
  * Uses netstat -ano to get listening ports with PIDs, then tasklist to resolve names.
  *
  * @param ports - Array of port numbers to check
- * @returns Map of active port numbers to process names
+ * @returns Promise resolving to a map of active port numbers to process names
  */
-function checkPortsWindows(ports: number[]): Map<number, string> {
+async function checkPortsWindows(ports: number[]): Promise<Map<number, string>> {
   try {
-    const output = execSync('netstat -ano -p TCP', {
+    const { stdout } = await execAsync('netstat -ano -p TCP', {
       encoding: 'utf-8',
       timeout: COMMAND_TIMEOUT,
       windowsHide: true,
     });
-    return parseWindowsNetstat(output, ports);
+    return parseWindowsNetstat(stdout, ports);
   } catch (error: unknown) {
     debug('checkPortsWindows failed', { error: String(error) });
     return new Map();
@@ -227,26 +230,26 @@ function checkPortsWindows(ports: number[]): Map<number, string> {
  * Tries lsof first for better process name resolution, falls back to netstat.
  *
  * @param ports - Array of port numbers to check
- * @returns Map of active port numbers to process names
+ * @returns Promise resolving to a map of active port numbers to process names
  */
-function checkPortsUnix(ports: number[]): Map<number, string> {
+async function checkPortsUnix(ports: number[]): Promise<Map<number, string>> {
   // Try lsof first (more reliable for process names)
   try {
     const portsArg = ports.map((port) => `-i:${port}`).join(' ');
-    const output = execSync(`lsof ${portsArg} 2>/dev/null`, {
+    const { stdout } = await execAsync(`lsof ${portsArg} 2>/dev/null`, {
       encoding: 'utf-8',
       timeout: COMMAND_TIMEOUT,
     });
-    return parseUnixLsof(output, ports);
+    return parseUnixLsof(stdout, ports);
   } catch (error: unknown) {
     debug('checkPortsUnix lsof failed', { error: String(error) });
     // Fall back to netstat
     try {
-      const output = execSync('netstat -tlnp 2>/dev/null || netstat -tln', {
+      const { stdout } = await execAsync('netstat -tlnp 2>/dev/null || netstat -tln', {
         encoding: 'utf-8',
         timeout: COMMAND_TIMEOUT,
       });
-      return parseUnixNetstat(output, ports);
+      return parseUnixNetstat(stdout, ports);
     } catch (error: unknown) {
       debug('checkPortsUnix netstat failed', { error: String(error) });
       return new Map();
@@ -271,9 +274,9 @@ export async function checkPorts(_cwd: string): Promise<PortInfo[]> {
   let activePortsMap: Map<number, string>;
 
   if (platform === 'win32') {
-    activePortsMap = checkPortsWindows(COMMON_DEV_PORTS);
+    activePortsMap = await checkPortsWindows(COMMON_DEV_PORTS);
   } else {
-    activePortsMap = checkPortsUnix(COMMON_DEV_PORTS);
+    activePortsMap = await checkPortsUnix(COMMON_DEV_PORTS);
   }
 
   return COMMON_DEV_PORTS.map((port) => ({

@@ -9,6 +9,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  createChildProcessMock,
+  createChildProcessFailureMock,
+  createSharedMock,
+} from '../helpers/test-utils.js';
 
 describe('test-runner', () => {
   beforeEach(() => {
@@ -175,7 +180,7 @@ describe('test-runner', () => {
   describe('runTests', () => {
     it('should return success when no test files provided', async () => {
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests([], '/test/project');
+      const result = await runTests([], '/test/project');
 
       expect(result.passed).toBe(true);
       expect(result.summary).toBe('No tests to run');
@@ -183,12 +188,12 @@ describe('test-runner', () => {
     });
 
     it('should return success when tests pass', async () => {
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('All tests passed')),
-      }));
+      vi.doMock('child_process', () =>
+        createChildProcessMock('All tests passed')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/test.test.ts'], '/test/project');
+      const result = await runTests(['src/test.test.ts'], '/test/project');
 
       expect(result.passed).toBe(true);
       expect(result.summary).toBe('1 test files passed');
@@ -196,12 +201,12 @@ describe('test-runner', () => {
     });
 
     it('should return success with correct count for multiple test files', async () => {
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('All tests passed')),
-      }));
+      vi.doMock('child_process', () =>
+        createChildProcessMock('All tests passed')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(
+      const result = await runTests(
         ['src/a.test.ts', 'src/b.test.ts', 'src/c.test.ts'],
         '/test/project'
       );
@@ -210,18 +215,21 @@ describe('test-runner', () => {
       expect(result.summary).toBe('3 test files passed');
     });
 
-    it('should call execSync with correct arguments', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from('ok'));
+    it('should call exec with correct arguments', async () => {
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, 'ok', '');
+      });
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runTests } = await import('../../automation/test-runner.js');
-      runTests(['src/a.test.ts', 'src/b.test.ts'], '/my/project');
+      await runTests(['src/a.test.ts', 'src/b.test.ts'], '/my/project');
 
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         'npm test -- src/a.test.ts src/b.test.ts',
-        { cwd: '/my/project', stdio: 'pipe', timeout: 300000 }
+        { cwd: '/my/project', timeout: 300000 },
+        expect.any(Function)
       );
     });
 
@@ -232,34 +240,18 @@ describe('test-runner', () => {
   Received: false
   at Object.<anonymous>`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi
-          .fn()
-          .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-              return (
-                error.stdout?.toString() ||
-                error.stderr?.toString() ||
-                error.message
-              );
-            }
-          ),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(testOutput);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/utils/format.test.ts'], '/test/project');
+      const result = await runTests(
+        ['src/utils/format.test.ts'],
+        '/test/project'
+      );
 
       expect(result.passed).toBe(false);
       expect(result.summary).toBe('Tests failed');
@@ -276,34 +268,15 @@ FAIL src/b.test.tsx
   Error in test b
   line 2`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi
-          .fn()
-          .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-              return (
-                error.stdout?.toString() ||
-                error.stderr?.toString() ||
-                error.message
-              );
-            }
-          ),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(testOutput);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(
+      const result = await runTests(
         ['src/a.test.ts', 'src/b.test.tsx'],
         '/test/project'
       );
@@ -324,34 +297,15 @@ FAIL src/b.test.tsx
   line 5
   line 6`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi
-          .fn()
-          .mockImplementation(
-            (error: Error & { stdout?: Buffer; stderr?: Buffer }) => {
-              return (
-                error.stdout?.toString() ||
-                error.stderr?.toString() ||
-                error.message
-              );
-            }
-          ),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          const error = new Error('Tests failed') as Error & {
-            stdout?: Buffer;
-            stderr?: Buffer;
-          };
-          error.stdout = Buffer.from(testOutput);
-          error.stderr = Buffer.from('');
-          throw error;
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/test.test.ts'], '/test/project');
+      const result = await runTests(['src/test.test.ts'], '/test/project');
 
       // Should include FAIL line + 4 more lines (5 total)
       expect(result.failures[0].error).toContain('FAIL src/test.test.ts');
@@ -366,18 +320,15 @@ FAIL src/b.test.tsx
       const testOutput = `FAIL src/legacy.test.js
   Legacy test failure`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Tests failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/legacy.test.js'], '/test/project');
+      const result = await runTests(['src/legacy.test.js'], '/test/project');
 
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].testFile).toBe('src/legacy.test.js');
@@ -387,18 +338,15 @@ FAIL src/b.test.tsx
       const testOutput = `FAIL src/component.test.jsx
   Component test failure`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Tests failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/component.test.jsx'], '/test/project');
+      const result = await runTests(['src/component.test.jsx'], '/test/project');
 
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].testFile).toBe('src/component.test.jsx');
@@ -409,18 +357,15 @@ FAIL src/b.test.tsx
 npm ERR! code ELIFECYCLE
 npm ERR! errno 1`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Tests failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/test.test.ts'], '/test/project');
+      const result = await runTests(['src/test.test.ts'], '/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.summary).toBe('Tests failed');
@@ -431,18 +376,15 @@ npm ERR! errno 1`;
       const testOutput = `FAIL src/short.test.ts
   only two lines`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Tests failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/short.test.ts'], '/test/project');
+      const result = await runTests(['src/short.test.ts'], '/test/project');
 
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].testFile).toBe('src/short.test.ts');
@@ -454,18 +396,15 @@ npm ERR! errno 1`;
       const testOutput = `Some preamble
 FAIL src/last.test.ts`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Tests failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['src/last.test.ts'], '/test/project');
+      const result = await runTests(['src/last.test.ts'], '/test/project');
 
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].testFile).toBe('src/last.test.ts');
@@ -477,34 +416,36 @@ FAIL src/last.test.ts`;
   // =============================================================================
   describe('runFullTestSuite', () => {
     it('should return success when all tests pass', async () => {
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('All tests passed')),
-      }));
+      vi.doMock('child_process', () =>
+        createChildProcessMock('All tests passed')
+      );
 
       const { runFullTestSuite } =
         await import('../../automation/test-runner.js');
-      const result = runFullTestSuite('/test/project');
+      const result = await runFullTestSuite('/test/project');
 
       expect(result.passed).toBe(true);
       expect(result.summary).toBe('All tests passed');
       expect(result.failures).toHaveLength(0);
     });
 
-    it('should call execSync with correct arguments', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from('ok'));
+    it('should call exec with correct arguments', async () => {
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, 'ok', '');
+      });
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runFullTestSuite } =
         await import('../../automation/test-runner.js');
-      runFullTestSuite('/my/project');
+      await runFullTestSuite('/my/project');
 
-      expect(mockExecSync).toHaveBeenCalledWith('npm test', {
-        cwd: '/my/project',
-        stdio: 'pipe',
-        timeout: 600000,
-      });
+      expect(mockExec).toHaveBeenCalledWith(
+        'npm test',
+        { cwd: '/my/project', timeout: 600000 },
+        expect.any(Function)
+      );
     });
 
     it('should return failure with parsed failures when tests fail', async () => {
@@ -515,19 +456,16 @@ FAIL src/last.test.ts`;
 FAIL src/db.test.ts
   DB test failed`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Tests failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Tests failed', testOutput, '')
+      );
 
       const { runFullTestSuite } =
         await import('../../automation/test-runner.js');
-      const result = runFullTestSuite('/test/project');
+      const result = await runFullTestSuite('/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.summary).toBe('Tests failed');
@@ -540,37 +478,37 @@ FAIL src/db.test.ts
       const testOutput = `npm ERR! Test failed.
 See npm-debug.log for more info.`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('npm ERR!');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('npm ERR!', testOutput, '')
+      );
 
       const { runFullTestSuite } =
         await import('../../automation/test-runner.js');
-      const result = runFullTestSuite('/test/project');
+      const result = await runFullTestSuite('/test/project');
 
       expect(result.passed).toBe(false);
       expect(result.failures).toHaveLength(0);
     });
 
     it('should use 600000ms timeout for full test suite', async () => {
-      const mockExecSync = vi.fn().mockReturnValue(Buffer.from('ok'));
+      const mockExec = vi.fn((cmd, opts, callback) => {
+        callback(null, 'ok', '');
+      });
       vi.doMock('child_process', () => ({
-        execSync: mockExecSync,
+        exec: mockExec,
       }));
 
       const { runFullTestSuite } =
         await import('../../automation/test-runner.js');
-      runFullTestSuite('/test/project');
+      await runFullTestSuite('/test/project');
 
-      expect(mockExecSync).toHaveBeenCalledWith(
+      expect(mockExec).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ timeout: 600000 })
+        expect.objectContaining({ timeout: 600000 }),
+        expect.any(Function)
       );
     });
 
@@ -583,19 +521,16 @@ See npm-debug.log for more info.`;
   context line 5
   context line 6`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Test failure');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Test failure', testOutput, '')
+      );
 
       const { runFullTestSuite } =
         await import('../../automation/test-runner.js');
-      const result = runFullTestSuite('/test/project');
+      const result = await runFullTestSuite('/test/project');
 
       // FAILURE_CONTEXT_LINES = 5
       expect(result.failures[0].error).toContain('context line 1');
@@ -609,35 +544,29 @@ See npm-debug.log for more info.`;
   // =============================================================================
   describe('parseTestFailures behavior', () => {
     it('should handle empty output', async () => {
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(''),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Error');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => '' })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Error', '', '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures).toHaveLength(0);
     });
 
     it('should handle output with only newlines', async () => {
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue('\n\n\n'),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Error');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => '\n\n\n' })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Error', '\n\n\n', '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures).toHaveLength(0);
     });
@@ -646,18 +575,15 @@ See npm-debug.log for more info.`;
       const testOutput = `FAIL src/not-a-test.ts
   This should not be parsed`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Error');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Error', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures).toHaveLength(0);
     });
@@ -670,18 +596,15 @@ FAIL packages/core/test.test.tsx
 FAIL test.test.js
   Error 3`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Error');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Error', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures).toHaveLength(3);
       expect(result.failures[0].testFile).toBe('./src/test.test.ts');
@@ -693,18 +616,15 @@ FAIL test.test.js
       const testOutput = `FAIL    src/spaced.test.ts
   Error with extra spaces`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Error');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Error', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].testFile).toBe('src/spaced.test.ts');
@@ -714,18 +634,15 @@ FAIL test.test.js
       const testOutput = `FAIL src/a.test.ts
 FAIL src/b.test.tsx`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Error');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Error', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures[0].testName).toBe('unknown');
       expect(result.failures[1].testName).toBe('unknown');
@@ -737,12 +654,10 @@ FAIL src/b.test.tsx`;
   // =============================================================================
   describe('TestResult interface', () => {
     it('should have correct structure for passed result', async () => {
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockReturnValue(Buffer.from('ok')),
-      }));
+      vi.doMock('child_process', () => createChildProcessMock('ok'));
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result).toHaveProperty('passed');
       expect(result).toHaveProperty('summary');
@@ -756,18 +671,15 @@ FAIL src/b.test.tsx`;
       const testOutput = `FAIL src/test.test.ts
   Error message`;
 
-      vi.doMock('../../shared/index.js', () => ({
-        extractErrorOutput: vi.fn().mockReturnValue(testOutput),
-      }));
-
-      vi.doMock('child_process', () => ({
-        execSync: vi.fn().mockImplementation(() => {
-          throw new Error('Failed');
-        }),
-      }));
+      vi.doMock('../../shared/index.js', () =>
+        createSharedMock({ extractErrorOutput: () => testOutput })
+      );
+      vi.doMock('child_process', () =>
+        createChildProcessFailureMock('Failed', testOutput, '')
+      );
 
       const { runTests } = await import('../../automation/test-runner.js');
-      const result = runTests(['test.test.ts'], '/project');
+      const result = await runTests(['test.test.ts'], '/project');
 
       expect(result.failures[0]).toHaveProperty('testFile');
       expect(result.failures[0]).toHaveProperty('testName');

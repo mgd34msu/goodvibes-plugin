@@ -35,6 +35,7 @@ vi.mock('../../shared/index.js', () => ({
   debug: vi.fn(),
   logError: vi.fn(),
   ensureGoodVibesDir: vi.fn(),
+  isTestEnvironment: () => false,
 }));
 
 // Import mocked modules

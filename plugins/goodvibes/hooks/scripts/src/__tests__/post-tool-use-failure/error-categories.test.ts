@@ -17,10 +17,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type {
   RecoveryPattern,
   ErrorSeverity,
-} from '../../post-tool-use-failure/error-patterns.js';
+} from '../../post-tool-use-failure/recovery-types.js';
 import type { ErrorCategory } from '../../types/errors.js';
 
-// Mock the error-patterns module
+// Mock the recovery-patterns module
 const mockRecoveryPatterns: RecoveryPattern[] = [
   {
     category: 'npm_error',
@@ -151,7 +151,7 @@ const mockRecoveryPatterns: RecoveryPattern[] = [
   },
 ];
 
-vi.mock('../../post-tool-use-failure/error-patterns.js', () => ({
+vi.mock('../../post-tool-use-failure/recovery-patterns.js', () => ({
   RECOVERY_PATTERNS: mockRecoveryPatterns,
 }));
 
