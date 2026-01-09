@@ -69,6 +69,12 @@ import {
   handleListTemplates,
   // Issues
   handleProjectIssues,
+  // LSP Tools
+  handleFindReferences,
+  handleGoToDefinition,
+  handleRenameSymbol,
+  handleGetCodeActions,
+  handleApplyCodeAction,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
@@ -81,6 +87,11 @@ import {
   type ScaffoldProjectArgs,
   type ListTemplatesArgs,
   type ProjectIssuesArgs,
+  type FindReferencesArgs,
+  type GoToDefinitionArgs,
+  type RenameSymbolArgs,
+  type GetCodeActionsArgs,
+  type ApplyCodeActionArgs,
 } from "./handlers/index.js";
 
 /**
@@ -107,6 +118,11 @@ type ToolArgs =
     | ScaffoldProjectArgs
     | ListTemplatesArgs
     | ProjectIssuesArgs
+    | FindReferencesArgs
+    | GoToDefinitionArgs
+    | RenameSymbolArgs
+    | GetCodeActionsArgs
+    | ApplyCodeActionArgs
     | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
@@ -189,6 +205,18 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   plugin_status: () => handlePluginStatus(),
   project_issues: (_ctx, args) =>
     handleProjectIssues(args as ProjectIssuesArgs),
+
+  // LSP Tools
+  find_references: (_ctx, args) =>
+    handleFindReferences(args as FindReferencesArgs),
+  go_to_definition: (_ctx, args) =>
+    handleGoToDefinition(args as GoToDefinitionArgs),
+  rename_symbol: (_ctx, args) =>
+    handleRenameSymbol(args as RenameSymbolArgs),
+  get_code_actions: (_ctx, args) =>
+    handleGetCodeActions(args as GetCodeActionsArgs),
+  apply_code_action: (_ctx, args) =>
+    handleApplyCodeAction(args as ApplyCodeActionArgs),
 };
 
 /**

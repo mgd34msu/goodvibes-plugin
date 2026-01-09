@@ -1,0 +1,160 @@
+name: get_code_actions
+version: "1.0.0"
+description: |
+  Get available code actions (quick fixes, refactorings) at a position.
+  Returns TypeScript Language Service code fixes and refactoring suggestions
+  that can be applied to fix errors or improve code quality.
+
+category: lsp
+tags:
+  - typescript
+  - quickfix
+  - refactoring
+  - code-actions
+
+mcp:
+  server: goodvibes-tools
+  method: get_code_actions
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "File path (relative to project root or absolute)"
+    line:
+      type: number
+      description: "Start line number (1-based)"
+    column:
+      type: number
+      description: "Start column number (1-based)"
+    end_line:
+      type: number
+      description: "End line number (optional, for range selection)"
+    end_column:
+      type: number
+      description: "End column number (optional, for range selection)"
+    only:
+      type: array
+      items:
+        type: string
+      description: "Filter to specific action kinds (e.g., 'quickfix', 'refactor')"
+  required:
+    - file
+    - line
+    - column
+
+output_schema:
+  type: object
+  properties:
+    actions:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+            description: "Unique identifier for this action"
+          title:
+            type: string
+            description: "Human-readable action title"
+          kind:
+            type: string
+            description: "Action kind (e.g., 'quickfix.addMissingImport')"
+          is_preferred:
+            type: boolean
+            description: "Whether this is the preferred action"
+          edits:
+            type: array
+            items:
+              type: object
+              properties:
+                file:
+                  type: string
+                start:
+                  type: object
+                  properties:
+                    line:
+                      type: number
+                    column:
+                      type: number
+                end:
+                  type: object
+                  properties:
+                    line:
+                      type: number
+                    column:
+                      type: number
+                new_text:
+                  type: string
+    count:
+      type: integer
+      description: "Number of available actions"
+    diagnostics:
+      type: array
+      description: "Diagnostics at the position"
+      items:
+        type: object
+        properties:
+          code:
+            type: number
+          message:
+            type: string
+          line:
+            type: number
+          column:
+            type: number
+          category:
+            type: string
+
+examples:
+  - description: "Get code actions for missing import"
+    input:
+      file: "src/components/Button.tsx"
+      line: 5
+      column: 10
+    output:
+      actions:
+        - id: "a1b2c3d4e5f6"
+          title: "Add import from 'react'"
+          kind: "quickfix.addMissingImport"
+          is_preferred: true
+          edits:
+            - file: "src/components/Button.tsx"
+              start: { line: 1, column: 1 }
+              end: { line: 1, column: 1 }
+              new_text: "import { useState } from 'react';\n"
+      count: 1
+      diagnostics:
+        - code: 2304
+          message: "Cannot find name 'useState'."
+          line: 5
+          column: 10
+          category: "error"
+
+  - description: "Get refactoring actions for a selection"
+    input:
+      file: "src/utils/helpers.ts"
+      line: 10
+      column: 5
+      end_line: 15
+      end_column: 20
+      only: ["refactor"]
+    output:
+      actions:
+        - id: "f1e2d3c4b5a6"
+          title: "Extract to function in module scope"
+          kind: "refactor.extract.function"
+          is_preferred: false
+          edits:
+            - file: "src/utils/helpers.ts"
+              start: { line: 10, column: 5 }
+              end: { line: 15, column: 20 }
+              new_text: "extractedFunction()"
+            - file: "src/utils/helpers.ts"
+              start: { line: 1, column: 1 }
+              end: { line: 1, column: 1 }
+              new_text: "function extractedFunction() {\n  // extracted code\n}\n\n"
+      count: 1
+      diagnostics: []

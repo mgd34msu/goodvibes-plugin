@@ -1,0 +1,126 @@
+name: rename_symbol
+version: "1.0.0"
+description: |
+  Get all edits needed to rename a symbol across the codebase.
+  Returns file locations and text changes to apply for a safe rename.
+  Uses TypeScript Language Service for accurate, semantic renaming.
+
+category: lsp
+tags:
+  - typescript
+  - refactoring
+  - rename
+  - lsp
+
+mcp:
+  server: goodvibes-tools
+  method: rename_symbol
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: number
+      description: Line number (1-based)
+    column:
+      type: number
+      description: Column number (1-based)
+    new_name:
+      type: string
+      description: The new name for the symbol
+  required:
+    - file
+    - line
+    - column
+    - new_name
+
+outputSchema:
+  type: object
+  properties:
+    can_rename:
+      type: boolean
+      description: Whether the rename operation is valid
+    reason:
+      type: string
+      description: If can_rename is false, explains why
+    edits:
+      type: array
+      description: Array of text edits to apply
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path (relative to project root)
+          line:
+            type: integer
+            description: Start line (1-based)
+          column:
+            type: integer
+            description: Start column (1-based)
+          end_line:
+            type: integer
+            description: End line (1-based)
+          end_column:
+            type: integer
+            description: End column (1-based)
+          old_text:
+            type: string
+            description: The original text being replaced
+          new_text:
+            type: string
+            description: The new text (the new name)
+    files_affected:
+      type: array
+      items:
+        type: string
+      description: List of unique files that would be modified
+
+examples:
+  - description: "Rename a function"
+    input:
+      file: "src/utils/helpers.ts"
+      line: 10
+      column: 17
+      new_name: "calculateTotal"
+    output:
+      can_rename: true
+      edits:
+        - file: "src/utils/helpers.ts"
+          line: 10
+          column: 17
+          end_line: 10
+          end_column: 26
+          old_text: "calcTotal"
+          new_text: "calculateTotal"
+        - file: "src/components/Cart.tsx"
+          line: 5
+          column: 10
+          end_line: 5
+          end_column: 19
+          old_text: "calcTotal"
+          new_text: "calculateTotal"
+      files_affected:
+        - "src/utils/helpers.ts"
+        - "src/components/Cart.tsx"
+
+  - description: "Cannot rename - built-in symbol"
+    input:
+      file: "src/index.ts"
+      line: 1
+      column: 1
+      new_name: "myConsole"
+    output:
+      can_rename: false
+      reason: "You cannot rename this element."
+      edits: []
+      files_affected: []
+
+handler:
+  type: native
+  module: lsp
+  function: handleRenameSymbol

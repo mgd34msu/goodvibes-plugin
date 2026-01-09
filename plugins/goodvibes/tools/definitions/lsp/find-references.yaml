@@ -1,0 +1,125 @@
+name: find_references
+version: "1.0.0"
+description: |
+  Find all references to a symbol at a given position.
+  Returns file locations, preview lines, and metadata for each reference.
+  Useful for understanding symbol usage before refactoring.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - references
+  - navigation
+  - refactoring
+
+mcp:
+  server: goodvibes-tools
+  method: find_references
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: number
+      description: Line number (1-based)
+    column:
+      type: number
+      description: Column number (1-based)
+    include_definition:
+      type: boolean
+      description: Include the definition in results
+      default: false
+  required:
+    - file
+    - line
+    - column
+
+outputSchema:
+  type: object
+  properties:
+    references:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path relative to project root
+          line:
+            type: number
+            description: Line number (1-based)
+          column:
+            type: number
+            description: Column number (1-based)
+          preview:
+            type: string
+            description: Preview of the line containing the reference
+          is_definition:
+            type: boolean
+            description: Whether this reference is the definition
+          is_write:
+            type: boolean
+            description: Whether this is a write access (assignment)
+    count:
+      type: number
+      description: Total count of references
+    symbol:
+      type: string
+      description: The symbol name that was searched
+
+handler:
+  type: native
+  module: lsp
+  function: handleFindReferences
+
+examples:
+  - description: "Find all references to a function"
+    input:
+      file: "src/utils.ts"
+      line: 10
+      column: 17
+      include_definition: false
+    output:
+      references:
+        - file: "src/index.ts"
+          line: 5
+          column: 10
+          preview: "import { myFunction } from './utils';"
+          is_definition: false
+          is_write: false
+        - file: "src/components/Button.tsx"
+          line: 23
+          column: 8
+          preview: "const result = myFunction(data);"
+          is_definition: false
+          is_write: false
+      count: 2
+      symbol: "myFunction"
+
+  - description: "Find references including definition"
+    input:
+      file: "src/types.ts"
+      line: 5
+      column: 12
+      include_definition: true
+    output:
+      references:
+        - file: "src/types.ts"
+          line: 5
+          column: 12
+          preview: "export interface User {"
+          is_definition: true
+          is_write: false
+        - file: "src/api.ts"
+          line: 15
+          column: 25
+          preview: "function getUser(): User {"
+          is_definition: false
+          is_write: false
+      count: 2
+      symbol: "User"

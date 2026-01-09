@@ -64,3 +64,19 @@ export type { ScaffoldProjectArgs, ListTemplatesArgs } from './scaffolding.js';
 // Issues
 export { handleProjectIssues } from './issues.js';
 export type { ProjectIssuesArgs } from './issues.js';
+
+// LSP Tools
+export {
+  handleFindReferences,
+  handleGoToDefinition,
+  handleRenameSymbol,
+  handleGetCodeActions,
+  handleApplyCodeAction,
+} from './lsp/index.js';
+export type {
+  FindReferencesArgs,
+  GoToDefinitionArgs,
+  RenameSymbolArgs,
+  GetCodeActionsArgs,
+  ApplyCodeActionArgs,
+} from './lsp/index.js';

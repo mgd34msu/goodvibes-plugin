@@ -1,0 +1,130 @@
+name: apply_code_action
+version: "1.0.0"
+description: |
+  Get the file edits for a code action (does not apply them directly).
+  Retrieves the specific edits for a named code action at a position,
+  allowing you to apply them using the Edit tool.
+
+category: lsp
+tags:
+  - typescript
+  - quickfix
+  - refactoring
+  - code-actions
+
+mcp:
+  server: goodvibes-tools
+  method: apply_code_action
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "File path where the action was retrieved"
+    line:
+      type: number
+      description: "Line where the action was retrieved (1-based)"
+    column:
+      type: number
+      description: "Column where the action was retrieved (1-based)"
+    action_title:
+      type: string
+      description: "The exact title of the action to apply (from get_code_actions)"
+  required:
+    - file
+    - line
+    - column
+    - action_title
+
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+      description: "Whether the action was found and edits retrieved"
+    action_title:
+      type: string
+      description: "The action that was applied"
+    edits:
+      type: array
+      description: "File edits to apply"
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File path (relative to project root)"
+          start:
+            type: object
+            properties:
+              line:
+                type: number
+              column:
+                type: number
+          end:
+            type: object
+            properties:
+              line:
+                type: number
+              column:
+                type: number
+          new_text:
+            type: string
+            description: "Text to insert/replace"
+    files_affected:
+      type: array
+      items:
+        type: string
+      description: "List of files that would be modified"
+
+examples:
+  - description: "Apply auto-import action"
+    input:
+      file: "src/components/Button.tsx"
+      line: 5
+      column: 10
+      action_title: "Add import from 'react'"
+    output:
+      success: true
+      action_title: "Add import from 'react'"
+      edits:
+        - file: "src/components/Button.tsx"
+          start: { line: 1, column: 1 }
+          end: { line: 1, column: 1 }
+          new_text: "import { useState } from 'react';\n"
+      files_affected:
+        - "src/components/Button.tsx"
+
+  - description: "Action not found error"
+    input:
+      file: "src/utils/helpers.ts"
+      line: 10
+      column: 5
+      action_title: "Non-existent action"
+    output:
+      error: "Code action not found: \"Non-existent action\""
+      suggestion: "Run get_code_actions first to see available actions"
+      file: "src/utils/helpers.ts"
+      line: 10
+      column: 5
+
+workflow:
+  description: |
+    Typical workflow for using code actions:
+    1. Use get_code_actions to see available actions at a position
+    2. Choose an action from the list
+    3. Use apply_code_action to get the specific edits
+    4. Apply each edit using the Edit tool
+
+    Example:
+    ```
+    # Step 1: Get available actions
+    get_code_actions file="src/api.ts" line=10 column=5
+
+    # Step 2: Apply a specific action
+    apply_code_action file="src/api.ts" line=10 column=5 action_title="Add import from '@/lib/db'"
+
+    # Step 3: Apply the returned edits using Edit tool
+    ```

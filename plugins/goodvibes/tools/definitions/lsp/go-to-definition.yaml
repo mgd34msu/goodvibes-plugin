@@ -1,0 +1,128 @@
+name: go_to_definition
+version: "1.0.0"
+description: |
+  Go to the definition of a symbol at a given position.
+  Uses TypeScript Language Service to find where a symbol is defined.
+  Supports functions, classes, variables, types, and more.
+
+mcp:
+  server: goodvibes-tools
+  method: go_to_definition
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "File path (relative to project root)"
+    line:
+      type: number
+      description: "Line number (1-based)"
+    column:
+      type: number
+      description: "Column number (1-based)"
+    include_type_definitions:
+      type: boolean
+      description: "Include type definitions in addition to value definitions"
+      default: false
+  required:
+    - file
+    - line
+    - column
+
+output_schema:
+  type: object
+  properties:
+    symbol:
+      type: string
+      description: "Name of the symbol at the queried position"
+    definitions:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File path (relative to project root)"
+          line:
+            type: number
+            description: "Line number (1-based)"
+          column:
+            type: number
+            description: "Column number (1-based)"
+          kind:
+            type: string
+            description: "Symbol kind (function, class, variable, etc.)"
+          name:
+            type: string
+            description: "Symbol name"
+          preview:
+            type: string
+            description: "Preview of the definition line"
+          containerName:
+            type: string
+            description: "Container name (class, module, etc.)"
+          isTypeDefinition:
+            type: boolean
+            description: "Whether this is a type definition"
+    count:
+      type: number
+      description: "Number of definitions found"
+
+examples:
+  - description: "Find definition of a function"
+    input:
+      file: "src/utils.ts"
+      line: 10
+      column: 5
+    output:
+      symbol: "calculateTotal"
+      definitions:
+        - file: "src/math.ts"
+          line: 15
+          column: 17
+          kind: "function"
+          name: "calculateTotal"
+          preview: "export function calculateTotal(items: Item[]): number {"
+      count: 1
+
+  - description: "Find definition of a class with type definition"
+    input:
+      file: "src/app.ts"
+      line: 5
+      column: 15
+      include_type_definitions: true
+    output:
+      symbol: "User"
+      definitions:
+        - file: "src/models/user.ts"
+          line: 3
+          column: 14
+          kind: "class"
+          name: "User"
+          preview: "export class User {"
+        - file: "src/types/user.d.ts"
+          line: 1
+          column: 18
+          kind: "interface"
+          name: "User"
+          preview: "export interface User {"
+          isTypeDefinition: true
+      count: 2
+
+  - description: "Find definition of imported module"
+    input:
+      file: "src/index.ts"
+      line: 1
+      column: 20
+    output:
+      symbol: "express"
+      definitions:
+        - file: "node_modules/@types/express/index.d.ts"
+          line: 108
+          column: 1
+          kind: "module"
+          name: "e"
+          preview: "declare function e(): core.Express;"
+      count: 1

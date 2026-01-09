@@ -271,4 +271,81 @@ export const TOOL_SCHEMAS = [
       },
     },
   },
+  // LSP Tools
+  {
+    name: 'find_references',
+    description: 'Find all references to a symbol at a given position. Returns file locations, preview lines, and metadata for each reference.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+        include_definition: { type: 'boolean', description: 'Include the definition in results', default: false },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
+    name: 'go_to_definition',
+    description: 'Go to the definition of a symbol at a given position. Returns location(s) where the symbol is defined, including file, line, column, and a preview.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+        include_type_definitions: { type: 'boolean', description: 'Include type definitions in addition to value definitions', default: false },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
+    name: 'rename_symbol',
+    description: 'Get all edits needed to rename a symbol across the codebase. Returns file locations and text changes for a safe rename operation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+        new_name: { type: 'string', description: 'The new name for the symbol' },
+      },
+      required: ['file', 'line', 'column', 'new_name'],
+    },
+  },
+  {
+    name: 'get_code_actions',
+    description: 'Get available code actions (quick fixes, refactorings) at a position. Returns TypeScript Language Service code fixes and refactoring suggestions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root or absolute)' },
+        line: { type: 'integer', description: 'Start line number (1-based)' },
+        column: { type: 'integer', description: 'Start column number (1-based)' },
+        end_line: { type: 'integer', description: 'End line number (optional, for range)' },
+        end_column: { type: 'integer', description: 'End column number (optional, for range)' },
+        only: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter to specific action kinds (e.g., "quickfix", "refactor")',
+        },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
+    name: 'apply_code_action',
+    description: 'Get the file edits for a code action (does not apply them directly). Use with get_code_actions to first see available actions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path where the action was retrieved' },
+        line: { type: 'integer', description: 'Line where the action was retrieved (1-based)' },
+        column: { type: 'integer', description: 'Column where the action was retrieved (1-based)' },
+        action_title: { type: 'string', description: 'The exact title of the action to apply' },
+      },
+      required: ['file', 'line', 'column', 'action_title'],
+    },
+  },
 ];
