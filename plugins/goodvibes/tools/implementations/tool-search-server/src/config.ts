@@ -11,8 +11,8 @@ import { RegistryEntry } from './types.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || path.resolve(__dirname, '../../..');
-export const PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
+export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '../../..');
+export const PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 export const FUSE_OPTIONS: IFuseOptions<RegistryEntry> = {
   keys: [
