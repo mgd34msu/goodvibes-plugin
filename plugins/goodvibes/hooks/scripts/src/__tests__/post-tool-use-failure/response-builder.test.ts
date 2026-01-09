@@ -247,7 +247,6 @@ describe('response-builder', () => {
         exhausted: false,
       });
 
-      const lines = result.split('\n');
       // Should not have double empty lines from missing research hints
       expect(result).not.toContain('\n\n\n');
     });

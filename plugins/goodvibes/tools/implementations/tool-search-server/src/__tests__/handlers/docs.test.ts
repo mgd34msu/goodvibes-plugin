@@ -654,7 +654,7 @@ describe('docs handlers', () => {
       const { fetchNpmReadme } = await import('../../handlers/npm.js');
 
       // Return null from GitHub fetch (line 460 falsy branch)
-      vi.mocked(fetchUrl).mockResolvedValue(null);
+      vi.mocked(fetchUrl).mockResolvedValue('');
       vi.mocked(fetchNpmReadme).mockResolvedValue(null);
 
       const result = await handleFetchDocs({ library: 'zustand' });

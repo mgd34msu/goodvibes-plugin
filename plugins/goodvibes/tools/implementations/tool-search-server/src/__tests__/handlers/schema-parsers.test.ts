@@ -50,7 +50,7 @@ describe('schema parsers - uncovered lines', () => {
         });
 
         // Return a .sql file in the directory
-        vi.mocked(fs.readdirSync).mockReturnValue(['custom.sql', 'readme.md'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['custom.sql', 'readme.md'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
           CREATE TABLE users (
             id INTEGER PRIMARY KEY
@@ -89,7 +89,7 @@ describe('schema parsers - uncovered lines', () => {
         vi.mocked(fs.readdirSync).mockImplementation((p: fs.PathLike) => {
           const pathStr = String(p);
           if (pathStr.includes('db')) {
-            return ['database.sql', 'seed.sql'] as unknown as fs.Dirent[];
+            return ['database.sql', 'seed.sql'] as unknown as ReturnType<typeof fs.readdirSync>;
           }
           throw new Error('ENOENT');
         });
@@ -132,7 +132,7 @@ describe('schema parsers - uncovered lines', () => {
         vi.mocked(fs.readdirSync).mockImplementation((p: fs.PathLike) => {
           const pathStr = String(p);
           if (pathStr.includes(path.join('', 'sql'))) {
-            return ['init.sql'] as unknown as fs.Dirent[];
+            return ['init.sql'] as unknown as ReturnType<typeof fs.readdirSync>;
           }
           throw new Error('ENOENT');
         });
@@ -167,7 +167,7 @@ describe('schema parsers - uncovered lines', () => {
           '001_migration.sql',
           'migration_002.sql',
           'schema_v1.sql',
-        ] as unknown as fs.Dirent[]);
+        ] as unknown as ReturnType<typeof fs.readdirSync>);
 
         vi.mocked(fs.readFileSync).mockReturnValue(`
           CREATE TABLE items (
@@ -201,7 +201,7 @@ describe('schema parsers - uncovered lines', () => {
           return true;
         });
         // Directories exist but contain no .sql files
-        vi.mocked(fs.readdirSync).mockReturnValue(['readme.md', 'config.json'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['readme.md', 'config.json'] as unknown as ReturnType<typeof fs.readdirSync>);
 
         // All findSql calls return null (line 42), so error is thrown
         expect(() => {
@@ -262,7 +262,7 @@ CREATE TABLE comments (id INTEGER PRIMARY KEY);`);
     describe('relation type conversion (lines 77-81)', () => {
       it('should convert OneToOne relation type', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['profile.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['profile.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'typeorm';
 
@@ -287,7 +287,7 @@ class Profile {
 
       it('should convert OneToMany relation type', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 
@@ -312,7 +312,7 @@ class User {
 
       it('should convert ManyToOne relation type', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['post.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['post.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
 
@@ -337,7 +337,7 @@ class Post {
 
       it('should convert ManyToMany relation type', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['tag.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['tag.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
 
@@ -362,7 +362,7 @@ class Tag {
 
       it('should handle entity without explicit table name', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['category.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['category.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
@@ -386,8 +386,8 @@ class Category {
 
       it('should filter tables by class name as well as table name', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts', 'post.ts'] as unknown as fs.Dirent[]);
-        vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+        vi.mocked(fs.readdirSync).mockReturnValue(['user.ts', 'post.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
+        vi.mocked(fs.readFileSync).mockImplementation(((p: fs.PathLike) => {
           const pathStr = String(p);
           if (pathStr.includes('user')) {
             return `
@@ -405,7 +405,7 @@ class Post {
   id: number;
 }
 `;
-        });
+        }) as typeof fs.readFileSync);
 
         // Filter by class name "User" instead of table name "users"
         const result = parseTypeORMSchema('/test/project', ['User']);
@@ -417,8 +417,8 @@ class Post {
 
       it('should skip files without @Entity decorator', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['utils.ts', 'user.ts'] as unknown as fs.Dirent[]);
-        vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+        vi.mocked(fs.readdirSync).mockReturnValue(['utils.ts', 'user.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
+        vi.mocked(fs.readFileSync).mockImplementation(((p: fs.PathLike) => {
           const pathStr = String(p);
           if (pathStr.includes('utils')) {
             return `
@@ -433,7 +433,7 @@ class User {
   id: number;
 }
 `;
-        });
+        }) as typeof fs.readFileSync);
 
         const result = parseTypeORMSchema('/test/project');
         const data = JSON.parse(result.content[0].text);
@@ -444,7 +444,7 @@ class User {
 
       it('should include file name in table metadata', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['user.entity.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['user.entity.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 @Entity('users')
 class User {
@@ -461,7 +461,7 @@ class User {
 
       it('should parse multiple relations in single entity', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['post.ts'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['post.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 @Entity('posts')
 class Post {
@@ -491,7 +491,7 @@ class Post {
 
       it('should parse .js entity files (line 36 || branch)', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['user.js', 'readme.md'] as unknown as fs.Dirent[]);
+        vi.mocked(fs.readdirSync).mockReturnValue(['user.js', 'readme.md'] as unknown as ReturnType<typeof fs.readdirSync>);
         vi.mocked(fs.readFileSync).mockReturnValue(`
 @Entity('users')
 class User {
@@ -509,8 +509,8 @@ class User {
 
       it('should skip file with @Entity but no class (line 47 continue)', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readdirSync).mockReturnValue(['broken.ts', 'user.ts'] as unknown as fs.Dirent[]);
-        vi.mocked(fs.readFileSync).mockImplementation((p: fs.PathLike) => {
+        vi.mocked(fs.readdirSync).mockReturnValue(['broken.ts', 'user.ts'] as unknown as ReturnType<typeof fs.readdirSync>);
+        vi.mocked(fs.readFileSync).mockImplementation(((p: fs.PathLike) => {
           const pathStr = String(p);
           if (pathStr.includes('broken')) {
             // Has @Entity decorator but absolutely no "class" keyword
@@ -523,7 +523,7 @@ class User {
   id: number;
 }
 `;
-        });
+        }) as typeof fs.readFileSync);
 
         const result = parseTypeORMSchema('/test/project');
         const data = JSON.parse(result.content[0].text);

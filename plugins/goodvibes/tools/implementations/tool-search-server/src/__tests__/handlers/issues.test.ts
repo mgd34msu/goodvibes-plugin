@@ -76,7 +76,7 @@ function mockReaddirSync(dirents: fs.Dirent[]): void {
  * This helper avoids `as any` by using a targeted type assertion for the return type
  * while maintaining type safety for the implementation function.
  */
-function mockReaddirSyncImpl(impl: (dir: string | Buffer) => fs.Dirent[]): void {
+function mockReaddirSyncImpl(impl: (dir: fs.PathLike) => fs.Dirent[]): void {
   vi.mocked(fs.readdirSync).mockImplementation((dir) =>
     impl(dir) as unknown as ReturnType<typeof fs.readdirSync>
   );

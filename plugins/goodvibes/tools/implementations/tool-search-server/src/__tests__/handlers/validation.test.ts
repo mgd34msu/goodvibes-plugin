@@ -549,7 +549,7 @@ export const z = eval('3');
         vi.mocked(fsPromises.readFile).mockResolvedValue('const x = 1; export default x;');
         vi.mocked(extractSkillPatterns).mockResolvedValue({
           required_imports: ['lodash'],
-          forbidden_patterns: ['eval'],
+          must_not_include: ['eval'],
         });
 
         const result = await handleValidateImplementation({

@@ -56,7 +56,7 @@ describe('issues.ts facade', () => {
   it('should call re-exported handleProjectIssues with valid path', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
-    vi.mocked(fs.readdirSync).mockReturnValue([] as fs.Dirent[]);
+    vi.mocked(fs.readdirSync).mockReturnValue([] as unknown as ReturnType<typeof fs.readdirSync>);
 
     const args: ProjectIssuesArgs = { path: '/test' };
     const result = handleProjectIssues(args);
@@ -70,7 +70,7 @@ describe('issues.ts facade', () => {
   it('should call re-exported handleProjectIssues with include_low_priority', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
-    vi.mocked(fs.readdirSync).mockReturnValue([] as fs.Dirent[]);
+    vi.mocked(fs.readdirSync).mockReturnValue([] as unknown as ReturnType<typeof fs.readdirSync>);
 
     const args: ProjectIssuesArgs = {
       path: '/test',
@@ -85,7 +85,7 @@ describe('issues.ts facade', () => {
   it('should call re-exported handleProjectIssues without arguments', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
-    vi.mocked(fs.readdirSync).mockReturnValue([] as fs.Dirent[]);
+    vi.mocked(fs.readdirSync).mockReturnValue([] as unknown as ReturnType<typeof fs.readdirSync>);
 
     const result = handleProjectIssues({});
 
@@ -117,7 +117,7 @@ describe('issues.ts facade', () => {
     vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
     vi.mocked(fs.readdirSync).mockReturnValue([
       createMockDirent('app.ts', { isDirectory: false }),
-    ]);
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
     vi.mocked(fs.readFileSync).mockReturnValue('// FIXME: Critical bug\nconst x = 1;');
 
     const result = handleProjectIssues({ path: '/test' });

@@ -555,7 +555,7 @@ describe('logging', () => {
       expect(consoleErrorSpy).toHaveBeenCalledTimes(3);
 
       const calls = consoleErrorSpy.mock.calls;
-      calls.forEach(call => {
+      calls.forEach((call: unknown[]) => {
         expect(call[0]).toContain('2024-01-15T12:00:00.000Z');
         expect(call[0]).toContain('[GoodVibes');
       });

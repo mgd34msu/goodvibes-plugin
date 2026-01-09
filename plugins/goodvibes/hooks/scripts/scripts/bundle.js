@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console */
 /**
  * Bundle entry points into self-contained files
  *
