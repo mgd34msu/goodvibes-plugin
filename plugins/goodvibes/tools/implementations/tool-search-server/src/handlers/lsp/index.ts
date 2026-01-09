@@ -16,6 +16,28 @@ export {
   type LanguageServiceResult,
 } from './language-service.js';
 
+// Shared utilities
+export {
+  createSuccessResponse,
+  createErrorResponse,
+  normalizeFilePath,
+  makeRelativePath,
+  resolveFilePath,
+  getLinePreview,
+  getPreviewFromSourceFile,
+  type ToolResponse,
+} from './utils.js';
+
+// Validation utilities
+export {
+  validatePositionArgs,
+  validateFilePath,
+  isValidLine,
+  isValidColumn,
+  type PositionArgs,
+  type ValidationResult,
+} from './validation.js';
+
 // Find References
 export { handleFindReferences } from './find-references.js';
 export type { FindReferencesArgs } from './find-references.js';

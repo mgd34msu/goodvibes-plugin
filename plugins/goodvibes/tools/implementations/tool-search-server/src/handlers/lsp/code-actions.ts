@@ -13,7 +13,13 @@ import * as crypto from 'crypto';
 
 import { languageServiceManager } from './language-service.js';
 import { PROJECT_ROOT } from '../../config.js';
-import { ToolResponse } from '../../types.js';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  makeRelativePath,
+  resolveFilePath,
+  type ToolResponse,
+} from './utils.js';
 
 // =============================================================================
 // Types
@@ -90,25 +96,6 @@ function generateActionId(title: string, file: string, line: number, column: num
 }
 
 /**
- * Normalize a file path to be relative to PROJECT_ROOT.
- */
-function normalizeFilePath(filePath: string): string {
-  const absolutePath = path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(PROJECT_ROOT, filePath);
-  return path.relative(PROJECT_ROOT, absolutePath).replace(/\\/g, '/');
-}
-
-/**
- * Resolve a file path to an absolute path.
- */
-function resolveFilePath(filePath: string): string {
-  return path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(PROJECT_ROOT, filePath);
-}
-
-/**
  * Convert TypeScript's format options to CodeFixesAtPosition options.
  */
 function getFormatOptions(): ts.FormatCodeSettings {
@@ -168,8 +155,8 @@ function getPreferences(): ts.UserPreferences {
  * @returns MCP tool response with available code actions
  */
 export async function handleGetCodeActions(args: GetCodeActionsArgs): Promise<ToolResponse> {
-  const filePath = resolveFilePath(args.file);
-  const relativeFile = normalizeFilePath(args.file);
+  const filePath = resolveFilePath(args.file, PROJECT_ROOT);
+  const relativeFile = makeRelativePath(filePath, PROJECT_ROOT);
 
   try {
     const { service } = await languageServiceManager.getServiceForFile(filePath);
@@ -252,7 +239,7 @@ export async function handleGetCodeActions(args: GetCodeActionsArgs): Promise<To
           );
 
           edits.push({
-            file: normalizeFilePath(change.fileName),
+            file: makeRelativePath(change.fileName, PROJECT_ROOT),
             start,
             end,
             new_text: textChange.newText,
@@ -301,7 +288,7 @@ export async function handleGetCodeActions(args: GetCodeActionsArgs): Promise<To
               );
 
               edits.push({
-                file: normalizeFilePath(change.fileName),
+                file: makeRelativePath(change.fileName, PROJECT_ROOT),
                 start,
                 end,
                 new_text: textChange.newText,
@@ -342,37 +329,25 @@ export async function handleGetCodeActions(args: GetCodeActionsArgs): Promise<To
       };
     });
 
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          actions: filteredActions,
-          count: filteredActions.length,
-          diagnostics: diagnosticsInfo,
-          position: {
-            file: relativeFile,
-            line: args.line,
-            column: args.column,
-            end_line: args.end_line,
-            end_column: args.end_column,
-          },
-        }, null, 2),
-      }],
-    };
+    return createSuccessResponse({
+      actions: filteredActions,
+      count: filteredActions.length,
+      diagnostics: diagnosticsInfo,
+      position: {
+        file: relativeFile,
+        line: args.line,
+        column: args.column,
+        end_line: args.end_line,
+        end_column: args.end_column,
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: message,
-          file: relativeFile,
-          line: args.line,
-          column: args.column,
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse(message, {
+      file: relativeFile,
+      line: args.line,
+      column: args.column,
+    });
   }
 }
 
@@ -386,8 +361,8 @@ export async function handleGetCodeActions(args: GetCodeActionsArgs): Promise<To
  * @returns MCP tool response with file edits to apply
  */
 export async function handleApplyCodeAction(args: ApplyCodeActionArgs): Promise<ToolResponse> {
-  const filePath = resolveFilePath(args.file);
-  const relativeFile = normalizeFilePath(args.file);
+  const filePath = resolveFilePath(args.file, PROJECT_ROOT);
+  const relativeFile = makeRelativePath(filePath, PROJECT_ROOT);
 
   try {
     const { service } = await languageServiceManager.getServiceForFile(filePath);
@@ -471,7 +446,7 @@ export async function handleApplyCodeAction(args: ApplyCodeActionArgs): Promise<
                   );
 
                   edits.push({
-                    file: normalizeFilePath(change.fileName),
+                    file: makeRelativePath(change.fileName, PROJECT_ROOT),
                     start,
                     end,
                     new_text: textChange.newText,
@@ -479,36 +454,24 @@ export async function handleApplyCodeAction(args: ApplyCodeActionArgs): Promise<
                 }
               }
 
-              return {
-                content: [{
-                  type: 'text',
-                  text: JSON.stringify({
-                    success: true,
-                    action_title: args.action_title,
-                    edits,
-                    files_affected: [...new Set(edits.map((e) => e.file))],
-                  }, null, 2),
-                }],
-              };
+              return createSuccessResponse({
+                success: true,
+                action_title: args.action_title,
+                edits,
+                files_affected: [...new Set(edits.map((e) => e.file))],
+              });
             }
           }
         }
       }
 
       // Not found
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            error: `Code action not found: "${args.action_title}"`,
-            suggestion: 'Run get_code_actions first to see available actions',
-            file: relativeFile,
-            line: args.line,
-            column: args.column,
-          }, null, 2),
-        }],
-        isError: true,
-      };
+      return createErrorResponse(`Code action not found: "${args.action_title}"`, {
+        suggestion: 'Run get_code_actions first to see available actions',
+        file: relativeFile,
+        line: args.line,
+        column: args.column,
+      });
     }
 
     // Convert fix to edits
@@ -528,7 +491,7 @@ export async function handleApplyCodeAction(args: ApplyCodeActionArgs): Promise<
         );
 
         edits.push({
-          file: normalizeFilePath(change.fileName),
+          file: makeRelativePath(change.fileName, PROJECT_ROOT),
           start,
           end,
           new_text: textChange.newText,
@@ -536,30 +499,18 @@ export async function handleApplyCodeAction(args: ApplyCodeActionArgs): Promise<
       }
     }
 
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          success: true,
-          action_title: args.action_title,
-          edits,
-          files_affected: [...new Set(edits.map((e) => e.file))],
-        }, null, 2),
-      }],
-    };
+    return createSuccessResponse({
+      success: true,
+      action_title: args.action_title,
+      edits,
+      files_affected: [...new Set(edits.map((e) => e.file))],
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: message,
-          file: relativeFile,
-          line: args.line,
-          column: args.column,
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse(message, {
+      file: relativeFile,
+      line: args.line,
+      column: args.column,
+    });
   }
 }

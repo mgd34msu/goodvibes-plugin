@@ -11,8 +11,13 @@
 import * as path from 'path';
 
 import { PROJECT_ROOT } from '../../config.js';
-import { ToolResponse } from '../../types.js';
 import { languageServiceManager } from './language-service.js';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  makeRelativePath,
+  type ToolResponse,
+} from './utils.js';
 
 // =============================================================================
 // Types
@@ -201,9 +206,8 @@ export async function handleRenameSymbol(args: RenameSymbolArgs): Promise<ToolRe
         : renameInfo.displayName;
 
       // Create edit with relative file path
-      const relativeFilePath = path.relative(PROJECT_ROOT, locationFilePath);
       edits.push({
-        file: relativeFilePath.replace(/\\/g, '/'), // Normalize to forward slashes
+        file: makeRelativePath(locationFilePath, PROJECT_ROOT),
         line: startPos.line,
         column: startPos.column,
         end_line: endPos.line,
@@ -215,7 +219,7 @@ export async function handleRenameSymbol(args: RenameSymbolArgs): Promise<ToolRe
 
     // Convert files set to array with relative paths
     const filesAffected = Array.from(filesSet).map((f) =>
-      path.relative(PROJECT_ROOT, f).replace(/\\/g, '/')
+      makeRelativePath(f, PROJECT_ROOT)
     );
 
     // Sort edits by file, then by position (reverse order for applying)
@@ -275,33 +279,4 @@ function isValidIdentifier(name: string): boolean {
   // Subsequent: letter, digit, underscore, or dollar sign
   const identifierPattern = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
   return identifierPattern.test(name);
-}
-
-/**
- * Create a success response with JSON content.
- */
-function createSuccessResponse(data: RenameResult): ToolResponse {
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(data, null, 2),
-      },
-    ],
-  };
-}
-
-/**
- * Create an error response.
- */
-function createErrorResponse(message: string): ToolResponse {
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ error: message }, null, 2),
-      },
-    ],
-    isError: true,
-  };
 }

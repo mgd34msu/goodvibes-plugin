@@ -27,6 +27,8 @@ export interface LanguageServiceManager {
   getPositionOffset(service: ts.LanguageService, fileName: string, line: number, column: number): number;
   getLineAndColumn(service: ts.LanguageService, fileName: string, offset: number): { line: number; column: number };
   cleanup(): void;
+  shutdown(): void;
+  startCleanupInterval(): void;
 }
 
 interface CachedService {
@@ -69,6 +71,8 @@ const DEFAULT_COMPILER_OPTIONS: ts.CompilerOptions = {
 
 class LanguageServiceManagerImpl implements LanguageServiceManager {
   private cache = new Map<string, CachedService>();
+  private documentRegistry = ts.createDocumentRegistry();
+  private cleanupInterval?: ReturnType<typeof setInterval>;
 
   /**
    * Get or create a Language Service for the given file.
@@ -192,6 +196,30 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
   }
 
   /**
+   * Shutdown the language service manager.
+   * Clears the cleanup interval and disposes all cached services.
+   */
+  shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
+    for (const [, cached] of this.cache.entries()) {
+      cached.service.dispose();
+    }
+    this.cache.clear();
+  }
+
+  /**
+   * Start the periodic cleanup interval.
+   */
+  startCleanupInterval(): void {
+    if (!this.cleanupInterval) {
+      this.cleanupInterval = setInterval(() => this.cleanup(), CACHE_TTL_MS / 2);
+    }
+  }
+
+  /**
    * Normalize path for consistent cache keys.
    */
   private normalizePath(filePath: string): string {
@@ -302,7 +330,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
       realpath: ts.sys.realpath,
     };
 
-    const service = ts.createLanguageService(host, ts.createDocumentRegistry());
+    const service = ts.createLanguageService(host, this.documentRegistry);
 
     return {
       service,
@@ -346,9 +374,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
 /** Singleton instance of the Language Service Manager */
 export const languageServiceManager = new LanguageServiceManagerImpl();
 
-// Set up periodic cleanup
+// Set up periodic cleanup using the instance method
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    languageServiceManager.cleanup();
-  }, CACHE_TTL_MS / 2);
+  languageServiceManager.startCleanupInterval();
 }

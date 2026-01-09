@@ -12,6 +12,13 @@ import ts from 'typescript';
 
 import { PROJECT_ROOT } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  makeRelativePath,
+  getLinePreview,
+  type ToolResponse,
+} from './utils.js';
 
 // =============================================================================
 // Types
@@ -59,14 +66,6 @@ interface FindReferencesResult {
   count: number;
   /** Symbol name that was searched */
   symbol?: string;
-}
-
-/**
- * MCP tool response format.
- */
-interface ToolResponse {
-  content: Array<{ type: 'text'; text: string }>;
-  isError?: boolean;
 }
 
 // =============================================================================
@@ -210,88 +209,3 @@ export async function handleFindReferences(args: FindReferencesArgs): Promise<To
   }
 }
 
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/**
- * Get the text content of a specific line from a file via the language service.
- */
-function getLinePreview(
-  service: ts.LanguageService,
-  fileName: string,
-  line: number
-): string {
-  const program = service.getProgram();
-  if (!program) return '';
-
-  const sourceFile = program.getSourceFile(fileName);
-  if (!sourceFile) return '';
-
-  try {
-    // Get line boundaries
-    const lineStart = sourceFile.getPositionOfLineAndCharacter(line - 1, 0);
-    const lineEndInfo = sourceFile.getLineAndCharacterOfPosition(sourceFile.text.length);
-    const maxLine = lineEndInfo.line + 1;
-
-    let lineEnd: number;
-    if (line < maxLine) {
-      lineEnd = sourceFile.getPositionOfLineAndCharacter(line, 0);
-    } else {
-      lineEnd = sourceFile.text.length;
-    }
-
-    // Extract and trim the line
-    const lineText = sourceFile.text.substring(lineStart, lineEnd).trim();
-
-    // Truncate if too long
-    const maxLength = 120;
-    if (lineText.length > maxLength) {
-      return lineText.substring(0, maxLength) + '...';
-    }
-
-    return lineText;
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Make a file path relative to a base path.
- */
-function makeRelativePath(filePath: string, basePath: string): string {
-  // Normalize both paths
-  const normalizedFile = filePath.replace(/\\/g, '/');
-  const normalizedBase = basePath.replace(/\\/g, '/');
-
-  // Use path.relative for proper relative path calculation
-  const relativePath = path.relative(normalizedBase, normalizedFile);
-
-  // Normalize the result
-  return relativePath.replace(/\\/g, '/');
-}
-
-/**
- * Create a successful MCP tool response.
- */
-function createSuccessResponse(result: FindReferencesResult): ToolResponse {
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify(result, null, 2),
-    }],
-  };
-}
-
-/**
- * Create an error MCP tool response.
- */
-function createErrorResponse(message: string): ToolResponse {
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({ error: message }, null, 2),
-    }],
-    isError: true,
-  };
-}

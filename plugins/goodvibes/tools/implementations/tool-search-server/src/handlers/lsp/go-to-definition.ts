@@ -12,8 +12,14 @@ import * as path from 'path';
 import ts from 'typescript';
 
 import { PROJECT_ROOT } from '../../config.js';
-import { ToolResponse } from '../../types.js';
 import { languageServiceManager } from './language-service.js';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  makeRelativePath,
+  getPreviewFromSourceFile,
+  type ToolResponse,
+} from './utils.js';
 
 // =============================================================================
 // Types
@@ -125,28 +131,6 @@ function extractSymbolName(
   return text.trim();
 }
 
-/**
- * Get the preview line containing the definition.
- */
-function getPreviewLine(
-  sourceFile: ts.SourceFile,
-  line: number
-): string {
-  const lineStart = sourceFile.getPositionOfLineAndCharacter(line - 1, 0);
-  const lineEnd = line < sourceFile.getLineStarts().length
-    ? sourceFile.getPositionOfLineAndCharacter(line, 0)
-    : sourceFile.text.length;
-
-  const preview = sourceFile.text.slice(lineStart, lineEnd).trim();
-
-  // Truncate very long lines
-  const maxLength = 120;
-  if (preview.length > maxLength) {
-    return preview.slice(0, maxLength) + '...';
-  }
-
-  return preview;
-}
 
 /**
  * Process a definition location into our output format.
@@ -169,16 +153,10 @@ function processDefinition(
   );
 
   const name = extractSymbolName(sourceFile, def.textSpan);
-  const preview = getPreviewLine(sourceFile, line);
-
-  // Make path relative to PROJECT_ROOT for cleaner output
-  let relativePath = def.fileName;
-  if (path.isAbsolute(def.fileName)) {
-    relativePath = path.relative(PROJECT_ROOT, def.fileName);
-  }
+  const preview = getPreviewFromSourceFile(sourceFile, line);
 
   return {
-    file: relativePath.replace(/\\/g, '/'),
+    file: makeRelativePath(def.fileName, PROJECT_ROOT),
     line,
     column,
     kind: mapScriptElementKind(def.kind),
@@ -279,39 +257,15 @@ export async function handleGoToDefinition(
 ): Promise<ToolResponse> {
   // Validate required arguments
   if (!args.file) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: 'Missing required argument: file',
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse('Missing required argument: file');
   }
 
   if (typeof args.line !== 'number' || args.line < 1) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: 'Invalid argument: line must be a positive integer',
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse('Invalid argument: line must be a positive integer');
   }
 
   if (typeof args.column !== 'number' || args.column < 1) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: 'Invalid argument: column must be a positive integer',
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse('Invalid argument: column must be a positive integer');
   }
 
   // Resolve file path
@@ -321,15 +275,7 @@ export async function handleGoToDefinition(
 
   // Verify file exists
   if (!fs.existsSync(filePath)) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: `File not found: ${args.file}`,
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse(`File not found: ${args.file}`);
   }
 
   try {
@@ -388,25 +334,13 @@ export async function handleGoToDefinition(
       count: definitions.length,
     };
 
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(result, null, 2),
-      }],
-    };
+    return createSuccessResponse(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: `Failed to get definition: ${message}`,
-          file: args.file,
-          line: args.line,
-          column: args.column,
-        }, null, 2),
-      }],
-      isError: true,
-    };
+    return createErrorResponse(`Failed to get definition: ${message}`, {
+      file: args.file,
+      line: args.line,
+      column: args.column,
+    });
   }
 }
