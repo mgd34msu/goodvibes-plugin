@@ -10,7 +10,7 @@
  * Keyword data is stored in keywords-data.json for maintainability.
  */
 
-import keywordData from './keywords-data.json';
+import keywordData from './keywords-data.json' with { type: 'json' };
 
 // =============================================================================
 // Stack Detection Keywords (for tech stack identification)
