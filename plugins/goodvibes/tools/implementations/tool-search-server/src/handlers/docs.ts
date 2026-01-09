@@ -293,10 +293,6 @@ const LIBRARY_APIS: Record<string, ApiReference[]> = {
     { name: 'API Routes', description: 'Backend API endpoints', url: 'https://nextjs.org/docs/app/building-your-application/routing/route-handlers' },
     { name: 'Middleware', description: 'Request/response middleware', url: 'https://nextjs.org/docs/app/building-your-application/routing/middleware' },
   ],
-  'nextjs': [
-    { name: 'App Router', description: 'File-based routing in app directory', url: 'https://nextjs.org/docs/app' },
-    { name: 'Server Components', description: 'React Server Components', url: 'https://nextjs.org/docs/app/building-your-application/rendering/server-components' },
-  ],
   'prisma': [
     { name: 'Schema', description: 'Prisma schema language', url: 'https://www.prisma.io/docs/concepts/components/prisma-schema' },
     { name: 'Client', description: 'Prisma Client API', url: 'https://www.prisma.io/docs/concepts/components/prisma-client' },
@@ -343,7 +339,9 @@ const LIBRARY_APIS: Record<string, ApiReference[]> = {
  */
 export function getCommonApiReferences(library: string, topic?: string): ApiReference[] {
   const refs: ApiReference[] = [];
-  const libraryRefs = LIBRARY_APIS[library] || [];
+  // Handle nextjs as an alias for next
+  const normalizedLibrary = library === 'nextjs' ? 'next' : library;
+  const libraryRefs = LIBRARY_APIS[normalizedLibrary] || [];
 
   // Filter by topic if provided
   if (topic) {

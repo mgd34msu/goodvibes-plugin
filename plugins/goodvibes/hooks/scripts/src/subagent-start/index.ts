@@ -13,6 +13,7 @@
  */
 
 import * as path from 'path';
+
 import {
   respond,
   readHookInput,
@@ -23,7 +24,6 @@ import {
   isTestEnvironment,
 } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
-import { buildSubagentContext } from './context-injection.js';
 import { saveAgentTracking } from '../subagent-stop/telemetry.js';
 import {
   cleanupStaleAgents,
@@ -31,6 +31,8 @@ import {
   deriveProjectName,
 } from '../telemetry/index.js';
 import { getActiveAgentsFilePath } from '../telemetry/index.js';
+
+import { buildSubagentContext } from './context-injection.js';
 
 import type { HookResponse } from '../shared/index.js';
 import type { TelemetryTracking } from '../types/telemetry.js';

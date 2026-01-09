@@ -41,7 +41,7 @@ import type { HooksState } from '../types/state.js';
  * @example
  * const { ran, result, state: newState } = await maybeRunTests(state, config, '/src/utils.ts', '/project');
  * if (ran && result && !result.passed) {
- *   console.log('Tests failed:', result.summary);
+ *   debug('Tests failed:', result.summary);
  * }
  */
 export async function maybeRunTests(
@@ -118,7 +118,7 @@ export async function maybeRunTests(
  * @example
  * const { ran, result, state: newState } = await maybeRunBuild(state, config, '/project');
  * if (ran && result && !result.passed) {
- *   console.log('Build errors:', result.errors);
+ *   debug('Build errors:', result.errors);
  * }
  */
 export async function maybeRunBuild(
@@ -173,7 +173,7 @@ export async function maybeRunBuild(
  * @example
  * const { created, message, state: newState } = await maybeCreateCheckpoint(state, config, '/project');
  * if (created) {
- *   console.log('Checkpoint created:', message);
+ *   debug('Checkpoint created:', message);
  * }
  */
 export async function maybeCreateCheckpoint(
@@ -201,7 +201,7 @@ export async function maybeCreateCheckpoint(
  * @example
  * const { created, branchName } = await maybeCreateBranch(state, config, '/project');
  * if (created) {
- *   console.log('Created branch:', branchName);
+ *   debug('Created branch:', branchName);
  * }
  */
 export async function maybeCreateBranch(

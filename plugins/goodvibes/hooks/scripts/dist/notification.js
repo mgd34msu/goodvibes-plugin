@@ -1,38 +1,9 @@
+/* v8 ignore file */
 /**
- * Notification Hook (GoodVibes)
+ * Notification Hook Entry Point
  *
- * Handles notifications from Claude Code:
- * - Validation failures
- * - Test failures
- * - Build errors
+ * This is a thin entry point that re-exports from the shared module.
+ * The actual implementation lives in src/shared/notification.ts
  */
-import { respond, readHookInput, debug, logError } from './shared/index.js';
-/** Creates a hook response with optional system message. */
-function createResponse(systemMessage) {
-    return {
-        continue: true,
-        systemMessage,
-    };
-}
-/** Main entry point for notification hook. Handles validation, test, and build error notifications. */
-async function runNotificationHook() {
-    try {
-        debug('Notification hook starting');
-        const input = await readHookInput();
-        debug('Notification received', {
-            hook_event_name: input.hook_event_name,
-            tool_name: input.tool_name,
-        });
-        // Could send to external service, log file, etc.
-        // For now, just acknowledge
-        respond(createResponse());
-    }
-    catch (error) {
-        logError('Notification main', error);
-        respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
-    }
-}
-runNotificationHook().catch((error) => {
-    logError('Notification uncaught', error);
-    respond(createResponse(`Notification error: ${error instanceof Error ? error.message : String(error)}`));
-});
+// Re-export and execute the notification hook
+import './shared/notification.js';

@@ -25,6 +25,7 @@ import {
   isTestEnvironment,
 } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
+
 import { validateAgentOutput } from './output-validation.js';
 import {
   getAgentTracking,
@@ -34,9 +35,9 @@ import {
 } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
 
-import type { HookResponse } from '../shared/index.js';
 import type { ValidationResult } from './output-validation.js';
 import type { TestVerificationResult } from './test-verification.js';
+import type { HookResponse } from '../shared/index.js';
 
 // Extended hook input interface for SubagentStop
 interface SubagentStopInput {

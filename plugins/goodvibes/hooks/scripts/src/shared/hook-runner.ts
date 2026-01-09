@@ -32,7 +32,7 @@ import type { HookInput, HookResponse, CreateResponseOptions } from './hook-io.j
  * Receives parsed input and returns a response.
  */
 export type HookHandler<TResponse extends HookResponse = HookResponse> = (
-  input: HookInput
+  _input: HookInput
 ) => Promise<TResponse>;
 
 /**
@@ -43,7 +43,7 @@ export interface RunHookOptions {
    * Custom error response creator.
    * Default creates a response with systemMessage containing the error.
    */
-  onError?: (error: unknown) => HookResponse;
+  onError?: (_error: unknown) => HookResponse;
 
   /**
    * Whether to catch uncaught promise rejections.

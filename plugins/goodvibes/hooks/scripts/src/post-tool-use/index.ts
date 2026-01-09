@@ -14,6 +14,17 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+import { fileExists } from '../shared/file-utils.js';
+import {
+  respond,
+  readHookInput,
+  debug,
+  logError,
+  isTestEnvironment,
+} from '../shared/index.js';
+import { loadState, saveState } from '../state/index.js';
+import { getDefaultConfig, type GoodVibesConfig } from '../types/config.js';
+
 import { handleBashTool } from './bash-handler.js';
 import { processFileAutomation } from './file-automation.js';
 import {
@@ -25,16 +36,6 @@ import {
   handleCheckTypes,
 } from './mcp-handlers.js';
 import { createResponse, combineMessages } from './response.js';
-import { fileExists } from '../shared/file-utils.js';
-import {
-  respond,
-  readHookInput,
-  debug,
-  logError,
-  isTestEnvironment,
-} from '../shared/index.js';
-import { loadState, saveState } from '../state/index.js';
-import { getDefaultConfig, type GoodVibesConfig } from '../types/config.js';
 
 /**
  * Deep merge two objects
@@ -140,34 +141,34 @@ async function runPostToolUseHook(): Promise<void> {
       // MCP GoodVibes tools
       case 'detect_stack':
         await saveState(cwd, state);
-        handleDetectStack(input);
+        void handleDetectStack(input);
         return;
 
       case 'recommend_skills':
         await saveState(cwd, state);
-        handleRecommendSkills(input);
+        void handleRecommendSkills(input);
         return;
 
       case 'search_skills':
       case 'search_agents':
       case 'search_tools':
         await saveState(cwd, state);
-        handleSearch(input);
+        void handleSearch(input);
         return;
 
       case 'validate_implementation':
         await saveState(cwd, state);
-        handleValidateImplementation(input);
+        void handleValidateImplementation(input);
         return;
 
       case 'run_smoke_test':
         await saveState(cwd, state);
-        handleRunSmokeTest(input);
+        void handleRunSmokeTest(input);
         return;
 
       case 'check_types':
         await saveState(cwd, state);
-        handleCheckTypes(input);
+        void handleCheckTypes(input);
         return;
 
       default:

@@ -24,7 +24,7 @@ export declare const COMMON_DEV_PORTS: number[];
  * @example
  * const ports = await checkPorts('/my-project');
  * const activePorts = ports.filter(p => p.inUse);
- * activePorts.forEach(p => console.log(`Port ${p.port}: ${p.process}`));
+ * activePorts.forEach(p => debug(`Port ${p.port}: ${p.process}`));
  */
 export declare function checkPorts(_cwd: string): Promise<PortInfo[]>;
 /**

@@ -33,7 +33,7 @@ These preferences guide agent behavior and decision-making.
  * @example
  * const preferences = await readPreferences('/path/to/project');
  * for (const pref of preferences) {
- *   console.log(`${pref.key}: ${pref.value}`);
+ *   debug(`${pref.key}: ${pref.value}`);
  * }
  */
 export async function readPreferences(

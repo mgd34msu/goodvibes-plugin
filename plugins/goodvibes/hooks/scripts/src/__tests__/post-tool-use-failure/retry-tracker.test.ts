@@ -21,7 +21,7 @@ import * as path from 'path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { ErrorState, ErrorCategory } from '../../types/errors.js';
+import type { ErrorState, _ErrorCategory } from '../../types/errors.js';
 import type { HooksState } from '../../types/state.js';
 
 // Mock fs/promises module

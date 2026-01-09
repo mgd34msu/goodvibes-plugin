@@ -40,7 +40,7 @@ export declare function detectBuildCommand(cwd: string): Promise<string>;
  * @example
  * const result = await runBuild('/my-project');
  * if (!result.passed) {
- *   console.error('Build failed:', result.errors);
+ *   debug('Build failed:', result.errors);
  * }
  */
 export declare function runBuild(cwd: string): Promise<BuildResult>;
@@ -54,7 +54,7 @@ export declare function runBuild(cwd: string): Promise<BuildResult>;
  * @example
  * const result = await runTypeCheck('/my-project');
  * if (!result.passed) {
- *   result.errors.forEach(e => console.error(`${e.file}:${e.line}: ${e.message}`));
+ *   result.errors.forEach(e => debug(`${e.file}:${e.line}: ${e.message}`));
  * }
  */
 export declare function runTypeCheck(cwd: string): Promise<BuildResult>;

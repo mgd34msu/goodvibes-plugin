@@ -4,7 +4,7 @@
  * Provides properly typed mock factory functions for filesystem operations.
  */
 
-import type { Dirent } from 'fs';
+import type { Dirent, Stats } from 'fs';
 
 // ============================================================================
 // File System Mocks
@@ -147,7 +147,7 @@ export function createMockStats(options?: {
   isDirectory?: boolean;
   size?: number;
   mtime?: Date;
-}): import('fs').Stats {
+}): Stats {
   const isFile = options?.isFile ?? !options?.isDirectory;
   const isDirectory = options?.isDirectory ?? false;
 
@@ -177,7 +177,7 @@ export function createMockStats(options?: {
     mtime: options?.mtime ?? new Date(),
     ctime: new Date(),
     birthtime: new Date(),
-  } as import('fs').Stats;
+  } as Stats;
 }
 
 // ============================================================================
@@ -252,7 +252,7 @@ export function createMockGitExecSync(config: {
     log?: boolean;
     revList?: boolean;
   };
-}): (command: string) => string {
+}): (_command: string) => string {
   return (command: string): string => {
     // Handle branch command
     if (

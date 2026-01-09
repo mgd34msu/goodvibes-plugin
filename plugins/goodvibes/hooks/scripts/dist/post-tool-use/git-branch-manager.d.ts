@@ -38,7 +38,7 @@ export declare function shouldCreateFeatureBranch(state: HooksState, _cwd: strin
  * @example
  * const { created, branchName } = await maybeCreateFeatureBranch(state, '/project', 'user-auth');
  * if (created) {
- *   console.log('Created branch:', branchName);  // 'feature/user-auth'
+ *   debug('Created branch:', branchName);  // 'feature/user-auth'
  * }
  */
 export declare function maybeCreateFeatureBranch(state: HooksState, cwd: string, featureName?: string): Promise<{
@@ -71,9 +71,9 @@ export declare function shouldMergeFeature(state: HooksState): boolean;
  * @example
  * const { merged, message } = await maybeMergeFeature(state, '/project');
  * if (merged) {
- *   console.log(message);  // 'Merged feature/user-auth to main'
+ *   debug(message);  // 'Merged feature/user-auth to main'
  * } else if (message) {
- *   console.log('Merge issue:', message);  // 'Merge failed - may have conflicts'
+ *   debug('Merge issue:', message);  // 'Merge failed - may have conflicts'
  * }
  */
 export declare function maybeMergeFeature(state: HooksState, cwd: string): Promise<{

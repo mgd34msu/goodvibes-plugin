@@ -33,13 +33,13 @@ export interface SectionParser<T> {
    * Optional validation function to check if a parsed entry is valid.
    * Return true if the entry should be included, false to skip it.
    */
-  validate?: (entry: Partial<T>) => boolean;
+  validate?: (_entry: Partial<T>) => boolean;
 
   /**
    * Optional transformation function to convert the parsed object to the final type.
    * This allows for type coercion, default values, and field cleanup.
    */
-  transform?: (entry: Partial<T>) => T;
+  transform?: (_entry: Partial<T>) => T;
 }
 
 /**

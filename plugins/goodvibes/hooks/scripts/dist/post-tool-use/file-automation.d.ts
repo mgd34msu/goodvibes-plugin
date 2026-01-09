@@ -22,7 +22,7 @@ export { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch,
  * @example
  * const { tracked, filePath, state: newState } = handleFileModification(state, input, 'Edit');
  * if (tracked) {
- *   console.log('Tracked modification to:', filePath);
+ *   debug('Tracked modification to:', filePath);
  * }
  */
 export declare function handleFileModification(state: HooksState, input: HookInput, toolName: string): {
@@ -44,7 +44,7 @@ export declare function handleFileModification(state: HooksState, input: HookInp
  * @example
  * const { messages, state: newState } = await processFileAutomation(state, config, input, 'Edit');
  * if (messages.length > 0) {
- *   console.log('Automation results:', messages.join(', '));
+ *   debug('Automation results:', messages.join(', '));
  * }
  */
 export declare function processFileAutomation(state: HooksState, config: GoodVibesConfig, input: HookInput, toolName: string): Promise<AutomationMessages & {

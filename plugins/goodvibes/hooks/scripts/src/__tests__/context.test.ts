@@ -5,9 +5,9 @@
 import { exec, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
-import * as path from 'path';
+import * as _path from 'path';
 
-import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, _beforeAll, _afterEach } from 'vitest';
 
 // Mock fs, fs/promises, and child_process
 vi.mock('fs');
@@ -19,7 +19,7 @@ vi.mock('fs/promises', async () => {
   };
 });
 // Create a handler that will be used by the exec mock - must be at module level
-let execHandler: (cmd: string) => { error: Error | null; stdout: string; stderr: string } = () => ({
+let execHandler: (_cmd: string) => { error: Error | null; stdout: string; stderr: string } = () => ({
   error: new Error('Command not found'),
   stdout: '',
   stderr: '',
@@ -29,17 +29,20 @@ vi.mock('child_process', async () => {
   const { promisify } = await import('util');
 
   // Create the mock exec function with callback support
-  const mockExec = vi.fn((cmd: string, options: any, callback: any) => {
+  type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+  const mockExec = vi.fn((cmd: string, options: Record<string, unknown> | ExecCallback, callback?: ExecCallback) => {
     const cb = typeof options === 'function' ? options : callback;
     const result = execHandler(cmd);
     setImmediate(() => {
-      cb(result.error, result.stdout, result.stderr);
+      if (cb) {
+        cb(result.error, result.stdout, result.stderr);
+      }
     });
-    return {} as any;
+    return {} as ReturnType<typeof exec>;
   });
 
   // Add custom promisify support - this is required for promisify(exec) to work
-  (mockExec as any)[promisify.custom] = (cmd: string, options?: any) => {
+  (mockExec as typeof mockExec & { [promisify.custom]: (cmd: string, _options?: Record<string, unknown>) => Promise<{ stdout: string; stderr: string }> })[promisify.custom] = (cmd: string, _options?: Record<string, unknown>) => {
     return new Promise((resolve, reject) => {
       const result = execHandler(cmd);
       if (result.error) {
@@ -86,7 +89,7 @@ import type { StackInfo } from '../context/stack-detector';
 // Type the mocked modules
 const mockedFs = vi.mocked(fs);
 const mockedFsPromises = vi.mocked(fsPromises);
-const mockedExec = vi.mocked(exec);
+const _mockedExec = vi.mocked(exec);
 const mockedExecSync = vi.mocked(execSync);
 
 describe('stack-detector', () => {

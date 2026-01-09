@@ -16,7 +16,7 @@ export type { ArchitecturePattern, FolderStructure, SpecialDirectories };
  * @example
  * const structure = await analyzeFolderStructure('/my-next-app');
  * if (structure.pattern === 'next-app-router') {
- *   console.log('Next.js App Router detected');
+ *   debug('Next.js App Router detected');
  * }
  */
 export declare function analyzeFolderStructure(cwd: string): Promise<FolderStructure>;

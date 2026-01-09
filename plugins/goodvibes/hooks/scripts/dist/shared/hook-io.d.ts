@@ -46,8 +46,8 @@ export interface HookResponse {
  *
  * @example
  * const input = await readHookInput();
- * console.log(input.hook_event_name); // 'PreToolUse'
- * console.log(input.tool_name); // 'Bash'
+ * debug(input.hook_event_name); // 'PreToolUse'
+ * debug(input.tool_name); // 'Bash'
  */
 export declare function readHookInput(): Promise<HookInput>;
 /**
@@ -105,7 +105,7 @@ export declare function blockTool(hookEventName: string, reason: string): HookRe
  * @example
  * // Use in tests or where you need formatted output without exiting
  * const formatted = formatResponse(createResponse({ systemMessage: 'Test' }));
- * console.log(formatted);
+ * debug(formatted);
  */
 export declare function formatResponse(response: HookResponse): string;
 /**

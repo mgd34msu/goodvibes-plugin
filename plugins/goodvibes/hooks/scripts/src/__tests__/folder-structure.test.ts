@@ -11,7 +11,7 @@ import {
   analyzeFolderStructure,
   formatFolderStructure,
   type FolderStructure,
-  type ArchitecturePattern,
+  type _ArchitecturePattern,
 } from '../context/folder-structure.js';
 import { fileExists } from '../shared/file-utils.js';
 

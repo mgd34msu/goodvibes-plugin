@@ -9,10 +9,7 @@
  * @see {@link ../automation/git-operations} for git command execution
  */
 
-import {
-  getCurrentBranch,
-  hasUncommittedChanges,
-} from '../automation/git-operations.js';
+import { getCurrentBranch } from '../automation/git-operations.js';
 
 import type { HooksState } from '../types/state.js';
 
@@ -39,7 +36,7 @@ export interface GitGuardResult {
  * @example
  * const result = await checkBranchGuard('git push --force origin main', '/repo', state);
  * if (!result.allowed) {
- *   console.error(result.reason);
+ *   debug(result.reason);
  * }
  */
 export async function checkBranchGuard(
@@ -98,7 +95,7 @@ export async function checkBranchGuard(
  * @example
  * const result = checkMergeReadiness('/repo', state);
  * if (!result.allowed) {
- *   console.error('Cannot merge:', result.reason);
+ *   debug('Cannot merge:', result.reason);
  * }
  */
 export function checkMergeReadiness(

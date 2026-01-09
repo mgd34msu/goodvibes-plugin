@@ -45,7 +45,7 @@ export function findTestsForFile(sourceFile) {
  * @example
  * const result = await runTests(['src/utils/helper.test.ts'], '/my-project');
  * if (!result.passed) {
- *   result.failures.forEach(f => console.error(`${f.testFile}: ${f.error}`));
+ *   result.failures.forEach(f => debug(`${f.testFile}: ${f.error}`));
  * }
  */
 export async function runTests(testFiles, cwd) {
@@ -82,7 +82,7 @@ export async function runTests(testFiles, cwd) {
  *
  * @example
  * const result = await runFullTestSuite('/my-project');
- * console.log(result.summary); // 'All tests passed' or 'Tests failed'
+ * debug(result.summary); // 'All tests passed' or 'Tests failed'
  */
 export async function runFullTestSuite(cwd) {
     try {

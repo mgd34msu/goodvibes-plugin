@@ -37,8 +37,8 @@ export interface FormattedContext {
  *
  * @example
  * const formatted = formatContext(context);
- * console.log(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
- * console.log(formatted.full); // Full multi-section report
+ * debug(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
+ * debug(formatted.full); // Full multi-section report
  */
 export declare function formatContext(context: GatheredContext): FormattedContext;
 /**

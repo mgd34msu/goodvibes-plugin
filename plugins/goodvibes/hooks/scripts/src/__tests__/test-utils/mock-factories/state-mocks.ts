@@ -11,7 +11,7 @@ import type {
   ParsedTranscript,
   TelemetryRecord,
 } from '../../../telemetry/index.js';
-import type { ErrorState, ErrorCategory } from '../../../types/errors.js';
+import type { ErrorState, _ErrorCategory } from '../../../types/errors.js';
 import type { FileState, HooksState } from '../../../types/state.js';
 
 // ============================================================================

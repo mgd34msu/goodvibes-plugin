@@ -9,8 +9,9 @@
  * - Edge cases: missing state, clean state, various recovery scenarios
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { HooksState } from '../../types/state.js';
 
@@ -22,8 +23,8 @@ vi.mock('child_process', () => ({
 
 // Mock promisify to properly convert callback-style to promise-style
 vi.mock('util', () => ({
-  promisify: (fn: any) => {
-    return (command: string, options: any) => {
+  promisify: <T extends (...args: unknown[]) => unknown>(fn: T) => {
+    return (command: string, options: Record<string, unknown>) => {
       return new Promise((resolve, reject) => {
         fn(
           command,

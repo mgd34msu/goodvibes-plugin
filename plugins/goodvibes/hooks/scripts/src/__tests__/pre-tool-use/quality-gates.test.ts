@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   createChildProcessMock,
   createChildProcessFailureMock,
@@ -330,7 +331,8 @@ describe('quality-gates', () => {
     });
 
     it('should call exec with correct cwd parameter', async () => {
-      const mockExec = vi.fn((cmd, options, callback) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      const mockExec = vi.fn((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, '', '');
       });
       vi.doMock('child_process', () => ({
@@ -363,7 +365,8 @@ describe('quality-gates', () => {
     });
 
     it('should set 120 second timeout', async () => {
-      const mockExec = vi.fn((cmd, options, callback) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      const mockExec = vi.fn((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, '', '');
       });
       vi.doMock('child_process', () => ({
@@ -426,7 +429,7 @@ describe('quality-gates', () => {
 
     it('should return blocking true when a blocking gate fails', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('tsc')) {
             callback(new Error('TypeScript error'), '', '');
           } else {
@@ -461,7 +464,7 @@ describe('quality-gates', () => {
 
     it('should return blocking false when only non-blocking gate fails', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('prettier --check')) {
             callback(new Error('Prettier failed'), '', '');
           } else {
@@ -497,7 +500,7 @@ describe('quality-gates', () => {
     it('should attempt auto-fix when gate fails and autoFix is available', async () => {
       let eslintCheckCount = 0;
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('eslint')) {
             if (cmd.includes('--fix')) {
               callback(null, '', ''); // auto-fix succeeds
@@ -541,7 +544,7 @@ describe('quality-gates', () => {
 
     it('should mark as failed with message when auto-fix command throws', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('eslint')) {
             callback(new Error('ESLint error'), '', '');
           } else {
@@ -577,7 +580,7 @@ describe('quality-gates', () => {
 
     it('should mark as failed when auto-fix succeeds but re-check fails', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('eslint')) {
             if (cmd.includes('--fix')) {
               callback(null, '', ''); // auto-fix succeeds
@@ -617,7 +620,7 @@ describe('quality-gates', () => {
 
     it('should mark as failed without message when gate has no autoFix', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('tsc')) {
             callback(new Error('TypeScript error'), '', '');
           } else {
@@ -653,7 +656,7 @@ describe('quality-gates', () => {
 
     it('should run all gates even if early ones fail', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('tsc')) {
             callback(new Error('TypeScript error'), '', '');
           } else {
@@ -753,7 +756,7 @@ describe('quality-gates', () => {
 
     it('should handle blocking gate failure after autoFix re-check fails', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           if (cmd.includes('--fix')) {
             callback(null, '', ''); // auto-fix succeeds
           } else {
@@ -796,7 +799,7 @@ describe('quality-gates', () => {
 
     it('should handle non-blocking gate with auto-fix failure', async () => {
       vi.doMock('child_process', () => ({
-        exec: vi.fn((cmd: string, options: any, callback: Function) => {
+        exec: vi.fn((cmd: string, options: Record<string, unknown>, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
           callback(new Error('All commands fail'), '', '');
         }),
       }));

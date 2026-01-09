@@ -11,11 +11,8 @@
  */
 
 import {
-  detectMainBranch,
-  getCurrentBranch,
   createFeatureBranch as gitCreateBranch,
   mergeFeatureBranch as gitMergeBranch,
-  hasUncommittedChanges,
 } from '../automation/git-operations.js';
 
 import type { HooksState } from '../types/state.js';
@@ -68,7 +65,7 @@ export function shouldCreateFeatureBranch(
  * @example
  * const { created, branchName } = await maybeCreateFeatureBranch(state, '/project', 'user-auth');
  * if (created) {
- *   console.log('Created branch:', branchName);  // 'feature/user-auth'
+ *   debug('Created branch:', branchName);  // 'feature/user-auth'
  * }
  */
 export async function maybeCreateFeatureBranch(
@@ -154,9 +151,9 @@ export function shouldMergeFeature(state: HooksState): boolean {
  * @example
  * const { merged, message } = await maybeMergeFeature(state, '/project');
  * if (merged) {
- *   console.log(message);  // 'Merged feature/user-auth to main'
+ *   debug(message);  // 'Merged feature/user-auth to main'
  * } else if (message) {
- *   console.log('Merge issue:', message);  // 'Merge failed - may have conflicts'
+ *   debug('Merge issue:', message);  // 'Merge failed - may have conflicts'
  * }
  */
 export async function maybeMergeFeature(

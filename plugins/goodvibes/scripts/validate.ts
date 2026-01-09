@@ -9,6 +9,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
 
@@ -22,6 +26,12 @@ interface ValidationResult {
     tools: number;
     commands: number;
   };
+}
+
+interface RegistryContent {
+  version?: string;
+  search_index?: Array<unknown>;
+  total?: number;
 }
 
 function validateManifest(): string[] {
@@ -65,7 +75,7 @@ function validateRegistries(): { errors: string[]; stats: { agents: number; skil
     }
 
     try {
-      const content = yaml.load(fs.readFileSync(regPath, 'utf-8')) as any;
+      const content = yaml.load(fs.readFileSync(regPath, 'utf-8')) as RegistryContent;
 
       if (!content.version) {
         errors.push(`Registry ${reg.name} missing version`);

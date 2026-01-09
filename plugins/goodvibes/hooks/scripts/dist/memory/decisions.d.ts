@@ -14,7 +14,7 @@ import type { MemoryDecision } from '../types/memory.js';
  * @example
  * const decisions = await readDecisions('/path/to/project');
  * for (const decision of decisions) {
- *   console.log(`${decision.title}: ${decision.rationale}`);
+ *   debug(`${decision.title}: ${decision.rationale}`);
  * }
  */
 export declare function readDecisions(cwd: string): Promise<MemoryDecision[]>;

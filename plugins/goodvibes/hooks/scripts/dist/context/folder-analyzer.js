@@ -15,7 +15,7 @@ import { fileExists } from '../shared/file-utils.js';
  * @example
  * const analysis = await analyzeFolderStructure('/my-project');
  * if (analysis.routing === 'App Router') {
- *   console.log('Using Next.js App Router');
+ *   debug('Using Next.js App Router');
  * }
  */
 export async function analyzeFolderStructure(cwd) {

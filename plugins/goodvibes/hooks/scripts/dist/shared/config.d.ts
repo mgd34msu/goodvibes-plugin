@@ -67,8 +67,8 @@ export interface SharedConfig {
  *
  * @example
  * const config = getDefaultSharedConfig();
- * console.log(config.telemetry?.enabled); // true
- * console.log(config.quality?.gates?.length); // 4 (TypeScript, ESLint, Prettier, Tests)
+ * debug(config.telemetry?.enabled); // true
+ * debug(config.quality?.gates?.length); // 4 (TypeScript, ESLint, Prettier, Tests)
  */
 export declare function getDefaultSharedConfig(): SharedConfig;
 /**

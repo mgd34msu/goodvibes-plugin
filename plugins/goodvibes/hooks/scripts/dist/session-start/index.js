@@ -12,12 +12,12 @@
  * - Saves state for future sessions
  */
 // Session-start specific modules
-import { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
-import { checkCrashRecovery, } from './crash-recovery.js';
-import { buildSystemMessage } from './response-formatter.js';
 import { respond, readHookInput, validateRegistries, ensureCacheDir, isTestEnvironment, saveAnalytics, debug, logError, createResponse, PROJECT_ROOT, } from '../shared/index.js';
 import { loadState, saveState, updateSessionState, initializeSession, } from '../state/index.js';
 import { createDefaultState } from '../types/state.js';
+import { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
+import { checkCrashRecovery, } from './crash-recovery.js';
+import { buildSystemMessage } from './response-formatter.js';
 /** Default recovery info when crash recovery check fails */
 const DEFAULT_RECOVERY_INFO = {
     needsRecovery: false,
@@ -80,7 +80,7 @@ async function savePluginState(projectDir, state) {
 }
 /** Initializes analytics for the session */
 function initializeAnalytics(sessionId, contextResult) {
-    saveAnalytics({
+    void saveAnalytics({
         session_id: sessionId,
         started_at: new Date().toISOString(),
         tool_usage: [],

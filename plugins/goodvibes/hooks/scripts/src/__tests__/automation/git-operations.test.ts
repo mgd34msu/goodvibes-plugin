@@ -40,8 +40,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: '  result output  \n', stderr: '' });
@@ -65,8 +65,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(new Error('git command failed'), {
@@ -92,8 +92,8 @@ describe('git-operations', () => {
             _cmd: string,
             _opts: unknown,
             callback: (
-              err: Error | null,
-              result: { stdout: string; stderr: string }
+              _err: Error | null,
+              _result: { stdout: string; stderr: string }
             ) => void
           ) => {
             callback(null, { stdout: 'ok', stderr: '' });
@@ -171,8 +171,8 @@ describe('git-operations', () => {
               cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               if (cmd.includes('main')) {
@@ -202,8 +202,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callCount++;
@@ -238,8 +238,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(new Error('fatal: Needed a single revision'), {
@@ -272,8 +272,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: 'feature/my-branch\n', stderr: '' });
@@ -298,8 +298,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(new Error('fatal: not on a branch'), {
@@ -332,8 +332,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, {
@@ -361,8 +361,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: '', stderr: '' });
@@ -387,8 +387,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(new Error('not a git repository'), {
@@ -421,8 +421,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               // Git porcelain format: XY<space>filename (3 chars prefix total)
@@ -455,8 +455,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: '', stderr: '' });
@@ -481,8 +481,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(new Error('not a git repo'), { stdout: '', stderr: '' });
@@ -507,8 +507,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               // Include empty line between files - use MM format for modified files
@@ -542,8 +542,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: '', stderr: '' });
@@ -566,7 +566,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -583,8 +583,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -612,7 +612,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -629,8 +629,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -661,7 +661,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(1), 0); // Exit code 1 = failure
               }
@@ -678,8 +678,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -702,7 +702,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'error') {
                 setTimeout(() => handler(new Error('spawn ENOENT')), 0);
               }
@@ -719,8 +719,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -743,7 +743,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -760,8 +760,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -785,7 +785,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -802,8 +802,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -828,7 +828,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -845,8 +845,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -868,7 +868,7 @@ describe('git-operations', () => {
     });
 
     it('should handle exception from git add and return false', async () => {
-      let execCallCount = 0;
+      const _execCallCount = 0;
       vi.doMock('child_process', () => ({
         exec: vi
           .fn()
@@ -877,8 +877,8 @@ describe('git-operations', () => {
               cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               execCallCount++;
@@ -916,7 +916,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -952,7 +952,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -984,7 +984,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -1016,7 +1016,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -1048,7 +1048,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(1), 0); // Exit code 1 = failure
               }
@@ -1076,7 +1076,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'error') {
                 setTimeout(() => handler(new Error('spawn error')), 0);
               }
@@ -1124,7 +1124,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -1176,7 +1176,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -1213,7 +1213,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(1), 0); // Checkout fails
               }
@@ -1248,7 +1248,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 callCount++;
                 const code = callCount === 1 ? 0 : 1; // Checkout succeeds, merge fails
@@ -1285,7 +1285,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 callCount++;
                 const code = callCount <= 2 ? 0 : 1; // Checkout and merge succeed, delete fails
@@ -1321,7 +1321,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'error') {
                 setTimeout(() => handler(new Error('spawn error')), 0);
               }
@@ -1371,14 +1371,14 @@ describe('git-operations', () => {
   // =============================================================================
   describe('spawnAsync behavior', () => {
     it('should collect stdout data', async () => {
-      let dataHandler: ((data: Buffer) => void) | null = null;
+      let dataHandler: ((_data: Buffer) => void) | null = null;
 
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: {
           on: vi
             .fn()
             .mockImplementation(
-              (event: string, handler: (data: Buffer) => void) => {
+              (event: string, handler: (_data: Buffer) => void) => {
                 if (event === 'data') {
                   dataHandler = handler;
                   setTimeout(() => handler(Buffer.from('output data')), 0);
@@ -1390,7 +1390,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 10);
               }
@@ -1412,7 +1412,7 @@ describe('git-operations', () => {
     });
 
     it('should collect stderr data', async () => {
-      let dataHandler: ((data: Buffer) => void) | null = null;
+      let dataHandler: ((_data: Buffer) => void) | null = null;
 
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
@@ -1420,7 +1420,7 @@ describe('git-operations', () => {
           on: vi
             .fn()
             .mockImplementation(
-              (event: string, handler: (data: Buffer) => void) => {
+              (event: string, handler: (_data: Buffer) => void) => {
                 if (event === 'data') {
                   dataHandler = handler;
                   setTimeout(() => handler(Buffer.from('error data')), 0);
@@ -1431,7 +1431,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 10);
               }
@@ -1480,8 +1480,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -1515,7 +1515,7 @@ describe('git-operations', () => {
 
     it('should clear timeout when close event fires before timeout', async () => {
       const mockKill = vi.fn();
-      let closeHandler: ((code: number) => void) | null = null;
+      let _closeHandler: ((_code: number) => void) | null = null;
 
       const mockSpawn = vi.fn().mockImplementation(() => ({
         stdout: { on: vi.fn() },
@@ -1523,9 +1523,9 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
-                closeHandler = handler as (code: number) => void;
+                _closeHandler = handler as (_code: number) => void;
                 // Fire close immediately
                 setTimeout(() => handler(0), 0);
               }
@@ -1542,8 +1542,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -1570,7 +1570,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'error') {
                 // Fire error immediately
                 setTimeout(() => handler(new Error('spawn error')), 0);
@@ -1588,8 +1588,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -1608,7 +1608,7 @@ describe('git-operations', () => {
     });
 
     it('should handle null code from timeout', async () => {
-      let timeoutResolve: (value: boolean) => void;
+      let timeoutResolve: (_value: boolean) => void;
 
       const mockSpawn = vi.fn().mockImplementation(() => {
         const child = {
@@ -1631,8 +1631,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -1678,7 +1678,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -1695,8 +1695,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });
@@ -1724,7 +1724,7 @@ describe('git-operations', () => {
         on: vi
           .fn()
           .mockImplementation(
-            (event: string, handler: (...args: unknown[]) => void) => {
+            (event: string, handler: (..._args: unknown[]) => void) => {
               if (event === 'close') {
                 setTimeout(() => handler(0), 0);
               }
@@ -1741,8 +1741,8 @@ describe('git-operations', () => {
               _cmd: string,
               _opts: unknown,
               callback: (
-                err: Error | null,
-                result: { stdout: string; stderr: string }
+                _err: Error | null,
+                _result: { stdout: string; stderr: string }
               ) => void
             ) => {
               callback(null, { stdout: ' M file.ts\n', stderr: '' });

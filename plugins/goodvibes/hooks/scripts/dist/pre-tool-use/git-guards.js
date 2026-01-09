@@ -8,7 +8,7 @@
  * @module pre-tool-use/git-guards
  * @see {@link ../automation/git-operations} for git command execution
  */
-import { getCurrentBranch, } from '../automation/git-operations.js';
+import { getCurrentBranch } from '../automation/git-operations.js';
 /**
  * Checks if a git command is safe to run on the current branch.
  * Prevents dangerous operations like force push to main, hard reset on main,
@@ -22,7 +22,7 @@ import { getCurrentBranch, } from '../automation/git-operations.js';
  * @example
  * const result = await checkBranchGuard('git push --force origin main', '/repo', state);
  * if (!result.allowed) {
- *   console.error(result.reason);
+ *   debug(result.reason);
  * }
  */
 export async function checkBranchGuard(command, cwd, state) {
@@ -70,7 +70,7 @@ export async function checkBranchGuard(command, cwd, state) {
  * @example
  * const result = checkMergeReadiness('/repo', state);
  * if (!result.allowed) {
- *   console.error('Cannot merge:', result.reason);
+ *   debug('Cannot merge:', result.reason);
  * }
  */
 export function checkMergeReadiness(_cwd, state) {

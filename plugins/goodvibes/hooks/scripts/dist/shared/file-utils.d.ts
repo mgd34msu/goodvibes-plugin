@@ -15,13 +15,13 @@
  * @example
  * const pkgPath = path.join(cwd, 'package.json');
  * if (await fileExists(pkgPath)) {
- *   console.log('This is a Node.js project');
+ *   debug('This is a Node.js project');
  * }
  *
  * @example
  * const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
  * if (await fileExists(tsconfigPath)) {
- *   console.log('TypeScript is configured');
+ *   debug('TypeScript is configured');
  * }
  */
 export declare function fileExists(filePath: string): Promise<boolean>;
@@ -41,13 +41,13 @@ export declare function fileExists(filePath: string): Promise<boolean>;
  * @example
  * // Check relative to PROJECT_ROOT
  * if (await fileExistsRelative('package.json')) {
- *   console.log('This is a Node.js project');
+ *   debug('This is a Node.js project');
  * }
  *
  * @example
  * // Check relative to custom directory
  * if (await fileExistsRelative('src/index.ts', '/path/to/project')) {
- *   console.log('Source file found');
+ *   debug('Source file found');
  * }
  */
 export declare function fileExistsRelative(filePath: string, baseDir?: string): Promise<boolean>;
@@ -63,13 +63,13 @@ export declare function fileExistsRelative(filePath: string, baseDir?: string): 
  *
  * @example
  * if (await commandExists('git')) {
- *   console.log('Git is available');
+ *   debug('Git is available');
  * }
  *
  * @example
  * // Check before running a tool
  * if (!(await commandExists('pnpm'))) {
- *   console.log('pnpm not found, falling back to npm');
+ *   debug('pnpm not found, falling back to npm');
  * }
  */
 export declare function commandExists(cmd: string): Promise<boolean>;
@@ -86,7 +86,7 @@ export declare function commandExists(cmd: string): Promise<boolean>;
  * @example
  * const result = await validateRegistries();
  * if (!result.valid) {
- *   console.error('Missing registries:', result.missing.join(', '));
+ *   debug('Missing registries:', result.missing.join(', '));
  * }
  */
 export declare function validateRegistries(): Promise<{
@@ -110,7 +110,7 @@ export declare function validateRegistries(): Promise<{
  *
  * @example
  * const goodvibesDir = await ensureGoodVibesDir('/path/to/project');
- * console.log(goodvibesDir); // '/path/to/project/.goodvibes'
+ * debug(goodvibesDir); // '/path/to/project/.goodvibes'
  *
  * // Now safe to write to subdirectories
  * fs.writeFileSync(path.join(goodvibesDir, 'state', 'session.json'), data);
@@ -130,7 +130,7 @@ export declare function ensureGoodVibesDir(cwd: string): Promise<string>;
  *   execSync('npm test');
  * } catch (error) {
  *   const output = extractErrorOutput(error);
- *   console.log('Test failed:', output);
+ *   debug('Test failed:', output);
  * }
  */
 export declare function extractErrorOutput(error: unknown): string;

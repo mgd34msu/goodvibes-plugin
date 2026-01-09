@@ -41,8 +41,8 @@ function isValidHookInput(value) {
  *
  * @example
  * const input = await readHookInput();
- * console.log(input.hook_event_name); // 'PreToolUse'
- * console.log(input.tool_name); // 'Bash'
+ * debug(input.hook_event_name); // 'PreToolUse'
+ * debug(input.tool_name); // 'Bash'
  */
 export async function readHookInput() {
     return new Promise((resolve, reject) => {
@@ -60,7 +60,7 @@ export async function readHookInput() {
                 }
                 resolve(parsed);
             }
-            catch (error) {
+            catch {
                 reject(new Error('Failed to parse hook input from stdin'));
             }
         });
@@ -146,7 +146,7 @@ export function blockTool(hookEventName, reason) {
  * @example
  * // Use in tests or where you need formatted output without exiting
  * const formatted = formatResponse(createResponse({ systemMessage: 'Test' }));
- * console.log(formatted);
+ * debug(formatted);
  */
 export function formatResponse(response) {
     return JSON.stringify(response);

@@ -4,7 +4,7 @@
  * Analyzes folder structure to detect architecture patterns.
  */
 
-import * as fs from 'fs/promises';
+import * as _fs from 'fs/promises';
 import * as path from 'path';
 
 import { fileExists } from '../shared/file-utils.js';
@@ -27,7 +27,7 @@ export interface FolderAnalysis {
  * @example
  * const analysis = await analyzeFolderStructure('/my-project');
  * if (analysis.routing === 'App Router') {
- *   console.log('Using Next.js App Router');
+ *   debug('Using Next.js App Router');
  * }
  */
 export async function analyzeFolderStructure(

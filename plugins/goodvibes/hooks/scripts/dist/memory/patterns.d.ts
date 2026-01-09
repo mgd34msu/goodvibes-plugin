@@ -14,7 +14,7 @@ import type { MemoryPattern } from '../types/memory.js';
  * @example
  * const patterns = await readPatterns('/path/to/project');
  * for (const pattern of patterns) {
- *   console.log(`${pattern.name}: ${pattern.description}`);
+ *   debug(`${pattern.name}: ${pattern.description}`);
  * }
  */
 export declare function readPatterns(cwd: string): Promise<MemoryPattern[]>;

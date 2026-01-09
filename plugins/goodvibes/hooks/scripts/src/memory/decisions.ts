@@ -33,7 +33,7 @@ Each decision includes the date, alternatives considered, rationale, and the age
  * @example
  * const decisions = await readDecisions('/path/to/project');
  * for (const decision of decisions) {
- *   console.log(`${decision.title}: ${decision.rationale}`);
+ *   debug(`${decision.title}: ${decision.rationale}`);
  * }
  */
 export async function readDecisions(cwd: string): Promise<MemoryDecision[]> {

@@ -91,7 +91,7 @@ export function clearCheckpointTracking(state) {
  * @example
  * const count = getModifiedFileCount(state);
  * if (count >= 5) {
- *   console.log('Threshold reached, creating checkpoint');
+ *   debug('Threshold reached, creating checkpoint');
  * }
  */
 export function getModifiedFileCount(state) {

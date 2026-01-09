@@ -12,10 +12,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import type * as ChildProcess from 'child_process';
+
 // Mock modules
 vi.mock('child_process', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('child_process')>();
+    await importOriginal<typeof ChildProcess>();
   return {
     ...actual,
     exec: vi.fn((cmd, opts, callback) => {
@@ -24,7 +26,7 @@ vi.mock('child_process', async (importOriginal) => {
       if (typeof cb === 'function') {
         cb(null, '', '');
       }
-      return {} as any;
+      return {} as ReturnType<typeof actual.exec>;
     }),
     execSync: vi.fn().mockReturnValue(''),
   };
@@ -36,7 +38,7 @@ vi.mock('../shared/file-utils.js');
 describe('quality-gates', () => {
   // Helper to create a proper child_process mock with exec support
   const mockChildProcess = (options: {
-    execSync?: any;
+    execSync?: (cmd: string) => Buffer | string;
     execError?: Error | null;
     execStdout?: string;
     execStderr?: string;
@@ -61,7 +63,7 @@ describe('quality-gates', () => {
             options.execStderr || ''
           );
         }
-        return {} as any;
+        return {} as ReturnType<typeof actual.exec>;
       }),
       execSync: options.execSync || vi.fn().mockReturnValue(''),
     };
@@ -569,10 +571,10 @@ describe('quality-gates', () => {
     });
 
     it('should not set blocking when only non-blocking gates fail', async () => {
-      let callCount = 0;
+      let _callCount = 0;
       vi.doMock('child_process', () => mockChildProcess({
         execSync: vi.fn().mockImplementation((cmd: string) => {
-          callCount++;
+          _callCount++;
           // Let TypeScript, ESLint, and Tests pass (first 3 checks + any re-checks)
           // Only fail Prettier (4th gate)
           if (cmd.includes('prettier --check')) {
@@ -688,10 +690,10 @@ describe('quality-gates', () => {
     });
 
     it('should mark as failed when auto-fix succeeds but re-check fails', async () => {
-      let eslintCallCount = 0;
+      let _eslintCallCount = 0;
       const mockExecSync = vi.fn().mockImplementation((cmd: string) => {
         if (cmd.includes('eslint')) {
-          eslintCallCount++;
+          _eslintCallCount++;
           if (cmd.includes('--fix')) {
             // Auto-fix succeeds
             return '';

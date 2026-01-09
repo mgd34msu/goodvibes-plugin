@@ -1108,13 +1108,12 @@ describe('memory/search', () => {
     it('should return empty string when split returns array with undefined first element', () => {
       // Mock String.prototype.split to test the nullish coalescing fallback
       const originalSplit = String.prototype.split;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      String.prototype.split = function (separator: any): any {
+      String.prototype.split = function (separator: string | RegExp): string[] {
         if (separator === 'T') {
           // Return array with undefined at index 0 to trigger ?? fallback
           const arr: (string | undefined)[] = [];
           arr[0] = undefined;
-          return arr;
+          return arr as string[];
         }
         return originalSplit.call(this, separator);
       };

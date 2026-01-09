@@ -33,7 +33,7 @@ import {
   QUALITY_GATES,
   getDefaultSharedConfig,
   loadSharedConfig,
-  type SharedConfig,
+  type _SharedConfig,
 } from '../../shared/config.js';
 import { fileExists } from '../../shared/file-utils.js';
 import { debug } from '../../shared/logging.js';

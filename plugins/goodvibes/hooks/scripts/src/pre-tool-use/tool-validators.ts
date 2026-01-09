@@ -137,7 +137,7 @@ export async function validateCheckTypes(input: HookInput): Promise<void> {
  * @param input - The hook input containing tool information
  * @returns Promise that resolves after validation is complete
  */
-export async function validateImplementation(input: HookInput): Promise<void> {
+export async function validateImplementation(_input: HookInput): Promise<void> {
   // Just allow and let the tool handle validation
   respond(allowTool('PreToolUse'));
 }
@@ -145,7 +145,7 @@ export async function validateImplementation(input: HookInput): Promise<void> {
 /** Tool validators keyed by tool name */
 export const TOOL_VALIDATORS: Record<
   string,
-  (input: HookInput) => Promise<void>
+  (_input: HookInput) => Promise<void>
 > = {
   detect_stack: validateDetectStack,
   get_schema: validateGetSchema,

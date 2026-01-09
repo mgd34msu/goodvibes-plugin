@@ -9,11 +9,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import {
-  createPreCompactCheckpoint,
-  saveSessionSummary,
-  getFilesModifiedThisSession,
-} from './state-preservation.js';
-import {
   respond,
   readHookInput,
   loadAnalytics,
@@ -26,6 +21,12 @@ import {
   isTestEnvironment,
 } from '../shared/index.js';
 import { loadState } from '../state/index.js';
+
+import {
+  createPreCompactCheckpoint,
+  saveSessionSummary,
+  getFilesModifiedThisSession,
+} from './state-preservation.js';
 
 import type { SessionAnalytics } from '../shared/index.js';
 

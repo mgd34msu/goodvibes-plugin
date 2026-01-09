@@ -54,8 +54,8 @@ export interface GoodVibesConfig {
  *
  * @example
  * const config = getDefaultConfig();
- * console.log(config.automation.mode); // 'default'
- * console.log(config.automation.testing.maxRetries); // 3
+ * debug(config.automation.mode); // 'default'
+ * debug(config.automation.testing.maxRetries); // 3
  */
 export function getDefaultConfig(): GoodVibesConfig {
   return {

@@ -218,7 +218,7 @@ describe('error-categories', () => {
   describe('findMatchingPattern', () => {
     it('should find pattern by category mapping - npm_install with npm_error pattern', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'npm_install',
@@ -232,7 +232,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - npm_install with missing_import pattern', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'npm_install',
@@ -246,7 +246,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - typescript_error with typescript_type_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'typescript_error',
@@ -259,7 +259,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - typescript_error with typescript_config_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'typescript_error',
@@ -272,7 +272,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - typescript_error with type_mismatch', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'typescript_error',
@@ -285,7 +285,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - test_failure', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'test_failure',
@@ -298,7 +298,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - build_failure', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'build_failure',
@@ -311,7 +311,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - file_not_found', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'file_not_found',
@@ -324,7 +324,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - git_conflict', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'git_conflict',
@@ -337,7 +337,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - database_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'database_error',
@@ -350,7 +350,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - api_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'api_error',
@@ -363,7 +363,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - unknown with undefined_reference', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'unknown',
@@ -376,7 +376,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - unknown with lint_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern('unknown', 'eslint: error detected');
 
@@ -386,7 +386,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - unknown with permission_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern('unknown', 'EACCES permission denied');
 
@@ -396,7 +396,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - unknown with resource_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'unknown',
@@ -409,7 +409,7 @@ describe('error-categories', () => {
 
     it('should find pattern by category mapping - unknown with syntax_error', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'unknown',
@@ -422,7 +422,7 @@ describe('error-categories', () => {
 
     it('should fall back to pattern matching when category mapping does not match', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // 'unknown' category doesn't include 'npm_error' in its mapping,
       // but should still match by pattern fallback
@@ -437,7 +437,7 @@ describe('error-categories', () => {
 
     it('should return null when no pattern matches', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern(
         'npm_install',
@@ -449,7 +449,7 @@ describe('error-categories', () => {
 
     it('should return null for empty error message', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findMatchingPattern('npm_install', '');
 
@@ -458,7 +458,7 @@ describe('error-categories', () => {
 
     it('should handle category with empty pattern list', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // This tests the edge case where patternCategories is empty array
       // by using a category that doesn't exist in the map (will be undefined, default to [])
@@ -474,7 +474,7 @@ describe('error-categories', () => {
 
     it('should match first pattern in category mapping', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // npm_install maps to ['missing_import', 'npm_error']
       // This should match missing_import first
@@ -489,7 +489,7 @@ describe('error-categories', () => {
 
     it('should iterate through all patterns in a recovery pattern', async () => {
       const { findMatchingPattern } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // Test with second pattern in npm_error's patterns array
       const result = findMatchingPattern(
@@ -505,7 +505,7 @@ describe('error-categories', () => {
   describe('findAllMatchingPatterns', () => {
     it('should find all matching patterns for an error', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findAllMatchingPatterns('npm ERR! something');
 
@@ -515,7 +515,7 @@ describe('error-categories', () => {
 
     it('should return empty array when no patterns match', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findAllMatchingPatterns(
         'completely unique unmatched error'
@@ -526,7 +526,7 @@ describe('error-categories', () => {
 
     it('should only add each pattern once even if multiple regexes match', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // npm_error has patterns [/npm ERR!/, /ERESOLVE/]
       // Both should match but pattern should only be added once
@@ -540,7 +540,7 @@ describe('error-categories', () => {
 
     it('should return multiple patterns if error matches multiple categories', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // Create an error that might match multiple patterns
       const result = findAllMatchingPatterns('Build failed: TS2322 type error');
@@ -550,7 +550,7 @@ describe('error-categories', () => {
 
     it('should handle empty error string', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = findAllMatchingPatterns('');
 
@@ -559,7 +559,7 @@ describe('error-categories', () => {
 
     it('should iterate through all patterns in RECOVERY_PATTERNS', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // Test various patterns
       const errors = [
@@ -587,7 +587,7 @@ describe('error-categories', () => {
 
     it('should break after first matching regex for each pattern', async () => {
       const { findAllMatchingPatterns } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // Verify that the break statement works - each pattern should only be added once
       const result = findAllMatchingPatterns(
@@ -604,7 +604,7 @@ describe('error-categories', () => {
   describe('getHighestSeverity', () => {
     it('should return "low" for empty array', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const result = getHighestSeverity([]);
 
@@ -613,7 +613,7 @@ describe('error-categories', () => {
 
     it('should return "low" when all patterns have low severity', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const patterns: RecoveryPattern[] = [
         {
@@ -639,7 +639,7 @@ describe('error-categories', () => {
 
     it('should return "medium" when highest is medium', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const patterns: RecoveryPattern[] = [
         {
@@ -665,7 +665,7 @@ describe('error-categories', () => {
 
     it('should return "high" when highest is high', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const patterns: RecoveryPattern[] = [
         {
@@ -698,7 +698,7 @@ describe('error-categories', () => {
 
     it('should return "critical" when highest is critical', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const patterns: RecoveryPattern[] = [
         {
@@ -738,7 +738,7 @@ describe('error-categories', () => {
 
     it('should handle single pattern', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       const patterns: RecoveryPattern[] = [
         {
@@ -757,7 +757,7 @@ describe('error-categories', () => {
 
     it('should correctly compare severity levels in order', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // Test all combinations to ensure comparison works
       const testCases: Array<{
@@ -792,7 +792,7 @@ describe('error-categories', () => {
 
     it('should iterate through all patterns in array', async () => {
       const { getHighestSeverity } =
-        await import('../../post-tool-use-failure/error-categories.js');
+        await import('../../post-tool-use-failure/pattern-matcher.js');
 
       // Ensure all patterns are checked, not just first few
       const patterns: RecoveryPattern[] = [

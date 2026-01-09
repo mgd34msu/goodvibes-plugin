@@ -26,7 +26,7 @@ export interface GitContext {
  * @example
  * const context = await getGitContext('/my-repo');
  * if (context.isRepo && context.hasUncommittedChanges) {
- *   console.log(`${context.uncommittedFileCount} uncommitted files`);
+ *   debug(`${context.uncommittedFileCount} uncommitted files`);
  * }
  */
 export declare function getGitContext(cwd: string): Promise<GitContext>;

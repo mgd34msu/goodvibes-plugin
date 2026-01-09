@@ -45,10 +45,10 @@ import type {
 // Mock child_process module - getGitInfo now uses promisified exec
 const mockExec = vi.fn();
 vi.mock('child_process', () => ({
-  exec: vi.fn((cmd, options, callback) => {
+  exec: vi.fn((cmd, _options, callback) => {
     // Support both callback and promise-based usage
     if (callback) {
-      const result = mockExec(cmd, options);
+      const result = mockExec(cmd, _options);
       callback(result.error, result.stdout, result.stderr);
     }
   }),
@@ -58,7 +58,7 @@ vi.mock('util', async () => {
   const actual = await vi.importActual('util');
   return {
     ...actual,
-    promisify: (fn: unknown) => {
+    promisify: (_fn: unknown) => {
       return async (...args: unknown[]) => {
         const result = mockExec(...args);
         if (result.error) {
@@ -105,7 +105,7 @@ describe('telemetry', () => {
       if (fs.existsSync(activeAgentsFile)) {
         try {
           fs.unlinkSync(activeAgentsFile);
-        } catch (error) {
+        } catch {
           // Ignore errors
         }
       }
@@ -135,7 +135,7 @@ describe('telemetry', () => {
     if (fs.existsSync(activeAgentsFile)) {
       try {
         fs.unlinkSync(activeAgentsFile);
-      } catch (error) {
+      } catch {
         // Ignore errors
       }
     }
@@ -919,7 +919,7 @@ describe('telemetry', () => {
     });
 
     it('should have all lowercase keywords', () => {
-      for (const [category, keywords] of Object.entries(KEYWORD_CATEGORIES)) {
+      for (const [_category, keywords] of Object.entries(KEYWORD_CATEGORIES)) {
         for (const keyword of keywords) {
           expect(keyword).toBe(keyword.toLowerCase());
         }

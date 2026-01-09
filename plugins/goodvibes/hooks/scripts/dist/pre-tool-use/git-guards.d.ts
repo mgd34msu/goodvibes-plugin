@@ -31,7 +31,7 @@ export interface GitGuardResult {
  * @example
  * const result = await checkBranchGuard('git push --force origin main', '/repo', state);
  * if (!result.allowed) {
- *   console.error(result.reason);
+ *   debug(result.reason);
  * }
  */
 export declare function checkBranchGuard(command: string, cwd: string, state: HooksState): Promise<GitGuardResult>;
@@ -46,7 +46,7 @@ export declare function checkBranchGuard(command: string, cwd: string, state: Ho
  * @example
  * const result = checkMergeReadiness('/repo', state);
  * if (!result.allowed) {
- *   console.error('Cannot merge:', result.reason);
+ *   debug('Cannot merge:', result.reason);
  * }
  */
 export declare function checkMergeReadiness(_cwd: string, state: HooksState): GitGuardResult;

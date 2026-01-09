@@ -13,10 +13,4 @@ export type { RecentActivity, FileChange, Hotspot, RecentCommit };
  * @returns Promise resolving to RecentActivity with all git activity data
  */
 export declare function getRecentActivity(cwd: string): Promise<RecentActivity>;
-/**
- * Format recent activity for display in context output.
- *
- * @param activity - The RecentActivity object to format
- * @returns Formatted string with commits, hotspots, and recent files, or null if no activity
- */
-export declare function formatRecentActivity(activity: RecentActivity): string | null;
+export { formatRecentActivity } from './recent-activity-formatter.js';

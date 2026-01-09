@@ -4,72 +4,13 @@
  * Automated git operations including commits, branch management,
  * and repository state verification.
  */
-import { exec, spawn } from 'child_process';
+import { exec } from 'child_process';
 import * as path from 'path';
 import { promisify } from 'util';
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/index.js';
+import { spawnAsync, sanitizeForGit } from './spawn-utils.js';
 const execAsync = promisify(exec);
-/**
- * Promisified spawn that returns a promise resolving to exit code.
- * Used for commands where we need to pass arguments as an array to avoid shell injection.
- *
- * @param command - The command to execute
- * @param args - Array of arguments to pass to the command
- * @param options - Execution options including working directory and optional timeout
- * @returns Promise resolving to an object with exit code, stdout, and stderr
- */
-function spawnAsync(command, args, options) {
-    return new Promise((resolve) => {
-        const child = spawn(command, args, {
-            cwd: options.cwd,
-            stdio: ['pipe', 'pipe', 'pipe'],
-        });
-        let stdout = '';
-        let stderr = '';
-        child.stdout?.on('data', (data) => {
-            stdout += data.toString();
-        });
-        child.stderr?.on('data', (data) => {
-            stderr += data.toString();
-        });
-        const timeoutId = options.timeout
-            ? setTimeout(() => {
-                child.kill('SIGTERM');
-                resolve({
-                    code: null,
-                    stdout,
-                    stderr: stderr + '\nProcess timed out',
-                });
-            }, options.timeout)
-            : /* v8 ignore next -- @preserve defensive: all exported functions always provide timeout */ null;
-        child.on('close', (code) => {
-            /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            resolve({ code, stdout, stderr });
-        });
-        child.on('error', (err) => {
-            /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            resolve({ code: null, stdout, stderr: err.message });
-        });
-    });
-}
-/**
- * Sanitizes a string for safe use in git commands.
- * Removes shell metacharacters that could enable command injection.
- *
- * @param input - The string to sanitize
- * @returns A sanitized string safe for use in git commands
- */
-function sanitizeForGit(input) {
-    // Remove or escape shell metacharacters
-    return input.replace(/[`$\\;"'|&<>(){}[\]!#*?~]/g, '');
-}
 /**
  * Executes a git command and returns the output.
  * Handles errors gracefully by returning null on failure.
@@ -81,7 +22,7 @@ function sanitizeForGit(input) {
  * @example
  * const branch = await execGit('git branch --show-current', '/repo');
  * if (branch) {
- *   console.log('Current branch:', branch);
+ *   debug('Current branch:', branch);
  * }
  */
 export async function execGit(command, cwd) {
@@ -106,7 +47,7 @@ export async function execGit(command, cwd) {
  *
  * @example
  * if (await isGitRepo('/my-project')) {
- *   console.log('This is a git repository');
+ *   debug('This is a git repository');
  * }
  */
 export async function isGitRepo(cwd) {
@@ -121,7 +62,7 @@ export async function isGitRepo(cwd) {
  *
  * @example
  * const mainBranch = await detectMainBranch('/repo');
- * console.log('Main branch is:', mainBranch);
+ * debug('Main branch is:', mainBranch);
  */
 export async function detectMainBranch(cwd) {
     const main = await execGit('git rev-parse --verify main', cwd);
@@ -143,7 +84,7 @@ export async function detectMainBranch(cwd) {
  * @example
  * const branch = await getCurrentBranch('/repo');
  * if (branch === 'main') {
- *   console.log('On main branch');
+ *   debug('On main branch');
  * }
  */
 export async function getCurrentBranch(cwd) {
@@ -158,7 +99,7 @@ export async function getCurrentBranch(cwd) {
  *
  * @example
  * if (await hasUncommittedChanges('/repo')) {
- *   console.log('You have uncommitted changes');
+ *   debug('You have uncommitted changes');
  * }
  */
 export async function hasUncommittedChanges(cwd) {
@@ -174,7 +115,7 @@ export async function hasUncommittedChanges(cwd) {
  *
  * @example
  * const files = await getUncommittedFiles('/repo');
- * files.forEach(f => console.log('Modified:', f));
+ * files.forEach(f => debug('Modified:', f));
  */
 export async function getUncommittedFiles(cwd) {
     const status = await execGit('git status --porcelain', cwd);
@@ -197,7 +138,7 @@ export async function getUncommittedFiles(cwd) {
  *
  * @example
  * if (await createCheckpoint('/repo', 'pre-refactor state')) {
- *   console.log('Checkpoint created');
+ *   debug('Checkpoint created');
  * }
  */
 export async function createCheckpoint(cwd, message) {
@@ -265,7 +206,7 @@ export async function createFeatureBranch(cwd, name) {
  *
  * @example
  * if (await mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
- *   console.log('Feature merged and branch cleaned up');
+ *   debug('Feature merged and branch cleaned up');
  * }
  */
 export async function mergeFeatureBranch(cwd, featureBranch, mainBranch) {

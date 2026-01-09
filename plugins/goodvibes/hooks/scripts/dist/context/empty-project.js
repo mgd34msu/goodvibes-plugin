@@ -26,7 +26,7 @@ const SCAFFOLDING_ONLY = [
  *
  * @example
  * if (await isEmptyProject('/my-project')) {
- *   console.log('New empty project detected');
+ *   debug('New empty project detected');
  * }
  */
 export async function isEmptyProject(cwd) {

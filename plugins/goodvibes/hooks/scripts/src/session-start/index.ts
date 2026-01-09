@@ -14,16 +14,6 @@
 
 // Session-start specific modules
 import {
-  gatherProjectContext,
-  createFailedContextResult,
-  type ContextGatheringResult,
-} from './context-builder.js';
-import {
-  checkCrashRecovery,
-  type RecoveryInfo,
-} from './crash-recovery.js';
-import { buildSystemMessage } from './response-formatter.js';
-import {
   respond,
   readHookInput,
   validateRegistries,
@@ -42,6 +32,17 @@ import {
   initializeSession,
 } from '../state/index.js';
 import { createDefaultState } from '../types/state.js';
+
+import {
+  gatherProjectContext,
+  createFailedContextResult,
+  type ContextGatheringResult,
+} from './context-builder.js';
+import {
+  checkCrashRecovery,
+  type RecoveryInfo,
+} from './crash-recovery.js';
+import { buildSystemMessage } from './response-formatter.js';
 
 import type { HooksState } from '../types/state.js';
 
@@ -121,7 +122,7 @@ function initializeAnalytics(
   sessionId: string,
   contextResult: ContextGatheringResult
 ): void {
-  saveAnalytics({
+  void saveAnalytics({
     session_id: sessionId,
     started_at: new Date().toISOString(),
     tool_usage: [],

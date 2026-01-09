@@ -12,7 +12,7 @@ import {
   formatContext,
   formatMinimalContext,
   type GatheredContext,
-  type FormattedContext,
+  type _FormattedContext,
 } from '../../context/formatter.js';
 import { formatGitContext } from '../../context/git-context.js';
 import { formatHealthStatus } from '../../context/health-checker.js';
@@ -20,13 +20,13 @@ import { formatStackInfo } from '../../context/stack-detector.js';
 import { formatTodos } from '../../context/todo-scanner.js';
 import { formatMemoryContext } from '../../memory/index.js';
 
-import type { EnvStatus } from '../../context/environment.js';
-import type { FolderAnalysis } from '../../context/folder-analyzer.js';
-import type { GitContext } from '../../context/git-context.js';
-import type { HealthStatus } from '../../context/health-checker.js';
-import type { StackInfo } from '../../context/stack-detector.js';
-import type { TodoItem } from '../../context/todo-scanner.js';
-import type { ProjectMemory } from '../../types/memory.js';
+import type { _EnvStatus } from '../../context/environment.js';
+import type { _FolderAnalysis } from '../../context/folder-analyzer.js';
+import type { _GitContext } from '../../context/git-context.js';
+import type { _HealthStatus } from '../../context/health-checker.js';
+import type { _StackInfo } from '../../context/stack-detector.js';
+import type { _TodoItem } from '../../context/todo-scanner.js';
+import type { _ProjectMemory } from '../../types/memory.js';
 
 // Mock all external dependencies
 vi.mock('../../context/stack-detector.js');

@@ -151,10 +151,10 @@ export interface StackInfo {
  * @example
  * const stack = await detectStack('/my-project');
  * if (stack.frameworks.includes('Next.js')) {
- *   console.log('Next.js project detected');
+ *   debug('Next.js project detected');
  * }
- * console.log(`Package manager: ${stack.packageManager}`);
- * console.log(`TypeScript strict mode: ${stack.isStrict}`);
+ * debug(`Package manager: ${stack.packageManager}`);
+ * debug(`TypeScript strict mode: ${stack.isStrict}`);
  */
 export async function detectStack(cwd: string): Promise<StackInfo> {
   // Check cache first

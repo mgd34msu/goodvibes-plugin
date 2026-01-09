@@ -9,27 +9,11 @@
  */
 
 import {
-  generateErrorSignature,
   categorizeError,
   createErrorState,
   buildFixContext,
 } from '../automation/fix-loop.js';
 import { writeFailure } from '../memory/failures.js';
-import {
-  findMatchingPattern,
-  getSuggestedFix,
-} from './pattern-matcher.js';
-import { getResearchHints } from './research-hints.js';
-import {
-  saveRetry,
-  getRetryCount,
-  getCurrentPhase,
-  shouldEscalatePhase,
-  getPhaseDescription,
-  getRemainingAttempts,
-  hasExhaustedRetries,
-  generateErrorSignature as generateRetrySignature,
-} from './retry-tracker.js';
 import {
   respond,
   readHookInput,
@@ -43,40 +27,27 @@ import {
 } from '../shared/index.js';
 import { loadState, saveState, trackError, getErrorState } from '../state/index.js';
 
+import {
+  findMatchingPattern,
+  getSuggestedFix,
+} from './pattern-matcher.js';
+import { getResearchHints } from './research-hints.js';
+import {
+  buildResearchHintsMessage,
+  buildFixLoopResponse,
+} from './response-builder.js';
+import {
+  saveRetry,
+  getRetryCount,
+  getCurrentPhase,
+  shouldEscalatePhase,
+  hasExhaustedRetries,
+  generateErrorSignature,
+} from './retry-tracker.js';
+
 import type { ErrorCategory } from '../types/errors.js';
 import type { MemoryFailure } from '../types/memory.js';
 
-/**
- * Build research hints message based on phase
- */
-function buildResearchHintsMessage(
-  category: ErrorCategory,
-  errorMessage: string,
-  phase: 1 | 2 | 3
-): string {
-  if (phase === 1) {
-    return '';
-  }
-
-  const hints = getResearchHints(category, errorMessage, phase);
-  const parts: string[] = [];
-
-  if (phase >= 2 && hints.official.length > 0) {
-    parts.push('[Phase 2] Search official documentation:');
-    for (const hint of hints.official) {
-      parts.push(`  - ${hint}`);
-    }
-  }
-
-  if (phase >= 3 && hints.community.length > 0) {
-    parts.push('[Phase 3] Search community solutions:');
-    for (const hint of hints.community) {
-      parts.push(`  - ${hint}`);
-    }
-  }
-
-  return parts.join('\n');
-}
 
 /**
  * Type guard to check if a value is a record object
@@ -110,11 +81,9 @@ async function runPostToolUseFailureHook(): Promise<void> {
     // Step 1: Load state
     let state = await loadState(cwd);
 
-    // Step 2: Generate error signature (using fix-loop version for state tracking)
-    const signature = generateErrorSignature(toolName, errorMessage);
-    // Also generate retry-tracker signature for file-based tracking
-    const retrySignature = generateRetrySignature(errorMessage, toolName);
-    debug('Error signatures', { signature, retrySignature });
+    // Step 2: Generate error signature (unified function from retry-tracker)
+    const signature = generateErrorSignature(errorMessage, toolName);
+    debug('Error signature', { signature });
 
     // Step 3: Categorize the error
     const category = categorizeError(errorMessage);
@@ -122,8 +91,8 @@ async function runPostToolUseFailureHook(): Promise<void> {
 
     // Step 4: Load retry tracker to check current phase
     let errorState = getErrorState(state, signature);
-    const currentPhase = await getCurrentPhase(cwd, retrySignature);
-    const retryCount = await getRetryCount(cwd, retrySignature);
+    const currentPhase = await getCurrentPhase(cwd, signature);
+    const retryCount = await getRetryCount(cwd, signature);
 
     if (!errorState) {
       // First time seeing this error in state
@@ -166,15 +135,12 @@ async function runPostToolUseFailureHook(): Promise<void> {
     const suggestedFix = getSuggestedFix(category, errorMessage, errorState);
 
     // Step 7: Build fix context with research hints
-    const fixContext = buildFixContext(errorState, errorMessage);
+    const _fixContext = buildFixContext(errorState, errorMessage);
 
     // Build research hints for current phase
     const effectiveCategory = (pattern?.category || category) as ErrorCategory;
-    const researchHints = buildResearchHintsMessage(
-      effectiveCategory,
-      errorMessage,
-      errorState.phase
-    );
+    const hints = getResearchHints(effectiveCategory, errorMessage, errorState.phase);
+    const researchHints = buildResearchHintsMessage(hints, errorState.phase);
 
     // Step 8: Save retry attempt (both to state and file-based tracker)
     errorState = {
@@ -183,7 +149,7 @@ async function runPostToolUseFailureHook(): Promise<void> {
       totalAttempts: errorState.totalAttempts + 1,
     };
     state = trackError(state, signature, errorState);
-    await saveRetry(cwd, retrySignature, errorState.phase);
+    await saveRetry(cwd, signature, errorState.phase);
 
     // Step 9: Check if all phases exhausted
     const exhausted = await hasExhaustedRetries(errorState);
@@ -228,61 +194,15 @@ async function runPostToolUseFailureHook(): Promise<void> {
     }
 
     // Step 10: Build response with fix suggestions and research hints
-    const phaseDesc = getPhaseDescription(errorState.phase);
-
-    const responseParts: string[] = [];
-
-    // Header with phase info
-    responseParts.push(
-      `[GoodVibes Fix Loop - Phase ${errorState.phase}/3: ${phaseDesc}]`
-    );
-    const remaining = await getRemainingAttempts(errorState);
-    responseParts.push(
-      `Attempt ${retryCount + 1} (${remaining} remaining this phase)`
-    );
-    responseParts.push('');
-
-    // Error category
-    if (pattern) {
-      responseParts.push(`Detected: ${pattern.category.replace(/_/g, ' ')}`);
-    } else {
-      responseParts.push(`Category: ${category}`);
-    }
-    responseParts.push('');
-
-    // Suggested fix
-    responseParts.push('Suggested fix:');
-    responseParts.push(suggestedFix);
-
-    // Research hints for phases 2 and 3
-    if (researchHints) {
-      responseParts.push('');
-      responseParts.push(researchHints);
-    }
-
-    // Previous attempts warning
-    const MAX_RECENT_ATTEMPTS = 3;
-    if (errorState.fixStrategiesAttempted.length > 0) {
-      responseParts.push('');
-      responseParts.push('Previously attempted (failed):');
-      for (const attempt of errorState.fixStrategiesAttempted.slice(
-        -MAX_RECENT_ATTEMPTS
-      )) {
-        responseParts.push(`  - ${attempt.strategy}`);
-      }
-      responseParts.push('Try a DIFFERENT approach.');
-    }
-
-    // Exhaustion warning
-    if (exhausted) {
-      responseParts.push('');
-      responseParts.push('[WARNING] All fix phases exhausted. Consider:');
-      responseParts.push('  - Manual debugging');
-      responseParts.push('  - Asking the user for help');
-      responseParts.push('  - Reverting recent changes');
-    }
-
-    const additionalContext = responseParts.join('\n');
+    const additionalContext = await buildFixLoopResponse({
+      errorState,
+      retryCount,
+      pattern,
+      category,
+      suggestedFix,
+      researchHints,
+      exhausted,
+    });
 
     respond(createResponse({ systemMessage: additionalContext }));
   } catch (error: unknown) {

@@ -1,9 +1,7 @@
 /**
- * Stop Hook (GoodVibes)
+ * Stop Hook Entry Point
  *
- * Cleanup and save analytics when session ends:
- * - Finalize analytics
- * - Log session summary
- * - Clean up temporary cache files
+ * This is a thin entry point that re-exports from the lifecycle module.
+ * The actual implementation lives in src/lifecycle/stop.ts
  */
-export {};
+import './lifecycle/stop.js';

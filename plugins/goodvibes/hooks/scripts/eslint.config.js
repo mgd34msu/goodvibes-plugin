@@ -58,7 +58,7 @@ const testOnlyDisabledRules = {
  * across source, test, and config files while making maintenance easier.
  */
 const sharedRules = {
-  'no-unused-vars': 'error',
+  'no-unused-vars': 'off', // Disable base rule in favor of @typescript-eslint/no-unused-vars
   '@typescript-eslint/no-unused-vars': [
     'error',
     {
@@ -208,7 +208,7 @@ export default [
    * RATIONALE: 50+ errors in test files are acceptable test patterns
    */
   {
-    files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts'],
+    files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts', 'vitest.setup.ts'],
     languageOptions: {
       ...sharedLanguageOptions,
       parserOptions: {

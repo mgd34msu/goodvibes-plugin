@@ -5,16 +5,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import {
-  runHook,
-  runHookSync,
-  isMainModule,
-  type HookHandler,
-  type RunHookOptions,
-  type HookInput,
-  type HookResponse,
-} from '../../shared/hook-runner.js';
-
 // Mock dependencies
 vi.mock('../../shared/hook-io.js', () => ({
   readHookInput: vi.fn(),
@@ -32,6 +22,15 @@ vi.mock('../../shared/logging.js', () => ({
 
 // Get mocked functions
 import { readHookInput, respond, createResponse } from '../../shared/hook-io.js';
+import {
+  runHook,
+  runHookSync,
+  isMainModule,
+  type HookHandler,
+  type RunHookOptions as _RunHookOptions,
+  type HookInput,
+  type HookResponse,
+} from '../../shared/hook-runner.js';
 import { debug, logError } from '../../shared/logging.js';
 
 const mockedReadHookInput = vi.mocked(readHookInput);
@@ -210,7 +209,7 @@ describe('hook-runner', () => {
       mockedReadHookInput.mockResolvedValue(mockInput);
 
       // Don't await - catchUncaught mode
-      runHook('TestHook', handler);
+      void runHook('TestHook', handler);
 
       // Wait for async operations
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -230,7 +229,7 @@ describe('hook-runner', () => {
       mockedCreateResponse.mockReturnValue(errorResponse);
 
       // Don't await - catchUncaught mode
-      runHook('TestHook', handler);
+      void runHook('TestHook', handler);
 
       // Wait for async operations
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -256,7 +255,7 @@ describe('hook-runner', () => {
       mockedCreateResponse.mockReturnValue(errorResponse);
 
       // Call with catchUncaught: true - don't await
-      runHook('TestHook', handler, { catchUncaught: true });
+      void runHook('TestHook', handler, { catchUncaught: true });
 
       // Wait for error to propagate through .catch() handler
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -286,7 +285,7 @@ describe('hook-runner', () => {
       mockedCreateResponse.mockReturnValue(errorResponse);
 
       // Call without awaiting (catchUncaught: true)
-      runHook('TestHook', handler, { catchUncaught: true });
+      void runHook('TestHook', handler, { catchUncaught: true });
 
       // Wait for async rejection
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -311,7 +310,7 @@ describe('hook-runner', () => {
       mockedCreateResponse.mockReturnValue(errorResponse);
 
       // Don't await - let it run with catchUncaught: true
-      runHook('TestHook', handler, { catchUncaught: true });
+      void runHook('TestHook', handler, { catchUncaught: true });
 
       // Wait for the error to propagate through the .catch() handler
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -348,7 +347,7 @@ describe('hook-runner', () => {
       mockedReadHookInput.mockResolvedValue(mockInput);
 
       // Empty options defaults to catchUncaught: true, so we need to wait
-      runHook('TestHook', handler, {});
+      void runHook('TestHook', handler, {});
       await new Promise((resolve) => setTimeout(resolve, 30));
 
       expect(handler).toHaveBeenCalledWith(mockInput);
@@ -431,7 +430,7 @@ describe('hook-runner', () => {
       mockedReadHookInput.mockResolvedValue(mockInput);
 
       // TypeScript won't allow this, but test runtime behavior
-      await runHookSync('SyncHook', handler, {} as any);
+      await runHookSync('SyncHook', handler, {} as Parameters<typeof runHookSync>[2]);
 
       expect(handler).toHaveBeenCalledWith(mockInput);
       expect(mockedRespond).toHaveBeenCalledWith(response);

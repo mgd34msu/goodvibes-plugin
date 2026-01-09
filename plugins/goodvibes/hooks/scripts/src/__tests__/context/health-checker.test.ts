@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   checkProjectHealth,
   formatHealthStatus,
-  HealthCheck,
+  _HealthCheck,
 } from '../../context/health-checker.js';
 
 import type { HealthStatus } from '../../context/health-checker.js';

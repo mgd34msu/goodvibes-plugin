@@ -37,14 +37,14 @@ export interface StateOptions {
  *
  * @example
  * const state = await loadState('/path/to/project');
- * console.log(state.session.id);
+ * debug(state.session.id);
  *
  * @example
  * // Throw errors instead of using defaults
  * try {
  *   const state = await loadState('/path/to/project', { throwOnError: true });
  * } catch (error) {
- *   console.error('Failed to load state:', error);
+ *   logError('Failed to load state:', error);
  * }
  */
 export async function loadState(
@@ -96,7 +96,7 @@ export async function loadState(
  * try {
  *   await saveState(cwd, state, { throwOnError: true });
  * } catch (error) {
- *   console.error('Failed to save state:', error);
+ *   logError('Failed to save state:', error);
  * }
  */
 export async function saveState(

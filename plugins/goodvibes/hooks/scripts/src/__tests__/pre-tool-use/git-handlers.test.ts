@@ -5,14 +5,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import {
-  extractBashCommand,
-  handleGitCommit,
-  handleGitCommand,
-} from '../../pre-tool-use/git-handlers.js';
-
-import type { HookInput } from '../../shared/hook-io.js';
-
 // Mock dependencies
 vi.mock('../../pre-tool-use/git-guards.js');
 vi.mock('../../pre-tool-use/quality-gates.js');
@@ -26,13 +18,20 @@ import {
   isMergeCommand,
 } from '../../pre-tool-use/git-guards.js';
 import {
+  extractBashCommand,
+  handleGitCommit,
+  handleGitCommand,
+} from '../../pre-tool-use/git-handlers.js';
+import {
   runQualityGates,
-  isCommitCommand,
+  isCommitCommand as _isCommitCommand,
   formatGateResults,
 } from '../../pre-tool-use/quality-gates.js';
 import { respond, allowTool, blockTool, debug } from '../../shared/index.js';
 import { loadState } from '../../state/index.js';
 import { getDefaultConfig } from '../../types/config.js';
+
+import type { HookInput } from '../../shared/hook-io.js';
 
 const mockedCheckBranchGuard = vi.mocked(checkBranchGuard);
 const mockedCheckMergeReadiness = vi.mocked(checkMergeReadiness);

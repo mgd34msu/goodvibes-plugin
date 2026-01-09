@@ -19,10 +19,10 @@ import { isDevServerCommand, registerDevServer, parseDevServerErrors, recordDevS
  * @example
  * const { isDevServer, errors } = handleBashTool(state, input);
  * if (isDevServer) {
- *   console.log('Dev server started');
+ *   debug('Dev server started');
  * }
  * if (errors.length > 0) {
- *   console.log('Errors detected:', errors);
+ *   debug('Errors detected:', errors);
  * }
  */
 export function handleBashTool(state, input) {

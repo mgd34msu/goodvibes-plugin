@@ -18,7 +18,7 @@ import type { ErrorState, ErrorCategory } from '../types/errors.js';
  * @example
  * const pattern = findMatchingPattern('typescript_error', "Type 'string' is not assignable to type 'number'");
  * if (pattern) {
- *   console.log(pattern.suggestedFix);  // 'Run `npx tsc --noEmit`...'
+ *   debug(pattern.suggestedFix);  // 'Run `npx tsc --noEmit`...'
  * }
  */
 export declare function findMatchingPattern(category: ErrorCategory, errorMessage: string): RecoveryPattern | null;
@@ -46,7 +46,7 @@ export declare function findAllMatchingPatterns(error: string): RecoveryPattern[
  * const patterns = findAllMatchingPatterns(errorMessage);
  * const severity = getHighestSeverity(patterns);
  * if (severity === 'critical') {
- *   console.log('Immediate attention required');
+ *   debug('Immediate attention required');
  * }
  */
 export declare function getHighestSeverity(patterns: RecoveryPattern[]): ErrorSeverity;
@@ -62,6 +62,6 @@ export declare function getHighestSeverity(patterns: RecoveryPattern[]): ErrorSe
  *
  * @example
  * const fix = getSuggestedFix('npm_install', 'Module not found: lodash', errorState);
- * console.log(fix);  // 'Run `npm install` to ensure all dependencies...'
+ * debug(fix);  // 'Run `npm install` to ensure all dependencies...'
  */
 export declare function getSuggestedFix(category: ErrorCategory, errorMessage: string, errorState: ErrorState): string;

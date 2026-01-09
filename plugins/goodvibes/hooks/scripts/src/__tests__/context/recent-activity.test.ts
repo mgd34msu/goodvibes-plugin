@@ -2,6 +2,8 @@
  * Unit tests for recent-activity.ts
  */
 
+import * as childProcess from 'child_process';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies - must be before imports
@@ -10,8 +12,8 @@ vi.mock('child_process', () => ({
 }));
 
 vi.mock('util', () => ({
-  promisify: (fn: any) => {
-    return (command: string, options: any) => {
+  promisify: <T extends (...args: unknown[]) => unknown>(fn: T) => {
+    return (command: string, options: Record<string, unknown>) => {
       return new Promise((resolve, reject) => {
         fn(command, options, (error: Error | null, stdout: string, stderr: string) => {
           if (error) {
@@ -29,16 +31,14 @@ vi.mock('../../shared/logging.js', () => ({
   debug: vi.fn(),
 }));
 
-import * as childProcess from 'child_process';
-
 // Import modules under test
 import {
   getRecentActivity,
   formatRecentActivity,
   type RecentActivity,
-  type FileChange,
-  type Hotspot,
-  type RecentCommit,
+  type FileChange as _FileChange,
+  type Hotspot as _Hotspot,
+  type RecentCommit as _RecentCommit,
 } from '../../context/recent-activity.js';
 
 // Get reference to the mocked exec function
@@ -72,7 +72,7 @@ function createGitMockImplementation(options: {
   return (
     cmd: string,
     _options: object,
-    callback: (error: Error | null, stdout: string, stderr: string) => void
+    callback: (_error: Error | null, _stdout: string, _stderr: string) => void
   ) => {
     // Call callback asynchronously to match real exec behavior
     setImmediate(() => {
@@ -112,7 +112,7 @@ function createGitMockImplementation(options: {
     });
 
     // Return a minimal ChildProcess-like object
-    return {} as any;
+    return {} as ReturnType<typeof childProcess.exec>;
   };
 }
 
@@ -125,10 +125,10 @@ describe('recent-activity', () => {
       (
         _cmd: string,
         _options: object,
-        callback: (error: Error | null, stdout: string, stderr: string) => void
+        callback: (_error: Error | null, _stdout: string, _stderr: string) => void
       ) => {
         callback(new Error('Command failed'), '', '');
-        return {} as any; // exec returns a ChildProcess object
+        return {} as ReturnType<typeof childProcess.exec>; // exec returns a ChildProcess object
       }
     );
   });
@@ -158,14 +158,14 @@ describe('recent-activity', () => {
         (
           cmd: string,
           _options: object,
-          callback: (error: Error | null, stdout: string, stderr: string) => void
+          callback: (_error: Error | null, _stdout: string, _stderr: string) => void
         ) => {
           if (cmd.includes('rev-parse')) {
             callback(null, 'false\n', '');
           } else {
             callback(null, '', '');
           }
-          return {} as any;
+          return {} as ReturnType<typeof childProcess.exec>;
         }
       );
 
@@ -226,16 +226,16 @@ describe('recent-activity', () => {
         (
           cmd: string,
           _options: object,
-          callback: (error: Error | null, stdout: string, stderr: string) => void
+          callback: (_error: Error | null, _stdout: string, _stderr: string) => void
         ) => {
           if (cmd.includes('rev-parse --is-inside-work-tree')) {
             callback(null, 'true\n', '');
-            return {} as any;
+            return {} as ReturnType<typeof childProcess.exec>;
           }
 
           // All other commands fail
           callback(new Error('git command failed'), '', '');
-          return {} as any;
+          return {} as ReturnType<typeof childProcess.exec>;
         }
       );
 
@@ -993,16 +993,16 @@ describe('recent-activity', () => {
         (
           cmd: string,
           _options: object,
-          callback: (error: Error | null, stdout: string, stderr: string) => void
+          callback: (_error: Error | null, _stdout: string, _stderr: string) => void
         ) => {
           if (cmd.includes('rev-parse')) {
             callback(null, 'true\n', '');
-            return {} as any;
+            return {} as ReturnType<typeof childProcess.exec>;
           }
-          const error: any = new Error('Command timed out');
+          const error = new Error('Command timed out') as Error & { code: string };
           error.code = 'ETIMEDOUT';
           callback(error, '', '');
-          return {} as any;
+          return {} as ReturnType<typeof childProcess.exec>;
         }
       );
 
@@ -1019,14 +1019,14 @@ describe('recent-activity', () => {
         (
           cmd: string,
           _options: object,
-          callback: (error: Error | null, stdout: string, stderr: string) => void
+          callback: (_error: Error | null, _stdout: string, _stderr: string) => void
         ) => {
           if (cmd.includes('rev-parse')) {
             callback(null, 'true\n', '');
-            return {} as any;
+            return {} as ReturnType<typeof childProcess.exec>;
           }
           callback(new Error('String error'), '', '');
-          return {} as any;
+          return {} as ReturnType<typeof childProcess.exec>;
         }
       );
 
@@ -1042,14 +1042,14 @@ describe('recent-activity', () => {
         (
           cmd: string,
           _options: object,
-          callback: (error: Error | null, stdout: string, stderr: string) => void
+          callback: (_error: Error | null, _stdout: string, _stderr: string) => void
         ) => {
           if (cmd.includes('rev-parse')) {
             callback(null, 'true\n', '');
-            return {} as any;
+            return {} as ReturnType<typeof childProcess.exec>;
           }
           callback(new Error('Command failed'), '', '');
-          return {} as any;
+          return {} as ReturnType<typeof childProcess.exec>;
         }
       );
 

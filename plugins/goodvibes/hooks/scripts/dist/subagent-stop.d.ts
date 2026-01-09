@@ -1,17 +1,7 @@
 /**
- * Subagent Stop Hook (GoodVibes)
+ * Subagent Stop Hook Entry Point
  *
- * Runs when a Claude Code subagent (Task tool) finishes.
- * Correlates with SubagentStart to calculate duration and capture telemetry.
- *
- * Actions:
- * - Look up stored entry by agent_id from agent-tracking.json
- * - Parse agent_transcript_path for files modified, tools used, final output
- * - Validate agent output (type check if TS files modified)
- * - Verify tests for modified files
- * - Build telemetry entry with keywords, files, tools, summary
- * - Write telemetry record to .goodvibes/telemetry/YYYY-MM.jsonl
- * - Remove tracking entry
- * - Return validation results in output
+ * This is a thin entry point that re-exports from the subagent-stop module.
+ * The actual implementation lives in src/subagent-stop/index.ts
  */
-export {};
+import './subagent-stop/index.js';

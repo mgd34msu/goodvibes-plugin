@@ -9,15 +9,15 @@
  */
 
 import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as _path from 'path';
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
   checkProjectHealth,
   formatProjectHealth,
-  TypeScriptHealth,
-  HealthWarning,
+  TypeScriptHealth as _TypeScriptHealth,
+  HealthWarning as _HealthWarning,
 } from '../../context/project-health.js';
 
 import type { ProjectHealth } from '../../context/project-health.js';

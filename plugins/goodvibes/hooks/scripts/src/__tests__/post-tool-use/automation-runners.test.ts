@@ -47,14 +47,14 @@ vi.mock('../../automation/build-runner.js', () => ({
 }));
 
 vi.mock('../../state/index.js', () => ({
-  updateTestState: vi.fn((state: HooksState, updates: any) => ({
+  updateTestState: vi.fn((state: HooksState, updates: Partial<HooksState['tests']>) => ({
     ...state,
     tests: {
       ...state.tests,
       ...updates,
     },
   })),
-  updateBuildState: vi.fn((state: HooksState, updates: any) => ({
+  updateBuildState: vi.fn((state: HooksState, updates: Partial<HooksState['build']>) => ({
     ...state,
     build: {
       ...state.build,

@@ -1,7 +1,7 @@
 /**
- * Session End Hook (GoodVibes)
+ * Session End Hook Entry Point
  *
- * Runs when a Claude Code session ends.
- * Handles cleanup, logging, and saving session state.
+ * This is a thin entry point that re-exports from the session-end module.
+ * The actual implementation lives in src/session-end/index.ts
  */
-export {};
+import './session-end/index.js';

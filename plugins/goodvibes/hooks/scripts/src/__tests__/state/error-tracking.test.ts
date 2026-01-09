@@ -3,11 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { trackError, clearError, getErrorState } from '../../state/error-tracking.js';
 import { createDefaultState } from '../../types/state.js';
 
-import type { HooksState } from '../../types/state.js';
 import type { ErrorState } from '../../types/errors.js';
+import type { HooksState } from '../../types/state.js';
 
 describe('error-tracking', () => {
   let state: HooksState;

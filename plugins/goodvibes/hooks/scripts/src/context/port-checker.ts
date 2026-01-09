@@ -267,7 +267,7 @@ async function checkPortsUnix(ports: number[]): Promise<Map<number, string>> {
  * @example
  * const ports = await checkPorts('/my-project');
  * const activePorts = ports.filter(p => p.inUse);
- * activePorts.forEach(p => console.log(`Port ${p.port}: ${p.process}`));
+ * activePorts.forEach(p => debug(`Port ${p.port}: ${p.process}`));
  */
 export async function checkPorts(_cwd: string): Promise<PortInfo[]> {
   const platform = os.platform();

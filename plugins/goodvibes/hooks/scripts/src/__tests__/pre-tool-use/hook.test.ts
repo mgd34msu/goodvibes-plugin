@@ -5,10 +5,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { runPreToolUseHook } from '../../pre-tool-use/hook.js';
-
-import type { HookInput } from '../../shared/hook-io.js';
-
 // Mock all dependencies
 vi.mock('../../pre-tool-use/git-handlers.js');
 vi.mock('../../pre-tool-use/git-guards.js');
@@ -16,12 +12,13 @@ vi.mock('../../pre-tool-use/quality-gates.js');
 vi.mock('../../pre-tool-use/tool-validators.js');
 vi.mock('../../shared/index.js');
 
+import { isGitCommand } from '../../pre-tool-use/git-guards.js';
 import {
   extractBashCommand,
   handleGitCommit,
   handleGitCommand,
 } from '../../pre-tool-use/git-handlers.js';
-import { isGitCommand } from '../../pre-tool-use/git-guards.js';
+import { runPreToolUseHook } from '../../pre-tool-use/hook.js';
 import { isCommitCommand } from '../../pre-tool-use/quality-gates.js';
 import { TOOL_VALIDATORS } from '../../pre-tool-use/tool-validators.js';
 import {
@@ -31,6 +28,8 @@ import {
   debug,
   logError,
 } from '../../shared/index.js';
+
+import type { HookInput } from '../../shared/hook-io.js';
 
 const mockedExtractBashCommand = vi.mocked(extractBashCommand);
 const mockedHandleGitCommit = vi.mocked(handleGitCommit);

@@ -23,7 +23,7 @@ import { clearCheckpointTracking, getModifiedFileCount, } from './file-tracker.j
  * @example
  * const trigger = shouldCheckpoint(state, '/project');
  * if (trigger.triggered) {
- *   console.log('Checkpoint needed:', trigger.reason);
+ *   debug('Checkpoint needed:', trigger.reason);
  * }
  */
 export function shouldCheckpoint(state, _cwd) {

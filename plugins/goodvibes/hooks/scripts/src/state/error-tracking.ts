@@ -70,7 +70,7 @@ export function clearError(state: HooksState, signature: string): HooksState {
  * @example
  * const errorState = getErrorState(state, 'build-failed-abc123');
  * if (errorState && errorState.count > 3) {
- *   console.log('Too many retries');
+ *   debug('Too many retries');
  * }
  */
 export function getErrorState(

@@ -33,7 +33,7 @@ Reference this to avoid repeating unsuccessful strategies.
  * @example
  * const failures = await readFailures('/path/to/project');
  * for (const failure of failures) {
- *   console.log(`Avoid: ${failure.approach} - ${failure.reason}`);
+ *   debug(`Avoid: ${failure.approach} - ${failure.reason}`);
  * }
  */
 export async function readFailures(cwd: string): Promise<MemoryFailure[]> {

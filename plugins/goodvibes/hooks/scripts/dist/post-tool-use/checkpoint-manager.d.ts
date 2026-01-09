@@ -28,7 +28,7 @@ export interface CheckpointTrigger {
  * @example
  * const trigger = shouldCheckpoint(state, '/project');
  * if (trigger.triggered) {
- *   console.log('Checkpoint needed:', trigger.reason);
+ *   debug('Checkpoint needed:', trigger.reason);
  * }
  */
 export declare function shouldCheckpoint(state: HooksState, _cwd: string): CheckpointTrigger;

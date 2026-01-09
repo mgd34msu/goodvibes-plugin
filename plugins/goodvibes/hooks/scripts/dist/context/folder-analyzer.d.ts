@@ -20,7 +20,7 @@ export interface FolderAnalysis {
  * @example
  * const analysis = await analyzeFolderStructure('/my-project');
  * if (analysis.routing === 'App Router') {
- *   console.log('Using Next.js App Router');
+ *   debug('Using Next.js App Router');
  * }
  */
 export declare function analyzeFolderStructure(cwd: string): Promise<FolderAnalysis>;

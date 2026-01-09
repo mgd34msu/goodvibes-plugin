@@ -24,7 +24,7 @@ import {
 } from '../../memory/parser.js';
 import { readPatterns, writePattern } from '../../memory/patterns.js';
 
-import type { ProjectMemory } from '../../types/memory.js';
+import type { _ProjectMemory } from '../../types/memory.js';
 
 // Helper to construct platform-specific file paths
 const getExpectedPath = (cwd: string): string =>

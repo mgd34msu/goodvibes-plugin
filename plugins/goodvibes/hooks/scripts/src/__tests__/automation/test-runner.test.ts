@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   createChildProcessMock,
   createChildProcessFailureMock,
@@ -216,7 +217,7 @@ describe('test-runner', () => {
     });
 
     it('should call exec with correct arguments', async () => {
-      const mockExec = vi.fn((cmd, opts, callback) => {
+      const mockExec = vi.fn((_cmd, _opts, callback) => {
         callback(null, 'ok', '');
       });
       vi.doMock('child_process', () => ({
@@ -430,7 +431,7 @@ FAIL src/last.test.ts`;
     });
 
     it('should call exec with correct arguments', async () => {
-      const mockExec = vi.fn((cmd, opts, callback) => {
+      const mockExec = vi.fn((_cmd, _opts, callback) => {
         callback(null, 'ok', '');
       });
       vi.doMock('child_process', () => ({
@@ -494,7 +495,7 @@ See npm-debug.log for more info.`;
     });
 
     it('should use 600000ms timeout for full test suite', async () => {
-      const mockExec = vi.fn((cmd, opts, callback) => {
+      const mockExec = vi.fn((_cmd, _opts, callback) => {
         callback(null, 'ok', '');
       });
       vi.doMock('child_process', () => ({

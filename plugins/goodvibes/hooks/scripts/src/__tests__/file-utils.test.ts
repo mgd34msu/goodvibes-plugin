@@ -273,7 +273,7 @@ describe('file-utils', () => {
         writable: true,
         configurable: true,
       });
-      const error: any = new Error('Command timed out');
+      const error = new Error('Command timed out') as Error & { killed: boolean; signal: string };
       error.killed = true;
       error.signal = 'SIGTERM';
       mockExec.mockRejectedValue(error);

@@ -16,10 +16,10 @@ import type { TranscriptData } from '../../shared/transcript.js';
 import type { HooksState } from '../../types/state.js';
 
 // Mock dependencies
-const mockParseTranscript = vi.fn<(path: string) => Promise<TranscriptData>>();
-const mockRunTypeCheck = vi.fn<(cwd: string) => BuildResult>();
+const mockParseTranscript = vi.fn<(_path: string) => Promise<TranscriptData>>();
+const mockRunTypeCheck = vi.fn<(_cwd: string) => BuildResult>();
 const mockTrackFileModification =
-  vi.fn<(state: HooksState, filePath: string) => HooksState>();
+  vi.fn<(_state: HooksState, _filePath: string) => HooksState>();
 
 // Mock shared/index.js
 vi.mock('../../shared/index.js', () => ({

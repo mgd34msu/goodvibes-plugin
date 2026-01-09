@@ -23,7 +23,7 @@ export { maybeRunTests, maybeRunBuild, maybeCreateCheckpoint, maybeCreateBranch,
  * @example
  * const { tracked, filePath, state: newState } = handleFileModification(state, input, 'Edit');
  * if (tracked) {
- *   console.log('Tracked modification to:', filePath);
+ *   debug('Tracked modification to:', filePath);
  * }
  */
 export function handleFileModification(state, input, toolName) {
@@ -57,7 +57,7 @@ export function handleFileModification(state, input, toolName) {
  * @example
  * const { messages, state: newState } = await processFileAutomation(state, config, input, 'Edit');
  * if (messages.length > 0) {
- *   console.log('Automation results:', messages.join(', '));
+ *   debug('Automation results:', messages.join(', '));
  * }
  */
 export async function processFileAutomation(state, config, input, toolName) {

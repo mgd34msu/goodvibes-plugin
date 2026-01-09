@@ -12,6 +12,7 @@ import {
   createMockFileState,
 } from '../test-utils/mock-factories.js';
 
+import type * as SharedIndex from '../../shared/index.js';
 import type { HooksState } from '../../types/state.js';
 
 // Mock dependencies - must be defined before vi.mock calls
@@ -37,7 +38,7 @@ vi.mock('../../post-tool-use/file-tracker.js', () => ({
 
 // Mock CHECKPOINT_TRIGGERS constant
 vi.mock('../../shared/index.js', async () => {
-  const actual = await vi.importActual<typeof import('../../shared/index.js')>(
+  const actual = await vi.importActual<typeof SharedIndex>(
     '../../shared/index.js'
   );
   return {

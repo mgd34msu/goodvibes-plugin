@@ -50,20 +50,9 @@ export interface HealthWarning {
  * @example
  * const health = await checkProjectHealth('/my-project');
  * if (health.hasMultipleLockfiles) {
- *   console.warn('Multiple package manager lockfiles detected');
+ *   debug('Multiple package manager lockfiles detected');
  * }
- * console.log('Available scripts:', health.scripts);
+ * debug('Available scripts:', health.scripts);
  */
 export declare function checkProjectHealth(cwd: string): Promise<ProjectHealth>;
-/**
- * Format project health status for display in context output.
- * Creates a comprehensive health report with package manager, TypeScript, scripts, and issues.
- *
- * @param health - The ProjectHealth object to format
- * @returns Formatted string with health details, or null if no relevant information
- *
- * @example
- * const formatted = formatProjectHealth(health);
- * // Returns multi-section report with package manager, TypeScript, scripts, warnings, and suggestions
- */
-export declare function formatProjectHealth(health: ProjectHealth): string | null;
+export { formatProjectHealth } from './project-health-formatter.js';

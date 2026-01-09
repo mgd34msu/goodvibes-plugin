@@ -4,6 +4,7 @@
  */
 
 import path from 'node:path';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -14,15 +15,14 @@ import {
   validateImplementation,
   TOOL_VALIDATORS,
 } from '../../pre-tool-use/tool-validators.js';
+import { fileExists } from '../../shared/file-utils.js';
+import { respond, allowTool, blockTool } from '../../shared/hook-io.js';
 
 import type { HookInput } from '../../shared/hook-io.js';
 
 // Mock dependencies
 vi.mock('../../shared/hook-io.js');
 vi.mock('../../shared/file-utils.js');
-
-import { respond, allowTool, blockTool } from '../../shared/hook-io.js';
-import { fileExists } from '../../shared/file-utils.js';
 
 const mockedRespond = vi.mocked(respond);
 const mockedAllowTool = vi.mocked(allowTool);

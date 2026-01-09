@@ -1,14 +1,7 @@
 /**
- * Session Start Hook
+ * Session Start Hook Entry Point
  *
- * Initializes the GoodVibes plugin:
- * - Loads or initializes persistent state
- * - Checks for crash recovery scenarios
- * - Validates registries exist
- * - Creates cache directory
- * - Initializes analytics
- * - Gathers and injects project context (Smart Context Injection)
- * - Updates session state (increment session count, record start time)
- * - Saves state for future sessions
+ * This is a thin entry point that re-exports from the session-start module.
+ * The actual implementation lives in src/session-start/index.ts
  */
-export {};
+import './session-start/index.js';

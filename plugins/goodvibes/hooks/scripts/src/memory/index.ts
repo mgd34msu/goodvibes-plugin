@@ -45,10 +45,6 @@ export {
 
 // Types
 import type {
-  MemoryDecision,
-  MemoryPattern,
-  MemoryFailure,
-  MemoryPreference,
   ProjectMemory,
 } from '../types/memory.js';
 

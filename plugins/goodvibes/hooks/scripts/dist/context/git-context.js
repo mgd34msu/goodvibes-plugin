@@ -64,7 +64,7 @@ async function directoryExists(dirPath) {
  * @example
  * const context = await getGitContext('/my-repo');
  * if (context.isRepo && context.hasUncommittedChanges) {
- *   console.log(`${context.uncommittedFileCount} uncommitted files`);
+ *   debug(`${context.uncommittedFileCount} uncommitted files`);
  * }
  */
 export async function getGitContext(cwd) {

@@ -15,9 +15,9 @@ process.env.NODE_ENV = 'test';
 // Mock isTestEnvironment globally to return true
 // This ensures hook entry points don't execute during tests
 vi.mock('./src/shared/hook-io.js', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
+  const actual: unknown = await importOriginal();
   return {
-    ...actual,
+    ...(actual as object),
     isTestEnvironment: vi.fn(() => true),
   };
 });
@@ -31,7 +31,7 @@ beforeEach(() => {
   // Mock process.exit to prevent actual process termination
   // Store the mock so tests can inspect the calls
   processExitMock = vi.spyOn(process, 'exit').mockImplementation(((
-    code?: number | string | null | undefined
+    _code?: number | string | null | undefined
   ) => {
     // Don't throw, don't exit - just record the call
     // Tests can check if process.exit was called via processExitMock

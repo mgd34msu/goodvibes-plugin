@@ -224,7 +224,7 @@ async function checkPortsUnix(ports) {
  * @example
  * const ports = await checkPorts('/my-project');
  * const activePorts = ports.filter(p => p.inUse);
- * activePorts.forEach(p => console.log(`Port ${p.port}: ${p.process}`));
+ * activePorts.forEach(p => debug(`Port ${p.port}: ${p.process}`));
  */
 export async function checkPorts(_cwd) {
     const platform = os.platform();

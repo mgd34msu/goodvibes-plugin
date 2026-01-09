@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createMockHooksState } from '../test-utils/mock-factories.js';
 
-import type { HooksState } from '../../types/state.js';
+import type { _HooksState } from '../../types/state.js';
 
 // Mock git-operations module
 vi.mock('../../automation/git-operations.js', () => ({

@@ -64,7 +64,7 @@ describe('types/errors', () => {
     });
 
     it('should have all values as positive numbers', () => {
-      for (const [category, limit] of Object.entries(PHASE_RETRY_LIMITS)) {
+      for (const [_category, limit] of Object.entries(PHASE_RETRY_LIMITS)) {
         expect(typeof limit).toBe('number');
         expect(limit).toBeGreaterThan(0);
       }

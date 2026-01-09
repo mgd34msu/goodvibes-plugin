@@ -19,20 +19,22 @@
  */
 
 import {
-  extractBashCommand,
-  handleGitCommit,
-  handleGitCommand,
-} from './git-handlers.js';
-import { isGitCommand } from './git-guards.js';
-import { isCommitCommand } from './quality-gates.js';
-import { TOOL_VALIDATORS } from './tool-validators.js';
-import {
   respond,
   readHookInput,
   allowTool,
   debug,
   logError,
 } from '../shared/index.js';
+
+import { isGitCommand } from './git-guards.js';
+import {
+  extractBashCommand,
+  handleGitCommit,
+  handleGitCommand,
+} from './git-handlers.js';
+import { isCommitCommand } from './quality-gates.js';
+import { TOOL_VALIDATORS } from './tool-validators.js';
+
 
 import type { HookInput } from '../shared/index.js';
 
@@ -115,6 +117,6 @@ export async function runPreToolUseHook(): Promise<void> {
 const isMainModule =
   import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
 if (isMainModule) {
-  runPreToolUseHook();
+  void runPreToolUseHook();
 }
 /* v8 ignore stop */

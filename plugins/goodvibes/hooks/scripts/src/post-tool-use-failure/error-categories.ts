@@ -1,8 +1,8 @@
 /**
  * Error Categorization Logic
  *
- * Contains category mappings and pattern matching functions
- * for categorizing errors and finding relevant recovery patterns.
+ * Contains category mappings for categorizing errors
+ * and finding relevant recovery patterns.
  */
 
 import type { ErrorCategory } from '../types/errors.js';
@@ -42,10 +42,3 @@ export const CATEGORY_TO_PATTERN_MAP: Record<ErrorCategory, string> = {
   api_error: 'api_error',
   unknown: 'undefined_reference',
 };
-
-// Re-export pattern matching functions from pattern-matcher module
-export {
-  findMatchingPattern,
-  findAllMatchingPatterns,
-  getHighestSeverity,
-} from './pattern-matcher.js';

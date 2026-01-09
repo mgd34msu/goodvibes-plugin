@@ -49,7 +49,7 @@ export interface Preferences {
  * @example
  * const memory = await loadMemory('/my-project');
  * if (memory.decisions.length > 0) {
- *   console.log('Found project decisions:', memory.decisions);
+ *   debug('Found project decisions:', memory.decisions);
  * }
  */
 export declare function loadMemory(cwd: string): Promise<ProjectMemory>;

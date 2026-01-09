@@ -23,7 +23,7 @@ These patterns help maintain consistency across the codebase.
  * @example
  * const patterns = await readPatterns('/path/to/project');
  * for (const pattern of patterns) {
- *   console.log(`${pattern.name}: ${pattern.description}`);
+ *   debug(`${pattern.name}: ${pattern.description}`);
  * }
  */
 export async function readPatterns(cwd) {

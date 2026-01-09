@@ -37,8 +37,8 @@ export async function ensureCacheDir() {
  * @example
  * const analytics = await loadAnalytics();
  * if (analytics) {
- *   console.log(`Session: ${analytics.session_id}`);
- *   console.log(`Tools used: ${analytics.tool_usage.length}`);
+ *   debug(`Session: ${analytics.session_id}`);
+ *   debug(`Tools used: ${analytics.tool_usage.length}`);
  * }
  */
 export async function loadAnalytics() {
@@ -93,7 +93,7 @@ export async function saveAnalytics(analytics) {
  *
  * @example
  * const sessionId = await getSessionId();
- * console.log(sessionId); // 'session_1705234567890'
+ * debug(sessionId); // 'session_1705234567890'
  */
 export async function getSessionId() {
     const analytics = await loadAnalytics();

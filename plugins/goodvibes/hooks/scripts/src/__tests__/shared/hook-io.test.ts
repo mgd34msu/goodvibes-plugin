@@ -63,15 +63,15 @@ describe('hook-io', () => {
       delete process.env.VITEST;
 
       // Set __vitest_worker__ on globalThis
-      (globalThis as any).__vitest_worker__ = { id: 1 };
+      (globalThis as typeof globalThis & { __vitest_worker__?: { id: number } }).__vitest_worker__ = { id: 1 };
 
       const { isTestEnvironment } = require('../../shared/hook-io.js');
       expect(isTestEnvironment()).toBe(true);
 
       // Clean up
-      delete (globalThis as any).__vitest_worker__;
-      if (originalEnv) process.env.NODE_ENV = originalEnv;
-      if (originalVitest) process.env.VITEST = originalVitest;
+      delete (globalThis as typeof globalThis & { __vitest_worker__?: { id: number } }).__vitest_worker__;
+      if (originalEnv) {process.env.NODE_ENV = originalEnv;}
+      if (originalVitest) {process.env.VITEST = originalVitest;}
     });
 
     it('should return false when none of the conditions are met', () => {
@@ -79,13 +79,13 @@ describe('hook-io', () => {
       const originalVitest = process.env.VITEST;
       delete process.env.NODE_ENV;
       delete process.env.VITEST;
-      delete (globalThis as any).__vitest_worker__;
+      delete (globalThis as typeof globalThis & { __vitest_worker__?: { id: number } }).__vitest_worker__;
 
       const { isTestEnvironment } = require('../../shared/hook-io.js');
       expect(isTestEnvironment()).toBe(false);
 
-      if (originalEnv) process.env.NODE_ENV = originalEnv;
-      if (originalVitest) process.env.VITEST = originalVitest;
+      if (originalEnv) {process.env.NODE_ENV = originalEnv;}
+      if (originalVitest) {process.env.VITEST = originalVitest;}
     });
   });
 

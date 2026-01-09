@@ -6,9 +6,9 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { createPreCompactCheckpoint, saveSessionSummary, getFilesModifiedThisSession, } from './state-preservation.js';
 import { respond, readHookInput, loadAnalytics, debug, logError, CACHE_DIR, createResponse, parseTranscript, fileExists, isTestEnvironment, } from '../shared/index.js';
 import { loadState } from '../state/index.js';
+import { createPreCompactCheckpoint, saveSessionSummary, getFilesModifiedThisSession, } from './state-preservation.js';
 /**
  * Generate a session summary from analytics and state
  */

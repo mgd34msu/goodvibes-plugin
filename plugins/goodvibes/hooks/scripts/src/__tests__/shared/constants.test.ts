@@ -13,7 +13,7 @@
 
 import * as path from 'path';
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, _beforeEach, afterEach } from 'vitest';
 
 describe('constants', () => {
   // Store original env values

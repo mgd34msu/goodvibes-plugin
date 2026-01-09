@@ -133,7 +133,7 @@ async function runCheck(command: string, cwd: string): Promise<boolean> {
  * @example
  * const { allPassed, blocking, results } = await runQualityGates('/project');
  * if (blocking) {
- *   console.error('Blocking quality gates failed');
+ *   debug('Blocking quality gates failed');
  * }
  */
 export async function runQualityGates(

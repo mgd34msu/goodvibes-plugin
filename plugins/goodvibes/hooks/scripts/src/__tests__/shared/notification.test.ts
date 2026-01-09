@@ -282,12 +282,12 @@ describe('shared/notification', () => {
 
       // Create a mock that rejects asynchronously
       const error = new Error('Truly uncaught error');
-      mockReadHookInput.mockImplementation(() => {
-        return new Promise((_, reject) => {
+      mockReadHookInput.mockReturnValue(
+        new Promise((_, reject) => {
           // Reject asynchronously - will be caught by try/catch in runNotificationHook
           setImmediate(() => reject(error));
-        });
-      });
+        })
+      );
 
       await setupMocksAndImport();
 
@@ -306,11 +306,11 @@ describe('shared/notification', () => {
       vi.resetModules();
 
       const errorString = 'Truly uncaught string error';
-      mockReadHookInput.mockImplementation(() => {
-        return new Promise((_, reject) => {
+      mockReadHookInput.mockReturnValue(
+        new Promise((_, reject) => {
           setImmediate(() => reject(errorString));
-        });
-      });
+        })
+      );
 
       await setupMocksAndImport();
 

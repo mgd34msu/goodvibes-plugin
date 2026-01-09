@@ -12,7 +12,7 @@ import { fileExists } from '../shared/file-utils.js';
 import { debug, logError, ensureGoodVibesDir } from '../shared/index.js';
 import { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';
 
-import { getGoodVibesDir, getMemoryDir } from './paths.js';
+import { getMemoryDir } from './paths.js';
 
 // Re-export fileExists for backwards compatibility
 export { fileExists };

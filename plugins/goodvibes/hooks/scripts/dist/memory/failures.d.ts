@@ -14,7 +14,7 @@ import type { MemoryFailure } from '../types/memory.js';
  * @example
  * const failures = await readFailures('/path/to/project');
  * for (const failure of failures) {
- *   console.log(`Avoid: ${failure.approach} - ${failure.reason}`);
+ *   debug(`Avoid: ${failure.approach} - ${failure.reason}`);
  * }
  */
 export declare function readFailures(cwd: string): Promise<MemoryFailure[]>;

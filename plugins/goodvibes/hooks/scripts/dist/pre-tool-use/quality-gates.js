@@ -105,7 +105,7 @@ async function runCheck(command, cwd) {
  * @example
  * const { allPassed, blocking, results } = await runQualityGates('/project');
  * if (blocking) {
- *   console.error('Blocking quality gates failed');
+ *   debug('Blocking quality gates failed');
  * }
  */
 export async function runQualityGates(cwd, gates = QUALITY_GATES) {

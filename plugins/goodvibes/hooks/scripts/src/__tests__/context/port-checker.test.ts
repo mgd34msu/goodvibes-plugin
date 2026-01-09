@@ -2,7 +2,10 @@
  * Tests for port checker
  */
 
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import * as childProcess from 'child_process';
+import * as os from 'os';
+
+import { describe, it, expect, beforeEach, vi, type _Mock } from 'vitest';
 
 // Mock dependencies - must be before imports
 vi.mock('child_process', () => ({
@@ -11,8 +14,8 @@ vi.mock('child_process', () => ({
 
 // Mock promisify to properly convert callback-style to promise-style
 vi.mock('util', () => ({
-  promisify: (fn: any) => {
-    return (command: string, options: any) => {
+  promisify: <T extends (...args: unknown[]) => unknown>(fn: T) => {
+    return (command: string, options: Record<string, unknown>) => {
       return new Promise((resolve, reject) => {
         fn(command, options, (error: Error | null, stdout: string, stderr: string) => {
           if (error) {
@@ -36,9 +39,6 @@ vi.mock('../../shared/logging.js', () => ({
   debug: vi.fn(),
 }));
 
-import * as childProcess from 'child_process';
-import * as os from 'os';
-
 import type { PortInfo } from '../../context/port-checker.js';
 
 // Get reference to the mocked functions
@@ -48,8 +48,8 @@ describe('port-checker', () => {
   const mockCwd = '/test/project';
 
   // Import after mocks are set up
-  let checkPorts: (cwd: string) => Promise<PortInfo[]>;
-  let formatPortStatus: (ports: PortInfo[]) => string;
+  let checkPorts: (_cwd: string) => Promise<PortInfo[]>;
+  let formatPortStatus: (_ports: PortInfo[]) => string;
   let COMMON_DEV_PORTS: number[];
 
   beforeEach(async () => {
@@ -57,9 +57,10 @@ describe('port-checker', () => {
 
     // Reset mock implementation - default to empty output
     // promisify turns this into async function that returns Promise<{stdout, stderr}>
-    mockExec.mockImplementation((command: string, options: any, callback: Function) => {
+    type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+    mockExec.mockImplementation((command: string, options: Record<string, unknown>, callback: ExecCallback) => {
       callback(null, '', '');
-      return {} as any; // Return ChildProcess-like object for exec
+      return {} as ReturnType<typeof childProcess.exec>; // Return ChildProcess-like object for exec
     });
 
     // Dynamically import to get fresh module with mocks
@@ -82,7 +83,8 @@ describe('port-checker', () => {
 `;
       const tasklistOutput = '"node.exe","1234","Console","1","12,345 K"';
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -107,7 +109,8 @@ describe('port-checker', () => {
   TCP    [::]:3000              [::]:0                 LISTENING       1234
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -128,7 +131,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -146,7 +150,8 @@ describe('port-checker', () => {
     });
 
     it('should handle netstat failure on Windows', async () => {
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(new Error('Netstat failed'), '', '');
       });
 
@@ -162,7 +167,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:8080           0.0.0.0:0              TIME_WAIT       5678
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, netstatOutput, '');
       });
 
@@ -177,7 +183,8 @@ describe('port-checker', () => {
   INVALID DATA
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, netstatOutput, '');
       });
 
@@ -194,7 +201,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       5678
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -216,7 +224,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, netstatOutput, '');
       });
 
@@ -233,7 +242,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -261,7 +271,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       5678
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -287,7 +298,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -309,7 +321,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:3000           0.0.0.0:0              LISTENING       1234
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -334,7 +347,8 @@ describe('port-checker', () => {
 
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -357,7 +371,8 @@ describe('port-checker', () => {
   TCP    0.0.0.0:8080           0.0.0.0:0              LISTENING       1234
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('netstat')) {
           callback(null, netstatOutput, '');
         } else if (cmd.toString().includes('tasklist')) {
@@ -388,7 +403,8 @@ describe('port-checker', () => {
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
 npm      5678 user   13u  IPv4  67890      0t0  TCP localhost:8080(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -407,7 +423,8 @@ npm      5678 user   13u  IPv4  67890      0t0  TCP localhost:8080(LISTEN)`;
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
 node     5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -424,7 +441,8 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN
 tcp6       0      0 :::8080                 :::*                    LISTEN
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -447,7 +465,8 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      
 tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -463,7 +482,8 @@ tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      
     });
 
     it('should handle both lsof and netstat failure', async () => {
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(new Error('Command failed'), '', '');
       });
 
@@ -479,7 +499,8 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               ESTABLISHED
 tcp        0      0 0.0.0.0:8080            0.0.0.0:*               TIME_WAIT
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -499,7 +520,8 @@ COMMAND PID
 INCOMPLETE LINE
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -512,7 +534,8 @@ INCOMPLETE LINE
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:noport(LISTEN)
 npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -529,7 +552,8 @@ tcp        0      0 0.0.0.0:9999            0.0.0.0:*               LISTEN      
 tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -552,7 +576,8 @@ tcp        0      0 noport                  0.0.0.0:*               LISTEN      
 tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      5678/npm
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -570,7 +595,8 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      
       const lsofOutput = `COMMAND PID USER FD TYPE
 npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -586,7 +612,8 @@ Proto Recv-Q Send-Q Local Address           Foreign Address         State
 tcp        0      0 0.0.0.0:3000            0.0.0.0:*               CLOSE_WAIT
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -606,7 +633,8 @@ node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
 
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -624,7 +652,8 @@ tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN
 tcp6       0      0 :::8080                 :::*                    LISTEN
 `;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         if (cmd.toString().includes('lsof')) {
           callback(new Error('lsof not found'), '', '');
         } else {
@@ -647,7 +676,8 @@ tcp6       0      0 :::8080                 :::*                    LISTEN
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:9999(LISTEN)
 npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -664,7 +694,8 @@ npm      5678 user   13u  IPv4  67890      0t0  TCP *:3000(LISTEN)`;
       const lsofOutput = `NODE     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)
 NPM      5678 user   13u  IPv4  67890      0t0  TCP *:8080(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 
@@ -686,7 +717,8 @@ NPM      5678 user   13u  IPv4  67890      0t0  TCP *:8080(LISTEN)`;
     it('should work on macOS using lsof', async () => {
       const lsofOutput = `node     1234 user   12u  IPv4  12345      0t0  TCP *:3000(LISTEN)`;
 
-      mockExec.mockImplementation((cmd: string, options: any, callback: Function) => {
+      type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+      mockExec.mockImplementation((cmd: string, options: Record<string, unknown>, callback: ExecCallback) => {
         callback(null, lsofOutput, '');
       });
 

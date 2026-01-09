@@ -15,7 +15,7 @@
  * @example
  * const branch = await execGit('git branch --show-current', '/repo');
  * if (branch) {
- *   console.log('Current branch:', branch);
+ *   debug('Current branch:', branch);
  * }
  */
 export declare function execGit(command: string, cwd: string): Promise<string | null>;
@@ -27,7 +27,7 @@ export declare function execGit(command: string, cwd: string): Promise<string | 
  *
  * @example
  * if (await isGitRepo('/my-project')) {
- *   console.log('This is a git repository');
+ *   debug('This is a git repository');
  * }
  */
 export declare function isGitRepo(cwd: string): Promise<boolean>;
@@ -40,7 +40,7 @@ export declare function isGitRepo(cwd: string): Promise<boolean>;
  *
  * @example
  * const mainBranch = await detectMainBranch('/repo');
- * console.log('Main branch is:', mainBranch);
+ * debug('Main branch is:', mainBranch);
  */
 export declare function detectMainBranch(cwd: string): Promise<string>;
 /**
@@ -52,7 +52,7 @@ export declare function detectMainBranch(cwd: string): Promise<string>;
  * @example
  * const branch = await getCurrentBranch('/repo');
  * if (branch === 'main') {
- *   console.log('On main branch');
+ *   debug('On main branch');
  * }
  */
 export declare function getCurrentBranch(cwd: string): Promise<string | null>;
@@ -65,7 +65,7 @@ export declare function getCurrentBranch(cwd: string): Promise<string | null>;
  *
  * @example
  * if (await hasUncommittedChanges('/repo')) {
- *   console.log('You have uncommitted changes');
+ *   debug('You have uncommitted changes');
  * }
  */
 export declare function hasUncommittedChanges(cwd: string): Promise<boolean>;
@@ -78,7 +78,7 @@ export declare function hasUncommittedChanges(cwd: string): Promise<boolean>;
  *
  * @example
  * const files = await getUncommittedFiles('/repo');
- * files.forEach(f => console.log('Modified:', f));
+ * files.forEach(f => debug('Modified:', f));
  */
 export declare function getUncommittedFiles(cwd: string): Promise<string[]>;
 /**
@@ -92,7 +92,7 @@ export declare function getUncommittedFiles(cwd: string): Promise<string[]>;
  *
  * @example
  * if (await createCheckpoint('/repo', 'pre-refactor state')) {
- *   console.log('Checkpoint created');
+ *   debug('Checkpoint created');
  * }
  */
 export declare function createCheckpoint(cwd: string, message: string): Promise<boolean>;
@@ -121,7 +121,7 @@ export declare function createFeatureBranch(cwd: string, name: string): Promise<
  *
  * @example
  * if (await mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
- *   console.log('Feature merged and branch cleaned up');
+ *   debug('Feature merged and branch cleaned up');
  * }
  */
 export declare function mergeFeatureBranch(cwd: string, featureBranch: string, mainBranch: string): Promise<boolean>;

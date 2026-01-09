@@ -26,7 +26,7 @@ import {
   registerActiveAgent,
   popActiveAgent,
   cleanupStaleAgents,
-  ActiveAgentEntry,
+  _ActiveAgentEntry,
 } from '../../telemetry/agents.js';
 import {
   createMockActiveAgentEntry,
@@ -44,7 +44,7 @@ vi.mock('util', async () => {
   const actual = await vi.importActual('util');
   return {
     ...actual,
-    promisify: (fn: any) => fn, // Return the function as-is, assuming it already returns promises
+    promisify: <T extends (...args: unknown[]) => unknown>(fn: T) => fn, // Return the function as-is, assuming it already returns promises
   };
 });
 
@@ -79,7 +79,7 @@ function createMockGitExec(config: {
     commit?: boolean;
   };
 }) {
-  return (command: string, options?: any): Promise<{ stdout: string; stderr: string }> => {
+  return (command: string, _options?: Record<string, unknown>): Promise<{ stdout: string; stderr: string }> => {
     // Handle branch command
     if (command.includes('--abbrev-ref HEAD')) {
       if (config.errors?.branch) {
@@ -147,7 +147,7 @@ describe('telemetry/agents', () => {
   describe('getGitInfo', () => {
     it('should return branch and commit when git commands succeed', async () => {
       vi.mocked(exec).mockImplementation(
-        createMockGitExec({ branch: 'main', commit: 'abc1234' }) as any
+        createMockGitExec({ branch: 'main', commit: 'abc1234' }) as typeof exec
       );
 
       const info = await getGitInfo('/test/project');
@@ -158,7 +158,7 @@ describe('telemetry/agents', () => {
 
     it('should return empty object when both git commands fail', async () => {
       vi.mocked(exec).mockImplementation(
-        createMockGitExec({ errors: { branch: true, commit: true } }) as any
+        createMockGitExec({ errors: { branch: true, commit: true } }) as typeof exec
       );
 
       const info = await getGitInfo('/test/project');
@@ -173,7 +173,7 @@ describe('telemetry/agents', () => {
         createMockGitExec({
           branch: 'feature-branch',
           errors: { commit: true },
-        }) as any
+        }) as typeof exec
       );
 
       const info = await getGitInfo('/test/project');
@@ -187,7 +187,7 @@ describe('telemetry/agents', () => {
         createMockGitExec({
           commit: 'def5678',
           errors: { branch: true },
-        }) as any
+        }) as typeof exec
       );
 
       const info = await getGitInfo('/test/project');
@@ -198,7 +198,7 @@ describe('telemetry/agents', () => {
 
     it('should trim whitespace from git output', async () => {
       vi.mocked(exec).mockImplementation(
-        createMockGitExec({ branch: '  develop  ', commit: '  def5678  ' }) as any
+        createMockGitExec({ branch: '  develop  ', commit: '  def5678  ' }) as typeof exec
       );
 
       const info = await getGitInfo('/test/project');
@@ -210,7 +210,7 @@ describe('telemetry/agents', () => {
     it('should handle non-Error exceptions for branch command', async () => {
       vi.mocked(exec).mockImplementation(((
         command: string,
-        options?: any
+        _options?: Record<string, unknown>
       ): Promise<{ stdout: string; stderr: string }> => {
         if (command.includes('--abbrev-ref HEAD')) {
           return Promise.reject('string error'); // Non-Error exception
@@ -219,7 +219,7 @@ describe('telemetry/agents', () => {
         } else {
           return Promise.reject(new Error('Unknown command'));
         }
-      }) as any);
+      }) as typeof exec);
 
       const info = await getGitInfo('/test/project');
 
@@ -231,7 +231,7 @@ describe('telemetry/agents', () => {
     it('should handle non-Error exceptions for commit command', async () => {
       vi.mocked(exec).mockImplementation(((
         command: string,
-        options?: any
+        _options?: Record<string, unknown>
       ): Promise<{ stdout: string; stderr: string }> => {
         if (command.includes('--abbrev-ref HEAD')) {
           return Promise.resolve({ stdout: 'main\n', stderr: '' });
@@ -240,7 +240,7 @@ describe('telemetry/agents', () => {
         } else {
           return Promise.reject(new Error('Unknown command'));
         }
-      }) as any);
+      }) as typeof exec);
 
       const info = await getGitInfo('/test/project');
 

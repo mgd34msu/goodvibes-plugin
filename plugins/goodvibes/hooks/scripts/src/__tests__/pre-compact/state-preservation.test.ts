@@ -14,7 +14,7 @@ import {
   createMockFileState,
 } from '../test-utils/mock-factories.js';
 
-import type { HooksState } from '../../types/state.js';
+import type { _HooksState } from '../../types/state.js';
 
 // Mock dependencies - must be defined before vi.mock calls
 const mockLoadState = vi.fn();

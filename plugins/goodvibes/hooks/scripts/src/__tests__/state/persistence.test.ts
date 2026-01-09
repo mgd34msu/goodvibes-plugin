@@ -15,6 +15,7 @@ import * as path from 'path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { loadState, saveState } from '../../state/persistence.js';
+
 import type { HooksState } from '../../types/state.js';
 
 // Mock dependencies

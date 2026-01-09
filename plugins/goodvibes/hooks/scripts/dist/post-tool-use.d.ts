@@ -1,13 +1,7 @@
 /**
- * Post-Tool-Use Hook (GoodVibes)
+ * Post Tool Use Hook Entry Point
  *
- * Processes tool results and triggers automation:
- * - Track file modifications (Edit, Write tools)
- * - Check if checkpoint commit should be created
- * - Detect and monitor dev server commands (Bash tool)
- * - Optionally run tests for modified files
- * - Optionally check build status
- * - Check if feature branch should be created
- * - Process MCP tool results (detect_stack, validate_implementation, etc.)
+ * This is a thin entry point that re-exports from the post-tool-use module.
+ * The actual implementation lives in src/post-tool-use/index.ts
  */
-export {};
+import './post-tool-use/index.js';

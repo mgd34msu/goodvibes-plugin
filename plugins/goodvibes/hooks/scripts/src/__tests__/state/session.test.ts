@@ -3,11 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { initializeSession, resetForNewSession } from '../../state/session.js';
 import { createDefaultState } from '../../types/state.js';
 
-import type { HooksState } from '../../types/state.js';
 import type { ErrorState } from '../../types/errors.js';
+import type { HooksState } from '../../types/state.js';
 
 describe('session', () => {
   let state: HooksState;

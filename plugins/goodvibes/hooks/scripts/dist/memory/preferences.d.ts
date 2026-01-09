@@ -14,7 +14,7 @@ import type { MemoryPreference } from '../types/memory.js';
  * @example
  * const preferences = await readPreferences('/path/to/project');
  * for (const pref of preferences) {
- *   console.log(`${pref.key}: ${pref.value}`);
+ *   debug(`${pref.key}: ${pref.value}`);
  * }
  */
 export declare function readPreferences(cwd: string): Promise<MemoryPreference[]>;

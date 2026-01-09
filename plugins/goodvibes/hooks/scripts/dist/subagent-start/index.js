@@ -14,10 +14,10 @@
 import * as path from 'path';
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, isTestEnvironment, } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
-import { buildSubagentContext } from './context-injection.js';
 import { saveAgentTracking } from '../subagent-stop/telemetry.js';
 import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from '../telemetry/index.js';
 import { getActiveAgentsFilePath } from '../telemetry/index.js';
+import { buildSubagentContext } from './context-injection.js';
 /** Creates a hook response with optional system message and additional context. */
 function createResponse(options) {
     const response = {

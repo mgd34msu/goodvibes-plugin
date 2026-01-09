@@ -18,7 +18,7 @@ import { RECOVERY_PATTERNS } from './recovery-patterns.js';
  * @example
  * const pattern = findMatchingPattern('typescript_error', "Type 'string' is not assignable to type 'number'");
  * if (pattern) {
- *   console.log(pattern.suggestedFix);  // 'Run `npx tsc --noEmit`...'
+ *   debug(pattern.suggestedFix);  // 'Run `npx tsc --noEmit`...'
  * }
  */
 export function findMatchingPattern(category, errorMessage) {
@@ -78,7 +78,7 @@ export function findAllMatchingPatterns(error) {
  * const patterns = findAllMatchingPatterns(errorMessage);
  * const severity = getHighestSeverity(patterns);
  * if (severity === 'critical') {
- *   console.log('Immediate attention required');
+ *   debug('Immediate attention required');
  * }
  */
 export function getHighestSeverity(patterns) {
@@ -103,7 +103,7 @@ export function getHighestSeverity(patterns) {
  *
  * @example
  * const fix = getSuggestedFix('npm_install', 'Module not found: lodash', errorState);
- * console.log(fix);  // 'Run `npm install` to ensure all dependencies...'
+ * debug(fix);  // 'Run `npm install` to ensure all dependencies...'
  */
 export function getSuggestedFix(category, errorMessage, errorState) {
     const pattern = findMatchingPattern(category, errorMessage);

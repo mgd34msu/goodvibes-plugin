@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   checkEnvStatus,
   analyzeEnvironment,
-  checkEnvironment,
+  _checkEnvironment,
   formatEnvStatus,
   formatEnvironment,
   type EnvStatus,

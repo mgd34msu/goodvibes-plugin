@@ -44,6 +44,8 @@ describe('post-tool-use-failure hook', () => {
   let mockHasExhaustedRetries: ReturnType<typeof vi.fn>;
   let mockGenerateRetrySignature: ReturnType<typeof vi.fn>;
   let mockWriteFailure: ReturnType<typeof vi.fn>;
+  let mockBuildResearchHintsMessage: ReturnType<typeof vi.fn>;
+  let mockBuildFixLoopResponse: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.resetModules();
@@ -79,6 +81,8 @@ describe('post-tool-use-failure hook', () => {
     mockHasExhaustedRetries = vi.fn();
     mockGenerateRetrySignature = vi.fn();
     mockWriteFailure = vi.fn();
+    mockBuildResearchHintsMessage = vi.fn();
+    mockBuildFixLoopResponse = vi.fn();
 
     // Default mock implementations
     mockRespond.mockReturnValue(undefined);
@@ -106,6 +110,44 @@ describe('post-tool-use-failure hook', () => {
     mockSaveAnalytics.mockResolvedValue(undefined);
     mockSaveRetry.mockResolvedValue(undefined);
     mockWriteFailure.mockResolvedValue(undefined);
+    mockBuildResearchHintsMessage.mockReturnValue('');
+    // Default implementation - tests will override this as needed
+    mockBuildFixLoopResponse.mockImplementation((options: {
+      pattern: { category: string } | null;
+      category: string;
+      suggestedFix: string;
+      researchHints: string;
+      exhausted: boolean;
+      errorState: { fixStrategiesAttempted: unknown[]; phase: 1 | 2 | 3 };
+    }) => {
+      const phaseNames = ['Raw Attempts', 'Official Documentation', 'Community Solutions'];
+      const phaseName = phaseNames[options.errorState.phase - 1] || 'Raw Attempts';
+      const parts: string[] = [`[GoodVibes Fix Loop - Phase ${options.errorState.phase}/3: ${phaseName}]`];
+
+      if (options.pattern) {
+        parts.push(`Detected: ${options.pattern.category.replace(/_/g, ' ')}`);
+      } else {
+        parts.push(`Category: ${options.category}`);
+      }
+
+      parts.push('Suggested fix:');
+      parts.push(options.suggestedFix);
+
+      if (options.researchHints) {
+        parts.push(options.researchHints);
+      }
+
+      if (options.errorState.fixStrategiesAttempted.length > 0) {
+        parts.push('Previously attempted (failed):');
+        parts.push('Try a DIFFERENT approach.');
+      }
+
+      if (options.exhausted) {
+        parts.push('[WARNING] All fix phases exhausted. Consider:');
+      }
+
+      return parts.join('\n');
+    });
   });
 
   afterEach(() => {
@@ -177,6 +219,12 @@ describe('post-tool-use-failure hook', () => {
     // Mock memory failures module
     vi.doMock('../memory/failures.js', () => ({
       writeFailure: mockWriteFailure,
+    }));
+
+    // Mock response-builder module
+    vi.doMock('../post-tool-use-failure/response-builder.js', () => ({
+      buildResearchHintsMessage: mockBuildResearchHintsMessage,
+      buildFixLoopResponse: mockBuildFixLoopResponse,
     }));
 
     // Import the module (this triggers the hook)
@@ -294,9 +342,10 @@ describe('post-tool-use-failure hook', () => {
 
       await setupMocksAndImport();
 
-      expect(mockGenerateErrorSignature).toHaveBeenCalledWith(
-        'unknown',
-        'Error message'
+      // The hook uses retry-tracker's generateErrorSignature with (errorMessage, toolName)
+      expect(mockGenerateRetrySignature).toHaveBeenCalledWith(
+        'Error message',
+        'unknown'
       );
     });
 

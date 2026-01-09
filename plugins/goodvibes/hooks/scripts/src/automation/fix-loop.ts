@@ -15,9 +15,7 @@ import {
   escalatePhase,
   hasExhaustedRetries,
   MAX_PHASE,
-  DEFAULT_RETRY_LIMIT,
 } from '../shared/error-handling-core.js';
-import { PHASE_RETRY_LIMITS } from '../types/errors.js';
 
 import type { ErrorState, ErrorCategory } from '../types/errors.js';
 

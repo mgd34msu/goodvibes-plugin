@@ -5,7 +5,7 @@
  * for injection via additionalContext.
  */
 
-import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
+import { formatMemoryContext } from '../memory/index.js';
 
 import { formatEnvStatus } from './environment.js';
 import { formatFolderAnalysis } from './folder-analyzer.js';
@@ -61,8 +61,8 @@ export interface FormattedContext {
  *
  * @example
  * const formatted = formatContext(context);
- * console.log(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
- * console.log(formatted.full); // Full multi-section report
+ * debug(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
+ * debug(formatted.full); // Full multi-section report
  */
 export function formatContext(context: GatheredContext): FormattedContext {
   const sections: string[] = [];

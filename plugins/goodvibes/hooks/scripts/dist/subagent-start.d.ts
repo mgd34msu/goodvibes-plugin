@@ -1,14 +1,7 @@
 /**
- * Subagent Start Hook (GoodVibes)
+ * Subagent Start Hook Entry Point
  *
- * Runs when a Claude Code subagent (Task tool) starts.
- * Captures telemetry data and stores it for correlation with SubagentStop.
- *
- * Captures:
- * - agent_id, agent_type, session_id, cwd, timestamp
- * - Derives project_name from cwd
- * - Gets git info (branch, commit) if available
- * - Stores entry to .goodvibes/state/agent-tracking.json
- * - Returns additionalContext with project reminders
+ * This is a thin entry point that re-exports from the subagent-start module.
+ * The actual implementation lives in src/subagent-start/index.ts
  */
-export {};
+import './subagent-start/index.js';

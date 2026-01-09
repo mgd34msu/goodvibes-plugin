@@ -20,10 +20,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type {
   HookInput,
   HookResponse,
-  HookSpecificOutput,
-  CreateResponseOptions,
-  ExtendedHookResponse,
-  PermissionDecision,
+  _HookSpecificOutput,
+  CreateResponseOptions as _CreateResponseOptions,
+  ExtendedHookResponse as _ExtendedHookResponse,
+  PermissionDecision as _PermissionDecision,
 } from '../shared/hook-io.js';
 import type { Readable } from 'stream';
 

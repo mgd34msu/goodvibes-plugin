@@ -179,7 +179,7 @@ async function calculateDepth(cwd, maxDepth = DEFAULT_MAX_DEPTH) {
  * @example
  * const structure = await analyzeFolderStructure('/my-next-app');
  * if (structure.pattern === 'next-app-router') {
- *   console.log('Next.js App Router detected');
+ *   debug('Next.js App Router detected');
  * }
  */
 export async function analyzeFolderStructure(cwd) {

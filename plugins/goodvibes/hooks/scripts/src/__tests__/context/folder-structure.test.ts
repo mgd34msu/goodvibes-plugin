@@ -5,7 +5,7 @@
  */
 
 import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as _path from 'path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 

@@ -37,6 +37,14 @@ interface Registry {
   }>;
 }
 
+interface ToolDefinition {
+  name: string;
+  description?: string;
+  mcp?: {
+    defer_loading?: boolean;
+  };
+}
+
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
 
 /**
@@ -219,7 +227,7 @@ function scanTools(): RegistryEntry[] {
     const content = fs.readFileSync(fullPath, 'utf-8');
 
     try {
-      const tool = yaml.load(content) as any;
+      const tool = yaml.load(content) as ToolDefinition;
       entries.push({
         name: tool.name,
         path: `definitions/${item}`,

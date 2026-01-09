@@ -22,8 +22,8 @@ export interface TranscriptData {
  *
  * @example
  * const data = await parseTranscript('/path/to/transcript.jsonl');
- * console.log('Tools:', data.toolsUsed); // ['Bash', 'Edit', 'Write']
- * console.log('Files:', data.filesModified); // ['/src/index.ts']
- * console.log('Summary:', data.summary); // 'I have completed the changes...'
+ * debug('Tools:', data.toolsUsed); // ['Bash', 'Edit', 'Write']
+ * debug('Files:', data.filesModified); // ['/src/index.ts']
+ * debug('Summary:', data.summary); // 'I have completed the changes...'
  */
 export declare function parseTranscript(transcriptPath: string): Promise<TranscriptData>;

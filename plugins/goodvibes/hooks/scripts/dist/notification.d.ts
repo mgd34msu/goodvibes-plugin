@@ -1,9 +1,7 @@
 /**
- * Notification Hook (GoodVibes)
+ * Notification Hook Entry Point
  *
- * Handles notifications from Claude Code:
- * - Validation failures
- * - Test failures
- * - Build errors
+ * This is a thin entry point that re-exports from the shared module.
+ * The actual implementation lives in src/shared/notification.ts
  */
-export {};
+import './shared/notification.js';

@@ -1,10 +1,7 @@
 /**
- * Post Tool Use Failure Hook (GoodVibes)
+ * Post Tool Use Failure Hook Entry Point
  *
- * Runs when a tool call fails.
- * Implements 3-phase fix loop with progressive research hints:
- *   Phase 1: Raw attempts with existing knowledge
- *   Phase 2: Include official documentation search hints
- *   Phase 3: Include community documentation search hints
+ * This is a thin entry point that re-exports from the post-tool-use-failure module.
+ * The actual implementation lives in src/post-tool-use-failure/index.ts
  */
-export {};
+import './post-tool-use-failure/index.js';

@@ -3,44 +3,8 @@
  *
  * Analyzes recent git changes to identify hotspots and activity patterns.
  */
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { debug } from '../shared/logging.js';
-const execAsync = promisify(exec);
-import { GIT_MAX_BUFFER, DEFAULT_DAYS_LOOKBACK, DEFAULT_COMMITS_FOR_HOTSPOTS, DEFAULT_RECENT_COMMITS, MAX_RECENT_FILES, MAX_HOTSPOTS, HOTSPOT_THRESHOLD_MULTIPLIER, MIN_HOTSPOT_THRESHOLD, MAX_DISPLAY_COMMITS, MAX_DISPLAY_FILES, } from './constants/recent-activity.js';
-/**
- * Execute a git command and return output.
- * Handles errors gracefully by returning null on command failure.
- *
- * @param cwd - The current working directory (repository root)
- * @param args - Git command arguments (e.g., "log --oneline")
- * @returns Promise resolving to the trimmed command output, or null if the command failed
- */
-async function gitExec(cwd, args) {
-    try {
-        const { stdout } = await execAsync(`git ${args}`, {
-            cwd,
-            encoding: 'utf-8',
-            maxBuffer: GIT_MAX_BUFFER,
-            timeout: 30000,
-        });
-        return stdout.trim();
-    }
-    catch (error) {
-        debug(`recent-activity: Git command failed: git ${args}`, error);
-        return null;
-    }
-}
-/**
- * Check if directory is a git repository.
- *
- * @param cwd - The directory path to check
- * @returns Promise resolving to true if the directory is inside a git repository, false otherwise
- */
-async function isGitRepo(cwd) {
-    const result = await gitExec(cwd, 'rev-parse --is-inside-work-tree');
-    return result === 'true';
-}
+import { DEFAULT_DAYS_LOOKBACK, DEFAULT_COMMITS_FOR_HOTSPOTS, DEFAULT_RECENT_COMMITS, MAX_RECENT_FILES, MAX_HOTSPOTS, HOTSPOT_THRESHOLD_MULTIPLIER, MIN_HOTSPOT_THRESHOLD, } from './constants/recent-activity.js';
+import { gitExec, isGitRepo } from './git-utils.js';
 /**
  * Determine file change type based on counts.
  *
@@ -217,29 +181,5 @@ export async function getRecentActivity(cwd) {
         activeContributors: [],
     };
 }
-/**
- * Format recent activity for display in context output.
- *
- * @param activity - The RecentActivity object to format
- * @returns Formatted string with commits, hotspots, and recent files, or null if no activity
- */
-export function formatRecentActivity(activity) {
-    const sections = [];
-    if (activity.recentCommits.length > 0) {
-        const commitLines = activity.recentCommits
-            .slice(0, MAX_DISPLAY_COMMITS)
-            .map((c) => `- \`${c.hash}\` ${c.message} (${c.date})`);
-        sections.push(`**Recent Commits:**\n${commitLines.join('\n')}`);
-    }
-    if (activity.hotspots.length > 0) {
-        const hotspotLines = activity.hotspots.map((h) => `- \`${h.file}\` (${h.changeCount} changes)`);
-        sections.push(`**Hotspots (frequently changed):**\n${hotspotLines.join('\n')}`);
-    }
-    if (activity.recentlyModifiedFiles.length > 0) {
-        const fileLines = activity.recentlyModifiedFiles
-            .slice(0, MAX_DISPLAY_FILES)
-            .map((f) => `- \`${f.file}\` (${f.type}, ${f.changes} change(s))`);
-        sections.push(`**Recently Modified:**\n${fileLines.join('\n')}`);
-    }
-    return sections.length > 0 ? sections.join('\n\n') : null;
-}
+// Re-export formatRecentActivity from the formatter module
+export { formatRecentActivity } from './recent-activity-formatter.js';

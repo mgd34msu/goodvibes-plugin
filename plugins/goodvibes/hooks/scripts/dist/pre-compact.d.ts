@@ -1,7 +1,7 @@
 /**
- * Pre-Compact Hook (GoodVibes)
+ * Pre-Compact Hook Entry Point
  *
- * Runs before context compression (auto or manual).
- * Can save important context before it's compacted.
+ * This is a thin entry point that re-exports from the pre-compact module.
+ * The actual implementation lives in src/pre-compact/index.ts
  */
-export {};
+import './pre-compact/index.js';

@@ -46,7 +46,7 @@ export declare const QUALITY_GATES: QualityGate[];
  * @example
  * const { allPassed, blocking, results } = await runQualityGates('/project');
  * if (blocking) {
- *   console.error('Blocking quality gates failed');
+ *   debug('Blocking quality gates failed');
  * }
  */
 export declare function runQualityGates(cwd: string, gates?: QualityGate[]): Promise<{

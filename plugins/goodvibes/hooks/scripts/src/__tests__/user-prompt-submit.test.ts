@@ -203,11 +203,11 @@ describe('user-prompt-submit hook', () => {
 
       // Create a mock that rejects asynchronously
       const error = new Error('Async error');
-      mockReadHookInput.mockImplementation(() => {
-        return new Promise((_, reject) => {
+      mockReadHookInput.mockReturnValue(
+        new Promise((_, reject) => {
           setImmediate(() => reject(error));
-        });
-      });
+        })
+      );
 
       mockCreateResponse.mockImplementation(() => ({
         continue: true,
@@ -231,11 +231,11 @@ describe('user-prompt-submit hook', () => {
       vi.resetModules();
 
       const errorString = 'Async string error';
-      mockReadHookInput.mockImplementation(() => {
-        return new Promise((_, reject) => {
+      mockReadHookInput.mockReturnValue(
+        new Promise((_, reject) => {
           setImmediate(() => reject(errorString));
-        });
-      });
+        })
+      );
 
       mockCreateResponse.mockImplementation(() => ({
         continue: true,

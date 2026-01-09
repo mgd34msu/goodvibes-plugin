@@ -8,16 +8,6 @@
  */
 
 import {
-  checkBranchGuard,
-  checkMergeReadiness,
-  isMergeCommand,
-} from './git-guards.js';
-import {
-  runQualityGates,
-  isCommitCommand,
-  formatGateResults,
-} from './quality-gates.js';
-import {
   respond,
   allowTool,
   blockTool,
@@ -25,6 +15,17 @@ import {
 } from '../shared/index.js';
 import { loadState } from '../state/index.js';
 import { getDefaultConfig } from '../types/config.js';
+
+import {
+  checkBranchGuard,
+  checkMergeReadiness,
+  isMergeCommand,
+} from './git-guards.js';
+import {
+  runQualityGates,
+  isCommitCommand as _isCommitCommand,
+  formatGateResults,
+} from './quality-gates.js';
 
 import type { HookInput } from '../shared/index.js';
 

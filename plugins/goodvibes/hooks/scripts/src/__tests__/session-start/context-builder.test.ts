@@ -11,8 +11,9 @@
  * - Edge cases: missing data, errors, empty inputs
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { RecoveryInfo } from '../../session-start/crash-recovery.js';
 

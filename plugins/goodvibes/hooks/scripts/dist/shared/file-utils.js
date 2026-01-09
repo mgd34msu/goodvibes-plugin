@@ -25,13 +25,13 @@ const exec = promisify(execCallback);
  * @example
  * const pkgPath = path.join(cwd, 'package.json');
  * if (await fileExists(pkgPath)) {
- *   console.log('This is a Node.js project');
+ *   debug('This is a Node.js project');
  * }
  *
  * @example
  * const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
  * if (await fileExists(tsconfigPath)) {
- *   console.log('TypeScript is configured');
+ *   debug('TypeScript is configured');
  * }
  */
 export async function fileExists(filePath) {
@@ -60,13 +60,13 @@ export async function fileExists(filePath) {
  * @example
  * // Check relative to PROJECT_ROOT
  * if (await fileExistsRelative('package.json')) {
- *   console.log('This is a Node.js project');
+ *   debug('This is a Node.js project');
  * }
  *
  * @example
  * // Check relative to custom directory
  * if (await fileExistsRelative('src/index.ts', '/path/to/project')) {
- *   console.log('Source file found');
+ *   debug('Source file found');
  * }
  */
 export async function fileExistsRelative(filePath, baseDir = PROJECT_ROOT) {
@@ -87,13 +87,13 @@ export async function fileExistsRelative(filePath, baseDir = PROJECT_ROOT) {
  *
  * @example
  * if (await commandExists('git')) {
- *   console.log('Git is available');
+ *   debug('Git is available');
  * }
  *
  * @example
  * // Check before running a tool
  * if (!(await commandExists('pnpm'))) {
- *   console.log('pnpm not found, falling back to npm');
+ *   debug('pnpm not found, falling back to npm');
  * }
  */
 export async function commandExists(cmd) {
@@ -125,7 +125,7 @@ export async function commandExists(cmd) {
  * @example
  * const result = await validateRegistries();
  * if (!result.valid) {
- *   console.error('Missing registries:', result.missing.join(', '));
+ *   debug('Missing registries:', result.missing.join(', '));
  * }
  */
 export async function validateRegistries() {
@@ -161,7 +161,7 @@ export async function validateRegistries() {
  *
  * @example
  * const goodvibesDir = await ensureGoodVibesDir('/path/to/project');
- * console.log(goodvibesDir); // '/path/to/project/.goodvibes'
+ * debug(goodvibesDir); // '/path/to/project/.goodvibes'
  *
  * // Now safe to write to subdirectories
  * fs.writeFileSync(path.join(goodvibesDir, 'state', 'session.json'), data);
@@ -201,7 +201,7 @@ function isExecError(error) {
  *   execSync('npm test');
  * } catch (error) {
  *   const output = extractErrorOutput(error);
- *   console.log('Test failed:', output);
+ *   debug('Test failed:', output);
  * }
  */
 export function extractErrorOutput(error) {

@@ -5,6 +5,7 @@
  * of all branches including error handling paths.
  */
 
+import * as childProcess from 'child_process';
 import * as fs from 'fs/promises';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -15,8 +16,8 @@ vi.mock('child_process', () => ({
 }));
 
 vi.mock('util', () => ({
-  promisify: (fn: any) => {
-    return (command: string, options: any) => {
+  promisify: <T extends (...args: unknown[]) => unknown>(fn: T) => {
+    return (command: string, options: Record<string, unknown>) => {
       return new Promise((resolve, reject) => {
         fn(command, options, (error: Error | null, stdout: string, stderr: string) => {
           if (error) {
@@ -35,8 +36,6 @@ vi.mock('../../shared/logging.js', () => ({
   debug: vi.fn(),
 }));
 
-import * as childProcess from 'child_process';
-
 import {
   getGitContext,
   formatGitContext,
@@ -50,7 +49,8 @@ const mockExec = vi.mocked(childProcess.exec);
  * Helper to create exec mock implementation for git commands
  */
 function createGitExecMock(handlers: Record<string, string | Error>) {
-  return (command: string, options: any, callback: Function) => {
+  type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+  return (command: string, options: Record<string, unknown>, callback: ExecCallback) => {
     const cmd = String(command);
 
     for (const [key, value] of Object.entries(handlers)) {
@@ -60,13 +60,13 @@ function createGitExecMock(handlers: Record<string, string | Error>) {
         } else {
           callback(null, value, '');
         }
-        return {} as any;
+        return {} as ReturnType<typeof childProcess.exec>;
       }
     }
 
     // Default: empty output
     callback(null, '', '');
-    return {} as any;
+    return {} as ReturnType<typeof childProcess.exec>;
   };
 }
 

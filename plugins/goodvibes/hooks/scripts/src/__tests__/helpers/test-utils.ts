@@ -5,13 +5,15 @@
  * async exec operations and common dependencies.
  */
 
+import { vi } from 'vitest';
+
 import type { Mock } from 'vitest';
 
 /**
  * Type for async exec function returned by promisify(exec)
  */
 export type ExecAsyncFn = (
-  command: string,
+  _command: string,
   options?: {
     cwd?: string;
     encoding?: BufferEncoding;
@@ -38,14 +40,14 @@ export type ExecAsyncFn = (
  */
 export function createExecMock(
   mockImplementation?: (
-    command: string,
-    options: object,
-    callback: (error: Error | null, stdout: string, stderr: string) => void
+    _command: string,
+    _options: object,
+    _callback: (_error: Error | null, _stdout: string, _stderr: string) => void
   ) => void
 ): Mock {
-  return vi.fn((command: string, options: object, callback: Function) => {
+  return vi.fn((command: string, options: object, callback: (_error: Error | null, _stdout: string, _stderr: string) => void) => {
     if (mockImplementation) {
-      mockImplementation(command, options, callback as any);
+      mockImplementation(command, options, callback);
     } else {
       // Default: success with empty output
       callback(null, '', '');
@@ -179,7 +181,7 @@ export function createChildProcessFailureMock(
  * ```
  */
 export function createExistsSyncMock(
-  existingPaths: string[] | ((path: string) => boolean)
+  existingPaths: string[] | ((_path: string) => boolean)
 ): Mock {
   if (typeof existingPaths === 'function') {
     return vi.fn().mockImplementation(existingPaths);
@@ -203,8 +205,8 @@ export function createExistsSyncMock(
  * ```
  */
 export function createSharedMock(options: {
-  fileExists?: string[] | ((path: string) => boolean);
-  extractErrorOutput?: string | ((error: Error) => string);
+  fileExists?: string[] | ((_path: string) => boolean);
+  extractErrorOutput?: string | ((_error: Error) => string);
 } = {}) {
   const fileExistsMock =
     typeof options.fileExists === 'function'
@@ -241,11 +243,10 @@ export function createSharedMock(options: {
  * const { runBuild } = await importFresh('../../automation/build-runner.js');
  * ```
  */
-export async function importFresh<T = any>(modulePath: string): Promise<T> {
+export async function importFresh<T = unknown>(modulePath: string): Promise<T> {
   vi.resetModules();
   return import(modulePath);
 }
 
 // Re-export vi for convenience
-import { vi } from 'vitest';
 export { vi };

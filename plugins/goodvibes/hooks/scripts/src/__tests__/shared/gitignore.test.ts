@@ -121,7 +121,7 @@ describe('gitignore', () => {
       const { SECURITY_GITIGNORE_ENTRIES } =
         await import('../../shared/gitignore.js');
 
-      for (const [category, patterns] of Object.entries(
+      for (const [_category, patterns] of Object.entries(
         SECURITY_GITIGNORE_ENTRIES
       )) {
         expect(Array.isArray(patterns)).toBe(true);

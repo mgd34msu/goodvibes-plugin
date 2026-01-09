@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { TranscriptData } from '../../shared/transcript.js';
+import type { _TranscriptData } from '../../shared/transcript.js';
 
 // Mock fs/promises module
 const mockReadFile = vi.fn();
@@ -611,7 +611,7 @@ describe('transcript utilities', () => {
       mockReadFile.mockResolvedValue(transcriptContent);
 
       const { parseTranscript } = await import('../../shared/transcript.js');
-      const result = await parseTranscript('/path/to/transcript.jsonl');
+      await parseTranscript('/path/to/transcript.jsonl');
 
       expect(mockDebug).toHaveBeenCalledWith(
         'parseTranscript line parse failed',
