@@ -104,16 +104,16 @@ export async function searchMemory(cwd, keywords) {
     return {
         decisions: memory.decisions.filter((d) => matchesKeywords(d.title) ||
             matchesKeywords(d.rationale) ||
-            (d.context && matchesKeywords(d.context)) ||
-            (d.alternatives && d.alternatives.some(matchesKeywords))),
+            (d.context ? matchesKeywords(d.context) : false) ||
+            d.alternatives?.some(matchesKeywords)),
         patterns: memory.patterns.filter((p) => matchesKeywords(p.name) ||
             matchesKeywords(p.description) ||
-            (p.example && matchesKeywords(p.example)) ||
+            (p.example ? matchesKeywords(p.example) : false) ||
             p.files?.some(matchesKeywords)),
         failures: memory.failures.filter((f) => matchesKeywords(f.approach) ||
             matchesKeywords(f.reason) ||
-            (f.context && matchesKeywords(f.context)) ||
-            (f.suggestion && matchesKeywords(f.suggestion))),
+            (f.context ? matchesKeywords(f.context) : false) ||
+            (f.suggestion ? matchesKeywords(f.suggestion) : false)),
         preferences: memory.preferences.filter((p) => matchesKeywords(p.key) ||
             matchesKeywords(p.value) ||
             (p.notes && matchesKeywords(p.notes))),

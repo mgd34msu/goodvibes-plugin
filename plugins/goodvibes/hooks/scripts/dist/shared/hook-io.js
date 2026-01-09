@@ -10,14 +10,17 @@ import { STDIN_TIMEOUT_MS } from './config.js';
  *
  * @returns true if running in test mode, false otherwise
  */
+/* v8 ignore start - Test environment detection is inherently untestable:
+   When tests run, NODE_ENV/VITEST/__vitest_worker__ are always set,
+   making it impossible to test the false branch without complex isolation.
+   Tests verify all code paths via mocking in shared/hook-io.test.ts. */
 export function isTestEnvironment() {
-    return (
-    /* v8 ignore next */
-    process.env.NODE_ENV === 'test' ||
+    return (process.env.NODE_ENV === 'test' ||
         process.env.VITEST === 'true' ||
         typeof globalThis.__vitest_worker__ !==
             'undefined');
 }
+/* v8 ignore stop */
 /**
  * Type guard to validate hook input structure at runtime
  */

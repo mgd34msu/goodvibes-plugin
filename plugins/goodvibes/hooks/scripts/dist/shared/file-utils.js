@@ -206,9 +206,10 @@ function isExecError(error) {
  */
 export function extractErrorOutput(error) {
     if (isExecError(error)) {
-        return (error.stdout?.toString() ??
-            error.stderr?.toString() ??
-            error.message ??
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string should fall back to next option
+        return (error.stdout?.toString() ||
+            error.stderr?.toString() ||
+            error.message ||
             'Unknown error');
     }
     return String(error);

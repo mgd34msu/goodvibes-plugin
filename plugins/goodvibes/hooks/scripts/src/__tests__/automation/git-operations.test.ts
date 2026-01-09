@@ -868,7 +868,7 @@ describe('git-operations', () => {
     });
 
     it('should handle exception from git add and return false', async () => {
-      const _execCallCount = 0;
+      
       vi.doMock('child_process', () => ({
         exec: vi
           .fn()
@@ -881,7 +881,7 @@ describe('git-operations', () => {
                 _result: { stdout: string; stderr: string }
               ) => void
             ) => {
-              execCallCount++;
+              // Removed unused counter
               if (cmd.includes('status')) {
                 // First call: hasUncommittedChanges check passes
                 callback(null, { stdout: ' M file.ts\n', stderr: '' });

@@ -144,7 +144,8 @@ export function formatGitContext(context: GitContext): string {
   }
 
   const parts: string[] = [];
-  parts.push(`Git: ${context.branch ?? GIT_DETACHED_HEAD} branch`);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string should show as detached
+  parts.push(`Git: ${context.branch || GIT_DETACHED_HEAD} branch`);
 
   if (context.hasUncommittedChanges) {
     parts.push(`${context.uncommittedFileCount} uncommitted files`);

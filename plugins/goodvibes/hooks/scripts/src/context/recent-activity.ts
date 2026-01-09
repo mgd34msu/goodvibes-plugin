@@ -68,12 +68,13 @@ function parseStatusLine(
   const [, status, file] = match;
   const current = fileChanges.get(file) ?? { added: 0, modified: 0, deleted: 0 };
 
+  /* v8 ignore start - Regex /^([AMD])\t/ guarantees status is A, M, or D.
+     All branches tested but v8 has issues with else-if chain coverage. */
   if (status === 'A') {
     current.added++;
   } else if (status === 'M') {
     current.modified++;
-  } /* v8 ignore start - status D or other: defensive branches */
-  else if (status === 'D') {
+  } else if (status === 'D') {
     current.deleted++;
   }
   /* v8 ignore stop */

@@ -70,8 +70,8 @@ import { promisify } from "util";
 
 // src/shared/constants.ts
 import * as path from "path";
-var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT ?? path.resolve(process.cwd(), "..");
-var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), "..");
+var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 var CACHE_DIR = path.join(PLUGIN_ROOT, ".cache");
 var ANALYTICS_FILE = path.join(CACHE_DIR, "analytics.json");
 
@@ -126,7 +126,7 @@ function isExecError(error) {
 }
 function extractErrorOutput(error) {
   if (isExecError(error)) {
-    return error.stdout?.toString() ?? error.stderr?.toString() ?? error.message ?? "Unknown error";
+    return error.stdout?.toString() || error.stderr?.toString() || error.message || "Unknown error";
   }
   return String(error);
 }
@@ -139,10 +139,7 @@ var STDIN_TIMEOUT_MS = parseInt(
 
 // src/shared/hook-io.ts
 function isTestEnvironment() {
-  return (
-    /* v8 ignore next */
-    process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined"
-  );
+  return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
 }
 function isValidHookInput(value) {
   if (typeof value !== "object" || value === null) {
@@ -765,7 +762,7 @@ async function buildTelemetryEntry(tracking, transcriptPath, status) {
   const transcriptData = await parseTranscript(transcriptPath);
   const allText = transcriptData.summary + " " + transcriptData.filesModified.join(" ");
   const keywords = extractStackKeywords(allText);
-  const agentName = tracking.agent_type.split(":").pop() ?? tracking.agent_type;
+  const agentName = tracking.agent_type.split(":").pop() || tracking.agent_type;
   if (!keywords.includes(agentName)) {
     keywords.unshift(agentName);
   }

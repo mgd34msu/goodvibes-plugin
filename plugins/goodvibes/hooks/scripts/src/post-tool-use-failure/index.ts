@@ -62,8 +62,10 @@ async function runPostToolUseFailureHook(): Promise<void> {
     debug('PostToolUseFailure hook starting');
 
     const input = await readHookInput();
-    const cwd = input.cwd ?? PROJECT_ROOT;
-    const toolName = input.tool_name ?? 'unknown';
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string should fall back to PROJECT_ROOT
+    const cwd = input.cwd || PROJECT_ROOT;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string should fall back to 'unknown'
+    const toolName = input.tool_name || 'unknown';
 
     // Extract error message safely - the error field is passed by Claude Code but not in our type
     let errorMessage = 'Unknown error';

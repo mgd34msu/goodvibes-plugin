@@ -9,7 +9,21 @@
  * @see {@link ../automation/test-runner} for test execution
  */
 import { findTestsForFile, runTests } from '../automation/test-runner.js';
-/** Runs tests for files modified by an agent */
+/**
+ * Runs tests for files modified by an agent.
+ * Finds related test files, executes them, and updates state with results.
+ *
+ * @param cwd - The current working directory (project root)
+ * @param filesModified - Array of file paths that were modified
+ * @param state - Current HooksState to update with test results
+ * @returns Promise resolving to TestVerificationResult with pass/fail status
+ *
+ * @example
+ * const result = await verifyAgentTests(cwd, ['src/api.ts'], state);
+ * if (!result.passed) {
+ *   console.log('Tests failed:', result.summary);
+ * }
+ */
 export async function verifyAgentTests(cwd, filesModified, state) {
     // Find tests for modified files
     const testsToRun = [];

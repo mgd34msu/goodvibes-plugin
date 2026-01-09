@@ -103,11 +103,11 @@ function processTranscriptEntry(entry, result) {
  * @param result - The ParsedTranscript to populate
  */
 function processToolUsage(entry, result) {
-    const isToolUse = entry.type === 'tool_use' || entry.tool_name || entry.name;
+    const isToolUse = entry.type === 'tool_use' || Boolean(entry.tool_name ?? entry.name);
     if (!isToolUse) {
         return;
     }
-    const toolName = (entry.tool_name || entry.name);
+    const toolName = (entry.tool_name ?? entry.name);
     if (!toolName) {
         return;
     }
@@ -132,12 +132,12 @@ function processToolUsage(entry, result) {
  * @returns File path string, or null if not found
  */
 function extractFilePathFromEntry(entry) {
-    const input = entry.tool_input || entry.input || entry.parameters;
+    const input = entry.tool_input ?? entry.input ?? entry.parameters;
     if (!input || typeof input !== 'object') {
         return null;
     }
     const inputObj = input;
-    const filePath = inputObj.file_path || inputObj.path || inputObj.file;
+    const filePath = inputObj.file_path ?? inputObj.path ?? inputObj.file;
     return typeof filePath === 'string' ? filePath : null;
 }
 /**
@@ -160,7 +160,7 @@ function processErrors(entry, result) {
  * @param result - The ParsedTranscript to update
  */
 function processSuccessIndicators(entry, result) {
-    const text = String(entry.content || entry.text || entry.message || '').toLowerCase();
+    const text = String(entry.content ?? entry.text ?? entry.message ?? '').toLowerCase();
     const hasSuccessIndicator = text.includes('successfully') ||
         text.includes('completed') ||
         text.includes('done');

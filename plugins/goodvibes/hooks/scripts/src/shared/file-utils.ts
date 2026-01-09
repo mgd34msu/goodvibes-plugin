@@ -234,10 +234,11 @@ function isExecError(
  */
 export function extractErrorOutput(error: unknown): string {
   if (isExecError(error)) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string should fall back to next option
     return (
-      error.stdout?.toString() ??
-      error.stderr?.toString() ??
-      error.message ??
+      error.stdout?.toString() ||
+      error.stderr?.toString() ||
+      error.message ||
       'Unknown error'
     );
   }
