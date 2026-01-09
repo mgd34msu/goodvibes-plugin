@@ -26782,7 +26782,9 @@ async function findTsConfig(startDir) {
   return null;
 }
 async function handleCheckTypes(args) {
-  const tsconfigPath = await findTsConfig(PROJECT_ROOT);
+  const resolvedFiles = args.files?.length ? args.files.map((f) => path14.resolve(PROJECT_ROOT, f)) : [];
+  const searchStartDir = resolvedFiles.length > 0 ? path14.dirname(resolvedFiles[0]) : PROJECT_ROOT;
+  const tsconfigPath = await findTsConfig(searchStartDir);
   const cmdParts = ["npx", "tsc", "--noEmit"];
   if (tsconfigPath) {
     cmdParts.push("--project", `"${tsconfigPath}"`);
@@ -26790,12 +26792,8 @@ async function handleCheckTypes(args) {
   if (args.strict) {
     cmdParts.push("--strict");
   }
-  if (args.files?.length) {
-    const resolvedFiles = args.files.map((f) => {
-      const resolved = path14.resolve(PROJECT_ROOT, f);
-      return `"${resolved}"`;
-    });
-    cmdParts.push(...resolvedFiles);
+  if (resolvedFiles.length > 0) {
+    cmdParts.push(...resolvedFiles.map((f) => `"${f}"`));
   }
   const command = cmdParts.join(" ") + " 2>&1";
   const result = await safeExec(

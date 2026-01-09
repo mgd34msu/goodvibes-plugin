@@ -218,8 +218,17 @@ async function findTsConfig(startDir: string): Promise<string | null> {
  * // Type checks only the specified file with suggestions
  */
 export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolResponse> {
-  // Find the project's tsconfig.json
-  const tsconfigPath = await findTsConfig(PROJECT_ROOT);
+  // Resolve file paths first
+  const resolvedFiles = args.files?.length
+    ? args.files.map(f => path.resolve(PROJECT_ROOT, f))
+    : [];
+
+  // Find tsconfig.json starting from the first file's directory (if files specified)
+  // Otherwise start from PROJECT_ROOT
+  const searchStartDir = resolvedFiles.length > 0
+    ? path.dirname(resolvedFiles[0])
+    : PROJECT_ROOT;
+  const tsconfigPath = await findTsConfig(searchStartDir);
 
   // Build the tsc command with proper flags
   const cmdParts = ['npx', 'tsc', '--noEmit'];
@@ -235,14 +244,8 @@ export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolRespon
   }
 
   // Add specific files if provided
-  if (args.files?.length) {
-    // When checking specific files with a tsconfig, we need to ensure
-    // the files are resolved relative to the project root
-    const resolvedFiles = args.files.map(f => {
-      const resolved = path.resolve(PROJECT_ROOT, f);
-      return `"${resolved}"`;
-    });
-    cmdParts.push(...resolvedFiles);
+  if (resolvedFiles.length > 0) {
+    cmdParts.push(...resolvedFiles.map(f => `"${f}"`));
   }
 
   const command = cmdParts.join(' ') + ' 2>&1';
