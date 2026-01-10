@@ -33,6 +33,10 @@ export interface SemanticDiffArgs {
   after_ref?: string;
   /** Optional specific file to analyze */
   file?: string;
+  /** Timeout in seconds for LLM analysis (default: 120) */
+  timeout?: number;
+  /** Model to use for analysis: haiku (fast), sonnet (default), opus (thorough) */
+  model?: 'haiku' | 'sonnet' | 'opus';
 }
 
 interface SemanticChange {
@@ -330,7 +334,9 @@ function extractExportedSymbols(content: string, fileName: string): SymbolWithRe
  */
 async function analyzeWithLLM(
   changedFiles: ChangedFileInfo[],
-  fileReferences: Map<string, string[]>
+  fileReferences: Map<string, string[]>,
+  timeoutSeconds: number = 120,
+  model: 'haiku' | 'sonnet' | 'opus' = 'haiku'
 ): Promise<SemanticDiffResult> {
   // Build context for LLM
   const context: string[] = [];
@@ -424,7 +430,7 @@ Risk level guidelines:
 Focus on what matters to developers consuming this code. Be specific about behavioral changes, not just structural ones.`;
 
   return new Promise((resolve, reject) => {
-    const claudeProcess = spawn('claude', ['--print', '-p', prompt], {
+    const claudeProcess = spawn('claude', ['--print', '--model', model, '-p', prompt], {
       cwd: PROJECT_ROOT,
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -486,10 +492,11 @@ Focus on what matters to developers consuming this code. Be specific about behav
     });
 
     // Set timeout
+    const timeoutMs = timeoutSeconds * 1000;
     setTimeout(() => {
       claudeProcess.kill();
-      reject(new Error('LLM analysis timed out after 60 seconds'));
-    }, 60000);
+      reject(new Error(`LLM analysis timed out after ${timeoutSeconds} seconds`));
+    }, timeoutMs);
   });
 }
 
@@ -579,7 +586,9 @@ export async function handleSemanticDiff(
     }
 
     // Analyze with LLM
-    const result = await analyzeWithLLM(changedFiles, fileReferences);
+    const timeout = args.timeout ?? 120;
+    const model = args.model ?? 'haiku';
+    const result = await analyzeWithLLM(changedFiles, fileReferences, timeout, model);
 
     // Ensure file paths are relative
     result.changes = result.changes.map(change => ({

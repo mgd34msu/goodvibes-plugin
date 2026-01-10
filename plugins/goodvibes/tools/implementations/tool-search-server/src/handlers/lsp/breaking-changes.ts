@@ -32,6 +32,10 @@ export interface DetectBreakingChangesArgs {
   after_ref?: string;
   /** Optional path filter to limit analysis to specific files/directories */
   path?: string;
+  /** Timeout in seconds for LLM analysis (default: 120) */
+  timeout?: number;
+  /** Model to use for analysis: haiku (fast), sonnet (default), opus (thorough) */
+  model?: 'haiku' | 'sonnet' | 'opus';
 }
 
 interface BreakingChange {
@@ -282,7 +286,9 @@ async function extractTypeInfoFromContent(
 async function analyzeWithLLM(
   changedFiles: ChangedFile[],
   beforeTypes: Map<string, FileTypeInfo>,
-  afterTypes: Map<string, FileTypeInfo>
+  afterTypes: Map<string, FileTypeInfo>,
+  timeoutSeconds: number = 120,
+  model: 'haiku' | 'sonnet' | 'opus' = 'haiku'
 ): Promise<DetectBreakingChangesResult> {
   // Build context for LLM
   const context: string[] = [];
@@ -371,7 +377,7 @@ Rules for severity:
 If there are no relevant API changes, return empty arrays and severity "none".`;
 
   return new Promise((resolve, reject) => {
-    const claudeProcess = spawn('claude', ['--print', '-p', prompt], {
+    const claudeProcess = spawn('claude', ['--print', '--model', model, '-p', prompt], {
       cwd: PROJECT_ROOT,
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -435,10 +441,11 @@ If there are no relevant API changes, return empty arrays and severity "none".`;
     });
 
     // Set timeout
+    const timeoutMs = timeoutSeconds * 1000;
     setTimeout(() => {
       claudeProcess.kill();
-      reject(new Error('LLM analysis timed out after 60 seconds'));
-    }, 60000);
+      reject(new Error(`LLM analysis timed out after ${timeoutSeconds} seconds`));
+    }, timeoutMs);
   });
 }
 
@@ -519,7 +526,9 @@ export async function handleDetectBreakingChanges(
     }
 
     // Analyze changes with LLM
-    const result = await analyzeWithLLM(changedFiles, beforeTypes, afterTypes);
+    const timeout = args.timeout ?? 120;
+    const model = args.model ?? 'haiku';
+    const result = await analyzeWithLLM(changedFiles, beforeTypes, afterTypes, timeout, model);
 
     // Ensure file paths are relative
     result.breaking_changes = result.breaking_changes.map(change => ({
