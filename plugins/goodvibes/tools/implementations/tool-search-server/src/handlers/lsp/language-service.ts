@@ -79,9 +79,14 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
    * The service is cached per tsconfig.json path.
    */
   async getServiceForFile(filePath: string): Promise<LanguageServiceResult> {
-    const absolutePath = path.isAbsolute(filePath)
-      ? filePath
-      : path.resolve(PROJECT_ROOT, filePath);
+    // For relative paths, find project root by looking for .git or package.json
+    let absolutePath: string;
+    if (path.isAbsolute(filePath)) {
+      absolutePath = filePath;
+    } else {
+      const projectRoot = this.findProjectRoot(PROJECT_ROOT) || PROJECT_ROOT;
+      absolutePath = path.resolve(projectRoot, filePath);
+    }
 
     const normalizedPath = this.normalizePath(absolutePath);
     const configPath = this.findTsConfig(normalizedPath);
@@ -225,6 +230,29 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
   private normalizePath(filePath: string): string {
     // Normalize slashes and resolve
     return path.normalize(filePath).replace(/\\/g, '/');
+  }
+
+  /**
+   * Find project root by looking for .git or package.json
+   */
+  private findProjectRoot(startPath: string): string | null {
+    let dir = startPath;
+    const root = path.parse(dir).root;
+
+    while (dir !== root) {
+      // Check for project markers
+      if (
+        fs.existsSync(path.join(dir, '.git')) ||
+        fs.existsSync(path.join(dir, 'package.json'))
+      ) {
+        return dir;
+      }
+      const parentDir = path.dirname(dir);
+      if (parentDir === dir) break;
+      dir = parentDir;
+    }
+
+    return null;
   }
 
   /**
