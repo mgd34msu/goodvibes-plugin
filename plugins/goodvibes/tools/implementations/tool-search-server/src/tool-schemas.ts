@@ -327,6 +327,19 @@ export const TOOL_SCHEMAS = [
     },
   },
   {
+    name: 'get_implementations',
+    description: 'Find all concrete implementations of an interface or abstract method. Critical for polymorphic code - go_to_definition goes to the interface, find_references finds usages - this tells you what code actually RUNS.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
     name: 'rename_symbol',
     description: 'Get all edits needed to rename a symbol across the codebase. Returns file locations and text changes for a safe rename operation.',
     inputSchema: {
@@ -407,6 +420,30 @@ export const TOOL_SCHEMAS = [
     },
   },
   {
+    name: 'get_type_hierarchy',
+    description: 'Get the full type inheritance hierarchy for a symbol at a given position. Returns supertypes (what this type extends/implements) and subtypes (what extends/implements this type). Essential for understanding class relationships and impact analysis when modifying base classes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+        direction: {
+          type: 'string',
+          enum: ['supertypes', 'subtypes', 'both'],
+          description: 'Direction of type hierarchy to retrieve',
+          default: 'both',
+        },
+        depth: {
+          type: 'integer',
+          description: 'Maximum depth to traverse in hierarchy tree (default: 5)',
+          default: 5,
+        },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
     name: 'get_document_symbols',
     description: 'Get the structural outline of a document (classes, functions, interfaces, etc.). Returns a hierarchical tree of symbols with their positions and kinds. Useful for understanding document structure and navigation.',
     inputSchema: {
@@ -465,6 +502,58 @@ export const TOOL_SCHEMAS = [
           description: 'Entry point files (auto-detect if not provided)',
         },
       },
+    },
+  },
+  {
+    name: 'safe_delete_check',
+    description: 'Confirm a symbol has zero external usages before deleting. Provides a cleaner interface than find_references with a clear yes/no answer. Handles edge cases like self-references and same-declaration references.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  // Inlay Hints
+  {
+    name: 'get_inlay_hints',
+    description: 'Get inlay hints for a file to see inferred types where they\'re implicit. Returns hints for inferred return types, variable types, parameter names at call sites, and inferred type arguments. Helps understand code that doesn\'t have explicit type annotations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root or absolute)' },
+        start_line: { type: 'integer', description: 'Start line of range to get hints for (1-based, optional - defaults to 1)' },
+        end_line: { type: 'integer', description: 'End line of range to get hints for (1-based, optional - defaults to end of file)' },
+      },
+      required: ['file'],
+    },
+  },
+  // Workspace Symbols
+  {
+    name: 'workspace_symbols',
+    description: 'Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container information.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Symbol name or partial name to search for' },
+        kind: {
+          type: 'string',
+          enum: ['all', 'class', 'interface', 'function', 'variable', 'type', 'enum', 'method', 'property', 'module'],
+          description: 'Filter by symbol kind (default: all)',
+          default: 'all',
+        },
+        limit: { type: 'integer', description: 'Maximum number of results (default: 50, max: 200)', default: 50 },
+        match_type: {
+          type: 'string',
+          enum: ['exact', 'prefix', 'substring'],
+          description: 'How to match the query (default: substring)',
+          default: 'substring',
+        },
+      },
+      required: ['query'],
     },
   },
   // Error Tools
@@ -686,6 +775,31 @@ export const TOOL_SCHEMAS = [
         file: { type: 'string', description: 'Specific file to analyze (optional)' },
         path: { type: 'string', description: 'Directory to scan (defaults to current directory)', default: '.' },
       },
+    },
+  },
+  // Edit Validation
+  {
+    name: 'validate_edits_preview',
+    description: 'Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a validation/preview operation. Useful for fail-fast validation before writing code.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        edits: {
+          type: 'array',
+          description: 'List of proposed edits to validate',
+          items: {
+            type: 'object',
+            properties: {
+              file: { type: 'string', description: 'File path (relative to project root or absolute)' },
+              old_text: { type: 'string', description: 'Text to replace (for replacement edits)' },
+              new_text: { type: 'string', description: 'Replacement text (used with old_text)' },
+              content: { type: 'string', description: 'Full file content (for full file replacement, mutually exclusive with old_text/new_text)' },
+            },
+            required: ['file'],
+          },
+        },
+      },
+      required: ['edits'],
     },
   },
 ];

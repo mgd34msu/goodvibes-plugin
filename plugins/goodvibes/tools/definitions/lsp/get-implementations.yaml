@@ -1,0 +1,124 @@
+name: get_implementations
+version: "1.0.0"
+description: |
+  Find all concrete implementations of an interface or abstract method.
+  Uses TypeScript Language Service to find where abstract types are implemented.
+  Critical for polymorphic code - go_to_definition goes to the interface,
+  find_references finds usages - this tells you what code actually RUNS.
+
+mcp:
+  server: goodvibes-tools
+  method: get_implementations
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "File path (relative to project root)"
+    line:
+      type: number
+      description: "Line number (1-based)"
+    column:
+      type: number
+      description: "Column number (1-based)"
+  required:
+    - file
+    - line
+    - column
+
+output_schema:
+  type: object
+  properties:
+    symbol:
+      type: string
+      description: "Name of the symbol at the queried position"
+    implementations:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File path (relative to project root)"
+          line:
+            type: number
+            description: "Line number (1-based)"
+          column:
+            type: number
+            description: "Column number (1-based)"
+          kind:
+            type: string
+            description: "Symbol kind (class, method, function, etc.)"
+          name:
+            type: string
+            description: "Symbol name"
+          preview:
+            type: string
+            description: "Preview of the implementation line"
+          containerName:
+            type: string
+            description: "Container name (class, module, etc.)"
+    count:
+      type: number
+      description: "Number of implementations found"
+
+examples:
+  - description: "Find implementations of an interface"
+    input:
+      file: "src/types.ts"
+      line: 5
+      column: 18
+    output:
+      symbol: "Repository"
+      implementations:
+        - file: "src/repositories/user-repository.ts"
+          line: 8
+          column: 14
+          kind: "class"
+          name: "UserRepository"
+          preview: "export class UserRepository implements Repository<User> {"
+          containerName: ""
+        - file: "src/repositories/post-repository.ts"
+          line: 6
+          column: 14
+          kind: "class"
+          name: "PostRepository"
+          preview: "export class PostRepository implements Repository<Post> {"
+          containerName: ""
+      count: 2
+
+  - description: "Find implementations of an abstract method"
+    input:
+      file: "src/base-handler.ts"
+      line: 12
+      column: 12
+    output:
+      symbol: "handle"
+      implementations:
+        - file: "src/handlers/auth-handler.ts"
+          line: 15
+          column: 3
+          kind: "method"
+          name: "handle"
+          preview: "  handle(request: Request): Response {"
+          containerName: "AuthHandler"
+        - file: "src/handlers/api-handler.ts"
+          line: 20
+          column: 3
+          kind: "method"
+          name: "handle"
+          preview: "  async handle(request: Request): Promise<Response> {"
+          containerName: "ApiHandler"
+      count: 2
+
+  - description: "No implementations found (concrete class)"
+    input:
+      file: "src/utils.ts"
+      line: 10
+      column: 17
+    output:
+      symbol: "formatDate"
+      implementations: []
+      count: 0

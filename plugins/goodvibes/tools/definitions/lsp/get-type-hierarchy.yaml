@@ -1,0 +1,243 @@
+name: get_type_hierarchy
+version: "1.0.0"
+description: |
+  Get the full type inheritance hierarchy for a symbol at a given position.
+  Returns both supertypes (what this type extends/implements) and subtypes (what extends/implements this type).
+  Essential for understanding class relationships and impact analysis when modifying base classes.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - type-hierarchy
+  - inheritance
+  - navigation
+  - refactoring
+  - impact-analysis
+
+mcp:
+  server: goodvibes-tools
+  method: get_type_hierarchy
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: integer
+      description: Line number (1-based)
+    column:
+      type: integer
+      description: Column number (1-based)
+    direction:
+      type: string
+      enum:
+        - supertypes
+        - subtypes
+        - both
+      description: Direction of type hierarchy to retrieve
+      default: both
+    depth:
+      type: integer
+      description: Maximum depth to traverse in hierarchy tree (default 5)
+      default: 5
+  required:
+    - file
+    - line
+    - column
+
+outputSchema:
+  type: object
+  properties:
+    item:
+      type: object
+      description: The type at the queried position
+      properties:
+        name:
+          type: string
+          description: Type name (class, interface, or type alias)
+        kind:
+          type: string
+          description: Type kind (class, interface, type, enum)
+        file:
+          type: string
+          description: File path relative to project root
+        line:
+          type: integer
+          description: Line number (1-based)
+        column:
+          type: integer
+          description: Column number (1-based)
+    supertypes:
+      type: array
+      description: Types that this type extends or implements (ancestors)
+      items:
+        type: object
+        properties:
+          type:
+            type: object
+            description: The supertype
+            properties:
+              name:
+                type: string
+              kind:
+                type: string
+              file:
+                type: string
+              line:
+                type: integer
+              column:
+                type: integer
+          relation:
+            type: string
+            description: Relationship type (extends, implements)
+          supertypes:
+            type: array
+            description: Recursive supertypes of this type
+    subtypes:
+      type: array
+      description: Types that extend or implement this type (descendants)
+      items:
+        type: object
+        properties:
+          type:
+            type: object
+            description: The subtype
+            properties:
+              name:
+                type: string
+              kind:
+                type: string
+              file:
+                type: string
+              line:
+                type: integer
+              column:
+                type: integer
+          relation:
+            type: string
+            description: Relationship type (extends, implements)
+          subtypes:
+            type: array
+            description: Recursive subtypes of this type
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetTypeHierarchy
+
+examples:
+  - description: "Get full type hierarchy for a class"
+    input:
+      file: "src/models/User.ts"
+      line: 5
+      column: 14
+      direction: both
+    output:
+      item:
+        name: "User"
+        kind: "class"
+        file: "src/models/User.ts"
+        line: 5
+        column: 14
+      supertypes:
+        - type:
+            name: "BaseEntity"
+            kind: "class"
+            file: "src/models/BaseEntity.ts"
+            line: 3
+            column: 14
+          relation: "extends"
+          supertypes: []
+      subtypes:
+        - type:
+            name: "AdminUser"
+            kind: "class"
+            file: "src/models/AdminUser.ts"
+            line: 8
+            column: 14
+          relation: "extends"
+          subtypes: []
+        - type:
+            name: "GuestUser"
+            kind: "class"
+            file: "src/models/GuestUser.ts"
+            line: 5
+            column: 14
+          relation: "extends"
+          subtypes: []
+
+  - description: "Get supertypes for an interface"
+    input:
+      file: "src/types/Repository.ts"
+      line: 10
+      column: 18
+      direction: supertypes
+    output:
+      item:
+        name: "UserRepository"
+        kind: "interface"
+        file: "src/types/Repository.ts"
+        line: 10
+        column: 18
+      supertypes:
+        - type:
+            name: "BaseRepository"
+            kind: "interface"
+            file: "src/types/Repository.ts"
+            line: 3
+            column: 18
+          relation: "extends"
+          supertypes:
+            - type:
+                name: "Identifiable"
+                kind: "interface"
+                file: "src/types/common.ts"
+                line: 1
+                column: 18
+              relation: "extends"
+              supertypes: []
+      subtypes: []
+
+  - description: "Find all implementations of an interface"
+    input:
+      file: "src/interfaces/Logger.ts"
+      line: 1
+      column: 18
+      direction: subtypes
+    output:
+      item:
+        name: "Logger"
+        kind: "interface"
+        file: "src/interfaces/Logger.ts"
+        line: 1
+        column: 18
+      supertypes: []
+      subtypes:
+        - type:
+            name: "ConsoleLogger"
+            kind: "class"
+            file: "src/loggers/ConsoleLogger.ts"
+            line: 5
+            column: 14
+          relation: "implements"
+          subtypes: []
+        - type:
+            name: "FileLogger"
+            kind: "class"
+            file: "src/loggers/FileLogger.ts"
+            line: 8
+            column: 14
+          relation: "implements"
+          subtypes:
+            - type:
+                name: "RotatingFileLogger"
+                kind: "class"
+                file: "src/loggers/RotatingFileLogger.ts"
+                line: 3
+                column: 14
+              relation: "extends"
+              subtypes: []

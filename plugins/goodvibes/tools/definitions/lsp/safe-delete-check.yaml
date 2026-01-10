@@ -1,0 +1,139 @@
+name: safe_delete_check
+version: "1.0.0"
+description: |
+  Confirm a symbol has zero external usages before deleting.
+  Provides a cleaner interface than find_references with a clear yes/no answer.
+  Handles edge cases like self-references and same-declaration references.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - refactoring
+  - dead-code
+  - cleanup
+
+mcp:
+  server: goodvibes-tools
+  method: safe_delete_check
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: number
+      description: Line number (1-based)
+    column:
+      type: number
+      description: Column number (1-based)
+  required:
+    - file
+    - line
+    - column
+
+outputSchema:
+  type: object
+  properties:
+    safe:
+      type: boolean
+      description: True if no external usages exist and the symbol can be safely deleted
+    external_references:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path relative to project root
+          line:
+            type: number
+            description: Line number (1-based)
+          column:
+            type: number
+            description: Column number (1-based)
+          preview:
+            type: string
+            description: Preview of the line containing the reference
+      description: List of blocking references that prevent safe deletion
+    self_references:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path relative to project root
+          line:
+            type: number
+            description: Line number (1-based)
+          column:
+            type: number
+            description: Column number (1-based)
+          preview:
+            type: string
+            description: Preview of the line containing the self-reference
+      description: Self-references (recursive calls) that do not block deletion
+    reason:
+      type: string
+      description: Human-readable explanation of the result
+    symbol:
+      type: string
+      description: The symbol name that was analyzed
+
+handler:
+  type: native
+  module: lsp
+  function: handleSafeDeleteCheck
+
+examples:
+  - description: "Symbol with no external usages - safe to delete"
+    input:
+      file: "src/utils.ts"
+      line: 10
+      column: 17
+    output:
+      safe: true
+      external_references: []
+      self_references: []
+      reason: "No external references found. Symbol can be safely deleted."
+      symbol: "unusedFunction"
+
+  - description: "Symbol with external usages - not safe to delete"
+    input:
+      file: "src/utils.ts"
+      line: 25
+      column: 17
+    output:
+      safe: false
+      external_references:
+        - file: "src/index.ts"
+          line: 5
+          column: 10
+          preview: "import { myFunction } from './utils';"
+        - file: "src/components/Button.tsx"
+          line: 23
+          column: 8
+          preview: "const result = myFunction(data);"
+      self_references: []
+      reason: "Symbol has 2 external reference(s). Deletion would break these usages."
+      symbol: "myFunction"
+
+  - description: "Recursive function with only self-references"
+    input:
+      file: "src/recursion.ts"
+      line: 5
+      column: 10
+    output:
+      safe: true
+      external_references: []
+      self_references:
+        - file: "src/recursion.ts"
+          line: 8
+          column: 12
+          preview: "return factorial(n - 1) * n;"
+      reason: "Only self-references found (recursive calls). Symbol can be safely deleted."
+      symbol: "factorial"

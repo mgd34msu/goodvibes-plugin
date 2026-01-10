@@ -75,10 +75,12 @@ import {
   // LSP Tools
   handleFindReferences,
   handleGoToDefinition,
+  handleGetImplementations,
   handleRenameSymbol,
   handleGetCodeActions,
   handleApplyCodeAction,
   handleGetCallHierarchy,
+  handleGetTypeHierarchy,
   handleGetDocumentSymbols,
   handleGetSymbolInfo,
   handleGetSignatureHelp,
@@ -87,6 +89,10 @@ import {
   handleGetApiSurface,
   handleDetectBreakingChanges,
   handleSemanticDiff,
+  handleGetInlayHints,
+  handleWorkspaceSymbols,
+  handleSafeDeleteCheck,
+  handleValidateEditsPreview,
   // Dependency Analysis
   handleAnalyzeDependencies,
   handleFindCircularDeps,
@@ -125,10 +131,12 @@ import {
   type ProjectIssuesArgs,
   type FindReferencesArgs,
   type GoToDefinitionArgs,
+  type GetImplementationsArgs,
   type RenameSymbolArgs,
   type GetCodeActionsArgs,
   type ApplyCodeActionArgs,
   type GetCallHierarchyArgs,
+  type GetTypeHierarchyArgs,
   type GetDocumentSymbolsArgs,
   type GetSymbolInfoArgs,
   type GetSignatureHelpArgs,
@@ -137,6 +145,10 @@ import {
   type GetApiSurfaceArgs,
   type DetectBreakingChangesArgs,
   type SemanticDiffArgs,
+  type GetInlayHintsArgs,
+  type WorkspaceSymbolsArgs,
+  type SafeDeleteCheckArgs,
+  type ValidateEditsPreviewArgs,
   type AnalyzeDependenciesArgs,
   type FindCircularDepsArgs,
   type FindTestsForFileArgs,
@@ -180,10 +192,12 @@ type ToolArgs =
   | ProjectIssuesArgs
   | FindReferencesArgs
   | GoToDefinitionArgs
+  | GetImplementationsArgs
   | RenameSymbolArgs
   | GetCodeActionsArgs
   | ApplyCodeActionArgs
   | GetCallHierarchyArgs
+  | GetTypeHierarchyArgs
   | GetDocumentSymbolsArgs
   | GetSymbolInfoArgs
   | GetSignatureHelpArgs
@@ -192,6 +206,10 @@ type ToolArgs =
   | GetApiSurfaceArgs
   | DetectBreakingChangesArgs
   | SemanticDiffArgs
+  | GetInlayHintsArgs
+  | WorkspaceSymbolsArgs
+  | SafeDeleteCheckArgs
+  | ValidateEditsPreviewArgs
   | AnalyzeDependenciesArgs
   | FindCircularDepsArgs
   | FindTestsForFileArgs
@@ -298,6 +316,8 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleFindReferences(args as FindReferencesArgs),
   go_to_definition: (_ctx, args) =>
     handleGoToDefinition(args as GoToDefinitionArgs),
+  get_implementations: (_ctx, args) =>
+    handleGetImplementations(args as GetImplementationsArgs),
   rename_symbol: (_ctx, args) =>
     handleRenameSymbol(args as RenameSymbolArgs),
   get_code_actions: (_ctx, args) =>
@@ -306,6 +326,8 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleApplyCodeAction(args as ApplyCodeActionArgs),
   get_call_hierarchy: (_ctx, args) =>
     handleGetCallHierarchy(args as GetCallHierarchyArgs),
+  get_type_hierarchy: (_ctx, args) =>
+    handleGetTypeHierarchy(args as GetTypeHierarchyArgs),
   get_document_symbols: (_ctx, args) =>
     handleGetDocumentSymbols(args as GetDocumentSymbolsArgs),
   get_symbol_info: (_ctx, args) =>
@@ -322,6 +344,12 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleDetectBreakingChanges(args as DetectBreakingChangesArgs),
   semantic_diff: (_ctx, args) =>
     handleSemanticDiff(args as SemanticDiffArgs),
+  get_inlay_hints: (_ctx, args) =>
+    handleGetInlayHints(args as GetInlayHintsArgs),
+  workspace_symbols: (_ctx, args) =>
+    handleWorkspaceSymbols(args as WorkspaceSymbolsArgs),
+  safe_delete_check: (_ctx, args) =>
+    handleSafeDeleteCheck(args as SafeDeleteCheckArgs),
 
   // Dependency Analysis
   analyze_dependencies: (_ctx, args) =>

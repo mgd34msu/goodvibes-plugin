@@ -1,0 +1,180 @@
+name: validate_edits_preview
+version: "1.0.0"
+description: |
+  Preview the impact of proposed edits before applying them.
+  Creates a virtual snapshot with edits applied and runs TypeScript diagnostics
+  to detect any new errors that would be introduced.
+  Does NOT modify any files - purely a validation/preview operation.
+
+category: lsp
+tags:
+  - typescript
+  - validation
+  - preview
+  - edits
+  - diagnostics
+  - type-checking
+
+mcp:
+  server: goodvibes-tools
+  method: validate_edits_preview
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    edits:
+      type: array
+      description: "List of proposed edits to validate"
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File path (relative to project root or absolute)"
+          old_text:
+            type: string
+            description: "Text to replace (for replacement edits). If not provided with new_text, content is used as full file replacement."
+          new_text:
+            type: string
+            description: "Replacement text (used with old_text for targeted replacement)"
+          content:
+            type: string
+            description: "Full file content (for full file replacement, mutually exclusive with old_text/new_text)"
+        required:
+          - file
+  required:
+    - edits
+
+output_schema:
+  type: object
+  properties:
+    safe:
+      type: boolean
+      description: "True if edits would not introduce new errors"
+    summary:
+      type: string
+      description: "Human-readable summary of validation results"
+    new_errors:
+      type: array
+      description: "Errors that would be introduced by these edits"
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File path (relative to project root)"
+          line:
+            type: integer
+            description: "Line number (1-based)"
+          column:
+            type: integer
+            description: "Column number (1-based)"
+          end_line:
+            type: integer
+            description: "End line number (1-based)"
+          end_column:
+            type: integer
+            description: "End column number (1-based)"
+          message:
+            type: string
+            description: "Error message"
+          code:
+            type: integer
+            description: "TypeScript error code"
+          category:
+            type: string
+            enum: ["error", "warning"]
+            description: "Diagnostic severity"
+          caused_by_edit:
+            type: object
+            description: "The edit that caused this error"
+            properties:
+              file:
+                type: string
+              edit_index:
+                type: integer
+                description: "Index of the edit in the input array"
+    edit_results:
+      type: array
+      description: "Per-edit validation results"
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File that was edited"
+          edit_index:
+            type: integer
+            description: "Index of the edit in input array"
+          applied:
+            type: boolean
+            description: "Whether the edit was successfully applied to virtual snapshot"
+          error:
+            type: string
+            description: "Error if edit could not be applied (e.g., old_text not found)"
+          errors_introduced:
+            type: integer
+            description: "Number of new errors this edit would introduce"
+
+examples:
+  - description: "Validate a safe edit"
+    input:
+      edits:
+        - file: "src/utils/math.ts"
+          old_text: "function add(a, b) {"
+          new_text: "function add(a: number, b: number): number {"
+    output:
+      safe: true
+      summary: "All edits are safe. No new errors would be introduced."
+      new_errors: []
+      edit_results:
+        - file: "src/utils/math.ts"
+          edit_index: 0
+          applied: true
+          errors_introduced: 0
+
+  - description: "Detect type error from edit"
+    input:
+      edits:
+        - file: "src/components/Button.tsx"
+          old_text: "const label: string = props.label;"
+          new_text: "const label: number = props.label;"
+    output:
+      safe: false
+      summary: "1 edit would introduce 1 new error."
+      new_errors:
+        - file: "src/components/Button.tsx"
+          line: 5
+          column: 7
+          end_line: 5
+          end_column: 12
+          message: "Type 'string' is not assignable to type 'number'."
+          code: 2322
+          category: "error"
+          caused_by_edit:
+            file: "src/components/Button.tsx"
+            edit_index: 0
+      edit_results:
+        - file: "src/components/Button.tsx"
+          edit_index: 0
+          applied: true
+          errors_introduced: 1
+
+  - description: "Full file replacement"
+    input:
+      edits:
+        - file: "src/new-file.ts"
+          content: |
+            export function greet(name: string): string {
+              return `Hello, ${name}!`;
+            }
+    output:
+      safe: true
+      summary: "All edits are safe. No new errors would be introduced."
+      new_errors: []
+      edit_results:
+        - file: "src/new-file.ts"
+          edit_index: 0
+          applied: true
+          errors_introduced: 0

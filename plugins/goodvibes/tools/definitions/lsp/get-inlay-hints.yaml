@@ -1,0 +1,151 @@
+name: get_inlay_hints
+version: "1.0.0"
+description: |
+  Get inlay hints for a file to see inferred types where they're implicit.
+  Returns hints for inferred return types, variable types, parameter names at call sites,
+  and inferred type arguments. Helps understand code that doesn't have explicit type annotations.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - type-inference
+  - inlay-hints
+  - types
+
+mcp:
+  server: goodvibes-tools
+  method: get_inlay_hints
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root or absolute)
+    start_line:
+      type: number
+      description: Start line of range to get hints for (1-based, optional - defaults to 1)
+    end_line:
+      type: number
+      description: End line of range to get hints for (1-based, optional - defaults to end of file)
+  required:
+    - file
+
+outputSchema:
+  type: object
+  properties:
+    hints:
+      type: array
+      items:
+        type: object
+        properties:
+          line:
+            type: number
+            description: Line number (1-based)
+          column:
+            type: number
+            description: Column number (1-based)
+          text:
+            type: string
+            description: The hint text (the inferred type or parameter name)
+          kind:
+            type: string
+            enum:
+              - type
+              - parameter
+              - enum
+            description: The kind of inlay hint
+          padding_left:
+            type: boolean
+            description: Whether there should be padding before the hint
+          padding_right:
+            type: boolean
+            description: Whether there should be padding after the hint
+      description: Array of inlay hints found in the specified range
+    file:
+      type: string
+      description: The file path that was analyzed
+    range:
+      type: object
+      properties:
+        start_line:
+          type: number
+        end_line:
+          type: number
+      description: The line range that was analyzed
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetInlayHints
+
+examples:
+  - description: "Get inlay hints for entire file"
+    input:
+      file: "src/utils.ts"
+    output:
+      hints:
+        - line: 5
+          column: 11
+          text: ": number"
+          kind: "type"
+          padding_left: false
+          padding_right: false
+        - line: 10
+          column: 25
+          text: "items:"
+          kind: "parameter"
+          padding_left: false
+          padding_right: true
+      file: "src/utils.ts"
+      range:
+        start_line: 1
+        end_line: 50
+
+  - description: "Get inlay hints for a specific range"
+    input:
+      file: "src/api.ts"
+      start_line: 20
+      end_line: 40
+    output:
+      hints:
+        - line: 25
+          column: 15
+          text: ": string"
+          kind: "type"
+          padding_left: false
+          padding_right: false
+        - line: 30
+          column: 18
+          text: ": Promise<User>"
+          kind: "type"
+          padding_left: false
+          padding_right: false
+      file: "src/api.ts"
+      range:
+        start_line: 20
+        end_line: 40
+
+  - description: "Get inlay hints showing parameter names"
+    input:
+      file: "src/handlers.ts"
+    output:
+      hints:
+        - line: 15
+          column: 20
+          text: "userId:"
+          kind: "parameter"
+          padding_left: false
+          padding_right: true
+        - line: 15
+          column: 35
+          text: "options:"
+          kind: "parameter"
+          padding_left: false
+          padding_right: true
+      file: "src/handlers.ts"
+      range:
+        start_line: 1
+        end_line: 100

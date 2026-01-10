@@ -74,10 +74,12 @@ export type { ProjectIssuesArgs } from './issues.js';
 export {
   handleFindReferences,
   handleGoToDefinition,
+  handleGetImplementations,
   handleRenameSymbol,
   handleGetCodeActions,
   handleApplyCodeAction,
   handleGetCallHierarchy,
+  handleGetTypeHierarchy,
   handleGetSymbolInfo,
   handleGetSignatureHelp,
   handleGetDocumentSymbols,
@@ -86,14 +88,20 @@ export {
   handleGetApiSurface,
   handleDetectBreakingChanges,
   handleSemanticDiff,
+  handleWorkspaceSymbols,
+  handleSafeDeleteCheck,
+  handleGetInlayHints,
+  handleValidateEditsPreview,
 } from './lsp/index.js';
 export type {
   FindReferencesArgs,
   GoToDefinitionArgs,
+  GetImplementationsArgs,
   RenameSymbolArgs,
   GetCodeActionsArgs,
   ApplyCodeActionArgs,
   GetCallHierarchyArgs,
+  GetTypeHierarchyArgs,
   GetSymbolInfoArgs,
   GetSignatureHelpArgs,
   GetDocumentSymbolsArgs,
@@ -102,6 +110,10 @@ export type {
   GetApiSurfaceArgs,
   DetectBreakingChangesArgs,
   SemanticDiffArgs,
+  WorkspaceSymbolsArgs,
+  SafeDeleteCheckArgs,
+  GetInlayHintsArgs,
+  ValidateEditsPreviewArgs,
 } from './lsp/index.js';
 
 // Dependency Analysis

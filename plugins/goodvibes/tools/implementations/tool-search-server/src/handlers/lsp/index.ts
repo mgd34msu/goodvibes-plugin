@@ -46,6 +46,10 @@ export type { FindReferencesArgs } from './find-references.js';
 export { handleGoToDefinition } from './go-to-definition.js';
 export type { GoToDefinitionArgs } from './go-to-definition.js';
 
+// Get Implementations
+export { handleGetImplementations } from './get-implementations.js';
+export type { GetImplementationsArgs } from './get-implementations.js';
+
 // Rename Symbol
 export { handleRenameSymbol } from './rename-symbol.js';
 export type { RenameSymbolArgs } from './rename-symbol.js';
@@ -89,3 +93,23 @@ export type { DetectBreakingChangesArgs } from './breaking-changes.js';
 // Semantic Diff (LLM-powered)
 export { handleSemanticDiff } from './semantic-diff.js';
 export type { SemanticDiffArgs } from './semantic-diff.js';
+
+// Inlay Hints
+export { handleGetInlayHints } from './inlay-hints.js';
+export type { GetInlayHintsArgs } from './inlay-hints.js';
+
+// Workspace Symbols
+export { handleWorkspaceSymbols } from './workspace-symbols.js';
+export type { WorkspaceSymbolsArgs } from './workspace-symbols.js';
+
+// Safe Delete Check
+export { handleSafeDeleteCheck } from './safe-delete-check.js';
+export type { SafeDeleteCheckArgs } from './safe-delete-check.js';
+
+// Validate Edits Preview
+export { handleValidateEditsPreview } from './validate-edits-preview.js';
+export type { ValidateEditsPreviewArgs } from './validate-edits-preview.js';
+
+// Type Hierarchy
+export { handleGetTypeHierarchy } from './type-hierarchy.js';
+export type { GetTypeHierarchyArgs } from './type-hierarchy.js';
