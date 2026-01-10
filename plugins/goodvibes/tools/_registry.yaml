@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-10T00:19:53.744Z'
-total: 18
+generated: '2026-01-10T00:23:41.398Z'
+total: 23
 categories: {}
 search_index:
   - name: check_types
@@ -169,6 +169,141 @@ search_index:
     description: |
       List available project templates with their descriptions,
       tech stacks, and complexity levels. Filter by category.
+  - name: apply_code_action
+    keywords:
+      - apply
+      - code
+      - action
+      - get
+      - file
+      - edits
+      - does
+      - not
+      - them
+      - directly
+      - retrieves
+      - specific
+      - named
+      - position
+      - allowing
+      - you
+      - using
+      - edit
+      - tool
+    path: definitions/lsp/apply-code-action.yaml
+    description: |
+      Get the file edits for a code action (does not apply them directly).
+      Retrieves the specific edits for a named code action at a position,
+      allowing you to apply them using the Edit tool.
+  - name: find_references
+    keywords:
+      - find
+      - references
+      - all
+      - symbol
+      - given
+      - position
+      - returns
+      - file
+      - locations
+      - preview
+      - lines
+      - metadata
+      - each
+      - reference
+      - useful
+      - understanding
+      - usage
+      - before
+      - refactoring
+    path: definitions/lsp/find-references.yaml
+    description: |
+      Find all references to a symbol at a given position.
+      Returns file locations, preview lines, and metadata for each reference.
+      Useful for understanding symbol usage before refactoring.
+  - name: get_code_actions
+    keywords:
+      - get
+      - code
+      - actions
+      - available
+      - quick
+      - fixes
+      - refactorings
+      - position
+      - returns
+      - typescript
+      - language
+      - service
+      - refactoring
+      - suggestions
+      - that
+      - can
+      - applied
+      - fix
+      - errors
+      - improve
+      - quality
+    path: definitions/lsp/get-code-actions.yaml
+    description: |
+      Get available code actions (quick fixes, refactorings) at a position.
+      Returns TypeScript Language Service code fixes and refactoring suggestions
+      that can be applied to fix errors or improve code quality.
+  - name: go_to_definition
+    keywords:
+      - go
+      - to
+      - definition
+      - symbol
+      - given
+      - position
+      - uses
+      - typescript
+      - language
+      - service
+      - find
+      - where
+      - defined
+      - supports
+      - functions
+      - classes
+      - variables
+      - types
+      - more
+    path: definitions/lsp/go-to-definition.yaml
+    description: |
+      Go to the definition of a symbol at a given position.
+      Uses TypeScript Language Service to find where a symbol is defined.
+      Supports functions, classes, variables, types, and more.
+  - name: rename_symbol
+    keywords:
+      - rename
+      - symbol
+      - get
+      - all
+      - edits
+      - needed
+      - across
+      - codebase
+      - returns
+      - file
+      - locations
+      - text
+      - changes
+      - apply
+      - safe
+      - uses
+      - typescript
+      - language
+      - service
+      - accurate
+      - semantic
+      - renaming
+    path: definitions/lsp/rename-symbol.yaml
+    description: |
+      Get all edits needed to rename a symbol across the codebase.
+      Returns file locations and text changes to apply for a safe rename.
+      Uses TypeScript Language Service for accurate, semantic renaming.
   - name: plugin_status
     keywords:
       - plugin
@@ -479,6 +614,36 @@ deferred_tools:
     description: |
       Load the full content of a skill by its path.
       Use after searching to get detailed skill instructions.
+  - name: apply_code_action
+    path: definitions/lsp/apply-code-action.yaml
+    description: |
+      Get the file edits for a code action (does not apply them directly).
+      Retrieves the specific edits for a named code action at a position,
+      allowing you to apply them using the Edit tool.
+  - name: find_references
+    path: definitions/lsp/find-references.yaml
+    description: |
+      Find all references to a symbol at a given position.
+      Returns file locations, preview lines, and metadata for each reference.
+      Useful for understanding symbol usage before refactoring.
+  - name: get_code_actions
+    path: definitions/lsp/get-code-actions.yaml
+    description: |
+      Get available code actions (quick fixes, refactorings) at a position.
+      Returns TypeScript Language Service code fixes and refactoring suggestions
+      that can be applied to fix errors or improve code quality.
+  - name: go_to_definition
+    path: definitions/lsp/go-to-definition.yaml
+    description: |
+      Go to the definition of a symbol at a given position.
+      Uses TypeScript Language Service to find where a symbol is defined.
+      Supports functions, classes, variables, types, and more.
+  - name: rename_symbol
+    path: definitions/lsp/rename-symbol.yaml
+    description: |
+      Get all edits needed to rename a symbol across the codebase.
+      Returns file locations and text changes to apply for a safe rename.
+      Uses TypeScript Language Service for accurate, semantic renaming.
   - name: read_config
     path: definitions/read-config.yaml
     description: |

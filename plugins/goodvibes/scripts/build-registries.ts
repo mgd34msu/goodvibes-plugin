@@ -211,35 +211,45 @@ function scanSkills(): RegistryEntry[] {
 }
 
 /**
- * Scan tools directory
+ * Scan tools directory (recursively)
  */
 function scanTools(): RegistryEntry[] {
   const toolsDir = path.join(PLUGIN_ROOT, 'tools', 'definitions');
   const entries: RegistryEntry[] = [];
 
-  if (!fs.existsSync(toolsDir)) return entries;
+  function scanDir(dir: string, relativePath: string = 'definitions') {
+    if (!fs.existsSync(dir)) return;
 
-  const items = fs.readdirSync(toolsDir);
-  for (const item of items) {
-    if (!item.endsWith('.yaml') && !item.endsWith('.yml')) continue;
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+      if (item.startsWith('_') || item.startsWith('.')) continue;
 
-    const fullPath = path.join(toolsDir, item);
-    const content = fs.readFileSync(fullPath, 'utf-8');
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
 
-    try {
-      const tool = yaml.load(content) as ToolDefinition;
-      entries.push({
-        name: tool.name,
-        path: `definitions/${item}`,
-        description: tool.description || '',
-        triggers: extractKeywords(tool.description || '', tool.name),
-        tags: tool.mcp?.defer_loading ? ['deferred'] : ['core']
-      });
-    } catch (e) {
-      console.error(`Error parsing ${item}:`, e);
+      if (stat.isDirectory()) {
+        // Recurse into subdirectories
+        scanDir(fullPath, `${relativePath}/${item}`);
+      } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
+        const content = fs.readFileSync(fullPath, 'utf-8');
+
+        try {
+          const tool = yaml.load(content) as ToolDefinition;
+          entries.push({
+            name: tool.name,
+            path: `${relativePath}/${item}`,
+            description: tool.description || '',
+            triggers: extractKeywords(tool.description || '', tool.name),
+            tags: tool.mcp?.defer_loading ? ['deferred'] : ['core']
+          });
+        } catch (e) {
+          console.error(`Error parsing ${item}:`, e);
+        }
+      }
     }
   }
 
+  scanDir(toolsDir);
   return entries;
 }
 
