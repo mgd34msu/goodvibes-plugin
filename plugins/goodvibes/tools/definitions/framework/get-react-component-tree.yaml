@@ -1,0 +1,165 @@
+name: get_react_component_tree
+version: "1.0.0"
+description: |
+  Parse JSX/TSX files and build a component hierarchy tree.
+  Uses static AST analysis to find component definitions and usages,
+  extract props, and build parent-child relationships.
+
+category: framework
+tags:
+  - react
+  - components
+  - jsx
+  - tsx
+  - ast
+  - analysis
+  - hierarchy
+
+mcp:
+  server: goodvibes-tools
+  method: get_react_component_tree
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: Specific component file to analyze (relative to project root)
+    path:
+      type: string
+      description: Directory to analyze for components
+      default: "src"
+    root_component:
+      type: string
+      description: Start analysis from a specific component name
+    depth:
+      type: number
+      description: Maximum depth to traverse in component tree
+      default: 5
+
+outputSchema:
+  type: object
+  properties:
+    tree:
+      type: object
+      description: Hierarchical component tree
+      properties:
+        name:
+          type: string
+          description: Component name
+        file:
+          type: string
+          description: File path where component is defined
+        props:
+          type: array
+          items:
+            type: string
+          description: Props accepted by the component
+        children:
+          type: array
+          description: Child components used by this component
+    components:
+      type: array
+      description: Flat list of all discovered components
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Component name
+          file:
+            type: string
+            description: File path where defined
+          line:
+            type: number
+            description: Line number of definition
+          props:
+            type: array
+            items:
+              type: string
+            description: Props accepted by the component
+          used_by:
+            type: array
+            items:
+              type: string
+            description: Components that use this component
+          uses:
+            type: array
+            items:
+              type: string
+            description: Components used by this component
+    count:
+      type: number
+      description: Total number of components found
+
+handler:
+  type: native
+  module: framework
+  function: handleGetReactComponentTree
+
+examples:
+  - description: "Analyze all components in src directory"
+    input:
+      path: "src"
+      depth: 5
+    output:
+      tree:
+        name: "App"
+        file: "src/App.tsx"
+        props: []
+        children:
+          - name: "Header"
+            file: "src/components/Header.tsx"
+            props: ["title", "user"]
+            children: []
+          - name: "MainContent"
+            file: "src/components/MainContent.tsx"
+            props: ["data"]
+            children:
+              - name: "Card"
+                file: "src/components/Card.tsx"
+                props: ["title", "children"]
+                children: []
+      components:
+        - name: "App"
+          file: "src/App.tsx"
+          line: 5
+          props: []
+          used_by: []
+          uses: ["Header", "MainContent"]
+        - name: "Header"
+          file: "src/components/Header.tsx"
+          line: 3
+          props: ["title", "user"]
+          used_by: ["App"]
+          uses: []
+        - name: "Card"
+          file: "src/components/Card.tsx"
+          line: 7
+          props: ["title", "children"]
+          used_by: ["MainContent"]
+          uses: []
+      count: 4
+
+  - description: "Analyze a specific component file"
+    input:
+      file: "src/components/Button.tsx"
+    output:
+      tree:
+        name: "Button"
+        file: "src/components/Button.tsx"
+        props: ["variant", "onClick", "children", "disabled"]
+        children:
+          - name: "Spinner"
+            file: "src/components/Spinner.tsx"
+            props: ["size"]
+            children: []
+      components:
+        - name: "Button"
+          file: "src/components/Button.tsx"
+          line: 10
+          props: ["variant", "onClick", "children", "disabled"]
+          used_by: []
+          uses: ["Spinner"]
+      count: 2

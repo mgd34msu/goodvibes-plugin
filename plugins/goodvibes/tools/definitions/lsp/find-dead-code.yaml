@@ -1,0 +1,107 @@
+name: find_dead_code
+version: "1.0.0"
+description: |
+  Find unused exports and functions in a file or directory.
+  Uses TypeScript Language Service to identify exports that have no external references.
+  Useful for identifying dead code that can be safely removed.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - dead-code
+  - unused
+  - cleanup
+  - refactoring
+
+mcp:
+  server: goodvibes-tools
+  method: find_dead_code
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: File or directory path to analyze (relative to project root)
+      default: "."
+    include_tests:
+      type: boolean
+      description: Count test file references as usage (default true)
+      default: true
+  required: []
+
+outputSchema:
+  type: object
+  properties:
+    dead_exports:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path relative to project root
+          name:
+            type: string
+            description: Name of the unused export
+          kind:
+            type: string
+            description: Export kind (function, class, interface, type, variable, etc.)
+          line:
+            type: number
+            description: Line number where the export is defined (1-based)
+          exported_from:
+            type: string
+            description: File that re-exports this symbol (if applicable)
+    count:
+      type: number
+      description: Total count of dead exports found
+    files_analyzed:
+      type: number
+      description: Number of files that were analyzed
+
+handler:
+  type: native
+  module: lsp
+  function: handleFindDeadCode
+
+examples:
+  - description: "Find dead code in a specific file"
+    input:
+      path: "src/utils.ts"
+      include_tests: true
+    output:
+      dead_exports:
+        - file: "src/utils.ts"
+          name: "deprecatedHelper"
+          kind: "function"
+          line: 45
+          exported_from: null
+        - file: "src/utils.ts"
+          name: "OldConfig"
+          kind: "interface"
+          line: 78
+          exported_from: null
+      count: 2
+      files_analyzed: 1
+
+  - description: "Find dead code in src directory, excluding test references"
+    input:
+      path: "src"
+      include_tests: false
+    output:
+      dead_exports:
+        - file: "src/services/auth.ts"
+          name: "validateToken"
+          kind: "function"
+          line: 23
+          exported_from: "src/services/index.ts"
+        - file: "src/types/legacy.ts"
+          name: "LegacyUser"
+          kind: "type"
+          line: 5
+          exported_from: null
+      count: 2
+      files_analyzed: 15

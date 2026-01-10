@@ -82,6 +82,10 @@ export {
   handleGetSignatureHelp,
   handleGetDocumentSymbols,
   handleGetDiagnostics,
+  handleFindDeadCode,
+  handleGetApiSurface,
+  handleDetectBreakingChanges,
+  handleSemanticDiff,
 } from './lsp/index.js';
 export type {
   FindReferencesArgs,
@@ -94,6 +98,10 @@ export type {
   GetSignatureHelpArgs,
   GetDocumentSymbolsArgs,
   GetDiagnosticsArgs,
+  FindDeadCodeArgs,
+  GetApiSurfaceArgs,
+  DetectBreakingChangesArgs,
+  SemanticDiffArgs,
 } from './lsp/index.js';
 
 // Dependency Analysis
@@ -105,13 +113,21 @@ export { handleParseErrorStack, handleExplainTypeError } from './errors/index.js
 export type { ParseErrorStackArgs, ExplainTypeErrorArgs } from './errors/index.js';
 
 // Test Tools
-export { handleFindTestsForFile } from './test/index.js';
-export type { FindTestsForFileArgs, TestType } from './test/index.js';
+export { handleFindTestsForFile, handleGetTestCoverage, handleSuggestTestCases } from './test/index.js';
+export type { FindTestsForFileArgs, TestType, GetTestCoverageArgs, SuggestTestCasesArgs } from './test/index.js';
 
 // Security
-export { handleScanForSecrets } from './security/index.js';
-export type { ScanForSecretsArgs } from './security/index.js';
+export { handleScanForSecrets, handleCheckPermissions } from './security/index.js';
+export type { ScanForSecretsArgs, CheckPermissionsArgs } from './security/index.js';
 
 // Project Tools
-export { handleGetEnvConfig } from './project/index.js';
-export type { GetEnvConfigArgs } from './project/index.js';
+export { handleGetEnvConfig, handleGetConventions } from './project/index.js';
+export type { GetEnvConfigArgs, GetConventionsArgs } from './project/index.js';
+
+// Framework Tools
+export { handleGetReactComponentTree, handleGetPrismaOperations } from './framework/index.js';
+export type { GetReactComponentTreeArgs, GetPrismaOperationsArgs } from './framework/index.js';
+
+// Build Tools
+export { handleAnalyzeBundle } from './build/index.js';
+export type { AnalyzeBundleArgs } from './build/index.js';

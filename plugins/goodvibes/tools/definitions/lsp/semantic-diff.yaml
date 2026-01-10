@@ -1,0 +1,130 @@
+name: semantic_diff
+version: "1.0.0"
+description: |
+  LLM-powered type-aware diff with semantic impact explanation.
+  Goes beyond text-based diff to understand:
+  - What semantically changed (not just line changes)
+  - Impact on type safety and API contracts
+  - Which callers/consumers might be affected
+  - Risk level of each change
+  Uses headless Claude to analyze diffs with full type context.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - diff
+  - semantic-analysis
+  - git
+  - impact-analysis
+  - llm-powered
+
+mcp:
+  server: goodvibes-tools
+  method: semantic_diff
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    before_ref:
+      type: string
+      description: Git ref to compare from (e.g., HEAD~1, commit hash, branch name)
+    after_ref:
+      type: string
+      description: Git ref to compare to (default "HEAD")
+      default: HEAD
+    file:
+      type: string
+      description: Optional specific file to analyze (if not provided, analyzes all changed files)
+  required:
+    - before_ref
+
+outputSchema:
+  type: object
+  properties:
+    changes:
+      type: array
+      description: List of semantic changes with impact analysis
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path
+          summary:
+            type: string
+            description: Human-readable summary of what changed semantically
+          semantic_impact:
+            type: string
+            description: Detailed explanation of the semantic impact
+          affected_callers:
+            type: array
+            items:
+              type: string
+            description: List of files/functions that call or depend on changed code
+          risk_level:
+            type: string
+            enum:
+              - low
+              - medium
+              - high
+            description: Risk level of this change
+    overall_summary:
+      type: string
+      description: High-level summary of all changes and their combined impact
+
+handler:
+  type: native
+  module: lsp
+  function: handleSemanticDiff
+
+examples:
+  - description: "Analyze semantic diff since last commit"
+    input:
+      before_ref: "HEAD~1"
+    output:
+      changes:
+        - file: "src/utils/format.ts"
+          summary: "formatDate now uses Intl.DateTimeFormat instead of manual string manipulation"
+          semantic_impact: |
+            The function now respects user locale settings which may produce different output
+            for the same input. Output format changed from MM/DD/YYYY to locale-specific format.
+          affected_callers:
+            - "src/components/DateDisplay.tsx"
+            - "src/pages/reports/index.tsx"
+          risk_level: "medium"
+        - file: "src/api/auth.ts"
+          summary: "Added token refresh logic to authenticate() function"
+          semantic_impact: |
+            Authentication now automatically attempts token refresh before failing.
+            This adds a network request but improves UX. Error handling for expired tokens
+            is now internal to the function.
+          affected_callers:
+            - "src/hooks/useAuth.ts"
+          risk_level: "low"
+      overall_summary: |
+        2 files changed. formatDate behavior change is medium risk due to output format change.
+        Auth changes are low risk, additive functionality with backward compatibility.
+
+  - description: "Analyze specific file between branches"
+    input:
+      before_ref: "main"
+      after_ref: "feature/new-api"
+      file: "src/api/client.ts"
+    output:
+      changes:
+        - file: "src/api/client.ts"
+          summary: "API client refactored from class to functional module with hooks"
+          semantic_impact: |
+            Complete architectural change from OOP to functional paradigm.
+            All existing usage of ApiClient class needs migration to new hook-based API.
+            Type signatures remain compatible but instantiation pattern is completely different.
+          affected_callers:
+            - "src/services/userService.ts"
+            - "src/services/productService.ts"
+            - "src/pages/api/proxy.ts"
+          risk_level: "high"
+      overall_summary: |
+        Major refactor of API client. All 3 consumers need updates. High risk due to
+        paradigm shift from class instantiation to function calls.

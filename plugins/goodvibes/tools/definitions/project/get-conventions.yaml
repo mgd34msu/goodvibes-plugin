@@ -1,0 +1,177 @@
+name: get_conventions
+version: "1.0.0"
+description: |
+  LLM-powered analysis of code patterns and conventions used in a project.
+  Samples files from different parts of the codebase, analyzes naming conventions,
+  import patterns, file structure, testing patterns, and error handling approaches.
+  Uses Claude to synthesize findings into actionable convention guidelines.
+
+mcp:
+  server: goodvibes-tools
+  method: get_conventions
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Directory to analyze (relative to project root)"
+      default: "."
+    focus:
+      type: array
+      items:
+        type: string
+        enum: ["naming", "imports", "structure", "testing", "error-handling"]
+      description: "Specific areas to focus analysis on. If empty, analyzes all areas."
+      default: []
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    conventions:
+      type: array
+      items:
+        type: object
+        properties:
+          category:
+            type: string
+            description: "Convention category (naming, imports, structure, testing, error-handling)"
+          pattern:
+            type: string
+            description: "Description of the convention pattern"
+          examples:
+            type: array
+            items: { type: string }
+            description: "Code examples demonstrating the pattern"
+          rationale:
+            type: string
+            description: "Why this convention is used"
+          confidence:
+            type: string
+            enum: ["high", "medium", "low"]
+            description: "Confidence level based on consistency across codebase"
+    naming:
+      type: object
+      properties:
+        files:
+          type: string
+          description: "File naming convention (e.g., kebab-case, camelCase)"
+        variables:
+          type: string
+          description: "Variable naming convention"
+        functions:
+          type: string
+          description: "Function naming convention"
+        classes:
+          type: string
+          description: "Class naming convention"
+        constants:
+          type: string
+          description: "Constant naming convention"
+    imports:
+      type: object
+      properties:
+        order:
+          type: array
+          items: { type: string }
+          description: "Import ordering (e.g., ['external', 'internal', 'relative'])"
+        style:
+          type: string
+          description: "Import style (named, default, namespace)"
+        barrel_files:
+          type: boolean
+          description: "Whether barrel files (index.ts) are used"
+    structure:
+      type: object
+      properties:
+        directory_layout:
+          type: array
+          items: { type: string }
+          description: "Key directories and their purposes"
+        component_organization:
+          type: string
+          description: "How components are organized (flat, by-feature, by-type)"
+    testing:
+      type: object
+      properties:
+        file_naming:
+          type: string
+          description: "Test file naming pattern (*.test.ts, *.spec.ts)"
+        describe_structure:
+          type: string
+          description: "How tests are structured (BDD, TDD)"
+        assertion_style:
+          type: string
+          description: "Assertion library/style (expect, assert, should)"
+    error_handling:
+      type: object
+      properties:
+        pattern:
+          type: string
+          description: "Error handling pattern (try-catch, Result type, error boundaries)"
+        custom_errors:
+          type: boolean
+          description: "Whether custom error classes are used"
+        logging:
+          type: string
+          description: "Logging approach (console, structured logger)"
+    config_files:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+          purpose:
+            type: string
+    recommendations:
+      type: array
+      items: { type: string }
+      description: "Suggested improvements to consistency"
+
+examples:
+  - description: "Analyze conventions in a TypeScript project"
+    input:
+      path: "."
+      focus: ["naming", "imports"]
+    output:
+      conventions:
+        - category: "naming"
+          pattern: "PascalCase for components, camelCase for utilities"
+          examples: ["UserProfile.tsx", "formatDate.ts"]
+          rationale: "React convention for components, standard JS for utilities"
+          confidence: "high"
+        - category: "imports"
+          pattern: "Grouped imports: external, then internal, then relative"
+          examples: ["import React from 'react';", "import { Button } from '@/components';"]
+          rationale: "Clear separation of dependencies"
+          confidence: "medium"
+      naming:
+        files: "kebab-case for most files, PascalCase for components"
+        variables: "camelCase"
+        functions: "camelCase"
+        classes: "PascalCase"
+        constants: "SCREAMING_SNAKE_CASE"
+      imports:
+        order: ["external", "internal", "relative"]
+        style: "named imports preferred"
+        barrel_files: true
+      structure:
+        directory_layout: ["src/components", "src/lib", "src/hooks", "src/types"]
+        component_organization: "by-feature"
+      testing:
+        file_naming: "*.test.ts"
+        describe_structure: "BDD with describe/it blocks"
+        assertion_style: "expect"
+      error_handling:
+        pattern: "try-catch with custom errors"
+        custom_errors: true
+        logging: "structured logger"
+      config_files:
+        - { file: "tsconfig.json", purpose: "TypeScript configuration" }
+        - { file: ".eslintrc.js", purpose: "Linting rules" }
+      recommendations:
+        - "Consider adding path aliases for cleaner imports"
+        - "Standardize error handling pattern across all modules"

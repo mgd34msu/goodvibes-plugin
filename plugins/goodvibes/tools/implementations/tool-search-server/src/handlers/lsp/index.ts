@@ -73,3 +73,19 @@ export type { GetDocumentSymbolsArgs } from './document-symbols.js';
 // Diagnostics
 export { handleGetDiagnostics } from './diagnostics.js';
 export type { GetDiagnosticsArgs } from './diagnostics.js';
+
+// Dead Code Analysis
+export { handleFindDeadCode } from './dead-code.js';
+export type { FindDeadCodeArgs } from './dead-code.js';
+
+// API Surface Analysis
+export { handleGetApiSurface } from './api-surface.js';
+export type { GetApiSurfaceArgs } from './api-surface.js';
+
+// Breaking Changes (LLM-powered)
+export { handleDetectBreakingChanges } from './breaking-changes.js';
+export type { DetectBreakingChangesArgs } from './breaking-changes.js';
+
+// Semantic Diff (LLM-powered)
+export { handleSemanticDiff } from './semantic-diff.js';
+export type { SemanticDiffArgs } from './semantic-diff.js';

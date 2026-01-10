@@ -1,0 +1,136 @@
+name: detect_breaking_changes
+version: "1.0.0"
+description: |
+  LLM-powered tool to detect breaking API changes between git refs.
+  Compares type signatures before/after a change and identifies:
+  - Function signature changes (parameter types, return types)
+  - Interface/type property changes (added required, removed, type changes)
+  - Exported symbol removals or renames
+  - Class method/property visibility changes
+  Uses headless Claude to analyze diffs with type context.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - breaking-changes
+  - api
+  - git
+  - diff
+  - llm-powered
+
+mcp:
+  server: goodvibes-tools
+  method: detect_breaking_changes
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    before_ref:
+      type: string
+      description: Git ref to compare from (e.g., HEAD~1, commit hash, branch name)
+    after_ref:
+      type: string
+      description: Git ref to compare to (default "HEAD")
+      default: HEAD
+    path:
+      type: string
+      description: Optional path filter to limit analysis to specific files/directories
+  required:
+    - before_ref
+
+outputSchema:
+  type: object
+  properties:
+    breaking_changes:
+      type: array
+      description: List of detected breaking changes
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path where the breaking change occurred
+          symbol:
+            type: string
+            description: Name of the changed symbol (function, interface, class, etc.)
+          change_type:
+            type: string
+            description: Type of breaking change (signature_change, removed, type_incompatible, etc.)
+          before:
+            type: string
+            description: Previous signature or definition
+          after:
+            type: string
+            description: New signature or definition
+          impact:
+            type: string
+            description: Description of the impact on consumers
+          migration:
+            type: string
+            description: Suggested migration steps
+    non_breaking_changes:
+      type: array
+      description: List of non-breaking changes detected
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path
+          symbol:
+            type: string
+            description: Name of the changed symbol
+          change_type:
+            type: string
+            description: Type of change
+          description:
+            type: string
+            description: Description of the change
+    severity:
+      type: string
+      enum:
+        - none
+        - minor
+        - major
+      description: Overall severity of breaking changes
+
+handler:
+  type: native
+  module: lsp
+  function: handleDetectBreakingChanges
+
+examples:
+  - description: "Check for breaking changes since last commit"
+    input:
+      before_ref: "HEAD~1"
+    output:
+      breaking_changes:
+        - file: "src/api/client.ts"
+          symbol: "fetchUser"
+          change_type: "signature_change"
+          before: "(id: string) => Promise<User>"
+          after: "(id: string, options?: FetchOptions) => Promise<User | null>"
+          impact: "Return type now includes null, consumers must handle this case"
+          migration: "Add null checks after calling fetchUser()"
+      non_breaking_changes:
+        - file: "src/api/client.ts"
+          symbol: "FetchOptions"
+          change_type: "added"
+          description: "New optional interface for fetch configuration"
+      severity: "major"
+
+  - description: "Check breaking changes between branches for specific path"
+    input:
+      before_ref: "main"
+      after_ref: "feature/refactor"
+      path: "src/types"
+    output:
+      breaking_changes: []
+      non_breaking_changes:
+        - file: "src/types/user.ts"
+          symbol: "UserRole"
+          change_type: "enum_extended"
+          description: "Added new enum member 'MODERATOR'"
+      severity: "none"

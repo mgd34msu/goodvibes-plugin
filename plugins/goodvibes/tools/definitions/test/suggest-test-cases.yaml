@@ -1,0 +1,181 @@
+name: suggest_test_cases
+version: "1.0.0"
+description: |
+  Analyze a function and suggest comprehensive test cases.
+  Uses LLM-powered analysis to identify edge cases, error conditions,
+  boundary values, and happy path scenarios. Finds existing tests for context
+  and suggests new test cases with rationale.
+
+category: test
+tags:
+  - testing
+  - ai-powered
+  - test-generation
+  - analysis
+
+mcp:
+  server: goodvibes-tools
+  method: suggest_test_cases
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: Source file containing the function (relative to project root or absolute)
+    function:
+      type: string
+      description: Name of the function to analyze
+    include_existing:
+      type: boolean
+      description: Include existing tests for context (default true)
+      default: true
+  required:
+    - file
+    - function
+
+outputSchema:
+  type: object
+  properties:
+    function_signature:
+      type: string
+      description: The full function signature with types
+    existing_tests:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: Test file path relative to project root
+          test_name:
+            type: string
+            description: Name of the test case
+    suggested_tests:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Suggested test case name
+          description:
+            type: string
+            description: What this test verifies
+          input:
+            type: string
+            description: Example input values
+          expected:
+            type: string
+            description: Expected output or behavior
+          rationale:
+            type: string
+            description: Why this test case is important
+          category:
+            type: string
+            enum: ["happy_path", "edge_case", "error_case", "boundary"]
+            description: Category of test case
+    categories:
+      type: object
+      properties:
+        happy_path:
+          type: number
+          description: Count of happy path test suggestions
+        edge_case:
+          type: number
+          description: Count of edge case test suggestions
+        error_case:
+          type: number
+          description: Count of error handling test suggestions
+        boundary:
+          type: number
+          description: Count of boundary value test suggestions
+
+handler:
+  type: native
+  module: test
+  function: handleSuggestTestCases
+
+examples:
+  - description: "Suggest tests for a utility function"
+    input:
+      file: "src/utils/format.ts"
+      function: "formatCurrency"
+      include_existing: true
+    output:
+      function_signature: "formatCurrency(amount: number, currency?: string): string"
+      existing_tests:
+        - file: "src/utils/__tests__/format.test.ts"
+          test_name: "should format USD correctly"
+        - file: "src/utils/__tests__/format.test.ts"
+          test_name: "should format EUR correctly"
+      suggested_tests:
+        - name: "should handle zero amount"
+          description: "Verify formatting works for zero value"
+          input: "formatCurrency(0)"
+          expected: "$0.00"
+          rationale: "Zero is a common edge case that should be handled"
+          category: "edge_case"
+        - name: "should handle negative amounts"
+          description: "Verify negative numbers are formatted correctly"
+          input: "formatCurrency(-100)"
+          expected: "-$100.00"
+          rationale: "Negative amounts are valid in financial contexts"
+          category: "edge_case"
+        - name: "should handle very large amounts"
+          description: "Verify large numbers don't cause overflow"
+          input: "formatCurrency(999999999999)"
+          expected: "$999,999,999,999.00"
+          rationale: "Large values may expose formatting limits"
+          category: "boundary"
+        - name: "should handle NaN"
+          description: "Verify NaN input is handled gracefully"
+          input: "formatCurrency(NaN)"
+          expected: "throws Error or returns fallback"
+          rationale: "Invalid input should not crash the application"
+          category: "error_case"
+      categories:
+        happy_path: 0
+        edge_case: 2
+        error_case: 1
+        boundary: 1
+
+  - description: "Suggest tests for async function"
+    input:
+      file: "src/lib/api.ts"
+      function: "fetchUser"
+      include_existing: false
+    output:
+      function_signature: "async fetchUser(id: string): Promise<User>"
+      existing_tests: []
+      suggested_tests:
+        - name: "should return user for valid ID"
+          description: "Happy path - fetch existing user"
+          input: "await fetchUser('user-123')"
+          expected: "User object with id, name, email"
+          rationale: "Basic functionality must work"
+          category: "happy_path"
+        - name: "should throw for non-existent user"
+          description: "Handle 404 responses"
+          input: "await fetchUser('non-existent')"
+          expected: "throws NotFoundError"
+          rationale: "Missing resources should be handled gracefully"
+          category: "error_case"
+        - name: "should handle network timeout"
+          description: "Test timeout handling"
+          input: "await fetchUser('user-123') with slow network"
+          expected: "throws TimeoutError or retries"
+          rationale: "Network failures are common in production"
+          category: "error_case"
+        - name: "should handle empty ID"
+          description: "Validate input before request"
+          input: "await fetchUser('')"
+          expected: "throws ValidationError"
+          rationale: "Invalid input should fail fast"
+          category: "edge_case"
+      categories:
+        happy_path: 1
+        edge_case: 1
+        error_case: 2
+        boundary: 0

@@ -1,0 +1,159 @@
+name: get_api_surface
+version: "1.0.0"
+description: |
+  Analyze the public vs internal API surface of a module or package.
+  Identifies exports from entry points (index.ts, package.json main) as public API,
+  and other exports as internal. Includes type information for each export.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - api
+  - exports
+  - module
+  - documentation
+
+mcp:
+  server: goodvibes-tools
+  method: get_api_surface
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Directory to analyze (relative to project root)
+      default: "."
+    entry_points:
+      type: array
+      items:
+        type: string
+      description: Entry point files (auto-detect if not provided)
+  required: []
+
+outputSchema:
+  type: object
+  properties:
+    public_api:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Name of the exported symbol
+          kind:
+            type: string
+            description: Symbol kind (function, class, interface, type, variable, etc.)
+          type:
+            type: string
+            description: TypeScript type signature
+          file:
+            type: string
+            description: File where the symbol is defined
+          line:
+            type: number
+            description: Line number (1-based)
+          jsdoc:
+            type: string
+            description: JSDoc documentation (if present)
+    internal_api:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Name of the exported symbol
+          kind:
+            type: string
+            description: Symbol kind (function, class, interface, type, variable, etc.)
+          type:
+            type: string
+            description: TypeScript type signature
+          file:
+            type: string
+            description: File where the symbol is defined
+          line:
+            type: number
+            description: Line number (1-based)
+    entry_points:
+      type: array
+      items:
+        type: string
+      description: Entry point files that were detected/used
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetApiSurface
+
+examples:
+  - description: "Analyze API surface of a package"
+    input:
+      path: "packages/core"
+    output:
+      public_api:
+        - name: "createClient"
+          kind: "function"
+          type: "(options: ClientOptions) => Client"
+          file: "packages/core/src/client.ts"
+          line: 25
+          jsdoc: "Create a new API client with the given options"
+        - name: "Client"
+          kind: "class"
+          type: "Client"
+          file: "packages/core/src/client.ts"
+          line: 40
+          jsdoc: "Main API client class"
+        - name: "ClientOptions"
+          kind: "interface"
+          type: "interface ClientOptions"
+          file: "packages/core/src/types.ts"
+          line: 5
+          jsdoc: "Options for configuring the client"
+      internal_api:
+        - name: "validateConfig"
+          kind: "function"
+          type: "(config: unknown) => ValidConfig"
+          file: "packages/core/src/utils/validate.ts"
+          line: 10
+        - name: "parseResponse"
+          kind: "function"
+          type: "(data: unknown) => ParsedResponse"
+          file: "packages/core/src/utils/parse.ts"
+          line: 8
+      entry_points:
+        - "packages/core/src/index.ts"
+
+  - description: "Analyze with custom entry points"
+    input:
+      path: "src"
+      entry_points:
+        - "src/index.ts"
+        - "src/server.ts"
+    output:
+      public_api:
+        - name: "App"
+          kind: "class"
+          type: "App"
+          file: "src/app.ts"
+          line: 15
+          jsdoc: "Main application class"
+        - name: "startServer"
+          kind: "function"
+          type: "(port: number) => Promise<void>"
+          file: "src/server.ts"
+          line: 20
+          jsdoc: "Start the HTTP server"
+      internal_api:
+        - name: "loadConfig"
+          kind: "function"
+          type: "() => Config"
+          file: "src/config.ts"
+          line: 5
+      entry_points:
+        - "src/index.ts"
+        - "src/server.ts"

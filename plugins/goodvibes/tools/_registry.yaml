@@ -1,8 +1,48 @@
 version: 1.0.0
-generated: '2026-01-10T02:02:45.755Z'
-total: 37
+generated: '2026-01-10T02:26:51.387Z'
+total: 48
 categories: {}
 search_index:
+  - name: analyze_bundle
+    keywords:
+      - analyze
+      - bundle
+      - size
+      - duplicates
+      - tree
+      - shaking
+      - issues
+      - build
+      - output
+      - scans
+      - dist
+      - next
+      - directories
+      - files
+      - analyzes
+      - total
+      - raw
+      - gzipped
+      - individual
+      - chunk
+      - sizes
+      - largest
+      - modules
+      - duplicate
+      - dependencies
+      - across
+      - chunks
+      - side
+      - effects
+    path: definitions/build/analyze-bundle.yaml
+    description: |
+      Analyze bundle size, duplicates, and tree-shaking issues in build output.
+      Scans dist/, .next/, or build/ directories for bundle files and analyzes:
+      - Total bundle size (raw and gzipped)
+      - Individual chunk sizes
+      - Largest modules
+      - Duplicate dependencies across chunks
+      - Tree-shaking issues (side effects)
   - name: check_types
     keywords:
       - check
@@ -246,6 +286,64 @@ search_index:
       Fetch current documentation for a library or framework.
       Retrieves API references, guides, and migration notes.
       Supplements static skill knowledge with live data.
+  - name: get_prisma_operations
+    keywords:
+      - get
+      - prisma
+      - operations
+      - find
+      - all
+      - client
+      - usages
+      - codebase
+      - detect
+      - query
+      - patterns
+      - combines
+      - static
+      - analysis
+      - model
+      - operation
+      - calls
+      - llm
+      - powered
+      - inefficient
+      - suggest
+      - optimizations
+    path: definitions/framework/get-prisma-operations.yaml
+    description: |
+      Find all Prisma client usages in the codebase and detect N+1 query patterns.
+      Combines static analysis to find prisma.model.operation() calls with
+      LLM-powered analysis to detect inefficient query patterns and suggest optimizations.
+  - name: get_react_component_tree
+    keywords:
+      - get
+      - react
+      - component
+      - tree
+      - parse
+      - jsx
+      - tsx
+      - files
+      - build
+      - hierarchy
+      - uses
+      - static
+      - ast
+      - analysis
+      - find
+      - definitions
+      - usages
+      - extract
+      - props
+      - parent
+      - child
+      - relationships
+    path: definitions/framework/get-react-component-tree.yaml
+    description: |
+      Parse JSX/TSX files and build a component hierarchy tree.
+      Uses static AST analysis to find component definitions and usages,
+      extract props, and build parent-child relationships.
   - name: get_schema
     keywords:
       - get
@@ -332,6 +430,86 @@ search_index:
       Get the file edits for a code action (does not apply them directly).
       Retrieves the specific edits for a named code action at a position,
       allowing you to apply them using the Edit tool.
+  - name: detect_breaking_changes
+    keywords:
+      - detect
+      - breaking
+      - changes
+      - llm
+      - powered
+      - tool
+      - api
+      - between
+      - git
+      - refs
+      - compares
+      - type
+      - signatures
+      - before
+      - after
+      - change
+      - identifies
+      - function
+      - signature
+      - parameter
+      - types
+      - return
+      - interface
+      - property
+      - added
+      - required
+      - removed
+      - exported
+      - symbol
+      - removals
+      - renames
+      - class
+      - method
+      - visibility
+      - uses
+      - headless
+      - claude
+      - analyze
+      - diffs
+      - context
+    path: definitions/lsp/detect-breaking-changes.yaml
+    description: |
+      LLM-powered tool to detect breaking API changes between git refs.
+      Compares type signatures before/after a change and identifies:
+      - Function signature changes (parameter types, return types)
+      - Interface/type property changes (added required, removed, type changes)
+      - Exported symbol removals or renames
+      - Class method/property visibility changes
+      Uses headless Claude to analyze diffs with type context.
+  - name: find_dead_code
+    keywords:
+      - find
+      - dead
+      - code
+      - unused
+      - exports
+      - functions
+      - file
+      - directory
+      - uses
+      - typescript
+      - language
+      - service
+      - identify
+      - that
+      - have
+      - external
+      - references
+      - useful
+      - identifying
+      - can
+      - safely
+      - removed
+    path: definitions/lsp/find-dead-code.yaml
+    description: |
+      Find unused exports and functions in a file or directory.
+      Uses TypeScript Language Service to identify exports that have no external references.
+      Useful for identifying dead code that can be safely removed.
   - name: find_references
     keywords:
       - find
@@ -358,6 +536,35 @@ search_index:
       Find all references to a symbol at a given position.
       Returns file locations, preview lines, and metadata for each reference.
       Useful for understanding symbol usage before refactoring.
+  - name: get_api_surface
+    keywords:
+      - get
+      - api
+      - surface
+      - analyze
+      - public
+      - internal
+      - module
+      - package
+      - identifies
+      - exports
+      - from
+      - entry
+      - points
+      - index
+      - json
+      - main
+      - other
+      - includes
+      - type
+      - information
+      - each
+      - export
+    path: definitions/lsp/get-api-surface.yaml
+    description: |
+      Analyze the public vs internal API surface of a module or package.
+      Identifies exports from entry points (index.ts, package.json main) as public API,
+      and other exports as internal. Includes type information for each export.
   - name: get_call_hierarchy
     keywords:
       - get
@@ -581,6 +788,56 @@ search_index:
       Get all edits needed to rename a symbol across the codebase.
       Returns file locations and text changes to apply for a safe rename.
       Uses TypeScript Language Service for accurate, semantic renaming.
+  - name: semantic_diff
+    keywords:
+      - semantic
+      - diff
+      - llm
+      - powered
+      - type
+      - aware
+      - impact
+      - explanation
+      - goes
+      - beyond
+      - text
+      - based
+      - understand
+      - what
+      - semantically
+      - changed
+      - not
+      - just
+      - line
+      - changes
+      - safety
+      - api
+      - contracts
+      - which
+      - callers
+      - consumers
+      - might
+      - affected
+      - risk
+      - level
+      - each
+      - change
+      - uses
+      - headless
+      - claude
+      - analyze
+      - diffs
+      - full
+      - context
+    path: definitions/lsp/semantic-diff.yaml
+    description: |
+      LLM-powered type-aware diff with semantic impact explanation.
+      Goes beyond text-based diff to understand:
+      - What semantically changed (not just line changes)
+      - Impact on type safety and API contracts
+      - Which callers/consumers might be affected
+      - Risk level of each change
+      Uses headless Claude to analyze diffs with full type context.
   - name: plugin_status
     keywords:
       - plugin
@@ -603,6 +860,46 @@ search_index:
       Check GoodVibes plugin health status.
       Verifies manifest, registries, hooks config, and script files.
       Returns issues and overall health status.
+  - name: get_conventions
+    keywords:
+      - get
+      - conventions
+      - llm
+      - powered
+      - analysis
+      - code
+      - patterns
+      - used
+      - project
+      - samples
+      - files
+      - from
+      - different
+      - parts
+      - codebase
+      - analyzes
+      - naming
+      - import
+      - file
+      - structure
+      - testing
+      - error
+      - handling
+      - approaches
+      - uses
+      - claude
+      - synthesize
+      - findings
+      - into
+      - actionable
+      - convention
+      - guidelines
+    path: definitions/project/get-conventions.yaml
+    description: |
+      LLM-powered analysis of code patterns and conventions used in a project.
+      Samples files from different parts of the codebase, analyzes naming conventions,
+      import patterns, file structure, testing patterns, and error handling approaches.
+      Uses Claude to synthesize findings into actionable convention guidelines.
   - name: get_env_config
     keywords:
       - get
@@ -883,6 +1180,53 @@ search_index:
     description: |
       Search for available tools by functionality or use case.
       Use when discovering what tools are available for a task.
+  - name: check_permissions
+    keywords:
+      - check
+      - permissions
+      - analyze
+      - file
+      - network
+      - system
+      - access
+      - patterns
+      - code
+      - scans
+      - potentially
+      - sensitive
+      - api
+      - usage
+      - including
+      - filesystem
+      - path
+      - operations
+      - requests
+      - http
+      - https
+      - fetch
+      - axios
+      - process
+      - spawning
+      - child_process
+      - exec
+      - spawn
+      - cryptographic
+      - crypto
+      - categorizes
+      - findings
+      - risk
+      - level
+      - provides
+      - recommendations
+    path: definitions/security/check-permissions.yaml
+    description: |
+      Analyze file, network, and system access patterns in code.
+      Scans for potentially sensitive API usage including:
+      - Filesystem access (fs, path operations)
+      - Network requests (http, https, fetch, axios)
+      - Process spawning (child_process, exec, spawn)
+      - Cryptographic operations (crypto)
+      Categorizes findings by risk level and provides recommendations.
   - name: scan_for_secrets
     keywords:
       - scan
@@ -965,6 +1309,74 @@ search_index:
       Find test files that cover a given source file.
       Analyzes test file naming patterns and import graphs to find related tests.
       Returns a ranked list of test files with confidence scores.
+  - name: get_test_coverage
+    keywords:
+      - get
+      - test
+      - coverage
+      - parse
+      - reports
+      - map
+      - data
+      - functions
+      - finds
+      - files
+      - lcov
+      - info
+      - final
+      - json
+      - etc
+      - extracts
+      - line
+      - branch
+      - function
+      - statement
+      - percentages
+      - returns
+      - uncovered
+      - lines
+      - targeted
+      - writing
+    path: definitions/test/get-test-coverage.yaml
+    description: |
+      Parse test coverage reports and map coverage data to functions.
+      Finds coverage files (lcov.info, coverage-final.json, etc.) and extracts
+      line, branch, function, and statement coverage percentages.
+      Returns uncovered lines and functions for targeted test writing.
+  - name: suggest_test_cases
+    keywords:
+      - suggest
+      - test
+      - cases
+      - analyze
+      - function
+      - comprehensive
+      - uses
+      - llm
+      - powered
+      - analysis
+      - identify
+      - edge
+      - error
+      - conditions
+      - boundary
+      - values
+      - happy
+      - path
+      - scenarios
+      - finds
+      - existing
+      - tests
+      - context
+      - suggests
+      - new
+      - rationale
+    path: definitions/test/suggest-test-cases.yaml
+    description: |
+      Analyze a function and suggest comprehensive test cases.
+      Uses LLM-powered analysis to identify edge cases, error conditions,
+      boundary values, and happy path scenarios. Finds existing tests for context
+      and suggests new test cases with rationale.
   - name: validate_implementation
     keywords:
       - validate
@@ -1007,6 +1419,16 @@ core_tools:
       Verifies manifest, registries, hooks config, and script files.
       Returns issues and overall health status.
 deferred_tools:
+  - name: analyze_bundle
+    path: definitions/build/analyze-bundle.yaml
+    description: |
+      Analyze bundle size, duplicates, and tree-shaking issues in build output.
+      Scans dist/, .next/, or build/ directories for bundle files and analyzes:
+      - Total bundle size (raw and gzipped)
+      - Individual chunk sizes
+      - Largest modules
+      - Duplicate dependencies across chunks
+      - Tree-shaking issues (side effects)
   - name: check_types
     path: definitions/check-types.yaml
     description: |
@@ -1057,6 +1479,18 @@ deferred_tools:
       Fetch current documentation for a library or framework.
       Retrieves API references, guides, and migration notes.
       Supplements static skill knowledge with live data.
+  - name: get_prisma_operations
+    path: definitions/framework/get-prisma-operations.yaml
+    description: |
+      Find all Prisma client usages in the codebase and detect N+1 query patterns.
+      Combines static analysis to find prisma.model.operation() calls with
+      LLM-powered analysis to detect inefficient query patterns and suggest optimizations.
+  - name: get_react_component_tree
+    path: definitions/framework/get-react-component-tree.yaml
+    description: |
+      Parse JSX/TSX files and build a component hierarchy tree.
+      Uses static AST analysis to find component definitions and usages,
+      extract props, and build parent-child relationships.
   - name: get_schema
     path: definitions/get-schema.yaml
     description: |
@@ -1074,12 +1508,34 @@ deferred_tools:
       Get the file edits for a code action (does not apply them directly).
       Retrieves the specific edits for a named code action at a position,
       allowing you to apply them using the Edit tool.
+  - name: detect_breaking_changes
+    path: definitions/lsp/detect-breaking-changes.yaml
+    description: |
+      LLM-powered tool to detect breaking API changes between git refs.
+      Compares type signatures before/after a change and identifies:
+      - Function signature changes (parameter types, return types)
+      - Interface/type property changes (added required, removed, type changes)
+      - Exported symbol removals or renames
+      - Class method/property visibility changes
+      Uses headless Claude to analyze diffs with type context.
+  - name: find_dead_code
+    path: definitions/lsp/find-dead-code.yaml
+    description: |
+      Find unused exports and functions in a file or directory.
+      Uses TypeScript Language Service to identify exports that have no external references.
+      Useful for identifying dead code that can be safely removed.
   - name: find_references
     path: definitions/lsp/find-references.yaml
     description: |
       Find all references to a symbol at a given position.
       Returns file locations, preview lines, and metadata for each reference.
       Useful for understanding symbol usage before refactoring.
+  - name: get_api_surface
+    path: definitions/lsp/get-api-surface.yaml
+    description: |
+      Analyze the public vs internal API surface of a module or package.
+      Identifies exports from entry points (index.ts, package.json main) as public API,
+      and other exports as internal. Includes type information for each export.
   - name: get_call_hierarchy
     path: definitions/lsp/get-call-hierarchy.yaml
     description: |
@@ -1129,6 +1585,23 @@ deferred_tools:
       Get all edits needed to rename a symbol across the codebase.
       Returns file locations and text changes to apply for a safe rename.
       Uses TypeScript Language Service for accurate, semantic renaming.
+  - name: semantic_diff
+    path: definitions/lsp/semantic-diff.yaml
+    description: |
+      LLM-powered type-aware diff with semantic impact explanation.
+      Goes beyond text-based diff to understand:
+      - What semantically changed (not just line changes)
+      - Impact on type safety and API contracts
+      - Which callers/consumers might be affected
+      - Risk level of each change
+      Uses headless Claude to analyze diffs with full type context.
+  - name: get_conventions
+    path: definitions/project/get-conventions.yaml
+    description: |
+      LLM-powered analysis of code patterns and conventions used in a project.
+      Samples files from different parts of the codebase, analyzes naming conventions,
+      import patterns, file structure, testing patterns, and error handling approaches.
+      Uses Claude to synthesize findings into actionable convention guidelines.
   - name: get_env_config
     path: definitions/project/get-env-config.yaml
     description: |
@@ -1194,6 +1667,16 @@ deferred_tools:
     description: |
       Search for available tools by functionality or use case.
       Use when discovering what tools are available for a task.
+  - name: check_permissions
+    path: definitions/security/check-permissions.yaml
+    description: |
+      Analyze file, network, and system access patterns in code.
+      Scans for potentially sensitive API usage including:
+      - Filesystem access (fs, path operations)
+      - Network requests (http, https, fetch, axios)
+      - Process spawning (child_process, exec, spawn)
+      - Cryptographic operations (crypto)
+      Categorizes findings by risk level and provides recommendations.
   - name: scan_for_secrets
     path: definitions/security/scan-for-secrets.yaml
     description: |
@@ -1212,6 +1695,20 @@ deferred_tools:
       Find test files that cover a given source file.
       Analyzes test file naming patterns and import graphs to find related tests.
       Returns a ranked list of test files with confidence scores.
+  - name: get_test_coverage
+    path: definitions/test/get-test-coverage.yaml
+    description: |
+      Parse test coverage reports and map coverage data to functions.
+      Finds coverage files (lcov.info, coverage-final.json, etc.) and extracts
+      line, branch, function, and statement coverage percentages.
+      Returns uncovered lines and functions for targeted test writing.
+  - name: suggest_test_cases
+    path: definitions/test/suggest-test-cases.yaml
+    description: |
+      Analyze a function and suggest comprehensive test cases.
+      Uses LLM-powered analysis to identify edge cases, error conditions,
+      boundary values, and happy path scenarios. Finds existing tests for context
+      and suggests new test cases with rationale.
   - name: validate_implementation
     path: definitions/validate-implementation.yaml
     description: |

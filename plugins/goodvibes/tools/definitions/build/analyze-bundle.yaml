@@ -1,0 +1,122 @@
+name: analyze_bundle
+version: "1.0.0"
+description: |
+  Analyze bundle size, duplicates, and tree-shaking issues in build output.
+  Scans dist/, .next/, or build/ directories for bundle files and analyzes:
+  - Total bundle size (raw and gzipped)
+  - Individual chunk sizes
+  - Largest modules
+  - Duplicate dependencies across chunks
+  - Tree-shaking issues (side effects)
+
+mcp:
+  server: goodvibes-tools
+  method: analyze_bundle
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Build output directory (auto-detects dist/, .next/, build/ if not specified)"
+    format:
+      type: string
+      enum: ["summary", "detailed"]
+      description: "Output format - summary or detailed analysis"
+      default: "summary"
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    total_size:
+      type: object
+      properties:
+        raw: { type: integer, description: "Total raw size in bytes" }
+        gzip: { type: integer, description: "Total gzip size in bytes" }
+        formatted: { type: string, description: "Human-readable size string" }
+    chunks:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          size: { type: integer }
+          gzip_size: { type: integer }
+          modules: { type: integer }
+    largest_modules:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          size: { type: integer }
+          from_package: { type: string }
+    duplicates:
+      type: array
+      items:
+        type: object
+        properties:
+          package: { type: string }
+          versions: { type: array, items: { type: string } }
+          total_size: { type: integer }
+    recommendations:
+      type: array
+      items:
+        type: string
+
+examples:
+  - description: "Analyze build output with summary"
+    input:
+      format: "summary"
+    output:
+      total_size:
+        raw: 1048576
+        gzip: 262144
+        formatted: "1.0 MB (256 KB gzipped)"
+      chunks:
+        - name: "main.js"
+          size: 524288
+          gzip_size: 131072
+          modules: 150
+        - name: "vendor.js"
+          size: 524288
+          gzip_size: 131072
+          modules: 200
+      largest_modules:
+        - name: "lodash"
+          size: 71680
+          from_package: "lodash"
+        - name: "moment"
+          size: 287744
+          from_package: "moment"
+      duplicates:
+        - package: "lodash"
+          versions: ["4.17.21", "4.17.20"]
+          total_size: 143360
+      recommendations:
+        - "Consider replacing moment.js with date-fns or dayjs (287 KB savings)"
+        - "Found duplicate lodash versions - dedupe with npm dedupe"
+
+  - description: "Detailed bundle analysis"
+    input:
+      path: "dist"
+      format: "detailed"
+    output:
+      total_size:
+        raw: 2097152
+        gzip: 524288
+        formatted: "2.0 MB (512 KB gzipped)"
+      chunks:
+        - name: "app.js"
+          size: 1048576
+          gzip_size: 262144
+          modules: 300
+      largest_modules:
+        - name: "@mui/material"
+          size: 512000
+          from_package: "@mui/material"
+      duplicates: []
+      recommendations:
+        - "Large bundle size detected - consider code splitting"

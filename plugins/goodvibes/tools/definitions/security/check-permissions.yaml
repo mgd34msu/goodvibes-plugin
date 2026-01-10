@@ -1,0 +1,130 @@
+name: check_permissions
+version: "1.0.0"
+description: |
+  Analyze file, network, and system access patterns in code.
+  Scans for potentially sensitive API usage including:
+  - Filesystem access (fs, path operations)
+  - Network requests (http, https, fetch, axios)
+  - Process spawning (child_process, exec, spawn)
+  - Cryptographic operations (crypto)
+  Categorizes findings by risk level and provides recommendations.
+
+mcp:
+  server: goodvibes-tools
+  method: check_permissions
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "Specific file to analyze (optional)"
+    path:
+      type: string
+      description: "Directory to scan (defaults to current directory)"
+      default: "."
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    permissions:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: ["filesystem", "network", "process", "crypto"]
+            description: "Category of permission"
+          api:
+            type: string
+            description: "Specific API being used"
+          file:
+            type: string
+            description: "File path where usage was found"
+          line:
+            type: integer
+            description: "Line number"
+          risk_level:
+            type: string
+            enum: ["low", "medium", "high"]
+            description: "Risk assessment level"
+          description:
+            type: string
+            description: "Description of the permission usage"
+    summary:
+      type: object
+      properties:
+        filesystem: { type: integer, description: "Count of filesystem access" }
+        network: { type: integer, description: "Count of network access" }
+        process: { type: integer, description: "Count of process spawning" }
+        crypto: { type: integer, description: "Count of crypto operations" }
+    risk_assessment:
+      type: string
+      enum: ["low", "medium", "high"]
+      description: "Overall risk assessment"
+    recommendations:
+      type: array
+      items:
+        type: string
+
+examples:
+  - description: "Scan current directory for permissions"
+    input:
+      path: "."
+    output:
+      permissions:
+        - type: "filesystem"
+          api: "fs.readFileSync"
+          file: "src/utils/config.ts"
+          line: 15
+          risk_level: "low"
+          description: "Synchronous file read operation"
+        - type: "network"
+          api: "fetch"
+          file: "src/api/client.ts"
+          line: 23
+          risk_level: "low"
+          description: "HTTP fetch request"
+        - type: "process"
+          api: "child_process.exec"
+          file: "scripts/build.ts"
+          line: 8
+          risk_level: "high"
+          description: "Command execution - potential injection risk"
+      summary:
+        filesystem: 5
+        network: 12
+        process: 2
+        crypto: 1
+      risk_assessment: "medium"
+      recommendations:
+        - "Review child_process.exec usage in scripts/build.ts - consider using execFile for safer execution"
+        - "Validate user input before passing to exec commands"
+
+  - description: "Scan specific file"
+    input:
+      file: "src/server.ts"
+    output:
+      permissions:
+        - type: "network"
+          api: "http.createServer"
+          file: "src/server.ts"
+          line: 10
+          risk_level: "low"
+          description: "HTTP server creation"
+        - type: "filesystem"
+          api: "fs.promises.readFile"
+          file: "src/server.ts"
+          line: 25
+          risk_level: "low"
+          description: "Async file read"
+      summary:
+        filesystem: 1
+        network: 1
+        process: 0
+        crypto: 0
+      risk_assessment: "low"
+      recommendations: []

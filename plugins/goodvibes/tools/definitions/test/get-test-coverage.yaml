@@ -1,0 +1,130 @@
+name: get_test_coverage
+version: "1.0.0"
+description: |
+  Parse test coverage reports and map coverage data to functions.
+  Finds coverage files (lcov.info, coverage-final.json, etc.) and extracts
+  line, branch, function, and statement coverage percentages.
+  Returns uncovered lines and functions for targeted test writing.
+
+category: test
+tags:
+  - testing
+  - coverage
+  - analysis
+  - quality
+
+mcp:
+  server: goodvibes-tools
+  method: get_test_coverage
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: Specific source file to check coverage for (relative to project root)
+    coverage_path:
+      type: string
+      description: Path to coverage report directory or file (defaults to common locations)
+
+outputSchema:
+  type: object
+  properties:
+    coverage:
+      type: object
+      properties:
+        lines:
+          type: number
+          description: Line coverage percentage (0-100)
+        branches:
+          type: number
+          description: Branch coverage percentage (0-100)
+        functions:
+          type: number
+          description: Function coverage percentage (0-100)
+        statements:
+          type: number
+          description: Statement coverage percentage (0-100)
+    uncovered_lines:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: Source file path relative to project root
+          lines:
+            type: array
+            items:
+              type: number
+            description: Array of uncovered line numbers
+    uncovered_functions:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: Source file path relative to project root
+          name:
+            type: string
+            description: Function name
+          line:
+            type: number
+            description: Line number where function is defined
+    report_path:
+      type: string
+      description: Path where coverage report was found
+    report_type:
+      type: string
+      enum: ["lcov", "istanbul", "c8", "vitest", "jest"]
+      description: Type of coverage report detected
+
+handler:
+  type: native
+  module: test
+  function: handleGetTestCoverage
+
+examples:
+  - description: "Get overall project coverage"
+    input: {}
+    output:
+      coverage:
+        lines: 78.5
+        branches: 65.2
+        functions: 82.1
+        statements: 77.8
+      uncovered_lines:
+        - file: "src/utils/format.ts"
+          lines: [45, 46, 52, 53, 54]
+        - file: "src/lib/database.ts"
+          lines: [112, 113, 120]
+      uncovered_functions:
+        - file: "src/utils/format.ts"
+          name: "formatCurrency"
+          line: 45
+        - file: "src/lib/database.ts"
+          name: "handleConnectionError"
+          line: 112
+      report_path: "coverage/lcov.info"
+      report_type: "lcov"
+
+  - description: "Get coverage for a specific file"
+    input:
+      file: "src/utils/format.ts"
+    output:
+      coverage:
+        lines: 85.0
+        branches: 70.0
+        functions: 90.0
+        statements: 84.2
+      uncovered_lines:
+        - file: "src/utils/format.ts"
+          lines: [45, 46, 52, 53, 54]
+      uncovered_functions:
+        - file: "src/utils/format.ts"
+          name: "formatCurrency"
+          line: 45
+      report_path: "coverage/lcov.info"
+      report_type: "lcov"

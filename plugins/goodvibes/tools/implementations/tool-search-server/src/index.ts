@@ -83,19 +83,32 @@ import {
   handleGetSymbolInfo,
   handleGetSignatureHelp,
   handleGetDiagnostics,
+  handleFindDeadCode,
+  handleGetApiSurface,
+  handleDetectBreakingChanges,
+  handleSemanticDiff,
   // Dependency Analysis
   handleAnalyzeDependencies,
   handleFindCircularDeps,
   // Test Tools
   handleFindTestsForFile,
+  handleGetTestCoverage,
+  handleSuggestTestCases,
   // Security
   handleScanForSecrets,
+  handleCheckPermissions,
+  // Build Tools
+  handleAnalyzeBundle,
   // Error Explanation
   handleExplainTypeError,
   // Error Stack Parsing
   handleParseErrorStack,
   // Project Tools
   handleGetEnvConfig,
+  handleGetConventions,
+  // Framework Tools
+  handleGetReactComponentTree,
+  handleGetPrismaOperations,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
@@ -120,13 +133,24 @@ import {
   type GetSymbolInfoArgs,
   type GetSignatureHelpArgs,
   type GetDiagnosticsArgs,
+  type FindDeadCodeArgs,
+  type GetApiSurfaceArgs,
+  type DetectBreakingChangesArgs,
+  type SemanticDiffArgs,
   type AnalyzeDependenciesArgs,
   type FindCircularDepsArgs,
   type FindTestsForFileArgs,
+  type GetTestCoverageArgs,
+  type SuggestTestCasesArgs,
   type ScanForSecretsArgs,
+  type CheckPermissionsArgs,
+  type AnalyzeBundleArgs,
   type ExplainTypeErrorArgs,
   type ParseErrorStackArgs,
   type GetEnvConfigArgs,
+  type GetConventionsArgs,
+  type GetReactComponentTreeArgs,
+  type GetPrismaOperationsArgs,
 } from "./handlers/index.js";
 
 /**
@@ -164,13 +188,24 @@ type ToolArgs =
   | GetSymbolInfoArgs
   | GetSignatureHelpArgs
   | GetDiagnosticsArgs
+  | FindDeadCodeArgs
+  | GetApiSurfaceArgs
+  | DetectBreakingChangesArgs
+  | SemanticDiffArgs
   | AnalyzeDependenciesArgs
   | FindCircularDepsArgs
   | FindTestsForFileArgs
+  | GetTestCoverageArgs
+  | SuggestTestCasesArgs
   | ScanForSecretsArgs
+  | CheckPermissionsArgs
+  | AnalyzeBundleArgs
   | ExplainTypeErrorArgs
   | GetEnvConfigArgs
+  | GetConventionsArgs
   | ParseErrorStackArgs
+  | GetReactComponentTreeArgs
+  | GetPrismaOperationsArgs
   | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
@@ -279,6 +314,14 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleGetSignatureHelp(args as GetSignatureHelpArgs),
   get_diagnostics: (_ctx, args) =>
     handleGetDiagnostics(args as GetDiagnosticsArgs),
+  find_dead_code: (_ctx, args) =>
+    handleFindDeadCode(args as FindDeadCodeArgs),
+  get_api_surface: (_ctx, args) =>
+    handleGetApiSurface(args as GetApiSurfaceArgs),
+  detect_breaking_changes: (_ctx, args) =>
+    handleDetectBreakingChanges(args as DetectBreakingChangesArgs),
+  semantic_diff: (_ctx, args) =>
+    handleSemanticDiff(args as SemanticDiffArgs),
 
   // Dependency Analysis
   analyze_dependencies: (_ctx, args) =>
@@ -289,10 +332,20 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   // Security
   scan_for_secrets: (_ctx, args) =>
     handleScanForSecrets(args as ScanForSecretsArgs),
+  check_permissions: (_ctx, args) =>
+    handleCheckPermissions(args as CheckPermissionsArgs),
+
+  // Build Tools
+  analyze_bundle: (_ctx, args) =>
+    handleAnalyzeBundle(args as AnalyzeBundleArgs),
 
   // Test Tools
   find_tests_for_file: (_ctx, args) =>
     handleFindTestsForFile(args as FindTestsForFileArgs),
+  get_test_coverage: (_ctx, args) =>
+    handleGetTestCoverage(args as GetTestCoverageArgs),
+  suggest_test_cases: (_ctx, args) =>
+    handleSuggestTestCases(args as SuggestTestCasesArgs),
 
   // Error Explanation
   explain_type_error: (_ctx, args) =>
@@ -305,6 +358,14 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   // Project Tools
   get_env_config: (_ctx, args) =>
     handleGetEnvConfig(args as GetEnvConfigArgs),
+  get_conventions: (_ctx, args) =>
+    handleGetConventions(args as GetConventionsArgs),
+
+  // Framework Tools
+  get_react_component_tree: (_ctx, args) =>
+    handleGetReactComponentTree(args as GetReactComponentTreeArgs),
+  get_prisma_operations: (_ctx, args) =>
+    handleGetPrismaOperations(args as GetPrismaOperationsArgs),
 };
 
 /**

@@ -1,0 +1,168 @@
+name: get_prisma_operations
+version: "1.0.0"
+description: |
+  Find all Prisma client usages in the codebase and detect N+1 query patterns.
+  Combines static analysis to find prisma.model.operation() calls with
+  LLM-powered analysis to detect inefficient query patterns and suggest optimizations.
+
+category: framework
+tags:
+  - prisma
+  - database
+  - orm
+  - n+1
+  - performance
+  - optimization
+  - queries
+
+mcp:
+  server: goodvibes-tools
+  method: get_prisma_operations
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Directory to analyze for Prisma operations
+      default: "src"
+    include_n1_detection:
+      type: boolean
+      description: Run LLM-powered N+1 pattern detection
+      default: true
+
+outputSchema:
+  type: object
+  properties:
+    operations:
+      type: array
+      description: List of all Prisma operations found
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File path where operation is used
+          line:
+            type: number
+            description: Line number of the operation
+          model:
+            type: string
+            description: Prisma model being queried (e.g., User, Post)
+          operation:
+            type: string
+            description: Operation type (findMany, create, update, etc.)
+          includes_relation:
+            type: boolean
+            description: Whether the operation includes related data
+          code_snippet:
+            type: string
+            description: Code context around the operation
+    models_used:
+      type: array
+      description: Summary of models and their operation counts
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Model name
+          operations:
+            type: number
+            description: Number of operations on this model
+    n1_patterns:
+      type: array
+      description: Detected N+1 query patterns (when include_n1_detection is true)
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: File where pattern was detected
+          line:
+            type: number
+            description: Approximate line number
+          description:
+            type: string
+            description: Description of the N+1 pattern
+          suggestion:
+            type: string
+            description: How to fix the pattern
+          severity:
+            type: string
+            enum: [low, medium, high]
+            description: Severity of the performance issue
+    recommendations:
+      type: array
+      items:
+        type: string
+      description: General recommendations for Prisma usage optimization
+
+handler:
+  type: native
+  module: framework
+  function: handleGetPrismaOperations
+
+examples:
+  - description: "Analyze Prisma operations with N+1 detection"
+    input:
+      path: "src"
+      include_n1_detection: true
+    output:
+      operations:
+        - file: "src/services/user.service.ts"
+          line: 15
+          model: "User"
+          operation: "findMany"
+          includes_relation: false
+          code_snippet: "const users = await prisma.user.findMany();"
+        - file: "src/services/user.service.ts"
+          line: 17
+          model: "Post"
+          operation: "findMany"
+          includes_relation: false
+          code_snippet: "const posts = await prisma.post.findMany({ where: { authorId: user.id } });"
+        - file: "src/api/posts.ts"
+          line: 23
+          model: "Post"
+          operation: "findMany"
+          includes_relation: true
+          code_snippet: "prisma.post.findMany({ include: { author: true } })"
+      models_used:
+        - name: "User"
+          operations: 5
+        - name: "Post"
+          operations: 8
+        - name: "Comment"
+          operations: 3
+      n1_patterns:
+        - file: "src/services/user.service.ts"
+          line: 15
+          description: "Query inside loop: fetching posts for each user separately"
+          suggestion: "Use prisma.user.findMany({ include: { posts: true } }) to fetch users with posts in a single query"
+          severity: "high"
+      recommendations:
+        - "Consider using `include` or `select` to fetch related data in single queries"
+        - "Use prisma.$transaction for multiple related operations"
+        - "Consider connection pooling with PgBouncer for high-traffic applications"
+
+  - description: "Analyze without N+1 detection (faster)"
+    input:
+      path: "src/api"
+      include_n1_detection: false
+    output:
+      operations:
+        - file: "src/api/users.ts"
+          line: 10
+          model: "User"
+          operation: "findUnique"
+          includes_relation: true
+          code_snippet: "prisma.user.findUnique({ where: { id }, include: { profile: true } })"
+      models_used:
+        - name: "User"
+          operations: 3
+      n1_patterns: []
+      recommendations:
+        - "Good use of include to fetch related data"
+        - "Consider using select instead of include if only specific fields are needed"

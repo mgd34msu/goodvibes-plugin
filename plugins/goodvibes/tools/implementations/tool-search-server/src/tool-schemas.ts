@@ -441,6 +441,32 @@ export const TOOL_SCHEMAS = [
       },
     },
   },
+  {
+    name: 'find_dead_code',
+    description: 'Find unused exports and functions in a file or directory. Uses TypeScript Language Service to identify exports that have no external references. Useful for identifying dead code that can be safely removed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File or directory path to analyze (relative to project root)', default: '.' },
+        include_tests: { type: 'boolean', description: 'Count test file references as usage (default: true)', default: true },
+      },
+    },
+  },
+  {
+    name: 'get_api_surface',
+    description: 'Analyze the public vs internal API surface of a module or package. Identifies exports from entry points (index.ts, package.json main) as public API, and other exports as internal. Includes type information for each export.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Directory to analyze (relative to project root)', default: '.' },
+        entry_points: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Entry point files (auto-detect if not provided)',
+        },
+      },
+    },
+  },
   // Error Tools
   {
     name: 'parse_error_stack',
@@ -491,6 +517,30 @@ export const TOOL_SCHEMAS = [
       required: ['file'],
     },
   },
+  {
+    name: 'get_test_coverage',
+    description: 'Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info, coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns uncovered lines and functions for targeted test writing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Specific source file to check coverage for (relative to project root)' },
+        coverage_path: { type: 'string', description: 'Path to coverage report directory or file (defaults to common locations)' },
+      },
+    },
+  },
+  {
+    name: 'suggest_test_cases',
+    description: 'Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test cases with rationale.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Source file containing the function (relative to project root or absolute)' },
+        function: { type: 'string', description: 'Name of the function to analyze' },
+        include_existing: { type: 'boolean', description: 'Include existing tests for context (default true)', default: true },
+      },
+      required: ['file', 'function'],
+    },
+  },
   // Security
   {
     name: 'scan_for_secrets',
@@ -531,6 +581,105 @@ export const TOOL_SCHEMAS = [
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Project root path to analyze', default: '.' },
+      },
+    },
+  },
+  {
+    name: 'get_conventions',
+    description: 'LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses Claude to synthesize findings into actionable convention guidelines.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Directory to analyze (relative to project root)', default: '.' },
+        focus: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['naming', 'imports', 'structure', 'testing', 'error-handling'],
+          },
+          description: 'Specific areas to focus analysis on. If empty, analyzes all areas.',
+          default: [],
+        },
+      },
+    },
+  },
+  // LLM-Powered LSP Tools
+  {
+    name: 'detect_breaking_changes',
+    description: 'LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and uses Claude to identify: function signature changes, interface/type property changes, exported symbol removals, and visibility changes. Returns breaking and non-breaking changes with migration guidance.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        before_ref: { type: 'string', description: 'Git ref to compare from (e.g., HEAD~1, commit hash, branch name)' },
+        after_ref: { type: 'string', description: 'Git ref to compare to', default: 'HEAD' },
+        path: { type: 'string', description: 'Optional path filter to limit analysis to specific files/directories' },
+      },
+      required: ['before_ref'],
+    },
+  },
+  {
+    name: 'semantic_diff',
+    description: 'LLM-powered type-aware diff with semantic impact explanation. Goes beyond text-based diff to understand what semantically changed, impact on type safety and API contracts, which callers might be affected, and risk level of each change. Uses Claude for deep analysis.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        before_ref: { type: 'string', description: 'Git ref to compare from (e.g., HEAD~1, commit hash, branch name)' },
+        after_ref: { type: 'string', description: 'Git ref to compare to', default: 'HEAD' },
+        file: { type: 'string', description: 'Optional specific file to analyze (if not provided, analyzes all changed files)' },
+      },
+      required: ['before_ref'],
+    },
+  },
+  // Framework Tools
+  {
+    name: 'get_react_component_tree',
+    description: 'Parse JSX/TSX files and build a component hierarchy tree. Uses static AST analysis to find component definitions and usages, extract props, and build parent-child relationships. Useful for understanding React component architecture.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Specific component file to analyze (relative to project root)' },
+        path: { type: 'string', description: 'Directory to analyze for components', default: 'src' },
+        root_component: { type: 'string', description: 'Start analysis from a specific component name' },
+        depth: { type: 'integer', description: 'Maximum depth to traverse in component tree', default: 5 },
+      },
+    },
+  },
+  {
+    name: 'get_prisma_operations',
+    description: 'Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation() calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Directory to analyze for Prisma operations', default: 'src' },
+        include_n1_detection: { type: 'boolean', description: 'Run N+1 pattern detection', default: true },
+      },
+    },
+  },
+  // Build Analysis Tools
+  {
+    name: 'analyze_bundle',
+    description: 'Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/ directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and optimization recommendations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Build output directory (auto-detects dist/, .next/, build/ if not specified)' },
+        format: {
+          type: 'string',
+          enum: ['summary', 'detailed'],
+          description: 'Output format - summary shows top chunks, detailed shows all',
+          default: 'summary',
+        },
+      },
+    },
+  },
+  {
+    name: 'check_permissions',
+    description: 'Analyze file, network, and system access patterns in code. Scans for fs, net, child_process, http(s) imports and usages. Categorizes findings by type (filesystem, network, process, crypto) and risk level.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Specific file to analyze (optional)' },
+        path: { type: 'string', description: 'Directory to scan (defaults to current directory)', default: '.' },
       },
     },
   },
