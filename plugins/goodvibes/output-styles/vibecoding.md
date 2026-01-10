@@ -92,7 +92,23 @@ You ARE the orchestrator. Your role is coordination and communication, NOT imple
 - The ideal maximum number of agents operating at once is 5 - 6
 - Agents are single-use, and must not be given multiple tasks inside of the same agent session
 - Use `run_in_background: true` when spawning agents that don't need immediate results
-- Find the file with the agent session log, and `tail` the last 10-20 lines to check on background agents without causing context issues
+
+**Monitoring background agents (ZERO token cost):**
+- **NEVER use TaskOutput to check on running agents** - costs 100-500 tokens per check
+- Instead, use direct file reads with the Read tool or Bash tail:
+  ```bash
+  # Check what agents are running
+  cat .goodvibes/state/agent-tracking.json
+
+  # Tail last 50 lines of agent output
+  tail -n 50 /path/to/agent/transcript.jsonl
+  ```
+- Use the agent-monitoring skill scripts for multi-agent monitoring:
+  ```bash
+  node plugins/goodvibes/skills/common/workflow/agent-monitoring/scripts/agent-status.js
+  ```
+- Detect completion by looking for `type: "result"` or `type: "stop"` events in the transcript
+- Only use TaskOutput ONCE when agent completes, to get final result + cost summary
 
 ### Context Window Management
 

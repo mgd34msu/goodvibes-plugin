@@ -42,6 +42,10 @@ export type { CheckVersionsArgs } from './npm.js';
 export { handleFetchDocs, getCommonApiReferences } from './docs.js';
 export type { FetchDocsArgs } from './docs.js';
 
+// Docs Tools (OpenAPI generation, Codebase Explanation)
+export { handleGenerateOpenApi, handleExplainCodebase } from './docs/index.js';
+export type { GenerateOpenApiArgs, ExplainCodebaseArgs } from './docs/index.js';
+
 // Schema
 export { handleGetSchema, handleGetDatabaseSchema } from './schema.js';
 export type { GetSchemaArgs, GetDatabaseSchemaArgs } from './schema.js';
@@ -143,3 +147,151 @@ export type { GetReactComponentTreeArgs, GetPrismaOperationsArgs } from './frame
 // Build Tools
 export { handleAnalyzeBundle } from './build/index.js';
 export type { AnalyzeBundleArgs } from './build/index.js';
+
+// Process Management
+export {
+  handleStartDevServer,
+  getSpawnedProcesses,
+  killProcess,
+  killAllProcesses,
+  handleWatchForErrors,
+  handleHealthMonitor,
+} from './process/index.js';
+export type {
+  StartDevServerArgs,
+  StartDevServerResult,
+  ServerStatus,
+  WatchForErrorsArgs,
+  WatchForErrorsResult,
+  DetectedError,
+  DetectedWarning,
+  SourceInfo,
+  ErrorType,
+  HealthMonitorArgs,
+} from './process/index.js';
+
+// Runtime Tools (Browser Automation, Verification, Lighthouse)
+export {
+  handleBrowserAutomation,
+  handleVerifyRuntimeBehavior,
+  handleLighthouseAudit,
+  handleVisualRegression,
+} from './runtime/index.js';
+export type {
+  BrowserAutomationArgs,
+  BrowserAutomationResult,
+  BrowserStep,
+  BrowserAssertion,
+  StepResult,
+  Viewport,
+  ScrollPosition,
+  VerifyRuntimeBehaviorArgs,
+  LighthouseAuditArgs,
+  LighthouseCategory,
+  DeviceType,
+  VisualRegressionArgs,
+  VisualRegressionResult,
+} from './runtime/index.js';
+
+// Edit Tools (Retry with Learning, Conflict Resolution, Atomic Edits)
+export {
+  handleRetryWithLearning,
+  handleResolveMergeConflict,
+  handleAtomicMultiEdit,
+  handleAutoRollback,
+  handleValidateApiContract,
+} from './edit/index.js';
+export type {
+  RetryWithLearningArgs,
+  RetryWithLearningResult,
+  AttemptInfo,
+  FixStrategy,
+  ResolveMergeConflictArgs,
+  AtomicMultiEditArgs,
+  AtomicMultiEditResult,
+  EditOperation,
+  ValidationOptions,
+  AutoRollbackArgs,
+  AutoRollbackResult,
+  RollbackTrigger,
+  ValidateApiContractArgs,
+} from './edit/index.js';
+
+// Analysis Tools (Function Profiling, Log Analysis, Memory Leak Detection)
+export {
+  handleProfileFunction,
+  handleLogAnalyzer,
+  handleGenerateTypes,
+  handleIdentifyTechDebt,
+  handleDetectMemoryLeaks,
+} from './analysis/index.js';
+export type {
+  ProfileFunctionArgs,
+  ProfileFunctionResult,
+  TimingStats,
+  MemoryStats,
+  LogAnalyzerArgs,
+  LogAnalyzerResult,
+  GenerateTypesArgs,
+  GenerateTypesResult,
+  IdentifyTechDebtArgs,
+  TechDebtCategory,
+  TechDebtGrade,
+  IssueSeverity,
+  EffortEstimate,
+  DetectMemoryLeaksArgs,
+  DetectMemoryLeaksResult,
+  MemorySnapshot,
+  MemoryAnalysis,
+  LinearRegressionResult,
+  LeakSuspect,
+} from './analysis/index.js';
+
+// Database Tools
+export { handleQueryDatabase } from './database/index.js';
+export type { QueryDatabaseArgs, QueryDatabaseResult, ColumnInfo, DatabaseType } from './database/index.js';
+
+// Environment Validation
+export { handleValidateEnvComplete } from './env/index.js';
+export type { ValidateEnvCompleteArgs } from './env/index.js';
+
+// Package Management
+export { handleUpgradePackage } from './package/index.js';
+export type { UpgradePackageArgs } from './package/index.js';
+
+// Sync Tools
+export { handleSyncApiTypes } from './sync/index.js';
+export type {
+  SyncApiTypesArgs,
+  SyncApiTypesResult,
+  BackendRoute,
+  FrontendCall,
+  TypeDrift,
+  SyncSummary,
+} from './sync/index.js';
+
+// Fixture Generation
+export { handleGenerateFixture } from './fixtures/index.js';
+export type { GenerateFixtureArgs, GenerateFixtureResult } from './fixtures/index.js';
+
+// Git Tools
+export { handleCreatePullRequest } from './git/index.js';
+export type { CreatePullRequestArgs, CreatePullRequestResult } from './git/index.js';
+
+// Frontend Analysis Tools
+export {
+  handleTraceComponentState,
+  handleAnalyzeRenderTriggers,
+  handleAnalyzeResponsiveBreakpoints,
+  handleAnalyzeStackingContext,
+  handleAnalyzeLayoutHierarchy,
+  handleDiagnoseOverflow,
+} from './frontend/index.js';
+export type {
+  TraceComponentStateArgs,
+  AnalyzeRenderTriggersArgs,
+  AnalyzeResponsiveBreakpointsArgs,
+  AnalyzeStackingContextArgs,
+  AnalyzeLayoutHierarchyArgs,
+  DiagnoseOverflowArgs,
+} from './frontend/index.js';

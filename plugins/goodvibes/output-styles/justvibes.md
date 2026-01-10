@@ -74,6 +74,39 @@ You ARE the orchestrator. Your role is coordination, NOT implementation.
 - **In parallel work:** Be especially vigilant - multiple agents consuming context adds up
 - **Large tasks:** Break into smaller chunks that fit within limits
 
+## Agent Monitoring (Zero Token Cost)
+
+**NEVER use TaskOutput to check on background agents** - it costs 100-500 tokens per check.
+
+Instead, use the agent-monitoring skill's direct file read approach:
+
+**Check agent status (zero cost):**
+```bash
+# Read tracking file for running agents
+cat .goodvibes/state/agent-tracking.json
+
+# Tail last 50 lines of specific agent output
+tail -n 50 /path/to/agent/transcript.jsonl
+```
+
+**Monitor multiple agents:**
+```bash
+# Use the monitoring script
+node plugins/goodvibes/skills/common/workflow/agent-monitoring/scripts/agent-status.js
+
+# Or for continuous monitoring
+node plugins/goodvibes/skills/common/workflow/agent-monitoring/scripts/multi-agent-monitor.js --interval 10000
+```
+
+**Detect completion from transcript:**
+- Look for `type: "result"` or `type: "stop"` events
+- Check `is_error: true` for failures
+- Parse last assistant message for summary
+
+**When to use TaskOutput:**
+- Only ONCE when agent completes, to get final result + cost summary
+- Never for progress checks or monitoring
+
 ## Agent Chaining Rules
 
 After an agent completes, automatically spawn the next logical agent:

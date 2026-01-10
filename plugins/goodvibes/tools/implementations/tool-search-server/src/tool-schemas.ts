@@ -144,6 +144,27 @@ export const TOOL_SCHEMAS = [
     },
   },
   {
+    name: 'generate_openapi',
+    description: 'Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and generates examples.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        output_path: { type: 'string', description: 'Output file path (default: "openapi.json")', default: 'openapi.json' },
+        title: { type: 'string', description: 'API title (default: from package.json name)' },
+        version: { type: 'string', description: 'API version (default: from package.json version)' },
+        description: { type: 'string', description: 'API description' },
+        server_url: { type: 'string', description: 'Base server URL (e.g., "https://api.example.com")' },
+        include_examples: { type: 'boolean', description: 'Generate examples from types (default: true)', default: true },
+        format: {
+          type: 'string',
+          enum: ['json', 'yaml'],
+          description: 'Output format (default: "json")',
+          default: 'json',
+        },
+      },
+    },
+  },
+  {
     name: 'get_schema',
     description: 'Introspect database schema',
     inputSchema: {
@@ -749,6 +770,19 @@ export const TOOL_SCHEMAS = [
       },
     },
   },
+  // Frontend Analysis Tools
+  {
+    name: 'analyze_stacking_context',
+    description: 'Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn\'t my z-index working" issues.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte' },
+        include_portals: { type: 'boolean', description: 'Look for portal destinations (createPortal, Teleport, etc.)', default: true },
+      },
+      required: ['file'],
+    },
+  },
   // Build Analysis Tools
   {
     name: 'analyze_bundle',
@@ -800,6 +834,413 @@ export const TOOL_SCHEMAS = [
         },
       },
       required: ['edits'],
+    },
+  },
+  // Memory Leak Detection
+  {
+    name: 'detect_memory_leaks',
+    description: 'Monitor process memory usage over time to detect potential memory leaks. Takes periodic snapshots, performs trend analysis with linear regression, and identifies consistent memory growth patterns. Supports monitoring existing processes by PID or spawning a new command.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        target: {
+          type: 'string',
+          enum: ['pid', 'command'],
+          description: 'Target type: "pid" to monitor existing process, "command" to spawn and monitor new process',
+        },
+        pid: {
+          type: 'integer',
+          description: 'Process ID to monitor (required when target is "pid")',
+        },
+        command: {
+          type: 'string',
+          description: 'Command to spawn and monitor (e.g., "npm run dev") - required when target is "command"',
+        },
+        duration_seconds: {
+          type: 'integer',
+          description: 'How long to monitor in seconds (default: 30, max: 600)',
+          default: 30,
+        },
+        snapshot_interval_ms: {
+          type: 'integer',
+          description: 'Time between memory measurements in milliseconds (default: 5000)',
+          default: 5000,
+        },
+        threshold_mb: {
+          type: 'integer',
+          description: 'Minimum memory growth in MB to flag as potential leak (default: 10)',
+          default: 10,
+        },
+        cwd: {
+          type: 'string',
+          description: 'Working directory for command execution (default: project root)',
+        },
+      },
+      required: ['target'],
+    },
+  },
+  // Database Query
+  {
+    name: 'query_database',
+    description: 'Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'SQL query to execute',
+        },
+        database_url: {
+          type: 'string',
+          description: 'Database connection URL (postgresql://, mysql://, sqlite:///). Falls back to DATABASE_URL env var if not provided.',
+        },
+        readonly: {
+          type: 'boolean',
+          description: 'If true (default), reject INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/TRUNCATE queries',
+          default: true,
+        },
+        limit: {
+          type: 'integer',
+          description: 'Auto-add LIMIT to SELECT queries if not present (default: 100, set to 0 to disable)',
+          default: 100,
+        },
+        format: {
+          type: 'string',
+          enum: ['json', 'table'],
+          description: 'Output format: json (structured result object) or table (ASCII table)',
+          default: 'json',
+        },
+        explain: {
+          type: 'boolean',
+          description: 'Prepend EXPLAIN to query and include execution plan in output',
+          default: false,
+        },
+      },
+      required: ['query'],
+    },
+  },
+  // Environment Validation
+  {
+    name: 'validate_env_complete',
+    description: 'Validate environment variables are complete and documented. Compares .env against .env.example and code usage to identify missing, unused, and undocumented variables. Optionally validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        env_file: {
+          type: 'string',
+          description: 'Path to the .env file (default: ".env")',
+          default: '.env',
+        },
+        example_file: {
+          type: 'string',
+          description: 'Path to the .env.example file (default: ".env.example")',
+          default: '.env.example',
+        },
+        ignore: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Variable names to ignore during validation',
+        },
+        check_values: {
+          type: 'boolean',
+          description: 'Validate value formats based on variable naming (e.g., PORT should be numeric)',
+          default: false,
+        },
+      },
+    },
+  },
+  // Package Management
+  {
+    name: 'upgrade_package',
+    description: 'Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes, checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe preview before making changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        package: {
+          type: 'string',
+          description: 'Name of the npm package to upgrade',
+        },
+        target_version: {
+          type: 'string',
+          description: 'Target version to upgrade to (default: "latest")',
+          default: 'latest',
+        },
+        include_changelog: {
+          type: 'boolean',
+          description: 'Fetch and analyze release notes for breaking changes (default: true)',
+          default: true,
+        },
+        dry_run: {
+          type: 'boolean',
+          description: 'Preview only, do not actually upgrade (default: true)',
+          default: true,
+        },
+        run_tests_after: {
+          type: 'boolean',
+          description: 'Run tests after upgrade to verify compatibility (default: false)',
+          default: false,
+        },
+        path: {
+          type: 'string',
+          description: 'Project root path (defaults to current directory)',
+        },
+      },
+      required: ['package'],
+    },
+  },
+  // API Type Sync
+  {
+    name: 'sync_api_types',
+    description: 'Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that don\'t exist.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        backend_path: {
+          type: 'string',
+          description: 'Path to backend API routes (default: auto-detect from src/app/api, pages/api, src/routes)',
+        },
+        frontend_path: {
+          type: 'string',
+          description: 'Path to frontend source files',
+          default: 'src',
+        },
+        api_pattern: {
+          type: 'string',
+          description: 'Regex pattern to identify API call sites',
+          default: 'fetch|axios|api\\.',
+        },
+        auto_fix: {
+          type: 'boolean',
+          description: 'Generate fix suggestions for drifts',
+          default: false,
+        },
+      },
+    },
+  },
+  // Fixture Generation
+  {
+    name: 'generate_fixture',
+    description: 'Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript constants, and Prisma seed scripts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        model: {
+          type: 'string',
+          description: 'Prisma model name or TypeScript type name to generate fixtures for',
+        },
+        schema_path: {
+          type: 'string',
+          description: 'Path to schema file (default: auto-detect prisma/schema.prisma)',
+        },
+        count: {
+          type: 'integer',
+          description: 'Number of fixtures to generate (default: 1, max: 100)',
+          default: 1,
+        },
+        overrides: {
+          type: 'object',
+          description: 'Specific values to use for fields, overriding generated values',
+          additionalProperties: true,
+        },
+        with_relations: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Include related models in fixtures (specify relation field names)',
+        },
+        scenario: {
+          type: 'string',
+          enum: ['empty', 'minimal', 'realistic', 'edge_cases'],
+          description: 'Data style: empty (minimal required), minimal (required + few optional), realistic (all fields with realistic data), edge_cases (boundary values, special chars)',
+          default: 'realistic',
+        },
+        output_format: {
+          type: 'string',
+          enum: ['json', 'typescript', 'prisma_seed'],
+          description: 'Output format: json (raw array), typescript (typed const), prisma_seed (seed script)',
+          default: 'json',
+        },
+      },
+      required: ['model'],
+    },
+  },
+  // Codebase Documentation
+  {
+    name: 'explain_codebase',
+    description: 'Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams, key files, entry points, and potential concerns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Directory to analyze (defaults to project root)',
+          default: '.',
+        },
+        depth: {
+          type: 'string',
+          enum: ['shallow', 'medium', 'deep'],
+          description: 'Analysis depth: shallow (fast overview), medium (default, balanced), deep (thorough analysis)',
+          default: 'medium',
+        },
+        focus: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Specific areas to detail (e.g., ["auth", "api", "database"])',
+        },
+        refresh: {
+          type: 'boolean',
+          description: 'Regenerate even if cached (default: false)',
+          default: false,
+        },
+        include_architecture: {
+          type: 'boolean',
+          description: 'Generate ASCII architecture diagram (default: true)',
+          default: true,
+        },
+      },
+    },
+  },
+  // Git Tools
+  {
+    name: 'create_pull_request',
+    description: 'Create a GitHub pull request with auto-generated descriptions. Analyzes git changes, generates title and description using LLM, pushes branch if needed, and creates PR via gh CLI. Supports draft PRs, labels, and reviewer assignment.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        base: {
+          type: 'string',
+          description: 'Base branch for the PR (default: auto-detect, usually "main")',
+        },
+        title: {
+          type: 'string',
+          description: 'PR title (auto-generated from branch name or commits if not provided)',
+        },
+        body: {
+          type: 'string',
+          description: 'PR body/description (auto-generated using LLM if not provided)',
+        },
+        draft: {
+          type: 'boolean',
+          description: 'Create as draft PR (default: false)',
+          default: false,
+        },
+        labels: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Labels to add to the PR (e.g., ["bug", "enhancement"])',
+        },
+        reviewers: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'GitHub usernames to request as reviewers',
+        },
+        auto_description: {
+          type: 'boolean',
+          description: 'Use LLM to generate PR description (default: true)',
+          default: true,
+        },
+      },
+    },
+  },
+  // Frontend Analysis Tools
+  {
+    name: 'analyze_responsive_breakpoints',
+    description: 'Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive design issues like desktop-first patterns or missing base styles.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'File path to analyze (supports .tsx, .jsx, .vue, .svelte)',
+        },
+        element: {
+          type: 'string',
+          description: 'Optional: specific element to analyze (e.g., "div" or "Button#3"). If not provided, analyzes all elements.',
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'trace_component_state',
+    description: 'Trace React state and props through component trees. Analyzes useState, useReducer, useRef, useContext, and effect hooks. Detects prop drilling, callback instability, missing memoization, and other common React anti-patterns. Returns detailed state flow analysis including which state is used in JSX and passed to children.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'File path to analyze (relative to project root or absolute). Must be a React component file (.tsx, .jsx)',
+        },
+        include_children: {
+          type: 'boolean',
+          description: 'Analyze imported child components (default: false)',
+          default: false,
+        },
+        depth: {
+          type: 'integer',
+          description: 'How deep to trace child components when include_children is true (default: 2)',
+          default: 2,
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'analyze_render_triggers',
+    description: 'Analyze what causes a React component to re-render. Identifies memoization status (React.memo, PureComponent, shouldComponentUpdate), inline definitions creating unstable references (objects, arrays, functions, JSX), expensive computations not wrapped in useMemo, context subscriptions and their granularity, and provides prioritized optimization suggestions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Path to the React component file to analyze (relative to project root or absolute)',
+        },
+        include_children: {
+          type: 'boolean',
+          description: 'Analyze child component memoization and prop stability (default: false)',
+          default: false,
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'analyze_layout_hierarchy',
+    description: 'Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree with sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning. Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers with auto-height children, nested flex without sizing, percentage height without parent height, etc.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.',
+        },
+        selector: {
+          type: 'string',
+          description: 'Optional: Focus on specific element by class (.class-name) or id (#element-id). If omitted, analyzes entire component tree.',
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'diagnose_overflow',
+    description: 'Diagnose CSS overflow issues and recommend fixes. Analyzes layout hierarchy to identify overflow-prone patterns such as fixed-height containers with auto-height children, flex containers without overflow handling, nested percentage heights, absolute positioning without containment, and missing min-h-0 in nested flex. Returns actionable fix options with Tailwind CSS classes and trade-off explanations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Component file path to analyze (relative to project root or absolute). Supports .tsx and .jsx files.',
+        },
+        problem_description: {
+          type: 'string',
+          description: 'Optional: Description of the overflow problem (e.g., "content overflowing container", "scroll not working"). Helps contextualize the diagnosis.',
+        },
+        element_hint: {
+          type: 'string',
+          description: 'Optional: Class name or selector to focus analysis on. Builds a constraint chain showing how layout constraints propagate to this element.',
+        },
+      },
+      required: ['file'],
     },
   },
 ];

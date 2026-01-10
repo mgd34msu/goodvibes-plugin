@@ -55,6 +55,10 @@ import {
   handleCheckVersions,
   // Docs
   handleFetchDocs,
+  // OpenAPI Generation
+  handleGenerateOpenApi,
+  // Codebase Explanation
+  handleExplainCodebase,
   // Schema
   handleGetSchema,
   handleGetDatabaseSchema,
@@ -115,10 +119,52 @@ import {
   // Framework Tools
   handleGetReactComponentTree,
   handleGetPrismaOperations,
+  // Process Management
+  handleStartDevServer,
+  handleWatchForErrors,
+  handleHealthMonitor,
+  // Runtime Tools
+  handleBrowserAutomation,
+  handleVerifyRuntimeBehavior,
+  handleLighthouseAudit,
+  handleVisualRegression,
+  // Edit Tools
+  handleRetryWithLearning,
+  handleResolveMergeConflict,
+  handleAtomicMultiEdit,
+  handleAutoRollback,
+  handleValidateApiContract,
+  // Analysis Tools
+  handleProfileFunction,
+  handleLogAnalyzer,
+  handleGenerateTypes,
+  handleIdentifyTechDebt,
+  handleDetectMemoryLeaks,
+  // Database Tools
+  handleQueryDatabase,
+  // Environment Validation
+  handleValidateEnvComplete,
+  // Package Management
+  handleUpgradePackage,
+  // Sync Tools
+  handleSyncApiTypes,
+  // Fixture Generation
+  handleGenerateFixture,
+  // Git Tools
+  handleCreatePullRequest,
+  // Frontend Analysis Tools
+  handleTraceComponentState,
+  handleAnalyzeResponsiveBreakpoints,
+  handleAnalyzeStackingContext,
+  handleDiagnoseOverflow,
+  handleAnalyzeRenderTriggers,
+  handleAnalyzeLayoutHierarchy,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
   type FetchDocsArgs,
+  type GenerateOpenApiArgs,
+  type ExplainCodebaseArgs,
   type GetSchemaArgs,
   type GetDatabaseSchemaArgs,
   type GetApiRoutesArgs,
@@ -163,6 +209,42 @@ import {
   type GetConventionsArgs,
   type GetReactComponentTreeArgs,
   type GetPrismaOperationsArgs,
+  type StartDevServerArgs,
+  type WatchForErrorsArgs,
+  type HealthMonitorArgs,
+  type BrowserAutomationArgs,
+  type VerifyRuntimeBehaviorArgs,
+  type LighthouseAuditArgs,
+  type VisualRegressionArgs,
+  type RetryWithLearningArgs,
+  type ResolveMergeConflictArgs,
+  type AtomicMultiEditArgs,
+  type AutoRollbackArgs,
+  type ValidateApiContractArgs,
+  type ProfileFunctionArgs,
+  type LogAnalyzerArgs,
+  type GenerateTypesArgs,
+  type IdentifyTechDebtArgs,
+  type DetectMemoryLeaksArgs,
+  // Database Tools
+  type QueryDatabaseArgs,
+  // Environment Validation
+  type ValidateEnvCompleteArgs,
+  // Package Management
+  type UpgradePackageArgs,
+  // Sync Tools
+  type SyncApiTypesArgs,
+  // Fixture Generation
+  type GenerateFixtureArgs,
+  // Git Tools
+  type CreatePullRequestArgs,
+  // Frontend Analysis Tools
+  type TraceComponentStateArgs,
+  type AnalyzeResponsiveBreakpointsArgs,
+  type AnalyzeStackingContextArgs,
+  type AnalyzeLayoutHierarchyArgs,
+  type AnalyzeRenderTriggersArgs,
+  type DiagnoseOverflowArgs,
 } from "./handlers/index.js";
 
 /**
@@ -180,6 +262,8 @@ type ToolArgs =
   | CheckVersionsArgs
   | ScanPatternsArgs
   | FetchDocsArgs
+  | GenerateOpenApiArgs
+  | ExplainCodebaseArgs
   | GetSchemaArgs
   | GetDatabaseSchemaArgs
   | GetApiRoutesArgs
@@ -224,6 +308,35 @@ type ToolArgs =
   | ParseErrorStackArgs
   | GetReactComponentTreeArgs
   | GetPrismaOperationsArgs
+  | StartDevServerArgs
+  | WatchForErrorsArgs
+  | HealthMonitorArgs
+  | BrowserAutomationArgs
+  | VerifyRuntimeBehaviorArgs
+  | LighthouseAuditArgs
+  | VisualRegressionArgs
+  | RetryWithLearningArgs
+  | ResolveMergeConflictArgs
+  | AtomicMultiEditArgs
+  | AutoRollbackArgs
+  | ValidateApiContractArgs
+  | ProfileFunctionArgs
+  | LogAnalyzerArgs
+  | GenerateTypesArgs
+  | IdentifyTechDebtArgs
+  | DetectMemoryLeaksArgs
+  | QueryDatabaseArgs
+  | ValidateEnvCompleteArgs
+  | UpgradePackageArgs
+  | SyncApiTypesArgs
+  | GenerateFixtureArgs
+  | CreatePullRequestArgs
+  | TraceComponentStateArgs
+  | AnalyzeResponsiveBreakpointsArgs
+  | AnalyzeStackingContextArgs
+  | AnalyzeRenderTriggersArgs
+  | DiagnoseOverflowArgs
+  | AnalyzeLayoutHierarchyArgs
   | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
@@ -287,6 +400,10 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
 
   // Live data
   fetch_docs: (_ctx, args) => handleFetchDocs(args as FetchDocsArgs),
+  generate_openapi: (_ctx, args) =>
+    handleGenerateOpenApi(args as GenerateOpenApiArgs),
+  explain_codebase: (_ctx, args) =>
+    handleExplainCodebase(args as ExplainCodebaseArgs),
   get_schema: (_ctx, args) => handleGetSchema(args as GetSchemaArgs),
   get_database_schema: (_ctx, args) =>
     handleGetDatabaseSchema(args as GetDatabaseSchemaArgs),
@@ -396,6 +513,88 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleGetReactComponentTree(args as GetReactComponentTreeArgs),
   get_prisma_operations: (_ctx, args) =>
     handleGetPrismaOperations(args as GetPrismaOperationsArgs),
+
+  // Process Management
+  start_dev_server: (_ctx, args) =>
+    handleStartDevServer(args as StartDevServerArgs),
+  watch_for_errors: (_ctx, args) =>
+    handleWatchForErrors(args as WatchForErrorsArgs),
+  health_monitor: (_ctx, args) =>
+    handleHealthMonitor(args as HealthMonitorArgs),
+
+  // Runtime Tools
+  browser_automation: (_ctx, args) =>
+    handleBrowserAutomation(args as BrowserAutomationArgs),
+  verify_runtime_behavior: (_ctx, args) =>
+    handleVerifyRuntimeBehavior(args as VerifyRuntimeBehaviorArgs),
+  lighthouse_audit: (_ctx, args) =>
+    handleLighthouseAudit(args as LighthouseAuditArgs),
+  visual_regression: (_ctx, args) =>
+    handleVisualRegression(args as VisualRegressionArgs),
+
+  // Edit Tools
+  retry_with_learning: (_ctx, args) =>
+    handleRetryWithLearning(args as RetryWithLearningArgs),
+  resolve_merge_conflict: (_ctx, args) =>
+    handleResolveMergeConflict(args as ResolveMergeConflictArgs),
+  atomic_multi_edit: (_ctx, args) =>
+    handleAtomicMultiEdit(args as AtomicMultiEditArgs),
+  auto_rollback: (_ctx, args) =>
+    handleAutoRollback(args as AutoRollbackArgs),
+
+  // API Contract Validation
+  validate_api_contract: (_ctx, args) =>
+    handleValidateApiContract(args as ValidateApiContractArgs),
+
+  // Analysis Tools
+  profile_function: (_ctx, args) =>
+    handleProfileFunction(args as ProfileFunctionArgs),
+  log_analyzer: (_ctx, args) =>
+    handleLogAnalyzer(args as LogAnalyzerArgs),
+  generate_types: (_ctx, args) =>
+    handleGenerateTypes(args as GenerateTypesArgs),
+  identify_tech_debt: (_ctx, args) =>
+    handleIdentifyTechDebt(args as IdentifyTechDebtArgs),
+  detect_memory_leaks: (_ctx, args) =>
+    handleDetectMemoryLeaks(args as DetectMemoryLeaksArgs),
+
+  // Database Tools
+  query_database: (_ctx, args) =>
+    handleQueryDatabase(args as QueryDatabaseArgs),
+
+  // Environment Validation
+  validate_env_complete: (_ctx, args) =>
+    handleValidateEnvComplete(args as ValidateEnvCompleteArgs),
+
+  // Package Management
+  upgrade_package: (_ctx, args) =>
+    handleUpgradePackage(args as UpgradePackageArgs),
+
+  // Fixture Generation
+  generate_fixture: (_ctx, args) =>
+    handleGenerateFixture(args as GenerateFixtureArgs),
+
+  // Sync Tools
+  sync_api_types: (_ctx, args) =>
+    handleSyncApiTypes(args as SyncApiTypesArgs),
+
+  // Git Tools
+  create_pull_request: (_ctx, args) =>
+    handleCreatePullRequest(args as CreatePullRequestArgs),
+
+  // Frontend Analysis Tools
+  trace_component_state: (_ctx, args) =>
+    handleTraceComponentState(args as TraceComponentStateArgs),
+  analyze_responsive_breakpoints: (_ctx, args) =>
+    handleAnalyzeResponsiveBreakpoints(args as AnalyzeResponsiveBreakpointsArgs),
+  analyze_stacking_context: (_ctx, args) =>
+    handleAnalyzeStackingContext(args as AnalyzeStackingContextArgs),
+  analyze_render_triggers: (_ctx, args) =>
+    handleAnalyzeRenderTriggers(args as AnalyzeRenderTriggersArgs),
+  diagnose_overflow: (_ctx, args) =>
+    handleDiagnoseOverflow(args as DiagnoseOverflowArgs),
+  analyze_layout_hierarchy: (_ctx, args) =>
+    handleAnalyzeLayoutHierarchy(args as AnalyzeLayoutHierarchyArgs),
 };
 
 /**
