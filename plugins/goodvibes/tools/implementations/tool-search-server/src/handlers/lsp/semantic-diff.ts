@@ -430,11 +430,16 @@ Risk level guidelines:
 Focus on what matters to developers consuming this code. Be specific about behavioral changes, not just structural ones.`;
 
   return new Promise((resolve, reject) => {
-    const claudeProcess = spawn('claude', ['--print', '--model', model, '-p', prompt], {
+    // Use stdin to pass prompt (avoids shell length limits with large diffs)
+    const claudeProcess = spawn('claude', ['--print', '--model', model, '-p', '-'], {
       cwd: PROJECT_ROOT,
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
+
+    // Write prompt to stdin
+    claudeProcess.stdin.write(prompt);
+    claudeProcess.stdin.end();
 
     let stdout = '';
     let stderr = '';
