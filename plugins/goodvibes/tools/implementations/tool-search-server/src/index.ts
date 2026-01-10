@@ -330,6 +330,8 @@ class GoodVibesServer {
 
     logInfo(`GoodVibes MCP Server v2.1.0 running`, {
       tools: TOOL_SCHEMAS.length,
+      project_root: PROJECT_ROOT,
+      cwd: process.cwd(),
     });
   }
 }
