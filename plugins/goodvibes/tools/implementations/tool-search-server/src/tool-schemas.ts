@@ -348,4 +348,71 @@ export const TOOL_SCHEMAS = [
       required: ['file', 'line', 'column', 'action_title'],
     },
   },
+  {
+    name: 'get_symbol_info',
+    description: 'Get detailed information about a symbol at a given position. Returns type info, documentation, definition location, and modifiers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
+    name: 'get_call_hierarchy',
+    description: 'Get the call hierarchy for a symbol at a given position. Returns incoming calls (who calls this function) and/or outgoing calls (what this function calls). Useful for understanding code flow and impact analysis.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based)' },
+        direction: {
+          type: 'string',
+          enum: ['incoming', 'outgoing', 'both'],
+          description: 'Direction of call hierarchy to retrieve',
+          default: 'both',
+        },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
+    name: 'get_document_symbols',
+    description: 'Get the structural outline of a document (classes, functions, interfaces, etc.). Returns a hierarchical tree of symbols with their positions and kinds. Useful for understanding document structure and navigation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root or absolute)' },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'get_signature_help',
+    description: 'Get signature help at a function call site. Returns function parameter information including types, documentation, and which parameter the cursor is currently on. Useful for understanding function signatures while typing function arguments.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root)' },
+        line: { type: 'integer', description: 'Line number (1-based)' },
+        column: { type: 'integer', description: 'Column number (1-based, should be inside function call parentheses)' },
+      },
+      required: ['file', 'line', 'column'],
+    },
+  },
+  {
+    name: 'get_diagnostics',
+    description: 'Get all TypeScript diagnostics for a file or the entire project. Returns errors, warnings, and optionally suggestions with available quick fixes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path (relative to project root). If not provided, checks all project files.' },
+        include_suggestions: { type: 'boolean', description: 'Include suggestion diagnostics (default: false)', default: false },
+      },
+    },
+  },
 ];

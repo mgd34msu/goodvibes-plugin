@@ -1,0 +1,124 @@
+name: get_signature_help
+version: "1.0.0"
+description: |
+  Get signature help at a function call site.
+  Returns function parameter information including types, documentation, and which
+  parameter the cursor is currently on. Useful for understanding function signatures
+  while typing function arguments.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - signature
+  - parameters
+  - intellisense
+  - completion
+
+mcp:
+  server: goodvibes-tools
+  method: get_signature_help
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: integer
+      description: Line number (1-based)
+    column:
+      type: integer
+      description: Column number (1-based, should be inside function call parentheses)
+  required:
+    - file
+    - line
+    - column
+
+outputSchema:
+  type: object
+  properties:
+    signatures:
+      type: array
+      items:
+        type: object
+        properties:
+          label:
+            type: string
+            description: Full function signature text
+          documentation:
+            type: string
+            description: JSDoc documentation for the function
+          parameters:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Parameter name
+                type:
+                  type: string
+                  description: Parameter type
+                documentation:
+                  type: string
+                  description: JSDoc documentation for the parameter
+          active_parameter:
+            type: integer
+            description: Index of the parameter the cursor is on (0-based)
+    active_signature:
+      type: integer
+      description: Index of the currently active signature (0-based)
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetSignatureHelp
+
+examples:
+  - description: "Get signature help inside a function call"
+    input:
+      file: "src/utils.ts"
+      line: 15
+      column: 25
+    output:
+      signatures:
+        - label: "formatDate(date: Date, format: string): string"
+          documentation: "Formats a date according to the specified format string."
+          parameters:
+            - name: "date"
+              type: "Date"
+              documentation: "The date to format"
+            - name: "format"
+              type: "string"
+              documentation: "The format pattern (e.g., 'YYYY-MM-DD')"
+          active_parameter: 1
+      active_signature: 0
+
+  - description: "Get signature help with overloads"
+    input:
+      file: "src/api.ts"
+      line: 42
+      column: 18
+    output:
+      signatures:
+        - label: "fetch(url: string): Promise<Response>"
+          documentation: "Fetch a resource from a URL."
+          parameters:
+            - name: "url"
+              type: "string"
+              documentation: "The URL to fetch"
+          active_parameter: 0
+        - label: "fetch(url: string, options: RequestInit): Promise<Response>"
+          documentation: "Fetch a resource with options."
+          parameters:
+            - name: "url"
+              type: "string"
+              documentation: "The URL to fetch"
+            - name: "options"
+              type: "RequestInit"
+              documentation: "Request options"
+          active_parameter: 0
+      active_signature: 0

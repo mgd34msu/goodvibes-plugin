@@ -1,0 +1,142 @@
+name: get_document_symbols
+version: "1.0.0"
+description: |
+  Get the structural outline of a document (classes, functions, interfaces, etc.).
+  Returns a hierarchical tree of symbols with their positions and kinds.
+  Useful for understanding document structure and navigation.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - symbols
+  - navigation
+  - outline
+
+mcp:
+  server: goodvibes-tools
+  method: get_document_symbols
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root or absolute)
+  required:
+    - file
+
+outputSchema:
+  type: object
+  properties:
+    symbols:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Symbol name
+          kind:
+            type: string
+            description: Symbol kind (class, function, interface, variable, etc.)
+          line:
+            type: number
+            description: Start line number (1-based)
+          column:
+            type: number
+            description: Start column number (1-based)
+          end_line:
+            type: number
+            description: End line number (1-based)
+          end_column:
+            type: number
+            description: End column number (1-based)
+          children:
+            type: array
+            description: Nested child symbols (recursive structure)
+    file:
+      type: string
+      description: The file path that was analyzed
+    count:
+      type: number
+      description: Total count of top-level symbols
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetDocumentSymbols
+
+examples:
+  - description: "Get symbols from a TypeScript file"
+    input:
+      file: "src/utils.ts"
+    output:
+      symbols:
+        - name: "UserService"
+          kind: "class"
+          line: 5
+          column: 1
+          end_line: 50
+          end_column: 2
+          children:
+            - name: "constructor"
+              kind: "method"
+              line: 8
+              column: 3
+              end_line: 12
+              end_column: 4
+              children: []
+            - name: "getUser"
+              kind: "method"
+              line: 14
+              column: 3
+              end_line: 20
+              end_column: 4
+              children: []
+        - name: "formatDate"
+          kind: "function"
+          line: 52
+          column: 1
+          end_line: 55
+          end_column: 2
+          children: []
+      file: "src/utils.ts"
+      count: 2
+
+  - description: "Get symbols from a React component file"
+    input:
+      file: "src/components/Button.tsx"
+    output:
+      symbols:
+        - name: "ButtonProps"
+          kind: "interface"
+          line: 3
+          column: 1
+          end_line: 8
+          end_column: 2
+          children:
+            - name: "onClick"
+              kind: "property"
+              line: 4
+              column: 3
+              end_line: 4
+              end_column: 30
+              children: []
+            - name: "label"
+              kind: "property"
+              line: 5
+              column: 3
+              end_line: 5
+              end_column: 16
+              children: []
+        - name: "Button"
+          kind: "function"
+          line: 10
+          column: 1
+          end_line: 25
+          end_column: 2
+          children: []
+      file: "src/components/Button.tsx"
+      count: 2

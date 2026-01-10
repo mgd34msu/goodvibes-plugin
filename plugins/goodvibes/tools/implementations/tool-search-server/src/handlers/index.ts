@@ -72,6 +72,11 @@ export {
   handleRenameSymbol,
   handleGetCodeActions,
   handleApplyCodeAction,
+  handleGetCallHierarchy,
+  handleGetSymbolInfo,
+  handleGetSignatureHelp,
+  handleGetDocumentSymbols,
+  handleGetDiagnostics,
 } from './lsp/index.js';
 export type {
   FindReferencesArgs,
@@ -79,4 +84,9 @@ export type {
   RenameSymbolArgs,
   GetCodeActionsArgs,
   ApplyCodeActionArgs,
+  GetCallHierarchyArgs,
+  GetSymbolInfoArgs,
+  GetSignatureHelpArgs,
+  GetDocumentSymbolsArgs,
+  GetDiagnosticsArgs,
 } from './lsp/index.js';

@@ -1,0 +1,162 @@
+name: get_diagnostics
+version: "1.0.0"
+description: |
+  Get all TypeScript diagnostics for a file or the entire project.
+  Returns errors, warnings, and optionally suggestions with available quick fixes.
+  Uses TypeScript Language Service for semantic, syntactic, and suggestion diagnostics.
+
+category: lsp
+tags:
+  - typescript
+  - diagnostics
+  - errors
+  - warnings
+  - type-checking
+
+mcp:
+  server: goodvibes-tools
+  method: get_diagnostics
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "File path (relative to project root). If not provided, checks all project files."
+    include_suggestions:
+      type: boolean
+      description: "Include suggestion diagnostics (default: false)"
+      default: false
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    diagnostics:
+      type: array
+      description: "List of all diagnostics found"
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: "File path (relative to project root)"
+          line:
+            type: integer
+            description: "Line number (1-based)"
+          column:
+            type: integer
+            description: "Column number (1-based)"
+          end_line:
+            type: integer
+            description: "End line number (1-based)"
+          end_column:
+            type: integer
+            description: "End column number (1-based)"
+          message:
+            type: string
+            description: "Diagnostic message"
+          code:
+            type: integer
+            description: "TypeScript error code"
+          category:
+            type: string
+            enum: ["error", "warning", "suggestion", "message"]
+            description: "Diagnostic severity category"
+          source:
+            type: string
+            description: "Source of the diagnostic (e.g., 'typescript')"
+          fixes:
+            type: array
+            description: "Available quick fixes for this diagnostic"
+            items:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: "Human-readable fix description"
+                edits:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      file:
+                        type: string
+                      line:
+                        type: integer
+                      column:
+                        type: integer
+                      end_line:
+                        type: integer
+                      end_column:
+                        type: integer
+                      new_text:
+                        type: string
+    counts:
+      type: object
+      description: "Summary counts by category"
+      properties:
+        errors:
+          type: integer
+        warnings:
+          type: integer
+        suggestions:
+          type: integer
+
+examples:
+  - description: "Get diagnostics for a single file"
+    input:
+      file: "src/components/Button.tsx"
+    output:
+      diagnostics:
+        - file: "src/components/Button.tsx"
+          line: 5
+          column: 10
+          end_line: 5
+          end_column: 18
+          message: "Cannot find name 'useState'."
+          code: 2304
+          category: "error"
+          source: "typescript"
+          fixes:
+            - title: "Add import from 'react'"
+              edits:
+                - file: "src/components/Button.tsx"
+                  line: 1
+                  column: 1
+                  end_line: 1
+                  end_column: 1
+                  new_text: "import { useState } from 'react';\n"
+      counts:
+        errors: 1
+        warnings: 0
+        suggestions: 0
+
+  - description: "Get all project diagnostics including suggestions"
+    input:
+      include_suggestions: true
+    output:
+      diagnostics:
+        - file: "src/utils/helpers.ts"
+          line: 10
+          column: 7
+          end_line: 10
+          end_column: 12
+          message: "'value' is declared but its value is never read."
+          code: 6133
+          category: "suggestion"
+          source: "typescript"
+          fixes:
+            - title: "Remove unused declaration for: 'value'"
+              edits:
+                - file: "src/utils/helpers.ts"
+                  line: 10
+                  column: 1
+                  end_line: 11
+                  end_column: 1
+                  new_text: ""
+      counts:
+        errors: 0
+        warnings: 0
+        suggestions: 1

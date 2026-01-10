@@ -1,0 +1,236 @@
+name: get_call_hierarchy
+version: "1.0.0"
+description: |
+  Get the call hierarchy for a symbol at a given position.
+  Returns incoming calls (who calls this function) and/or outgoing calls (what this function calls).
+  Useful for understanding code flow and impact analysis before refactoring.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - call-hierarchy
+  - navigation
+  - refactoring
+  - impact-analysis
+
+mcp:
+  server: goodvibes-tools
+  method: get_call_hierarchy
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: integer
+      description: Line number (1-based)
+    column:
+      type: integer
+      description: Column number (1-based)
+    direction:
+      type: string
+      enum:
+        - incoming
+        - outgoing
+        - both
+      description: Direction of call hierarchy to retrieve
+      default: both
+  required:
+    - file
+    - line
+    - column
+
+outputSchema:
+  type: object
+  properties:
+    item:
+      type: object
+      description: The symbol at the queried position
+      properties:
+        name:
+          type: string
+          description: Symbol name
+        kind:
+          type: string
+          description: Symbol kind (function, method, etc.)
+        file:
+          type: string
+          description: File path relative to project root
+        line:
+          type: integer
+          description: Line number (1-based)
+        column:
+          type: integer
+          description: Column number (1-based)
+    incoming:
+      type: array
+      description: Functions/methods that call this symbol
+      items:
+        type: object
+        properties:
+          from:
+            type: object
+            description: The calling function/method
+            properties:
+              name:
+                type: string
+              kind:
+                type: string
+              file:
+                type: string
+              line:
+                type: integer
+              column:
+                type: integer
+          call_sites:
+            type: array
+            description: Locations where the call occurs
+            items:
+              type: object
+              properties:
+                line:
+                  type: integer
+                column:
+                  type: integer
+    outgoing:
+      type: array
+      description: Functions/methods called by this symbol
+      items:
+        type: object
+        properties:
+          to:
+            type: object
+            description: The called function/method
+            properties:
+              name:
+                type: string
+              kind:
+                type: string
+              file:
+                type: string
+              line:
+                type: integer
+              column:
+                type: integer
+          call_sites:
+            type: array
+            description: Locations where the call occurs
+            items:
+              type: object
+              properties:
+                line:
+                  type: integer
+                column:
+                  type: integer
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetCallHierarchy
+
+examples:
+  - description: "Get incoming calls to a function"
+    input:
+      file: "src/utils.ts"
+      line: 10
+      column: 17
+      direction: incoming
+    output:
+      item:
+        name: "calculateTotal"
+        kind: "function"
+        file: "src/utils.ts"
+        line: 10
+        column: 17
+      incoming:
+        - from:
+            name: "processOrder"
+            kind: "function"
+            file: "src/orders.ts"
+            line: 25
+            column: 10
+          call_sites:
+            - line: 30
+              column: 15
+        - from:
+            name: "handleCheckout"
+            kind: "method"
+            file: "src/checkout.ts"
+            line: 50
+            column: 3
+          call_sites:
+            - line: 65
+              column: 20
+      outgoing: []
+
+  - description: "Get outgoing calls from a function"
+    input:
+      file: "src/api.ts"
+      line: 15
+      column: 10
+      direction: outgoing
+    output:
+      item:
+        name: "fetchUserData"
+        kind: "function"
+        file: "src/api.ts"
+        line: 15
+        column: 10
+      incoming: []
+      outgoing:
+        - to:
+            name: "validateToken"
+            kind: "function"
+            file: "src/auth.ts"
+            line: 5
+            column: 17
+          call_sites:
+            - line: 18
+              column: 8
+        - to:
+            name: "parseResponse"
+            kind: "function"
+            file: "src/utils.ts"
+            line: 40
+            column: 17
+          call_sites:
+            - line: 22
+              column: 12
+
+  - description: "Get both incoming and outgoing calls"
+    input:
+      file: "src/middleware.ts"
+      line: 20
+      column: 15
+      direction: both
+    output:
+      item:
+        name: "authenticate"
+        kind: "function"
+        file: "src/middleware.ts"
+        line: 20
+        column: 15
+      incoming:
+        - from:
+            name: "handleRequest"
+            kind: "function"
+            file: "src/server.ts"
+            line: 100
+            column: 10
+          call_sites:
+            - line: 110
+              column: 5
+      outgoing:
+        - to:
+            name: "verifyJWT"
+            kind: "function"
+            file: "src/jwt.ts"
+            line: 8
+            column: 17
+          call_sites:
+            - line: 25
+              column: 10

@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-10T00:51:56.981Z'
-total: 23
+generated: '2026-01-10T01:08:13.581Z'
+total: 28
 categories: {}
 search_index:
   - name: check_types
@@ -221,6 +221,35 @@ search_index:
       Find all references to a symbol at a given position.
       Returns file locations, preview lines, and metadata for each reference.
       Useful for understanding symbol usage before refactoring.
+  - name: get_call_hierarchy
+    keywords:
+      - get
+      - call
+      - hierarchy
+      - symbol
+      - given
+      - position
+      - returns
+      - incoming
+      - calls
+      - who
+      - this
+      - function
+      - outgoing
+      - what
+      - useful
+      - understanding
+      - code
+      - flow
+      - impact
+      - analysis
+      - before
+      - refactoring
+    path: definitions/lsp/get-call-hierarchy.yaml
+    description: |
+      Get the call hierarchy for a symbol at a given position.
+      Returns incoming calls (who calls this function) and/or outgoing calls (what this function calls).
+      Useful for understanding code flow and impact analysis before refactoring.
   - name: get_code_actions
     keywords:
       - get
@@ -249,6 +278,117 @@ search_index:
       Get available code actions (quick fixes, refactorings) at a position.
       Returns TypeScript Language Service code fixes and refactoring suggestions
       that can be applied to fix errors or improve code quality.
+  - name: get_diagnostics
+    keywords:
+      - get
+      - diagnostics
+      - all
+      - typescript
+      - file
+      - entire
+      - project
+      - returns
+      - errors
+      - warnings
+      - optionally
+      - suggestions
+      - available
+      - quick
+      - fixes
+      - uses
+      - language
+      - service
+      - semantic
+      - syntactic
+      - suggestion
+    path: definitions/lsp/get-diagnostics.yaml
+    description: |
+      Get all TypeScript diagnostics for a file or the entire project.
+      Returns errors, warnings, and optionally suggestions with available quick fixes.
+      Uses TypeScript Language Service for semantic, syntactic, and suggestion diagnostics.
+  - name: get_document_symbols
+    keywords:
+      - get
+      - document
+      - symbols
+      - structural
+      - outline
+      - classes
+      - functions
+      - interfaces
+      - etc
+      - returns
+      - hierarchical
+      - tree
+      - their
+      - positions
+      - kinds
+      - useful
+      - understanding
+      - structure
+      - navigation
+    path: definitions/lsp/get-document-symbols.yaml
+    description: |
+      Get the structural outline of a document (classes, functions, interfaces, etc.).
+      Returns a hierarchical tree of symbols with their positions and kinds.
+      Useful for understanding document structure and navigation.
+  - name: get_signature_help
+    keywords:
+      - get
+      - signature
+      - help
+      - function
+      - call
+      - site
+      - returns
+      - parameter
+      - information
+      - including
+      - types
+      - documentation
+      - which
+      - cursor
+      - currently
+      - useful
+      - understanding
+      - signatures
+      - while
+      - typing
+      - arguments
+    path: definitions/lsp/get-signature-help.yaml
+    description: |
+      Get signature help at a function call site.
+      Returns function parameter information including types, documentation, and which
+      parameter the cursor is currently on. Useful for understanding function signatures
+      while typing function arguments.
+  - name: get_symbol_info
+    keywords:
+      - get
+      - symbol
+      - info
+      - detailed
+      - information
+      - about
+      - given
+      - position
+      - returns
+      - type
+      - documentation
+      - definition
+      - location
+      - modifiers
+      - useful
+      - understanding
+      - types
+      - reading
+      - jsdoc
+      - navigating
+      - code
+    path: definitions/lsp/get-symbol-info.yaml
+    description: |
+      Get detailed information about a symbol at a given position.
+      Returns type info, documentation, definition location, and modifiers.
+      Useful for understanding symbol types, reading JSDoc, and navigating code.
   - name: go_to_definition
     keywords:
       - go
@@ -626,12 +766,43 @@ deferred_tools:
       Find all references to a symbol at a given position.
       Returns file locations, preview lines, and metadata for each reference.
       Useful for understanding symbol usage before refactoring.
+  - name: get_call_hierarchy
+    path: definitions/lsp/get-call-hierarchy.yaml
+    description: |
+      Get the call hierarchy for a symbol at a given position.
+      Returns incoming calls (who calls this function) and/or outgoing calls (what this function calls).
+      Useful for understanding code flow and impact analysis before refactoring.
   - name: get_code_actions
     path: definitions/lsp/get-code-actions.yaml
     description: |
       Get available code actions (quick fixes, refactorings) at a position.
       Returns TypeScript Language Service code fixes and refactoring suggestions
       that can be applied to fix errors or improve code quality.
+  - name: get_diagnostics
+    path: definitions/lsp/get-diagnostics.yaml
+    description: |
+      Get all TypeScript diagnostics for a file or the entire project.
+      Returns errors, warnings, and optionally suggestions with available quick fixes.
+      Uses TypeScript Language Service for semantic, syntactic, and suggestion diagnostics.
+  - name: get_document_symbols
+    path: definitions/lsp/get-document-symbols.yaml
+    description: |
+      Get the structural outline of a document (classes, functions, interfaces, etc.).
+      Returns a hierarchical tree of symbols with their positions and kinds.
+      Useful for understanding document structure and navigation.
+  - name: get_signature_help
+    path: definitions/lsp/get-signature-help.yaml
+    description: |
+      Get signature help at a function call site.
+      Returns function parameter information including types, documentation, and which
+      parameter the cursor is currently on. Useful for understanding function signatures
+      while typing function arguments.
+  - name: get_symbol_info
+    path: definitions/lsp/get-symbol-info.yaml
+    description: |
+      Get detailed information about a symbol at a given position.
+      Returns type info, documentation, definition location, and modifiers.
+      Useful for understanding symbol types, reading JSDoc, and navigating code.
   - name: go_to_definition
     path: definitions/lsp/go-to-definition.yaml
     description: |

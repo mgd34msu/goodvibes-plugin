@@ -53,3 +53,23 @@ export type { RenameSymbolArgs } from './rename-symbol.js';
 // Code Actions
 export { handleGetCodeActions, handleApplyCodeAction } from './code-actions.js';
 export type { GetCodeActionsArgs, ApplyCodeActionArgs } from './code-actions.js';
+
+// Call Hierarchy
+export { handleGetCallHierarchy } from './call-hierarchy.js';
+export type { GetCallHierarchyArgs } from './call-hierarchy.js';
+
+// Symbol Info
+export { handleGetSymbolInfo } from './symbol-info.js';
+export type { GetSymbolInfoArgs } from './symbol-info.js';
+
+// Signature Help
+export { handleGetSignatureHelp } from './signature-help.js';
+export type { GetSignatureHelpArgs } from './signature-help.js';
+
+// Document Symbols
+export { handleGetDocumentSymbols } from './document-symbols.js';
+export type { GetDocumentSymbolsArgs } from './document-symbols.js';
+
+// Diagnostics
+export { handleGetDiagnostics } from './diagnostics.js';
+export type { GetDiagnosticsArgs } from './diagnostics.js';

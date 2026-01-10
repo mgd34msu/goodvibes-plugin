@@ -75,6 +75,11 @@ import {
   handleRenameSymbol,
   handleGetCodeActions,
   handleApplyCodeAction,
+  handleGetCallHierarchy,
+  handleGetDocumentSymbols,
+  handleGetSymbolInfo,
+  handleGetSignatureHelp,
+  handleGetDiagnostics,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
@@ -92,6 +97,11 @@ import {
   type RenameSymbolArgs,
   type GetCodeActionsArgs,
   type ApplyCodeActionArgs,
+  type GetCallHierarchyArgs,
+  type GetDocumentSymbolsArgs,
+  type GetSymbolInfoArgs,
+  type GetSignatureHelpArgs,
+  type GetDiagnosticsArgs,
 } from "./handlers/index.js";
 
 /**
@@ -123,6 +133,11 @@ type ToolArgs =
     | RenameSymbolArgs
     | GetCodeActionsArgs
     | ApplyCodeActionArgs
+    | GetCallHierarchyArgs
+    | GetDocumentSymbolsArgs
+    | GetSymbolInfoArgs
+    | GetSignatureHelpArgs
+    | GetDiagnosticsArgs
     | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
@@ -217,6 +232,16 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleGetCodeActions(args as GetCodeActionsArgs),
   apply_code_action: (_ctx, args) =>
     handleApplyCodeAction(args as ApplyCodeActionArgs),
+  get_call_hierarchy: (_ctx, args) =>
+    handleGetCallHierarchy(args as GetCallHierarchyArgs),
+  get_document_symbols: (_ctx, args) =>
+    handleGetDocumentSymbols(args as GetDocumentSymbolsArgs),
+  get_symbol_info: (_ctx, args) =>
+    handleGetSymbolInfo(args as GetSymbolInfoArgs),
+  get_signature_help: (_ctx, args) =>
+    handleGetSignatureHelp(args as GetSignatureHelpArgs),
+  get_diagnostics: (_ctx, args) =>
+    handleGetDiagnostics(args as GetDiagnosticsArgs),
 };
 
 /**

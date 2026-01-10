@@ -1,0 +1,128 @@
+name: get_symbol_info
+version: "1.0.0"
+description: |
+  Get detailed information about a symbol at a given position.
+  Returns type info, documentation, definition location, and modifiers.
+  Useful for understanding symbol types, reading JSDoc, and navigating code.
+
+category: lsp
+tags:
+  - typescript
+  - javascript
+  - type-info
+  - documentation
+  - navigation
+  - hover
+
+mcp:
+  server: goodvibes-tools
+  method: get_symbol_info
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path (relative to project root)
+    line:
+      type: number
+      description: Line number (1-based)
+    column:
+      type: number
+      description: Column number (1-based)
+  required:
+    - file
+    - line
+    - column
+
+outputSchema:
+  type: object
+  properties:
+    symbol:
+      type: string
+      description: The symbol name
+    kind:
+      type: string
+      description: Symbol kind (variable, function, class, interface, etc.)
+    type:
+      type: string
+      description: TypeScript type signature
+    documentation:
+      type: string
+      description: JSDoc documentation if available
+    definition:
+      type: object
+      description: Location where the symbol is defined
+      properties:
+        file:
+          type: string
+          description: File path relative to project root
+        line:
+          type: number
+          description: Line number (1-based)
+        column:
+          type: number
+          description: Column number (1-based)
+    modifiers:
+      type: array
+      items:
+        type: string
+      description: Modifiers (export, async, const, readonly, etc.)
+
+handler:
+  type: native
+  module: lsp
+  function: handleGetSymbolInfo
+
+examples:
+  - description: "Get info about a function"
+    input:
+      file: "src/utils.ts"
+      line: 10
+      column: 17
+    output:
+      symbol: "calculateTotal"
+      kind: "function"
+      type: "(items: Item[]) => number"
+      documentation: "Calculates the total price of all items in the cart."
+      definition:
+        file: "src/utils.ts"
+        line: 10
+        column: 17
+      modifiers:
+        - "export"
+
+  - description: "Get info about a variable"
+    input:
+      file: "src/config.ts"
+      line: 5
+      column: 14
+    output:
+      symbol: "API_URL"
+      kind: "const"
+      type: "string"
+      documentation: "Base URL for API requests"
+      definition:
+        file: "src/config.ts"
+        line: 5
+        column: 14
+      modifiers:
+        - "export"
+        - "const"
+
+  - description: "Get info about an interface property"
+    input:
+      file: "src/types.ts"
+      line: 8
+      column: 3
+    output:
+      symbol: "email"
+      kind: "property"
+      type: "string"
+      documentation: "User's email address"
+      definition:
+        file: "src/types.ts"
+        line: 8
+        column: 3
+      modifiers: []
