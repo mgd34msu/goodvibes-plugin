@@ -1,0 +1,147 @@
+name: parse_error_stack
+version: "1.0.0"
+description: |
+  Parse error stack traces and provide structured analysis.
+  Extracts file paths, line numbers, and function names from stack traces.
+  Maps frames to project files and identifies the root cause frame.
+  Useful for debugging runtime errors and understanding error origins.
+
+mcp:
+  server: goodvibes-tools
+  method: parse_error_stack
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    error_text:
+      type: string
+      description: "The full error message and stack trace"
+    project_path:
+      type: string
+      description: "Project root path for mapping files (defaults to cwd)"
+  required:
+    - error_text
+
+output_schema:
+  type: object
+  properties:
+    error_type:
+      type: string
+      description: "Error type (e.g., TypeError, ReferenceError)"
+    error_message:
+      type: string
+      description: "The error message text"
+    stack_frames:
+      type: array
+      items:
+        type: object
+        properties:
+          function_name:
+            type: string
+            description: "Function or method name"
+          file:
+            type: string
+            description: "File path"
+          line:
+            type: integer
+            description: "Line number"
+          column:
+            type: integer
+            description: "Column number"
+          is_project_file:
+            type: boolean
+            description: "Whether this file is in the project"
+          code_preview:
+            type: string
+            description: "Preview of the code at this location"
+    root_cause_frame:
+      type: object
+      properties:
+        file:
+          type: string
+        line:
+          type: integer
+        column:
+          type: integer
+      description: "First project file frame in the stack (likely root cause)"
+    related_files:
+      type: array
+      items:
+        type: string
+      description: "Project files mentioned in the stack trace"
+
+examples:
+  - description: "Parse a TypeError stack trace"
+    input:
+      error_text: |
+        TypeError: Cannot read properties of undefined (reading 'map')
+            at UserList (/app/src/components/UserList.tsx:15:23)
+            at renderWithHooks (/app/node_modules/react-dom/cjs/react-dom.development.js:14985:18)
+            at mountIndeterminateComponent (/app/node_modules/react-dom/cjs/react-dom.development.js:17811:13)
+      project_path: "/app"
+    output:
+      error_type: "TypeError"
+      error_message: "Cannot read properties of undefined (reading 'map')"
+      stack_frames:
+        - function_name: "UserList"
+          file: "/app/src/components/UserList.tsx"
+          line: 15
+          column: 23
+          is_project_file: true
+        - function_name: "renderWithHooks"
+          file: "/app/node_modules/react-dom/cjs/react-dom.development.js"
+          line: 14985
+          column: 18
+          is_project_file: false
+        - function_name: "mountIndeterminateComponent"
+          file: "/app/node_modules/react-dom/cjs/react-dom.development.js"
+          line: 17811
+          column: 13
+          is_project_file: false
+      root_cause_frame:
+        file: "/app/src/components/UserList.tsx"
+        line: 15
+        column: 23
+      related_files:
+        - "/app/src/components/UserList.tsx"
+
+  - description: "Parse a Node.js error"
+    input:
+      error_text: |
+        Error: ENOENT: no such file or directory, open '/data/config.json'
+            at Object.openSync (node:fs:600:3)
+            at readFileSync (node:fs:468:35)
+            at loadConfig (/app/src/utils/config.ts:12:20)
+            at main (/app/src/index.ts:5:3)
+    output:
+      error_type: "Error"
+      error_message: "ENOENT: no such file or directory, open '/data/config.json'"
+      stack_frames:
+        - function_name: "Object.openSync"
+          file: "node:fs"
+          line: 600
+          column: 3
+          is_project_file: false
+        - function_name: "readFileSync"
+          file: "node:fs"
+          line: 468
+          column: 35
+          is_project_file: false
+        - function_name: "loadConfig"
+          file: "/app/src/utils/config.ts"
+          line: 12
+          column: 20
+          is_project_file: true
+        - function_name: "main"
+          file: "/app/src/index.ts"
+          line: 5
+          column: 3
+          is_project_file: true
+      root_cause_frame:
+        file: "/app/src/utils/config.ts"
+        line: 12
+        column: 20
+      related_files:
+        - "/app/src/utils/config.ts"
+        - "/app/src/index.ts"

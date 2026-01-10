@@ -15,6 +15,7 @@
  * - validation.ts: Code validation and type checking
  * - smoke-test.ts: Smoke test execution
  * - scaffolding.ts: Project scaffolding and templates
+ * - deps/: Dependency analysis tools (analyze unused/outdated packages)
  */
 
 // Status
@@ -42,8 +43,12 @@ export { handleFetchDocs, getCommonApiReferences } from './docs.js';
 export type { FetchDocsArgs } from './docs.js';
 
 // Schema
-export { handleGetSchema } from './schema.js';
-export type { GetSchemaArgs } from './schema.js';
+export { handleGetSchema, handleGetDatabaseSchema } from './schema.js';
+export type { GetSchemaArgs, GetDatabaseSchemaArgs } from './schema.js';
+
+// API Routes
+export { handleGetApiRoutes } from './schema/index.js';
+export type { GetApiRoutesArgs } from './schema/index.js';
 
 // Config
 export { handleReadConfig } from './config.js';
@@ -90,3 +95,23 @@ export type {
   GetDocumentSymbolsArgs,
   GetDiagnosticsArgs,
 } from './lsp/index.js';
+
+// Dependency Analysis
+export { handleAnalyzeDependencies, handleFindCircularDeps } from './deps/index.js';
+export type { AnalyzeDependenciesArgs, FindCircularDepsArgs } from './deps/index.js';
+
+// Error Tools
+export { handleParseErrorStack, handleExplainTypeError } from './errors/index.js';
+export type { ParseErrorStackArgs, ExplainTypeErrorArgs } from './errors/index.js';
+
+// Test Tools
+export { handleFindTestsForFile } from './test/index.js';
+export type { FindTestsForFileArgs, TestType } from './test/index.js';
+
+// Security
+export { handleScanForSecrets } from './security/index.js';
+export type { ScanForSecretsArgs } from './security/index.js';
+
+// Project Tools
+export { handleGetEnvConfig } from './project/index.js';
+export type { GetEnvConfigArgs } from './project/index.js';

@@ -1,0 +1,113 @@
+name: get_api_routes
+version: "1.0.0"
+description: |
+  Extract API routes from web frameworks.
+  Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
+  Returns HTTP method, path, handler location, and middleware information.
+
+mcp:
+  server: goodvibes-tools
+  method: get_api_routes
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root path to scan for API routes"
+      default: "."
+    framework:
+      type: string
+      enum: ["nextjs", "express", "fastify", "hono", "auto"]
+      description: "Framework to scan for (auto-detect if not specified)"
+      default: "auto"
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    framework:
+      type: string
+      description: "Detected or specified framework"
+    routes:
+      type: array
+      items:
+        type: object
+        properties:
+          method:
+            type: string
+            description: "HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)"
+          path:
+            type: string
+            description: "Route path pattern"
+          handler_file:
+            type: string
+            description: "File containing the route handler"
+          handler_line:
+            type: integer
+            description: "Line number of the handler definition"
+          middleware:
+            type: array
+            items: { type: string }
+            description: "Applied middleware (if detected)"
+    count:
+      type: integer
+      description: "Total number of routes found"
+
+examples:
+  - description: "Auto-detect and scan Next.js App Router"
+    input:
+      path: "."
+    output:
+      framework: "nextjs"
+      routes:
+        - method: "GET"
+          path: "/api/users"
+          handler_file: "app/api/users/route.ts"
+          handler_line: 5
+        - method: "POST"
+          path: "/api/users"
+          handler_file: "app/api/users/route.ts"
+          handler_line: 15
+        - method: "GET"
+          path: "/api/users/[id]"
+          handler_file: "app/api/users/[id]/route.ts"
+          handler_line: 3
+      count: 3
+
+  - description: "Scan Express routes"
+    input:
+      path: "."
+      framework: "express"
+    output:
+      framework: "express"
+      routes:
+        - method: "GET"
+          path: "/api/posts"
+          handler_file: "src/routes/posts.ts"
+          handler_line: 12
+          middleware: ["authMiddleware"]
+        - method: "POST"
+          path: "/api/posts"
+          handler_file: "src/routes/posts.ts"
+          handler_line: 28
+          middleware: ["authMiddleware", "validateBody"]
+      count: 2
+
+  - description: "Scan Hono routes"
+    input:
+      path: "."
+      framework: "hono"
+    output:
+      framework: "hono"
+      routes:
+        - method: "GET"
+          path: "/api/health"
+          handler_file: "src/index.ts"
+          handler_line: 10
+        - method: "POST"
+          path: "/api/webhook"
+          handler_file: "src/routes/webhook.ts"
+          handler_line: 5
+      count: 2

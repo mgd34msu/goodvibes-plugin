@@ -57,6 +57,9 @@ import {
   handleFetchDocs,
   // Schema
   handleGetSchema,
+  handleGetDatabaseSchema,
+  // API Routes
+  handleGetApiRoutes,
   // Config
   handleReadConfig,
   // Validation
@@ -80,11 +83,26 @@ import {
   handleGetSymbolInfo,
   handleGetSignatureHelp,
   handleGetDiagnostics,
+  // Dependency Analysis
+  handleAnalyzeDependencies,
+  handleFindCircularDeps,
+  // Test Tools
+  handleFindTestsForFile,
+  // Security
+  handleScanForSecrets,
+  // Error Explanation
+  handleExplainTypeError,
+  // Error Stack Parsing
+  handleParseErrorStack,
+  // Project Tools
+  handleGetEnvConfig,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
   type FetchDocsArgs,
   type GetSchemaArgs,
+  type GetDatabaseSchemaArgs,
+  type GetApiRoutesArgs,
   type ReadConfigArgs,
   type ValidateImplementationArgs,
   type CheckTypesArgs,
@@ -102,6 +120,13 @@ import {
   type GetSymbolInfoArgs,
   type GetSignatureHelpArgs,
   type GetDiagnosticsArgs,
+  type AnalyzeDependenciesArgs,
+  type FindCircularDepsArgs,
+  type FindTestsForFileArgs,
+  type ScanForSecretsArgs,
+  type ExplainTypeErrorArgs,
+  type ParseErrorStackArgs,
+  type GetEnvConfigArgs,
 } from "./handlers/index.js";
 
 /**
@@ -110,35 +135,43 @@ import {
  * without needing double-casting.
  */
 type ToolArgs =
-
-    | SearchSkillsArgs
-    | SearchArgs
-    | RecommendSkillsArgs
-    | GetContentArgs
-    | SkillDependenciesArgs
-    | DetectStackArgs
-    | CheckVersionsArgs
-    | ScanPatternsArgs
-    | FetchDocsArgs
-    | GetSchemaArgs
-    | ReadConfigArgs
-    | ValidateImplementationArgs
-    | RunSmokeTestArgs
-    | CheckTypesArgs
-    | ScaffoldProjectArgs
-    | ListTemplatesArgs
-    | ProjectIssuesArgs
-    | FindReferencesArgs
-    | GoToDefinitionArgs
-    | RenameSymbolArgs
-    | GetCodeActionsArgs
-    | ApplyCodeActionArgs
-    | GetCallHierarchyArgs
-    | GetDocumentSymbolsArgs
-    | GetSymbolInfoArgs
-    | GetSignatureHelpArgs
-    | GetDiagnosticsArgs
-    | Record<string, never>; // For tools with no args (plugin_status)
+  | SearchSkillsArgs
+  | SearchArgs
+  | RecommendSkillsArgs
+  | GetContentArgs
+  | SkillDependenciesArgs
+  | DetectStackArgs
+  | CheckVersionsArgs
+  | ScanPatternsArgs
+  | FetchDocsArgs
+  | GetSchemaArgs
+  | GetDatabaseSchemaArgs
+  | GetApiRoutesArgs
+  | ReadConfigArgs
+  | ValidateImplementationArgs
+  | RunSmokeTestArgs
+  | CheckTypesArgs
+  | ScaffoldProjectArgs
+  | ListTemplatesArgs
+  | ProjectIssuesArgs
+  | FindReferencesArgs
+  | GoToDefinitionArgs
+  | RenameSymbolArgs
+  | GetCodeActionsArgs
+  | ApplyCodeActionArgs
+  | GetCallHierarchyArgs
+  | GetDocumentSymbolsArgs
+  | GetSymbolInfoArgs
+  | GetSignatureHelpArgs
+  | GetDiagnosticsArgs
+  | AnalyzeDependenciesArgs
+  | FindCircularDepsArgs
+  | FindTestsForFileArgs
+  | ScanForSecretsArgs
+  | ExplainTypeErrorArgs
+  | GetEnvConfigArgs
+  | ParseErrorStackArgs
+  | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
  * Context object passed to tool handlers providing access to indexes and registries
@@ -202,6 +235,10 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   // Live data
   fetch_docs: (_ctx, args) => handleFetchDocs(args as FetchDocsArgs),
   get_schema: (_ctx, args) => handleGetSchema(args as GetSchemaArgs),
+  get_database_schema: (_ctx, args) =>
+    handleGetDatabaseSchema(args as GetDatabaseSchemaArgs),
+  get_api_routes: (_ctx, args) =>
+    handleGetApiRoutes(args as GetApiRoutesArgs),
   read_config: (_ctx, args) => handleReadConfig(args as ReadConfigArgs),
 
   // Validation
@@ -242,6 +279,32 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleGetSignatureHelp(args as GetSignatureHelpArgs),
   get_diagnostics: (_ctx, args) =>
     handleGetDiagnostics(args as GetDiagnosticsArgs),
+
+  // Dependency Analysis
+  analyze_dependencies: (_ctx, args) =>
+    handleAnalyzeDependencies(args as AnalyzeDependenciesArgs),
+  find_circular_deps: (_ctx, args) =>
+    handleFindCircularDeps(args as FindCircularDepsArgs),
+
+  // Security
+  scan_for_secrets: (_ctx, args) =>
+    handleScanForSecrets(args as ScanForSecretsArgs),
+
+  // Test Tools
+  find_tests_for_file: (_ctx, args) =>
+    handleFindTestsForFile(args as FindTestsForFileArgs),
+
+  // Error Explanation
+  explain_type_error: (_ctx, args) =>
+    handleExplainTypeError(args as ExplainTypeErrorArgs),
+
+  // Error Stack Parsing
+  parse_error_stack: (_ctx, args) =>
+    handleParseErrorStack(args as ParseErrorStackArgs),
+
+  // Project Tools
+  get_env_config: (_ctx, args) =>
+    handleGetEnvConfig(args as GetEnvConfigArgs),
 };
 
 /**

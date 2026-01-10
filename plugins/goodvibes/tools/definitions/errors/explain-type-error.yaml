@@ -1,0 +1,113 @@
+name: explain_type_error
+version: "1.0.0"
+description: |
+  Explain TypeScript error codes in human-friendly terms with fix suggestions.
+  Provides context-aware explanations based on error code and message patterns.
+  Essential for helping developers understand and resolve type errors quickly.
+
+mcp:
+  server: goodvibes-tools
+  method: explain_type_error
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    error_code:
+      type: integer
+      description: "TypeScript error code (e.g., 2322, 2339)"
+    error_message:
+      type: string
+      description: "The full error message from TypeScript"
+    context:
+      type: string
+      description: "Optional code snippet where the error occurred"
+  required:
+    - error_code
+    - error_message
+
+output_schema:
+  type: object
+  properties:
+    code:
+      type: integer
+      description: "The TypeScript error code"
+    name:
+      type: string
+      description: "Human-friendly name for the error type"
+    explanation:
+      type: string
+      description: "Clear explanation of what this error means"
+    common_causes:
+      type: array
+      items:
+        type: string
+      description: "List of common causes for this error"
+    suggested_fixes:
+      type: array
+      items:
+        type: string
+      description: "Actionable fix suggestions"
+    documentation_url:
+      type: string
+      description: "Link to TypeScript documentation"
+
+examples:
+  - description: "Explain type assignment error"
+    input:
+      error_code: 2322
+      error_message: "Type 'string | undefined' is not assignable to type 'string'."
+      context: "const name: string = user.name;"
+    output:
+      code: 2322
+      name: "Type Assignment Error"
+      explanation: "TypeScript found a type mismatch during assignment. The value being assigned has a type that doesn't match what the target variable expects."
+      common_causes:
+        - "Variable declared with a narrower type than the value"
+        - "Optional property being assigned to required variable"
+        - "Function return type doesn't match declared type"
+        - "Union type being assigned to a single type"
+      suggested_fixes:
+        - "Add type guard: if (user.name !== undefined) { ... }"
+        - "Use optional chaining with nullish coalescing: user.name ?? 'default'"
+        - "Widen the target type: const name: string | undefined = user.name"
+        - "Use non-null assertion if you're certain: user.name!"
+      documentation_url: "https://www.typescriptlang.org/docs/handbook/2/narrowing.html"
+
+  - description: "Explain property does not exist error"
+    input:
+      error_code: 2339
+      error_message: "Property 'foo' does not exist on type 'Bar'."
+    output:
+      code: 2339
+      name: "Property Does Not Exist"
+      explanation: "TypeScript cannot find the property you're trying to access on the given type. The type definition doesn't include this property."
+      common_causes:
+        - "Typo in property name"
+        - "Property not defined in interface/type"
+        - "Accessing property on wrong object"
+        - "Type definition is outdated or incomplete"
+      suggested_fixes:
+        - "Check spelling of property name"
+        - "Add property to interface/type definition"
+        - "Use type assertion if property exists at runtime: (obj as ExtendedType).foo"
+        - "Check if you're accessing the right object"
+      documentation_url: "https://www.typescriptlang.org/docs/handbook/2/objects.html"
+
+  - description: "Explain implicit any parameter error"
+    input:
+      error_code: 7006
+      error_message: "Parameter 'data' implicitly has an 'any' type."
+    output:
+      code: 7006
+      name: "Implicit Any Parameter"
+      explanation: "TypeScript cannot infer the type of this parameter. With strict mode or noImplicitAny enabled, you must explicitly declare parameter types."
+      common_causes:
+        - "Missing type annotation on function parameter"
+        - "Callback function without typed parameters"
+        - "Event handler without proper typing"
+      suggested_fixes:
+        - "Add explicit type annotation: (data: DataType) => ..."
+        - "Use typed callback signatures from library"
+        - "For event handlers, use specific event types: (e: React.ChangeEvent<HTMLInputElement>) => ..."
+      documentation_url: "https://www.typescriptlang.org/tsconfig#noImplicitAny"

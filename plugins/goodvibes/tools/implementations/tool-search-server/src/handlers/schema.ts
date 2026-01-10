@@ -7,3 +7,6 @@
 
 export { handleGetSchema } from './schema/index.js';
 export type { GetSchemaArgs } from './schema/index.js';
+
+export { handleGetDatabaseSchema } from './schema/index.js';
+export type { GetDatabaseSchemaArgs } from './schema/index.js';

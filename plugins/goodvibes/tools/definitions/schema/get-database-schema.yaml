@@ -1,0 +1,134 @@
+name: get_database_schema
+version: "1.0.0"
+description: |
+  Auto-detect and extract database schema from project files.
+  Checks for Prisma, Drizzle, and SQL schema files in order of priority.
+  Returns a unified schema representation with tables, columns, indexes, and relations.
+
+mcp:
+  server: goodvibes-tools
+  method: get_database_schema
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root path to search for schema files"
+      default: "."
+
+output_schema:
+  type: object
+  properties:
+    source:
+      type: string
+      enum: ["prisma", "drizzle", "sql", "unknown"]
+      description: "Detected schema source type"
+    tables:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: "Table name"
+          columns:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "Column name"
+                type:
+                  type: string
+                  description: "Column data type"
+                nullable:
+                  type: boolean
+                  description: "Whether column allows NULL values"
+                primary_key:
+                  type: boolean
+                  description: "Whether column is part of primary key"
+                references:
+                  type: object
+                  properties:
+                    table:
+                      type: string
+                      description: "Referenced table name"
+                    column:
+                      type: string
+                      description: "Referenced column name"
+          indexes:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "Index name"
+                columns:
+                  type: array
+                  items:
+                    type: string
+                  description: "Columns included in index"
+                unique:
+                  type: boolean
+                  description: "Whether index enforces uniqueness"
+    relations:
+      type: array
+      items:
+        type: object
+        properties:
+          from_table:
+            type: string
+            description: "Source table of relation"
+          from_column:
+            type: string
+            description: "Source column of relation"
+          to_table:
+            type: string
+            description: "Target table of relation"
+          to_column:
+            type: string
+            description: "Target column of relation"
+          type:
+            type: string
+            enum: ["one-to-one", "one-to-many", "many-to-many"]
+            description: "Relation cardinality"
+    raw_path:
+      type: string
+      description: "Path to the schema file that was parsed"
+
+examples:
+  - description: "Auto-detect schema from project root"
+    input:
+      path: "."
+    output:
+      source: "prisma"
+      tables:
+        - name: "User"
+          columns:
+            - name: "id"
+              type: "String"
+              nullable: false
+              primary_key: true
+            - name: "email"
+              type: "String"
+              nullable: false
+              primary_key: false
+            - name: "name"
+              type: "String"
+              nullable: true
+              primary_key: false
+          indexes:
+            - name: "email_unique"
+              columns: ["email"]
+              unique: true
+      relations:
+        - from_table: "Post"
+          from_column: "authorId"
+          to_table: "User"
+          to_column: "id"
+          type: "one-to-many"
+      raw_path: "prisma/schema.prisma"

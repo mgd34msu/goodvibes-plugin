@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-10T01:08:13.581Z'
-total: 28
+generated: '2026-01-10T01:40:22.062Z'
+total: 37
 categories: {}
 search_index:
   - name: check_types
@@ -56,6 +56,74 @@ search_index:
       Get installed package versions and compare against skill assumptions.
       Identifies version mismatches that could cause skill advice to fail.
       Checks both direct dependencies and peer dependencies.
+  - name: analyze_dependencies
+    keywords:
+      - analyze
+      - dependencies
+      - npm
+      - find
+      - unused
+      - missing
+      - outdated
+      - packages
+      - compares
+      - declared
+      - package
+      - json
+      - against
+      - actual
+      - imports
+      - source
+      - files
+      - optionally
+      - checks
+      - registry
+      - latest
+      - versions
+      - can
+      - slow
+    path: definitions/deps/analyze-dependencies.yaml
+    description: |
+      Analyze npm dependencies to find unused, missing, and outdated packages.
+      Compares declared dependencies in package.json against actual imports in source files.
+      Optionally checks npm registry for latest versions (can be slow).
+  - name: find_circular_deps
+    keywords:
+      - find
+      - circular
+      - deps
+      - detect
+      - import
+      - dependencies
+      - codebase
+      - builds
+      - graph
+      - parsing
+      - all
+      - source
+      - files
+      - uses
+      - dfs
+      - cycles
+      - returns
+      - found
+      - full
+      - file
+      - paths
+      - involved
+      - useful
+      - identifying
+      - problematic
+      - dependency
+      - patterns
+      - before
+      - refactoring
+    path: definitions/deps/find-circular-deps.yaml
+    description: |
+      Detect circular import dependencies in the codebase.
+      Builds an import graph by parsing all source files and uses DFS to detect cycles.
+      Returns all cycles found with the full file paths involved.
+      Useful for identifying problematic dependency patterns before refactoring.
   - name: detect_stack
     keywords:
       - detect
@@ -84,6 +152,75 @@ search_index:
       Analyze project to identify the technology stack. Scans package.json,
       config files, and directory structure to determine frameworks, libraries,
       and tools in use. Essential for selecting appropriate skills.
+  - name: explain_type_error
+    keywords:
+      - explain
+      - type
+      - error
+      - typescript
+      - codes
+      - human
+      - friendly
+      - terms
+      - fix
+      - suggestions
+      - provides
+      - context
+      - aware
+      - explanations
+      - based
+      - code
+      - message
+      - patterns
+      - essential
+      - helping
+      - developers
+      - understand
+      - resolve
+      - errors
+      - quickly
+    path: definitions/errors/explain-type-error.yaml
+    description: |
+      Explain TypeScript error codes in human-friendly terms with fix suggestions.
+      Provides context-aware explanations based on error code and message patterns.
+      Essential for helping developers understand and resolve type errors quickly.
+  - name: parse_error_stack
+    keywords:
+      - parse
+      - error
+      - stack
+      - traces
+      - provide
+      - structured
+      - analysis
+      - extracts
+      - file
+      - paths
+      - line
+      - numbers
+      - function
+      - names
+      - from
+      - maps
+      - frames
+      - project
+      - files
+      - identifies
+      - root
+      - cause
+      - frame
+      - useful
+      - debugging
+      - runtime
+      - errors
+      - understanding
+      - origins
+    path: definitions/errors/parse-error-stack.yaml
+    description: |
+      Parse error stack traces and provide structured analysis.
+      Extracts file paths, line numbers, and function names from stack traces.
+      Maps frames to project files and identifies the root cause frame.
+      Useful for debugging runtime errors and understanding error origins.
   - name: fetch_docs
     keywords:
       - fetch
@@ -466,6 +603,41 @@ search_index:
       Check GoodVibes plugin health status.
       Verifies manifest, registries, hooks config, and script files.
       Returns issues and overall health status.
+  - name: get_env_config
+    keywords:
+      - get
+      - env
+      - config
+      - find
+      - all
+      - environment
+      - variable
+      - usages
+      - their
+      - sources
+      - project
+      - scans
+      - source
+      - files
+      - process
+      - import
+      - meta
+      - deno
+      - patterns
+      - cross
+      - references
+      - example
+      - local
+      - identify
+      - documented
+      - undocumented
+      - variables
+    path: definitions/project/get-env-config.yaml
+    description: |
+      Find all environment variable usages and their sources in a project.
+      Scans source files for process.env.*, import.meta.env.*, Deno.env.* patterns
+      and cross-references with .env, .env.example, .env.local files to identify
+      documented vs undocumented variables.
   - name: read_config
     keywords:
       - read
@@ -594,6 +766,65 @@ search_index:
       Identify existing code patterns and conventions in the project.
       Helps apply skills consistently with established patterns.
       Detects naming conventions, file structure, and architectural patterns.
+  - name: get_api_routes
+    keywords:
+      - get
+      - api
+      - routes
+      - extract
+      - from
+      - web
+      - frameworks
+      - supports
+      - next
+      - app
+      - router
+      - pages
+      - express
+      - fastify
+      - hono
+      - returns
+      - http
+      - method
+      - path
+      - handler
+      - location
+      - middleware
+      - information
+    path: definitions/schema/get-api-routes.yaml
+    description: |
+      Extract API routes from web frameworks.
+      Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
+      Returns HTTP method, path, handler location, and middleware information.
+  - name: get_database_schema
+    keywords:
+      - get
+      - database
+      - schema
+      - auto
+      - detect
+      - extract
+      - from
+      - project
+      - files
+      - checks
+      - prisma
+      - drizzle
+      - sql
+      - order
+      - priority
+      - returns
+      - unified
+      - representation
+      - tables
+      - columns
+      - indexes
+      - relations
+    path: definitions/schema/get-database-schema.yaml
+    description: |
+      Auto-detect and extract database schema from project files.
+      Checks for Prisma, Drizzle, and SQL schema files in order of priority.
+      Returns a unified schema representation with tables, columns, indexes, and relations.
   - name: search_agents
     keywords:
       - search
@@ -652,6 +883,35 @@ search_index:
     description: |
       Search for available tools by functionality or use case.
       Use when discovering what tools are available for a task.
+  - name: scan_for_secrets
+    keywords:
+      - scan
+      - for
+      - secrets
+      - source
+      - files
+      - potential
+      - credentials
+      - sensitive
+      - data
+      - detects
+      - common
+      - secret
+      - patterns
+      - including
+      - api
+      - keys
+      - tokens
+      - passwords
+      - private
+      - database
+      - connection
+      - strings
+    path: definitions/security/scan-for-secrets.yaml
+    description: |
+      Scan source files for potential secrets, credentials, and sensitive data.
+      Detects common secret patterns including API keys, tokens, passwords,
+      private keys, and database connection strings.
   - name: skill_dependencies
     keywords:
       - skill
@@ -677,6 +937,34 @@ search_index:
       Show which skills work together and their dependencies.
       Identifies prerequisite skills, complementary skills, and conflicts.
       Helps build complete skill sets for complex tasks.
+  - name: find_tests_for_file
+    keywords:
+      - find
+      - tests
+      - for
+      - file
+      - test
+      - files
+      - that
+      - cover
+      - given
+      - source
+      - analyzes
+      - naming
+      - patterns
+      - import
+      - graphs
+      - related
+      - returns
+      - ranked
+      - list
+      - confidence
+      - scores
+    path: definitions/test/find-tests-for-file.yaml
+    description: |
+      Find test files that cover a given source file.
+      Analyzes test file naming patterns and import graphs to find related tests.
+      Returns a ranked list of test files with confidence scores.
   - name: validate_implementation
     keywords:
       - validate
@@ -731,12 +1019,38 @@ deferred_tools:
       Get installed package versions and compare against skill assumptions.
       Identifies version mismatches that could cause skill advice to fail.
       Checks both direct dependencies and peer dependencies.
+  - name: analyze_dependencies
+    path: definitions/deps/analyze-dependencies.yaml
+    description: |
+      Analyze npm dependencies to find unused, missing, and outdated packages.
+      Compares declared dependencies in package.json against actual imports in source files.
+      Optionally checks npm registry for latest versions (can be slow).
+  - name: find_circular_deps
+    path: definitions/deps/find-circular-deps.yaml
+    description: |
+      Detect circular import dependencies in the codebase.
+      Builds an import graph by parsing all source files and uses DFS to detect cycles.
+      Returns all cycles found with the full file paths involved.
+      Useful for identifying problematic dependency patterns before refactoring.
   - name: detect_stack
     path: definitions/detect-stack.yaml
     description: |
       Analyze project to identify the technology stack. Scans package.json,
       config files, and directory structure to determine frameworks, libraries,
       and tools in use. Essential for selecting appropriate skills.
+  - name: explain_type_error
+    path: definitions/errors/explain-type-error.yaml
+    description: |
+      Explain TypeScript error codes in human-friendly terms with fix suggestions.
+      Provides context-aware explanations based on error code and message patterns.
+      Essential for helping developers understand and resolve type errors quickly.
+  - name: parse_error_stack
+    path: definitions/errors/parse-error-stack.yaml
+    description: |
+      Parse error stack traces and provide structured analysis.
+      Extracts file paths, line numbers, and function names from stack traces.
+      Maps frames to project files and identifies the root cause frame.
+      Useful for debugging runtime errors and understanding error origins.
   - name: fetch_docs
     path: definitions/fetch-docs.yaml
     description: |
@@ -815,6 +1129,13 @@ deferred_tools:
       Get all edits needed to rename a symbol across the codebase.
       Returns file locations and text changes to apply for a safe rename.
       Uses TypeScript Language Service for accurate, semantic renaming.
+  - name: get_env_config
+    path: definitions/project/get-env-config.yaml
+    description: |
+      Find all environment variable usages and their sources in a project.
+      Scans source files for process.env.*, import.meta.env.*, Deno.env.* patterns
+      and cross-references with .env, .env.example, .env.local files to identify
+      documented vs undocumented variables.
   - name: read_config
     path: definitions/read-config.yaml
     description: |
@@ -845,6 +1166,18 @@ deferred_tools:
       Identify existing code patterns and conventions in the project.
       Helps apply skills consistently with established patterns.
       Detects naming conventions, file structure, and architectural patterns.
+  - name: get_api_routes
+    path: definitions/schema/get-api-routes.yaml
+    description: |
+      Extract API routes from web frameworks.
+      Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
+      Returns HTTP method, path, handler location, and middleware information.
+  - name: get_database_schema
+    path: definitions/schema/get-database-schema.yaml
+    description: |
+      Auto-detect and extract database schema from project files.
+      Checks for Prisma, Drizzle, and SQL schema files in order of priority.
+      Returns a unified schema representation with tables, columns, indexes, and relations.
   - name: search_agents
     path: definitions/search-agents.yaml
     description: |
@@ -861,12 +1194,24 @@ deferred_tools:
     description: |
       Search for available tools by functionality or use case.
       Use when discovering what tools are available for a task.
+  - name: scan_for_secrets
+    path: definitions/security/scan-for-secrets.yaml
+    description: |
+      Scan source files for potential secrets, credentials, and sensitive data.
+      Detects common secret patterns including API keys, tokens, passwords,
+      private keys, and database connection strings.
   - name: skill_dependencies
     path: definitions/skill-dependencies.yaml
     description: |
       Show which skills work together and their dependencies.
       Identifies prerequisite skills, complementary skills, and conflicts.
       Helps build complete skill sets for complex tasks.
+  - name: find_tests_for_file
+    path: definitions/test/find-tests-for-file.yaml
+    description: |
+      Find test files that cover a given source file.
+      Analyzes test file naming patterns and import graphs to find related tests.
+      Returns a ranked list of test files with confidence scores.
   - name: validate_implementation
     path: definitions/validate-implementation.yaml
     description: |

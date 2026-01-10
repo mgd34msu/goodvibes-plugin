@@ -1,0 +1,99 @@
+name: find_circular_deps
+version: "1.0.0"
+description: |
+  Detect circular import dependencies in the codebase.
+  Builds an import graph by parsing all source files and uses DFS to detect cycles.
+  Returns all cycles found with the full file paths involved.
+  Useful for identifying problematic dependency patterns before refactoring.
+
+category: deps
+tags:
+  - typescript
+  - javascript
+  - imports
+  - dependencies
+  - circular
+  - analysis
+  - refactoring
+
+mcp:
+  server: goodvibes-tools
+  method: find_circular_deps
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Directory to scan (relative to project root or absolute)
+      default: "."
+    include_node_modules:
+      type: boolean
+      description: Include node_modules in scan (default false)
+      default: false
+  required: []
+
+outputSchema:
+  type: object
+  properties:
+    cycles:
+      type: array
+      items:
+        type: object
+        properties:
+          path:
+            type: array
+            items:
+              type: string
+            description: Files forming the cycle (first file repeated at end to show complete cycle)
+          length:
+            type: number
+            description: Number of files in the cycle
+    count:
+      type: number
+      description: Total number of cycles detected
+    affected_files:
+      type: array
+      items:
+        type: string
+      description: All files involved in at least one cycle
+
+handler:
+  type: native
+  module: deps
+  function: handleFindCircularDeps
+
+examples:
+  - description: "Find circular dependencies in src directory"
+    input:
+      path: "src"
+      include_node_modules: false
+    output:
+      cycles:
+        - path:
+            - "src/moduleA.ts"
+            - "src/moduleB.ts"
+            - "src/moduleA.ts"
+          length: 2
+        - path:
+            - "src/utils/helper.ts"
+            - "src/utils/parser.ts"
+            - "src/utils/formatter.ts"
+            - "src/utils/helper.ts"
+          length: 3
+      count: 2
+      affected_files:
+        - "src/moduleA.ts"
+        - "src/moduleB.ts"
+        - "src/utils/helper.ts"
+        - "src/utils/parser.ts"
+        - "src/utils/formatter.ts"
+
+  - description: "Scan entire project for circular dependencies"
+    input:
+      path: "."
+    output:
+      cycles: []
+      count: 0
+      affected_files: []

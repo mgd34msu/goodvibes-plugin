@@ -1,0 +1,95 @@
+name: analyze_dependencies
+version: "1.0.0"
+description: |
+  Analyze npm dependencies to find unused, missing, and outdated packages.
+  Compares declared dependencies in package.json against actual imports in source files.
+  Optionally checks npm registry for latest versions (can be slow).
+
+mcp:
+  server: goodvibes-tools
+  method: analyze_dependencies
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root path"
+      default: "."
+    check_updates:
+      type: boolean
+      description: "Check npm registry for latest versions (slower)"
+      default: false
+    include_dev:
+      type: boolean
+      description: "Include devDependencies in analysis"
+      default: true
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    dependencies:
+      type: array
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          declared_version: { type: string }
+          used: { type: boolean }
+          import_count: { type: integer }
+          latest_version: { type: string }
+          outdated: { type: boolean }
+    summary:
+      type: object
+      properties:
+        total: { type: integer }
+        used: { type: integer }
+        unused: { type: integer }
+        outdated: { type: integer }
+
+examples:
+  - description: "Analyze dependencies without version check"
+    input:
+      path: "."
+      include_dev: true
+    output:
+      dependencies:
+        - name: "react"
+          declared_version: "^18.2.0"
+          used: true
+          import_count: 15
+        - name: "lodash"
+          declared_version: "^4.17.21"
+          used: false
+          import_count: 0
+      summary:
+        total: 25
+        used: 20
+        unused: 5
+        outdated: 0
+
+  - description: "Analyze with version checking"
+    input:
+      path: "."
+      check_updates: true
+    output:
+      dependencies:
+        - name: "react"
+          declared_version: "^18.2.0"
+          used: true
+          import_count: 15
+          latest_version: "19.0.0"
+          outdated: true
+        - name: "next"
+          declared_version: "^14.0.0"
+          used: true
+          import_count: 8
+          latest_version: "15.1.0"
+          outdated: true
+      summary:
+        total: 25
+        used: 23
+        unused: 2
+        outdated: 5

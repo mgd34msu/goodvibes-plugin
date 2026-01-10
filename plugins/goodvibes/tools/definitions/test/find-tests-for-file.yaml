@@ -1,0 +1,98 @@
+name: find_tests_for_file
+version: "1.0.0"
+description: |
+  Find test files that cover a given source file.
+  Analyzes test file naming patterns and import graphs to find related tests.
+  Returns a ranked list of test files with confidence scores.
+
+category: test
+tags:
+  - testing
+  - analysis
+  - coverage
+  - test-discovery
+
+mcp:
+  server: goodvibes-tools
+  method: find_tests_for_file
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: Source file path (relative to project root or absolute)
+    include_indirect:
+      type: boolean
+      description: Include tests that import files which import this file
+      default: false
+  required:
+    - file
+
+outputSchema:
+  type: object
+  properties:
+    tests:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+            description: Test file path relative to project root
+          type:
+            type: string
+            enum: ["unit", "integration", "e2e"]
+            description: Type of test based on file location and naming
+          imports_source_directly:
+            type: boolean
+            description: Whether the test imports the source file directly
+          confidence:
+            type: number
+            description: Confidence score (0-1) that this test covers the source file
+    count:
+      type: number
+      description: Total number of test files found
+
+handler:
+  type: native
+  module: test
+  function: handleFindTestsForFile
+
+examples:
+  - description: "Find tests for a utility file"
+    input:
+      file: "src/utils/format.ts"
+      include_indirect: false
+    output:
+      tests:
+        - file: "src/utils/__tests__/format.test.ts"
+          type: "unit"
+          imports_source_directly: true
+          confidence: 1.0
+        - file: "src/utils/format.spec.ts"
+          type: "unit"
+          imports_source_directly: true
+          confidence: 0.95
+      count: 2
+
+  - description: "Find tests including indirect imports"
+    input:
+      file: "src/lib/database.ts"
+      include_indirect: true
+    output:
+      tests:
+        - file: "src/lib/__tests__/database.test.ts"
+          type: "unit"
+          imports_source_directly: true
+          confidence: 1.0
+        - file: "tests/integration/api.test.ts"
+          type: "integration"
+          imports_source_directly: false
+          confidence: 0.7
+        - file: "e2e/user-flow.spec.ts"
+          type: "e2e"
+          imports_source_directly: false
+          confidence: 0.5
+      count: 3

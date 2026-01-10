@@ -161,6 +161,32 @@ export const TOOL_SCHEMAS = [
     },
   },
   {
+    name: 'get_database_schema',
+    description: 'Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files. Returns unified schema with tables, columns, indexes, and relations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Project root path to search for schema files', default: '.' },
+      },
+    },
+  },
+  {
+    name: 'get_api_routes',
+    description: 'Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono. Returns HTTP method, path, handler location, and middleware information.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Project root path to scan for API routes', default: '.' },
+        framework: {
+          type: 'string',
+          enum: ['nextjs', 'express', 'fastify', 'hono', 'auto'],
+          description: 'Framework to scan for (auto-detect if not specified)',
+          default: 'auto',
+        },
+      },
+    },
+  },
+  {
     name: 'read_config',
     description: 'Parse existing configuration files',
     inputSchema: {
@@ -412,6 +438,99 @@ export const TOOL_SCHEMAS = [
       properties: {
         file: { type: 'string', description: 'File path (relative to project root). If not provided, checks all project files.' },
         include_suggestions: { type: 'boolean', description: 'Include suggestion diagnostics (default: false)', default: false },
+      },
+    },
+  },
+  // Error Tools
+  {
+    name: 'parse_error_stack',
+    description: 'Parse error stack traces and provide structured analysis. Extracts file paths, line numbers, and function names. Maps frames to project files and identifies root cause.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        error_text: { type: 'string', description: 'The full error message and stack trace' },
+        project_path: { type: 'string', description: 'Project root path for mapping files (defaults to cwd)' },
+      },
+      required: ['error_text'],
+    },
+  },
+  // Dependency Analysis
+  {
+    name: 'analyze_dependencies',
+    description: 'Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in package.json against actual imports in source files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Project root path', default: '.' },
+        check_updates: { type: 'boolean', description: 'Check npm registry for latest versions (slower)', default: false },
+        include_dev: { type: 'boolean', description: 'Include devDependencies in analysis', default: true },
+      },
+    },
+  },
+  {
+    name: 'find_circular_deps',
+    description: 'Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses DFS to detect cycles. Returns all cycles found with the full file paths involved.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Directory to scan (relative to project root or absolute)', default: '.' },
+        include_node_modules: { type: 'boolean', description: 'Include node_modules in scan', default: false },
+      },
+    },
+  },
+  // Test Tools
+  {
+    name: 'find_tests_for_file',
+    description: 'Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find related tests. Returns a ranked list of test files with confidence scores.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Source file path (relative to project root or absolute)' },
+        include_indirect: { type: 'boolean', description: 'Include tests that import files which import this file', default: false },
+      },
+      required: ['file'],
+    },
+  },
+  // Security
+  {
+    name: 'scan_for_secrets',
+    description: 'Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including API keys, tokens, passwords, private keys, and database connection strings.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Directory to scan for secrets', default: '.' },
+        include_staged: { type: 'boolean', description: 'Also check git staged files', default: true },
+        severity_threshold: {
+          type: 'string',
+          enum: ['low', 'medium', 'high'],
+          description: 'Minimum severity level to report',
+          default: 'low',
+        },
+      },
+    },
+  },
+  // Error Explanation
+  {
+    name: 'explain_type_error',
+    description: 'Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message, returns detailed explanation, common causes, and actionable fix suggestions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        error_code: { type: 'integer', description: 'TypeScript error code (e.g., 2322, 2339, 7006)' },
+        error_message: { type: 'string', description: 'The full error message from TypeScript' },
+        context: { type: 'string', description: 'Optional code snippet where the error occurred' },
+      },
+      required: ['error_code', 'error_message'],
+    },
+  },
+  // Project Tools
+  {
+    name: 'get_env_config',
+    description: 'Find all environment variable usages and their sources. Scans source files for process.env.*, import.meta.env.*, Deno.env.* and cross-references with .env files to identify documented vs undocumented variables.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Project root path to analyze', default: '.' },
       },
     },
   },

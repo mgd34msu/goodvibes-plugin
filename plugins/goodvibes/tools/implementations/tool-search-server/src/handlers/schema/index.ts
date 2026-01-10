@@ -6,6 +6,12 @@
  * - Drizzle
  * - TypeORM
  * - Raw SQL
+ *
+ * Also includes API route parsing:
+ * - Next.js (App Router & Pages Router)
+ * - Express
+ * - Fastify
+ * - Hono
  */
 
 import * as path from 'path';
@@ -20,6 +26,14 @@ import { parseSQLSchema } from './sql-parser.js';
 
 // Re-export types for backwards compatibility
 export type { GetSchemaArgs } from './types.js';
+
+// API Routes handler
+export { handleGetApiRoutes } from './api-routes.js';
+export type { GetApiRoutesArgs } from './api-routes.js';
+
+// Unified database schema handler
+export { handleGetDatabaseSchema } from './database.js';
+export type { GetDatabaseSchemaArgs } from './database.js';
 
 /**
  * Handle get_schema tool call

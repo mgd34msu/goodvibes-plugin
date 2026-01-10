@@ -1,0 +1,96 @@
+name: get_env_config
+version: "1.0.0"
+description: |
+  Find all environment variable usages and their sources in a project.
+  Scans source files for process.env.*, import.meta.env.*, Deno.env.* patterns
+  and cross-references with .env, .env.example, .env.local files to identify
+  documented vs undocumented variables.
+
+mcp:
+  server: goodvibes-tools
+  method: get_env_config
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root path to analyze"
+      default: "."
+  required: []
+
+output_schema:
+  type: object
+  properties:
+    variables:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: "Environment variable name"
+          used_in:
+            type: array
+            items:
+              type: object
+              properties:
+                file: { type: string }
+                line: { type: integer }
+          defined_in:
+            type: array
+            items: { type: string }
+            description: "List of env files where this variable is defined"
+          has_default:
+            type: boolean
+            description: "Whether the variable has a default value in code"
+          required:
+            type: boolean
+            description: "Whether the variable appears to be required (no fallback)"
+    summary:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: "Total unique environment variables found"
+        documented:
+          type: integer
+          description: "Variables defined in at least one env file"
+        undocumented:
+          type: integer
+          description: "Variables used in code but not in any env file"
+        unused_in_example:
+          type: integer
+          description: "Variables in .env.example not used in code"
+
+examples:
+  - description: "Analyze environment config in a Next.js project"
+    input:
+      path: "."
+    output:
+      variables:
+        - name: "DATABASE_URL"
+          used_in:
+            - { file: "src/lib/db.ts", line: 5 }
+            - { file: "prisma/schema.prisma", line: 8 }
+          defined_in: [".env", ".env.example"]
+          has_default: false
+          required: true
+        - name: "NEXT_PUBLIC_API_URL"
+          used_in:
+            - { file: "src/lib/api.ts", line: 12 }
+          defined_in: [".env.example"]
+          has_default: true
+          required: false
+        - name: "SECRET_KEY"
+          used_in:
+            - { file: "src/lib/auth.ts", line: 8 }
+          defined_in: []
+          has_default: false
+          required: true
+      summary:
+        total: 3
+        documented: 2
+        undocumented: 1
+        unused_in_example: 0
