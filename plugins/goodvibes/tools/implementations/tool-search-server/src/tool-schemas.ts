@@ -524,7 +524,8 @@ export const TOOL_SCHEMAS = [
       type: 'object',
       properties: {
         file: { type: 'string', description: 'Specific source file to check coverage for (relative to project root)' },
-        coverage_path: { type: 'string', description: 'Path to coverage report directory or file (defaults to common locations)' },
+        path: { type: 'string', description: 'Path to project or coverage directory (defaults to PROJECT_ROOT)' },
+        coverage_path: { type: 'string', description: 'Alias for path - path to coverage report directory or file' },
       },
     },
   },

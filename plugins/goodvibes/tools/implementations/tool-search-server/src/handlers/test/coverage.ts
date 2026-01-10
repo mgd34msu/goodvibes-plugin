@@ -36,6 +36,8 @@ export interface GetTestCoverageArgs {
   file?: string;
   /** Path to coverage report directory or file */
   coverage_path?: string;
+  /** Alias for coverage_path */
+  path?: string;
 }
 
 /**
@@ -136,47 +138,52 @@ const COVERAGE_PATHS = [
 /**
  * Find coverage report file in the project.
  *
- * @param customPath - Optional custom path to check first
- * @param projectRoot - Project root directory
+ * @param customPath - Optional custom path to check first (becomes base for search)
+ * @param projectRoot - Project root directory (default fallback)
  * @returns Path to coverage file and its type, or null if not found
  */
 function findCoverageReport(
   customPath: string | undefined,
   projectRoot: string
 ): { path: string; type: CoverageReportType } | null {
-  // Check custom path first
-  if (customPath) {
-    const fullPath = path.isAbsolute(customPath) ? customPath : path.resolve(projectRoot, customPath);
+  // Determine the base directory to search in
+  const searchBase = customPath
+    ? (path.isAbsolute(customPath) ? customPath : path.resolve(projectRoot, customPath))
+    : projectRoot;
 
+  // If custom path is a file, check it directly
+  if (customPath && fs.existsSync(searchBase) && fs.statSync(searchBase).isFile()) {
+    const type = detectCoverageType(searchBase);
+    if (type) {
+      return { path: searchBase, type };
+    }
+  }
+
+  // Search for coverage files in the base directory
+  const baseDir = fs.existsSync(searchBase) && fs.statSync(searchBase).isDirectory()
+    ? searchBase
+    : projectRoot;
+
+  // Check all common coverage paths relative to the base directory
+  for (const relativePath of COVERAGE_PATHS) {
+    const fullPath = path.resolve(baseDir, relativePath);
     if (fs.existsSync(fullPath)) {
       const type = detectCoverageType(fullPath);
       if (type) {
         return { path: fullPath, type };
-      }
-    }
-
-    // If custom path is a directory, look for coverage files inside
-    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-      for (const relativePath of COVERAGE_PATHS) {
-        const fileName = path.basename(relativePath);
-        const checkPath = path.join(fullPath, fileName);
-        if (fs.existsSync(checkPath)) {
-          const type = detectCoverageType(checkPath);
-          if (type) {
-            return { path: checkPath, type };
-          }
-        }
       }
     }
   }
 
-  // Check common locations
-  for (const relativePath of COVERAGE_PATHS) {
-    const fullPath = path.resolve(projectRoot, relativePath);
-    if (fs.existsSync(fullPath)) {
-      const type = detectCoverageType(fullPath);
-      if (type) {
-        return { path: fullPath, type };
+  // If custom path was provided but nothing found there, also check PROJECT_ROOT as fallback
+  if (customPath && baseDir !== projectRoot) {
+    for (const relativePath of COVERAGE_PATHS) {
+      const fullPath = path.resolve(projectRoot, relativePath);
+      if (fs.existsSync(fullPath)) {
+        const type = detectCoverageType(fullPath);
+        if (type) {
+          return { path: fullPath, type };
+        }
       }
     }
   }
@@ -553,15 +560,16 @@ function extractUncoveredFunctions(
  */
 export async function handleGetTestCoverage(args: GetTestCoverageArgs): Promise<ToolResponse> {
   try {
-    // Find coverage report
-    const report = findCoverageReport(args.coverage_path, PROJECT_ROOT);
+    // Find coverage report (support both path and coverage_path)
+    const searchPath = args.coverage_path || args.path;
+    const report = findCoverageReport(searchPath, PROJECT_ROOT);
 
     if (!report) {
       return createErrorResponse(
         'No coverage report found. Run your test suite with coverage enabled (e.g., npm test -- --coverage)',
         {
           searched_paths: COVERAGE_PATHS,
-          custom_path: args.coverage_path,
+          search_base: searchPath || 'PROJECT_ROOT',
         }
       );
     }
