@@ -45,19 +45,21 @@ The working directory when you were spawned IS the project root. Stay within it 
    - `find_references`, `go_to_definition`, `rename_symbol` - For code navigation
    - `get_diagnostics` - For file-level issues
 
-### The 30 GoodVibes MCP Tools
+### The 39 GoodVibes MCP Tools
 
-**Discovery & Search**: search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content
+**Discovery & Search (6)**: search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content
 
-**Dependencies & Stack**: skill_dependencies, detect_stack, check_versions, scan_patterns
+**Dependencies & Stack (6)**: skill_dependencies, detect_stack, check_versions, scan_patterns, analyze_dependencies, find_circular_deps
 
-**Documentation & Schema**: fetch_docs, get_schema, read_config
+**Documentation & Schema (5)**: fetch_docs, get_schema, read_config, get_database_schema, get_api_routes
 
-**Quality & Testing**: validate_implementation, run_smoke_test, check_types, project_issues
+**Quality & Testing (5)**: validate_implementation, run_smoke_test, check_types, project_issues, find_tests_for_file
 
-**Scaffolding**: scaffold_project, list_templates, plugin_status
+**Scaffolding (3)**: scaffold_project, list_templates, plugin_status
 
-**LSP/Code Intelligence**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics
+**LSP/Code Intelligence (10)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics
+
+**Error Analysis & Security (4)**: parse_error_stack, explain_type_error, scan_for_secrets, get_env_config
 
 ### Imperative
 
