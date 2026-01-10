@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-10T05:07:52.392Z'
-total: 53
+generated: '2026-01-10T05:09:01.947Z'
+total: 54
 categories: {}
 search_index:
   - name: analyze_bundle
@@ -1013,6 +1013,37 @@ search_index:
       Creates a virtual snapshot with edits applied and runs TypeScript diagnostics
       to detect any new errors that would be introduced.
       Does NOT modify any files - purely a validation/preview operation.
+  - name: workspace_symbols
+    keywords:
+      - workspace
+      - symbols
+      - search
+      - name
+      - across
+      - entire
+      - semantic
+      - awareness
+      - unlike
+      - grep
+      - this
+      - distinguishes
+      - between
+      - function
+      - named
+      - foo
+      - variable
+      - uses
+      - typescript
+      - language
+      - service
+      - getnavigatetoitems
+      - accurate
+      - symbol
+    path: definitions/lsp/workspace-symbols.yaml
+    description: |
+      Search for symbols by name across the entire workspace with semantic awareness.
+      Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`.
+      Uses TypeScript Language Service's getNavigateToItems for accurate symbol search.
   - name: plugin_status
     keywords:
       - plugin
@@ -1802,6 +1833,12 @@ deferred_tools:
       Creates a virtual snapshot with edits applied and runs TypeScript diagnostics
       to detect any new errors that would be introduced.
       Does NOT modify any files - purely a validation/preview operation.
+  - name: workspace_symbols
+    path: definitions/lsp/workspace-symbols.yaml
+    description: |
+      Search for symbols by name across the entire workspace with semantic awareness.
+      Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`.
+      Uses TypeScript Language Service's getNavigateToItems for accurate symbol search.
   - name: get_conventions
     path: definitions/project/get-conventions.yaml
     description: |

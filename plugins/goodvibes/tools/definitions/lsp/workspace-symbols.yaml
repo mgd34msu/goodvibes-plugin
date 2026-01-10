@@ -27,29 +27,16 @@ inputSchema:
       description: Symbol name or partial name to search for
     kind:
       type: string
-      description: Filter by symbol kind (default: all)
-      enum:
-        - all
-        - class
-        - interface
-        - function
-        - variable
-        - type
-        - enum
-        - method
-        - property
-        - module
+      description: Filter by symbol kind (default all)
+      enum: [all, class, interface, function, variable, type, enum, method, property, module]
     limit:
       type: integer
-      description: Maximum number of results (default: 50, max: 200)
+      description: Maximum number of results (default 50, max 200)
       default: 50
     match_type:
       type: string
-      enum:
-        - exact
-        - prefix
-        - substring
-      description: How to match the query (default: substring)
+      description: How to match the query (default substring)
+      enum: [exact, prefix, substring]
       default: substring
   required:
     - query
@@ -99,7 +86,7 @@ handler:
   function: handleWorkspaceSymbols
 
 examples:
-  - description: "Search for all symbols containing 'User'"
+  - description: "Search for all symbols containing User"
     input:
       query: "User"
     output:
@@ -118,15 +105,8 @@ examples:
           column: 1
           container_name: ""
           match_kind: "prefix"
-        - name: "createUser"
-          kind: "function"
-          file: "src/api/users.ts"
-          line: 20
-          column: 1
-          container_name: ""
-          match_kind: "substring"
       query: "User"
-      count: 3
+      count: 2
       truncated: false
 
   - description: "Search for class symbols only"
@@ -142,30 +122,6 @@ examples:
           column: 1
           container_name: ""
           match_kind: "prefix"
-        - name: "AuthService"
-          kind: "class"
-          file: "src/services/auth.ts"
-          line: 8
-          column: 1
-          container_name: ""
-          match_kind: "prefix"
       query: "Service"
-      count: 2
-      truncated: false
-
-  - description: "Search for exact match"
-    input:
-      query: "handleLogin"
-      match_type: "exact"
-    output:
-      symbols:
-        - name: "handleLogin"
-          kind: "function"
-          file: "src/handlers/auth.ts"
-          line: 15
-          column: 1
-          container_name: "AuthHandler"
-          match_kind: "exact"
-      query: "handleLogin"
       count: 1
       truncated: false
