@@ -8,10 +8,21 @@ import { dirname } from 'path';
 import { IFuseOptions } from 'fuse.js';
 import { RegistryEntry } from './types.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Handle both ESM and CJS contexts
+const getConfigDir = (): string => {
+  // In CJS bundle, use process.cwd() as fallback since import.meta is not available
+  if (typeof __dirname !== 'undefined') {
+    return __dirname;
+  }
+  try {
+    // @ts-expect-error - import.meta only available in ESM
+    return dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return process.cwd();
+  }
+};
 
-export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '../../..');
+export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), '../../..');
 export const PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 export const FUSE_OPTIONS: IFuseOptions<RegistryEntry> = {
