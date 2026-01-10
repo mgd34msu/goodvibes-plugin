@@ -5,6 +5,7 @@
       "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/tool-search-server/dist/index.cjs"],
       "env": {
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "PROJECT_ROOT": "${CLAUDE_PROJECT_DIR}",
         "NODE_ENV": "production"
       }
     }
