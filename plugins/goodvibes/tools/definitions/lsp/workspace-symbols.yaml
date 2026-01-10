@@ -27,6 +27,7 @@ inputSchema:
       description: Symbol name or partial name to search for
     kind:
       type: string
+      description: Filter by symbol kind (default: all)
       enum:
         - all
         - class
@@ -38,7 +39,6 @@ inputSchema:
         - method
         - property
         - module
-      description: Filter by symbol kind (default: all)
     limit:
       type: integer
       description: Maximum number of results (default: 50, max: 200)
