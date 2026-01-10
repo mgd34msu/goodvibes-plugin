@@ -4463,8 +4463,17 @@ var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
 // src/session-start/response-formatter.ts
-var PLUGIN_VERSION = "v2.1.0";
 var SESSION_ID_DISPLAY_LENGTH = 8;
+function getPluginVersion() {
+  try {
+    const manifestPath = path16.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
+    const content = fs12.readFileSync(manifestPath, "utf-8");
+    const manifest = JSON.parse(content);
+    return manifest.version ? `v${manifest.version}` : "v0.0.0";
+  } catch {
+    return "v0.0.0";
+  }
+}
 function getToolCount() {
   try {
     const registryPath = path16.join(PLUGIN_ROOT, "tools", "_registry.yaml");
@@ -4477,7 +4486,7 @@ function getToolCount() {
 }
 function buildSystemMessage(sessionId, context) {
   const parts = [];
-  parts.push(`GoodVibes plugin ${PLUGIN_VERSION} initialized.`);
+  parts.push(`GoodVibes plugin ${getPluginVersion()} initialized.`);
   parts.push(`${getToolCount()} tools available.`);
   parts.push(`Session: ${sessionId.slice(-SESSION_ID_DISPLAY_LENGTH)}`);
   if (context.needsRecovery) {

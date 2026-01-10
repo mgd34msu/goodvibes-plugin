@@ -8,10 +8,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { PLUGIN_ROOT } from '../shared/constants.js';
-/** Plugin version string */
-const PLUGIN_VERSION = 'v2.1.0';
 /** Length of session ID suffix to display */
 const SESSION_ID_DISPLAY_LENGTH = 8;
+/**
+ * Get the plugin version from manifest
+ */
+function getPluginVersion() {
+    try {
+        const manifestPath = path.join(PLUGIN_ROOT, '.claude-plugin', 'plugin.json');
+        const content = fs.readFileSync(manifestPath, 'utf-8');
+        const manifest = JSON.parse(content);
+        return manifest.version ? `v${manifest.version}` : 'v0.0.0';
+    }
+    catch {
+        return 'v0.0.0';
+    }
+}
 /**
  * Get the number of available tools from the registry
  */
@@ -39,7 +51,7 @@ function getToolCount() {
 export function buildSystemMessage(sessionId, context) {
     const parts = [];
     // Base message
-    parts.push(`GoodVibes plugin ${PLUGIN_VERSION} initialized.`);
+    parts.push(`GoodVibes plugin ${getPluginVersion()} initialized.`);
     parts.push(`${getToolCount()} tools available.`);
     // Truncate session ID to last 8 characters for brevity
     parts.push(`Session: ${sessionId.slice(-SESSION_ID_DISPLAY_LENGTH)}`);
