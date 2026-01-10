@@ -29,7 +29,7 @@ import {
   DetectStackArgs,
   ScanPatternsArgs,
 } from "./types.js";
-import { PLUGIN_ROOT } from "./config.js";
+import { PLUGIN_ROOT, PROJECT_ROOT } from "./config.js";
 import { TOOL_SCHEMAS } from "./tool-schemas.js";
 import { loadRegistry, createIndex } from "./utils.js";
 import { logInfo, logError } from "./logging.js";
