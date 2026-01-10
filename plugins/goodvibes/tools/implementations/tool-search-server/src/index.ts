@@ -350,6 +350,8 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleWorkspaceSymbols(args as WorkspaceSymbolsArgs),
   safe_delete_check: (_ctx, args) =>
     handleSafeDeleteCheck(args as SafeDeleteCheckArgs),
+  validate_edits_preview: (_ctx, args) =>
+    handleValidateEditsPreview(args as ValidateEditsPreviewArgs),
 
   // Dependency Analysis
   analyze_dependencies: (_ctx, args) =>

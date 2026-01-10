@@ -176,6 +176,38 @@ function getSymbolAtPosition(
 }
 
 /**
+ * Find the containing class or function name for a position.
+ */
+function findContainerName(
+  sourceFile: ts.SourceFile,
+  position: number
+): string | undefined {
+  function find(node: ts.Node): string | undefined {
+    if (position >= node.getStart(sourceFile) && position < node.getEnd()) {
+      // Check if this node is a container (class, function, etc.)
+      if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
+        return node.name?.text;
+      }
+      if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) {
+        return node.name?.text;
+      }
+      if (ts.isModuleDeclaration(node)) {
+        return ts.isIdentifier(node.name) ? node.name.text : undefined;
+      }
+      // Recurse into children
+      let containerName: string | undefined;
+      ts.forEachChild(node, (child) => {
+        const result = find(child);
+        if (result) containerName = result;
+      });
+      return containerName;
+    }
+    return undefined;
+  }
+  return find(sourceFile);
+}
+
+/**
  * Process an implementation location into our output format.
  */
 function processImplementation(
@@ -196,6 +228,7 @@ function processImplementation(
 
   const name = extractSymbolName(sourceFile, impl.textSpan);
   const preview = getPreviewFromSourceFile(sourceFile, line);
+  const containerName = findContainerName(sourceFile, impl.textSpan.start);
 
   return {
     file: makeRelativePath(impl.fileName, PROJECT_ROOT),
@@ -204,7 +237,7 @@ function processImplementation(
     kind: mapScriptElementKind(impl.kind),
     name: name || impl.displayParts?.map(p => p.text).join('') || 'unknown',
     preview,
-    containerName: impl.containerName,
+    containerName,
   };
 }
 

@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-10T04:21:05.699Z'
-total: 48
+generated: '2026-01-10T05:06:22.418Z'
+total: 53
 categories: {}
 search_index:
   - name: analyze_bundle
@@ -676,6 +676,78 @@ search_index:
       Get the structural outline of a document (classes, functions, interfaces, etc.).
       Returns a hierarchical tree of symbols with their positions and kinds.
       Useful for understanding document structure and navigation.
+  - name: get_implementations
+    keywords:
+      - get
+      - implementations
+      - find
+      - all
+      - concrete
+      - interface
+      - abstract
+      - method
+      - uses
+      - typescript
+      - language
+      - service
+      - where
+      - types
+      - are
+      - implemented
+      - critical
+      - polymorphic
+      - code
+      - go_to_definition
+      - goes
+      - find_references
+      - finds
+      - usages
+      - this
+      - tells
+      - you
+      - what
+      - actually
+      - runs
+    path: definitions/lsp/get-implementations.yaml
+    description: |
+      Find all concrete implementations of an interface or abstract method.
+      Uses TypeScript Language Service to find where abstract types are implemented.
+      Critical for polymorphic code - go_to_definition goes to the interface,
+      find_references finds usages - this tells you what code actually RUNS.
+  - name: get_inlay_hints
+    keywords:
+      - get
+      - inlay
+      - hints
+      - file
+      - see
+      - inferred
+      - types
+      - where
+      - they
+      - implicit
+      - returns
+      - return
+      - variable
+      - parameter
+      - names
+      - call
+      - sites
+      - type
+      - arguments
+      - helps
+      - understand
+      - code
+      - that
+      - doesn
+      - have
+      - explicit
+      - annotations
+    path: definitions/lsp/get-inlay-hints.yaml
+    description: |
+      Get inlay hints for a file to see inferred types where they're implicit.
+      Returns hints for inferred return types, variable types, parameter names at call sites,
+      and inferred type arguments. Helps understand code that doesn't have explicit type annotations.
   - name: get_signature_help
     keywords:
       - get
@@ -733,6 +805,38 @@ search_index:
       Get detailed information about a symbol at a given position.
       Returns type info, documentation, definition location, and modifiers.
       Useful for understanding symbol types, reading JSDoc, and navigating code.
+  - name: get_type_hierarchy
+    keywords:
+      - get
+      - type
+      - hierarchy
+      - full
+      - inheritance
+      - symbol
+      - given
+      - position
+      - returns
+      - both
+      - supertypes
+      - what
+      - this
+      - extends
+      - implements
+      - subtypes
+      - essential
+      - understanding
+      - class
+      - relationships
+      - impact
+      - analysis
+      - modifying
+      - base
+      - classes
+    path: definitions/lsp/get-type-hierarchy.yaml
+    description: |
+      Get the full type inheritance hierarchy for a symbol at a given position.
+      Returns both supertypes (what this type extends/implements) and subtypes (what extends/implements this type).
+      Essential for understanding class relationships and impact analysis when modifying base classes.
   - name: go_to_definition
     keywords:
       - go
@@ -788,6 +892,40 @@ search_index:
       Get all edits needed to rename a symbol across the codebase.
       Returns file locations and text changes to apply for a safe rename.
       Uses TypeScript Language Service for accurate, semantic renaming.
+  - name: safe_delete_check
+    keywords:
+      - safe
+      - delete
+      - check
+      - confirm
+      - symbol
+      - has
+      - zero
+      - external
+      - usages
+      - before
+      - deleting
+      - provides
+      - cleaner
+      - interface
+      - than
+      - find_references
+      - clear
+      - 'yes'
+      - answer
+      - handles
+      - edge
+      - cases
+      - like
+      - self
+      - references
+      - same
+      - declaration
+    path: definitions/lsp/safe-delete-check.yaml
+    description: |
+      Confirm a symbol has zero external usages before deleting.
+      Provides a cleaner interface than find_references with a clear yes/no answer.
+      Handles edge cases like self-references and same-declaration references.
   - name: semantic_diff
     keywords:
       - semantic
@@ -838,6 +976,43 @@ search_index:
       - Which callers/consumers might be affected
       - Risk level of each change
       Uses headless Claude to analyze diffs with full type context.
+  - name: validate_edits_preview
+    keywords:
+      - validate
+      - edits
+      - preview
+      - impact
+      - proposed
+      - before
+      - applying
+      - them
+      - creates
+      - virtual
+      - snapshot
+      - applied
+      - runs
+      - typescript
+      - diagnostics
+      - detect
+      - any
+      - new
+      - errors
+      - that
+      - would
+      - introduced
+      - does
+      - not
+      - modify
+      - files
+      - purely
+      - validation
+      - operation
+    path: definitions/lsp/validate-edits-preview.yaml
+    description: |
+      Preview the impact of proposed edits before applying them.
+      Creates a virtual snapshot with edits applied and runs TypeScript diagnostics
+      to detect any new errors that would be introduced.
+      Does NOT modify any files - purely a validation/preview operation.
   - name: plugin_status
     keywords:
       - plugin
@@ -1560,6 +1735,19 @@ deferred_tools:
       Get the structural outline of a document (classes, functions, interfaces, etc.).
       Returns a hierarchical tree of symbols with their positions and kinds.
       Useful for understanding document structure and navigation.
+  - name: get_implementations
+    path: definitions/lsp/get-implementations.yaml
+    description: |
+      Find all concrete implementations of an interface or abstract method.
+      Uses TypeScript Language Service to find where abstract types are implemented.
+      Critical for polymorphic code - go_to_definition goes to the interface,
+      find_references finds usages - this tells you what code actually RUNS.
+  - name: get_inlay_hints
+    path: definitions/lsp/get-inlay-hints.yaml
+    description: |
+      Get inlay hints for a file to see inferred types where they're implicit.
+      Returns hints for inferred return types, variable types, parameter names at call sites,
+      and inferred type arguments. Helps understand code that doesn't have explicit type annotations.
   - name: get_signature_help
     path: definitions/lsp/get-signature-help.yaml
     description: |
@@ -1573,6 +1761,12 @@ deferred_tools:
       Get detailed information about a symbol at a given position.
       Returns type info, documentation, definition location, and modifiers.
       Useful for understanding symbol types, reading JSDoc, and navigating code.
+  - name: get_type_hierarchy
+    path: definitions/lsp/get-type-hierarchy.yaml
+    description: |
+      Get the full type inheritance hierarchy for a symbol at a given position.
+      Returns both supertypes (what this type extends/implements) and subtypes (what extends/implements this type).
+      Essential for understanding class relationships and impact analysis when modifying base classes.
   - name: go_to_definition
     path: definitions/lsp/go-to-definition.yaml
     description: |
@@ -1585,6 +1779,12 @@ deferred_tools:
       Get all edits needed to rename a symbol across the codebase.
       Returns file locations and text changes to apply for a safe rename.
       Uses TypeScript Language Service for accurate, semantic renaming.
+  - name: safe_delete_check
+    path: definitions/lsp/safe-delete-check.yaml
+    description: |
+      Confirm a symbol has zero external usages before deleting.
+      Provides a cleaner interface than find_references with a clear yes/no answer.
+      Handles edge cases like self-references and same-declaration references.
   - name: semantic_diff
     path: definitions/lsp/semantic-diff.yaml
     description: |
@@ -1595,6 +1795,13 @@ deferred_tools:
       - Which callers/consumers might be affected
       - Risk level of each change
       Uses headless Claude to analyze diffs with full type context.
+  - name: validate_edits_preview
+    path: definitions/lsp/validate-edits-preview.yaml
+    description: |
+      Preview the impact of proposed edits before applying them.
+      Creates a virtual snapshot with edits applied and runs TypeScript diagnostics
+      to detect any new errors that would be introduced.
+      Does NOT modify any files - purely a validation/preview operation.
   - name: get_conventions
     path: definitions/project/get-conventions.yaml
     description: |
