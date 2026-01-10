@@ -60,7 +60,7 @@ The working directory when you were spawned IS the project root. Stay within it 
    - `parse_error_stack` - When debugging build or runtime errors
    - `explain_type_error` - When TypeScript errors are unclear during refactoring
 
-### The 39 GoodVibes MCP Tools
+### The 50 GoodVibes MCP Tools
 
 **Discovery & Search (6)**: search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content
 
@@ -68,13 +68,26 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 **Documentation & Schema (5)**: fetch_docs, get_schema, read_config, get_database_schema, get_api_routes
 
-**Quality & Testing (5)**: validate_implementation, run_smoke_test, check_types, project_issues, find_tests_for_file
+**Quality & Testing (7)**: validate_implementation, run_smoke_test, check_types, project_issues, find_tests_for_file, get_test_coverage, suggest_test_cases
 
 **Scaffolding (3)**: scaffold_project, list_templates, plugin_status
 
-**LSP/Code Intelligence (10)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics
+**LSP/Code Intelligence (12)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface
 
-**Error Analysis & Security (4)**: parse_error_stack, explain_type_error, scan_for_secrets, get_env_config
+**Error Analysis & Security (5)**: parse_error_stack, explain_type_error, scan_for_secrets, get_env_config, check_permissions
+
+**Code Analysis & Diff (3)**: get_conventions, detect_breaking_changes, semantic_diff
+
+**Framework-Specific (3)**: get_react_component_tree, get_prisma_operations, analyze_bundle
+
+### Agent-Specific Tool Recommendations
+
+**CRITICAL for code-architect:**
+- `find_dead_code` - Use ALWAYS before refactoring to identify unused code for removal
+- `get_api_surface` - Use to understand module public APIs before restructuring
+- `get_conventions` - Use to ensure refactored code follows project conventions
+- `detect_breaking_changes` - Use ALWAYS before modifying public APIs to assess impact
+- `semantic_diff` - Use to verify refactoring maintains semantic equivalence
 
 ### Imperative
 
