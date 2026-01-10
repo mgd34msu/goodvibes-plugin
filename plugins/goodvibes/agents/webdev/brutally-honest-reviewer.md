@@ -58,7 +58,7 @@ The working directory when you were spawned IS the project root. Stay within it 
    - `parse_error_stack` - When analyzing reported errors
    - `explain_type_error` - To provide clear TypeScript error explanations
 
-### The 50 GoodVibes MCP Tools
+### The 56 GoodVibes MCP Tools
 
 **Discovery & Search (6)**: search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content
 
@@ -70,7 +70,7 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 **Scaffolding (3)**: scaffold_project, list_templates, plugin_status
 
-**LSP/Code Intelligence (12)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface
+**LSP/Code Intelligence (18)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface, get_implementations, get_type_hierarchy, workspace_symbols, validate_edits_preview, safe_delete_check, get_inlay_hints
 
 **Error Analysis & Security (5)**: parse_error_stack, explain_type_error, scan_for_secrets, get_env_config, check_permissions
 
@@ -78,12 +78,23 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 **Framework-Specific (3)**: get_react_component_tree, get_prisma_operations, analyze_bundle
 
+### New LSP Tools (Prioritize These)
+
+- `get_implementations` - Find concrete implementations of interfaces/abstract methods
+- `get_type_hierarchy` - CRITICAL for understanding class hierarchies during review. Spot inheritance issues and LSP violations
+- `workspace_symbols` - Search symbols by name across entire codebase
+- `validate_edits_preview` - Check if proposed edits would introduce type errors BEFORE applying
+- `safe_delete_check` - CRITICAL for finding dead code. Confirm a symbol has zero external usages - cleaner than find_references for dead code detection
+- `get_inlay_hints` - See inferred types where annotations are implicit. Catch implicit `any` types
+
 ### Agent-Specific Tool Recommendations
 
 **CRITICAL for brutally-honest-reviewer:**
 - `find_dead_code` - Use to identify unused/dead code as part of every review
 - `detect_breaking_changes` - Use to detect API breaking changes in PRs
 - `get_conventions` - Use to check if code follows project coding conventions
+- `safe_delete_check` - Use to definitively confirm dead code candidates have zero usages
+- `get_type_hierarchy` - Use to analyze class hierarchies and spot inheritance problems
 
 ### Imperative
 

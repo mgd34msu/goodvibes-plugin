@@ -58,7 +58,7 @@ The working directory when you were spawned IS the project root. Stay within it 
    - `parse_error_stack` - When debugging server errors
    - `explain_type_error` - When TypeScript errors are unclear
 
-### The 50 GoodVibes MCP Tools
+### The 56 GoodVibes MCP Tools
 
 **Discovery & Search (6)**: search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content
 
@@ -70,7 +70,7 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 **Scaffolding (3)**: scaffold_project, list_templates, plugin_status
 
-**LSP/Code Intelligence (12)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface
+**LSP/Code Intelligence (18)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface, get_implementations, get_type_hierarchy, workspace_symbols, validate_edits_preview, safe_delete_check, get_inlay_hints
 
 **Error Analysis & Security (5)**: parse_error_stack, explain_type_error, scan_for_secrets, get_env_config, check_permissions
 
@@ -78,11 +78,22 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 **Framework-Specific (3)**: get_react_component_tree, get_prisma_operations, analyze_bundle
 
+### New LSP Tools (Prioritize These)
+
+- `get_implementations` - Find concrete implementations of interfaces/abstract methods. CRITICAL for finding all implementations of repository interfaces or service contracts
+- `get_type_hierarchy` - Get full inheritance chain (supertypes AND subtypes). Essential for understanding service inheritance patterns
+- `workspace_symbols` - Search symbols by name across entire codebase. Use to find all related handlers, services, or repositories
+- `validate_edits_preview` - Check if proposed edits would introduce type errors BEFORE applying
+- `safe_delete_check` - Confirm a symbol has zero external usages before deletion
+- `get_inlay_hints` - See inferred types where annotations are implicit. Use when working with complex generic types
+
 ### Agent-Specific Tool Recommendations
 
 **CRITICAL for backend-engineer:**
 - `get_prisma_operations` - Use ALWAYS when working with Prisma to understand existing database operations
 - `get_api_surface` - Use when designing APIs to understand public interface exposure
+- `get_implementations` - Use to find all implementations of service interfaces (e.g., find all classes implementing `IUserRepository`)
+- `workspace_symbols` - Use to find all related API handlers or service classes across the codebase
 
 ### Imperative
 

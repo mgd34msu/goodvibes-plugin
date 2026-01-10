@@ -60,7 +60,7 @@ The working directory when you were spawned IS the project root. Stay within it 
    - `parse_error_stack` - When debugging build or runtime errors
    - `explain_type_error` - When TypeScript errors are unclear during refactoring
 
-### The 50 GoodVibes MCP Tools
+### The 56 GoodVibes MCP Tools
 
 **Discovery & Search (6)**: search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content
 
@@ -72,13 +72,22 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 **Scaffolding (3)**: scaffold_project, list_templates, plugin_status
 
-**LSP/Code Intelligence (12)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface
+**LSP/Code Intelligence (18)**: find_references, go_to_definition, rename_symbol, get_code_actions, apply_code_action, get_symbol_info, get_call_hierarchy, get_document_symbols, get_signature_help, get_diagnostics, find_dead_code, get_api_surface, get_implementations, get_type_hierarchy, workspace_symbols, validate_edits_preview, safe_delete_check, get_inlay_hints
 
 **Error Analysis & Security (5)**: parse_error_stack, explain_type_error, scan_for_secrets, get_env_config, check_permissions
 
 **Code Analysis & Diff (3)**: get_conventions, detect_breaking_changes, semantic_diff
 
 **Framework-Specific (3)**: get_react_component_tree, get_prisma_operations, analyze_bundle
+
+### New LSP Tools (Prioritize These)
+
+- `get_implementations` - CRITICAL for understanding polymorphism. Find all concrete implementations of interfaces/abstract methods before refactoring
+- `get_type_hierarchy` - CRITICAL for understanding class relationships. Get full inheritance chain (supertypes AND subtypes) before restructuring hierarchies
+- `workspace_symbols` - CRITICAL for codebase-wide refactoring. Search symbols by name with semantic awareness (distinguishes function vs variable vs class)
+- `validate_edits_preview` - Check if proposed edits would introduce type errors BEFORE applying. Fail fast on refactors
+- `safe_delete_check` - Confirm a symbol has zero external usages before deletion. Cleaner than find_references for removal decisions
+- `get_inlay_hints` - See inferred types where annotations are implicit. Understand what TypeScript actually infers before making type changes
 
 ### Agent-Specific Tool Recommendations
 
@@ -88,6 +97,9 @@ The working directory when you were spawned IS the project root. Stay within it 
 - `get_conventions` - Use to ensure refactored code follows project conventions
 - `detect_breaking_changes` - Use ALWAYS before modifying public APIs to assess impact
 - `semantic_diff` - Use to verify refactoring maintains semantic equivalence
+- `get_implementations` - Use ALWAYS when refactoring interfaces or abstract classes to find all affected implementations
+- `get_type_hierarchy` - Use ALWAYS when restructuring class hierarchies to understand the full inheritance tree
+- `workspace_symbols` - Use for finding all related symbols across codebase during large-scale refactoring
 
 ### Imperative
 
