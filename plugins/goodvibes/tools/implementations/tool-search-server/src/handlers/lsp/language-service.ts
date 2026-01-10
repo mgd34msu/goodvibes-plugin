@@ -233,15 +233,16 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
   }
 
   /**
-   * Find project root by looking for .git or package.json
+   * Find project root by looking for .goodvibes, .git, or package.json
    */
   private findProjectRoot(startPath: string): string | null {
     let dir = startPath;
     const root = path.parse(dir).root;
 
     while (dir !== root) {
-      // Check for project markers
+      // Check for project markers - .goodvibes first (GoodVibes plugin marker)
       if (
+        fs.existsSync(path.join(dir, '.goodvibes')) ||
         fs.existsSync(path.join(dir, '.git')) ||
         fs.existsSync(path.join(dir, 'package.json'))
       ) {
