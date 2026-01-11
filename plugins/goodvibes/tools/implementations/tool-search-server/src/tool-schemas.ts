@@ -882,17 +882,22 @@ export const TOOL_SCHEMAS = [
   // Database Query
   {
     name: 'query_database',
-    description: 'Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.',
+    description: 'Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.',
     inputSchema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: 'SQL query to execute',
+          description: 'SQL query to execute. For parameterized queries, use ? placeholders.',
         },
         database_url: {
           type: 'string',
-          description: 'Database connection URL (postgresql://, mysql://, sqlite:///). Falls back to DATABASE_URL env var if not provided.',
+          description: 'Database connection URL. Formats: postgresql://user:pass@host:port/db, mysql://user:pass@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3.',
+        },
+        params: {
+          type: 'array',
+          items: { type: ['string', 'number', 'boolean', 'null'] },
+          description: 'Parameters for parameterized queries (replaces ? placeholders in order). Prevents SQL injection.',
         },
         readonly: {
           type: 'boolean',

@@ -234958,17 +234958,22 @@ var TOOL_SCHEMAS = [
   // Database Query
   {
     name: "query_database",
-    description: "Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.",
+    description: "Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.",
     inputSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "SQL query to execute"
+          description: "SQL query to execute. For parameterized queries, use ? placeholders."
         },
         database_url: {
           type: "string",
-          description: "Database connection URL (postgresql://, mysql://, sqlite:///). Falls back to DATABASE_URL env var if not provided."
+          description: "Database connection URL. Formats: postgresql://user:pass@host:port/db, mysql://user:pass@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3."
+        },
+        params: {
+          type: "array",
+          items: { type: ["string", "number", "boolean", "null"] },
+          description: "Parameters for parameterized queries (replaces ? placeholders in order). Prevents SQL injection."
         },
         readonly: {
           type: "boolean",
@@ -256985,6 +256990,174 @@ async function handleIdentifyTechDebt(args) {
   }
 }
 
+// src/handlers/database/sqlite-connection.ts
+var SqliteConnectionPool = class {
+  connections = /* @__PURE__ */ new Map();
+  maxConnectionsPerDb = 5;
+  idleTimeoutMs = 6e4;
+  // 1 minute
+  cleanupInterval = null;
+  constructor() {
+    this.cleanupInterval = setInterval(() => this.cleanupIdleConnections(), 3e4);
+  }
+  /**
+   * Get a connection key for the pool
+   */
+  getPoolKey(filepath, readonly2) {
+    return `${filepath}:${readonly2 ? "ro" : "rw"}`;
+  }
+  /**
+   * Acquire a connection from the pool or create a new one
+   */
+  async acquire(options) {
+    const key = this.getPoolKey(options.filepath, options.readonly ?? true);
+    let poolConnections = this.connections.get(key);
+    if (!poolConnections) {
+      poolConnections = [];
+      this.connections.set(key, poolConnections);
+    }
+    const available = poolConnections.find((c) => !c.inUse && c.database.open);
+    if (available) {
+      available.inUse = true;
+      available.lastUsed = Date.now();
+      return available;
+    }
+    if (poolConnections.length < this.maxConnectionsPerDb) {
+      const db = await this.createConnection(options);
+      const pooled = {
+        database: db,
+        filepath: options.filepath,
+        readonly: options.readonly ?? true,
+        lastUsed: Date.now(),
+        inUse: true
+      };
+      poolConnections.push(pooled);
+      return pooled;
+    }
+    return new Promise((resolve60, reject) => {
+      const timeout = options.timeout ?? 5e3;
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        const available2 = poolConnections.find((c) => !c.inUse && c.database.open);
+        if (available2) {
+          clearInterval(checkInterval);
+          available2.inUse = true;
+          available2.lastUsed = Date.now();
+          resolve60(available2);
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(checkInterval);
+          reject(new Error(`SQLite connection timeout after ${timeout}ms`));
+        }
+      }, 50);
+    });
+  }
+  /**
+   * Release a connection back to the pool
+   */
+  release(connection) {
+    connection.inUse = false;
+    connection.lastUsed = Date.now();
+  }
+  /**
+   * Create a new SQLite database connection
+   */
+  async createConnection(options) {
+    const sqliteModule = await this.loadDriver();
+    const filepath = options.filepath === ":memory:" ? ":memory:" : options.filepath;
+    const Database = sqliteModule.default || sqliteModule;
+    const db = new Database(filepath, {
+      readonly: options.readonly ?? true,
+      timeout: options.timeout ?? 5e3
+    });
+    try {
+      if (options.foreignKeys !== false) {
+        db.pragma("foreign_keys = ON");
+      }
+      if (options.walMode && !options.readonly) {
+        db.pragma("journal_mode = WAL");
+      }
+      db.pragma("busy_timeout = 5000");
+      if (!options.readonly) {
+        db.pragma("synchronous = NORMAL");
+      }
+    } catch {
+    }
+    return db;
+  }
+  /**
+   * Load the SQLite driver dynamically
+   */
+  async loadDriver() {
+    try {
+      const importFn = new Function("name", "return import(name)");
+      return await importFn("better-sqlite3");
+    } catch {
+      throw new Error(
+        "SQLite driver (better-sqlite3) is not installed. Install with: npm install better-sqlite3"
+      );
+    }
+  }
+  /**
+   * Clean up idle connections
+   */
+  cleanupIdleConnections() {
+    const now = Date.now();
+    for (const [key, connections] of this.connections.entries()) {
+      const active = connections.filter((c) => {
+        const isIdle = !c.inUse && now - c.lastUsed > this.idleTimeoutMs;
+        if (isIdle && c.database.open) {
+          try {
+            c.database.close();
+          } catch {
+          }
+        }
+        return !isIdle;
+      });
+      if (active.length === 0) {
+        this.connections.delete(key);
+      } else {
+        this.connections.set(key, active);
+      }
+    }
+  }
+  /**
+   * Close all connections and stop the cleanup interval
+   */
+  shutdown() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    for (const connections of this.connections.values()) {
+      for (const conn of connections) {
+        if (conn.database.open) {
+          try {
+            conn.database.close();
+          } catch {
+          }
+        }
+      }
+    }
+    this.connections.clear();
+  }
+};
+var poolInstance = null;
+function getConnectionPool() {
+  if (!poolInstance) {
+    poolInstance = new SqliteConnectionPool();
+  }
+  return poolInstance;
+}
+async function withConnection(options, callback) {
+  const pool = getConnectionPool();
+  const connection = await pool.acquire(options);
+  try {
+    return await callback(connection.database);
+  } finally {
+    pool.release(connection);
+  }
+}
+
 // src/handlers/database/query-database.ts
 var WRITE_KEYWORDS = [
   "INSERT",
@@ -257035,8 +257208,37 @@ function addLimitClause(query, limit) {
   return `${withoutSemicolon} LIMIT ${limit}`;
 }
 function parseDatabaseUrl(url2) {
+  if (url2 === ":memory:" || url2 === "sqlite::memory:" || url2 === "sqlite://:memory:") {
+    return {
+      type: "sqlite",
+      database: ":memory:",
+      filepath: ":memory:"
+    };
+  }
   if (url2.startsWith("sqlite:") || url2.startsWith("file:")) {
-    const filepath = url2.replace(/^sqlite:(\/\/)?/, "").replace(/^file:/, "").replace(/^\.\/?/, "./");
+    let filepath = url2.replace(/^sqlite:(\/\/)?/, "").replace(/^file:/, "");
+    if (filepath.startsWith("./") || filepath.startsWith("../")) {
+    } else if (!filepath.startsWith("/") && !filepath.match(/^[A-Za-z]:\\/)) {
+      filepath = "./" + filepath;
+    }
+    if (filepath === ":memory:" || filepath === "/:memory:") {
+      return {
+        type: "sqlite",
+        database: ":memory:",
+        filepath: ":memory:"
+      };
+    }
+    return {
+      type: "sqlite",
+      database: filepath,
+      filepath
+    };
+  }
+  if (url2.match(/\.(db|sqlite|sqlite3)$/i)) {
+    let filepath = url2;
+    if (!filepath.startsWith("/") && !filepath.startsWith("./") && !filepath.match(/^[A-Za-z]:\\/)) {
+      filepath = "./" + filepath;
+    }
     return {
       type: "sqlite",
       database: filepath,
@@ -257088,9 +257290,6 @@ async function getPostgresDriver() {
 }
 async function getMysqlDriver() {
   return dynamicImport("mysql2/promise");
-}
-async function getSqliteDriver() {
-  return dynamicImport("better-sqlite3");
 }
 async function executePostgresQuery(connectionInfo, query) {
   const pg = await getPostgresDriver();
@@ -257199,39 +257398,68 @@ function getMysqlTypeName(typeCode) {
   };
   return typeMap[typeCode] || "unknown";
 }
-async function executeSqliteQuery(connectionInfo, query) {
-  const sqliteModule = await getSqliteDriver();
-  if (!sqliteModule) {
-    throw new Error(
-      "SQLite driver (better-sqlite3) is not installed. Install with: npm install better-sqlite3"
-    );
-  }
-  const Database = sqliteModule.default || sqliteModule;
-  const db = new Database(connectionInfo.filepath, { readonly: true });
-  try {
+async function executeSqliteQuery(connectionInfo, query, params = [], readonly2 = true) {
+  const filepath = connectionInfo.filepath === ":memory:" ? ":memory:" : connectionInfo.filepath;
+  const connectionOptions = {
+    filepath,
+    readonly: readonly2,
+    foreignKeys: true,
+    walMode: !readonly2
+    // Enable WAL for write operations
+  };
+  return withConnection(connectionOptions, (db) => {
     const stmt = db.prepare(query);
-    const rows = stmt.all();
-    const columns = [];
-    if (rows.length > 0) {
-      for (const [key, value] of Object.entries(rows[0])) {
-        columns.push({
-          name: key,
-          type: inferSqliteType(value)
-        });
+    const isSelect = isSelectQuery(query);
+    if (isSelect) {
+      const rows = params.length > 0 ? stmt.all(...params) : stmt.all();
+      const columns = [];
+      if (rows.length > 0) {
+        for (const [key, value] of Object.entries(rows[0])) {
+          columns.push({
+            name: key,
+            type: inferSqliteType(value)
+          });
+        }
+      } else {
+        try {
+          const columnsInfo = stmt.columns();
+          for (const col of columnsInfo) {
+            columns.push({
+              name: col.name,
+              type: col.type || "unknown"
+            });
+          }
+        } catch {
+        }
       }
+      return { rows, columns };
     } else {
-      const columnsInfo = stmt.columns();
-      for (const col of columnsInfo) {
-        columns.push({
-          name: col.name,
-          type: col.type || "unknown"
-        });
-      }
+      const result = params.length > 0 ? stmt.run(...params) : stmt.run();
+      return {
+        rows: [],
+        columns: [],
+        changes: result.changes,
+        lastInsertRowid: result.lastInsertRowid
+      };
     }
-    return { rows, columns };
-  } finally {
-    db.close();
+  });
+}
+function isSelectQuery(query) {
+  const normalizedQuery = query.trim().toUpperCase();
+  const withoutComments = normalizedQuery.replace(/^--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").trim();
+  if (withoutComments.startsWith("SELECT")) {
+    return true;
   }
+  if (withoutComments.startsWith("WITH")) {
+    return !WRITE_KEYWORDS.some((keyword) => {
+      const pattern = new RegExp(`\\)\\s*${keyword}\\b`, "i");
+      return pattern.test(withoutComments);
+    });
+  }
+  if (withoutComments.startsWith("PRAGMA")) {
+    return !withoutComments.includes("=");
+  }
+  return false;
 }
 function inferSqliteType(value) {
   if (value === null) return "null";
@@ -257327,31 +257555,51 @@ async function handleQueryDatabase(args) {
     }
   }
   try {
-    const { rows, columns } = await executeQuery(connectionInfo, queryToExecute);
+    const executionResult = await executeQuery(connectionInfo, queryToExecute, {
+      params: args.params || [],
+      readonly: readonly2
+    });
     const executionTime = Date.now() - startTime;
     const result = {
       success: true,
       database_type: connectionInfo.type,
-      rows,
-      row_count: rows.length,
-      columns,
+      rows: executionResult.rows,
+      row_count: executionResult.rows.length,
+      columns: executionResult.columns,
       execution_time_ms: executionTime,
       query_executed: queryToExecute,
       truncated
     };
+    if (executionResult.changes !== void 0) {
+      result.changes = executionResult.changes;
+    }
+    if (executionResult.lastInsertRowid !== void 0) {
+      result.last_insert_rowid = executionResult.lastInsertRowid;
+    }
     if (explainOutput) {
       result.explain_output = explainOutput;
     }
     let outputText;
     if (format2 === "table") {
-      const tableOutput = formatAsTable(rows, columns);
-      outputText = `Query executed successfully (${executionTime}ms)
+      if (executionResult.changes !== void 0) {
+        outputText = `Query executed successfully (${executionTime}ms)
+
+`;
+        outputText += `Rows affected: ${executionResult.changes}`;
+        if (executionResult.lastInsertRowid !== void 0 && executionResult.lastInsertRowid !== 0n) {
+          outputText += `
+Last insert row ID: ${executionResult.lastInsertRowid}`;
+        }
+      } else {
+        const tableOutput = formatAsTable(executionResult.rows, executionResult.columns);
+        outputText = `Query executed successfully (${executionTime}ms)
 
 ${tableOutput}
 
-${rows.length} row(s) returned`;
-      if (truncated) {
-        outputText += ` (limited to ${limit})`;
+${executionResult.rows.length} row(s) returned`;
+        if (truncated) {
+          outputText += ` (limited to ${limit})`;
+        }
       }
       if (explainOutput) {
         outputText += `
@@ -257368,6 +257616,7 @@ ${explainOutput}`;
   } catch (error3) {
     const executionTime = Date.now() - startTime;
     const errorMessage = error3 instanceof Error ? error3.message : "Unknown error";
+    const enhancedError = enhanceSqliteError(errorMessage, connectionInfo.type);
     const result = {
       success: false,
       database_type: connectionInfo.type,
@@ -257376,7 +257625,7 @@ ${explainOutput}`;
       columns: [],
       execution_time_ms: executionTime,
       query_executed: queryToExecute,
-      error: errorMessage
+      error: enhancedError
     };
     if (explainOutput) {
       result.explain_output = explainOutput;
@@ -257387,14 +257636,70 @@ ${explainOutput}`;
     };
   }
 }
-async function executeQuery(connectionInfo, query) {
+function enhanceSqliteError(message, dbType) {
+  if (dbType !== "sqlite") {
+    return message;
+  }
+  const enhancements = [
+    [
+      /SQLITE_READONLY/i,
+      `${message}
+
+Hint: The database is opened in readonly mode. Set readonly=false to enable write operations.`
+    ],
+    [
+      /SQLITE_BUSY/i,
+      `${message}
+
+Hint: The database is locked by another connection. Wait and retry, or ensure other connections are closed.`
+    ],
+    [
+      /SQLITE_CONSTRAINT/i,
+      `${message}
+
+Hint: A constraint was violated (foreign key, unique, not null, etc.). Check your data against the table schema.`
+    ],
+    [
+      /no such table/i,
+      `${message}
+
+Hint: The table does not exist. Use 'SELECT name FROM sqlite_master WHERE type="table"' to list available tables.`
+    ],
+    [
+      /no such column/i,
+      `${message}
+
+Hint: The column does not exist. Use 'PRAGMA table_info(table_name)' to see column definitions.`
+    ],
+    [
+      /SQLITE_CORRUPT/i,
+      `${message}
+
+Hint: The database file appears to be corrupted. Consider restoring from a backup.`
+    ],
+    [
+      /unable to open database/i,
+      `${message}
+
+Hint: Cannot open the database file. Check that the path is correct and the file has proper permissions.`
+    ]
+  ];
+  for (const [pattern, enhanced] of enhancements) {
+    if (pattern.test(message)) {
+      return enhanced;
+    }
+  }
+  return message;
+}
+async function executeQuery(connectionInfo, query, options = {}) {
+  const { params = [], readonly: readonly2 = true } = options;
   switch (connectionInfo.type) {
     case "postgresql":
       return executePostgresQuery(connectionInfo, query);
     case "mysql":
       return executeMysqlQuery(connectionInfo, query);
     case "sqlite":
-      return executeSqliteQuery(connectionInfo, query);
+      return executeSqliteQuery(connectionInfo, query, params, readonly2);
     default:
       throw new Error(`Unsupported database type: ${connectionInfo.type}`);
   }

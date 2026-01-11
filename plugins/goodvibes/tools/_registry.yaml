@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-01-11T00:40:52.470Z'
+generated: '2026-01-11T06:24:27.853Z'
 total: 91
 categories: {}
 search_index:
@@ -1774,6 +1774,16 @@ search_index:
       - json
       - table
       - formats
+      - parameterized
+      - memory
+      - connection
+      - pooling
+      - returns
+      - affected
+      - row
+      - count
+      - write
+      - operations
       - drivers
       - mysql2
       - better
@@ -1788,8 +1798,10 @@ search_index:
     path: mcp-server/query_database
     description: >-
       Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
-      accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. Database
-      drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.
+      accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For
+      SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns
+      affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only
+      the ones you need.
   - name: validate_env_complete
     keywords:
       - validate
