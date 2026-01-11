@@ -159,6 +159,10 @@ import {
   handleDiagnoseOverflow,
   handleAnalyzeRenderTriggers,
   handleAnalyzeLayoutHierarchy,
+  handleGetAccessibilityTree,
+  handleGetSizingStrategy,
+  handleAnalyzeEventFlow,
+  handleAnalyzeTailwindConflicts,
   // Type imports
   type SkillDependenciesArgs,
   type CheckVersionsArgs,
@@ -245,6 +249,10 @@ import {
   type AnalyzeLayoutHierarchyArgs,
   type AnalyzeRenderTriggersArgs,
   type DiagnoseOverflowArgs,
+  type GetAccessibilityTreeArgs,
+  type GetSizingStrategyArgs,
+  type AnalyzeEventFlowArgs,
+  type AnalyzeTailwindConflictsArgs,
 } from "./handlers/index.js";
 
 /**
@@ -337,6 +345,10 @@ type ToolArgs =
   | AnalyzeRenderTriggersArgs
   | DiagnoseOverflowArgs
   | AnalyzeLayoutHierarchyArgs
+  | GetAccessibilityTreeArgs
+  | GetSizingStrategyArgs
+  | AnalyzeEventFlowArgs
+  | AnalyzeTailwindConflictsArgs
   | Record<string, never>; // For tools with no args (plugin_status)
 
 /**
@@ -595,6 +607,14 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     handleDiagnoseOverflow(args as DiagnoseOverflowArgs),
   analyze_layout_hierarchy: (_ctx, args) =>
     handleAnalyzeLayoutHierarchy(args as AnalyzeLayoutHierarchyArgs),
+  get_accessibility_tree: (_ctx, args) =>
+    handleGetAccessibilityTree(args as GetAccessibilityTreeArgs),
+  get_sizing_strategy: (_ctx, args) =>
+    handleGetSizingStrategy(args as GetSizingStrategyArgs),
+  analyze_event_flow: (_ctx, args) =>
+    handleAnalyzeEventFlow(args as AnalyzeEventFlowArgs),
+  analyze_tailwind_conflicts: (_ctx, args) =>
+    handleAnalyzeTailwindConflicts(args as AnalyzeTailwindConflictsArgs),
 };
 
 /**

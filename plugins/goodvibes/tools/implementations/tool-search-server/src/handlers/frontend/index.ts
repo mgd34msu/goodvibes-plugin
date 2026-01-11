@@ -7,6 +7,8 @@
  * - Layout hierarchy analysis with Tailwind CSS support
  * - Responsive breakpoint analysis for Tailwind CSS
  * - Overflow issue diagnosis and fix recommendations
+ * - Accessibility tree building and WCAG issue detection
+ * - Tailwind class conflict and redundancy detection
  *
  * @module handlers/frontend
  */
@@ -38,3 +40,19 @@ export type { DiagnoseOverflowArgs } from './diagnose-overflow.js';
 // Trace Component State
 export { handleTraceComponentState } from './trace-component-state.js';
 export type { TraceComponentStateArgs } from './trace-component-state.js';
+
+// Get Accessibility Tree
+export { handleGetAccessibilityTree } from './get-accessibility-tree.js';
+export type { GetAccessibilityTreeArgs, A11yNode } from './get-accessibility-tree.js';
+
+// Get Sizing Strategy
+export { handleGetSizingStrategy } from './get-sizing-strategy.js';
+export type { GetSizingStrategyArgs, GetSizingStrategyResult } from './get-sizing-strategy.js';
+
+// Analyze Tailwind Conflicts
+export { handleAnalyzeTailwindConflicts } from './analyze-tailwind-conflicts.js';
+export type { AnalyzeTailwindConflictsArgs } from './analyze-tailwind-conflicts.js';
+
+// Analyze Event Flow
+export { handleAnalyzeEventFlow } from './analyze-event-flow.js';
+export type { AnalyzeEventFlowArgs } from './analyze-event-flow.js';

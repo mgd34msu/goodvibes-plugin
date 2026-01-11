@@ -1243,4 +1243,82 @@ export const TOOL_SCHEMAS = [
       required: ['file'],
     },
   },
+  {
+    name: 'get_accessibility_tree',
+    description: 'Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML roles, focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements, missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus order sequence, issues with WCAG criteria references, and optimization suggestions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.',
+        },
+        element: {
+          type: 'string',
+          description: 'Optional: Focus on specific element by tag name or component name. If omitted, analyzes entire component tree.',
+        },
+        check_patterns: {
+          type: 'boolean',
+          description: 'Validate ARIA patterns for roles like dialog, combobox, tabs, etc. (default: true)',
+          default: true,
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'get_sizing_strategy',
+    description: 'Analyze how a specific element\'s size is determined. Examines Tailwind classes or CSS to identify width/height strategies (fixed, percentage, viewport, content-based, flex-controlled, grid-controlled), min/max constraints, flex behavior (grow, shrink, basis), grid placement, overflow settings, and positioning context. Walks the ancestor chain to find constraints that affect the target element. Returns a human-readable summary explaining how the element\'s dimensions are computed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.',
+        },
+        selector: {
+          type: 'string',
+          description: 'Element selector: class (.className), id (#id), or tag name. Finds the first matching element in the component tree.',
+        },
+      },
+      required: ['file', 'selector'],
+    },
+  },
+  {
+    name: 'analyze_event_flow',
+    description: 'Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick, onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches checks). Essential for debugging "why is my click firing twice" and accessibility audits.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.',
+        },
+        event: {
+          type: 'string',
+          description: 'Optional: Filter to specific event type (e.g., "click", "change", "submit"). If omitted, analyzes all events.',
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'analyze_tailwind_conflicts',
+    description: 'Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types of issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2\'s x-padding is overridden), (3) Contradiction conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit w-/h- classes, z-index without position, and provides optimization suggestions like using size-X instead of w-X h-X when equal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'File path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.',
+        },
+        include_arbitrary: {
+          type: 'boolean',
+          description: 'Check arbitrary values like [100px] for conflicts (default: true)',
+          default: true,
+        },
+      },
+      required: ['file'],
+    },
+  },
 ];

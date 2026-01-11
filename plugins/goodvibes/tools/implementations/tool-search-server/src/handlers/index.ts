@@ -286,6 +286,10 @@ export {
   handleAnalyzeStackingContext,
   handleAnalyzeLayoutHierarchy,
   handleDiagnoseOverflow,
+  handleGetAccessibilityTree,
+  handleGetSizingStrategy,
+  handleAnalyzeEventFlow,
+  handleAnalyzeTailwindConflicts,
 } from './frontend/index.js';
 export type {
   TraceComponentStateArgs,
@@ -294,4 +298,10 @@ export type {
   AnalyzeStackingContextArgs,
   AnalyzeLayoutHierarchyArgs,
   DiagnoseOverflowArgs,
+  GetAccessibilityTreeArgs,
+  A11yNode,
+  GetSizingStrategyArgs,
+  GetSizingStrategyResult,
+  AnalyzeEventFlowArgs,
+  AnalyzeTailwindConflictsArgs,
 } from './frontend/index.js';
