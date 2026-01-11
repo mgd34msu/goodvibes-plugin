@@ -211,12 +211,14 @@ function scanSkills(): RegistryEntry[] {
 }
 
 /**
- * Scan tools directory (recursively)
+ * Scan tools directory (recursively) and also read from tool-schemas.ts
  */
 function scanTools(): RegistryEntry[] {
   const toolsDir = path.join(PLUGIN_ROOT, 'tools', 'definitions');
   const entries: RegistryEntry[] = [];
+  const seenNames = new Set<string>();
 
+  // First, scan YAML definitions
   function scanDir(dir: string, relativePath: string = 'definitions') {
     if (!fs.existsSync(dir)) return;
 
@@ -235,6 +237,7 @@ function scanTools(): RegistryEntry[] {
 
         try {
           const tool = yaml.load(content) as ToolDefinition;
+          seenNames.add(tool.name);
           entries.push({
             name: tool.name,
             path: `${relativePath}/${item}`,
@@ -250,6 +253,33 @@ function scanTools(): RegistryEntry[] {
   }
 
   scanDir(toolsDir);
+
+  // Then, scan tool-schemas.ts for any tools not in YAML definitions
+  const schemasPath = path.join(PLUGIN_ROOT, 'tools', 'implementations', 'tool-search-server', 'src', 'tool-schemas.ts');
+  if (fs.existsSync(schemasPath)) {
+    const schemasContent = fs.readFileSync(schemasPath, 'utf-8');
+
+    // Extract tool definitions using regex
+    const toolRegex = /\{\s*name:\s*['"]([^'"]+)['"]\s*,\s*description:\s*['"]([^'"]+)['"]/g;
+    let match;
+
+    while ((match = toolRegex.exec(schemasContent)) !== null) {
+      const name = match[1];
+      const description = match[2];
+
+      if (!seenNames.has(name)) {
+        seenNames.add(name);
+        entries.push({
+          name,
+          path: `mcp-server/${name}`,
+          description,
+          triggers: extractKeywords(description, name),
+          tags: ['mcp']
+        });
+      }
+    }
+  }
+
   return entries;
 }
 

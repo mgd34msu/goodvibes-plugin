@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-11T00:36:02.536Z'
-total: 54
+generated: '2026-01-11T00:40:52.470Z'
+total: 91
 categories: {}
 search_index:
   - name: analyze_bundle
@@ -1612,6 +1612,1241 @@ search_index:
       Check that generated code matches skill patterns and best practices.
       Validates structure, naming, error handling, and security.
       Run after skill application to ensure quality.
+  - name: get_agent_content
+    keywords:
+      - get
+      - agent
+      - content
+      - load
+      - full
+      - path
+    path: mcp-server/get_agent_content
+    description: Load full content of an agent by path
+  - name: generate_openapi
+    keywords:
+      - generate
+      - openapi
+      - specification
+      - from
+      - detected
+      - api
+      - routes
+      - supports
+      - next
+      - app
+      - router
+      - pages
+      - express
+      - fastify
+      - hono
+      - extracts
+      - path
+      - parameters
+      - attempts
+      - parse
+      - request
+      - response
+      - types
+      - handlers
+      - generates
+      - examples
+    path: mcp-server/generate_openapi
+    description: >-
+      Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
+      Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and
+      generates examples.
+  - name: project_issues
+    keywords:
+      - project
+      - issues
+      - get
+      - detailed
+      - high
+      - priority
+      - todos
+      - file
+      - line
+      - health
+      - warnings
+      - environment
+    path: mcp-server/project_issues
+    description: 'Get detailed project issues: high-priority TODOs with file:line, health warnings, environment issues'
+  - name: analyze_stacking_context
+    keywords:
+      - analyze
+      - stacking
+      - context
+      - index
+      - contexts
+      - react
+      - vue
+      - svelte
+      - components
+      - detects
+      - which
+      - css
+      - properties
+      - create
+      - new
+      - position
+      - transform
+      - opacity
+      - filter
+      - isolation
+      - etc
+      - builds
+      - hierarchical
+      - tree
+      - identifies
+      - potential
+      - conflicts
+      - finds
+      - portal
+      - destinations
+      - essential
+      - debugging
+    path: mcp-server/analyze_stacking_context
+    description: >-
+      Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
+      stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
+      tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging 
+  - name: detect_memory_leaks
+    keywords:
+      - detect
+      - memory
+      - leaks
+      - monitor
+      - process
+      - usage
+      - over
+      - time
+      - potential
+      - takes
+      - periodic
+      - snapshots
+      - performs
+      - trend
+      - analysis
+      - linear
+      - regression
+      - identifies
+      - consistent
+      - growth
+      - patterns
+      - supports
+      - monitoring
+      - existing
+      - processes
+      - pid
+      - spawning
+      - new
+      - command
+    path: mcp-server/detect_memory_leaks
+    description: >-
+      Monitor process memory usage over time to detect potential memory leaks. Takes periodic snapshots, performs trend
+      analysis with linear regression, and identifies consistent memory growth patterns. Supports monitoring existing
+      processes by PID or spawning a new command.
+  - name: query_database
+    keywords:
+      - query
+      - database
+      - execute
+      - sql
+      - queries
+      - against
+      - postgresql
+      - mysql
+      - sqlite
+      - databases
+      - supports
+      - readonly
+      - mode
+      - default
+      - prevent
+      - accidental
+      - writes
+      - auto
+      - limit
+      - select
+      - explain
+      - output
+      - both
+      - json
+      - table
+      - formats
+      - drivers
+      - mysql2
+      - better
+      - sqlite3
+      - are
+      - optional
+      - install
+      - only
+      - ones
+      - you
+      - need
+    path: mcp-server/query_database
+    description: >-
+      Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
+      accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. Database
+      drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.
+  - name: validate_env_complete
+    keywords:
+      - validate
+      - env
+      - complete
+      - environment
+      - variables
+      - are
+      - documented
+      - compares
+      - against
+      - example
+      - code
+      - usage
+      - identify
+      - missing
+      - unused
+      - undocumented
+      - optionally
+      - validates
+      - value
+      - formats
+      - based
+      - naming
+      - conventions
+      - ports
+      - should
+      - numbers
+      - urls
+      - valid
+      - etc
+    path: mcp-server/validate_env_complete
+    description: >-
+      Validate environment variables are complete and documented. Compares .env against .env.example and code usage to
+      identify missing, unused, and undocumented variables. Optionally validates value formats based on naming
+      conventions (ports should be numbers, URLs should be valid, etc.).
+  - name: upgrade_package
+    keywords:
+      - upgrade
+      - package
+      - npm
+      - comprehensive
+      - breaking
+      - change
+      - detection
+      - analyzes
+      - changelog
+      - changes
+      - checks
+      - which
+      - packages
+      - depend
+      - this
+      - one
+      - optionally
+      - runs
+      - tests
+      - after
+      - supports
+      - dry
+      - run
+      - mode
+      - safe
+      - preview
+      - before
+      - making
+    path: mcp-server/upgrade_package
+    description: >-
+      Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
+      checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe
+      preview before making changes.
+  - name: sync_api_types
+    keywords:
+      - sync
+      - api
+      - types
+      - detect
+      - type
+      - drift
+      - between
+      - backend
+      - routes
+      - frontend
+      - calls
+      - compares
+      - defined
+      - route
+      - handlers
+      - used
+      - fetch
+      - axios
+      - identify
+      - mismatches
+      - missing
+      - endpoints
+      - that
+      - don
+    path: mcp-server/sync_api_types
+    description: >-
+      Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
+      handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that
+      don\
+  - name: generate_fixture
+    keywords:
+      - generate
+      - fixture
+      - test
+      - fixtures
+      - from
+      - prisma
+      - typescript
+      - schemas
+      - smart
+      - data
+      - generation
+      - supports
+      - optional
+      - faker
+      - integration
+      - realistic
+      - can
+      - multiple
+      - output
+      - formats
+      - including
+      - json
+      - constants
+      - seed
+      - scripts
+    path: mcp-server/generate_fixture
+    description: >-
+      Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
+      @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript
+      constants, and Prisma seed scripts.
+  - name: explain_codebase
+    keywords:
+      - explain
+      - codebase
+      - generate
+      - high
+      - level
+      - explanation
+      - using
+      - llm
+      - analysis
+      - gathers
+      - information
+      - from
+      - stack
+      - detection
+      - api
+      - routes
+      - conventions
+      - directory
+      - structure
+      - produce
+      - comprehensive
+      - overview
+      - including
+      - architecture
+      - diagrams
+      - key
+      - files
+      - entry
+      - points
+      - potential
+      - concerns
+    path: mcp-server/explain_codebase
+    description: >-
+      Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API
+      routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams,
+      key files, entry points, and potential concerns.
+  - name: create_pull_request
+    keywords:
+      - create
+      - pull
+      - request
+      - github
+      - auto
+      - generated
+      - descriptions
+      - analyzes
+      - git
+      - changes
+      - generates
+      - title
+      - description
+      - using
+      - llm
+      - pushes
+      - branch
+      - needed
+      - creates
+      - via
+      - cli
+      - supports
+      - draft
+      - prs
+      - labels
+      - reviewer
+      - assignment
+    path: mcp-server/create_pull_request
+    description: >-
+      Create a GitHub pull request with auto-generated descriptions. Analyzes git changes, generates title and
+      description using LLM, pushes branch if needed, and creates PR via gh CLI. Supports draft PRs, labels, and
+      reviewer assignment.
+  - name: analyze_responsive_breakpoints
+    keywords:
+      - analyze
+      - responsive
+      - breakpoints
+      - tailwind
+      - classes
+      - across
+      - detects
+      - mobile
+      - first
+      - patterns
+      - tracks
+      - property
+      - changes
+      - 2xl
+      - identifies
+      - breakpoint
+      - coverage
+      - gaps
+      - flags
+      - potential
+      - design
+      - issues
+      - like
+      - desktop
+      - missing
+      - base
+      - styles
+    path: mcp-server/analyze_responsive_breakpoints
+    description: >-
+      Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
+      across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
+      design issues like desktop-first patterns or missing base styles.
+  - name: trace_component_state
+    keywords:
+      - trace
+      - component
+      - state
+      - react
+      - props
+      - through
+      - trees
+      - analyzes
+      - usestate
+      - usereducer
+      - useref
+      - usecontext
+      - effect
+      - hooks
+      - detects
+      - prop
+      - drilling
+      - callback
+      - instability
+      - missing
+      - memoization
+      - other
+      - common
+      - anti
+      - patterns
+      - returns
+      - detailed
+      - flow
+      - analysis
+      - including
+      - which
+      - used
+      - jsx
+      - passed
+      - children
+    path: mcp-server/trace_component_state
+    description: >-
+      Trace React state and props through component trees. Analyzes useState, useReducer, useRef, useContext, and effect
+      hooks. Detects prop drilling, callback instability, missing memoization, and other common React anti-patterns.
+      Returns detailed state flow analysis including which state is used in JSX and passed to children.
+  - name: analyze_render_triggers
+    keywords:
+      - analyze
+      - render
+      - triggers
+      - what
+      - causes
+      - react
+      - component
+      - identifies
+      - memoization
+      - status
+      - memo
+      - purecomponent
+      - shouldcomponentupdate
+      - inline
+      - definitions
+      - creating
+      - unstable
+      - references
+      - objects
+      - arrays
+      - functions
+      - jsx
+      - expensive
+      - computations
+      - not
+      - wrapped
+      - usememo
+      - context
+      - subscriptions
+      - their
+      - granularity
+      - provides
+      - prioritized
+      - optimization
+      - suggestions
+    path: mcp-server/analyze_render_triggers
+    description: >-
+      Analyze what causes a React component to re-render. Identifies memoization status (React.memo, PureComponent,
+      shouldComponentUpdate), inline definitions creating unstable references (objects, arrays, functions, JSX),
+      expensive computations not wrapped in useMemo, context subscriptions and their granularity, and provides
+      prioritized optimization suggestions.
+  - name: analyze_layout_hierarchy
+    keywords:
+      - analyze
+      - layout
+      - hierarchy
+      - css
+      - react
+      - vue
+      - svelte
+      - components
+      - parses
+      - jsx
+      - tsx
+      - files
+      - build
+      - tree
+      - sizing
+      - constraints
+      - display
+      - types
+      - flex
+      - grid
+      - block
+      - properties
+      - overflow
+      - handling
+      - positioning
+      - supports
+      - comprehensive
+      - tailwind
+      - class
+      - parsing
+      - detects
+      - potential
+      - issues
+      - like
+      - fixed
+      - height
+      - containers
+      - auto
+      - children
+      - nested
+      - without
+      - percentage
+      - parent
+      - etc
+    path: mcp-server/analyze_layout_hierarchy
+    description: >-
+      Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree with
+      sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
+      Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers
+      with auto-height children, nested flex without sizing, percentage height without parent height, etc.
+  - name: diagnose_overflow
+    keywords:
+      - diagnose
+      - overflow
+      - css
+      - issues
+      - recommend
+      - fixes
+      - analyzes
+      - layout
+      - hierarchy
+      - identify
+      - prone
+      - patterns
+      - such
+      - fixed
+      - height
+      - containers
+      - auto
+      - children
+      - flex
+      - without
+      - handling
+      - nested
+      - percentage
+      - heights
+      - absolute
+      - positioning
+      - containment
+      - missing
+      - min
+      - returns
+      - actionable
+      - fix
+      - options
+      - tailwind
+      - classes
+      - trade
+      - 'off'
+      - explanations
+    path: mcp-server/diagnose_overflow
+    description: >-
+      Diagnose CSS overflow issues and recommend fixes. Analyzes layout hierarchy to identify overflow-prone patterns
+      such as fixed-height containers with auto-height children, flex containers without overflow handling, nested
+      percentage heights, absolute positioning without containment, and missing min-h-0 in nested flex. Returns
+      actionable fix options with Tailwind CSS classes and trade-off explanations.
+  - name: get_accessibility_tree
+    keywords:
+      - get
+      - accessibility
+      - tree
+      - build
+      - detect
+      - wcag
+      - issues
+      - react
+      - vue
+      - svelte
+      - components
+      - analyzes
+      - semantic
+      - html
+      - roles
+      - focus
+      - order
+      - keyboard
+      - interactions
+      - aria
+      - patterns
+      - detects
+      - like
+      - missing
+      - alt
+      - text
+      - unlabeled
+      - form
+      - inputs
+      - buttons
+      - links
+      - without
+      - accessible
+      - names
+      - click
+      - handlers
+      - non
+      - interactive
+      - elements
+      - indicators
+      - invalid
+      - returns
+      - hierarchical
+      - sequence
+      - criteria
+      - references
+      - optimization
+      - suggestions
+    path: mcp-server/get_accessibility_tree
+    description: >-
+      Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML roles,
+      focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled
+      form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
+      missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
+      order sequence, issues with WCAG criteria references, and optimization suggestions.
+  - name: get_sizing_strategy
+    keywords:
+      - get
+      - sizing
+      - strategy
+      - analyze
+      - how
+      - specific
+      - element
+    path: mcp-server/get_sizing_strategy
+    description: Analyze how a specific element\
+  - name: analyze_event_flow
+    keywords:
+      - analyze
+      - event
+      - flow
+      - handling
+      - propagation
+      - react
+      - vue
+      - svelte
+      - components
+      - detects
+      - all
+      - handlers
+      - onclick
+      - onchange
+      - onsubmit
+      - etc
+      - simulates
+      - bubbling
+      - from
+      - leaf
+      - root
+      - identifies
+      - issues
+      - like
+      - nested
+      - clickable
+      - elements
+      - that
+      - may
+      - double
+      - fire
+      - click
+      - non
+      - interactive
+      - without
+      - keyboard
+      - alternatives
+      - form
+      - submits
+      - preventdefault
+      - also
+      - delegation
+      - patterns
+      - target
+      - closest
+      - matches
+      - checks
+      - essential
+      - debugging
+    path: mcp-server/analyze_event_flow
+    description: >-
+      Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
+      onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
+      elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
+      submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
+      checks). Essential for debugging 
+  - name: analyze_tailwind_conflicts
+    keywords:
+      - analyze
+      - tailwind
+      - conflicts
+      - detect
+      - conflicting
+      - redundant
+      - css
+      - classes
+      - react
+      - vue
+      - svelte
+      - components
+      - identifies
+      - three
+      - types
+      - issues
+      - override
+      - where
+      - later
+      - earlier
+      - ones
+    path: mcp-server/analyze_tailwind_conflicts
+    description: >-
+      Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types of
+      issues: (1) Override conflicts where later classes override earlier ones (e.g., 
+  - name: start_dev_server
+    keywords:
+      - start
+      - dev
+      - server
+      - development
+      - return
+      - ready
+      - spawns
+      - npm
+      - yarn
+      - pnpm
+      - command
+      - monitors
+      - output
+      - signals
+      - localhost
+      - urls
+    path: mcp-server/start_dev_server
+    description: >-
+      Start a development server and return when ready. Spawns npm/yarn/pnpm dev command, monitors output for ready
+      signals (localhost URLs, 
+  - name: health_monitor
+    keywords:
+      - health
+      - monitor
+      - url
+      - endpoint
+      - status
+      - makes
+      - periodic
+      - http
+      - requests
+      - check
+      - service
+      - responding
+      - returns
+      - response
+      - times
+      - any
+      - errors
+      - useful
+      - verifying
+      - dev
+      - servers
+      - are
+      - running
+      - after
+      - changes
+    path: mcp-server/health_monitor
+    description: >-
+      Monitor a URL endpoint for health status. Makes periodic HTTP requests to check if a service is responding.
+      Returns health status, response times, and any errors. Useful for verifying dev servers are running after changes.
+  - name: watch_for_errors
+    keywords:
+      - watch
+      - for
+      - errors
+      - monitor
+      - logs
+      - process
+      - output
+      - can
+      - tail
+      - log
+      - files
+      - run
+      - commands
+      - capture
+      - detects
+      - common
+      - error
+      - patterns
+      - typeerror
+      - referenceerror
+      - syntaxerror
+      - enoent
+      - etc
+      - extracts
+      - stack
+      - traces
+      - deduplicates
+      - similar
+      - classifies
+      - types
+      - returns
+      - structured
+      - information
+      - counts
+      - recommendations
+    path: mcp-server/watch_for_errors
+    description: >-
+      Monitor logs or process output for errors. Can tail log files or run commands and capture errors. Detects common
+      error patterns (TypeError, ReferenceError, SyntaxError, ENOENT, etc.), extracts stack traces, deduplicates similar
+      errors, and classifies error types. Returns structured error information with counts and recommendations.
+  - name: browser_automation
+    keywords:
+      - browser
+      - automation
+      - automate
+      - interactions
+      - using
+      - puppeteer
+      - execute
+      - sequences
+      - actions
+      - navigate
+      - click
+      - type
+      - scroll
+      - screenshot
+      - assertions
+      - element
+      - exists
+      - text
+      - contains
+      - attribute
+      - matches
+      - returns
+      - step
+      - results
+      - screenshots
+      - requires
+      - installed
+    path: mcp-server/browser_automation
+    description: >-
+      Automate browser interactions using Puppeteer. Execute sequences of actions (navigate, click, type, scroll,
+      screenshot) and assertions (element exists, text contains, attribute matches). Returns step-by-step results with
+      screenshots. Requires puppeteer to be installed.
+  - name: verify_runtime_behavior
+    keywords:
+      - verify
+      - runtime
+      - behavior
+      - executing
+      - code
+      - checking
+      - results
+      - runs
+      - javascript
+      - typescript
+      - node
+      - environment
+      - verifies
+      - output
+      - matches
+      - expectations
+      - useful
+      - testing
+      - functions
+      - api
+      - responses
+      - data
+      - transformations
+    path: mcp-server/verify_runtime_behavior
+    description: >-
+      Verify runtime behavior by executing code and checking results. Runs JavaScript/TypeScript code in a Node.js
+      environment and verifies the output matches expectations. Useful for testing functions, API responses, and data
+      transformations.
+  - name: lighthouse_audit
+    keywords:
+      - lighthouse
+      - audit
+      - run
+      - audits
+      - url
+      - returns
+      - scores
+      - performance
+      - accessibility
+      - best
+      - practices
+      - seo
+      - pwa
+      - includes
+      - detailed
+      - metrics
+      - improvement
+      - suggestions
+      - requires
+      - chrome
+      - launcher
+      - packages
+    path: mcp-server/lighthouse_audit
+    description: >-
+      Run Lighthouse audits on a URL. Returns scores for performance, accessibility, best practices, SEO, and PWA.
+      Includes detailed metrics and improvement suggestions. Requires lighthouse and chrome-launcher packages.
+  - name: visual_regression
+    keywords:
+      - visual
+      - regression
+      - testing
+      - comparing
+      - screenshots
+      - takes
+      - screenshot
+      - url
+      - element
+      - compares
+      - against
+      - baseline
+      - image
+      - using
+      - pixel
+      - comparison
+      - returns
+      - match
+      - status
+      - diff
+      - percentage
+      - path
+      - requires
+      - puppeteer
+      - pixelmatch
+      - pngjs
+      - packages
+    path: mcp-server/visual_regression
+    description: >-
+      Visual regression testing by comparing screenshots. Takes a screenshot of a URL or element and compares against a
+      baseline image using pixel-by-pixel comparison. Returns match status, diff percentage, and diff image path.
+      Requires puppeteer, pixelmatch, and pngjs packages.
+  - name: retry_with_learning
+    keywords:
+      - retry
+      - with
+      - learning
+      - failed
+      - operation
+      - progressive
+      - fix
+      - strategies
+      - analyzes
+      - error
+      - patterns
+      - applies
+      - fixes
+      - retries
+      - tracks
+      - attempt
+      - history
+      - avoid
+      - repeating
+      - approaches
+      - useful
+      - self
+      - healing
+      - code
+      - changes
+    path: mcp-server/retry_with_learning
+    description: >-
+      Retry a failed operation with progressive fix strategies. Analyzes error patterns, applies fixes, and retries.
+      Tracks attempt history to avoid repeating failed approaches. Useful for self-healing code changes.
+  - name: resolve_merge_conflict
+    keywords:
+      - resolve
+      - merge
+      - conflict
+      - analyze
+      - suggest
+      - resolutions
+      - git
+      - conflicts
+      - parses
+      - markers
+      - analyzes
+      - both
+      - versions
+      - recommends
+      - resolution
+      - strategy
+      - ours
+      - theirs
+      - combined
+      - can
+      - auto
+      - simple
+    path: mcp-server/resolve_merge_conflict
+    description: >-
+      Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
+      recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
+  - name: atomic_multi_edit
+    keywords:
+      - atomic
+      - multi
+      - edit
+      - apply
+      - multiple
+      - file
+      - edits
+      - atomically
+      - rollback
+      - failure
+      - creates
+      - backup
+      - applies
+      - all
+      - runs
+      - validation
+      - build
+      - test
+      - rolls
+      - back
+      - everything
+      - fails
+      - ensures
+      - codebase
+      - stays
+      - valid
+      - state
+    path: mcp-server/atomic_multi_edit
+    description: >-
+      Apply multiple file edits atomically with rollback on failure. Creates backup, applies all edits, runs validation
+      (build/test), and rolls back everything if validation fails. Ensures codebase stays in a valid state.
+  - name: auto_rollback
+    keywords:
+      - auto
+      - rollback
+      - automatically
+      - changes
+      - conditions
+      - are
+      - met
+      - monitors
+      - triggers
+      - build
+      - failure
+      - test
+      - error
+      - patterns
+      - reverts
+      - last
+      - known
+      - good
+      - state
+      - using
+      - git
+    path: mcp-server/auto_rollback
+    description: >-
+      Automatically rollback changes when conditions are met. Monitors for triggers (build failure, test failure, error
+      patterns) and reverts to last known good state using git.
+  - name: validate_api_contract
+    keywords:
+      - validate
+      - api
+      - contract
+      - responses
+      - against
+      - openapi
+      - spec
+      - makes
+      - requests
+      - each
+      - endpoint
+      - verifies
+      - response
+      - status
+      - codes
+      - body
+      - schemas
+      - match
+      - reports
+      - violations
+      - json
+      - paths
+    path: mcp-server/validate_api_contract
+    description: >-
+      Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes
+      and body schemas match the spec. Reports violations with JSON paths.
+  - name: profile_function
+    keywords:
+      - profile
+      - function
+      - javascript
+      - typescript
+      - performance
+      - measures
+      - execution
+      - time
+      - memory
+      - usage
+      - call
+      - frequency
+      - returns
+      - timing
+      - statistics
+      - min
+      - max
+      - avg
+      - p95
+      - deltas
+    path: mcp-server/profile_function
+    description: >-
+      Profile a JavaScript/TypeScript function for performance. Measures execution time, memory usage, and call
+      frequency. Returns timing statistics (min, max, avg, p95) and memory deltas.
+  - name: log_analyzer
+    keywords:
+      - log
+      - analyzer
+      - analyze
+      - files
+      - patterns
+      - errors
+      - anomalies
+      - parses
+      - structured
+      - json
+      - unstructured
+      - logs
+      - identifies
+      - error
+      - spikes
+      - correlates
+      - events
+      - provides
+      - timeline
+      - analysis
+    path: mcp-server/log_analyzer
+    description: >-
+      Analyze log files for patterns, errors, and anomalies. Parses structured (JSON) and unstructured logs, identifies
+      error spikes, correlates events, and provides timeline analysis.
+  - name: generate_types
+    keywords:
+      - generate
+      - types
+      - typescript
+      - from
+      - various
+      - sources
+      - json
+      - data
+      - api
+      - responses
+      - database
+      - schemas
+      - runtime
+      - values
+      - infers
+      - sample
+      - generates
+      - interface
+      - definitions
+    path: mcp-server/generate_types
+    description: >-
+      Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
+      Infers types from sample data and generates .d.ts or interface definitions.
+  - name: identify_tech_debt
+    keywords:
+      - identify
+      - tech
+      - debt
+      - grade
+      - technical
+      - codebase
+      - scans
+      - todo
+      - fixme
+      - hack
+      - comments
+      - complex
+      - functions
+      - high
+      - cyclomatic
+      - complexity
+      - long
+      - files
+      - missing
+      - tests
+      - outdated
+      - dependencies
+      - code
+      - smells
+      - returns
+      - prioritized
+      - items
+      - effort
+      - estimates
+    path: mcp-server/identify_tech_debt
+    description: >-
+      Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
+      cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
+      debt items with effort estimates.
 core_tools:
   - name: list_templates
     path: definitions/list-templates.yaml
