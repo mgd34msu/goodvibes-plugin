@@ -1321,4 +1321,572 @@ export const TOOL_SCHEMAS = [
       required: ['file'],
     },
   },
+  // Process Management Tools (Phase 1)
+  {
+    name: 'start_dev_server',
+    description: 'Start a development server and return when ready. Spawns npm/yarn/pnpm dev command, monitors output for ready signals (localhost URLs, "ready", "compiled"), and returns server URL. Supports custom commands and ports. Process runs in background and can be stopped with the returned process ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        command: {
+          type: 'string',
+          description: 'Custom command to run (default: auto-detect from package.json scripts)',
+        },
+        port: {
+          type: 'integer',
+          description: 'Expected port number (default: auto-detect from output)',
+        },
+        ready_timeout: {
+          type: 'integer',
+          description: 'Max time in ms to wait for ready signal (default: 60000)',
+          default: 60000,
+        },
+        cwd: {
+          type: 'string',
+          description: 'Working directory (default: project root)',
+        },
+      },
+    },
+  },
+  {
+    name: 'health_monitor',
+    description: 'Monitor a URL endpoint for health status. Makes periodic HTTP requests to check if a service is responding. Returns health status, response times, and any errors. Useful for verifying dev servers are running after changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL to monitor (e.g., http://localhost:3000)',
+        },
+        interval_ms: {
+          type: 'integer',
+          description: 'Time between health checks in ms (default: 5000)',
+          default: 5000,
+        },
+        duration_ms: {
+          type: 'integer',
+          description: 'Total monitoring duration in ms (default: 30000)',
+          default: 30000,
+        },
+        expected_status: {
+          type: 'integer',
+          description: 'Expected HTTP status code (default: 200)',
+          default: 200,
+        },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'watch_for_errors',
+    description: 'Monitor logs or process output for errors. Can tail log files or run commands and capture errors. Detects common error patterns (TypeError, ReferenceError, SyntaxError, ENOENT, etc.), extracts stack traces, deduplicates similar errors, and classifies error types. Returns structured error information with counts and recommendations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source: {
+          type: 'string',
+          enum: ['file', 'command'],
+          description: 'Source type: "file" to tail a log file, "command" to run and watch a command',
+        },
+        file_path: {
+          type: 'string',
+          description: 'Log file path to tail (when source is "file")',
+        },
+        command: {
+          type: 'string',
+          description: 'Command to run and watch (when source is "command")',
+        },
+        patterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Custom regex patterns to match errors (in addition to defaults)',
+        },
+        duration: {
+          type: 'integer',
+          description: 'How long to watch in ms (default: 5000)',
+          default: 5000,
+        },
+        tail_lines: {
+          type: 'integer',
+          description: 'For file source, how many lines to read (default: 100)',
+          default: 100,
+        },
+        cwd: {
+          type: 'string',
+          description: 'Working directory for command source',
+        },
+      },
+      required: ['source'],
+    },
+  },
+  // Runtime Verification Tools (Phase 2)
+  {
+    name: 'browser_automation',
+    description: 'Automate browser interactions using Puppeteer. Execute sequences of actions (navigate, click, type, scroll, screenshot) and assertions (element exists, text contains, attribute matches). Returns step-by-step results with screenshots. Requires puppeteer to be installed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              action: { type: 'string', enum: ['navigate', 'click', 'type', 'scroll', 'screenshot', 'wait', 'select', 'hover'] },
+              selector: { type: 'string' },
+              value: { type: 'string' },
+              timeout: { type: 'integer' },
+            },
+          },
+          description: 'Sequence of browser actions to perform',
+        },
+        assertions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['exists', 'not_exists', 'text_contains', 'text_equals', 'attribute_equals', 'visible', 'enabled'] },
+              selector: { type: 'string' },
+              expected: { type: 'string' },
+              attribute: { type: 'string' },
+            },
+          },
+          description: 'Assertions to verify after steps complete',
+        },
+        viewport: {
+          type: 'object',
+          properties: {
+            width: { type: 'integer' },
+            height: { type: 'integer' },
+          },
+          description: 'Browser viewport size (default: 1280x720)',
+        },
+        headless: {
+          type: 'boolean',
+          description: 'Run in headless mode (default: true)',
+          default: true,
+        },
+        base_url: {
+          type: 'string',
+          description: 'Base URL for relative navigation',
+        },
+      },
+      required: ['steps'],
+    },
+  },
+  {
+    name: 'verify_runtime_behavior',
+    description: 'Verify runtime behavior by executing code and checking results. Runs JavaScript/TypeScript code in a Node.js environment and verifies the output matches expectations. Useful for testing functions, API responses, and data transformations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          description: 'JavaScript/TypeScript code to execute',
+        },
+        file: {
+          type: 'string',
+          description: 'File path to execute (alternative to inline code)',
+        },
+        expected: {
+          type: 'object',
+          description: 'Expected result to verify against',
+        },
+        timeout: {
+          type: 'integer',
+          description: 'Execution timeout in ms (default: 10000)',
+          default: 10000,
+        },
+        setup: {
+          type: 'string',
+          description: 'Setup code to run before main code',
+        },
+      },
+    },
+  },
+  {
+    name: 'lighthouse_audit',
+    description: 'Run Lighthouse audits on a URL. Returns scores for performance, accessibility, best practices, SEO, and PWA. Includes detailed metrics and improvement suggestions. Requires lighthouse and chrome-launcher packages.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL to audit',
+        },
+        categories: {
+          type: 'array',
+          items: { type: 'string', enum: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'] },
+          description: 'Categories to audit (default: all)',
+        },
+        device: {
+          type: 'string',
+          enum: ['mobile', 'desktop'],
+          description: 'Device to emulate (default: mobile)',
+          default: 'mobile',
+        },
+        throttling: {
+          type: 'boolean',
+          description: 'Apply network/CPU throttling (default: true)',
+          default: true,
+        },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'visual_regression',
+    description: 'Visual regression testing by comparing screenshots. Takes a screenshot of a URL or element and compares against a baseline image using pixel-by-pixel comparison. Returns match status, diff percentage, and diff image path. Requires puppeteer, pixelmatch, and pngjs packages.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL to screenshot',
+        },
+        selector: {
+          type: 'string',
+          description: 'CSS selector for element screenshot (optional, full page if omitted)',
+        },
+        baseline_path: {
+          type: 'string',
+          description: 'Path to baseline image for comparison',
+        },
+        threshold: {
+          type: 'number',
+          description: 'Acceptable diff ratio 0-1 (default: 0.01 = 1%)',
+          default: 0.01,
+        },
+        viewport: {
+          type: 'object',
+          properties: {
+            width: { type: 'integer' },
+            height: { type: 'integer' },
+          },
+          description: 'Viewport size for screenshot',
+        },
+        wait_for: {
+          type: 'string',
+          description: 'CSS selector to wait for before screenshot',
+        },
+        update_baseline: {
+          type: 'boolean',
+          description: 'Save current as new baseline instead of comparing',
+          default: false,
+        },
+      },
+      required: ['url', 'baseline_path'],
+    },
+  },
+  // Self-Correction Tools (Phase 3)
+  {
+    name: 'retry_with_learning',
+    description: 'Retry a failed operation with progressive fix strategies. Analyzes error patterns, applies fixes, and retries. Tracks attempt history to avoid repeating failed approaches. Useful for self-healing code changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        operation: {
+          type: 'string',
+          description: 'Description of the operation to retry',
+        },
+        command: {
+          type: 'string',
+          description: 'Command to execute and retry',
+        },
+        max_attempts: {
+          type: 'integer',
+          description: 'Maximum retry attempts (default: 3)',
+          default: 3,
+        },
+        fix_strategies: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Fix strategies to try: "install_deps", "fix_imports", "fix_types", "rollback"',
+        },
+        error_pattern: {
+          type: 'string',
+          description: 'Regex pattern to extract error details',
+        },
+        cwd: {
+          type: 'string',
+          description: 'Working directory',
+        },
+      },
+      required: ['command'],
+    },
+  },
+  {
+    name: 'resolve_merge_conflict',
+    description: 'Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Path to file with merge conflicts',
+        },
+        strategy: {
+          type: 'string',
+          enum: ['analyze', 'ours', 'theirs', 'auto'],
+          description: 'Resolution strategy: analyze only, take ours, take theirs, or auto-resolve',
+          default: 'analyze',
+        },
+        context_lines: {
+          type: 'integer',
+          description: 'Lines of context around conflicts (default: 3)',
+          default: 3,
+        },
+      },
+      required: ['file'],
+    },
+  },
+  {
+    name: 'atomic_multi_edit',
+    description: 'Apply multiple file edits atomically with rollback on failure. Creates backup, applies all edits, runs validation (build/test), and rolls back everything if validation fails. Ensures codebase stays in a valid state.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        edits: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              file: { type: 'string' },
+              operation: { type: 'string', enum: ['replace', 'insert', 'delete', 'create'] },
+              old_content: { type: 'string' },
+              new_content: { type: 'string' },
+              line: { type: 'integer' },
+            },
+          },
+          description: 'List of edit operations to apply',
+        },
+        validation: {
+          type: 'object',
+          properties: {
+            run_build: { type: 'boolean' },
+            run_tests: { type: 'boolean' },
+            run_typecheck: { type: 'boolean' },
+            custom_command: { type: 'string' },
+          },
+          description: 'Validation to run after edits',
+        },
+        dry_run: {
+          type: 'boolean',
+          description: 'Preview changes without applying (default: false)',
+          default: false,
+        },
+      },
+      required: ['edits'],
+    },
+  },
+  {
+    name: 'auto_rollback',
+    description: 'Automatically rollback changes when conditions are met. Monitors for triggers (build failure, test failure, error patterns) and reverts to last known good state using git.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        trigger: {
+          type: 'string',
+          enum: ['build_fail', 'test_fail', 'error_pattern', 'manual'],
+          description: 'Condition that triggers rollback',
+        },
+        scope: {
+          type: 'string',
+          enum: ['file', 'commit', 'branch'],
+          description: 'Rollback scope: single file, last commit, or entire branch',
+          default: 'commit',
+        },
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Specific files to rollback (for file scope)',
+        },
+        to_ref: {
+          type: 'string',
+          description: 'Git ref to rollback to (default: HEAD~1)',
+        },
+        dry_run: {
+          type: 'boolean',
+          description: 'Preview rollback without applying',
+          default: false,
+        },
+      },
+      required: ['trigger'],
+    },
+  },
+  {
+    name: 'validate_api_contract',
+    description: 'Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes and body schemas match the spec. Reports violations with JSON paths.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spec_path: {
+          type: 'string',
+          description: 'Path to OpenAPI spec file (JSON or YAML)',
+        },
+        base_url: {
+          type: 'string',
+          description: 'Base URL of running API',
+        },
+        endpoints: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Specific endpoints to test (default: all)',
+        },
+        include_examples: {
+          type: 'boolean',
+          description: 'Use spec examples as request data (default: true)',
+          default: true,
+        },
+        timeout: {
+          type: 'integer',
+          description: 'Per-request timeout in ms (default: 10000)',
+          default: 10000,
+        },
+        auth_header: {
+          type: 'string',
+          description: 'Authorization header value if needed',
+        },
+      },
+      required: ['spec_path', 'base_url'],
+    },
+  },
+  // Analysis Tools (Phase 4)
+  {
+    name: 'profile_function',
+    description: 'Profile a JavaScript/TypeScript function for performance. Measures execution time, memory usage, and call frequency. Returns timing statistics (min, max, avg, p95) and memory deltas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'File containing the function',
+        },
+        function_name: {
+          type: 'string',
+          description: 'Name of the function to profile',
+        },
+        iterations: {
+          type: 'integer',
+          description: 'Number of iterations to run (default: 100)',
+          default: 100,
+        },
+        args: {
+          type: 'array',
+          description: 'Arguments to pass to the function',
+        },
+        warmup: {
+          type: 'integer',
+          description: 'Warmup iterations before measuring (default: 10)',
+          default: 10,
+        },
+      },
+      required: ['file', 'function_name'],
+    },
+  },
+  {
+    name: 'log_analyzer',
+    description: 'Analyze log files for patterns, errors, and anomalies. Parses structured (JSON) and unstructured logs, identifies error spikes, correlates events, and provides timeline analysis.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Path to log file or directory',
+        },
+        format: {
+          type: 'string',
+          enum: ['auto', 'json', 'text', 'apache', 'nginx'],
+          description: 'Log format (default: auto-detect)',
+          default: 'auto',
+        },
+        time_range: {
+          type: 'object',
+          properties: {
+            start: { type: 'string' },
+            end: { type: 'string' },
+          },
+          description: 'Time range to analyze (ISO 8601 format)',
+        },
+        patterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Custom patterns to search for',
+        },
+        group_by: {
+          type: 'string',
+          enum: ['level', 'source', 'hour', 'message'],
+          description: 'Group results by field',
+        },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'generate_types',
+    description: 'Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values. Infers types from sample data and generates .d.ts or interface definitions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source: {
+          type: 'string',
+          enum: ['json', 'api', 'database', 'runtime'],
+          description: 'Source to generate types from',
+        },
+        input: {
+          type: 'string',
+          description: 'Input path, URL, or JSON string depending on source',
+        },
+        output: {
+          type: 'string',
+          description: 'Output file path for generated types',
+        },
+        name: {
+          type: 'string',
+          description: 'Root type/interface name',
+        },
+        options: {
+          type: 'object',
+          properties: {
+            optional_by_default: { type: 'boolean' },
+            use_type: { type: 'boolean' },
+            export: { type: 'boolean' },
+          },
+          description: 'Generation options',
+        },
+      },
+      required: ['source', 'input'],
+    },
+  },
+  {
+    name: 'identify_tech_debt',
+    description: 'Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized debt items with effort estimates.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Path to scan (default: project root)',
+        },
+        categories: {
+          type: 'array',
+          items: { type: 'string', enum: ['comments', 'complexity', 'coverage', 'dependencies', 'duplication', 'security'] },
+          description: 'Categories to check (default: all)',
+        },
+        threshold: {
+          type: 'object',
+          properties: {
+            complexity: { type: 'integer' },
+            file_lines: { type: 'integer' },
+            function_lines: { type: 'integer' },
+          },
+          description: 'Thresholds for flagging issues',
+        },
+        exclude: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Glob patterns to exclude',
+        },
+      },
+    },
+  },
 ];
