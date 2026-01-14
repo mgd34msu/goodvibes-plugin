@@ -16,10 +16,10 @@
  */
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, isTestEnvironment, } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
+import { buildOrchestratorContext } from './context-injection.js';
 import { validateAgentOutput } from './output-validation.js';
 import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
-import { buildOrchestratorContext } from './context-injection.js';
 /** Creates a hook response with optional system message and output data. */
 function createResponse(options) {
     const response = {

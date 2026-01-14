@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { buildOrchestratorContext } from '../../subagent-stop/context-injection.js';
 
 describe('subagent-stop/context-injection', () => {

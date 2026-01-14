@@ -7,9 +7,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 import * as yaml from 'js-yaml';
-import type { ContextGatheringResult } from './context-builder.js';
+
 import { PLUGIN_ROOT } from '../shared/constants.js';
+
+import type { ContextGatheringResult } from './context-builder.js';
 
 /** Length of session ID suffix to display */
 const SESSION_ID_DISPLAY_LENGTH = 8;

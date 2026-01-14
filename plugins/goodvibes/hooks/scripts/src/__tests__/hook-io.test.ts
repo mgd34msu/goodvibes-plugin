@@ -326,6 +326,11 @@ describe('hook-io', () => {
     });
 
     it('should reject when no stdin is provided (timeout)', async () => {
+      // Set a short timeout for the test
+      process.env.GOODVIBES_STDIN_TIMEOUT_MS = '100';
+      
+      // Re-import to pick up the new config value
+      vi.resetModules();
       const { readHookInput } = await import('../shared/hook-io.js');
 
       // Don't send any data - let it timeout
@@ -334,7 +339,10 @@ describe('hook-io', () => {
       await expect(readPromise).rejects.toThrow(
         'Hook input timeout: no data received within configured timeout'
       );
-    }, 200); // Give enough time for timeout
+
+      // Cleanup
+      delete process.env.GOODVIBES_STDIN_TIMEOUT_MS;
+    }, 1000); // Give enough time for timeout
   });
 
   describe('allowTool', () => {

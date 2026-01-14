@@ -7,7 +7,9 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "tsc && node scripts/bundle.js", "build:tsc": "tsc", "build:bundle": "node scripts/bundle.js",
+    "build": "tsc && node scripts/bundle.js",
+    "build:tsc": "tsc",
+    "build:bundle": "node scripts/bundle.js",
     "watch": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -34,7 +36,9 @@
     "globals": "^17.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.0.0",
+    "memfs": "^4.51.1",
     "prettier": "^3.7.4",
+    "tslib": "^2.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.52.0",
     "vitest": "^4.0.16"

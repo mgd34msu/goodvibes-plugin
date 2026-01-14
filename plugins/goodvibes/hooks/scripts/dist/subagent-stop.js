@@ -636,6 +636,58 @@ async function saveState(cwd, state, options = {}) {
   }
 }
 
+// src/subagent-stop/context-injection.ts
+import * as path5 from "path";
+function buildOrchestratorContext(cwd, agentType, agentId, success) {
+  const projectName = path5.basename(cwd);
+  const contextParts = [];
+  contextParts.push(`[GoodVibes] Agent ${agentType} (${agentId}) ${success ? "completed" : "finished with issues"} in project '${projectName}'`);
+  contextParts.push(
+    "ORCHESTRATOR REMINDER: You are the orchestrator. Delegate ALL project work to specialist agents. Never do coding, file editing, testing, or technical implementation in main context. The main context is sacred - protect it from clutter."
+  );
+  contextParts.push(
+    "GOODVIBES STATE: Use the .goodvibes/ directory for persistence across context compactions:\n  - .goodvibes/state/hooks-state.json - Session state, git info, test status\n  - .goodvibes/state/agent-tracking.json - Active agent tracking\n  - .goodvibes/logs/justvibes-log.md - Activity logging (decisions, progress)\n  - .goodvibes/logs/justvibes-errors.md - Error logging\n  - .goodvibes/telemetry/*.jsonl - Agent telemetry records\nRead these files to recover context after compaction. Write to logs to persist decisions."
+  );
+  const chainingReminder = getAgentChainingReminder(agentType, success);
+  if (chainingReminder) {
+    contextParts.push(chainingReminder);
+  }
+  contextParts.push(
+    "MCP TOOLS: Use mcp-cli tools for project introspection (detect_stack, check_types, project_issues, etc.) before spawning agents to provide better context."
+  );
+  return {
+    systemMessage: contextParts.join("\n\n")
+  };
+}
+function getAgentChainingReminder(agentType, success) {
+  const normalizedType = agentType.toLowerCase();
+  if (!success) {
+    return "CHAIN: Agent had issues. Consider spawning a fix agent or investigating the problem before continuing.";
+  }
+  if (normalizedType.includes("backend")) {
+    return "CHAIN: Backend work done. Consider: brutal-reviewer for review, frontend-architect for UI, test-engineer for tests.";
+  }
+  if (normalizedType.includes("frontend")) {
+    return "CHAIN: Frontend work done. Consider: brutal-reviewer for review, test-engineer for component tests, fullstack-integrator for data.";
+  }
+  if (normalizedType.includes("test")) {
+    return "CHAIN: Tests written. If all passing, consider: brutal-reviewer for review, devops-deployer for deployment.";
+  }
+  if (normalizedType.includes("reviewer") || normalizedType.includes("brutal")) {
+    return "CHAIN: Review complete. If issues found, spawn appropriate agent to fix. If approved, continue to next task.";
+  }
+  if (normalizedType.includes("architect") || normalizedType.includes("refactor")) {
+    return "CHAIN: Architecture/refactoring done. Consider: test-engineer to verify, brutal-reviewer for review.";
+  }
+  if (normalizedType.includes("fullstack") || normalizedType.includes("integrator")) {
+    return "CHAIN: Integration done. Consider: test-engineer for integration tests, brutal-reviewer for review.";
+  }
+  if (normalizedType.includes("devops") || normalizedType.includes("deploy")) {
+    return "CHAIN: Deployment task done. Verify deployment succeeded. Log results to .goodvibes/logs/.";
+  }
+  return null;
+}
+
 // src/automation/build-runner.ts
 import { exec as exec2 } from "child_process";
 import { promisify as promisify2 } from "util";
@@ -715,13 +767,13 @@ async function validateAgentOutput(cwd, transcriptPath, state) {
 
 // src/subagent-stop/telemetry.ts
 import * as fs6 from "fs/promises";
-import * as path5 from "path";
+import * as path6 from "path";
 function isTrackingsRecord(value) {
   return typeof value === "object" && value !== null;
 }
 var TRACKING_FILE = "state/agent-tracking.json";
 async function getAgentTracking(cwd, agentId) {
-  const trackingPath = path5.join(cwd, ".goodvibes", TRACKING_FILE);
+  const trackingPath = path6.join(cwd, ".goodvibes", TRACKING_FILE);
   if (!await fileExists(trackingPath)) {
     return null;
   }
@@ -737,7 +789,7 @@ async function getAgentTracking(cwd, agentId) {
   }
 }
 async function removeAgentTracking(cwd, agentId) {
-  const trackingPath = path5.join(cwd, ".goodvibes", TRACKING_FILE);
+  const trackingPath = path6.join(cwd, ".goodvibes", TRACKING_FILE);
   if (!await fileExists(trackingPath)) {
     return;
   }
@@ -755,7 +807,7 @@ async function writeTelemetryEntry(cwd, entry) {
   await ensureGoodVibesDir(cwd);
   const now = /* @__PURE__ */ new Date();
   const fileName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.jsonl`;
-  const telemetryPath = path5.join(cwd, ".goodvibes", "telemetry", fileName);
+  const telemetryPath = path6.join(cwd, ".goodvibes", "telemetry", fileName);
   await fs6.appendFile(telemetryPath, JSON.stringify(entry) + "\n");
 }
 async function buildTelemetryEntry(tracking, transcriptPath, status) {
@@ -880,58 +932,6 @@ async function verifyAgentTests(cwd, filesModified, state) {
     passed: result.passed,
     summary: result.summary
   };
-}
-
-// src/subagent-stop/context-injection.ts
-import * as path6 from "path";
-function buildOrchestratorContext(cwd, agentType, agentId, success) {
-  const projectName = path6.basename(cwd);
-  const contextParts = [];
-  contextParts.push(`[GoodVibes] Agent ${agentType} (${agentId}) ${success ? "completed" : "finished with issues"}`);
-  contextParts.push(
-    "ORCHESTRATOR REMINDER: You are the orchestrator. Delegate ALL project work to specialist agents. Never do coding, file editing, testing, or technical implementation in main context. The main context is sacred - protect it from clutter."
-  );
-  contextParts.push(
-    "GOODVIBES STATE: Use the .goodvibes/ directory for persistence across context compactions:\n  - .goodvibes/state/hooks-state.json - Session state, git info, test status\n  - .goodvibes/state/agent-tracking.json - Active agent tracking\n  - .goodvibes/logs/justvibes-log.md - Activity logging (decisions, progress)\n  - .goodvibes/logs/justvibes-errors.md - Error logging\n  - .goodvibes/telemetry/*.jsonl - Agent telemetry records\nRead these files to recover context after compaction. Write to logs to persist decisions."
-  );
-  const chainingReminder = getAgentChainingReminder(agentType, success);
-  if (chainingReminder) {
-    contextParts.push(chainingReminder);
-  }
-  contextParts.push(
-    "MCP TOOLS: Use mcp-cli tools for project introspection (detect_stack, check_types, project_issues, etc.) before spawning agents to provide better context."
-  );
-  return {
-    systemMessage: contextParts.join("\n\n")
-  };
-}
-function getAgentChainingReminder(agentType, success) {
-  const normalizedType = agentType.toLowerCase();
-  if (!success) {
-    return "CHAIN: Agent had issues. Consider spawning a fix agent or investigating the problem before continuing.";
-  }
-  if (normalizedType.includes("backend")) {
-    return "CHAIN: Backend work done. Consider: brutal-reviewer for review, frontend-architect for UI, test-engineer for tests.";
-  }
-  if (normalizedType.includes("frontend")) {
-    return "CHAIN: Frontend work done. Consider: brutal-reviewer for review, test-engineer for component tests, fullstack-integrator for data.";
-  }
-  if (normalizedType.includes("test")) {
-    return "CHAIN: Tests written. If all passing, consider: brutal-reviewer for review, devops-deployer for deployment.";
-  }
-  if (normalizedType.includes("reviewer") || normalizedType.includes("brutal")) {
-    return "CHAIN: Review complete. If issues found, spawn appropriate agent to fix. If approved, continue to next task.";
-  }
-  if (normalizedType.includes("architect") || normalizedType.includes("refactor")) {
-    return "CHAIN: Architecture/refactoring done. Consider: test-engineer to verify, brutal-reviewer for review.";
-  }
-  if (normalizedType.includes("fullstack") || normalizedType.includes("integrator")) {
-    return "CHAIN: Integration done. Consider: test-engineer for integration tests, brutal-reviewer for review.";
-  }
-  if (normalizedType.includes("devops") || normalizedType.includes("deploy")) {
-    return "CHAIN: Deployment task done. Verify deployment succeeded. Log results to .goodvibes/logs/.";
-  }
-  return null;
 }
 
 // src/subagent-stop/index.ts

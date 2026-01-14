@@ -552,6 +552,14 @@ describe('telemetry/agents', () => {
   });
 
   describe('cleanupStaleAgents', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should remove agents older than 24 hours', async () => {
       const now = Date.now();
       const staleTime = new Date(

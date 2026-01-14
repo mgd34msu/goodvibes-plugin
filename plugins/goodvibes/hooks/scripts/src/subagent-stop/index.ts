@@ -26,6 +26,7 @@ import {
 } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
 
+import { buildOrchestratorContext } from './context-injection.js';
 import { validateAgentOutput } from './output-validation.js';
 import {
   getAgentTracking,
@@ -34,7 +35,6 @@ import {
   buildTelemetryEntry,
 } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
-import { buildOrchestratorContext } from './context-injection.js';
 
 import type { ValidationResult } from './output-validation.js';
 import type { TestVerificationResult } from './test-verification.js';

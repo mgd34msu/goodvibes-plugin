@@ -42,7 +42,7 @@ export function buildOrchestratorContext(
   const contextParts: string[] = [];
 
   // Header
-  contextParts.push(`[GoodVibes] Agent ${agentType} (${agentId}) ${success ? 'completed' : 'finished with issues'}`);
+  contextParts.push(`[GoodVibes] Agent ${agentType} (${agentId}) ${success ? 'completed' : 'finished with issues'} in project '${projectName}'`);
 
   // Core orchestrator reminder: delegate ALL work to agents
   contextParts.push(
