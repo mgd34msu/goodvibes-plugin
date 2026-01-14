@@ -183,6 +183,7 @@
     ],
     "UserPromptSubmit": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -194,6 +195,7 @@
     ],
     "Stop": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -205,17 +207,19 @@
     ],
     "SubagentStart": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/subagent-start.js\"",
-            "timeout": 5
+            "timeout": 10
           }
         ]
       }
     ],
     "SubagentStop": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -249,6 +253,7 @@
     ],
     "SessionEnd": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
