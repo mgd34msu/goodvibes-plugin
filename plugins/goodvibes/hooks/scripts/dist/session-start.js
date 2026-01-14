@@ -4520,6 +4520,16 @@ function createSubagentStartCommand(pluginRoot) {
   );
   return `node "${scriptPath}"`;
 }
+function createSubagentStopCommand(pluginRoot) {
+  const scriptPath = path17.join(
+    pluginRoot,
+    "hooks",
+    "scripts",
+    "dist",
+    "subagent-stop.js"
+  );
+  return `node "${scriptPath}"`;
+}
 function createGoodVibesHook(pluginRoot) {
   return {
     matcher: "*",
@@ -4532,8 +4542,26 @@ function createGoodVibesHook(pluginRoot) {
     ]
   };
 }
+function createSubagentStopHook(pluginRoot) {
+  return {
+    matcher: "*",
+    hooks: [
+      {
+        type: "command",
+        command: createSubagentStopCommand(pluginRoot),
+        timeout: 10
+      }
+    ]
+  };
+}
 function isGoodVibesHookPresent(hooks, pluginRoot) {
   const expectedCommand = createSubagentStartCommand(pluginRoot);
+  return hooks.some(
+    (matcher) => matcher.hooks?.some((hook) => hook.command === expectedCommand)
+  );
+}
+function isSubagentStopHookPresent(hooks, pluginRoot) {
+  const expectedCommand = createSubagentStopCommand(pluginRoot);
   return hooks.some(
     (matcher) => matcher.hooks?.some((hook) => hook.command === expectedCommand)
   );
@@ -4550,24 +4578,39 @@ function safeParseJson(content) {
   }
 }
 function mergeHooks(settings, pluginRoot) {
-  const goodVibesHook = createGoodVibesHook(pluginRoot);
+  const subagentStartHook = createGoodVibesHook(pluginRoot);
+  const subagentStopHook = createSubagentStopHook(pluginRoot);
   settings.hooks ??= {};
   settings.hooks.SubagentStart ??= [];
-  if (isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
+  settings.hooks.SubagentStop ??= [];
+  let hooksAdded = false;
+  if (!isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
+    settings.hooks.SubagentStart = [
+      subagentStartHook,
+      ...settings.hooks.SubagentStart
+    ];
+    debug("Added GoodVibes SubagentStart hook");
+    hooksAdded = true;
+  } else {
     debug("GoodVibes SubagentStart hook already present");
-    return { settings, hooksAdded: false };
   }
-  settings.hooks.SubagentStart = [
-    goodVibesHook,
-    ...settings.hooks.SubagentStart
-  ];
-  debug("Added GoodVibes SubagentStart hook");
-  return { settings, hooksAdded: true };
+  if (!isSubagentStopHookPresent(settings.hooks.SubagentStop, pluginRoot)) {
+    settings.hooks.SubagentStop = [
+      subagentStopHook,
+      ...settings.hooks.SubagentStop
+    ];
+    debug("Added GoodVibes SubagentStop hook");
+    hooksAdded = true;
+  } else {
+    debug("GoodVibes SubagentStop hook already present");
+  }
+  return { settings, hooksAdded };
 }
 function createDefaultSettings(pluginRoot) {
   return {
     hooks: {
-      SubagentStart: [createGoodVibesHook(pluginRoot)]
+      SubagentStart: [createGoodVibesHook(pluginRoot)],
+      SubagentStop: [createSubagentStopHook(pluginRoot)]
     }
   };
 }

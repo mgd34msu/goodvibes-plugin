@@ -18,3 +18,4 @@ export { saveAgentTracking } from './telemetry.js';
 export { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry } from './telemetry.js';
 export { validateAgentOutput, type ValidationResult } from './output-validation.js';
 export { verifyAgentTests, type TestVerificationResult } from './test-verification.js';
+export { buildOrchestratorContext, type OrchestratorContext } from './context-injection.js';

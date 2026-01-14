@@ -34,6 +34,7 @@ import {
   buildTelemetryEntry,
 } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
+import { buildOrchestratorContext } from './context-injection.js';
 
 import type { ValidationResult } from './output-validation.js';
 import type { TestVerificationResult } from './test-verification.js';
@@ -266,7 +267,20 @@ async function runSubagentStopHook(): Promise<void> {
       }
     }
 
-    const systemMessage = buildIssuesMessage(agentType, validationResult, testResult);
+    // Build orchestrator context reminders
+    const status = determineStatus(validationResult, testResult);
+    const orchestratorContext = buildOrchestratorContext(
+      cwd,
+      agentType,
+      agentId || 'unknown',
+      status === 'completed'
+    );
+
+    // Combine issue warnings with orchestrator reminders
+    const issuesMessage = buildIssuesMessage(agentType, validationResult, testResult);
+    const systemMessage = issuesMessage
+      ? `${issuesMessage}\n\n${orchestratorContext.systemMessage}`
+      : orchestratorContext.systemMessage;
 
     respond(
       createResponse({
@@ -292,6 +306,7 @@ export { saveAgentTracking } from './telemetry.js';
 export { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry } from './telemetry.js';
 export { validateAgentOutput, type ValidationResult } from './output-validation.js';
 export { verifyAgentTests, type TestVerificationResult } from './test-verification.js';
+export { buildOrchestratorContext, type OrchestratorContext } from './context-injection.js';
 
 // Only run the hook if not in test mode
 if (!isTestEnvironment()) {

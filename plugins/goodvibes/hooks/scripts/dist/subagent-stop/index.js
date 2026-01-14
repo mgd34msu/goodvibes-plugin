@@ -19,6 +19,7 @@ import { loadState, saveState } from '../state/index.js';
 import { validateAgentOutput } from './output-validation.js';
 import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
+import { buildOrchestratorContext } from './context-injection.js';
 /** Creates a hook response with optional system message and output data. */
 function createResponse(options) {
     const response = {
@@ -153,7 +154,14 @@ async function runSubagentStopHook() {
                 await saveState(cwd, state);
             }
         }
-        const systemMessage = buildIssuesMessage(agentType, validationResult, testResult);
+        // Build orchestrator context reminders
+        const status = determineStatus(validationResult, testResult);
+        const orchestratorContext = buildOrchestratorContext(cwd, agentType, agentId || 'unknown', status === 'completed');
+        // Combine issue warnings with orchestrator reminders
+        const issuesMessage = buildIssuesMessage(agentType, validationResult, testResult);
+        const systemMessage = issuesMessage
+            ? `${issuesMessage}\n\n${orchestratorContext.systemMessage}`
+            : orchestratorContext.systemMessage;
         respond(createResponse({
             systemMessage,
             output: {
@@ -176,6 +184,7 @@ export { saveAgentTracking } from './telemetry.js';
 export { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry } from './telemetry.js';
 export { validateAgentOutput } from './output-validation.js';
 export { verifyAgentTests } from './test-verification.js';
+export { buildOrchestratorContext } from './context-injection.js';
 // Only run the hook if not in test mode
 if (!isTestEnvironment()) {
     runSubagentStopHook().catch((error) => {

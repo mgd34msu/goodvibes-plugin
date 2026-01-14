@@ -2,8 +2,8 @@
  * Settings Injection
  *
  * Manages the injection of GoodVibes hooks into the project's .claude/settings.json.
- * Creates or updates the settings file to include SubagentStart hooks pointing to
- * the plugin's hook scripts.
+ * Creates or updates the settings file to include SubagentStart and SubagentStop hooks
+ * pointing to the plugin's hook scripts.
  *
  * @module session-start/settings-injection
  */
@@ -30,6 +30,7 @@ interface HookMatcher {
 /** Structure for Claude settings hooks section */
 interface ClaudeHooks {
   SubagentStart?: HookMatcher[];
+  SubagentStop?: HookMatcher[];
   [key: string]: HookMatcher[] | undefined;
 }
 
@@ -83,6 +84,23 @@ export function createSubagentStartCommand(pluginRoot: string): string {
 }
 
 /**
+ * Creates the SubagentStop hook command using the plugin root path.
+ *
+ * @param pluginRoot - The path to the plugin root directory
+ * @returns The command string for the SubagentStop hook
+ */
+export function createSubagentStopCommand(pluginRoot: string): string {
+  const scriptPath = path.join(
+    pluginRoot,
+    'hooks',
+    'scripts',
+    'dist',
+    'subagent-stop.js'
+  );
+  return `node "${scriptPath}"`;
+}
+
+/**
  * Creates the default GoodVibes SubagentStart hook configuration.
  *
  * @param pluginRoot - The path to the plugin root directory
@@ -102,6 +120,25 @@ export function createGoodVibesHook(pluginRoot: string): HookMatcher {
 }
 
 /**
+ * Creates the default GoodVibes SubagentStop hook configuration.
+ *
+ * @param pluginRoot - The path to the plugin root directory
+ * @returns The hook matcher configuration for SubagentStop
+ */
+export function createSubagentStopHook(pluginRoot: string): HookMatcher {
+  return {
+    matcher: '*',
+    hooks: [
+      {
+        type: 'command',
+        command: createSubagentStopCommand(pluginRoot),
+        timeout: 10,
+      },
+    ],
+  };
+}
+
+/**
  * Checks if the GoodVibes SubagentStart hook is already present in the hooks array.
  *
  * @param hooks - Array of existing hook matchers
@@ -113,6 +150,24 @@ export function isGoodVibesHookPresent(
   pluginRoot: string
 ): boolean {
   const expectedCommand = createSubagentStartCommand(pluginRoot);
+
+  return hooks.some((matcher) =>
+    matcher.hooks?.some((hook) => hook.command === expectedCommand)
+  );
+}
+
+/**
+ * Checks if the GoodVibes SubagentStop hook is already present in the hooks array.
+ *
+ * @param hooks - Array of existing hook matchers
+ * @param pluginRoot - The plugin root path to check against
+ * @returns True if our hook is already present
+ */
+export function isSubagentStopHookPresent(
+  hooks: HookMatcher[],
+  pluginRoot: string
+): boolean {
+  const expectedCommand = createSubagentStopCommand(pluginRoot);
 
   return hooks.some((matcher) =>
     matcher.hooks?.some((hook) => hook.command === expectedCommand)
@@ -139,6 +194,7 @@ export function safeParseJson(content: string): ClaudeSettings | null {
 
 /**
  * Merges GoodVibes hooks into existing settings without overwriting user hooks.
+ * Injects both SubagentStart and SubagentStop hooks.
  *
  * @param settings - The existing settings object
  * @param pluginRoot - The plugin root path
@@ -148,40 +204,56 @@ export function mergeHooks(
   settings: ClaudeSettings,
   pluginRoot: string
 ): { settings: ClaudeSettings; hooksAdded: boolean } {
-  const goodVibesHook = createGoodVibesHook(pluginRoot);
+  const subagentStartHook = createGoodVibesHook(pluginRoot);
+  const subagentStopHook = createSubagentStopHook(pluginRoot);
 
   // Initialize hooks object if it doesn't exist
   settings.hooks ??= {};
 
-  // Initialize SubagentStart array if it doesn't exist
+  // Initialize arrays if they don't exist
   settings.hooks.SubagentStart ??= [];
+  settings.hooks.SubagentStop ??= [];
 
-  // Check if our hook is already present
-  if (isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
+  let hooksAdded = false;
+
+  // Check and add SubagentStart hook
+  if (!isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
+    settings.hooks.SubagentStart = [
+      subagentStartHook,
+      ...settings.hooks.SubagentStart,
+    ];
+    debug('Added GoodVibes SubagentStart hook');
+    hooksAdded = true;
+  } else {
     debug('GoodVibes SubagentStart hook already present');
-    return { settings, hooksAdded: false };
   }
 
-  // Add our hook to the beginning of the array
-  settings.hooks.SubagentStart = [
-    goodVibesHook,
-    ...settings.hooks.SubagentStart,
-  ];
+  // Check and add SubagentStop hook
+  if (!isSubagentStopHookPresent(settings.hooks.SubagentStop, pluginRoot)) {
+    settings.hooks.SubagentStop = [
+      subagentStopHook,
+      ...settings.hooks.SubagentStop,
+    ];
+    debug('Added GoodVibes SubagentStop hook');
+    hooksAdded = true;
+  } else {
+    debug('GoodVibes SubagentStop hook already present');
+  }
 
-  debug('Added GoodVibes SubagentStart hook');
-  return { settings, hooksAdded: true };
+  return { settings, hooksAdded };
 }
 
 /**
  * Creates the default settings object with GoodVibes hooks.
  *
  * @param pluginRoot - The plugin root path
- * @returns A new settings object with SubagentStart hook configured
+ * @returns A new settings object with SubagentStart and SubagentStop hooks configured
  */
 export function createDefaultSettings(pluginRoot: string): ClaudeSettings {
   return {
     hooks: {
       SubagentStart: [createGoodVibesHook(pluginRoot)],
+      SubagentStop: [createSubagentStopHook(pluginRoot)],
     },
   };
 }
@@ -193,7 +265,7 @@ export function createDefaultSettings(pluginRoot: string): ClaudeSettings {
  * 1. Checks if .claude/settings.json exists
  * 2. If not, creates .claude directory and settings.json with our hooks
  * 3. If it exists, reads it and merges our hooks without overwriting user hooks
- * 4. Only adds our SubagentStart hook if it's not already present
+ * 4. Only adds SubagentStart/SubagentStop hooks if not already present
  *
  * @param cwd - The current working directory (project root)
  * @param pluginRootOverride - Optional override for plugin root (used in tests)

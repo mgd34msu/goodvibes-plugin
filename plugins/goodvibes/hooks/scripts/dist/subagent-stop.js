@@ -882,6 +882,58 @@ async function verifyAgentTests(cwd, filesModified, state) {
   };
 }
 
+// src/subagent-stop/context-injection.ts
+import * as path6 from "path";
+function buildOrchestratorContext(cwd, agentType, agentId, success) {
+  const projectName = path6.basename(cwd);
+  const contextParts = [];
+  contextParts.push(`[GoodVibes] Agent ${agentType} (${agentId}) ${success ? "completed" : "finished with issues"}`);
+  contextParts.push(
+    "ORCHESTRATOR REMINDER: You are the orchestrator. Delegate ALL project work to specialist agents. Never do coding, file editing, testing, or technical implementation in main context. The main context is sacred - protect it from clutter."
+  );
+  contextParts.push(
+    "GOODVIBES STATE: Use the .goodvibes/ directory for persistence across context compactions:\n  - .goodvibes/state/hooks-state.json - Session state, git info, test status\n  - .goodvibes/state/agent-tracking.json - Active agent tracking\n  - .goodvibes/logs/justvibes-log.md - Activity logging (decisions, progress)\n  - .goodvibes/logs/justvibes-errors.md - Error logging\n  - .goodvibes/telemetry/*.jsonl - Agent telemetry records\nRead these files to recover context after compaction. Write to logs to persist decisions."
+  );
+  const chainingReminder = getAgentChainingReminder(agentType, success);
+  if (chainingReminder) {
+    contextParts.push(chainingReminder);
+  }
+  contextParts.push(
+    "MCP TOOLS: Use mcp-cli tools for project introspection (detect_stack, check_types, project_issues, etc.) before spawning agents to provide better context."
+  );
+  return {
+    systemMessage: contextParts.join("\n\n")
+  };
+}
+function getAgentChainingReminder(agentType, success) {
+  const normalizedType = agentType.toLowerCase();
+  if (!success) {
+    return "CHAIN: Agent had issues. Consider spawning a fix agent or investigating the problem before continuing.";
+  }
+  if (normalizedType.includes("backend")) {
+    return "CHAIN: Backend work done. Consider: brutal-reviewer for review, frontend-architect for UI, test-engineer for tests.";
+  }
+  if (normalizedType.includes("frontend")) {
+    return "CHAIN: Frontend work done. Consider: brutal-reviewer for review, test-engineer for component tests, fullstack-integrator for data.";
+  }
+  if (normalizedType.includes("test")) {
+    return "CHAIN: Tests written. If all passing, consider: brutal-reviewer for review, devops-deployer for deployment.";
+  }
+  if (normalizedType.includes("reviewer") || normalizedType.includes("brutal")) {
+    return "CHAIN: Review complete. If issues found, spawn appropriate agent to fix. If approved, continue to next task.";
+  }
+  if (normalizedType.includes("architect") || normalizedType.includes("refactor")) {
+    return "CHAIN: Architecture/refactoring done. Consider: test-engineer to verify, brutal-reviewer for review.";
+  }
+  if (normalizedType.includes("fullstack") || normalizedType.includes("integrator")) {
+    return "CHAIN: Integration done. Consider: test-engineer for integration tests, brutal-reviewer for review.";
+  }
+  if (normalizedType.includes("devops") || normalizedType.includes("deploy")) {
+    return "CHAIN: Deployment task done. Verify deployment succeeded. Log results to .goodvibes/logs/.";
+  }
+  return null;
+}
+
 // src/subagent-stop/index.ts
 function createResponse2(options) {
   const response = {
@@ -988,8 +1040,8 @@ async function runSubagentStopHook() {
       validationResult = validated.validationResult;
       testResult = validated.testResult;
       state = validated.updatedState;
-      const status = determineStatus(validationResult, testResult);
-      const telemetryEntry = await buildTelemetryEntry(tracking, transcriptPath, status);
+      const status2 = determineStatus(validationResult, testResult);
+      const telemetryEntry = await buildTelemetryEntry(tracking, transcriptPath, status2);
       await writeTelemetryEntry(cwd, telemetryEntry);
       telemetryWritten = true;
       debug("Telemetry entry written", {
@@ -999,7 +1051,7 @@ async function runSubagentStopHook() {
       });
       await removeAgentTracking(cwd, agentId);
       debug("Removed agent tracking", { agent_id: agentId });
-      await updateAnalytics(tracking, status);
+      await updateAnalytics(tracking, status2);
       await saveState(cwd, state);
     } else {
       debug("No matching tracking entry found", { agent_id: agentId, agent_type: agentType });
@@ -1011,7 +1063,17 @@ async function runSubagentStopHook() {
         await saveState(cwd, state);
       }
     }
-    const systemMessage = buildIssuesMessage(agentType, validationResult, testResult);
+    const status = determineStatus(validationResult, testResult);
+    const orchestratorContext = buildOrchestratorContext(
+      cwd,
+      agentType,
+      agentId || "unknown",
+      status === "completed"
+    );
+    const issuesMessage = buildIssuesMessage(agentType, validationResult, testResult);
+    const systemMessage = issuesMessage ? `${issuesMessage}
+
+${orchestratorContext.systemMessage}` : orchestratorContext.systemMessage;
     respond(
       createResponse2({
         systemMessage,

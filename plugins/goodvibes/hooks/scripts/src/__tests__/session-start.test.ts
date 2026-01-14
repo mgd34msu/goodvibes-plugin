@@ -44,6 +44,7 @@ describe('session-start hook', () => {
   let mockUpdateSessionState: ReturnType<typeof vi.fn>;
   let mockInitializeSession: ReturnType<typeof vi.fn>;
   let mockCreateDefaultState: ReturnType<typeof vi.fn>;
+  let mockInjectSettings: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -131,6 +132,11 @@ describe('session-start hook', () => {
       },
       devServers: {},
     }));
+    mockInjectSettings = vi.fn().mockResolvedValue({
+      success: true,
+      created: false,
+      hooksAdded: false,
+    });
 
     // Mock Date.now for consistent timing
     Date.now = vi.fn(() => fixedTimestamp);
@@ -250,6 +256,11 @@ describe('session-start hook', () => {
     // Mock types/state module
     vi.doMock('../types/state.js', () => ({
       createDefaultState: mockCreateDefaultState,
+    }));
+
+    // Mock settings-injection module
+    vi.doMock('../session-start/settings-injection.js', () => ({
+      injectSettings: mockInjectSettings,
     }));
 
     // Import the module (this triggers the hook)

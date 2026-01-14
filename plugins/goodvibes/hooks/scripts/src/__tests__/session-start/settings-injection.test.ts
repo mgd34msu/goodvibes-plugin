@@ -4,11 +4,14 @@
  * Tests cover:
  * - getPluginRoot() path resolution
  * - createSubagentStartCommand() command generation
+ * - createSubagentStopCommand() command generation
  * - createGoodVibesHook() hook configuration
+ * - createSubagentStopHook() hook configuration
  * - isGoodVibesHookPresent() hook detection
+ * - isSubagentStopHookPresent() hook detection
  * - safeParseJson() error handling
- * - mergeHooks() hook merging without overwrites
- * - createDefaultSettings() default creation
+ * - mergeHooks() hook merging for both SubagentStart and SubagentStop
+ * - createDefaultSettings() default creation with both hooks
  * - injectSettings() full integration
  * - 100% line and branch coverage
  */
@@ -101,6 +104,32 @@ describe('settings-injection', () => {
     });
   });
 
+  describe('createSubagentStopCommand', () => {
+    it('should create command with correct path', async () => {
+      const { createSubagentStopCommand } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const result = createSubagentStopCommand(testPluginRoot);
+
+      expect(result).toBe(
+        `node "${path.join(testPluginRoot, 'hooks', 'scripts', 'dist', 'subagent-stop.js')}"`
+      );
+    });
+
+    it('should handle paths with spaces', async () => {
+      const { createSubagentStopCommand } = await import(
+        '../../session-start/settings-injection.js'
+      );
+      const pathWithSpaces = '/path/with spaces/plugin';
+
+      const result = createSubagentStopCommand(pathWithSpaces);
+
+      expect(result).toContain('"');
+      expect(result).toContain('with spaces');
+    });
+  });
+
   describe('createGoodVibesHook', () => {
     it('should create hook with wildcard matcher', async () => {
       const { createGoodVibesHook } = await import(
@@ -124,6 +153,33 @@ describe('settings-injection', () => {
 
       expect(result.hooks[0].command).toBe(
         createSubagentStartCommand(testPluginRoot)
+      );
+    });
+  });
+
+  describe('createSubagentStopHook', () => {
+    it('should create hook with wildcard matcher', async () => {
+      const { createSubagentStopHook } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const result = createSubagentStopHook(testPluginRoot);
+
+      expect(result.matcher).toBe('*');
+      expect(result.hooks).toHaveLength(1);
+      expect(result.hooks[0].type).toBe('command');
+      expect(result.hooks[0].timeout).toBe(10);
+    });
+
+    it('should include correct command in hooks array', async () => {
+      const { createSubagentStopHook, createSubagentStopCommand } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const result = createSubagentStopHook(testPluginRoot);
+
+      expect(result.hooks[0].command).toBe(
+        createSubagentStopCommand(testPluginRoot)
       );
     });
   });
@@ -205,6 +261,56 @@ describe('settings-injection', () => {
     });
   });
 
+  describe('isSubagentStopHookPresent', () => {
+    it('should return true when hook is present', async () => {
+      const { isSubagentStopHookPresent, createSubagentStopCommand } =
+        await import('../../session-start/settings-injection.js');
+
+      const existingHooks = [
+        {
+          matcher: '*',
+          hooks: [
+            {
+              type: 'command',
+              command: createSubagentStopCommand(testPluginRoot),
+            },
+          ],
+        },
+      ];
+
+      const result = isSubagentStopHookPresent(existingHooks, testPluginRoot);
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when hook is not present', async () => {
+      const { isSubagentStopHookPresent } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const existingHooks = [
+        {
+          matcher: '*',
+          hooks: [{ type: 'command', command: 'some-other-command' }],
+        },
+      ];
+
+      const result = isSubagentStopHookPresent(existingHooks, testPluginRoot);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false for empty hooks array', async () => {
+      const { isSubagentStopHookPresent } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const result = isSubagentStopHookPresent([], testPluginRoot);
+
+      expect(result).toBe(false);
+    });
+  });
+
   describe('safeParseJson', () => {
     it('should parse valid JSON object', async () => {
       const { safeParseJson } = await import(
@@ -280,7 +386,7 @@ describe('settings-injection', () => {
   });
 
   describe('mergeHooks', () => {
-    it('should add hooks to empty settings', async () => {
+    it('should add both hooks to empty settings', async () => {
       const { mergeHooks } = await import(
         '../../session-start/settings-injection.js'
       );
@@ -294,9 +400,10 @@ describe('settings-injection', () => {
       expect(hooksAdded).toBe(true);
       expect(result.hooks).toBeDefined();
       expect(result.hooks?.SubagentStart).toHaveLength(1);
+      expect(result.hooks?.SubagentStop).toHaveLength(1);
     });
 
-    it('should add hooks when hooks object exists but SubagentStart is missing', async () => {
+    it('should add hooks when hooks object exists but SubagentStart/Stop are missing', async () => {
       const { mergeHooks } = await import(
         '../../session-start/settings-injection.js'
       );
@@ -309,6 +416,7 @@ describe('settings-injection', () => {
 
       expect(hooksAdded).toBe(true);
       expect(result.hooks?.SubagentStart).toHaveLength(1);
+      expect(result.hooks?.SubagentStop).toHaveLength(1);
       expect(result.hooks?.OtherHook).toEqual([]);
     });
 
@@ -336,13 +444,19 @@ describe('settings-injection', () => {
       expect(result.hooks?.SubagentStart?.[1]).toEqual(existingHook);
     });
 
-    it('should not add hook if already present', async () => {
-      const { mergeHooks, createGoodVibesHook } = await import(
+    it('should not add hooks if both already present', async () => {
+      const { mergeHooks, createGoodVibesHook, createSubagentStopHook } = await import(
         '../../session-start/settings-injection.js'
       );
 
-      const goodVibesHook = createGoodVibesHook(testPluginRoot);
-      const settings = { hooks: { SubagentStart: [goodVibesHook] } };
+      const subagentStartHook = createGoodVibesHook(testPluginRoot);
+      const subagentStopHook = createSubagentStopHook(testPluginRoot);
+      const settings = {
+        hooks: {
+          SubagentStart: [subagentStartHook],
+          SubagentStop: [subagentStopHook],
+        },
+      };
 
       const { settings: result, hooksAdded } = mergeHooks(
         settings,
@@ -351,8 +465,36 @@ describe('settings-injection', () => {
 
       expect(hooksAdded).toBe(false);
       expect(result.hooks?.SubagentStart).toHaveLength(1);
+      expect(result.hooks?.SubagentStop).toHaveLength(1);
       expect(mockDebug).toHaveBeenCalledWith(
         'GoodVibes SubagentStart hook already present'
+      );
+      expect(mockDebug).toHaveBeenCalledWith(
+        'GoodVibes SubagentStop hook already present'
+      );
+    });
+
+    it('should add only SubagentStop if SubagentStart already present', async () => {
+      const { mergeHooks, createGoodVibesHook } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const subagentStartHook = createGoodVibesHook(testPluginRoot);
+      const settings = { hooks: { SubagentStart: [subagentStartHook] } };
+
+      const { settings: result, hooksAdded } = mergeHooks(
+        settings,
+        testPluginRoot
+      );
+
+      expect(hooksAdded).toBe(true);
+      expect(result.hooks?.SubagentStart).toHaveLength(1);
+      expect(result.hooks?.SubagentStop).toHaveLength(1);
+      expect(mockDebug).toHaveBeenCalledWith(
+        'GoodVibes SubagentStart hook already present'
+      );
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Added GoodVibes SubagentStop hook'
       );
     });
 
@@ -374,8 +516,8 @@ describe('settings-injection', () => {
   });
 
   describe('createDefaultSettings', () => {
-    it('should create settings with SubagentStart hook', async () => {
-      const { createDefaultSettings, createGoodVibesHook } = await import(
+    it('should create settings with both SubagentStart and SubagentStop hooks', async () => {
+      const { createDefaultSettings, createGoodVibesHook, createSubagentStopHook } = await import(
         '../../session-start/settings-injection.js'
       );
 
@@ -385,6 +527,10 @@ describe('settings-injection', () => {
       expect(result.hooks?.SubagentStart).toHaveLength(1);
       expect(result.hooks?.SubagentStart?.[0]).toEqual(
         createGoodVibesHook(testPluginRoot)
+      );
+      expect(result.hooks?.SubagentStop).toHaveLength(1);
+      expect(result.hooks?.SubagentStop?.[0]).toEqual(
+        createSubagentStopHook(testPluginRoot)
       );
     });
   });
@@ -462,24 +608,26 @@ describe('settings-injection', () => {
         expect(result.created).toBe(false);
         expect(result.hooksAdded).toBe(true);
 
-        // Verify written content preserves existing data
+        // Verify written content preserves existing data and has both hooks
         const writtenContent = mockWriteFile.mock.calls[0]?.[1] ?? '';
-        const parsed: { existing: string; hooks: { SubagentStart: unknown[] } } =
+        const parsed: { existing: string; hooks: { SubagentStart: unknown[]; SubagentStop: unknown[] } } =
           JSON.parse(writtenContent);
         expect(parsed.existing).toBe('data');
         expect(parsed.hooks.SubagentStart).toHaveLength(1);
+        expect(parsed.hooks.SubagentStop).toHaveLength(1);
       });
 
-      it('should not modify file if hooks already present', async () => {
+      it('should not modify file if both hooks already present', async () => {
         mockFileExists.mockResolvedValue(true);
 
-        const { injectSettings, createGoodVibesHook } = await import(
+        const { injectSettings, createGoodVibesHook, createSubagentStopHook } = await import(
           '../../session-start/settings-injection.js'
         );
 
         const existingSettings = {
           hooks: {
             SubagentStart: [createGoodVibesHook(testPluginRoot)],
+            SubagentStop: [createSubagentStopHook(testPluginRoot)],
           },
         };
         mockReadFile.mockResolvedValue(JSON.stringify(existingSettings));
