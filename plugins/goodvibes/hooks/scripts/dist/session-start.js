@@ -161,7 +161,7 @@ function isValidHookInput(value) {
   return typeof obj.session_id === "string" && typeof obj.cwd === "string" && typeof obj.hook_event_name === "string";
 }
 async function readHookInput() {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     let data = "";
     process.stdin.setEncoding("utf-8");
     process.stdin.on("data", (chunk) => {
@@ -174,7 +174,7 @@ async function readHookInput() {
           reject(new Error("Invalid hook input structure"));
           return;
         }
-        resolve3(parsed);
+        resolve4(parsed);
       } catch {
         reject(new Error("Failed to parse hook input from stdin"));
       }
@@ -4503,6 +4503,112 @@ function buildSystemMessage(sessionId, context) {
   return parts.join(" ");
 }
 
+// src/session-start/settings-injection.ts
+import * as fs13 from "fs/promises";
+import * as path17 from "path";
+function getPluginRoot() {
+  const scriptDir = __dirname || process.cwd();
+  return path17.resolve(scriptDir, "..", "..", "..");
+}
+function createSubagentStartCommand(pluginRoot) {
+  const scriptPath = path17.join(
+    pluginRoot,
+    "hooks",
+    "scripts",
+    "dist",
+    "subagent-start.js"
+  );
+  return `node "${scriptPath}"`;
+}
+function createGoodVibesHook(pluginRoot) {
+  return {
+    matcher: "*",
+    hooks: [
+      {
+        type: "command",
+        command: createSubagentStartCommand(pluginRoot),
+        timeout: 10
+      }
+    ]
+  };
+}
+function isGoodVibesHookPresent(hooks, pluginRoot) {
+  const expectedCommand = createSubagentStartCommand(pluginRoot);
+  return hooks.some(
+    (matcher) => matcher.hooks?.some((hook) => hook.command === expectedCommand)
+  );
+}
+function safeParseJson(content) {
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+function mergeHooks(settings, pluginRoot) {
+  const goodVibesHook = createGoodVibesHook(pluginRoot);
+  settings.hooks ??= {};
+  settings.hooks.SubagentStart ??= [];
+  if (isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
+    debug("GoodVibes SubagentStart hook already present");
+    return { settings, hooksAdded: false };
+  }
+  settings.hooks.SubagentStart = [
+    goodVibesHook,
+    ...settings.hooks.SubagentStart
+  ];
+  debug("Added GoodVibes SubagentStart hook");
+  return { settings, hooksAdded: true };
+}
+function createDefaultSettings(pluginRoot) {
+  return {
+    hooks: {
+      SubagentStart: [createGoodVibesHook(pluginRoot)]
+    }
+  };
+}
+async function injectSettings(cwd, pluginRootOverride) {
+  const pluginRoot = pluginRootOverride ?? getPluginRoot();
+  const claudeDir = path17.join(cwd, ".claude");
+  const settingsPath = path17.join(claudeDir, "settings.json");
+  try {
+    const settingsExist = await fileExists(settingsPath);
+    if (!settingsExist) {
+      const claudeDirExists = await fileExists(claudeDir);
+      if (!claudeDirExists) {
+        await fs13.mkdir(claudeDir, { recursive: true });
+        debug(`Created .claude directory at ${claudeDir}`);
+      }
+      const settings2 = createDefaultSettings(pluginRoot);
+      await fs13.writeFile(settingsPath, JSON.stringify(settings2, null, 2));
+      debug(`Created settings.json at ${settingsPath}`);
+      return { success: true, created: true, hooksAdded: true };
+    }
+    const content = await fs13.readFile(settingsPath, "utf-8");
+    const settings = safeParseJson(content);
+    if (settings === null) {
+      const errorMsg = "Invalid JSON in settings.json, skipping hook injection";
+      logError("Settings injection", new Error(errorMsg));
+      return { success: false, created: false, hooksAdded: false, error: errorMsg };
+    }
+    const { settings: mergedSettings, hooksAdded } = mergeHooks(settings, pluginRoot);
+    if (!hooksAdded) {
+      return { success: true, created: false, hooksAdded: false };
+    }
+    await fs13.writeFile(settingsPath, JSON.stringify(mergedSettings, null, 2));
+    debug(`Updated settings.json at ${settingsPath}`);
+    return { success: true, created: false, hooksAdded: true };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logError("Settings injection", error);
+    return { success: false, created: false, hooksAdded: false, error: errorMsg };
+  }
+}
+
 // src/session-start/index.ts
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
@@ -4554,6 +4660,24 @@ async function savePluginState(projectDir, state) {
     logError("State saving", saveError);
   }
 }
+async function injectProjectSettings(projectDir) {
+  try {
+    const result = await injectSettings(projectDir);
+    if (result.success) {
+      if (result.created) {
+        debug("Created .claude/settings.json with GoodVibes hooks");
+      } else if (result.hooksAdded) {
+        debug("Added GoodVibes hooks to existing .claude/settings.json");
+      } else {
+        debug("GoodVibes hooks already present in .claude/settings.json");
+      }
+    } else if (result.error) {
+      debug(`Settings injection skipped: ${result.error}`);
+    }
+  } catch (error) {
+    logError("Settings injection", error);
+  }
+}
 function initializeAnalytics(sessionId, contextResult) {
   void saveAnalytics({
     session_id: sessionId,
@@ -4587,6 +4711,7 @@ async function runSessionStartHook() {
     state = initializeSession(state, sessionId);
     await ensureCacheDir();
     debug("Cache directory ensured");
+    await injectProjectSettings(projectDir);
     const { valid, missing } = await validateRegistries();
     debug("Registry validation", { valid, missing });
     if (!valid) {

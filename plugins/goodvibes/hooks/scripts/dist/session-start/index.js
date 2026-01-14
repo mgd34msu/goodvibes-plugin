@@ -8,6 +8,7 @@
  * - Creates cache directory
  * - Initializes analytics
  * - Gathers and injects project context (Smart Context Injection)
+ * - Injects GoodVibes hooks into project's .claude/settings.json
  * - Updates session state (increment session count, record start time)
  * - Saves state for future sessions
  */
@@ -18,6 +19,7 @@ import { createDefaultState } from '../types/state.js';
 import { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
 import { checkCrashRecovery, } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
+import { injectSettings } from './settings-injection.js';
 /** Default recovery info when crash recovery check fails */
 const DEFAULT_RECOVERY_INFO = {
     needsRecovery: false,
@@ -78,6 +80,30 @@ async function savePluginState(projectDir, state) {
         // Continue even if state save fails
     }
 }
+/** Injects GoodVibes hooks into project's .claude/settings.json */
+async function injectProjectSettings(projectDir) {
+    try {
+        const result = await injectSettings(projectDir);
+        if (result.success) {
+            if (result.created) {
+                debug('Created .claude/settings.json with GoodVibes hooks');
+            }
+            else if (result.hooksAdded) {
+                debug('Added GoodVibes hooks to existing .claude/settings.json');
+            }
+            else {
+                debug('GoodVibes hooks already present in .claude/settings.json');
+            }
+        }
+        else if (result.error) {
+            debug(`Settings injection skipped: ${result.error}`);
+        }
+    }
+    catch (error) {
+        logError('Settings injection', error);
+        // Continue even if settings injection fails - it's not critical
+    }
+}
 /** Initializes analytics for the session */
 function initializeAnalytics(sessionId, contextResult) {
     void saveAnalytics({
@@ -118,6 +144,8 @@ async function runSessionStartHook() {
         // Ensure cache directory exists
         await ensureCacheDir();
         debug('Cache directory ensured');
+        // Inject GoodVibes hooks into project's .claude/settings.json
+        await injectProjectSettings(projectDir);
         // Validate registries
         const { valid, missing } = await validateRegistries();
         debug('Registry validation', { valid, missing });
@@ -166,3 +194,4 @@ export { formatRecoveryContext, checkCrashRecovery } from './crash-recovery.js';
 export { buildSystemMessage } from './response-formatter.js';
 export { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
 export { gatherAndFormatContext } from './context-injection.js';
+export { injectSettings } from './settings-injection.js';
