@@ -40,12 +40,12 @@ describe('shared utilities', () => {
       vi.resetModules();
     });
 
-    it('should use default value of 100ms when env var not set', async () => {
+    it('should use default value of 1000ms when env var not set', async () => {
       delete process.env.GOODVIBES_STDIN_TIMEOUT_MS;
       vi.resetModules();
 
       const { STDIN_TIMEOUT_MS } = await import('../shared/index.js');
-      expect(STDIN_TIMEOUT_MS).toBe(100);
+      expect(STDIN_TIMEOUT_MS).toBe(1000);
     });
 
     it('should use custom value from GOODVIBES_STDIN_TIMEOUT_MS env var', async () => {

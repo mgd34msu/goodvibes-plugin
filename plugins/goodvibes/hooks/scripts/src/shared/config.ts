@@ -15,7 +15,7 @@ import { debug } from './logging.js';
  * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
  */
 export const STDIN_TIMEOUT_MS = parseInt(
-  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? '100',
+  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? '1000',
   10
 );
 

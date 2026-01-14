@@ -38,7 +38,7 @@ import { promisify as promisify3 } from "util";
 
 // src/shared/config.ts
 var STDIN_TIMEOUT_MS = parseInt(
-  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? "100",
+  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? "1000",
   10
 );
 

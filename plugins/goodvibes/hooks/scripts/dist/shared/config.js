@@ -11,7 +11,7 @@ import { debug } from './logging.js';
  * Timeout in milliseconds for waiting on stdin input before using defaults.
  * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
  */
-export const STDIN_TIMEOUT_MS = parseInt(process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? '100', 10);
+export const STDIN_TIMEOUT_MS = parseInt(process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? '1000', 10);
 /** Triggers that determine when quality checkpoints should run. */
 export const CHECKPOINT_TRIGGERS = {
     fileCountThreshold: 5,
