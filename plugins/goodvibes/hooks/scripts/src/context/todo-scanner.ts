@@ -28,6 +28,26 @@ const SKIP_DIRS = [
   '__tests__',
   'test',
   'tests',
+  'html', // Build output (contains minified vendor code)
+  'assets', // Static assets (often contains vendor bundles)
+];
+
+/**
+ * Files to skip entirely (by filename).
+ * These files intentionally contain TODO patterns in examples or templates.
+ */
+const SKIP_FILES = [
+  'todo-scanner.ts', // This file contains TODO examples in JSDoc
+  'todo-scanner.js', // Compiled version
+];
+
+/**
+ * Path patterns to skip (matched against relative path).
+ * Used for template files that intentionally contain TODO placeholders.
+ */
+const SKIP_PATH_PATTERNS = [
+  /\/scripts\/generate-/, // Template generator scripts with placeholder TODOs
+  /\/scripts\/.*-generator/, // Other generator scripts
 ];
 
 /**
@@ -150,7 +170,19 @@ export async function scanTodos(
       break;
     }
 
+    // Skip files by name
+    const fileName = path.basename(file);
+    if (SKIP_FILES.includes(fileName)) {
+      continue;
+    }
+
     const relativePath = path.relative(cwd, file).replace(/\\/g, '/');
+
+    // Skip files matching path patterns
+    if (SKIP_PATH_PATTERNS.some((pattern) => pattern.test(relativePath))) {
+      continue;
+    }
+
     const todos = await scanFile(file, TODO_PATTERNS);
 
     for (const todo of todos) {

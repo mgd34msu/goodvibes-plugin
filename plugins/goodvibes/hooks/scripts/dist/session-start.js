@@ -903,7 +903,23 @@ var SKIP_DIRS = [
   ".goodvibes",
   "__tests__",
   "test",
-  "tests"
+  "tests",
+  "html",
+  // Build output (contains minified vendor code)
+  "assets"
+  // Static assets (often contains vendor bundles)
+];
+var SKIP_FILES = [
+  "todo-scanner.ts",
+  // This file contains TODO examples in JSDoc
+  "todo-scanner.js"
+  // Compiled version
+];
+var SKIP_PATH_PATTERNS = [
+  /\/scripts\/generate-/,
+  // Template generator scripts with placeholder TODOs
+  /\/scripts\/.*-generator/
+  // Other generator scripts
 ];
 var DEFAULT_TODO_LIMIT = 10;
 var MAX_TODO_TEXT_LENGTH = 60;
@@ -961,7 +977,14 @@ async function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
     if (results.length >= limit) {
       break;
     }
+    const fileName = path8.basename(file);
+    if (SKIP_FILES.includes(fileName)) {
+      continue;
+    }
     const relativePath = path8.relative(cwd, file).replace(/\\/g, "/");
+    if (SKIP_PATH_PATTERNS.some((pattern) => pattern.test(relativePath))) {
+      continue;
+    }
     const todos = await scanFile(file, TODO_PATTERNS);
     for (const todo of todos) {
       if (results.length >= limit) {
