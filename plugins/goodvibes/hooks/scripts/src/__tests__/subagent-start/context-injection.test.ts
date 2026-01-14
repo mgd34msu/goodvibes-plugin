@@ -3,6 +3,7 @@
  *
  * Tests cover:
  * - buildSubagentContext function
+ * - Universal skills/MCP tools reminder (injected for ALL agents)
  * - Agent type-specific context injection (backend, test, brutal-reviewer)
  * - Combinations of agent types
  * - Project name extraction from cwd
@@ -89,6 +90,24 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain('Mode: default');
       });
 
+      it('should always include universal skills/MCP tools reminder', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/my-project',
+          'generic-agent',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain(
+          'IMPORTANT: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands.'
+        );
+        expect(result.additionalContext).toContain(
+          'Only use commands outside of MCP tools or skills when there is absolutely no other way'
+        );
+      });
+
       it('should call loadSharedConfig with the correct cwd', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
@@ -135,6 +154,73 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain('Mode: vibecoding');
+      });
+    });
+
+    describe('universal skills/MCP tools reminder', () => {
+      it('should include reminder about preferring skills and MCP tools', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'any-agent-type',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('IMPORTANT:');
+        expect(result.additionalContext).toContain('GoodVibes skills and MCP tools');
+        expect(result.additionalContext).toContain('raw bash/shell commands');
+      });
+
+      it('should emphasize using tools for each part of task even if whole task cannot be done with tools', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'generic-agent',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain(
+          'Even if the entire task cannot be completed with skills/MCP tools, use them for every part where they apply'
+        );
+      });
+
+      it('should include reminder for all GoodVibes agent types', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const goodvibesAgentTypes = [
+          'goodvibes:backend-engineer',
+          'goodvibes:frontend-architect',
+          'goodvibes:test-engineer',
+          'goodvibes:workflow-planner',
+        ];
+
+        for (const agentType of goodvibesAgentTypes) {
+          const result = await buildSubagentContext(
+            '/test/project',
+            agentType,
+            'session-123'
+          );
+
+          expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
+        }
+      });
+
+      it('should include reminder for non-GoodVibes agent types', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'custom-external-agent',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
       });
     });
 
@@ -318,7 +404,7 @@ describe('context-injection', () => {
     });
 
     describe('no matching agent type', () => {
-      it('should return only project context when agent type has no special reminders', async () => {
+      it('should return project context and universal reminder when agent type has no special reminders', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
@@ -332,6 +418,7 @@ describe('context-injection', () => {
           '[GoodVibes] Project: project'
         );
         expect(result.additionalContext).toContain('Mode: default');
+        expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
         expect(result.additionalContext).not.toContain('Remember:');
       });
 
@@ -364,6 +451,7 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain(
           '[GoodVibes] Project: project'
         );
+        expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
         expect(result.additionalContext).not.toContain('Remember:');
       });
 
@@ -423,10 +511,11 @@ describe('context-injection', () => {
         );
 
         const lines = result.additionalContext.split('\n');
-        expect(lines.length).toBeGreaterThanOrEqual(3);
+        expect(lines.length).toBeGreaterThanOrEqual(4);
         expect(lines[0]).toContain('[GoodVibes] Project:');
         expect(lines[1]).toContain('Mode:');
-        expect(lines[2]).toContain('Remember:');
+        expect(lines[2]).toContain('IMPORTANT:');
+        expect(lines[3]).toContain('Remember:');
       });
 
       it('should handle session ID parameter (unused but accepted)', async () => {

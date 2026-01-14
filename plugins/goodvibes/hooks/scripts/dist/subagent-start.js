@@ -831,6 +831,9 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
   const contextParts = [];
   contextParts.push(`[GoodVibes] Project: ${projectName}`);
   contextParts.push(`Mode: ${automationConfig.automation.mode}`);
+  contextParts.push(
+    "IMPORTANT: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands. Only use commands outside of MCP tools or skills when there is absolutely no other way to accomplish a specific part of the task. Even if the entire task cannot be completed with skills/MCP tools, use them for every part where they apply."
+  );
   if (agentType.includes("backend")) {
     contextParts.push(
       "Remember: Write-local only. All changes must be in the project root."

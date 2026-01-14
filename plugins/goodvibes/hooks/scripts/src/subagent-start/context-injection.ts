@@ -2,8 +2,10 @@
  * Subagent Context Injection
  *
  * Builds context for subagent sessions based on agent type and project configuration.
- * Provides agent-specific reminders and guidelines (e.g., write-local for backend,
- * test quality for test engineers, scoring for reviewers).
+ * Provides:
+ * - Universal reminder to prefer skills and MCP tools over raw bash/shell commands
+ * - Agent-specific reminders and guidelines (e.g., write-local for backend,
+ *   test quality for test engineers, scoring for reviewers)
  *
  * @module subagent-start/context-injection
  * @see {@link ../session-start/context-injection} for main session context
@@ -48,6 +50,14 @@ export async function buildSubagentContext(
   // Add project context
   contextParts.push(`[GoodVibes] Project: ${projectName}`);
   contextParts.push(`Mode: ${automationConfig.automation.mode}`);
+
+  // Universal reminder: Prefer skills and MCP tools over raw commands
+  contextParts.push(
+    'IMPORTANT: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands. ' +
+      'Only use commands outside of MCP tools or skills when there is absolutely no other way ' +
+      'to accomplish a specific part of the task. Even if the entire task cannot be completed ' +
+      'with skills/MCP tools, use them for every part where they apply.'
+  );
 
   // Add agent-specific reminders based on type
   if (agentType.includes('backend')) {
