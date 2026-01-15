@@ -10,7 +10,7 @@
 export declare const LOCKFILES: readonly ["pnpm-lock.yaml", "yarn.lock", "package-lock.json", "bun.lockb"];
 /**
  * Root directory of the GoodVibes plugin itself.
- * Uses official Claude Code environment variable or falls back to parent directory.
+ * Uses official Claude Code environment variable or intelligent fallback.
  */
 export declare const PLUGIN_ROOT: string;
 /**

@@ -76,7 +76,20 @@ var LOCKFILES = [
   "package-lock.json",
   "bun.lockb"
 ];
-var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), "..");
+function resolvePluginRoot() {
+  if (process.env.CLAUDE_PLUGIN_ROOT) {
+    return process.env.CLAUDE_PLUGIN_ROOT;
+  }
+  if (typeof __dirname !== "undefined" && __dirname.includes("hooks")) {
+    const hooksIndex = __dirname.indexOf("hooks");
+    if (hooksIndex > 0) {
+      return __dirname.substring(0, hooksIndex - 1);
+    }
+  }
+  const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
+  return devPluginPath;
+}
+var PLUGIN_ROOT = resolvePluginRoot();
 var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 var CACHE_DIR = path.join(PLUGIN_ROOT, ".cache");
 var ANALYTICS_FILE = path.join(CACHE_DIR, "analytics.json");
@@ -161,7 +174,7 @@ function isValidHookInput(value) {
   return typeof obj.session_id === "string" && typeof obj.cwd === "string" && typeof obj.hook_event_name === "string";
 }
 async function readHookInput() {
-  return new Promise((resolve4, reject) => {
+  return new Promise((resolve2, reject) => {
     let data = "";
     process.stdin.setEncoding("utf-8");
     process.stdin.on("data", (chunk) => {
@@ -174,7 +187,7 @@ async function readHookInput() {
           reject(new Error("Invalid hook input structure"));
           return;
         }
-        resolve4(parsed);
+        resolve2(parsed);
       } catch {
         reject(new Error("Failed to parse hook input from stdin"));
       }
@@ -4530,8 +4543,7 @@ function buildSystemMessage(sessionId, context) {
 import * as fs13 from "fs/promises";
 import * as path17 from "path";
 function getPluginRoot() {
-  const scriptDir = __dirname || process.cwd();
-  return path17.resolve(scriptDir, "..", "..", "..");
+  return PLUGIN_ROOT;
 }
 function createSubagentStartCommand(pluginRoot) {
   const scriptPath = path17.join(

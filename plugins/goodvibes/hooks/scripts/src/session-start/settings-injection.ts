@@ -12,6 +12,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { fileExists } from '../shared/file-utils.js';
+import { PLUGIN_ROOT } from '../shared/constants.js';
 import { debug, logError } from '../shared/logging.js';
 
 /** Structure for a single hook entry */
@@ -53,17 +54,14 @@ export interface SettingsInjectionResult {
 }
 
 /**
- * Gets the plugin root directory from the hook script's location.
- * The hook scripts are at: {pluginRoot}/hooks/scripts/dist/
- * So we go up 3 levels from dist to get the plugin root.
+ * Gets the plugin root directory.
+ * Uses the PLUGIN_ROOT constant which is set from CLAUDE_PLUGIN_ROOT env var
+ * or falls back to a sensible default.
  *
  * @returns The absolute path to the plugin root directory
  */
 export function getPluginRoot(): string {
-  // In production: __dirname is {pluginRoot}/hooks/scripts/dist
-  // Go up 3 levels: dist -> scripts -> hooks -> pluginRoot
-  const scriptDir = __dirname || process.cwd();
-  return path.resolve(scriptDir, '..', '..', '..');
+  return PLUGIN_ROOT;
 }
 
 /**

@@ -21,7 +21,20 @@ import { promisify } from "util";
 
 // src/shared/constants.ts
 import * as path from "path";
-var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), "..");
+function resolvePluginRoot() {
+  if (process.env.CLAUDE_PLUGIN_ROOT) {
+    return process.env.CLAUDE_PLUGIN_ROOT;
+  }
+  if (typeof __dirname !== "undefined" && __dirname.includes("hooks")) {
+    const hooksIndex = __dirname.indexOf("hooks");
+    if (hooksIndex > 0) {
+      return __dirname.substring(0, hooksIndex - 1);
+    }
+  }
+  const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
+  return devPluginPath;
+}
+var PLUGIN_ROOT = resolvePluginRoot();
 var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 var CACHE_DIR = path.join(PLUGIN_ROOT, ".cache");
 var ANALYTICS_FILE = path.join(CACHE_DIR, "analytics.json");

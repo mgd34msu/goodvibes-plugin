@@ -74,7 +74,20 @@ import { promisify } from "util";
 
 // src/shared/constants.ts
 import * as path from "path";
-var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(process.cwd(), "..");
+function resolvePluginRoot() {
+  if (process.env.CLAUDE_PLUGIN_ROOT) {
+    return process.env.CLAUDE_PLUGIN_ROOT;
+  }
+  if (typeof __dirname !== "undefined" && __dirname.includes("hooks")) {
+    const hooksIndex = __dirname.indexOf("hooks");
+    if (hooksIndex > 0) {
+      return __dirname.substring(0, hooksIndex - 1);
+    }
+  }
+  const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
+  return devPluginPath;
+}
+var PLUGIN_ROOT = resolvePluginRoot();
 var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 var CACHE_DIR = path.join(PLUGIN_ROOT, ".cache");
 var ANALYTICS_FILE = path.join(CACHE_DIR, "analytics.json");
@@ -149,7 +162,7 @@ function isValidHookInput(value) {
   return typeof obj.session_id === "string" && typeof obj.cwd === "string" && typeof obj.hook_event_name === "string";
 }
 async function readHookInput() {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve2, reject) => {
     let data = "";
     process.stdin.setEncoding("utf-8");
     process.stdin.on("data", (chunk) => {
@@ -162,7 +175,7 @@ async function readHookInput() {
           reject(new Error("Invalid hook input structure"));
           return;
         }
-        resolve3(parsed);
+        resolve2(parsed);
       } catch {
         reject(new Error("Failed to parse hook input from stdin"));
       }
@@ -644,7 +657,7 @@ import { promisify as promisify2 } from "util";
 // src/automation/spawn-utils.ts
 import { spawn } from "child_process";
 function spawnAsync(command, args, options) {
-  return new Promise((resolve3) => {
+  return new Promise((resolve2) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
       stdio: ["pipe", "pipe", "pipe"]
@@ -659,7 +672,7 @@ function spawnAsync(command, args, options) {
     });
     const timeoutId = options.timeout ? setTimeout(() => {
       child.kill("SIGTERM");
-      resolve3({
+      resolve2({
         code: null,
         stdout,
         stderr: stderr + "\nProcess timed out"
@@ -672,13 +685,13 @@ function spawnAsync(command, args, options) {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      resolve3({ code, stdout, stderr });
+      resolve2({ code, stdout, stderr });
     });
     child.on("error", (err) => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      resolve3({ code: null, stdout, stderr: err.message });
+      resolve2({ code: null, stdout, stderr: err.message });
     });
   });
 }
