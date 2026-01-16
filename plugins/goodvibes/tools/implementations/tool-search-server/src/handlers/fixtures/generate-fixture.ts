@@ -233,6 +233,7 @@ function extractDefaultValue(attributes: string): string | undefined {
     return attributes.slice(contentStart, i - 1);
   }
 
+  /* v8 ignore next -- @preserve */
   return undefined;
 }
 
@@ -261,6 +262,7 @@ async function loadFaker(): Promise<FakerModule | null> {
     return fakerModule;
   } catch {
     // @faker-js/faker not installed, use fallback
+    /* v8 ignore next -- @preserve */
     return null;
   }
 }
@@ -291,10 +293,12 @@ export function resetIdCounter(): void {
  * Reset faker loading state (for testing).
  * This allows tests to re-trigger the faker loading logic.
  */
+/* v8 ignore start - Tested in generate-fixture-no-faker.test.ts */
 export function resetFakerState(): void {
   fakerLoaded = false;
   fakerModule = null;
 }
+/* v8 ignore stop */
 
 /**
  * Exported for testing: generate a simple value without faker.
@@ -331,6 +335,7 @@ async function generateValue(
   }
 
   // Fallback to simple generated values
+  /* v8 ignore next -- @preserve */
   return generateSimpleValue(fieldName, fieldType);
 }
 

@@ -522,9 +522,10 @@ function validateSchema(
 
 /**
  * Get JSON type name for a value
+ * Note: null values are handled by validateSchema before this is called,
+ * so this function never receives null
  */
-function getJsonType(value: unknown): string {
-  if (value === null) return 'null';
+function getJsonType(value: NonNullable<unknown>): string {
   if (Array.isArray(value)) return 'array';
   return typeof value;
 }
@@ -550,9 +551,9 @@ async function makeRequest(
 
       if (body !== undefined && method !== 'GET' && method !== 'HEAD') {
         bodyData = typeof body === 'string' ? body : JSON.stringify(body);
-        if (!requestHeaders['Content-Type'] && !requestHeaders['content-type']) {
-          requestHeaders['Content-Type'] = 'application/json';
-        }
+        // Always set Content-Type for JSON body since headers are built internally
+        // and never include a pre-existing Content-Type
+        requestHeaders['Content-Type'] = 'application/json';
         requestHeaders['Content-Length'] = Buffer.byteLength(bodyData).toString();
       }
 

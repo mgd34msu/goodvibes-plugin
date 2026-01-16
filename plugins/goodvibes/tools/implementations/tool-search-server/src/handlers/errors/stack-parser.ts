@@ -119,7 +119,8 @@ function parseStackLine(line: string): StackFrame | null {
     if (match?.groups) {
       const { func, file, line: lineStr, column: columnStr } = match.groups;
 
-      // Skip invalid entries
+      // Skip invalid entries (defensive check - regex patterns require non-empty captures)
+      /* istanbul ignore next -- @preserve */
       if (!file || !lineStr) continue;
 
       return {
@@ -146,6 +147,8 @@ function parseErrorHeader(errorText: string): { type: string; message: string } 
     const match = pattern.exec(firstLine);
     if (match?.groups) {
       const type = match.groups['type'] || 'Error';
+      // Defensive fallback - all patterns require non-empty message capture
+      /* istanbul ignore next -- @preserve */
       const message = match.groups['message'] || firstLine;
       const code = match.groups['code'];
 

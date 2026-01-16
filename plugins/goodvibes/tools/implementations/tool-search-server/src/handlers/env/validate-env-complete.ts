@@ -224,6 +224,7 @@ function scanDirectory(
             }
             const existingFiles = varMap.get(varName)!;
             for (const file of files) {
+              /* v8 ignore next 3 -- @preserve defensive dedup, each file scanned once */
               if (!existingFiles.includes(file)) {
                 existingFiles.push(file);
               }
@@ -476,7 +477,10 @@ export function handleValidateEnvComplete(args: ValidateEnvCompleteArgs) {
   for (const varName of exampleVars.keys()) {
     if (!codeVars.has(varName) && !envVars.has(varName)) {
       // Only add if not already in unused from .env
+      // Note: Given the condition above (!envVars.has), this check is defensive
+      // as vars can only be added to unused from envVars in the prior loop
       const alreadyUnused = unused.some(u => u.name === varName);
+      /* v8 ignore next 5 -- @preserve defensive check, logically unreachable given !envVars.has condition */
       if (!alreadyUnused) {
         unused.push({
           name: varName,

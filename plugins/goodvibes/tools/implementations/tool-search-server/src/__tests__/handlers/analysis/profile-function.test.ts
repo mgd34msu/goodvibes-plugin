@@ -58,6 +58,7 @@ const {
   extractFunction,
   importModule,
   isPromise,
+  executeWithTimeout,
   roundTo,
   bytesToMb,
 } = __testing__;
@@ -2627,6 +2628,489 @@ describe('Additional coverage tests', () => {
         // default function triples its input: 14 * 3 = 42
         expect(parsed.result_sample).toBe(42);
         expect(parsed.iterations).toBe(3);
+      }
+    });
+  });
+});
+
+// =============================================================================
+// Branch Coverage Tests - Targets specific uncovered branches
+// =============================================================================
+// These tests specifically target uncovered branch conditions to achieve
+// 100% branch coverage.
+
+describe('Branch coverage tests', () => {
+  const fixturesDir = path.resolve(__dirname, '../../fixtures');
+  const noFunctionsPath = path.join(fixturesDir, 'no-functions.js');
+  const throwsNonErrorPath = path.join(fixturesDir, 'throws-non-error.js');
+  const throwsToplevelStringPath = path.join(fixturesDir, 'throws-toplevel-string.js');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Use real fileExists for integration tests
+    vi.mocked(fileExists).mockImplementation(async (filePath: string) => {
+      const fs = await import('fs/promises');
+      try {
+        await fs.access(filePath);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  // ===========================================================================
+  // Line 446 - 'none' branch when no function exports exist
+  // ===========================================================================
+
+  describe('Line 446: available || "none" branch', () => {
+    it('should show "none" when module has no function exports', async () => {
+      const args: ProfileFunctionArgs = {
+        file: noFunctionsPath,
+        function_name: 'nonexistentFunction',
+        inputs: [],
+        iterations: 3,
+        warmup: 1,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(errorResponse).toHaveBeenCalled();
+      const errorMsg = vi.mocked(errorResponse).mock.calls[0][0] as string;
+
+      // Should contain 'none' since there are no function exports
+      expect(errorMsg).toContain("Function 'nonexistentFunction' not found");
+      expect(errorMsg).toContain('Available exports: none');
+    });
+  });
+
+  // ===========================================================================
+  // Line 493 - non-Error iteration error branch
+  // ===========================================================================
+
+  describe('Line 493: iterError not instanceof Error branch', () => {
+    it('should handle function that throws a string', async () => {
+      const args: ProfileFunctionArgs = {
+        file: throwsNonErrorPath,
+        function_name: 'throwsString',
+        inputs: [],
+        iterations: 3,
+        warmup: 0,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        // All iterations should fail
+        expect(parsed.iterations).toBe(0);
+        // Error message should contain the string that was thrown
+        expect(parsed.error).toContain('3 iterations failed');
+        expect(parsed.error).toContain('string error');
+      }
+    });
+
+    it('should handle function that throws a number', async () => {
+      const args: ProfileFunctionArgs = {
+        file: throwsNonErrorPath,
+        function_name: 'throwsNumber',
+        inputs: [],
+        iterations: 2,
+        warmup: 0,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.iterations).toBe(0);
+        expect(parsed.error).toContain('2 iterations failed');
+        // The number 42 should be converted to string
+        expect(parsed.error).toContain('42');
+      }
+    });
+
+    it('should handle function that throws null', async () => {
+      const args: ProfileFunctionArgs = {
+        file: throwsNonErrorPath,
+        function_name: 'throwsNull',
+        inputs: [],
+        iterations: 2,
+        warmup: 0,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.iterations).toBe(0);
+        expect(parsed.error).toContain('2 iterations failed');
+        // null converted to 'null' string
+        expect(parsed.error).toContain('null');
+      }
+    });
+
+    it('should handle function that throws an object (non-Error)', async () => {
+      const args: ProfileFunctionArgs = {
+        file: throwsNonErrorPath,
+        function_name: 'throwsObject',
+        inputs: [],
+        iterations: 2,
+        warmup: 0,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.iterations).toBe(0);
+        expect(parsed.error).toContain('2 iterations failed');
+        // Object converted to '[object Object]'
+        expect(parsed.error).toContain('[object Object]');
+      }
+    });
+
+    it('should handle async function that rejects with a string', async () => {
+      const args: ProfileFunctionArgs = {
+        file: throwsNonErrorPath,
+        function_name: 'asyncThrowsString',
+        inputs: [],
+        iterations: 2,
+        warmup: 0,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.iterations).toBe(0);
+        expect(parsed.error).toContain('Async string rejection');
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Line 512 - memBefore && memAfter branch (ensure memBefore is set)
+  // ===========================================================================
+
+  describe('Line 512: memBefore && memAfter branch', () => {
+    it('should properly track memory when capture_memory is true without gc', async () => {
+      // Ensure gc is not available
+      global.gc = undefined;
+
+      const args: ProfileFunctionArgs = {
+        file: path.join(fixturesDir, 'test-functions.js'),
+        function_name: 'fastFunction',
+        inputs: [],
+        iterations: 3,
+        warmup: 1,
+        capture_memory: true,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      // Should include memory statistics section
+      expect(result).toContain('### Memory Statistics');
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        // Memory should be captured even without gc
+        expect(parsed.memory).toBeDefined();
+        expect(parsed.memory?.heap_used_before_mb).toBeGreaterThan(0);
+        expect(parsed.memory?.heap_used_after_mb).toBeGreaterThan(0);
+      }
+    });
+
+    it('should properly track memory when capture_memory is true with gc available', async () => {
+      // Mock gc being available
+      const mockGc = vi.fn();
+      global.gc = mockGc;
+
+      const args: ProfileFunctionArgs = {
+        file: path.join(fixturesDir, 'test-functions.js'),
+        function_name: 'fastFunction',
+        inputs: [],
+        iterations: 3,
+        warmup: 1,
+        capture_memory: true,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      // gc should have been called at least twice (before and after profiling)
+      expect(mockGc).toHaveBeenCalledTimes(2);
+
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.memory).toBeDefined();
+      }
+
+      // Cleanup
+      global.gc = undefined;
+    });
+  });
+
+  // ===========================================================================
+  // Line 543 - importError not instanceof Error branch
+  // ===========================================================================
+
+  describe('Line 543: importError not instanceof Error branch', () => {
+    it('should handle import errors that are not Error instances', async () => {
+      // Mock fileExists to return true for a fake file
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      const args: ProfileFunctionArgs = {
+        file: '/fake/nonexistent/module.js',
+        function_name: 'someFunction',
+        inputs: [],
+        iterations: 3,
+        warmup: 1,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      // Should contain error section
+      expect(result).toContain('### Error');
+      // The error message should be present in the result
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.error).toBeDefined();
+      }
+    });
+
+    it('should handle module that throws a string at top level (non-Error import)', async () => {
+      const args: ProfileFunctionArgs = {
+        file: throwsToplevelStringPath,
+        function_name: 'someFunction',
+        inputs: [],
+        iterations: 3,
+        warmup: 1,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      // Should contain error section
+      expect(result).toContain('### Error');
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.error).toBeDefined();
+        // The string thrown should appear in the error message
+        expect(parsed.error).toContain('Module evaluation threw a string');
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Line 314 - TypeScript import error with non-Error thrown
+  // ===========================================================================
+
+  describe('Line 314: directError not instanceof Error branch', () => {
+    it('should handle TypeScript import where directError is not an Error', async () => {
+      // Create a scenario where importing a .ts file throws a non-Error
+      // This is tested via importModule directly
+
+      const { importModule } = __testing__;
+
+      // Test with a non-existent TypeScript file path that will cause import to fail
+      // The error might or might not be an Error instance depending on the runtime
+      vi.mocked(fileExists).mockResolvedValue(false);
+
+      try {
+        await importModule('/nonexistent/path/module.ts');
+        // If it doesn't throw, that's unexpected but okay
+      } catch (err) {
+        // The error should be an Error with proper message
+        expect(err).toBeInstanceOf(Error);
+        expect((err as Error).message).toContain('TypeScript');
+      }
+    });
+
+    it('should handle TypeScript file that throws a string at top level', async () => {
+      const tsThrowsStringPath = path.join(fixturesDir, 'throws-toplevel-string.ts');
+
+      const args: ProfileFunctionArgs = {
+        file: tsThrowsStringPath,
+        function_name: 'someFunction',
+        inputs: [],
+        iterations: 3,
+        warmup: 1,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      // Should contain error section with the thrown string
+      expect(result).toContain('### Error');
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        expect(parsed.error).toBeDefined();
+        // The string thrown during module import should be in the error
+        // (may come from TS or JS file depending on tsx runtime)
+        expect(parsed.error).toContain('threw a string');
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Line 512 - memBefore && memAfter branch (defensive null check)
+  // ===========================================================================
+
+  describe('Line 512: memBefore && memAfter defensive branch', () => {
+    // This branch is a TypeScript type guard. When capture_memory is true,
+    // memBefore is always set (lines 455-462) and memAfter is always set
+    // (line 510). The branch exists for null safety but cannot be false
+    // in normal execution. We verify the positive case works correctly.
+
+    it('should set memory stats when both memBefore and memAfter are defined', async () => {
+      const args: ProfileFunctionArgs = {
+        file: path.join(fixturesDir, 'test-functions.js'),
+        function_name: 'fastFunction',
+        inputs: [],
+        iterations: 2,
+        warmup: 0,
+        capture_memory: true,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        // Memory stats should be present (both memBefore and memAfter are set)
+        expect(parsed.memory).toBeDefined();
+        expect(parsed.memory?.heap_used_before_mb).toBeGreaterThan(0);
+        expect(parsed.memory?.heap_used_after_mb).toBeGreaterThan(0);
+        expect(typeof parsed.memory?.heap_delta_mb).toBe('number');
+        expect(typeof parsed.memory?.external_delta_mb).toBe('number');
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Line 314 - directError non-Error branch (defensive String() conversion)
+  // ===========================================================================
+
+  describe('Line 314: directError String() conversion branch', () => {
+    // This branch handles the case where a dynamic import throws a non-Error
+    // value. In practice, Node.js always throws Error instances for import
+    // failures. The branch is defensive and essentially unreachable.
+
+    it('should wrap TypeScript import errors in helpful Error message', async () => {
+      // Test that the error message includes TypeScript-specific guidance
+      const { importModule } = __testing__;
+
+      // Mock fileExists to ensure no JS fallback exists
+      vi.mocked(fileExists).mockResolvedValue(false);
+
+      try {
+        await importModule('/definitely/nonexistent/file.ts');
+        // Should throw
+        expect.fail('Expected importModule to throw');
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error);
+        const errorMsg = (err as Error).message;
+        expect(errorMsg).toContain('Cannot import TypeScript file directly');
+        expect(errorMsg).toContain('tsx/ts-node');
+        expect(errorMsg).toContain('compile to JavaScript');
+      }
+    });
+
+    it('should include original error message in wrapped error', async () => {
+      const { importModule } = __testing__;
+
+      vi.mocked(fileExists).mockResolvedValue(false);
+
+      try {
+        await importModule('/path/to/nonexistent.tsx');
+        expect.fail('Expected importModule to throw');
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error);
+        const errorMsg = (err as Error).message;
+        // The original error should be included (as Error.message or String())
+        expect(errorMsg).toContain('Error:');
+      }
+    });
+
+    it('should handle TypeScript syntax errors gracefully', async () => {
+      const brokenTsPath = path.join(fixturesDir, 'broken-syntax.ts');
+
+      const args: ProfileFunctionArgs = {
+        file: brokenTsPath,
+        function_name: 'broken',
+        inputs: [],
+        iterations: 1,
+        warmup: 0,
+      };
+
+      await handleProfileFunction(args);
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as string;
+
+      // Should contain error section
+      expect(result).toContain('### Error');
+      const jsonMatch = result.match(/---\n\n```json\n([\s\S]*?)\n```$/);
+      expect(jsonMatch).not.toBeNull();
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]) as ProfileFunctionResult;
+        // Should have captured the syntax error
+        expect(parsed.error).toBeDefined();
       }
     });
   });

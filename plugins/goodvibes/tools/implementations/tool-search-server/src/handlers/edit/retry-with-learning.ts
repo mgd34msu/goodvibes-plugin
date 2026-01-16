@@ -509,15 +509,17 @@ export async function handleRetryWithLearning(
   }
 
   // All retries exhausted or gave up
+  // Note: lastAttempt is guaranteed to exist since the loop always adds at least one attempt
+  // before breaking (maxRetries is always >= 1)
   const lastAttempt = attempts[attempts.length - 1];
 
   return createSuccessResponse<RetryWithLearningResult>({
     success: false,
     attempts,
     total_attempts: attempts.length,
-    final_exit_code: lastAttempt?.exit_code ?? 1,
-    final_stdout: lastAttempt?.stdout ?? '',
-    final_stderr: lastAttempt?.stderr ?? '',
+    final_exit_code: lastAttempt.exit_code,
+    final_stdout: lastAttempt.stdout,
+    final_stderr: lastAttempt.stderr,
     gave_up_reason: gaveUpReason,
   });
 }

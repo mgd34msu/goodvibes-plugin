@@ -1436,4 +1436,251 @@ describe('handleGenerateTypes', () => {
       expect(data.types).toContain('TestType');
     });
   });
+
+  describe('uncovered branch coverage tests', () => {
+    describe('line 153 - error that is not an Error instance', () => {
+      it('should return "Unknown error" when thrown value is not an Error', async () => {
+        // Mock _internal.fetchData to throw a non-Error value
+        const originalFetchData = __testInternals._internal.fetchData;
+        __testInternals._internal.fetchData = vi.fn().mockImplementation(() => {
+          // Throw a string instead of an Error object
+          throw 'This is a plain string error';
+        });
+
+        const args: GenerateTypesArgs = {
+          source: 'inline',
+          data: { test: true },
+        };
+
+        const result = await handleGenerateTypes(args);
+        const data = JSON.parse(result.content[0].text);
+
+        // Restore original
+        __testInternals._internal.fetchData = originalFetchData;
+
+        expect(result.isError).toBe(true);
+        expect(data.error).toBe('Unknown error');
+      });
+
+      it('should return "Unknown error" when thrown value is a number', async () => {
+        const originalFetchData = __testInternals._internal.fetchData;
+        __testInternals._internal.fetchData = vi.fn().mockImplementation(() => {
+          throw 42; // Throw a number
+        });
+
+        const args: GenerateTypesArgs = {
+          source: 'inline',
+          data: { test: true },
+        };
+
+        const result = await handleGenerateTypes(args);
+        const data = JSON.parse(result.content[0].text);
+
+        __testInternals._internal.fetchData = originalFetchData;
+
+        expect(result.isError).toBe(true);
+        expect(data.error).toBe('Unknown error');
+      });
+    });
+
+    describe('line 306 - object type without properties in merge', () => {
+      it('should handle merging object types where some lack properties', () => {
+        const { mergeTypes } = __testInternals;
+
+        // Create object TypeInfo where one has properties and one does not
+        const objectWithProps: TypeInfo = {
+          type: 'object',
+          nullable: false,
+          optional: false,
+          properties: {
+            name: { type: 'string', nullable: false, optional: false },
+          },
+        };
+
+        const objectWithoutProps: TypeInfo = {
+          type: 'object',
+          nullable: false,
+          optional: false,
+          // No properties field - this triggers the false branch at line 306
+        };
+
+        const result = mergeTypes([objectWithProps, objectWithoutProps]);
+
+        expect(result.type).toBe('object');
+        // Should still have properties from the first object
+        expect(result.properties).toBeDefined();
+        expect(result.properties!.name).toBeDefined();
+      });
+
+      it('should handle merging multiple objects where middle one lacks properties', () => {
+        const { mergeTypes } = __testInternals;
+
+        const obj1: TypeInfo = {
+          type: 'object',
+          nullable: false,
+          optional: false,
+          properties: { a: { type: 'string', nullable: false, optional: false } },
+        };
+
+        const obj2: TypeInfo = {
+          type: 'object',
+          nullable: false,
+          optional: false,
+          // No properties
+        };
+
+        const obj3: TypeInfo = {
+          type: 'object',
+          nullable: false,
+          optional: false,
+          properties: { b: { type: 'number', nullable: false, optional: false } },
+        };
+
+        const result = mergeTypes([obj1, obj2, obj3]);
+
+        expect(result.type).toBe('object');
+        expect(result.properties).toBeDefined();
+        // Both a and b should be optional since not present in all samples
+        expect(result.properties!.a?.optional).toBe(true);
+        expect(result.properties!.b?.optional).toBe(true);
+      });
+    });
+
+    describe('line 438 - nullable nested object type', () => {
+      it('should generate nullable nested object type when object is null in some samples', async () => {
+        const originalFetch = global.fetch;
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation(async () => {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              ok: true,
+              // Nested object with properties (will generate separate interface)
+              json: async () => ({
+                nested: {
+                  id: 1,
+                  name: 'Test',
+                  details: { foo: 'bar' }, // Nested object to ensure interface extraction
+                },
+              }),
+            } as Response;
+          }
+          return {
+            ok: true,
+            // Same nested object is null in second sample
+            json: async () => ({
+              nested: null,
+            }),
+          } as Response;
+        });
+
+        const args: GenerateTypesArgs = {
+          source: 'url',
+          url: 'https://example.com/data',
+          samples: 2,
+          type_name: 'NullableNestedObj',
+        };
+
+        const result = await handleGenerateTypes(args);
+        const data = JSON.parse(result.content[0].text);
+
+        global.fetch = originalFetch;
+
+        expect(data.success).toBe(true);
+        // The nested field should be nullable
+        expect(data.nullable_fields).toContain('nested');
+        // Should contain the nullable union type for the nested interface
+        // The generated type should be like "NestedObjNested | null"
+        expect(data.types).toMatch(/Nested.*\| null/);
+      });
+    });
+
+    describe('line 454 - nullable array of objects type', () => {
+      it('should generate nullable array of objects when array is null in some samples', async () => {
+        const originalFetch = global.fetch;
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation(async () => {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              ok: true,
+              // Array of objects (will generate separate interface for items)
+              json: async () => ({
+                items: [
+                  { id: 1, name: 'Item 1' },
+                  { id: 2, name: 'Item 2' },
+                ],
+              }),
+            } as Response;
+          }
+          return {
+            ok: true,
+            // Same array is null in second sample
+            json: async () => ({
+              items: null,
+            }),
+          } as Response;
+        });
+
+        const args: GenerateTypesArgs = {
+          source: 'url',
+          url: 'https://example.com/data',
+          samples: 2,
+          type_name: 'NullableArrayOfObj',
+        };
+
+        const result = await handleGenerateTypes(args);
+        const data = JSON.parse(result.content[0].text);
+
+        global.fetch = originalFetch;
+
+        expect(data.success).toBe(true);
+        // The items field should be nullable
+        expect(data.nullable_fields).toContain('items');
+        // Should contain the nullable array type like "ItemsItem[] | null"
+        expect(data.types).toMatch(/Item\[\]\s*\|\s*null/);
+      });
+
+      it('should handle nullable array of complex objects', async () => {
+        const originalFetch = global.fetch;
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation(async () => {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              ok: true,
+              json: async () => ({
+                users: [
+                  { userId: 'u1', profile: { age: 25, city: 'NYC' } },
+                ],
+              }),
+            } as Response;
+          }
+          return {
+            ok: true,
+            json: async () => ({
+              users: null,
+            }),
+          } as Response;
+        });
+
+        const args: GenerateTypesArgs = {
+          source: 'url',
+          url: 'https://example.com/data',
+          samples: 2,
+          type_name: 'ComplexNullableArray',
+        };
+
+        const result = await handleGenerateTypes(args);
+        const data = JSON.parse(result.content[0].text);
+
+        global.fetch = originalFetch;
+
+        expect(data.success).toBe(true);
+        expect(data.nullable_fields).toContain('users');
+        // Should have generated the UsersItem interface and the nullable array type
+        expect(data.types).toMatch(/UsersItem\[\]\s*\|\s*null/);
+      });
+    });
+  });
 });

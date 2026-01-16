@@ -72,6 +72,9 @@ import { handleGetApiRoutes } from '../../../handlers/schema/index.js';
 import { handleGetConventions } from '../../../handlers/project/conventions.js';
 
 // Helper to create mock spawn child process - uses setImmediate for immediate async without hanging
+// Track created EventEmitters for cleanup
+const createdEmitters: EventEmitter[] = [];
+
 function createMockSpawn(stdout: string, exitCode: number = 0, stderr: string = ''): Mock {
   return vi.fn(() => {
     const child = new EventEmitter() as EventEmitter & {
@@ -82,6 +85,9 @@ function createMockSpawn(stdout: string, exitCode: number = 0, stderr: string = 
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
     child.kill = vi.fn();
+
+    // Track for cleanup
+    createdEmitters.push(child, child.stdout, child.stderr);
 
     // Emit data immediately in next tick - no timeout delays
     setImmediate(() => {
@@ -96,6 +102,28 @@ function createMockSpawn(stdout: string, exitCode: number = 0, stderr: string = 
 
     return child;
   });
+}
+
+// Cleanup function to remove all listeners
+function cleanupEmitters(): void {
+  for (const emitter of createdEmitters) {
+    emitter.removeAllListeners();
+  }
+  createdEmitters.length = 0;
+}
+
+// Helper to create a tracked mock child process for inline use
+function createTrackedMockChild(): EventEmitter & { stdout: EventEmitter; stderr: EventEmitter; kill: Mock } {
+  const child = new EventEmitter() as EventEmitter & {
+    stdout: EventEmitter;
+    stderr: EventEmitter;
+    kill: Mock;
+  };
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  child.kill = vi.fn();
+  createdEmitters.push(child, child.stdout, child.stderr);
+  return child;
 }
 
 // Sample data
@@ -205,6 +233,7 @@ describe('explain-codebase handler', () => {
   });
 
   afterEach(() => {
+    cleanupEmitters();
     vi.resetAllMocks();
   });
 
@@ -575,57 +604,39 @@ describe('explain-codebase handler', () => {
 
       it('should use fallback when Claude CLI times out', async () => {
         // This triggers lines 541-542: timeout kills child and rejects
+        // We simulate a timeout by having the spawn mock call kill when the close event isn't emitted
+        // The test hooks into the setTimeout mechanism to trigger the timeout callback
+        let timeoutCallback: (() => void) | null = null;
+
+        // Mock global setTimeout to capture the timeout callback
+        const originalSetTimeout = globalThis.setTimeout;
+        globalThis.setTimeout = ((cb: () => void) => {
+          timeoutCallback = cb;
+          return 999 as unknown as ReturnType<typeof setTimeout>;
+        }) as typeof globalThis.setTimeout;
+
         vi.mocked(childProcess.spawn).mockImplementation(() => {
-          const child = new EventEmitter() as EventEmitter & {
-            stdout: EventEmitter;
-            stderr: EventEmitter;
-            kill: Mock;
-          };
-          child.stdout = new EventEmitter();
-          child.stderr = new EventEmitter();
-          child.kill = vi.fn();
-
-          // Do NOT emit 'close' - this simulates a hanging process that will timeout
-          // The timeout in spawnClaude will trigger and call child.kill()
-          // We use setImmediate to simulate some data but no close event
-
-          return child;
-        });
-
-        // Use shallow depth for faster timeout (60000ms default, but we'll override)
-        // The test will timeout the actual test runner, so we need to mock the timeout behavior
-        // Actually, we need to trigger the setTimeout callback manually
-
-        // Better approach: manually trigger timeout behavior by having kill() emit close
-        vi.mocked(childProcess.spawn).mockImplementation(() => {
-          const child = new EventEmitter() as EventEmitter & {
-            stdout: EventEmitter;
-            stderr: EventEmitter;
-            kill: Mock;
-          };
-          child.stdout = new EventEmitter();
-          child.stderr = new EventEmitter();
+          const child = createTrackedMockChild();
           // When kill is called (by timeout), emit close
           child.kill = vi.fn(() => {
             setImmediate(() => child.emit('close', null));
           });
 
-          // Never emit close naturally - the timeout will call kill which emits close
-          // Use vi.useFakeTimers to control setTimeout
+          // After setting up the mock, trigger the timeout callback in next tick
+          setImmediate(() => {
+            if (timeoutCallback) {
+              timeoutCallback();
+            }
+          });
+
           return child;
         });
 
-        // Use fake timers to advance the timeout
-        vi.useFakeTimers();
+        const result = await handleExplainCodebase({ depth: 'shallow' });
 
-        const resultPromise = handleExplainCodebase({ depth: 'shallow' });
+        // Restore setTimeout
+        globalThis.setTimeout = originalSetTimeout;
 
-        // Advance time past the timeout (60000ms for shallow)
-        await vi.advanceTimersByTimeAsync(61000);
-
-        vi.useRealTimers();
-
-        const result = await resultPromise;
         const data = JSON.parse(result.content[0].text);
 
         // Should fall back due to timeout
@@ -1250,14 +1261,7 @@ describe('explain-codebase handler', () => {
 
     it('should handle spawn error event', async () => {
       vi.mocked(childProcess.spawn).mockImplementation(() => {
-        const child = new EventEmitter() as EventEmitter & {
-          stdout: EventEmitter;
-          stderr: EventEmitter;
-          kill: Mock;
-        };
-        child.stdout = new EventEmitter();
-        child.stderr = new EventEmitter();
-        child.kill = vi.fn();
+        const child = createTrackedMockChild();
 
         setImmediate(() => {
           child.emit('error', new Error('spawn ENOENT'));
@@ -1293,14 +1297,7 @@ describe('explain-codebase handler', () => {
         if (args && args[2]) {
           capturedPrompt = args[2] as string;
         }
-        const child = new EventEmitter() as EventEmitter & {
-          stdout: EventEmitter;
-          stderr: EventEmitter;
-          kill: Mock;
-        };
-        child.stdout = new EventEmitter();
-        child.stderr = new EventEmitter();
-        child.kill = vi.fn();
+        const child = createTrackedMockChild();
 
         setImmediate(() => {
           child.stdout.emit('data', Buffer.from(JSON.stringify(sampleLLMResponse)));
@@ -1322,14 +1319,7 @@ describe('explain-codebase handler', () => {
         if (args && args[2]) {
           capturedPrompt = args[2] as string;
         }
-        const child = new EventEmitter() as EventEmitter & {
-          stdout: EventEmitter;
-          stderr: EventEmitter;
-          kill: Mock;
-        };
-        child.stdout = new EventEmitter();
-        child.stderr = new EventEmitter();
-        child.kill = vi.fn();
+        const child = createTrackedMockChild();
 
         setImmediate(() => {
           child.stdout.emit('data', Buffer.from(JSON.stringify(sampleLLMResponse)));
@@ -1663,14 +1653,7 @@ describe('explain-codebase handler', () => {
           if (args && args[2]) {
             capturedPrompt = args[2] as string;
           }
-          const child = new EventEmitter() as EventEmitter & {
-            stdout: EventEmitter;
-            stderr: EventEmitter;
-            kill: Mock;
-          };
-          child.stdout = new EventEmitter();
-          child.stderr = new EventEmitter();
-          child.kill = vi.fn();
+          const child = createTrackedMockChild();
 
           setImmediate(() => {
             child.stdout.emit('data', Buffer.from(JSON.stringify(sampleLLMResponse)));

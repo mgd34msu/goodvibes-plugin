@@ -1234,6 +1234,21 @@ describe('Pool shutdown', () => {
     // Should have created 2 connections (one before shutdown, one after)
     expect(mockDatabaseConstructor).toHaveBeenCalledTimes(2);
   });
+
+  it('should handle shutdown being called twice on the same pool instance', async () => {
+    mockDatabaseConstructor.mockClear();
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
+
+    // Get the pool instance directly
+    const pool = getConnectionPool();
+
+    // Call shutdown on the pool instance directly (not via shutdownConnectionPool)
+    // First call clears the interval and sets cleanupInterval = null
+    pool.shutdown();
+
+    // Second call should handle cleanupInterval being null (falsy branch at line 264)
+    expect(() => pool.shutdown()).not.toThrow();
+  });
 });
 
 // =============================================================================

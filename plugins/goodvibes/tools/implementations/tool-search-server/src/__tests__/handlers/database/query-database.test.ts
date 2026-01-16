@@ -2966,3 +2966,416 @@ describe('Internal functions via __testing__ export', () => {
     });
   });
 });
+
+// =============================================================================
+// Branch coverage tests for lines 547, 749, 798
+// =============================================================================
+describe('Branch coverage for uncovered lines', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.DATABASE_URL;
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  describe('Line 547: col.type fallback to "unknown" when col.type is falsy', () => {
+    it('should use "unknown" type when column type is undefined in empty result set', async () => {
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: () => ({
+            all: () => [], // Empty result set triggers columns() path
+            columns: () => [
+              { name: 'id', type: undefined }, // col.type is undefined
+              { name: 'name', type: '' },       // col.type is empty string
+              { name: 'value', type: null },    // col.type is null
+            ],
+          }),
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT id, name, value FROM empty_table',
+        database_url: 'sqlite:///test.db',
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.columns).toHaveLength(3);
+      // All columns should have 'unknown' type since col.type was falsy
+      expect(data.columns[0].type).toBe('unknown');
+      expect(data.columns[1].type).toBe('unknown');
+      expect(data.columns[2].type).toBe('unknown');
+    });
+  });
+
+  describe('Line 749: EXPLAIN error with non-Error thrown value', () => {
+    it('should handle EXPLAIN failure with non-Error thrown value', async () => {
+      let queryCount = 0;
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: (query: string) => {
+            queryCount++;
+            if (query.startsWith('EXPLAIN')) {
+              // Throw a non-Error value (string) to trigger the 'Unknown error' branch
+              throw 'string error instead of Error object';
+            }
+            return {
+              all: () => [{ id: 1, name: 'Test' }],
+              columns: () => [],
+            };
+          },
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT * FROM users',
+        database_url: 'sqlite:///test.db',
+        explain: true,
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.explain_output).toBe('EXPLAIN failed: Unknown error');
+    });
+
+    it('should handle EXPLAIN failure with undefined thrown value', async () => {
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: (query: string) => {
+            if (query.startsWith('EXPLAIN')) {
+              throw undefined; // Throw undefined to trigger the 'Unknown error' branch
+            }
+            return {
+              all: () => [{ id: 1 }],
+              columns: () => [],
+            };
+          },
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT * FROM users',
+        database_url: 'sqlite:///test.db',
+        explain: true,
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.explain_output).toBe('EXPLAIN failed: Unknown error');
+    });
+
+    it('should handle EXPLAIN failure with null thrown value', async () => {
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: (query: string) => {
+            if (query.startsWith('EXPLAIN')) {
+              throw null; // Throw null to trigger the 'Unknown error' branch
+            }
+            return {
+              all: () => [{ id: 1 }],
+              columns: () => [],
+            };
+          },
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT * FROM users',
+        database_url: 'sqlite:///test.db',
+        explain: true,
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.explain_output).toBe('EXPLAIN failed: Unknown error');
+    });
+  });
+
+  describe('Line 798: truncated indicator in table format for SELECT queries', () => {
+    it('should show truncated indicator in table format when LIMIT is auto-added', async () => {
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: () => ({
+            all: () => [
+              { id: 1, name: 'Alice' },
+              { id: 2, name: 'Bob' },
+              { id: 3, name: 'Charlie' },
+            ],
+            columns: () => [],
+          }),
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT * FROM users', // No LIMIT - will be auto-added
+        database_url: 'sqlite:///test.db',
+        format: 'table',
+        limit: 25,
+      });
+
+      const text = result.content[0].text;
+      expect(text).toContain('Query executed successfully');
+      expect(text).toContain('3 row(s) returned');
+      expect(text).toContain('(limited to 25)');
+    });
+
+    it('should show truncated indicator in table format with default limit', async () => {
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: () => ({
+            all: () => [{ id: 1, name: 'Test' }],
+            columns: () => [],
+          }),
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT * FROM users', // No explicit limit, will use default 100
+        database_url: 'sqlite:///test.db',
+        format: 'table',
+        // limit not specified, uses default 100
+      });
+
+      const text = result.content[0].text;
+      expect(text).toContain('Query executed successfully');
+      expect(text).toContain('1 row(s) returned');
+      expect(text).toContain('(limited to 100)');
+    });
+
+    it('should NOT show truncated indicator when query already has LIMIT', async () => {
+      vi.mocked(withConnection).mockImplementation(async (options, callback) => {
+        return callback({
+          prepare: () => ({
+            all: () => [{ id: 1 }],
+            columns: () => [],
+          }),
+        } as unknown as Parameters<typeof callback>[0]);
+      });
+
+      const result = await handleQueryDatabase({
+        query: 'SELECT * FROM users LIMIT 5', // Already has LIMIT
+        database_url: 'sqlite:///test.db',
+        format: 'table',
+        limit: 100,
+      });
+
+      const text = result.content[0].text;
+      expect(text).toContain('1 row(s) returned');
+      expect(text).not.toContain('(limited to'); // Should NOT show truncated indicator
+    });
+  });
+
+  describe('Mock driver helpers coverage', () => {
+    const { setMockDriver, clearMockDrivers, dynamicImport } = __testing__;
+
+    it('should set and clear mock drivers', async () => {
+      // Set a mock driver
+      const mockDriver = { testModule: true };
+      setMockDriver('test-module', mockDriver);
+
+      // Verify it's returned by dynamicImport
+      const result = await dynamicImport('test-module');
+      expect(result).toBe(mockDriver);
+
+      // Clear mock drivers
+      clearMockDrivers();
+
+      // After clearing, should return null (module not found)
+      const afterClear = await dynamicImport('test-module');
+      expect(afterClear).toBeNull();
+    });
+
+    it('should set mock driver to null', async () => {
+      // Set a mock driver to null explicitly
+      setMockDriver('null-module', null);
+
+      // Verify it returns null
+      const result = await dynamicImport('null-module');
+      expect(result).toBeNull();
+
+      // Clean up
+      clearMockDrivers();
+    });
+  });
+
+  describe('PostgreSQL execution with mock driver', () => {
+    const { setMockDriver, clearMockDrivers, executePostgresQuery } = __testing__;
+
+    afterEach(() => {
+      clearMockDrivers();
+    });
+
+    it('should execute PostgreSQL query with mocked pg driver', async () => {
+      const mockQueryResult = {
+        rows: [{ id: 1, name: 'Test' }],
+        fields: [
+          { name: 'id', dataTypeID: 23 },
+          { name: 'name', dataTypeID: 25 },
+        ],
+      };
+
+      // Create a mock Pool class
+      class MockPool {
+        query = vi.fn().mockResolvedValue(mockQueryResult);
+        end = vi.fn().mockResolvedValue(undefined);
+      }
+
+      const mockPgModule = {
+        Pool: MockPool,
+      };
+
+      setMockDriver('pg', mockPgModule);
+
+      const connectionInfo = {
+        type: 'postgresql' as const,
+        host: 'localhost',
+        port: 5432,
+        database: 'testdb',
+        user: 'user',
+        password: 'pass',
+      };
+
+      const result = await executePostgresQuery(connectionInfo, 'SELECT * FROM users');
+
+      expect(result.rows).toEqual([{ id: 1, name: 'Test' }]);
+      expect(result.columns).toHaveLength(2);
+      expect(result.columns[0].name).toBe('id');
+      expect(result.columns[0].type).toBe('integer');
+      expect(result.columns[1].name).toBe('name');
+      expect(result.columns[1].type).toBe('text');
+    });
+
+    it('should handle PostgreSQL query with no fields in result', async () => {
+      const mockQueryResult = {
+        rows: [{ count: 5 }],
+        // No fields property
+      };
+
+      class MockPool {
+        query = vi.fn().mockResolvedValue(mockQueryResult);
+        end = vi.fn().mockResolvedValue(undefined);
+      }
+
+      const mockPgModule = {
+        Pool: MockPool,
+      };
+
+      setMockDriver('pg', mockPgModule);
+
+      const connectionInfo = {
+        type: 'postgresql' as const,
+        host: 'localhost',
+        port: 5432,
+        database: 'testdb',
+      };
+
+      const result = await executePostgresQuery(connectionInfo, 'SELECT COUNT(*) FROM users');
+
+      expect(result.rows).toEqual([{ count: 5 }]);
+      expect(result.columns).toHaveLength(0);
+    });
+  });
+
+  describe('MySQL execution with mock driver', () => {
+    const { setMockDriver, clearMockDrivers, executeMysqlQuery } = __testing__;
+
+    afterEach(() => {
+      clearMockDrivers();
+    });
+
+    it('should execute MySQL query with mocked mysql2 driver', async () => {
+      const mockConnection = {
+        execute: vi.fn().mockResolvedValue([
+          [{ id: 1, name: 'Test' }],
+          [
+            { name: 'id', type: 3 },
+            { name: 'name', type: 253 },
+          ],
+        ]),
+        end: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockMysqlModule = {
+        createConnection: vi.fn().mockResolvedValue(mockConnection),
+      };
+
+      setMockDriver('mysql2/promise', mockMysqlModule);
+
+      const connectionInfo = {
+        type: 'mysql' as const,
+        host: 'localhost',
+        port: 3306,
+        database: 'testdb',
+        user: 'user',
+        password: 'pass',
+      };
+
+      const result = await executeMysqlQuery(connectionInfo, 'SELECT * FROM users');
+
+      expect(result.rows).toEqual([{ id: 1, name: 'Test' }]);
+      expect(result.columns).toHaveLength(2);
+      expect(result.columns[0].name).toBe('id');
+      expect(result.columns[0].type).toBe('int');
+      expect(result.columns[1].name).toBe('name');
+      expect(result.columns[1].type).toBe('varchar');
+      expect(mockConnection.end).toHaveBeenCalled();
+    });
+
+    it('should handle MySQL query with null fields', async () => {
+      const mockConnection = {
+        execute: vi.fn().mockResolvedValue([
+          [{ count: 10 }],
+          null, // No fields
+        ]),
+        end: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockMysqlModule = {
+        createConnection: vi.fn().mockResolvedValue(mockConnection),
+      };
+
+      setMockDriver('mysql2/promise', mockMysqlModule);
+
+      const connectionInfo = {
+        type: 'mysql' as const,
+        host: 'localhost',
+        port: 3306,
+        database: 'testdb',
+      };
+
+      const result = await executeMysqlQuery(connectionInfo, 'SELECT COUNT(*) FROM users');
+
+      expect(result.rows).toEqual([{ count: 10 }]);
+      expect(result.columns).toHaveLength(0);
+    });
+
+    it('should handle MySQL query returning non-array rows', async () => {
+      const mockConnection = {
+        execute: vi.fn().mockResolvedValue([
+          { affectedRows: 5 }, // Non-array result (INSERT/UPDATE)
+          [],
+        ]),
+        end: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockMysqlModule = {
+        createConnection: vi.fn().mockResolvedValue(mockConnection),
+      };
+
+      setMockDriver('mysql2/promise', mockMysqlModule);
+
+      const connectionInfo = {
+        type: 'mysql' as const,
+        host: 'localhost',
+        port: 3306,
+        database: 'testdb',
+      };
+
+      const result = await executeMysqlQuery(connectionInfo, 'SELECT * FROM users');
+
+      expect(result.rows).toEqual([]); // Non-array converted to empty array
+    });
+  });
+});

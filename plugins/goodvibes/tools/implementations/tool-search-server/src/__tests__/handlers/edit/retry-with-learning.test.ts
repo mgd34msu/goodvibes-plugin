@@ -328,6 +328,58 @@ describe('handleRetryWithLearning', () => {
       // Command should not change between retries
     });
 
+    test('analyze_only strategy with Claude available uses correct prompt strategy text', async () => {
+      let capturedPrompt = '';
+
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Capture the prompt sent to Claude
+          const proc = new EventEmitter() as any;
+          proc.stdout = new EventEmitter();
+          proc.stderr = new EventEmitter();
+          proc.stdin = {
+            write: (data: string) => {
+              capturedPrompt = data;
+            },
+            end: vi.fn(),
+          };
+          proc.killed = false;
+          proc.kill = vi.fn(() => {
+            proc.killed = true;
+          });
+
+          setTimeout(() => {
+            proc.stdout.emit('data', Buffer.from(JSON.stringify({
+              analysis: 'Analysis only test',
+              suggested_fix: 'N/A - analyze only mode',
+              should_retry: false,
+            })));
+            proc.emit('close', 0);
+          }, 10);
+
+          return proc;
+        }
+        return createMockProcess(1, '', 'Error for analysis', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        fix_strategy: 'analyze_only',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // Verify the prompt contains the analyze_only strategy text
+      expect(capturedPrompt).toContain('Only analyze the error, do not suggest fixes');
+      expect(data.attempts[0].error_analysis).toBe('Analysis only test');
+    });
+
     test('suggest_fix strategy provides suggestions', async () => {
       mockSpawn
         .mockReturnValueOnce(createMockProcess(0, '', '', 5)) // Claude available

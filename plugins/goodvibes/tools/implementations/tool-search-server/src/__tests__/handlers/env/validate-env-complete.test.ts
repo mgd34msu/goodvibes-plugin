@@ -1840,7 +1840,7 @@ describe('validate-env-complete handler', () => {
       });
 
       handleValidateEnvComplete({});
-      
+
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to scan'),
         expect.stringContaining('Forced read error')
@@ -1852,7 +1852,7 @@ describe('validate-env-complete handler', () => {
       vi.mocked(fs.readFileSync).mockReturnValue('');
 
       // Return many files to trigger the limit loop
-      const manyFiles = Array.from({ length: 1005 }, (_, i) => 
+      const manyFiles = Array.from({ length: 1005 }, (_, i) =>
         createMockDirent(`file${i}.ts`, false)
       );
 
@@ -1890,6 +1890,195 @@ describe('validate-env-complete handler', () => {
 
       // Provide ignore list to trigger the loop
       handleValidateEnvComplete({ ignore: ['VAR1', 'VAR2'] });
+    });
+  });
+
+  describe('Branch coverage - uncovered lines', () => {
+    describe('lines 173-178: scanFileForEnvVars duplicate var in same file', () => {
+      it('should not add duplicate file when same var appears multiple times in same file', () => {
+        // This tests lines 173-178: the branch where varMap.has(varName) is TRUE
+        // AND files.includes(relativePath) is TRUE (so we skip adding duplicate file)
+        const envContent = '';
+        const exampleContent = '';
+        // Same env var appears multiple times in the same file
+        const codeContent = `
+          const a = process.env.REPEATED_VAR;
+          const b = process.env.REPEATED_VAR;
+          const c = process.env.REPEATED_VAR;
+          const d = process.env["REPEATED_VAR"];
+        `;
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir).replace(/\\/g, '/');
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('single-file.ts', false)];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // REPEATED_VAR should be in missing, and single-file.ts should appear only once
+        expect(text).toContain('REPEATED_VAR');
+        // The file should only be listed once (not duplicated)
+        const matches = text.match(/single-file\.ts/g) || [];
+        expect(matches.length).toBe(1);
+      });
+    });
+
+    describe('line 214: scanDirectory entry that is neither directory nor file', () => {
+      it('should skip entries that are neither file nor directory (e.g., symlinks)', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return '';
+          return '';
+        });
+
+        // Create a mock entry that is neither a directory nor a file (like a symlink)
+        const createSpecialEntry = (name: string): fs.Dirent => ({
+          name,
+          isDirectory: () => false,
+          isFile: () => false,  // Neither dir nor file!
+          isBlockDevice: () => false,
+          isCharacterDevice: () => false,
+          isSymbolicLink: () => true,  // It's a symlink
+          isFIFO: () => false,
+          isSocket: () => false,
+          path: '',
+          parentPath: '',
+        } as fs.Dirent);
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir).replace(/\\/g, '/');
+            if (dirStr === '/mock/project') {
+              return [
+                createSpecialEntry('symlink-to-somewhere'),
+                createMockDirent('regular.ts', false),
+              ];
+            }
+          }
+          return [];
+        });
+
+        // Should complete without error, skipping the symlink
+        const result = handleValidateEnvComplete({});
+        expect(result.content[0].text).toBeDefined();
+      });
+    });
+
+    describe('line 227: scanDirectory merge existing file in varMap', () => {
+      it('should not add duplicate file when merging vars from multiple files with same var', () => {
+        // This tests line 227: the branch where existingFiles.includes(file) is TRUE
+        // We need two files that both reference the same var, and a subdirectory
+        // structure that causes the merge logic to run
+        const envContent = '';
+        const exampleContent = '';
+        const codeContent = 'const x = process.env.SHARED_VAR;';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        // Create a directory structure where the same file path could appear twice
+        // during the merge process
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir).replace(/\\/g, '/');
+            if (dirStr === '/mock/project') {
+              return [
+                createMockDirent('src', true),
+                createMockDirent('app.ts', false),
+              ];
+            }
+            if (dirStr.includes('src')) {
+              return [
+                createMockDirent('app.ts', false), // Same relative name as parent
+              ];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // SHARED_VAR should be listed with its files
+        expect(text).toContain('SHARED_VAR');
+      });
+    });
+
+    describe('line 480: unused var already in list from .env', () => {
+      it('should not duplicate unused var when it exists in both .env and .env.example but not in code', () => {
+        // This tests line 480: the branch where alreadyUnused is TRUE
+        // Variable is in both .env and .env.example but not used in code
+        // First loop adds it from .env, second loop should skip it
+        const envContent = 'DUPLICATE_UNUSED=value';
+        const exampleContent = 'DUPLICATE_UNUSED=placeholder';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env') && !pathStr.includes('.example')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // Count occurrences of DUPLICATE_UNUSED in the unused section
+        const unusedSectionMatch = text.match(/## Unused Variables[\s\S]*?(?=##|$)/);
+        if (unusedSectionMatch) {
+          const unusedSection = unusedSectionMatch[0];
+          const matches = unusedSection.match(/DUPLICATE_UNUSED/g) || [];
+          // Should only appear once (from .env), not twice
+          expect(matches.length).toBe(1);
+        }
+        // Also verify it shows as from .env (the first source)
+        expect(text).toContain('DUPLICATE_UNUSED');
+        expect(text).toContain('(in .env)');
+      });
+
+      it('should add unused var from .env.example when NOT already in .env unused list', () => {
+        // This tests line 480: the branch where alreadyUnused is FALSE
+        // Variable is ONLY in .env.example (not in .env) and not used in code
+        const envContent = 'OTHER_VAR=value';  // Different var in .env
+        const exampleContent = 'OTHER_VAR=\nEXAMPLE_ONLY_UNUSED=placeholder';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env') && !pathStr.includes('.example')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // EXAMPLE_ONLY_UNUSED should appear in unused with .env.example source
+        expect(text).toContain('EXAMPLE_ONLY_UNUSED');
+        expect(text).toContain('(in .env.example)');
+      });
     });
   });
 });

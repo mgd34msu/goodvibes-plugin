@@ -1033,9 +1033,9 @@ ${frames}`;
       const absPath = path.join(tempDir, 'src', 'ghost.ts');
       const errorText = `Error: test
     at ghost (${absPath}:10:5)`;
-      
+
       const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
-      
+
       const text = (result.content[0] as { text: string }).text;
       // Should be marked as PROJECT because it is in project dir
       expect(text).toContain('[PROJECT]');
@@ -1046,15 +1046,91 @@ ${frames}`;
     test('parses node: internal modules correctly', () => {
       const errorText = `Error: Internal
     at Object.<anonymous> (node:internal/modules/cjs/loader:1144:14)`;
-    
+
       const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
       const text = (result.content[0] as { text: string }).text;
-      
+
       // Should be parsed now that regex is fixed
       expect(text).toContain('node:internal/modules/cjs/loader');
       expect(text).toContain('1144');
       // Should be external
       expect(text).toContain('[EXTERNAL]');
+    });
+  });
+
+  // ============================================================================
+  // Branch Coverage Tests - Lines 123 and 149
+  // ============================================================================
+
+  describe('branch coverage for lines 123 and 149', () => {
+    // Line 123: Tests for the `if (!file || !lineStr) continue;` branch
+    // This branch is hit when a regex pattern matches but file or lineStr is falsy
+
+    test('line 123: handles stack line where regex matches with groups but should continue', () => {
+      // The spiderMonkey pattern: ^(?<func>[^@]*)@(?<file>[^:]+):(?<line>\d+):(?<column>\d+)$
+      // We try to craft input that matches but has edge case groups
+      // Try with empty-looking patterns that might slip through
+      const errorText = `Error: test
+@:1:1`;
+
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      const text = (result.content[0] as { text: string }).text;
+      expect(text).toContain('## Error Analysis');
+    });
+
+    test('line 123: handles malformed stack frame that might match partially', () => {
+      // Try to create a line that could match a pattern but with invalid groups
+      const errorText = `Error: test
+    at (:0:0)`;
+
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      const text = (result.content[0] as { text: string }).text;
+      expect(text).toContain('## Error Analysis');
+    });
+
+    // Line 149: Tests for the `message = match.groups['message'] || firstLine` branch
+    // This requires a pattern to match where message group is undefined or empty
+
+    test('line 149: handles error header that matches pattern without message group', () => {
+      // The last ERROR_HEADER_PATTERN is: /^(?<message>[^\n]+)$/
+      // For previous patterns, the message group might not exist
+      // Pattern 1-4 require message content after the colon
+      // Try edge case: error type followed by colon only
+      const errorText = `Exception:
+    at test (test.js:1:1)`;
+
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      const text = (result.content[0] as { text: string }).text;
+      // The first pattern won't match because message is required (.+)
+      // It will fall through to pattern 5 which captures "Exception:" as message
+      expect(text).toContain('Exception');
+    });
+
+    test('line 149: handles error with type but empty message after whitespace', () => {
+      // Test "Error:   " (colon followed by only whitespace)
+      // Pattern 1 is: /^(?<type>[A-Z][a-zA-Z]*Error|Error|Exception):\s*(?<message>.+)$/m
+      // The \s* consumes spaces, then (?<message>.+) needs at least one char
+      // With only whitespace after colon, pattern 1 won't match
+      const errorText = `Error:
+    at test (test.js:1:1)`;
+
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      const text = (result.content[0] as { text: string }).text;
+      expect(text).toContain('## Error Analysis');
+    });
+
+    test('line 149: error type without colon triggers fallback pattern', () => {
+      // Try an error format that doesn't match patterns 1-4 but matches pattern 5
+      // Pattern 5 only has message group, so type falls back to 'Error' (line 148)
+      // But message will be captured, so line 149 fallback not triggered
+      const errorText = `Something went wrong without standard format
+    at test (test.js:1:1)`;
+
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      const text = (result.content[0] as { text: string }).text;
+      // Should fallback to 'Error' type (line 148 fallback)
+      expect(text).toContain('**Type:** `Error`');
+      expect(text).toContain('Something went wrong');
     });
   });
 });

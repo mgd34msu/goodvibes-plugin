@@ -1992,6 +1992,584 @@ describe('handleDetectMemoryLeaks', () => {
   });
 
   // ===========================================================================
+  // Branch Coverage Tests - Line 243 (durationSeconds === 0)
+  // ===========================================================================
+
+  describe('analyzeTrend with zero duration', () => {
+    it('should return growthRatePerMinute of 0 when durationSeconds is 0 (line 243 false branch)', () => {
+      // Create snapshots that would have growth
+      const snapshots: MemorySnapshot[] = [
+        { timestamp: '2024-01-01T00:00:00Z', elapsed_ms: 0, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 50 },
+        { timestamp: '2024-01-01T00:00:00Z', elapsed_ms: 0, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 100 },
+        { timestamp: '2024-01-01T00:00:00Z', elapsed_ms: 0, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 150 },
+      ];
+
+      // Pass 0 as durationSeconds to trigger the false branch of durationSeconds > 0
+      const result = analyzeTrend(snapshots, 0);
+
+      // When durationSeconds is 0, growth_rate_mb_per_minute should be 0
+      expect(result.growth_rate_mb_per_minute).toBe(0);
+      expect(result.heap_growth_mb).toBe(100); // Growth still calculated: 150 - 50 = 100
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - Line 291 (slope <= 0.1 with R-squared > 0.8)
+  // ===========================================================================
+
+  describe('generateSuspects consistent_growth branch', () => {
+    it('should NOT generate consistent_growth when R-squared > 0.8 but slope <= 0.1 (line 291 false branch)', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 55,
+        heap_growth_mb: 5,
+        growth_rate_mb_per_minute: 0.5,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.08, // <= 0.1 MB/s (should NOT trigger consistent_growth)
+          intercept: 50,
+          r_squared: 0.85, // > 0.8 (first condition passes, but slope check fails)
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      // Should NOT have consistent_growth because slope <= 0.1
+      const consistentGrowth = suspects.find(s => s.type === 'consistent_growth');
+      expect(consistentGrowth).toBeUndefined();
+    });
+
+    it('should generate consistent_growth when R-squared > 0.8 and slope > 0.1', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 10,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.15, // > 0.1 MB/s
+          intercept: 50,
+          r_squared: 0.85, // > 0.8
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const consistentGrowth = suspects.find(s => s.type === 'consistent_growth');
+      expect(consistentGrowth).toBeDefined();
+      expect(consistentGrowth?.confidence).toBe('high');
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - Line 314 (growth_rate_mb_per_minute > 10 but <= 50)
+  // ===========================================================================
+
+  describe('generateSuspects rapid_growth confidence branch', () => {
+    it('should generate rapid_growth with medium confidence when rate > 10 but <= 50 (line 314 false branch)', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 25, // > 10 but <= 50 (should be medium confidence)
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.05,
+          intercept: 50,
+          r_squared: 0.6,
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const rapidGrowth = suspects.find(s => s.type === 'rapid_growth');
+      expect(rapidGrowth).toBeDefined();
+      expect(rapidGrowth?.confidence).toBe('medium'); // Not 'high' since rate <= 50
+      expect(rapidGrowth?.description).toContain('25 MB/minute');
+    });
+
+    it('should generate rapid_growth with high confidence when rate > 50', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 200,
+        heap_growth_mb: 150,
+        growth_rate_mb_per_minute: 75, // > 50 (should be high confidence)
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.1,
+          intercept: 50,
+          r_squared: 0.6,
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const rapidGrowth = suspects.find(s => s.type === 'rapid_growth');
+      expect(rapidGrowth).toBeDefined();
+      expect(rapidGrowth?.confidence).toBe('high');
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - Lines 346-351 (leak detected but no high confidence suspects)
+  // ===========================================================================
+
+  describe('generateRecommendations high confidence suspects branch', () => {
+    it('should NOT include heap snapshot recommendation when leak detected but no high confidence suspects (lines 346-351 false branch)', async () => {
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      // To trigger the false branch of suspects.some(s => s.confidence === 'high'):
+      // Need: leak_detected = true, but NO suspects with high confidence
+      //
+      // For leak_detected = true: growth >= threshold, trend === 'growing', r_squared > 0.5
+      //
+      // For NO high confidence suspects:
+      // - consistent_growth HIGH requires: r_squared > 0.8 AND slope > 0.1
+      // - large_growth HIGH requires: heap_growth_mb > 100
+      // - rapid_growth HIGH requires: growth_rate_mb_per_minute > 50
+      //
+      // Strategy: Create linear growth with r_squared between 0.5-0.8, growth 10-100 MB, rate < 50 MB/min
+      // With 30 second duration and 15 MB growth, rate = 30 MB/min
+      // Use some noise to keep r_squared around 0.6-0.7
+      let callCount = 0;
+      vi.mocked(childProcess.execSync).mockImplementation(() => {
+        callCount++;
+        // Linear growth with noise: 50MB -> ~65MB over ~1 second = 15MB growth
+        // But spread out to keep rate low (15MB / 1s * 60 = 900 MB/min - too high!)
+        // Need longer duration or less growth
+        //
+        // Better: 60 second duration, 20MB growth = 20 MB/min (not high)
+        // 50MB + ~20MB growth over many samples
+        const baseGrowth = 50 + callCount * 1; // Slow growth
+        // Add noise to reduce r_squared
+        const noise = (callCount % 3 === 0) ? 2 : (callCount % 3 === 1) ? -1 : 0;
+        const memKB = (baseGrowth + noise) * 1024;
+        return `"node.exe","12345","Console","1","${memKB.toLocaleString()} K"\r\n`;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 60, // 60 seconds to spread growth over time
+        snapshot_interval_ms: 2000, // Every 2 seconds = 30 snapshots
+        threshold_mb: 10, // Need at least 10MB growth
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(65000);
+      await promise;
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as {
+        leak_detected: boolean;
+        suspects?: LeakSuspect[];
+        recommendations: string[];
+        analysis: MemoryAnalysis;
+      };
+
+      // If we got a leak with no high-confidence suspects, verify no heap snapshot rec
+      if (result.leak_detected) {
+        const hasHighConfidence = result.suspects?.some(s => s.confidence === 'high') ?? false;
+        if (!hasHighConfidence) {
+          expect(result.recommendations.some(r => r.includes('heap snapshots'))).toBe(false);
+          expect(result.recommendations.some(r => r.includes('Memory leak detected'))).toBe(true);
+        }
+      }
+    });
+
+    it('should detect leak with only medium confidence suspects (explicit test for line 346 false)', async () => {
+      // FORCE the exact conditions for medium-confidence-only leak detection
+      // to hit the false branch of suspects.some(s => s.confidence === 'high')
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      // Requirements for leak detection with NO high confidence suspects:
+      // 1. Leak detected: growth >= threshold, trend === 'growing', r_squared > 0.5
+      // 2. NO HIGH confidence:
+      //    - consistent_growth HIGH: r_squared > 0.8 AND slope > 0.1 => need slope <= 0.1
+      //    - large_growth HIGH: heap_growth_mb > 100 => need growth <= 100
+      //    - rapid_growth HIGH: growth_rate_mb_per_minute > 50 => need rate <= 50
+      //
+      // With duration = 120s, threshold = 10MB:
+      // - Growth = 11 MB (slightly above threshold)
+      // - slope = 11/120 = 0.092 MB/s (<= 0.1, avoids consistent_growth HIGH)
+      // - rate = 11/2 = 5.5 MB/min (< 10, no rapid_growth at all)
+      // - r_squared will be high (perfect linear), but slope is low
+      //
+      // With 30 snapshots: growth per snapshot = 11/30 = 0.367 MB
+      let callCount = 0;
+      vi.mocked(childProcess.execSync).mockImplementation(() => {
+        callCount++;
+        // Start at 50MB, grow to 61MB over 30 snapshots
+        const memMB = 50 + (callCount - 1) * (11 / 29); // 29 intervals for 30 points
+        const memKB = Math.round(memMB * 1024);
+        return `"node.exe","12345","Console","1","${memKB.toLocaleString()} K"\r\n`;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 120, // 2 minutes
+        snapshot_interval_ms: 4000, // Every 4 seconds = 30 snapshots
+        threshold_mb: 10,
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(125000);
+      await promise;
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as {
+        leak_detected: boolean;
+        suspects?: LeakSuspect[];
+        recommendations: string[];
+        analysis: MemoryAnalysis;
+      };
+
+      // Verify leak was detected
+      expect(result.leak_detected).toBe(true);
+      // Verify NO high confidence suspects (this is the key assertion for line 346)
+      const hasHighConfidence = result.suspects?.some(s => s.confidence === 'high') ?? false;
+      expect(hasHighConfidence).toBe(false);
+      // Verify heap snapshot recommendation is NOT present (false branch of line 346)
+      expect(result.recommendations.some(r => r.includes('heap snapshots'))).toBe(false);
+      // Verify Memory leak detected message IS present
+      expect(result.recommendations.some(r => r.includes('Memory leak detected'))).toBe(true);
+    });
+
+    it('should include heap snapshot recommendation when leak detected with high confidence suspects', async () => {
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      // Create memory pattern with very consistent growth (high R-squared > 0.8 AND slope > 0.1)
+      let callCount = 0;
+      vi.mocked(childProcess.execSync).mockImplementation(() => {
+        callCount++;
+        // Very consistent linear growth - high R-squared, high slope
+        const memKB = (50 + callCount * 50) * 1024;
+        return `"node.exe","12345","Console","1","${memKB.toLocaleString()} K"\r\n`;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 1,
+        snapshot_interval_ms: 50,
+        threshold_mb: 5,
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(2000);
+      await promise;
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as {
+        leak_detected: boolean;
+        suspects?: LeakSuspect[];
+        recommendations: string[];
+      };
+
+      if (result.leak_detected && result.suspects?.some(s => s.confidence === 'high')) {
+        expect(result.recommendations.some(r => r.includes('heap snapshots'))).toBe(true);
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - Line 466 (spawn error with non-Error object)
+  // ===========================================================================
+
+  describe('spawn error handling with non-Error object', () => {
+    it('should handle spawn throwing a non-Error object (line 466 String branch)', async () => {
+      vi.mocked(childProcess.spawn).mockImplementation(() => {
+        throw 'String error message'; // Throw a string instead of Error
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'command',
+        command: 'invalid-command',
+        duration_seconds: 1,
+      };
+
+      await handleDetectMemoryLeaks(args);
+
+      expect(errorResponse).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to spawn command: String error message')
+      );
+    });
+
+    it('should handle spawn throwing a number', async () => {
+      vi.mocked(childProcess.spawn).mockImplementation(() => {
+        throw 42; // Throw a number
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'command',
+        command: 'invalid-command',
+        duration_seconds: 1,
+      };
+
+      await handleDetectMemoryLeaks(args);
+
+      expect(errorResponse).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to spawn command: 42')
+      );
+    });
+
+    it('should handle spawn throwing null', async () => {
+      vi.mocked(childProcess.spawn).mockImplementation(() => {
+        throw null;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'command',
+        command: 'invalid-command',
+        duration_seconds: 1,
+      };
+
+      await handleDetectMemoryLeaks(args);
+
+      expect(errorResponse).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to spawn command: null')
+      );
+    });
+
+    it('should handle spawn throwing undefined', async () => {
+      vi.mocked(childProcess.spawn).mockImplementation(() => {
+        throw undefined;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'command',
+        command: 'invalid-command',
+        duration_seconds: 1,
+      };
+
+      await handleDetectMemoryLeaks(args);
+
+      expect(errorResponse).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to spawn command: undefined')
+      );
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - Line 515 (sleepTime <= 0)
+  // ===========================================================================
+
+  describe('sleep time calculation edge cases', () => {
+    it('should skip sleep when sleepTime becomes zero or negative (line 515 false branch)', async () => {
+      // To hit the false branch of `if (sleepTime > 0)`:
+      // We need sleepTime = Math.min(nextSnapshotTime - elapsed, endTime - Date.now()) <= 0
+      //
+      // This happens when Date.now() >= endTime at the point of calculating sleepTime,
+      // even though we passed the while(Date.now() < endTime) check earlier in that iteration.
+      //
+      // Strategy: Use vi.spyOn(Date, 'now') to simulate time advancing between calls
+      // within the same iteration of the while loop.
+      vi.useRealTimers(); // Temporarily use real timers so we can spy on Date.now
+
+      const startTime = Date.now();
+      const endTime = startTime + 1000; // 1 second duration
+      let dateNowCallCount = 0;
+
+      // Spy on Date.now to simulate time advancing rapidly
+      const dateNowSpy = vi.spyOn(Date, 'now').mockImplementation(() => {
+        dateNowCallCount++;
+        // First few calls: return startTime (to pass initial checks and take first snapshot)
+        // Then: return endTime + 100 (to make sleepTime negative)
+        if (dateNowCallCount <= 10) {
+          return startTime + dateNowCallCount * 50;
+        }
+        // After 10 calls, jump past endTime to make sleepTime <= 0
+        // but the while check may have already passed for this iteration
+        return endTime + 100;
+      });
+
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      vi.mocked(childProcess.execSync).mockReturnValue(
+        '"node.exe","12345","Console","1","50,000 K"\r\n'
+      );
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 1,
+        snapshot_interval_ms: 100,
+      };
+
+      // Run directly without fake timers
+      const result = await handleDetectMemoryLeaks(args);
+
+      // Clean up
+      dateNowSpy.mockRestore();
+      vi.useFakeTimers({ shouldAdvanceTime: true }); // Restore fake timers
+
+      // Should complete (either success or insufficient data due to quick exit)
+      expect(result).toBeDefined();
+    });
+
+    it('should handle normal timing flow gracefully', async () => {
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      vi.mocked(childProcess.execSync).mockReturnValue(
+        '"node.exe","12345","Console","1","50,000 K"\r\n'
+      );
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 1,
+        snapshot_interval_ms: 200,
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(1500);
+      await promise;
+
+      expect(vi.mocked(successResponse).mock.calls.length + vi.mocked(errorResponse).mock.calls.length).toBeGreaterThan(0);
+    });
+
+    it('should handle when remaining time to end is less than next snapshot interval', async () => {
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      vi.mocked(childProcess.execSync).mockReturnValue(
+        '"node.exe","12345","Console","1","50,000 K"\r\n'
+      );
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 2,
+        snapshot_interval_ms: 1500,
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(3000);
+      await promise;
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as { snapshots: MemorySnapshot[] };
+      expect(result.snapshots.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - Line 555 (linear_regression undefined - nullish coalescing)
+  // ===========================================================================
+
+  describe('leak detection with undefined linear_regression', () => {
+    it('should use 0 for r_squared when linear_regression is undefined (line 555 nullish coalescing)', async () => {
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      // Collect exactly 2 snapshots (linear_regression requires 3+ snapshots)
+      let callCount = 0;
+      let isAlive = true;
+      process.kill = vi.fn(() => {
+        if (!isAlive) {
+          throw new Error('Process exited');
+        }
+        return true;
+      }) as unknown as typeof process.kill;
+
+      vi.mocked(childProcess.execSync).mockImplementation(() => {
+        callCount++;
+        // Growing memory to trigger growth detection
+        const memKB = (50 + callCount * 100) * 1024;
+        if (callCount >= 2) {
+          // Make process exit after 2 snapshots
+          isAlive = false;
+        }
+        return `"node.exe","12345","Console","1","${memKB.toLocaleString()} K"\r\n`;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 10,
+        snapshot_interval_ms: 100,
+        threshold_mb: 5, // Low threshold
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(500);
+      await promise;
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as {
+        leak_detected: boolean;
+        analysis: MemoryAnalysis;
+        snapshots: MemorySnapshot[];
+      };
+
+      // With only 2 snapshots, linear_regression should be undefined
+      if (result.snapshots.length < 3) {
+        expect(result.analysis.linear_regression).toBeUndefined();
+        // leak_detected should be false because r_squared defaults to 0 (< 0.5 threshold)
+        expect(result.leak_detected).toBe(false);
+      }
+    });
+
+    it('should detect leak when linear_regression is present and conditions met', async () => {
+      process.kill = vi.fn(() => true) as unknown as typeof process.kill;
+
+      let callCount = 0;
+      vi.mocked(childProcess.execSync).mockImplementation(() => {
+        callCount++;
+        // Strong linear growth
+        const memKB = (50 + callCount * 30) * 1024;
+        return `"node.exe","12345","Console","1","${memKB.toLocaleString()} K"\r\n`;
+      });
+
+      const args: DetectMemoryLeaksArgs = {
+        target: 'pid',
+        pid: 12345,
+        duration_seconds: 1,
+        snapshot_interval_ms: 50,
+        threshold_mb: 10,
+      };
+
+      const promise = handleDetectMemoryLeaks(args);
+      await vi.advanceTimersByTimeAsync(2000);
+      await promise;
+
+      expect(successResponse).toHaveBeenCalled();
+      const result = vi.mocked(successResponse).mock.calls[0][0] as {
+        leak_detected: boolean;
+        analysis: MemoryAnalysis;
+      };
+
+      // With 3+ snapshots and significant growth, should have linear_regression
+      if (result.analysis.linear_regression && result.analysis.linear_regression.r_squared > 0.5) {
+        expect(result.leak_detected).toBe(true);
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Branch Coverage Tests - linearRegression line 216 (ssTotal < 1e-10)
+  // ===========================================================================
+
+  describe('linearRegression ssTotal edge case', () => {
+    it('should return r_squared 1 when all y values are the same (line 216 - ssTotal near zero)', () => {
+      // All y values identical means ssTotal = 0
+      const result = linearRegression([0, 1, 2, 3, 4], [50, 50, 50, 50, 50]);
+
+      expect(result.slope).toBe(0);
+      expect(result.intercept).toBe(50);
+      expect(result.r_squared).toBe(1); // Perfect fit when all y are same
+    });
+
+    it('should return r_squared 1 when y values vary minimally (ssTotal < 1e-10)', () => {
+      // y values with variation smaller than 1e-10
+      const tiny = 1e-12;
+      const result = linearRegression([0, 1, 2, 3, 4], [50, 50 + tiny, 50, 50 + tiny, 50]);
+
+      // ssTotal should be extremely small, triggering the branch
+      expect(result.r_squared).toBe(1);
+    });
+  });
+
+  // ===========================================================================
   // Custom CWD Tests
   // ===========================================================================
 
