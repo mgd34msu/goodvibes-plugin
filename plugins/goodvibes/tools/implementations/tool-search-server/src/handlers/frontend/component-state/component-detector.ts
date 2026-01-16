@@ -46,8 +46,22 @@ export function isReactComponent(node: ts.Node, sourceFile: ts.SourceFile): bool
       if (ts.isIdentifier(decl.name)) {
         const name = decl.name.getText(sourceFile);
         if (/^[A-Z]/.test(name) && decl.initializer) {
+          // Direct arrow/function expression
           if (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer)) {
             return containsJsxReturn(decl.initializer);
+          }
+          // React.memo() or React.forwardRef() wrapped components
+          if (ts.isCallExpression(decl.initializer)) {
+            const callExpr = decl.initializer;
+            // Check if it's React.memo, memo, React.forwardRef, forwardRef
+            const callText = callExpr.expression.getText(sourceFile);
+            if (/^(React\.)?(memo|forwardRef)$/.test(callText)) {
+              // The first argument should be the component function
+              const firstArg = callExpr.arguments[0];
+              if (firstArg && (ts.isArrowFunction(firstArg) || ts.isFunctionExpression(firstArg))) {
+                return containsJsxReturn(firstArg);
+              }
+            }
           }
         }
       }

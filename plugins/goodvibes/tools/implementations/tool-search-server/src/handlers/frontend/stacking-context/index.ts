@@ -17,6 +17,7 @@ export type {
   AnalyzeStackingContextArgs,
   AnalyzeStackingContextResult,
   StackingContext,
+  StackingContextEntry,
   ContextCreator,
   ZIndexInfo,
   StackingIssue,
@@ -26,7 +27,13 @@ export type {
 } from './types.js';
 
 // Import from modules
-import type { AnalyzeStackingContextArgs, AnalyzeStackingContextResult, ContextCreator, ToolResponse } from './types.js';
+import type {
+  AnalyzeStackingContextArgs,
+  AnalyzeStackingContextResult,
+  ContextCreator,
+  StackingContextEntry,
+  ToolResponse,
+} from './types.js';
 import { createSuccessResponse, createErrorResponse } from './utils.js';
 import { analyzeJsxFile } from './jsx-analyzer.js';
 import { buildStackingTree, collectZIndexValues } from './tree-builder.js';
@@ -53,6 +60,11 @@ export async function handleAnalyzeStackingContext(
   const includePortals = args.include_portals ?? true;
 
   try {
+    // Validate file argument
+    if (!args.file) {
+      return createErrorResponse('file argument is required');
+    }
+
     // Resolve file path
     const filePath = path.isAbsolute(args.file)
       ? args.file
@@ -66,11 +78,11 @@ export async function handleAnalyzeStackingContext(
       });
     }
 
-    // Check file extension
+    // Check file extension - support .tsx, .jsx, .ts, .js, .vue, .svelte
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js, .vue, .svelte`,
         { file: args.file }
       );
     }
@@ -91,20 +103,35 @@ export async function handleAnalyzeStackingContext(
     }
 
     // Create TypeScript source file for parsing
+    const scriptKind =
+      ext === '.tsx' ? ts.ScriptKind.TSX
+      : ext === '.jsx' ? ts.ScriptKind.JSX
+      : ext === '.ts' ? ts.ScriptKind.TS
+      : ts.ScriptKind.JS;
+
     const sourceFile = ts.createSourceFile(
       filePath,
       content,
       ts.ScriptTarget.Latest,
       true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
+      scriptKind
     );
 
     // Analyze elements
-    const elements = analyzeJsxFile(filePath, content, sourceFile);
+    let elements = analyzeJsxFile(filePath, content, sourceFile);
+
+    // Filter by element name if specified
+    if (args.element) {
+      const filterName = args.element.toLowerCase();
+      elements = elements.filter((elem) => {
+        const elemName = elem.element.split(':')[0].toLowerCase();
+        return elemName.includes(filterName);
+      });
+    }
 
     if (elements.length === 0) {
       return createSuccessResponse({
-        file: path.relative(projectRoot, filePath),
+        file: path.relative(projectRoot, filePath).replace(/\\/g, '/'),
         stacking_tree: {
           element: 'root',
           z_index: 'auto',
@@ -112,9 +139,12 @@ export async function handleAnalyzeStackingContext(
           context_reason: 'document root',
           children: [],
         },
+        stacking_contexts: [],
         context_creators: [],
         z_index_values: [],
         potential_issues: [],
+        issues: [],
+        summary: 'No stacking contexts detected',
         message: 'No JSX elements with stacking-relevant classes found',
       });
     }
@@ -132,19 +162,49 @@ export async function handleAnalyzeStackingContext(
         classes: elem.classes,
       }));
 
+    // Build flat stacking_contexts list (for backward compatibility)
+    const stackingContexts: StackingContextEntry[] = elements
+      .filter((elem) => elem.creates_context || elem.z_index !== 'auto')
+      .map((elem) => ({
+        element: elem.element,
+        position: elem.position,
+        z_index: elem.z_index,
+        creates_context: elem.creates_context,
+        creates_context_reason: elem.context_reason,
+        classes: elem.classes,
+        line: elem.line,
+      }));
+
     // Collect z-index values
     const zIndexValues = collectZIndexValues(elements);
 
     // Detect issues
     const potentialIssues = detectStackingIssues(elements, zIndexValues);
 
+    // Generate summary
+    const zIndexNumbers = zIndexValues.map((z) => z.z_index).filter((z) => typeof z === 'number');
+    const minZ = zIndexNumbers.length > 0 ? Math.min(...zIndexNumbers) : 0;
+    const maxZ = zIndexNumbers.length > 0 ? Math.max(...zIndexNumbers) : 0;
+    const summaryParts: string[] = [];
+    summaryParts.push(`Found ${stackingContexts.length} stacking context${stackingContexts.length !== 1 ? 's' : ''}`);
+    if (zIndexNumbers.length > 0) {
+      summaryParts.push(`z-index range: ${minZ} to ${maxZ}`);
+    }
+    if (potentialIssues.length > 0) {
+      summaryParts.push(`${potentialIssues.length} potential issue${potentialIssues.length !== 1 ? 's' : ''} detected`);
+    }
+    const summary = summaryParts.join('. ');
+
     // Build result
     const result: AnalyzeStackingContextResult = {
-      file: path.relative(projectRoot, filePath),
+      file: path.relative(projectRoot, filePath).replace(/\\/g, '/'),
       stacking_tree: stackingTree,
+      stacking_contexts: stackingContexts,
       context_creators: contextCreators,
       z_index_values: zIndexValues,
       potential_issues: potentialIssues,
+      issues: potentialIssues, // Alias for backward compatibility
+      summary,
     };
 
     // Detect portals if requested

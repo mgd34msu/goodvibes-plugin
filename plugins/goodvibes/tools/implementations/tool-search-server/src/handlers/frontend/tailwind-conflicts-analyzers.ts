@@ -12,7 +12,7 @@ import {
   SHORTHAND_MAP,
   SIZE_SETS_BOTH,
   stripPrefixes,
-  groupByBreakpoint,
+  groupByVariant,
   getCategory,
   getShorthandPrefix,
   longhandOverridesShorthand,
@@ -116,14 +116,18 @@ export function detectConflicts(
   const conflicts: Conflict[] = [];
   const redundant: RedundantClass[] = [];
 
-  // Group by breakpoint to only compare classes at the same breakpoint level
-  const breakpointGroups = groupByBreakpoint(classes);
+  // Group by variant to only compare classes at the same variant level
+  // This prevents flagging dark:text-white text-black as a conflict
+  const variantGroups = groupByVariant(classes);
 
-  for (const [bp, bpClasses] of breakpointGroups) {
-    const breakpointLabel = bp ? `@${bp}` : 'base';
+  for (const [variant, bpClasses] of variantGroups) {
+    const breakpointLabel = variant ? `@${variant.slice(0, -1)}` : 'base';
 
     // Track seen categories and their classes
     const seenCategories = new Map<string, { class: string; index: number }>();
+
+    // Track class pairs already reported as category overrides to avoid double-reporting as contradictions
+    const categoryOverridePairs = new Set<string>();
 
     // Track shorthand classes
     const shorthandClasses = new Map<string, { class: string; index: number }>();
@@ -150,6 +154,9 @@ export function detectConflicts(
             explanation: `"${cls}" overrides "${prev.class}" (both set ${category})`,
             fix: `Remove "${prev.class}" since "${cls}" takes precedence`,
           });
+          // Track this pair to avoid double-reporting as contradiction
+          const pairKey = [stripPrefixes(prev.class), stripped].sort().join('|');
+          categoryOverridePairs.add(pairKey);
         }
         seenCategories.set(category, { class: cls, index: i });
       }
@@ -189,6 +196,8 @@ export function detectConflicts(
       }
 
       // Check for contradiction pairs
+      // Contradictions are mutually exclusive classes that cannot coexist
+      // (like flex/grid, hidden/flex, invisible/visible, flex-row/flex-col)
       for (const pair of CONTRADICTIONS) {
         const strippedLower = stripped.toLowerCase();
         if (pair.includes(stripped) || pair.includes(strippedLower)) {
@@ -198,6 +207,27 @@ export function detectConflicts(
             for (let j = 0; j < i; j++) {
               const prevStripped = stripPrefixes(bpClasses[j]);
               if (prevStripped === otherClass || prevStripped.toLowerCase() === otherClass) {
+                // Skip if this pair was already reported as a category override,
+                // UNLESS it's a "true contradiction" (e.g., hidden vs visible display,
+                // or mutually exclusive layout modes like flex/grid)
+                const pairKey = [prevStripped, stripped].sort().join('|');
+                if (categoryOverridePairs.has(pairKey)) {
+                  // Check if this is a TRUE contradiction that should still be reported
+                  // True contradictions involve: hidden, flex/grid pair, invisible/visible, etc.
+                  const isTrueContradiction =
+                    pair.includes('hidden') ||
+                    pair.includes('invisible') ||
+                    pair.includes('visible') ||
+                    (pair.includes('flex') && pair.includes('grid')) ||
+                    pair.some((p) => p.startsWith('flex-')) ||
+                    pair.some((p) => p.startsWith('grow')) ||
+                    pair.some((p) => p.startsWith('shrink')) ||
+                    pair.some((p) => p.startsWith('text-'));
+
+                  if (!isTrueContradiction) {
+                    continue;
+                  }
+                }
                 conflicts.push({
                   element,
                   line,
@@ -257,15 +287,37 @@ export function detectConflicts(
 export function detectSpecificityIssues(element: string, classes: string[]): SpecificityIssue[] {
   const issues: SpecificityIssue[] = [];
 
-  // Check for !important patterns (arbitrary values with !)
-  const importantClasses = classes.filter((c) => c.includes('!'));
-  if (importantClasses.length > 2) {
-    issues.push({
-      element,
-      issue: `Multiple !important modifiers used (${importantClasses.length} classes)`,
-      overriding_source: 'Tailwind !important modifier',
-      fix: 'Reduce !important usage; restructure CSS specificity instead',
-    });
+  // Check for !important patterns (Tailwind's ! prefix modifier)
+  const importantClasses = classes.filter((c) => c.startsWith('!') || c.includes(':!'));
+  if (importantClasses.length > 0) {
+    // Check if there are conflicting classes with the same property
+    for (const importantCls of importantClasses) {
+      const category = getCategory(importantCls);
+      if (category) {
+        // Find any other class with the same category
+        const conflicting = classes.filter(
+          (c) => c !== importantCls && getCategory(c) === category
+        );
+        if (conflicting.length > 0) {
+          issues.push({
+            element,
+            issue: `!important modifier on "${importantCls}" may override "${conflicting.join(', ')}"`,
+            overriding_source: 'Tailwind !important modifier',
+            fix: 'Remove one of the conflicting classes or restructure to avoid !important',
+          });
+        }
+      }
+    }
+
+    // Also warn if multiple !important modifiers are used
+    if (importantClasses.length > 2) {
+      issues.push({
+        element,
+        issue: `Multiple !important modifiers used (${importantClasses.length} classes)`,
+        overriding_source: 'Tailwind !important modifier',
+        fix: 'Reduce !important usage; restructure CSS specificity instead',
+      });
+    }
   }
 
   // Check for z-index without position

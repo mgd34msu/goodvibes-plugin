@@ -43,6 +43,7 @@ interface JSONSchema {
   items?: JSONSchema;
   required?: string[];
   enum?: unknown[];
+  const?: unknown;
   format?: string;
   minimum?: number;
   maximum?: number;
@@ -376,6 +377,19 @@ function validateSchema(
       });
       return violations;
     }
+  }
+
+  // Check const (exact value match)
+  // Use 'in' operator to properly handle const values that could be undefined
+  if ('const' in schema && data !== schema.const) {
+    violations.push({
+      path: jsonPath,
+      rule: 'const',
+      expected: String(schema.const),
+      actual: String(data),
+      message: `Value at ${jsonPath} must be: ${schema.const}`,
+    });
+    return violations;
   }
 
   // Check enum
@@ -922,8 +936,9 @@ export async function handleValidateApiContract(
     }
 
     // Validate response body against schema
+    // Note: We must call validateSchema even for null values so nullable validation works
     const responseSchema = getResponseSchema(operation, response.status);
-    if (responseSchema && response.body !== null && response.body !== undefined) {
+    if (responseSchema && response.body !== undefined) {
       violations.push(...validateSchema(response.body, responseSchema, '$', spec));
     }
 

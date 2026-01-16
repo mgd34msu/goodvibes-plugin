@@ -52,6 +52,11 @@ import { generateFixes, generateRecommendation, collectRelatedElements } from '.
 export async function handleDiagnoseOverflow(
   args: DiagnoseOverflowArgs
 ): Promise<ToolResponse> {
+  // Validate file argument
+  if (!args.file) {
+    return createErrorResponse('file argument is required');
+  }
+
   // First, use the layout hierarchy analyzer to parse the file
   const layoutResult = await handleAnalyzeLayoutHierarchy({
     file: args.file,

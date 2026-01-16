@@ -741,6 +741,37 @@ export const z = eval('3');
         expect(checkedPaths.length).toBeGreaterThan(0);
       });
 
+      it('should use tsconfig.json from filesystem root when found there (line 186 branch)', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+
+        // This test specifically covers the branch at line 186 where tsconfig is found
+        // at the filesystem root (e.g., /tsconfig.json or C:\tsconfig.json).
+        // We simulate no tsconfig in any parent directories, only at the root.
+        vi.mocked(fileExists).mockImplementation(async (p: string) => {
+          const pathStr = String(p);
+          // Only return true for the filesystem root tsconfig
+          // This ensures the while loop exits without finding tsconfig,
+          // and then the root check (line 185-186) finds it
+          const isRootTsconfig = pathStr === '/tsconfig.json' ||
+                                  pathStr === 'C:\\tsconfig.json' ||
+                                  pathStr === '\\tsconfig.json';
+          return isRootTsconfig;
+        });
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        // Verify the root tsconfig was found and used
+        expect(safeExec).toHaveBeenCalledWith(
+          expect.stringContaining('--project'),
+          expect.any(String),
+          expect.any(Number)
+        );
+        // The tsconfig path in summary should indicate root
+        expect(data.summary.tsconfig).not.toBeNull();
+      });
+
       it('should include tsconfig path in summary when found', async () => {
         const { safeExec, fileExists } = await import('../../utils.js');
         vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });

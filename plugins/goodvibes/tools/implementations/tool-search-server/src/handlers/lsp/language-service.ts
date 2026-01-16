@@ -383,6 +383,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
           files.set(normalized, { version: 1, content, snapshot });
           return snapshot;
         } catch {
+          // File doesn't exist or couldn't be read - return undefined
           return undefined;
         }
       },
@@ -404,14 +405,54 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
 
     const service = ts.createLanguageService(host, this.documentRegistry);
 
+    // Create a proxy wrapper that handles non-existent files gracefully
+    const wrappedService = this.createServiceProxy(service);
+
     return {
-      service,
+      service: wrappedService,
       host,
       configPath,
       compilerOptions,
       files,
       lastAccessed: Date.now(),
     };
+  }
+
+  /**
+   * Create a proxy wrapper around the TypeScript LanguageService that handles
+   * non-existent files gracefully by returning empty arrays for diagnostic methods.
+   */
+  private createServiceProxy(service: ts.LanguageService): ts.LanguageService {
+    return new Proxy(service, {
+      get: (target, prop, receiver) => {
+        const value = Reflect.get(target, prop, receiver);
+
+        // Wrap diagnostic methods to handle non-existent files
+        if (
+          typeof value === 'function' &&
+          (prop === 'getSemanticDiagnostics' ||
+            prop === 'getSyntacticDiagnostics' ||
+            prop === 'getSuggestionDiagnostics')
+        ) {
+          return (fileName: string) => {
+            try {
+              return value.call(target, fileName);
+            } catch (error) {
+              // If the error is about a missing source file, return empty array
+              if (
+                error instanceof Error &&
+                error.message.includes('Could not find source file')
+              ) {
+                return [];
+              }
+              throw error;
+            }
+          };
+        }
+
+        return value;
+      },
+    });
   }
 
   /**

@@ -10,6 +10,8 @@
 export interface AnalyzeStackingContextArgs {
   /** File path to analyze (relative to project root or absolute) */
   file: string;
+  /** Optional: Filter results to specific element/component name */
+  element?: string;
   /** Look for portal destinations (default true) */
   include_portals?: boolean;
 }
@@ -83,6 +85,26 @@ export interface PortalInfo {
 }
 
 /**
+ * Flat stacking context entry (for backward compatibility with tests)
+ */
+export interface StackingContextEntry {
+  /** Element identifier */
+  element: string;
+  /** Position type */
+  position: 'relative' | 'absolute' | 'fixed' | 'sticky' | 'static';
+  /** z-index value (number or 'auto') */
+  z_index: number | 'auto';
+  /** Whether it creates a stacking context */
+  creates_context: boolean;
+  /** Reason for creating stacking context */
+  creates_context_reason?: string;
+  /** CSS classes */
+  classes: string[];
+  /** Line number */
+  line: number;
+}
+
+/**
  * Result of stacking context analysis
  */
 export interface AnalyzeStackingContextResult {
@@ -90,14 +112,22 @@ export interface AnalyzeStackingContextResult {
   file: string;
   /** Hierarchical stacking context tree */
   stacking_tree: StackingContext;
+  /** Flat list of stacking contexts (for backward compatibility) */
+  stacking_contexts: StackingContextEntry[];
   /** List of elements that create stacking contexts */
   context_creators: ContextCreator[];
   /** List of z-index values found */
   z_index_values: ZIndexInfo[];
   /** Potential issues detected */
   potential_issues: StackingIssue[];
+  /** Flat issues list (alias for potential_issues for backward compatibility) */
+  issues: StackingIssue[];
+  /** Human-readable summary */
+  summary: string;
   /** Portal destinations if include_portals is true */
   portals?: PortalInfo[];
+  /** Optional message */
+  message?: string;
 }
 
 /**
@@ -120,6 +150,8 @@ export interface ElementInfo {
   classes: string[];
   /** z-index value */
   z_index: number | 'auto';
+  /** Position type */
+  position: 'relative' | 'absolute' | 'fixed' | 'sticky' | 'static';
   /** Whether it creates a stacking context */
   creates_context: boolean;
   /** Reason for context creation */

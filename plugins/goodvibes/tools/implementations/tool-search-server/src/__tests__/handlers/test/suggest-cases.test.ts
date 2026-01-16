@@ -890,5 +890,553 @@ export function myFunc(x: number): number {
       // Should still succeed, just with empty existing tests
       expect(response.isError).toBeUndefined();
     });
+
+    it('should parse property assignment with function expression (lines 177-179)', async () => {
+      // This covers the property assignment parsing branch
+      // e.g., module.exports.foo = function() {}
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+const obj = {
+  myHandler: function(x: number): number {
+    return x * 2;
+  }
+};
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'myHandler' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('myHandler');
+    });
+
+    it('should parse property assignment with arrow function', async () => {
+      // Also covers lines 177-179 with arrow function variant
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+const handlers = {
+  processData: (data: string): string => {
+    return data.trim();
+  }
+};
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processData' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('processData');
+    });
+
+    it('should return null and handle error when file read fails in parseFunction (line 189)', async () => {
+      // This covers the catch block in parseFunction that returns null
+      mockFs.existsSync.mockReturnValue(true);
+      // First call for file existence check passes
+      // Second call for readFileSync throws
+      mockFs.readFileSync.mockImplementation(() => {
+        throw new Error('File read error');
+      });
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'anyFunc' };
+      const response = await handleSuggestTestCases(args);
+
+      // Should return error about function not found (because parsing returned null)
+      expect(response.isError).toBe(true);
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.error).toContain('Function "anyFunc" not found');
+    });
+
+    it('should infer return type for arrow function with expression body (lines 248-250)', async () => {
+      // This covers inferReturnType when arrow function has no block body
+      // and no explicit return type annotation
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export const double = (n: number) => n * 2;
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'double' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should infer 'unknown' since no explicit type
+      expect(parsed.function_signature).toContain('unknown');
+    });
+
+    it('should infer Promise<unknown> for async arrow function with expression body (lines 248-250)', async () => {
+      // Async variant of expression body inference
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export const asyncDouble = async (n: number) => n * 2;
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'asyncDouble' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('Promise<unknown>');
+    });
+
+    it('should infer void return type when function has no return statement (lines 253-270)', async () => {
+      // This covers the block body analysis for return statements
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function logSomething(msg: string) {
+  console.log(msg);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'logSomething' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('void');
+    });
+
+    it('should infer void return type when function has empty return statement (lines 260, 267-268)', async () => {
+      // Covers hasVoidReturn = true case
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function earlyExit(condition: boolean) {
+  if (condition) {
+    return;
+  }
+  console.log('did not exit early');
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'earlyExit' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('void');
+    });
+
+    it('should infer Promise<void> for async function with void return (lines 267-268)', async () => {
+      // Covers the async + void return case
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export async function asyncLog(msg: string) {
+  console.log(msg);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'asyncLog' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('Promise<void>');
+    });
+
+    it('should infer unknown return type when function has value return (lines 267, 272)', async () => {
+      // Covers hasReturn=true and hasVoidReturn=false
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function getValue(x: number) {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'getValue' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('unknown');
+    });
+
+    it('should infer Promise<unknown> for async function with value return (line 272)', async () => {
+      // Covers async + hasReturn=true, hasVoidReturn=false
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export async function asyncGetValue(x: number) {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'asyncGetValue' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('Promise<unknown>');
+    });
+
+    it('should extract and return JSDoc comment (line 285)', async () => {
+      // This covers the JSDoc extraction returning actual content
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+/**
+ * Calculates the sum of two numbers.
+ * @param a - First number
+ * @param b - Second number
+ * @returns The sum
+ */
+export function addNumbers(a: number, b: number): number {
+  return a + b;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'addNumbers' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('addNumbers');
+      // The function should parse successfully with JSDoc
+      expect(parsed.suggested_tests.length).toBeGreaterThan(0);
+    });
+
+    it('should handle function with object type parameter', async () => {
+      // Covers generateExampleValue for object types (line 646)
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function processObject(data: object): void {
+  console.log(data);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processObject' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.suggested_tests.length).toBeGreaterThan(0);
+    });
+
+    it('should handle function with inline object type parameter', async () => {
+      // Covers generateExampleValue for { } types (line 646)
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function processConfig(config: { name: string; value: number }): void {
+  console.log(config);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processConfig' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.suggested_tests.length).toBeGreaterThan(0);
+    });
+
+    it('should filter out tests that do not mention target function (line 325)', async () => {
+      // This covers the branch where test name doesn't include the function
+      // and the surrounding context also doesn't include it
+      mockHandleFindTestsForFile.mockResolvedValue({
+        isError: false,
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tests: [{ file: 'src/utils.test.ts' }],
+            count: 1,
+          }),
+        }],
+      });
+
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockImplementation((p: fs.PathLike) => {
+        const pathStr = String(p);
+        if (pathStr.includes('.test.ts')) {
+          // Test file with tests that don't mention 'targetFunc'
+          return `
+describe('unrelatedThing', () => {
+  it('should do something else', () => {});
+  test('another unrelated test', () => {});
+});
+`;
+        }
+        return `
+export function targetFunc(x: number): number {
+  return x * 2;
+}
+`;
+      });
+
+      const args: SuggestTestCasesArgs = {
+        file: 'src/utils.ts',
+        function: 'targetFunc',
+        include_existing: true,
+      };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Existing tests should be empty since none mention targetFunc
+      expect(parsed.existing_tests).toEqual([]);
+    });
+
+    it('should handle function declaration without body (line 370)', async () => {
+      // This covers the branch where func.body is null (ambient declaration)
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+declare function externalFunc(x: number): number;
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.d.ts', function: 'externalFunc' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should still generate basic tests without body analysis
+      expect(parsed.suggested_tests.length).toBeGreaterThan(0);
+      // Should not have body-related tests (throw, try-catch, etc)
+      const throwTest = parsed.suggested_tests.find(
+        (t: { name: string }) => t.name.includes('throw')
+      );
+      expect(throwTest).toBeUndefined();
+    });
+
+    it('should handle when findTestsForFile returns error (line 772)', async () => {
+      // Covers the case where testResponse.isError is true
+      mockHandleFindTestsForFile.mockResolvedValue({
+        isError: true,
+        content: [{ type: 'text', text: JSON.stringify({ error: 'Failed to find tests' }) }],
+      });
+
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function myFunc(x: number): number {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = {
+        file: 'src/utils.ts',
+        function: 'myFunc',
+        include_existing: true,
+      };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should succeed but with empty existing tests
+      expect(parsed.existing_tests).toEqual([]);
+    });
+
+    it('should handle when findTestsForFile returns empty content (line 772)', async () => {
+      // Covers the case where testResponse.content.length is 0
+      mockHandleFindTestsForFile.mockResolvedValue({
+        isError: false,
+        content: [],
+      });
+
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function myFunc(x: number): number {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = {
+        file: 'src/utils.ts',
+        function: 'myFunc',
+        include_existing: true,
+      };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should succeed but with empty existing tests
+      expect(parsed.existing_tests).toEqual([]);
+    });
+
+    it('should handle function with null type parameter', async () => {
+      // Covers generateExampleValue for null types (line 647)
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function processNull(value: null): void {
+  console.log(value);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processNull' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.suggested_tests.length).toBeGreaterThan(0);
+    });
+
+    it('should handle array type with Array generic syntax', async () => {
+      // Covers the check for 'array' in paramType (line 462)
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function processArray(items: Array<string>): void {
+  console.log(items);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processArray' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should have array edge case tests
+      const emptyArrayTest = parsed.suggested_tests.find(
+        (t: { name: string }) => t.name.includes('empty array')
+      );
+      expect(emptyArrayTest).toBeDefined();
+    });
+
+    it('should handle parameters without explicit type annotation (line 207)', async () => {
+      // This covers the 'any' fallback when param.type is undefined
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function noTypes(value) {
+  return value;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.js', function: 'noTypes' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Signature should have 'any' for untyped parameter
+      expect(parsed.function_signature).toContain('any');
+    });
+
+    it('should handle anonymous function expression (line 202)', async () => {
+      // This covers the 'anonymous' fallback when extractFunctionInfo has no name
+      // Uses a named function expression assigned to a variable
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export const handler = function(x: number): number {
+  return x * 2;
+};
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'handler' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('handler');
+    });
+
+    it('should not match property assignment with non-function initializer', async () => {
+      // This covers the branch where property assignment has a non-function value
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+const obj = {
+  notAFunction: "just a string",
+  actualFunc: function(x: number): number {
+    return x * 2;
+  }
+};
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'notAFunction' };
+      const response = await handleSuggestTestCases(args);
+
+      // Should not find a function named 'notAFunction'
+      expect(response.isError).toBe(true);
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.error).toContain('Function "notAFunction" not found');
+    });
+
+    it('should handle function without block body (inferReturnType line 253)', async () => {
+      // This covers when node.body exists but is not a Block (arrow expression)
+      // The arrow function with expression body is parsed
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export const implicitReturn = (x: number) => x + 1;
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'implicitReturn' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should infer 'unknown' for expression body without explicit type
+      expect(parsed.function_signature).toContain('unknown');
+    });
+
+    it('should skip property assignment when name does not match (line 176)', async () => {
+      // This ensures we don't accidentally match a wrong property
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+const obj = {
+  otherHandler: function(x: number): number {
+    return x;
+  }
+};
+
+export function myTargetFunc(y: string): string {
+  return y;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'myTargetFunc' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.function_signature).toContain('myTargetFunc');
+      expect(parsed.function_signature).toContain('string');
+    });
+
+    it('should skip variable declaration without initializer (line 158)', async () => {
+      // This covers when variable has matching name but no initializer
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+let myFunc: () => void;
+export function actualFunc(x: number): number {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'myFunc' };
+      const response = await handleSuggestTestCases(args);
+
+      // Should not find the declared but uninitialized variable
+      expect(response.isError).toBe(true);
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.error).toContain('Function "myFunc" not found');
+    });
+
+    it('should skip variable declaration with non-function initializer (line 158)', async () => {
+      // This covers when variable has matching name but initializer is not a function
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+const myFunc = 42;
+export function actualFunc(x: number): number {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'myFunc' };
+      const response = await handleSuggestTestCases(args);
+
+      // Should not find a function named 'myFunc'
+      expect(response.isError).toBe(true);
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.error).toContain('Function "myFunc" not found');
+    });
+
+    it('should skip variable with destructuring pattern name (line 157)', async () => {
+      // This covers when decl.name is not an Identifier (e.g., destructuring)
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+const { myFunc } = someModule;
+export function actualFunc(x: number): number {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'myFunc' };
+      const response = await handleSuggestTestCases(args);
+
+      // Destructuring patterns are not identifiers, should not match
+      expect(response.isError).toBe(true);
+    });
   });
 });

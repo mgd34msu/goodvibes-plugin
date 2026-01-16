@@ -58,6 +58,13 @@ export function extractAttributeValue(attr: ts.JsxAttribute, sourceFile: ts.Sour
       return expr.text;
     }
 
+    // Prefix unary expression (e.g., -1 for tabIndex={-1})
+    if (ts.isPrefixUnaryExpression(expr)) {
+      if (expr.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(expr.operand)) {
+        return '-' + expr.operand.text;
+      }
+    }
+
     // Template literal
     if (ts.isTemplateExpression(expr)) {
       return expr.head.text + '[dynamic]';

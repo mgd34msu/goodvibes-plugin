@@ -142,10 +142,31 @@ export const CONTEXT_CREATORS: Record<string, (classes: string[]) => boolean> = 
 export function createsStackingContext(classes: string[]): { creates: boolean; reason?: string } {
   for (const [name, check] of Object.entries(CONTEXT_CREATORS)) {
     if (check(classes)) {
-      return { creates: true, reason: name.replace(/_/g, ' ') };
+      // Format reason - special case for isolation to return "isolate"
+      const reason = name === 'isolation' ? 'isolate' : name.replace(/_/g, ' ');
+      return { creates: true, reason };
     }
   }
   return { creates: false };
+}
+
+// =============================================================================
+// Position Extraction
+// =============================================================================
+
+/**
+ * Extract position type from CSS classes
+ * @param classes - Array of CSS class names
+ * @returns Position type
+ */
+export function extractPosition(
+  classes: string[]
+): 'relative' | 'absolute' | 'fixed' | 'sticky' | 'static' {
+  if (classes.includes('fixed')) return 'fixed';
+  if (classes.includes('absolute')) return 'absolute';
+  if (classes.includes('sticky')) return 'sticky';
+  if (classes.includes('relative')) return 'relative';
+  return 'static';
 }
 
 // =============================================================================

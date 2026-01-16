@@ -549,6 +549,48 @@ end_of_record`;
 
       expect(response.isError).toBe(true);
     });
+
+    it('should detect vitest coverage format from path containing vitest', async () => {
+      const istanbulContent = createIstanbulContent([{
+        path: '/project/src/utils.ts',
+        statements: [{ id: '0', startLine: 1, endLine: 1, hits: 1 }],
+        functions: [{ id: '0', name: 'testFunc', line: 1, hits: 1 }],
+      }]);
+
+      mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        return pathStr.includes('.vitest/coverage-final.json');
+      });
+      mockFs.statSync.mockReturnValue({ isFile: () => true, isDirectory: () => false } as fs.Stats);
+      mockFs.readFileSync.mockReturnValue(istanbulContent);
+
+      const response = await handleGetTestCoverage({ coverage_path: '.vitest/coverage-final.json' });
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.report_type).toBe('vitest');
+    });
+
+    it('should detect jest coverage format from path containing jest', async () => {
+      const istanbulContent = createIstanbulContent([{
+        path: '/project/src/utils.ts',
+        statements: [{ id: '0', startLine: 1, endLine: 1, hits: 1 }],
+        functions: [{ id: '0', name: 'testFunc', line: 1, hits: 1 }],
+      }]);
+
+      mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        return pathStr.includes('.jest/coverage-final.json');
+      });
+      mockFs.statSync.mockReturnValue({ isFile: () => true, isDirectory: () => false } as fs.Stats);
+      mockFs.readFileSync.mockReturnValue(istanbulContent);
+
+      const response = await handleGetTestCoverage({ coverage_path: '.jest/coverage-final.json' });
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.report_type).toBe('jest');
+    });
   });
 
   describe('File-Specific Coverage', () => {

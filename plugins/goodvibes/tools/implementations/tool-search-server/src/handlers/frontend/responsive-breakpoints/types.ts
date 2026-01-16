@@ -65,9 +65,9 @@ export interface ElementAnalysis {
 }
 
 /**
- * Warning about potential responsive design issues
+ * Issue about potential responsive design problems
  */
-export interface Warning {
+export interface Issue {
   element: string;
   breakpoint?: string;
   issue: string;
@@ -75,11 +75,17 @@ export interface Warning {
 }
 
 /**
+ * @deprecated Use Issue instead
+ */
+export type Warning = Issue;
+
+/**
  * Analysis summary
  */
 export interface AnalysisSummary {
   mobile_first: boolean;
   complete_coverage: boolean;
+  breakpoints_used: string[];
   notes: string[];
 }
 
@@ -91,8 +97,9 @@ export interface AnalyzeResponsiveBreakpointsResult {
   breakpoints_used: string[];
   breakpoint_coverage: BreakpointCoverage;
   elements: ElementAnalysis[];
-  warnings: Warning[];
-  summary: AnalysisSummary;
+  issues: Issue[];
+  /** Human-readable text summary of the analysis */
+  summary: string;
 }
 
 /**

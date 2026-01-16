@@ -303,13 +303,18 @@ export function isFocusable(tag: string, attrs: Map<string, string>): boolean {
     return false;
   }
 
-  // Check tabindex
-  const tabindex = attrs.get('tabindex') || attrs.get('tabIndex');
-  if (tabindex === '-1') {
-    return false;
-  }
-  if (tabindex && parseInt(tabindex, 10) >= 0) {
-    return true;
+  // Check tabindex - check both lowercase and camelCase variants
+  const tabindex = attrs.get('tabindex') ?? attrs.get('tabIndex');
+  if (tabindex !== undefined) {
+    const tabIndexNum = parseInt(tabindex, 10);
+    // tabindex=-1 means not in tab order (but still programmatically focusable)
+    if (tabIndexNum < 0) {
+      return false;
+    }
+    // tabindex >= 0 makes element focusable
+    if (tabIndexNum >= 0) {
+      return true;
+    }
   }
 
   // Check natively focusable elements

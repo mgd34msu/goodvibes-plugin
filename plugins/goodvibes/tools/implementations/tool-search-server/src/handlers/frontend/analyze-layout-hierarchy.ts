@@ -122,9 +122,9 @@ export async function handleAnalyzeLayoutHierarchy(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js, .vue, .svelte`,
         { provided_path: args.file }
       );
     }
@@ -148,13 +148,20 @@ export async function handleAnalyzeLayoutHierarchy(
       jsxContent = content.replace(/class=/g, 'className=');
     }
 
-    // Parse as TSX
+    // Determine script kind based on file extension
+    const scriptKind =
+      ext === '.tsx' ? ts.ScriptKind.TSX
+      : ext === '.jsx' ? ts.ScriptKind.JSX
+      : ext === '.ts' ? ts.ScriptKind.TSX  // Use TSX for .ts to support JSX in tests
+      : ts.ScriptKind.JSX;  // Use JSX for .js and others
+
+    // Parse as TSX/JSX
     const sourceFile = ts.createSourceFile(
       filePath,
       jsxContent,
       ts.ScriptTarget.Latest,
       true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
+      scriptKind
     );
 
     // Find root JSX element

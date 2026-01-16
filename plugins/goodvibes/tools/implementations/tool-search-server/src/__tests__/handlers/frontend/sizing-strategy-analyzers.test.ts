@@ -92,7 +92,7 @@ describe('sizing-strategy-analyzers', () => {
       const result = analyzeWidthStrategy(element);
 
       expect(result.specified).toBe('auto');
-      expect(result.strategy).toContain('Auto');
+      expect(result.strategy).toBe('auto');
     });
 
     it('should analyze fixed width', () => {
@@ -103,7 +103,7 @@ describe('sizing-strategy-analyzers', () => {
       const result = analyzeWidthStrategy(element);
 
       expect(result.specified).toBe('w-[200px]');
-      expect(result.strategy).toContain('Fixed');
+      expect(result.strategy).toBe('fixed');
     });
 
     it('should analyze percentage width', () => {
@@ -114,7 +114,7 @@ describe('sizing-strategy-analyzers', () => {
       const result = analyzeWidthStrategy(element);
 
       expect(result.specified).toBe('w-1/2');
-      expect(result.strategy).toContain('Percentage');
+      expect(result.strategy).toBe('percentage');
     });
 
     it('should detect flex-controlled width in row container', () => {
@@ -226,7 +226,7 @@ describe('sizing-strategy-analyzers', () => {
       const result = analyzeHeightStrategy(element);
 
       expect(result.specified).toBe('auto');
-      expect(result.strategy).toContain('Auto');
+      expect(result.strategy).toBe('auto');
     });
 
     it('should analyze fixed height', () => {
@@ -237,7 +237,7 @@ describe('sizing-strategy-analyzers', () => {
       const result = analyzeHeightStrategy(element);
 
       expect(result.specified).toBe('h-[300px]');
-      expect(result.strategy).toContain('Fixed');
+      expect(result.strategy).toBe('fixed');
     });
 
     it('should detect flex-controlled height in column container', () => {
@@ -469,7 +469,7 @@ describe('sizing-strategy-analyzers', () => {
       const element = createElementNode({ position: 'static' });
       const result = getPositionContext(element);
 
-      expect(result).toContain('Static');
+      expect(result).toContain('static');
       expect(result).toContain('normal document flow');
     });
 
@@ -477,14 +477,14 @@ describe('sizing-strategy-analyzers', () => {
       const element = createElementNode({ position: 'relative' });
       const result = getPositionContext(element);
 
-      expect(result).toContain('Relative');
+      expect(result).toContain('relative');
     });
 
     it('should describe fixed position', () => {
       const element = createElementNode({ position: 'fixed' });
       const result = getPositionContext(element);
 
-      expect(result).toContain('Fixed to viewport');
+      expect(result).toContain('fixed to viewport');
     });
 
     it('should describe absolute with positioned ancestor', () => {
@@ -501,7 +501,7 @@ describe('sizing-strategy-analyzers', () => {
 
       const result = getPositionContext(element);
 
-      expect(result).toContain('Absolute');
+      expect(result).toContain('absolute');
       expect(result).toContain('relative to');
       expect(result).toContain('section');
     });
@@ -532,7 +532,7 @@ describe('sizing-strategy-analyzers', () => {
 
       const result = getPositionContext(element);
 
-      expect(result).toContain('Sticky within');
+      expect(result).toContain('sticky within');
       expect(result).toContain('overflow container');
     });
 
@@ -549,7 +549,7 @@ describe('sizing-strategy-analyzers', () => {
 
       const result = getPositionContext(element);
 
-      expect(result).toContain('Sticky within viewport');
+      expect(result).toContain('sticky within viewport');
     });
   });
 

@@ -168,7 +168,7 @@ export async function handleGetAccessibilityTree(
 
     if (elements.length === 0) {
       return createSuccessResponse({
-        file: path.relative(projectRoot, filePath),
+        file: path.relative(projectRoot, filePath).replace(/\\/g, '/'),
         a11y_tree: {
           role: 'document',
           name: 'Document',
@@ -207,7 +207,8 @@ export async function handleGetAccessibilityTree(
     const summary = generateSummary(elements, issues, focusOrder, ariaPatterns);
 
     const result: GetAccessibilityTreeResult = {
-      file: path.relative(projectRoot, filePath),
+      // Normalize to forward slashes for cross-platform consistency
+      file: path.relative(projectRoot, filePath).replace(/\\/g, '/'),
       a11y_tree: a11yTree,
       focus_order: focusOrder,
       issues,

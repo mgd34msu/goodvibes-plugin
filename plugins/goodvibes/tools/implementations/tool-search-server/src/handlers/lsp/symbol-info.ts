@@ -184,6 +184,57 @@ function extractModifiersFromDisplayParts(quickInfo: ts.QuickInfo): string[] {
 }
 
 /**
+ * Find the node at a given position in the AST.
+ */
+function findNodeAtPosition(
+  sourceFile: ts.SourceFile,
+  position: number
+): ts.Node | undefined {
+  function findNode(node: ts.Node): ts.Node | undefined {
+    if (position >= node.getStart(sourceFile) && position < node.getEnd()) {
+      const child = ts.forEachChild(node, findNode);
+      if (child) return child;
+      return node;
+    }
+    return undefined;
+  }
+
+  return findNode(sourceFile);
+}
+
+/**
+ * Check if the position is on a getter/setter keyword and return the name position.
+ * When the cursor is on the 'get' or 'set' keyword, TypeScript doesn't return
+ * quickInfo, but we want to return info about the getter/setter property.
+ */
+function getAccessorNamePosition(
+  service: ts.LanguageService,
+  filePath: string,
+  position: number
+): number | null {
+  const program = service.getProgram();
+  if (!program) return null;
+
+  const sourceFile = program.getSourceFile(filePath);
+  if (!sourceFile) return null;
+
+  const targetNode = findNodeAtPosition(sourceFile, position);
+  if (!targetNode) return null;
+
+  // Walk up to find getter/setter declaration
+  let current: ts.Node | undefined = targetNode;
+  while (current) {
+    if (ts.isGetAccessorDeclaration(current) || ts.isSetAccessorDeclaration(current)) {
+      // Return the position of the name, which has quickInfo
+      return current.name.getStart(sourceFile);
+    }
+    current = current.parent;
+  }
+
+  return null;
+}
+
+/**
  * Extract modifiers from the AST node at a given position.
  */
 function extractModifiersFromAST(
@@ -198,17 +249,7 @@ function extractModifiersFromAST(
   const sourceFile = program.getSourceFile(filePath);
   if (!sourceFile) return modifiers;
 
-  // Find the node at the position
-  function findNode(node: ts.Node): ts.Node | undefined {
-    if (position >= node.getStart(sourceFile) && position < node.getEnd()) {
-      const child = ts.forEachChild(node, findNode);
-      if (child) return child;
-      return node;
-    }
-    return undefined;
-  }
-
-  const targetNode = findNode(sourceFile);
+  const targetNode = findNodeAtPosition(sourceFile, position);
   if (!targetNode) return modifiers;
 
   // Walk up to find the declaration node
@@ -276,27 +317,44 @@ function extractModifiersFromAST(
 
 /**
  * Extract the symbol name from quick info.
+ * The symbol name should be the most specific identifier for the cursor position.
+ * For example, for a method, we want the method name, not the class name.
  */
 function extractSymbolName(quickInfo: ts.QuickInfo): string {
   if (!quickInfo.displayParts) return 'unknown';
 
-  // Look for the symbol name in display parts
+  // Priority order for symbol name parts (most specific first)
+  // These are ordered so that more specific names (like methodName) take priority
+  // over container names (like className)
+  const priorityKinds = [
+    'methodName',
+    'propertyName',
+    'functionName',
+    'localName',
+    'parameterName',
+    'aliasName',
+    'enumMemberName',
+    'typeParameterName',
+    'className',
+    'interfaceName',
+    'enumName',
+    'moduleName',
+  ];
+
+  // Find the highest priority symbol name
+  let bestMatch: { kind: string; text: string; priority: number } | null = null;
+
   for (const part of quickInfo.displayParts) {
-    if (
-      part.kind === 'localName' ||
-      part.kind === 'aliasName' ||
-      part.kind === 'propertyName' ||
-      part.kind === 'methodName' ||
-      part.kind === 'functionName' ||
-      part.kind === 'className' ||
-      part.kind === 'interfaceName' ||
-      part.kind === 'enumName' ||
-      part.kind === 'enumMemberName' ||
-      part.kind === 'parameterName' ||
-      part.kind === 'typeParameterName'
-    ) {
-      return part.text;
+    const priority = priorityKinds.indexOf(part.kind);
+    if (priority !== -1) {
+      if (!bestMatch || priority < bestMatch.priority) {
+        bestMatch = { kind: part.kind, text: part.text, priority };
+      }
     }
+  }
+
+  if (bestMatch) {
+    return bestMatch.text;
   }
 
   // Fallback: look for any identifier-like part
@@ -317,18 +375,35 @@ function extractTypeSignature(quickInfo: ts.QuickInfo): string {
 
   const fullText = displayPartsToString(quickInfo.displayParts);
 
-  // Clean up the display text to extract just the type
-  // Remove common prefixes like "const x: " or "function foo"
-  const colonIndex = fullText.indexOf(':');
-  if (colonIndex !== -1) {
-    // Extract everything after the colon
-    return fullText.slice(colonIndex + 1).trim();
-  }
-
-  // For functions, try to extract the signature
+  // For functions/methods, extract from the opening parenthesis to include the full signature
+  // e.g., "function add(a: number, b: number): number" -> "(a: number, b: number): number"
+  // e.g., "(method) MyClass.myMethod(): void" -> "(): void"
   const parenIndex = fullText.indexOf('(');
   if (parenIndex !== -1) {
-    return fullText.slice(parenIndex).trim();
+    // Check if this looks like a function/method signature by looking for "):"
+    // which indicates a return type annotation
+    const afterParen = fullText.slice(parenIndex);
+    if (afterParen.includes('):') || afterParen.includes(') =>')) {
+      return afterParen.trim();
+    }
+    // Also handle methods like "(): void" without explicit return type annotation
+    if (/\([^)]*\)\s*:/.test(afterParen)) {
+      return afterParen.trim();
+    }
+  }
+
+  // For non-function types, find the last colon that's followed by a type
+  // This handles "const x: number" -> "number"
+  // But avoids incorrectly splitting "function add(a: number, b: number): number"
+  const colonIndex = fullText.lastIndexOf(':');
+  if (colonIndex !== -1) {
+    // Make sure we're not in a parameter list by checking for opening paren after colon
+    const afterColon = fullText.slice(colonIndex + 1).trim();
+    // If there's an opening paren after the colon, it's likely a function type
+    if (afterColon.startsWith('(')) {
+      return afterColon;
+    }
+    return afterColon;
   }
 
   return fullText;
@@ -435,7 +510,18 @@ export async function handleGetSymbolInfo(
     );
 
     // Get quick info at position
-    const quickInfo = service.getQuickInfoAtPosition(filePath, position);
+    let quickInfo = service.getQuickInfoAtPosition(filePath, position);
+    let effectivePosition = position;
+
+    // If no quickInfo, check if we're on a getter/setter keyword
+    // and get the info from the accessor name instead
+    if (!quickInfo) {
+      const accessorNamePos = getAccessorNamePosition(service, filePath, position);
+      if (accessorNamePos !== null) {
+        quickInfo = service.getQuickInfoAtPosition(filePath, accessorNamePos);
+        effectivePosition = accessorNamePos;
+      }
+    }
 
     if (!quickInfo) {
       return createErrorResponse('No symbol information found at this position', {
@@ -451,12 +537,45 @@ export async function handleGetSymbolInfo(
     const type = extractTypeSignature(quickInfo);
     const documentation = extractDocumentation(quickInfo);
     // Use AST-based extraction for more complete modifiers, fall back to display parts
-    const astModifiers = extractModifiersFromAST(service, filePath, position);
+    const astModifiers = extractModifiersFromAST(service, filePath, effectivePosition);
     const displayModifiers = extractModifiersFromDisplayParts(quickInfo);
     const modifiers = [...new Set([...astModifiers, ...displayModifiers])];
 
     // Get definition location
-    const definition = await getDefinitionLocation(service, filePath, position);
+    const definition = await getDefinitionLocation(service, filePath, effectivePosition);
+
+    // Check for built-in keywords and globals without definitions
+    // These have quickInfo but no meaningful symbol definition:
+    // - Symbols with unknown name and no definition
+    // - Keywords (like 'const', 'function', etc.)
+    // - Built-in globals (like 'undefined', 'NaN', 'Infinity') which are 'var' kind with no definition
+    if (definition === null) {
+      // No definition found - check if this is a built-in without a source location
+      if (symbol === 'unknown') {
+        return createErrorResponse('No symbol information found at this position', {
+          file: args.file,
+          line: args.line,
+          column: args.column,
+        });
+      }
+      if (kind === 'keyword') {
+        return createErrorResponse('No symbol information found at this position', {
+          file: args.file,
+          line: args.line,
+          column: args.column,
+        });
+      }
+      // Built-in globals like 'undefined', 'NaN', 'Infinity' have var/variable kind
+      // but no definition location since they're intrinsic
+      const builtInGlobals = new Set(['undefined', 'NaN', 'Infinity', 'globalThis']);
+      if (builtInGlobals.has(symbol)) {
+        return createErrorResponse('No symbol information found at this position', {
+          file: args.file,
+          line: args.line,
+          column: args.column,
+        });
+      }
+    }
 
     const result: SymbolInfoResult = {
       symbol,

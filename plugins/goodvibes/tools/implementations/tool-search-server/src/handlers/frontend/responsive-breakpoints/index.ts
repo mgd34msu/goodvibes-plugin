@@ -21,6 +21,7 @@ export type {
   PropertyTransition,
   PropertyChange,
   ElementAnalysis,
+  Issue,
   Warning,
   AnalysisSummary,
   ToolResponse,
@@ -62,6 +63,11 @@ export async function handleAnalyzeResponsiveBreakpoints(
   const projectRoot = process.cwd();
 
   try {
+    // Validate file argument
+    if (!args.file) {
+      return createErrorResponse('file argument is required');
+    }
+
     // Resolve file path
     const filePath = path.isAbsolute(args.file)
       ? args.file
@@ -76,9 +82,9 @@ export async function handleAnalyzeResponsiveBreakpoints(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Expected .tsx, .jsx, .vue, or .svelte`,
+        `Unsupported file type: ${ext}. Expected .tsx, .jsx, .ts, .js, .vue, or .svelte`,
         { file: args.file }
       );
     }
@@ -112,12 +118,14 @@ export async function handleAnalyzeResponsiveBreakpoints(
       processableContent = `function Component() { return (<>${templateContent}</>) }`;
     }
 
+    // Use TSX/JSX script kind to properly parse JSX elements
+    const scriptKind = ext === '.tsx' || ext === '.ts' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX;
     const sourceFile = ts.createSourceFile(
       filePath,
       processableContent,
       ts.ScriptTarget.Latest,
       true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
+      scriptKind
     );
 
     // Extract className attributes
@@ -136,12 +144,8 @@ export async function handleAnalyzeResponsiveBreakpoints(
           '2xl': false,
         },
         elements: [],
-        warnings: [],
-        summary: {
-          mobile_first: true,
-          complete_coverage: false,
-          notes: ['No className attributes found in file'],
-        },
+        issues: [],
+        summary: 'No className attributes found in file.',
       });
     }
 
@@ -182,7 +186,7 @@ export async function handleAnalyzeResponsiveBreakpoints(
     }
 
     // Detect issues
-    const warnings = detectIssues(elements);
+    const issues = detectIssues(elements);
 
     // Generate summary
     const breakpointsUsed = Array.from(allBreakpointsUsed).sort((a, b) => {
@@ -230,8 +234,13 @@ export async function handleAnalyzeResponsiveBreakpoints(
       notes.push('Detected desktop-first patterns - consider refactoring to mobile-first');
     }
 
-    if (warnings.length > 0) {
-      notes.push(`Found ${warnings.length} potential responsive design issues`);
+    if (issues.length > 0) {
+      notes.push(`Found ${issues.length} potential responsive design issues`);
+    }
+
+    // Add breakpoints used to notes for searchability
+    if (breakpointsUsed.length > 0) {
+      notes.push(`Breakpoints used: ${breakpointsUsed.join(', ')}`);
     }
 
     // Add breakpoint size reference
@@ -240,17 +249,16 @@ export async function handleAnalyzeResponsiveBreakpoints(
       notes.push(`Breakpoint sizes: ${usedSizes.join(', ')}`);
     }
 
+    // Generate text summary for easy searching
+    const summaryText = notes.join('. ') + (notes.length > 0 ? '.' : '');
+
     const result: AnalyzeResponsiveBreakpointsResult = {
       file: makeRelativePath(filePath, projectRoot),
       breakpoints_used: breakpointsUsed,
       breakpoint_coverage: breakpointCoverage,
       elements,
-      warnings,
-      summary: {
-        mobile_first: mobileFirst,
-        complete_coverage: completeCoverage,
-        notes,
-      },
+      issues,
+      summary: summaryText,
     };
 
     return createSuccessResponse(result);

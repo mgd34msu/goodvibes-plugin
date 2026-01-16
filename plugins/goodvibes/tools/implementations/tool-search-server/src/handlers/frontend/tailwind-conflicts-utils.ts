@@ -129,16 +129,19 @@ export const CLASS_CATEGORIES: Record<string, string[]> = {
     'text-start', 'text-end',
   ],
 
-  // Border Radius
-  'border-radius': ['rounded-'],
-  'border-radius-t': ['rounded-t-'],
-  'border-radius-r': ['rounded-r-'],
-  'border-radius-b': ['rounded-b-'],
-  'border-radius-l': ['rounded-l-'],
-  'border-radius-tl': ['rounded-tl-'],
-  'border-radius-tr': ['rounded-tr-'],
-  'border-radius-bl': ['rounded-bl-'],
-  'border-radius-br': ['rounded-br-'],
+  // Border Radius - includes bare 'rounded' and all variants
+  'border-radius': [
+    'rounded', 'rounded-', 'rounded-none', 'rounded-sm', 'rounded-md',
+    'rounded-lg', 'rounded-xl', 'rounded-2xl', 'rounded-3xl', 'rounded-full',
+  ],
+  'border-radius-t': ['rounded-t', 'rounded-t-'],
+  'border-radius-r': ['rounded-r', 'rounded-r-'],
+  'border-radius-b': ['rounded-b', 'rounded-b-'],
+  'border-radius-l': ['rounded-l', 'rounded-l-'],
+  'border-radius-tl': ['rounded-tl', 'rounded-tl-'],
+  'border-radius-tr': ['rounded-tr', 'rounded-tr-'],
+  'border-radius-bl': ['rounded-bl', 'rounded-bl-'],
+  'border-radius-br': ['rounded-br', 'rounded-br-'],
 
   // Border Width
   'border-width': ['border-'],
@@ -319,6 +322,15 @@ export const SHORTHAND_MAP: Record<string, string[]> = {
  */
 export const CONTRADICTIONS: string[][] = [
   // Display contradictions
+  ['flex', 'grid'],
+  ['flex', 'block'],
+  ['flex', 'inline'],
+  ['flex', 'inline-block'],
+  ['flex', 'inline-grid'],
+  ['grid', 'block'],
+  ['grid', 'inline'],
+  ['grid', 'inline-block'],
+  ['grid', 'inline-flex'],
   ['hidden', 'flex'],
   ['hidden', 'block'],
   ['hidden', 'grid'],
@@ -425,6 +437,16 @@ export function getBreakpointPrefix(cls: string): string | null {
 }
 
 /**
+ * Extract all variant prefixes from a class (dark:, hover:, sm:, etc.)
+ */
+export function getVariantPrefix(cls: string): string {
+  // Match all variants at the start of the class (sm:hover:dark:class becomes "sm:hover:dark:")
+  const variantPattern = /^(?:(?:sm|md|lg|xl|2xl|dark|light|hover|focus|active|disabled|group-hover|focus-within|focus-visible|first|last|odd|even|motion-safe|motion-reduce|print|portrait|landscape|placeholder|selection|marker|before|after|file|open|closed|data-\[.+?\]|aria-\[.+?\]):|!)*/;
+  const match = cls.match(variantPattern);
+  return match ? match[0] : '';
+}
+
+/**
  * Group classes by their breakpoint prefix
  */
 export function groupByBreakpoint(classes: string[]): Map<string | null, string[]> {
@@ -442,10 +464,33 @@ export function groupByBreakpoint(classes: string[]): Map<string | null, string[
 }
 
 /**
+ * Group classes by their full variant prefix (dark:, hover:, sm:hover:, etc.)
+ * This is more thorough than breakpoint grouping as it considers all variants
+ */
+export function groupByVariant(classes: string[]): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+
+  for (const cls of classes) {
+    const variant = getVariantPrefix(cls);
+    if (!groups.has(variant)) {
+      groups.set(variant, []);
+    }
+    groups.get(variant)!.push(cls);
+  }
+
+  return groups;
+}
+
+/**
  * Get the CSS property category for a Tailwind class
  */
 export function getCategory(cls: string): string | null {
-  const stripped = stripPrefixes(cls);
+  let stripped = stripPrefixes(cls);
+
+  // Handle !important modifier at the start (Tailwind's ! prefix)
+  if (stripped.startsWith('!')) {
+    stripped = stripped.slice(1);
+  }
 
   // Handle negative values
   const baseClass = stripped.startsWith('-') ? stripped.slice(1) : stripped;

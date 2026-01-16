@@ -344,8 +344,9 @@ function detectPagesRouterMethods(content: string): string[] {
  *
  * @param filePath - Relative file path (e.g., 'app/api/users/[id]/route.ts')
  * @returns URL path (e.g., '/api/users/[id]')
+ * @internal Exported for testing purposes
  */
-function extractNextJsRoutePath(filePath: string): string {
+export function extractNextJsRoutePath(filePath: string): string {
   // Remove app/ or src/app/ prefix and route.ts suffix
   let routePath = filePath
     .replace(/^(src\/)?app/, '')
@@ -364,8 +365,9 @@ function extractNextJsRoutePath(filePath: string): string {
  *
  * @param filePath - Relative file path (e.g., 'pages/api/users/[id].ts')
  * @returns URL path (e.g., '/api/users/[id]')
+ * @internal Exported for testing purposes
  */
-function extractNextJsPagesRoutePath(filePath: string): string {
+export function extractNextJsPagesRoutePath(filePath: string): string {
   // Remove pages/ or src/pages/ prefix and file extension
   let routePath = filePath
     .replace(/^(src\/)?pages/, '')

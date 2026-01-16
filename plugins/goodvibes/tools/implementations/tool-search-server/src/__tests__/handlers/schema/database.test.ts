@@ -174,6 +174,28 @@ export const users = pgTable('users', {
         expect(data.source).toBe('drizzle');
       });
 
+      it('should skip drizzle directory when it exists but has no *.schema.ts files', () => {
+        // Tests line 180: files.length === 0 branch
+        vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+          const pathStr = String(p);
+          if (pathStr.endsWith('schema.ts')) return false;
+          // drizzle directory exists
+          if (pathStr.includes('drizzle') && !pathStr.endsWith('.ts')) return true;
+          // sql schema exists as fallback
+          if (pathStr.endsWith('schema.sql')) return true;
+          return false;
+        });
+        // drizzle directory has no *.schema.ts files
+        vi.mocked(fs.readdirSync).mockReturnValue(['other-file.ts', 'readme.md'] as unknown as ReturnType<typeof fs.readdirSync>);
+        vi.mocked(fs.readFileSync).mockReturnValue(`CREATE TABLE users (id INTEGER PRIMARY KEY);`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Should fall through to SQL since drizzle dir had no *.schema.ts files
+        expect(data.source).toBe('sql');
+      });
+
       it('should try SQL schema locations when no ORM found', () => {
         vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
           const pathStr = String(p);
@@ -533,6 +555,34 @@ model Profile {
         )).toBe(true);
       });
 
+      it('should correctly set one-to-one type for non-array relation with @relation', () => {
+        // Tests line 304: isArray = false case with explicit @relation
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model Profile {
+  id     String @id
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+}
+
+model User {
+  id String @id
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // The relation should be one-to-one (not one-to-many) because user is not User[]
+        const profileToUserRelation = data.relations.find(r =>
+          r.from_table === 'Profile' &&
+          r.to_table === 'User' &&
+          r.from_column === 'userId'
+        );
+
+        expect(profileToUserRelation).toBeDefined();
+        expect(profileToUserRelation!.type).toBe('one-to-one');
+      });
+
       it('should parse @relation with fields and references', () => {
         vi.mocked(fs.readFileSync).mockReturnValue(`
 model Post {
@@ -557,6 +607,33 @@ model User {
         )).toBe(true);
       });
 
+      it('should handle @relation with more from columns than to columns', () => {
+        // Tests line 303: toColumns[i] || 'id' fallback when toColumns is shorter
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model OrderItem {
+  id       String @id
+  order    Order  @relation(fields: [orderId, productId], references: [id])
+  orderId  String
+  productId String
+}
+
+model Order {
+  id String @id
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // The second column should default to 'id' since references only has one column
+        expect(data.relations.some(r =>
+          r.from_table === 'OrderItem' &&
+          r.from_column === 'productId' &&
+          r.to_table === 'Order' &&
+          r.to_column === 'id'  // Should default to 'id'
+        )).toBe(true);
+      });
+
       it('should handle implicit relations without @relation directive', () => {
         vi.mocked(fs.readFileSync).mockReturnValue(`
 model User {
@@ -578,6 +655,102 @@ model Post {
           r.from_table === 'Post' &&
           r.to_table === 'User'
         )).toBe(true);
+      });
+
+      it('should populate references on scalar field with direct @relation(references:) directive', () => {
+        // This tests lines 326-332: when a scalar column has @relation with references
+        // directly on it (non-standard pattern but handled by the parser)
+        // The regex on line 323 looks for @relation(...references:...) on the scalar field
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model Post {
+  id       String @id
+  authorId String @relation(references: [id])
+  author   User   @relation(fields: [authorId], references: [id])
+}
+
+model User {
+  id    String @id
+  posts Post[]
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+        const postTable = data.tables.find(t => t.name === 'Post');
+        const authorIdColumn = postTable!.columns.find(c => c.name === 'authorId');
+
+        // The authorId scalar column should exist
+        expect(authorIdColumn).toBeDefined();
+        // The references should be populated from the @relation directive
+        expect(authorIdColumn!.references).toBeDefined();
+        expect(authorIdColumn!.references!.table).toBe('User');
+        expect(authorIdColumn!.references!.column).toBe('id');
+      });
+
+      it('should handle scalar field with @relation(references:) but no matching relation field', () => {
+        // Tests line 329 branch where relationField match fails (no fields: directive found)
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model Post {
+  id       String @id
+  authorId String @relation(references: [id])
+}
+
+model User {
+  id String @id
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+        const postTable = data.tables.find(t => t.name === 'Post');
+        const authorIdColumn = postTable!.columns.find(c => c.name === 'authorId');
+
+        // authorId should exist but references may not be populated (no matching relation field)
+        expect(authorIdColumn).toBeDefined();
+        // Without a relation field with fields:[authorId], references won't be populated
+        expect(authorIdColumn!.references).toBeUndefined();
+      });
+
+      it('should handle scalar field with @relation when targetModel cannot be determined', () => {
+        // Tests line 330-331 branch where relationField exists but targetModel extraction fails
+        // This happens when the relation field name doesn't have a type following it
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model Post {
+  id       String @id
+  authorId String @relation(references: [id])
+  author   @relation(fields: [authorId], references: [id])
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+        const postTable = data.tables.find(t => t.name === 'Post');
+        const authorIdColumn = postTable?.columns.find(c => c.name === 'authorId');
+
+        // authorId should exist, references may or may not be populated depending on parsing
+        expect(authorIdColumn).toBeDefined();
+      });
+
+      it('should handle targetModel regex failing after relationField is found', () => {
+        // Tests line 331 specifically: relationField matches but targetModel extraction fails
+        // This creates a scenario where `author` is found but there's no type after it
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model Post {
+  id       String @id
+  authorId String @relation(references: [id])
+  author @relation(fields: [authorId], references: [id])
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+        const postTable = data.tables.find(t => t.name === 'Post');
+        const authorIdColumn = postTable?.columns.find(c => c.name === 'authorId');
+
+        // authorId should exist but references should not be populated since targetModel fails
+        expect(authorIdColumn).toBeDefined();
+        // Without a valid targetModel, references won't be set
+        expect(authorIdColumn?.references).toBeUndefined();
       });
 
       it('should correctly identify relation type based on array syntax', () => {
@@ -680,6 +853,28 @@ model UserRole {
         // Both columns should be marked as primary key
         expect(table.columns.find(c => c.name === 'userId')!.primary_key).toBe(true);
         expect(table.columns.find(c => c.name === 'roleId')!.primary_key).toBe(true);
+      });
+
+      it('should handle @@id referencing non-existent column', () => {
+        // Tests line 377: when @@id references a column that doesn't exist
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+model UserRole {
+  userId String
+  roleId String
+
+  @@id([userId, nonExistentColumn])
+}
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+        const table = data.tables[0];
+
+        // userId should be marked as primary key
+        expect(table.columns.find(c => c.name === 'userId')!.primary_key).toBe(true);
+        // roleId should not be primary key (not in @@id)
+        expect(table.columns.find(c => c.name === 'roleId')!.primary_key).toBe(false);
+        // nonExistentColumn doesn't exist, so it's just skipped
       });
     });
 
@@ -1041,6 +1236,105 @@ export const nonExistentRelations = relations(nonExistent, ({ many }) => ({
 
         // Should not throw, just ignore the invalid relations
         expect(data.tables.length).toBeGreaterThan(0);
+      });
+
+      it('should avoid duplicate many() relations when already defined via references()', () => {
+        // This tests line 531: the duplicate check for many() relations
+        // When a relation already exists from .references(), many() should not duplicate it
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+export const users = pgTable('users', {
+  id: serial('id').primaryKey()
+});
+
+export const posts = pgTable('posts', {
+  id: serial('id').primaryKey(),
+  authorId: integer('author_id').references(() => users.id)
+});
+
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts)
+}));
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Count relations from users to posts - should not have duplicates
+        const userToPostsRelations = data.relations.filter(r =>
+          r.from_table === 'users' && r.to_table === 'posts'
+        );
+
+        // Should have exactly one relation from users to posts (the many())
+        // The posts->users relation from .references() is separate
+        expect(userToPostsRelations.length).toBe(1);
+      });
+
+      it('should skip duplicate many() relations in relations() helper', () => {
+        // This specifically tests line 531 where we check if a many() relation already exists
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+export const users = pgTable('users', {
+  id: serial('id').primaryKey()
+});
+
+export const posts = pgTable('posts', {
+  id: serial('id').primaryKey()
+});
+
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts),
+  morePosts: many(posts)
+}));
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Count relations from users to posts
+        const userToPostsRelations = data.relations.filter(r =>
+          r.from_table === 'users' && r.to_table === 'posts'
+        );
+
+        // Should have only one relation despite two many(posts) calls
+        expect(userToPostsRelations.length).toBe(1);
+      });
+
+      it('should skip duplicate one() relations when same relation already exists', () => {
+        // Tests lines 513-521: duplicate check for one() relations
+        // When the same one() relation is defined twice with identical from_table/to_table/from_column
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+export const users = pgTable('users', {
+  id: serial('id').primaryKey()
+});
+
+export const posts = pgTable('posts', {
+  id: serial('id').primaryKey(),
+  authorId: integer('author_id')
+});
+
+export const postsRelations = relations(posts, ({ one }) => ([
+  one(users, {
+    fields: [authorId],
+    references: [id]
+  }),
+  one(users, {
+    fields: [authorId],
+    references: [id]
+  })
+]));
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Count one-to-one relations from posts to users
+        const postsToUsersRelations = data.relations.filter(r =>
+          r.from_table === 'posts' &&
+          r.to_table === 'users' &&
+          r.type === 'one-to-one'
+        );
+
+        // Should deduplicate relations with same from_table/to_table/from_column
+        expect(postsToUsersRelations.length).toBe(1);
       });
     });
 
@@ -1577,6 +1871,127 @@ CREATE TABLE users (
 
         expect(table.columns).toHaveLength(3);
         expect(table.columns.find(c => c.name === 'email')!.nullable).toBe(false);
+      });
+
+      it('should handle FOREIGN KEY referencing non-existent column in current table', () => {
+        // Tests line 612: when FOREIGN KEY references a column that doesn't exist yet
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE posts (
+  id INTEGER PRIMARY KEY,
+  FOREIGN KEY (nonexistent_col) REFERENCES users(id)
+);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Should still create the table but not update any column references
+        expect(data.tables.some(t => t.name === 'posts')).toBe(true);
+        // The relation should still be tracked even if column doesn't exist
+        expect(data.relations.some(r => r.from_column === 'nonexistent_col')).toBe(true);
+      });
+
+      it('should handle CREATE INDEX on non-existent table', () => {
+        // Tests line 689: CREATE INDEX references a table that wasn't defined
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  email VARCHAR(255)
+);
+
+CREATE INDEX idx_nonexistent ON nonexistent_table(some_column);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Should still parse successfully, just not add the index
+        expect(data.tables.some(t => t.name === 'users')).toBe(true);
+        // The nonexistent_table should not appear in tables
+        expect(data.tables.every(t => t.name !== 'nonexistent_table')).toBe(true);
+      });
+
+      it('should handle table with empty columns block', () => {
+        // Tests line 589-595: empty lines when parsing column block
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE empty_table (
+);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Should create table with no columns
+        expect(data.tables.some(t => t.name === 'empty_table')).toBe(true);
+        const emptyTable = data.tables.find(t => t.name === 'empty_table');
+        expect(emptyTable!.columns).toHaveLength(0);
+      });
+
+      it('should handle table with trailing comma after last column', () => {
+        // Tests line 589: currentLine.trim() check when there's trailing comma
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  email VARCHAR(255),
+);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Should handle trailing comma gracefully
+        expect(data.tables.some(t => t.name === 'users')).toBe(true);
+      });
+
+      it('should skip lines that do not match column definition pattern', () => {
+        // Tests line 647: colMatch fails for non-column lines
+        // The regex expects: word type rest, so a line starting with non-word chars fails
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  ,
+  email VARCHAR(255)
+);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+        const table = data.tables.find(t => t.name === 'users');
+
+        // Should have 2 columns, the bare comma line should be skipped
+        expect(table!.columns).toHaveLength(2);
+      });
+
+      it('should handle consecutive commas in column block (empty entries)', () => {
+        // Tests line 589: empty currentLine.trim() at comma
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,,email VARCHAR(255)
+);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        // Should handle gracefully (behavior depends on parser)
+        expect(data.tables.some(t => t.name === 'users')).toBe(true);
+      });
+
+      it('should handle whitespace-only lines in column block', () => {
+        // Tests line 595: currentLine.trim() at end of block
+        vi.mocked(fs.readFileSync).mockReturnValue(`
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY
+
+);
+`);
+
+        const result = handleGetDatabaseSchema({});
+        const data = JSON.parse(result.content[0].text) as DatabaseSchemaResult;
+
+        expect(data.tables.some(t => t.name === 'users')).toBe(true);
+        const table = data.tables.find(t => t.name === 'users');
+        expect(table!.columns.some(c => c.name === 'id')).toBe(true);
       });
     });
   });

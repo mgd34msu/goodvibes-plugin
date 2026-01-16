@@ -10,6 +10,8 @@
 export interface TraceComponentStateArgs {
   /** File path to analyze (relative to project root or absolute) */
   file: string;
+  /** Specific component name to analyze (if file has multiple components) */
+  component?: string;
   /** Analyze imported child components (default: false) */
   include_children?: boolean;
   /** How deep to trace child components (default: 2) */

@@ -16,7 +16,7 @@ import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 
 // Import the handler and types
-import { handleCheckPermissions, type CheckPermissionsArgs, type PermissionType, type RiskLevel } from '../../../handlers/security/permissions.js';
+import { handleCheckPermissions, generateRecommendations, type CheckPermissionsArgs, type PermissionType, type RiskLevel, type PermissionFinding } from '../../../handlers/security/permissions.js';
 
 // Mock the modules
 vi.mock('fs/promises');
@@ -1283,7 +1283,99 @@ describe('permissions handler', () => {
         );
         expect(execRecommendations.length).toBeLessThanOrEqual(2);
       });
+
+      it('should handle high-risk APIs without explicit pattern recommendations', async () => {
+        // This test covers the branch where a high-risk finding has a pattern
+        // but the pattern lookup might return undefined (defensive code path)
+        // We test with process.kill which has a recommendation to ensure the
+        // positive case works, and the code handles missing recommendations gracefully
+        mockedFileExists.mockResolvedValue(true);
+        mockedFsPromises.stat.mockResolvedValue({
+          isDirectory: () => false,
+          isFile: () => true,
+        } as unknown as fsPromises.FileHandle['stat'] extends () => Promise<infer R> ? R : never);
+        // Use only high-risk APIs that have recommendations to verify they are included
+        mockedFsPromises.readFile.mockResolvedValue(`
+          process.kill(pid)
+          fs.rmSync("/dangerous/path")
+        `);
+
+        const result = await handleCheckPermissions({ path: 'dangerous.ts' });
+        const data = JSON.parse(result.content[0].text);
+
+        // Should have recommendations for the high-risk APIs
+        expect(data.recommendations.some((r: string) => r.includes('process.kill'))).toBe(true);
+        expect(data.recommendations.some((r: string) => r.includes('fs.rmSync'))).toBe(true);
+      });
     });
+
+    describe('generateRecommendations direct tests', () => {
+      it('should not add pattern recommendation when pattern lookup fails (line 562 false branch)', () => {
+        // This test directly calls generateRecommendations with a finding
+        // that has an API name not matching any PERMISSION_PATTERNS entry.
+        // This covers the false branch at line 562: `if (pattern?.recommendation)`
+        // where pattern is undefined because find() returns undefined.
+        const findings: PermissionFinding[] = [
+          {
+            type: 'process',
+            api: 'nonexistent.highRiskApi', // This API doesn't exist in PERMISSION_PATTERNS
+            file: 'test.ts',
+            line: 1,
+            risk_level: 'high', // Must be high-risk to enter the recommendation branch
+            description: 'Test high-risk API not in patterns',
+          },
+        ];
+
+        const recommendations = generateRecommendations(findings);
+
+        // Since the API doesn't match any pattern, no pattern-specific recommendation
+        // should be added. The function should handle this gracefully.
+        // No recommendations should include the nonexistent API name followed by
+        // a pattern recommendation (which would contain " - ")
+        const patternRecommendations = recommendations.filter(r =>
+          r.includes('nonexistent.highRiskApi') && r.includes(' - ')
+        );
+        expect(patternRecommendations.length).toBe(0);
+      });
+
+      it('should still generate general recommendations for high-risk process APIs', () => {
+        // Verify that general recommendations still work when pattern-specific ones fail
+        const findings: PermissionFinding[] = [
+          {
+            type: 'process',
+            api: 'exec', // This exists but we'll test the general recommendation
+            file: 'test.ts',
+            line: 1,
+            risk_level: 'high',
+            description: 'Exec call',
+          },
+        ];
+
+        const recommendations = generateRecommendations(findings);
+
+        // Should have the general exec recommendation
+        expect(recommendations.some(r => r.includes('execFile'))).toBe(true);
+      });
+
+      it('should generate general eval recommendation when eval finding exists', () => {
+        const findings: PermissionFinding[] = [
+          {
+            type: 'process',
+            api: 'eval',
+            file: 'test.ts',
+            line: 1,
+            risk_level: 'high',
+            description: 'Eval call',
+          },
+        ];
+
+        const recommendations = generateRecommendations(findings);
+
+        // Should have the general eval recommendation
+        expect(recommendations.some(r => r.includes('Avoid eval()'))).toBe(true);
+      });
+    });
+
 
     describe('empty results', () => {
       it('should return empty result when no files found', async () => {

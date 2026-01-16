@@ -140,7 +140,7 @@ function parseConflicts(content: string): Conflict[] {
   // 5. Theirs content
   // 6. Their ref (branch name after >>>>>>>)
   const conflictRegex =
-    /<<<<<<< ([^\n]*)\n([\s\S]*?)(?:\|\|\|\|\|\|\| ([^\n]*)\n([\s\S]*?))?=======\n([\s\S]*?)>>>>>>> ([^\n]*)\n?/g;
+    /<<<<<<< ?([^\n]*)\n([\s\S]*?)(?:\|\|\|\|\|\|\| ?([^\n]*)\n([\s\S]*?))?=======\n([\s\S]*?)>>>>>>> ?([^\n]*)\n?/g;
 
   let match: RegExpExecArray | null;
   let index = 0;

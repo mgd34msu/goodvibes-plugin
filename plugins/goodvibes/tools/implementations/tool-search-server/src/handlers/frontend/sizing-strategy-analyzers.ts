@@ -20,8 +20,10 @@ import { createElementIdentifier } from './sizing-strategy-utils.js';
 export interface SizingDimension {
   /** The Tailwind class or CSS value specified */
   specified: string;
-  /** How the size is determined */
-  strategy: string;
+  /** The sizing strategy type: fixed, percentage, viewport, content-based, flex-controlled, grid-controlled, auto, inherit */
+  strategy: SizingStrategyType;
+  /** Human-readable description of the sizing strategy */
+  description: string;
   /** Parent/ancestor constraints affecting this dimension */
   constrained_by?: string[];
 }
@@ -44,6 +46,10 @@ export interface GridBehavior {
   column: string;
   row: string;
   area?: string;
+  /** Numeric column span value if using col-span-X class */
+  column_span?: number;
+  /** Numeric row span value if using row-span-X class */
+  row_span?: number;
 }
 
 /**
@@ -149,7 +155,8 @@ export function analyzeWidthStrategy(element: ElementNode): SizingDimension {
 
   return {
     specified,
-    strategy: getStrategyDescription(strategy, element.width?.value),
+    strategy,
+    description: getStrategyDescription(strategy, element.width?.value),
     constrained_by: constraints.length > 0 ? constraints : undefined,
   };
 }
@@ -228,7 +235,8 @@ export function analyzeHeightStrategy(element: ElementNode): SizingDimension {
 
   return {
     specified,
-    strategy: getStrategyDescription(strategy, element.height?.value),
+    strategy,
+    description: getStrategyDescription(strategy, element.height?.value),
     constrained_by: constraints.length > 0 ? constraints : undefined,
   };
 }
@@ -241,7 +249,15 @@ export function analyzeHeightStrategy(element: ElementNode): SizingDimension {
  * Analyze flex behavior
  */
 export function analyzeFlexBehavior(element: ElementNode): FlexBehavior | undefined {
-  if (element.parent?.display !== 'flex' && element.parent?.display !== 'inline-flex') {
+  // Return flex behavior if:
+  // 1. Element has flex item classes (flex-grow, flex-shrink, flex-basis)
+  // 2. Element is itself a flex container
+  // 3. Parent is a flex container
+  const hasFlex = element.flexGrow !== undefined || element.flexShrink !== undefined || element.flexBasis !== undefined;
+  const isFlexContainer = element.display === 'flex' || element.display === 'inline-flex';
+  const parentIsFlexContainer = element.parent?.display === 'flex' || element.parent?.display === 'inline-flex';
+
+  if (!hasFlex && !isFlexContainer && !parentIsFlexContainer) {
     return undefined;
   }
 
@@ -266,14 +282,29 @@ export function analyzeFlexBehavior(element: ElementNode): FlexBehavior | undefi
  * Analyze grid behavior
  */
 export function analyzeGridBehavior(element: ElementNode): GridBehavior | undefined {
-  if (element.parent?.display !== 'grid' && element.parent?.display !== 'inline-grid') {
+  // Return grid behavior if:
+  // 1. Element has grid item classes (gridColumn, gridRow, gridArea)
+  // 2. Element is itself a grid container
+  // 3. Parent is a grid container
+  const hasGrid = element.gridColumn !== undefined || element.gridRow !== undefined || element.gridArea !== undefined;
+  const isGridContainer = element.display === 'grid' || element.display === 'inline-grid';
+  const parentIsGridContainer = element.parent?.display === 'grid' || element.parent?.display === 'inline-grid';
+
+  if (!hasGrid && !isGridContainer && !parentIsGridContainer) {
     return undefined;
   }
+
+  // Extract numeric span values if present
+  const columnSpan = element.gridColumn?.match(/span\s+(\d+)/)?.[1];
+  const rowSpan = element.gridRow?.match(/span\s+(\d+)/)?.[1];
 
   return {
     column: element.gridColumn || 'auto',
     row: element.gridRow || 'auto',
     area: element.gridArea,
+    // Include numeric span values for easier testing
+    ...(columnSpan ? { column_span: parseInt(columnSpan, 10) } : {}),
+    ...(rowSpan ? { row_span: parseInt(rowSpan, 10) } : {}),
   };
 }
 
@@ -286,32 +317,32 @@ export function analyzeGridBehavior(element: ElementNode): GridBehavior | undefi
  */
 export function getPositionContext(element: ElementNode): string {
   if (element.position === 'fixed') {
-    return 'Fixed to viewport';
+    return 'fixed to viewport';
   }
 
   if (element.position === 'absolute') {
     let current = element.parent;
     while (current) {
       if (current.position !== 'static') {
-        return `Absolute, relative to ${createElementIdentifier(current.tagName, current.classes, current.id)} (${current.position})`;
+        return `absolute, relative to ${createElementIdentifier(current.tagName, current.classes, current.id)} (${current.position})`;
       }
       current = current.parent;
     }
-    return 'Absolute, relative to initial containing block (no positioned ancestor)';
+    return 'absolute, relative to initial containing block (no positioned ancestor)';
   }
 
   if (element.position === 'sticky') {
     let current = element.parent;
     while (current) {
       if (current.overflowX !== 'visible' || current.overflowY !== 'visible') {
-        return `Sticky within ${createElementIdentifier(current.tagName, current.classes, current.id)} (overflow container)`;
+        return `sticky within ${createElementIdentifier(current.tagName, current.classes, current.id)} (overflow container)`;
       }
       current = current.parent;
     }
-    return 'Sticky within viewport';
+    return 'sticky within viewport';
   }
 
-  return element.position === 'relative' ? 'Relative (in normal flow, offset relative to self)' : 'Static (normal document flow)';
+  return element.position === 'relative' ? 'relative (in normal flow, offset relative to self)' : 'static (normal document flow)';
 }
 
 // =============================================================================
@@ -394,28 +425,47 @@ export function generateSummary(
 ): string {
   const parts: string[] = [];
 
+  // Helper to get strategy type from strategy_type field or parse from strategy description
+  const getStrategyType = (analysis: SizingDimension): SizingStrategyType => {
+    if (analysis.strategy_type) return analysis.strategy_type;
+    const s = (analysis.strategy || '').toLowerCase();
+    if (s.includes('fixed')) return 'fixed';
+    if (s.includes('percentage')) return 'percentage';
+    if (s.includes('flex')) return 'flex-controlled';
+    if (s.includes('grid')) return 'grid-controlled';
+    if (s.includes('viewport')) return 'viewport';
+    return 'auto';
+  };
+
+  const widthType = getStrategyType(widthAnalysis);
+  const heightType = getStrategyType(heightAnalysis);
+
   // Width summary
-  if (widthAnalysis.strategy.includes('Fixed')) {
+  if (widthType === 'fixed') {
     parts.push(`Width is fixed at ${element.width?.value || 'explicit value'}.`);
-  } else if (widthAnalysis.strategy.includes('Percentage')) {
+  } else if (widthType === 'percentage') {
     parts.push(`Width is ${element.width?.value || '100%'} of parent.`);
-  } else if (widthAnalysis.strategy.includes('flex')) {
+  } else if (widthType === 'flex-controlled') {
     parts.push(`Width is controlled by flex layout${flexBehavior?.will_grow ? ' and will grow to fill available space' : ''}.`);
-  } else if (widthAnalysis.strategy.includes('grid')) {
+  } else if (widthType === 'grid-controlled') {
     parts.push(`Width is determined by grid column placement.`);
+  } else if (widthType === 'viewport') {
+    parts.push(`Width is viewport-relative (${element.width?.value || 'vw'}).`);
   } else {
     parts.push(`Width is auto (determined by content).`);
   }
 
   // Height summary
-  if (heightAnalysis.strategy.includes('Fixed')) {
+  if (heightType === 'fixed') {
     parts.push(`Height is fixed at ${element.height?.value || 'explicit value'}.`);
-  } else if (heightAnalysis.strategy.includes('Percentage')) {
+  } else if (heightType === 'percentage') {
     parts.push(`Height is ${element.height?.value || '100%'} of parent.`);
-  } else if (heightAnalysis.strategy.includes('flex')) {
+  } else if (heightType === 'flex-controlled') {
     parts.push(`Height is controlled by flex layout.`);
-  } else if (heightAnalysis.strategy.includes('grid')) {
+  } else if (heightType === 'grid-controlled') {
     parts.push(`Height is determined by grid row placement.`);
+  } else if (heightType === 'viewport') {
+    parts.push(`Height is viewport-relative (${element.height?.value || 'vh'}).`);
   } else {
     parts.push(`Height is auto (determined by content).`);
   }

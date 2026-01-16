@@ -55,10 +55,9 @@ export function detectStackingIssues(
     const hasPosition = elem.classes.some((c) =>
       ['relative', 'absolute', 'fixed', 'sticky'].includes(c)
     );
-    // Note: flex/grid children can have z-index without position
-    const mightBeFlexChild =
-      !hasPosition && elem.creates_context && elem.context_reason === 'flex grid z';
-    return hasZ && !hasPosition && !mightBeFlexChild && !elem.creates_context;
+    // If element has z-index but no position, it's a potential issue
+    // (unless it's a flex/grid child - but we can't know that statically)
+    return hasZ && !hasPosition;
   });
 
   if (zWithoutPosition.length > 0) {

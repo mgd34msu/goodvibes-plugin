@@ -35,8 +35,10 @@ export interface CheckPermissionsArgs {
 
 /**
  * A single permission finding
+ *
+ * @internal Exported for testing purposes
  */
-interface PermissionFinding {
+export interface PermissionFinding {
   type: PermissionType;
   api: string;
   file: string;
@@ -549,8 +551,10 @@ function calculateRiskAssessment(findings: PermissionFinding[]): RiskLevel {
 
 /**
  * Generate recommendations based on findings
+ *
+ * @internal Exported for testing purposes
  */
-function generateRecommendations(findings: PermissionFinding[]): string[] {
+export function generateRecommendations(findings: PermissionFinding[]): string[] {
   const recommendations: string[] = [];
   const seenApis = new Set<string>();
 

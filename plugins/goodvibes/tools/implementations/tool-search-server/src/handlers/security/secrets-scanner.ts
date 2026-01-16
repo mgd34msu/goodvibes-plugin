@@ -308,8 +308,12 @@ const SCANNABLE_EXTENSIONS = [
  * @param value - The secret value to redact
  * @param visibleChars - Number of characters to show at start
  * @returns Redacted string with asterisks
+ *
+ * @example
+ * redactSecret('AKIAIOSFODNN7EXAMPLE') // Returns 'AKIA****************'
+ * redactSecret('abc', 4) // Returns '***' (full redaction for short values)
  */
-function redactSecret(value: string, visibleChars: number = 4): string {
+export function redactSecret(value: string, visibleChars: number = 4): string {
   if (value.length <= visibleChars) {
     return '*'.repeat(value.length);
   }
@@ -668,6 +672,9 @@ export async function handleScanForSecrets(args: ScanForSecretsArgs): Promise<To
 
   // Scan all files (with early exit support for presence-only checks)
   for (const filePath of filesToScan) {
+    // Defensive check: Skip if already scanned (Set deduplication above should prevent this,
+    // but this guard prevents double-scanning if paths are ever added with different normalizations)
+    /* istanbul ignore if -- @preserve Defensive code: Set deduplication prevents this */
     if (scannedFiles.has(filePath)) {
       continue;
     }

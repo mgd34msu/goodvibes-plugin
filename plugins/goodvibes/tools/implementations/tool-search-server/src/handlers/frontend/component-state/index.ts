@@ -58,6 +58,12 @@ import { isReactComponent, getComponentName } from './component-detector.js';
  */
 export async function handleTraceComponentState(args: TraceComponentStateArgs): Promise<ToolResponse> {
   const projectRoot = process.cwd();
+
+  // Validate file argument exists
+  if (!args.file) {
+    return createErrorResponse('file argument is required');
+  }
+
   const filePath = resolveFilePath(args.file, projectRoot);
 
   if (!fs.existsSync(filePath)) {
@@ -66,7 +72,7 @@ export async function handleTraceComponentState(args: TraceComponentStateArgs): 
 
   const ext = path.extname(filePath).toLowerCase();
   if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
-    return createErrorResponse(`File must be a React component file (.tsx, .jsx, .ts, .js)`, { file: args.file });
+    return createErrorResponse(`Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`, { file: args.file });
   }
 
   try {
@@ -79,14 +85,25 @@ export async function handleTraceComponentState(args: TraceComponentStateArgs): 
       ext === '.tsx' ? ts.ScriptKind.TSX : ext === '.jsx' ? ts.ScriptKind.JSX : ts.ScriptKind.TS
     );
 
-    // Find the first React component in the file
+    // Find React component in the file (optionally filtered by name)
     let componentNode: ts.Node | null = null;
     let componentName: string | null = null;
+    const targetComponent = args.component;
 
     function findComponent(node: ts.Node): void {
       if (!componentNode && isReactComponent(node, sourceFile)) {
-        componentNode = node;
-        componentName = getComponentName(node, sourceFile);
+        const name = getComponentName(node, sourceFile);
+        // If a specific component is requested, only match that one
+        if (targetComponent) {
+          if (name === targetComponent) {
+            componentNode = node;
+            componentName = name;
+          }
+        } else {
+          // No filter - take the first component found
+          componentNode = node;
+          componentName = name;
+        }
       }
       if (!componentNode) {
         ts.forEachChild(node, findComponent);
@@ -96,7 +113,7 @@ export async function handleTraceComponentState(args: TraceComponentStateArgs): 
     findComponent(sourceFile);
 
     if (!componentNode || !componentName) {
-      return createErrorResponse(`No React component found in file`, { file: args.file });
+      return createSuccessResponse({ message: 'No React components found in file', file: makeRelativePath(filePath, projectRoot) });
     }
 
     // Create analysis context

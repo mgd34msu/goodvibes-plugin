@@ -267,7 +267,9 @@ export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolRespon
   const errorRegex = /(.+)\((\d+),(\d+)\):\s+error\s+(TS\d+):\s+(.+)/g;
   let match;
 
-  while ((match = errorRegex.exec(result.stdout + result.stderr)) !== null) {
+  // Combine stdout and stderr with newline separator to ensure errors are parsed correctly
+  const combinedOutput = result.stdout + '\n' + result.stderr;
+  while ((match = errorRegex.exec(combinedOutput)) !== null) {
     // Normalize file path to be relative to project root for cleaner output
     let filePath = match[1];
     if (path.isAbsolute(filePath)) {

@@ -134,7 +134,7 @@ function hashError(stderr: string, exitCode: number): string {
     .slice(0, 500);                 // Limit size
 
   const content = `${exitCode}:${normalizedStderr}`;
-  return crypto.createHash('md5').update(content).digest('hex').slice(0, 12);
+  return crypto.createHash('md5').update(content).digest('hex').slice(0, 16);
 }
 
 /**

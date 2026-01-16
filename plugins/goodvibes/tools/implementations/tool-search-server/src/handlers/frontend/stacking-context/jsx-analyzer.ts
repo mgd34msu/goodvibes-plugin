@@ -8,7 +8,7 @@
 
 import ts from 'typescript';
 import type { ElementInfo } from './types.js';
-import { createsStackingContext, extractZIndex } from './context-rules.js';
+import { createsStackingContext, extractZIndex, extractPosition } from './context-rules.js';
 
 /**
  * Extract CSS classes from a JSX className attribute
@@ -120,12 +120,14 @@ export function analyzeJsxFile(
       // Check if this creates a stacking context
       const { creates, reason } = createsStackingContext(classes);
       const z_index = extractZIndex(classes);
+      const position = extractPosition(classes);
 
       const elementInfo: ElementInfo = {
         element: `${tagName}:${line}`,
         line,
         classes,
         z_index,
+        position,
         creates_context: creates,
         context_reason: reason,
         parent_index: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,

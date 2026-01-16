@@ -152,6 +152,20 @@ function convertNavigationTreeItem(
   const start = sourceFile.getLineAndCharacterOfPosition(firstSpan.start);
   const end = sourceFile.getLineAndCharacterOfPosition(firstSpan.start + firstSpan.length);
 
+  // Determine the kind - TypeScript reports 'module' for both ES modules and namespaces
+  // Check the source text to distinguish between them
+  let kind = node.kind;
+  if (kind === ts.ScriptElementKind.moduleElement) {
+    // Check if this is a namespace declaration by looking at the source text
+    const sourceText = sourceFile.getFullText();
+    const spanStart = firstSpan.start;
+    // Look for 'namespace' keyword before the declaration
+    const textBefore = sourceText.slice(Math.max(0, spanStart - 50), spanStart + 20);
+    if (/\bnamespace\s+/.test(textBefore)) {
+      kind = 'namespace' as ts.ScriptElementKind;
+    }
+  }
+
   // Process children recursively
   const children: DocumentSymbol[] = [];
   if (node.childItems && node.childItems.length > 0) {
@@ -165,7 +179,7 @@ function convertNavigationTreeItem(
 
   return {
     name: node.text,
-    kind: getSymbolKind(node.kind),
+    kind: getSymbolKind(kind),
     line: start.line + 1, // Convert to 1-based
     column: start.character + 1,
     end_line: end.line + 1,

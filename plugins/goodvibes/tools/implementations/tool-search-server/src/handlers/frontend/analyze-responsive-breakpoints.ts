@@ -18,6 +18,7 @@ export {
   type PropertyTransition,
   type PropertyChange,
   type ElementAnalysis,
+  type Issue,
   type Warning,
   type AnalysisSummary,
   type ToolResponse,
