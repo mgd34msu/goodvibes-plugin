@@ -48,6 +48,14 @@ export function getProjectRoot(): string {
   return process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
 
+/**
+ * Fuse.js configuration for fuzzy searching registry entries.
+ * Weighted search across name, description, and keywords fields.
+ * @property {Array} keys - Searchable fields with weights (description highest at 0.4)
+ * @property {number} threshold - Match sensitivity (0.4 = moderately fuzzy)
+ * @property {boolean} includeScore - Include relevance scores in results
+ * @property {boolean} ignoreLocation - Match anywhere in string, not just start
+ */
 export const FUSE_OPTIONS: IFuseOptions<RegistryEntry> = {
   keys: [
     { name: 'name', weight: 0.3 },
@@ -59,6 +67,12 @@ export const FUSE_OPTIONS: IFuseOptions<RegistryEntry> = {
   ignoreLocation: true,
 };
 
+/**
+ * Maps hook event names to their corresponding script filenames.
+ * Used to locate and execute hook scripts in response to Claude events.
+ * @example
+ * const script = HOOK_SCRIPT_MAP['SessionStart']; // 'session-start.js'
+ */
 export const HOOK_SCRIPT_MAP: Record<string, string> = {
   SessionStart: 'session-start.js',
   PreToolUse: 'pre-tool-use.js',

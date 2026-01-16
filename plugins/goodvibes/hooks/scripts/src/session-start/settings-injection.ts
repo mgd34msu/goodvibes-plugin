@@ -15,27 +15,39 @@ import { PLUGIN_ROOT } from '../shared/constants.js';
 import { fileExists } from '../shared/file-utils.js';
 import { debug, logError } from '../shared/logging.js';
 
-/** Structure for a single hook entry */
+/**
+ * Structure for a single hook entry in settings.json.
+ * Defines the command to execute when a hook is triggered.
+ */
 interface HookEntry {
   type: string;
   command: string;
   timeout?: number;
 }
 
-/** Structure for a matcher with its hooks */
+/**
+ * Structure for a matcher with its hooks.
+ * Matches patterns (e.g., '*') and associates hook entries.
+ */
 interface HookMatcher {
   matcher: string;
   hooks: HookEntry[];
 }
 
-/** Structure for Claude settings hooks section */
+/**
+ * Structure for Claude settings hooks section.
+ * Maps hook types (SubagentStart, SubagentStop, etc.) to matchers.
+ */
 interface ClaudeHooks {
   SubagentStart?: HookMatcher[];
   SubagentStop?: HookMatcher[];
   [key: string]: HookMatcher[] | undefined;
 }
 
-/** Structure for .claude/settings.json */
+/**
+ * Structure for .claude/settings.json.
+ * Contains hooks configuration and other project settings.
+ */
 interface ClaudeSettings {
   hooks?: ClaudeHooks;
   [key: string]: unknown;

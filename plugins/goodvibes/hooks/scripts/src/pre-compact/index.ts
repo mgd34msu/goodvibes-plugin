@@ -31,7 +31,14 @@ import {
 import type { SessionAnalytics } from '../shared/index.js';
 
 /**
- * Generate a session summary from analytics and state
+ * Generates a human-readable session summary from analytics and state.
+ * Includes session metadata, tool usage counts, validation stats,
+ * list of modified files, and transcript context.
+ *
+ * @param analytics - Session analytics data or null if unavailable
+ * @param modifiedFiles - Array of file paths modified during the session
+ * @param transcriptSummary - Summary extracted from conversation transcript
+ * @returns Formatted multi-line summary string
  */
 function generateSessionSummary(
   analytics: SessionAnalytics | null,
@@ -77,7 +84,13 @@ function generateSessionSummary(
   return lines.join('\n');
 }
 
-/** Main entry point for pre-compact hook. Saves session context before compression. */
+/**
+ * Main entry point for pre-compact hook.
+ * Saves important session context before context compression occurs.
+ * Creates a checkpoint commit, generates session summary, and backs up analytics.
+ *
+ * @returns Promise that resolves when hook processing completes
+ */
 async function runPreCompactHook(): Promise<void> {
   try {
     debug('PreCompact hook starting');

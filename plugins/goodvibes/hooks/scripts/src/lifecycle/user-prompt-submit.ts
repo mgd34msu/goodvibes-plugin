@@ -14,7 +14,14 @@ import {
   isTestEnvironment,
 } from '../shared/index.js';
 
-/** Main entry point for user-prompt-submit hook. Can add context or validate prompts. */
+/**
+ * Main entry point for user-prompt-submit hook.
+ *
+ * Runs before Claude processes user input. Can be extended to add
+ * context injection based on prompt content or validate prompts.
+ *
+ * @internal
+ */
 async function runUserPromptSubmitHook(): Promise<void> {
   try {
     debug('UserPromptSubmit hook starting');

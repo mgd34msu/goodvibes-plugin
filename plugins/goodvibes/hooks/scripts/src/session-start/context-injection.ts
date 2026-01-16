@@ -28,7 +28,10 @@ import {
 } from '../context/index.js';
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
 
-/** Width of the separator line in context output */
+/**
+ * Width of the separator line in context output.
+ * Used for visual separation between context sections.
+ */
 const SEPARATOR_WIDTH = 50;
 
 /** Result of gathering and formatting session context */

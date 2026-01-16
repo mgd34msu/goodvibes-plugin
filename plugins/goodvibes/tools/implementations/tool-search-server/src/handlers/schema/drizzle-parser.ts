@@ -9,7 +9,21 @@ import { ToolResponse } from '../../types.js';
 import { Column, Relation, Table } from './types.js';
 
 /**
- * Parse Drizzle schema
+ * Parses a Drizzle ORM schema file and extracts table definitions, columns, and relations.
+ *
+ * Searches for schema files in common locations: drizzle/schema.ts, src/db/schema.ts,
+ * src/schema.ts, and db/schema.ts. Supports pgTable, mysqlTable, and sqliteTable definitions.
+ *
+ * @param projectPath - The root path of the project to search for Drizzle schema
+ * @param filterTables - Optional array of table names to include; if empty, all tables are returned
+ * @returns A ToolResponse containing JSON with source, tables array, and raw_path
+ * @throws Error if no Drizzle schema file is found in any of the common locations
+ *
+ * @example
+ * ```typescript
+ * const result = parseDrizzleSchema('/path/to/project', ['users', 'posts']);
+ * // Returns filtered tables matching the specified names
+ * ```
  */
 export function parseDrizzleSchema(projectPath: string, filterTables?: string[]): ToolResponse {
   // Look for drizzle schema files

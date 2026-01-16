@@ -5,6 +5,21 @@
 import * as path from 'path';
 import { ValidationIssue, ValidationContext } from './types.js';
 
+/**
+ * Runs structural validation checks on a file.
+ * Validates exports, React component naming, hook rules, file size, and index files.
+ * @param ctx - Validation context containing file content and metadata
+ * @returns Array of validation issues found (empty if file passes all checks)
+ * @example
+ * const issues = runStructureChecks({
+ *   content: fileContent,
+ *   lines: fileContent.split('\n'),
+ *   file: '/src/components/Button.tsx',
+ *   ext: '.tsx',
+ *   isTypeScript: true,
+ *   isReact: true
+ * });
+ */
 export function runStructureChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 

@@ -14,18 +14,36 @@ import * as path from 'path';
 import { ToolResponse } from '../../types.js';
 import { PROJECT_ROOT } from '../../config.js';
 
-/** Arguments for get_api_routes tool */
+/**
+ * Arguments for the get_api_routes MCP tool.
+ * @property path - Optional project path relative to PROJECT_ROOT
+ * @property framework - Target framework to parse; 'auto' detects from package.json
+ */
 export interface GetApiRoutesArgs {
+  /** Project path relative to PROJECT_ROOT (defaults to '.') */
   path?: string;
+  /** Framework to parse routes for; 'auto' detects from package.json */
   framework?: 'nextjs' | 'express' | 'fastify' | 'hono' | 'auto';
 }
 
-/** Single route definition */
+/**
+ * Single API route definition extracted from source code.
+ * @property method - HTTP method (GET, POST, PUT, DELETE, etc.)
+ * @property path - URL path pattern (e.g., '/api/users/:id')
+ * @property handler_file - Relative path to the file containing the handler
+ * @property handler_line - Line number where the handler is defined
+ * @property middleware - Optional array of middleware function names
+ */
 export interface ApiRoute {
+  /** HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS) */
   method: string;
+  /** URL path pattern (e.g., '/api/users/[id]') */
   path: string;
+  /** Relative path to the handler file */
   handler_file: string;
+  /** Line number where the route handler is defined */
   handler_line: number;
+  /** Middleware function names applied to this route */
   middleware?: string[];
 }
 

@@ -9,7 +9,21 @@ import { ToolResponse } from '../../types.js';
 import { Column, Relation, Table } from './types.js';
 
 /**
- * Parse TypeORM schema
+ * Parses TypeORM entity files and extracts table definitions, columns, and relations.
+ *
+ * Searches for entity files in common locations: src/entities, src/entity, entities, and entity.
+ * Parses @Entity, @Column, @PrimaryGeneratedColumn, and relation decorators.
+ *
+ * @param projectPath - The root path of the project to search for TypeORM entities
+ * @param filterTables - Optional array of table/entity names to include; if empty, all are returned
+ * @returns A ToolResponse containing JSON with source, tables array, and entity_dir
+ * @throws Error if no TypeORM entity directory is found
+ *
+ * @example
+ * ```typescript
+ * const result = parseTypeORMSchema('/path/to/project');
+ * // Returns: { content: [{ type: 'text', text: '{"source":"typeorm","tables":[...],...}' }] }
+ * ```
  */
 export function parseTypeORMSchema(projectPath: string, filterTables?: string[]): ToolResponse {
   // Look for TypeORM entity files

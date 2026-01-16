@@ -50,13 +50,32 @@ import type { MemoryFailure } from '../types/memory.js';
 
 
 /**
- * Type guard to check if a value is a record object
+ * Type guard to check if a value is a non-null, non-array object.
+ * Used to safely access properties on unknown values from hook input.
+ *
+ * @param value - The value to check
+ * @returns True if value is a plain object (not null, not array)
+ *
+ * @example
+ * if (isRecord(input)) {
+ *   const error = input.error;  // Safe property access
+ * }
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Main entry point for post-tool-use-failure hook. Implements progressive fix loop with research hints. */
+/**
+ * Main entry point for post-tool-use-failure hook.
+ * Implements a 3-phase progressive fix loop with research hints:
+ *   - Phase 1: Raw attempts with existing knowledge
+ *   - Phase 2: Include official documentation search hints
+ *   - Phase 3: Include community documentation search hints
+ *
+ * Tracks error state, retry counts, and logs failures to memory when exhausted.
+ *
+ * @returns Promise that resolves when hook processing completes
+ */
 async function runPostToolUseFailureHook(): Promise<void> {
   try {
     debug('PostToolUseFailure hook starting');

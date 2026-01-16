@@ -11,7 +11,10 @@ import { createDefaultState } from '../types/state.js';
 
 import type { HooksState } from '../types/state.js';
 
-/** Relative path to the state file within .goodvibes directory. */
+/**
+ * Relative path to the state file within .goodvibes directory.
+ * This file stores persistent hooks state across sessions.
+ */
 const STATE_FILE = 'state/hooks-state.json';
 
 /**

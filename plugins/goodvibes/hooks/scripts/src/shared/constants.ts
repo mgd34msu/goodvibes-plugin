@@ -7,8 +7,19 @@
 import * as path from 'path';
 
 /**
- * Package manager lockfiles for detection.
- * Used to identify which package manager a project uses (pnpm, yarn, npm, or bun).
+ * Package manager lockfile names in priority order.
+ *
+ * Used to detect which package manager a project uses by checking
+ * for the presence of these files. Order determines preference when
+ * multiple lockfiles exist.
+ *
+ * @example
+ * // Check for lockfiles to detect package manager
+ * for (const lockfile of LOCKFILES) {
+ *   if (await fileExists(path.join(cwd, lockfile))) {
+ *     return lockfile; // Found preferred package manager
+ *   }
+ * }
  */
 export const LOCKFILES = [
   'pnpm-lock.yaml',

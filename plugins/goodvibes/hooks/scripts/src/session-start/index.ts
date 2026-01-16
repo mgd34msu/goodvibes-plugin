@@ -48,7 +48,10 @@ import { injectSettings } from './settings-injection.js';
 
 import type { HooksState } from '../types/state.js';
 
-/** Default recovery info when crash recovery check fails */
+/**
+ * Default recovery info when crash recovery check fails.
+ * Used as a fallback to ensure the hook continues gracefully.
+ */
 const DEFAULT_RECOVERY_INFO: RecoveryInfo = {
   needsRecovery: false,
   previousFeature: null,

@@ -19,14 +19,28 @@ export const STDIN_TIMEOUT_MS = parseInt(
   10
 );
 
-/** Triggers that determine when quality checkpoints should run. */
+/**
+ * Triggers that determine when quality checkpoints should run.
+ *
+ * @property fileCountThreshold - Number of file changes before triggering a checkpoint
+ * @property afterAgentComplete - Whether to trigger after an agent completes
+ * @property afterMajorChange - Whether to trigger after major changes
+ */
 export const CHECKPOINT_TRIGGERS = {
   fileCountThreshold: 5,
   afterAgentComplete: true,
   afterMajorChange: true,
 };
 
-/** Default quality gate checks with auto-fix commands. */
+/**
+ * Default quality gate checks with auto-fix commands.
+ *
+ * Each gate has:
+ * - name: Display name for the check
+ * - check: Command to run for validation
+ * - autoFix: Command to auto-fix issues (null if not available)
+ * - blocking: Whether failures should block the workflow
+ */
 export const QUALITY_GATES = [
   {
     name: 'TypeScript',

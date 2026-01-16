@@ -9,7 +9,22 @@ import { ToolResponse } from '../../types.js';
 import { Column, Relation, Index, Table } from './types.js';
 
 /**
- * Parse SQL schema
+ * Parses raw SQL schema files and extracts CREATE TABLE statements.
+ *
+ * Searches for SQL files in common locations: schema.sql, db/schema.sql, sql/schema.sql,
+ * database/schema.sql, and migrations/schema.sql. Parses column definitions, foreign keys,
+ * and index constraints.
+ *
+ * @param projectPath - The root path of the project to search for SQL schema files
+ * @param filterTables - Optional array of table names to include; if empty, all tables are returned
+ * @returns A ToolResponse containing JSON with source, tables array, and raw_path
+ * @throws Error if no SQL schema file is found
+ *
+ * @example
+ * ```typescript
+ * const result = parseSQLSchema('/path/to/project');
+ * // Parses CREATE TABLE statements and returns structured table data
+ * ```
  */
 export function parseSQLSchema(projectPath: string, filterTables?: string[]): ToolResponse {
   // Look for SQL schema files

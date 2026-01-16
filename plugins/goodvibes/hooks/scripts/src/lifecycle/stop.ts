@@ -24,7 +24,12 @@ import {
 
 import type { HookResponse } from '../shared/index.js';
 
-/** Creates a hook response with optional system message. */
+/**
+ * Creates a hook response with optional system message.
+ *
+ * @param options - Optional configuration with systemMessage
+ * @returns A HookResponse object with continue=true
+ */
 function createResponse(options?: { systemMessage?: string }): HookResponse {
   return {
     continue: true,
@@ -32,10 +37,20 @@ function createResponse(options?: { systemMessage?: string }): HookResponse {
   };
 }
 
-/** Milliseconds per minute for duration calculation. */
+/**
+ * Milliseconds per minute for duration calculation.
+ * @internal
+ */
 const MS_PER_MINUTE = 60000;
 
-/** Main entry point for stop hook. Finalizes analytics and cleans up temp files. */
+/**
+ * Main entry point for stop hook.
+ *
+ * Finalizes session analytics, creates a summary file, and cleans up
+ * temporary cache files. Called when the Claude Code session ends.
+ *
+ * @internal
+ */
 async function runStopHook(): Promise<void> {
   try {
     debug('Stop hook starting');

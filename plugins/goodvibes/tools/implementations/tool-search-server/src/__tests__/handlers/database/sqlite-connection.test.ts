@@ -43,16 +43,35 @@ const createMockDatabase = (overrides: Partial<{
   ...overrides,
 });
 
-// Mock database constructor - when a function returns an object, `new` uses that object
-// This mock tracks calls while returning a proper mock database
-function MockDatabase(this: unknown, filepath: string, options?: { readonly?: boolean; timeout?: number }) {
-  return createMockDatabase({
-    name: filepath,
-    memory: filepath === ':memory:',
-    readonly: options?.readonly ?? false,
-  });
-}
-const mockDatabaseConstructor = vi.fn(MockDatabase);
+// Mock database constructor - using class syntax as required by Vitest for constructor mocks
+const mockDatabaseConstructor = vi.fn(class MockDatabase {
+  prepare: ReturnType<typeof vi.fn>;
+  exec: ReturnType<typeof vi.fn>;
+  pragma: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+  open: boolean;
+  inTransaction: boolean;
+  name: string;
+  memory: boolean;
+  readonly: boolean;
+
+  constructor(filepath: string, options?: { readonly?: boolean; timeout?: number }) {
+    const db = createMockDatabase({
+      name: filepath,
+      memory: filepath === ':memory:',
+      readonly: options?.readonly ?? false,
+    });
+    this.prepare = db.prepare;
+    this.exec = db.exec;
+    this.pragma = db.pragma;
+    this.close = db.close;
+    this.open = db.open;
+    this.inTransaction = db.inTransaction;
+    this.name = db.name;
+    this.memory = db.memory;
+    this.readonly = db.readonly;
+  }
+});
 
 // Mock for better-sqlite3 module - track import attempts
 let driverLoadError: Error | null = null;
@@ -470,7 +489,7 @@ describe('withConnection helper', () => {
 
     // Create mock that captures constructor calls
     mockDatabaseConstructor.mockClear();
-    mockDatabaseConstructor.mockImplementation((filepath, options) => {
+    mockDatabaseConstructor.mockImplementation(function(filepath, options) {
       const db = createMockDatabase({
         name: filepath,
         memory: filepath === ':memory:',
@@ -627,7 +646,7 @@ describe('withConnection helper', () => {
     });
 
     it('should create separate connections for different filepaths', async () => {
-      mockDatabaseConstructor.mockImplementation((filepath) => createMockDatabase({ name: filepath }));
+      mockDatabaseConstructor.mockImplementation(function(filepath) { return createMockDatabase({ name: filepath }); });
 
       await withConnection({ filepath: '/path/to/db1.sqlite' }, () => 'db1');
       await withConnection({ filepath: '/path/to/db2.sqlite' }, () => 'db2');
@@ -639,7 +658,7 @@ describe('withConnection helper', () => {
   describe('database operations', () => {
     it('should allow executing prepare().all()', async () => {
       const mockRows = [{ id: 1, name: 'Test' }];
-      mockDatabaseConstructor.mockImplementation(() => {
+      mockDatabaseConstructor.mockImplementation(function() {
         const db = createMockDatabase();
         db.prepare = vi.fn().mockReturnValue({
           all: vi.fn().mockReturnValue(mockRows),
@@ -660,7 +679,7 @@ describe('withConnection helper', () => {
 
     it('should allow executing prepare().run()', async () => {
       const mockResult = { changes: 1, lastInsertRowid: 5 };
-      mockDatabaseConstructor.mockImplementation(() => {
+      mockDatabaseConstructor.mockImplementation(function() {
         const db = createMockDatabase();
         db.prepare = vi.fn().mockReturnValue({
           all: vi.fn(),
@@ -681,7 +700,7 @@ describe('withConnection helper', () => {
 
     it('should allow executing prepare().get()', async () => {
       const mockRow = { id: 1, name: 'Test' };
-      mockDatabaseConstructor.mockImplementation(() => {
+      mockDatabaseConstructor.mockImplementation(function() {
         const db = createMockDatabase();
         db.prepare = vi.fn().mockReturnValue({
           all: vi.fn(),
@@ -702,7 +721,7 @@ describe('withConnection helper', () => {
 
     it('should allow executing exec()', async () => {
       const execFn = vi.fn();
-      mockDatabaseConstructor.mockImplementation(() => {
+      mockDatabaseConstructor.mockImplementation(function() {
         const db = createMockDatabase();
         db.exec = execFn;
         return db;
@@ -718,7 +737,7 @@ describe('withConnection helper', () => {
 
     it('should allow executing pragma()', async () => {
       const pragmaFn = vi.fn().mockReturnValue(4096);
-      mockDatabaseConstructor.mockImplementation(() => {
+      mockDatabaseConstructor.mockImplementation(function() {
         const db = createMockDatabase();
         db.pragma = pragmaFn;
         return db;
@@ -746,7 +765,7 @@ describe('Connection pool key generation', () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockDatabaseConstructor.mockClear();
-    mockDatabaseConstructor.mockImplementation((filepath, options) => {
+    mockDatabaseConstructor.mockImplementation(function(filepath, options) {
       return createMockDatabase({
         name: filepath,
         memory: filepath === ':memory:',
@@ -802,7 +821,7 @@ describe('Database pragma configuration', () => {
 
     pragmaFn = vi.fn();
     mockDatabaseConstructor.mockClear();
-    mockDatabaseConstructor.mockImplementation((filepath, options) => {
+    mockDatabaseConstructor.mockImplementation(function(filepath, options) {
       const db = createMockDatabase({
         name: filepath,
         readonly: options?.readonly ?? false,
@@ -900,7 +919,7 @@ describe('Driver loading', () => {
   });
 
   it('should load better-sqlite3 driver', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
@@ -917,7 +936,7 @@ describe('Driver loading', () => {
     withConnection = module.withConnection;
     shutdownConnectionPool();
 
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
@@ -944,7 +963,7 @@ describe('Connection timeout handling', () => {
     vi.useFakeTimers();
 
     mockDatabaseConstructor.mockClear();
-    mockDatabaseConstructor.mockImplementation((filepath, options) => {
+    mockDatabaseConstructor.mockImplementation(function(filepath, options) {
       return createMockDatabase({
         name: filepath,
         readonly: options?.readonly ?? false,
@@ -1025,7 +1044,7 @@ describe('Idle connection cleanup', () => {
 
   it('should close idle connections after timeout', async () => {
     const closeFn = vi.fn();
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase();
       db.close = closeFn;
       return db;
@@ -1043,7 +1062,7 @@ describe('Idle connection cleanup', () => {
 
   it('should not close connections that are in use', async () => {
     const closeFn = vi.fn();
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase();
       db.close = closeFn;
       return db;
@@ -1071,7 +1090,7 @@ describe('Idle connection cleanup', () => {
     const closeFn = vi.fn().mockImplementation(() => {
       throw new Error('Close failed');
     });
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase();
       db.close = closeFn;
       return db;
@@ -1087,7 +1106,7 @@ describe('Idle connection cleanup', () => {
 
   it('should remove empty pool entries during cleanup', async () => {
     const closeFn = vi.fn();
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase();
       db.close = closeFn;
       return db;
@@ -1135,7 +1154,7 @@ describe('Pool shutdown', () => {
 
   it('should close all open connections on shutdown', async () => {
     const closeFn = vi.fn();
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase();
       db.close = closeFn;
       return db;
@@ -1155,7 +1174,7 @@ describe('Pool shutdown', () => {
     const closeFn = vi.fn().mockImplementation(() => {
       throw new Error('Close failed');
     });
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase();
       db.close = closeFn;
       return db;
@@ -1169,7 +1188,7 @@ describe('Pool shutdown', () => {
 
   it('should not close already closed connections', async () => {
     const closeFn = vi.fn();
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       const db = createMockDatabase({ open: false });
       db.close = closeFn;
       return db;
@@ -1184,7 +1203,7 @@ describe('Pool shutdown', () => {
 
   it('should clear all pool entries after shutdown', async () => {
     mockDatabaseConstructor.mockClear();
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
@@ -1223,7 +1242,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should handle special :memory: filepath', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
@@ -1231,7 +1250,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should handle complex filepaths with special characters', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: '/path/with spaces/and-dashes/db.sqlite' }, () => 'done');
 
@@ -1242,7 +1261,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should propagate database errors', async () => {
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       throw new Error('Database connection failed');
     });
 
@@ -1252,7 +1271,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should propagate callback errors', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await expect(
       withConnection({ filepath: ':memory:' }, () => {
@@ -1262,7 +1281,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should handle null return from callback', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     const result = await withConnection({ filepath: ':memory:' }, () => null);
 
@@ -1270,7 +1289,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should handle undefined return from callback', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     const result = await withConnection({ filepath: ':memory:' }, () => undefined);
 
@@ -1278,7 +1297,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should handle empty object return from callback', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     const result = await withConnection({ filepath: ':memory:' }, () => ({}));
 
@@ -1286,7 +1305,7 @@ describe('Edge cases and error handling', () => {
   });
 
   it('should handle array return from callback', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     const result = await withConnection({ filepath: ':memory:' }, () => [1, 2, 3]);
 
@@ -1308,7 +1327,7 @@ describe('Connection pool max connections', () => {
     vi.useFakeTimers();
 
     mockDatabaseConstructor.mockClear();
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     const module = await import('../../../handlers/database/sqlite-connection.js');
     shutdownConnectionPool = module.shutdownConnectionPool;
@@ -1444,7 +1463,7 @@ describe('Connection state tracking', () => {
     const now = Date.now();
     vi.setSystemTime(now);
 
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
@@ -1453,7 +1472,7 @@ describe('Connection state tracking', () => {
   });
 
   it('should update lastUsed time on release', async () => {
-    mockDatabaseConstructor.mockImplementation(() => createMockDatabase());
+    mockDatabaseConstructor.mockImplementation(function() { return createMockDatabase(); });
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
@@ -1466,7 +1485,7 @@ describe('Connection state tracking', () => {
 
   it('should skip closed connections when finding available', async () => {
     let connectionCount = 0;
-    mockDatabaseConstructor.mockImplementation(() => {
+    mockDatabaseConstructor.mockImplementation(function() {
       connectionCount++;
       const db = createMockDatabase();
       // First connection will be "closed" after use

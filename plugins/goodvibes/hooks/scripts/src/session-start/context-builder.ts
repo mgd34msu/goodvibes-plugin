@@ -36,7 +36,10 @@ import { debug } from '../shared/index.js';
 
 import { formatRecoveryContext, type RecoveryInfo } from './crash-recovery.js';
 
-/** Width of section separator lines */
+/**
+ * Width of section separator lines in characters.
+ * Used for visual separation between context sections.
+ */
 const SECTION_SEPARATOR_LENGTH = 50;
 
 /** Result of the context gathering process */

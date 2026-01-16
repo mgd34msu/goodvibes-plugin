@@ -46,11 +46,14 @@ vi.mock('../../../handlers/lsp/utils.js', () => ({
   }),
 }));
 
-// Mock find-tests module
-const mockHandleFindTestsForFile = vi.fn().mockResolvedValue({
-  isError: false,
-  content: [{ type: 'text', text: JSON.stringify({ tests: [], count: 0 }) }],
-});
+// Mock find-tests module - use vi.hoisted to create the mock before hoisting
+const { mockHandleFindTestsForFile } = vi.hoisted(() => ({
+  mockHandleFindTestsForFile: vi.fn().mockResolvedValue({
+    isError: false,
+    content: [{ type: 'text', text: JSON.stringify({ tests: [], count: 0 }) }],
+  }),
+}));
+
 vi.mock('../../../handlers/test/find-tests.js', () => ({
   handleFindTestsForFile: mockHandleFindTestsForFile,
 }));
@@ -126,11 +129,6 @@ export function calculateSum(a: number, b: number): number {
 
       const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'calculateSum' };
       const response = await handleSuggestTestCases(args);
-
-      // Debug: check what error we're getting if there is one
-      if (response.isError) {
-        console.log('Error response:', response.content[0].text);
-      }
 
       expect(response.isError).toBeUndefined();
       const parsed = JSON.parse(response.content[0].text);
@@ -581,8 +579,7 @@ export function processData(data: string[]): string[] {
 
   describe('Existing Tests Discovery', () => {
     it('should include existing tests when include_existing is true', async () => {
-      const { handleFindTestsForFile } = await import('../../../handlers/test/find-tests.js');
-      vi.mocked(handleFindTestsForFile).mockResolvedValue({
+      mockHandleFindTestsForFile.mockResolvedValue({
         isError: false,
         content: [{
           type: 'text',
