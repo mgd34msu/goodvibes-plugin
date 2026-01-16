@@ -165,8 +165,37 @@ export function extractEventHandlers(
   let currentParent: ComponentNode = rootNode;
 
   function visit(node: ts.Node, depth: number): void {
-    // Handle JSX opening elements
-    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+    // Handle full JSX elements
+    if (ts.isJsxElement(node)) {
+      const opening = node.openingElement;
+      const tagName = opening.tagName.getText(sourceFile);
+      const line = getLineNumber(opening, sourceFile);
+
+      const componentNode: ComponentNode = {
+        element: tagName,
+        parent: currentParent,
+        children: [],
+        handlers: [],
+        line,
+        depth,
+      };
+      currentParent.children.push(componentNode);
+
+      // Extract handlers from opening element
+      processAttributes(opening, componentNode, tagName, line);
+
+      // Recurse into children
+      const prevParent = currentParent;
+      currentParent = componentNode;
+      for (const child of node.children) {
+        visit(child, depth + 1);
+      }
+      currentParent = prevParent;
+      return;
+    }
+
+    // Handle self-closing JSX elements
+    if (ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       const line = getLineNumber(node, sourceFile);
 
@@ -180,73 +209,67 @@ export function extractEventHandlers(
       };
       currentParent.children.push(componentNode);
 
-      // Extract event handlers from attributes
-      for (const attr of node.attributes.properties) {
-        if (ts.isJsxAttribute(attr) && attr.name && attr.initializer) {
-          const attrName = attr.name.getText(sourceFile);
-
-          // Check if this is an event handler prop
-          const eventType = EVENT_PROPS[attrName];
-          if (eventType) {
-            // Apply filter if specified
-            if (eventFilter && eventType !== eventFilter.toLowerCase()) {
-              continue;
-            }
-
-            let handlerName = attrName;
-            let stopsPropagation = false;
-            let preventsDefault = false;
-
-            if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-              const expr = attr.initializer.expression;
-              handlerName = getCodeSnippet(expr, sourceFile);
-
-              // Try to resolve the handler body for analysis
-              const handlerBody = resolveHandlerBody(expr, sourceFile);
-              if (handlerBody) {
-                stopsPropagation = containsStopPropagation(handlerBody, sourceFile);
-                preventsDefault = containsPreventDefault(handlerBody, sourceFile);
-              } else {
-                // For inline handlers, check the expression directly
-                stopsPropagation = containsStopPropagation(expr, sourceFile);
-                preventsDefault = containsPreventDefault(expr, sourceFile);
-              }
-            }
-
-            const handler: EventHandler = {
-              element: tagName,
-              event: eventType,
-              handler: handlerName,
-              line,
-              stops_propagation: stopsPropagation,
-              prevents_default: preventsDefault,
-            };
-
-            handlers.push(handler);
-            componentNode.handlers.push(handler);
-          }
-        }
-      }
-
-      // For full JSX elements (not self-closing), process children with this as parent
-      if (ts.isJsxOpeningElement(node)) {
-        const prevParent = currentParent;
-        currentParent = componentNode;
-
-        // Find the parent JSX element to get children
-        const parent = node.parent;
-        if (ts.isJsxElement(parent)) {
-          for (const child of parent.children) {
-            visit(child, depth + 1);
-          }
-        }
-
-        currentParent = prevParent;
-        return; // Don't recurse further, we handled children
-      }
+      // Extract handlers
+      processAttributes(node, componentNode, tagName, line);
+      return;
     }
 
     ts.forEachChild(node, (child) => visit(child, depth));
+  }
+
+  function processAttributes(
+    node: ts.JsxOpeningElement | ts.JsxSelfClosingElement,
+    componentNode: ComponentNode,
+    tagName: string,
+    line: number
+  ): void {
+    // Extract event handlers from attributes
+    for (const attr of node.attributes.properties) {
+      if (ts.isJsxAttribute(attr) && attr.name && attr.initializer) {
+        const attrName = attr.name.getText(sourceFile);
+
+        // Check if this is an event handler prop
+        const eventType = EVENT_PROPS[attrName];
+        if (eventType) {
+          // Apply filter if specified
+          if (eventFilter && eventType !== eventFilter.toLowerCase()) {
+            continue;
+          }
+
+          let handlerName = attrName;
+          let stopsPropagation = false;
+          let preventsDefault = false;
+
+          if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+            const expr = attr.initializer.expression;
+            handlerName = getCodeSnippet(expr, sourceFile);
+
+            // Try to resolve the handler body for analysis
+            const handlerBody = resolveHandlerBody(expr, sourceFile);
+            if (handlerBody) {
+              stopsPropagation = containsStopPropagation(handlerBody, sourceFile);
+              preventsDefault = containsPreventDefault(handlerBody, sourceFile);
+            } else {
+              // For inline handlers, check the expression directly
+              stopsPropagation = containsStopPropagation(expr, sourceFile);
+              preventsDefault = containsPreventDefault(expr, sourceFile);
+            }
+          }
+
+          const handler: EventHandler = {
+            element: tagName,
+            event: eventType,
+            handler: handlerName,
+            line,
+            stops_propagation: stopsPropagation,
+            prevents_default: preventsDefault,
+          };
+
+          handlers.push(handler);
+          componentNode.handlers.push(handler);
+        }
+      }
+    }
   }
 
   visit(componentNode, 0);

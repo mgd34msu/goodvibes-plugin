@@ -1026,4 +1026,35 @@ ${frames}`;
       expect(text).toContain('MyClass.prototype.myMethod');
     });
   });
+
+  describe('additional coverage', () => {
+    test('handles non-existent absolute project file', () => {
+      // Path inside project that does not exist
+      const absPath = path.join(tempDir, 'src', 'ghost.ts');
+      const errorText = `Error: test
+    at ghost (${absPath}:10:5)`;
+      
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      
+      const text = (result.content[0] as { text: string }).text;
+      // Should be marked as PROJECT because it is in project dir
+      expect(text).toContain('[PROJECT]');
+      // But no code preview because file doesn't exist
+      expect(text).not.toContain('>>>');
+    });
+
+    test('parses node: internal modules correctly', () => {
+      const errorText = `Error: Internal
+    at Object.<anonymous> (node:internal/modules/cjs/loader:1144:14)`;
+    
+      const result = handleParseErrorStack({ error_text: errorText, project_path: tempDir });
+      const text = (result.content[0] as { text: string }).text;
+      
+      // Should be parsed now that regex is fixed
+      expect(text).toContain('node:internal/modules/cjs/loader');
+      expect(text).toContain('1144');
+      // Should be external
+      expect(text).toContain('[EXTERNAL]');
+    });
+  });
 });

@@ -71,8 +71,9 @@ interface DuplicateInfo {
 
 /**
  * Complete bundle analysis result
+ * @internal Exported for testing
  */
-interface BundleAnalysis {
+export interface BundleAnalysis {
   total_size: SizeInfo;
   chunks: ChunkInfo[];
   largest_modules: ModuleInfo[];
@@ -226,8 +227,9 @@ function extractModules(content: string, fileName: string): ModuleInfo[] {
 
 /**
  * Extract package name from module path
+ * @internal Exported for testing
  */
-function extractPackageName(modulePath: string): string | null {
+export function extractPackageName(modulePath: string): string | null {
   // Handle node_modules paths
   const nodeModulesMatch = modulePath.match(/node_modules\/(@[^/]+\/[^/]+|[^/]+)/);
   if (nodeModulesMatch) {
@@ -334,8 +336,9 @@ async function checkTreeShakingIssues(projectPath: string): Promise<string[]> {
 
 /**
  * Generate recommendations based on analysis
+ * @internal Exported for testing
  */
-function generateRecommendations(
+export function generateRecommendations(
   analysis: Partial<BundleAnalysis>,
   treeShakingIssues: string[]
 ): string[] {

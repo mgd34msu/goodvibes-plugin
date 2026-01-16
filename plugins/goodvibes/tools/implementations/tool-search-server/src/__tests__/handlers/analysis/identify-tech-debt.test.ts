@@ -788,6 +788,46 @@ describe('handleIdentifyTechDebt', () => {
 
       expect(createSuccessResponse).toHaveBeenCalled();
     });
+
+    it('should create issues for uncovered functions', async () => {
+      vi.mocked(handleGetTestCoverage).mockResolvedValue({
+        isError: false,
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            coverage: { lines: 70 },
+            uncovered_functions: [
+              { file: 'src/utils.ts', name: 'calculateTotal', line: 42 },
+              { file: 'src/helpers.ts', name: 'formatDate', line: 15 },
+            ],
+          }),
+        }],
+      });
+
+      const args: IdentifyTechDebtArgs = {
+        include: ['coverage'],
+      };
+
+      await handleIdentifyTechDebt(args);
+
+      const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+
+      // Verify issues were created for uncovered functions
+      expect(call.prioritized_issues.length).toBe(2);
+
+      const firstIssue = call.prioritized_issues[0];
+      expect(firstIssue.type).toBe('coverage_gap');
+      expect(firstIssue.location).toBe('src/utils.ts:42');
+      expect(firstIssue.description).toBe('Uncovered function "calculateTotal"');
+      expect(firstIssue.severity).toBe('medium');
+      expect(firstIssue.effort).toBe('medium');
+      expect(firstIssue.recommendation).toContain('Add tests');
+
+      const secondIssue = call.prioritized_issues[1];
+      expect(secondIssue.type).toBe('coverage_gap');
+      expect(secondIssue.location).toBe('src/helpers.ts:15');
+      expect(secondIssue.description).toBe('Uncovered function "formatDate"');
+    });
   });
 
   // ===========================================================================

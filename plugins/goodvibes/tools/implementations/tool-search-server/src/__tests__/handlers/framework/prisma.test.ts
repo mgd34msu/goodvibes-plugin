@@ -724,7 +724,7 @@ describe('handleGetPrismaOperations', () => {
 
   describe('AST edge cases', () => {
     it('should return null for non-PropertyAccessExpression in extractModelFromPrismaCall', async () => {
-      // Lines 261, 275: Test when expr is not PropertyAccessExpression
+      // Line 261: Test when expr is not PropertyAccessExpression (direct function call)
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
         { name: 'edge.ts', isDirectory: () => false, isFile: () => true },
@@ -743,6 +743,35 @@ describe('handleGetPrismaOperations', () => {
       const data = JSON.parse(result.content[0].text);
 
       // Should not detect any Prisma operations
+      expect(data.operations).toHaveLength(0);
+    });
+
+    it('should return null when modelAccess is not a PropertyAccessExpression (line 275)', async () => {
+      // Line 275: Test when the expression before .operation is not a property access
+      // e.g., model.findUnique() where 'model' is a variable (Identifier), not prisma.model
+      // This triggers the check at line 274: if (!ts.isPropertyAccessExpression(modelAccess))
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'shallow-call.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // Use 'model' as variable name and call findUnique on it directly
+      // AST structure: model.findUnique({...})
+      // - CallExpression.expression = PropertyAccessExpression (model.findUnique)
+      // - PropertyAccessExpression.name = findUnique (passes line 267 check)
+      // - PropertyAccessExpression.expression = Identifier 'model' (fails line 274 check)
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { PrismaClient } from '@prisma/client';
+        const model = { findUnique: () => null };
+        export const query = () => model.findUnique({ where: { id: '1' } });
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should not detect any Prisma operations since model.findUnique is not
+      // the expected prisma.model.findUnique pattern (model is Identifier, not PropertyAccess)
       expect(data.operations).toHaveLength(0);
     });
 

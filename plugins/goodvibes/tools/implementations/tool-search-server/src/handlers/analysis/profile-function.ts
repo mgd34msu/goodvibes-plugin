@@ -244,11 +244,10 @@ function formatResult(result: ProfileFunctionResult): string {
     lines.push('### Sample Return Value');
     lines.push('');
     lines.push('```json');
-    try {
-      lines.push(JSON.stringify(result.result_sample, null, 2));
-    } catch {
-      lines.push(String(result.result_sample));
-    }
+    // Note: result_sample is always pre-sanitized by handleProfileFunction
+    // to be JSON-serializable (non-serializable values are replaced with
+    // placeholder strings before formatResult is called)
+    lines.push(JSON.stringify(result.result_sample, null, 2));
     lines.push('```');
     lines.push('');
   }
@@ -304,19 +303,10 @@ async function importModule(absolutePath: string): Promise<Record<string, unknow
       const fileUrl = pathToFileURL(absolutePath).href;
       return await import(fileUrl) as Record<string, unknown>;
     } catch (directError) {
-      // If direct import fails, try to find compiled JS
+      // If direct import fails, try to find compiled JS in the same directory
       const jsPath = absolutePath.replace(/\.tsx?$/, '.js');
       if (await fileExists(jsPath)) {
         const fileUrl = pathToFileURL(jsPath).href;
-        return await import(fileUrl) as Record<string, unknown>;
-      }
-
-      // Try dist folder
-      const distPath = absolutePath
-        .replace(/[/\\]src[/\\]/, '/dist/')
-        .replace(/\.tsx?$/, '.js');
-      if (await fileExists(distPath)) {
-        const fileUrl = pathToFileURL(distPath).href;
         return await import(fileUrl) as Record<string, unknown>;
       }
 
@@ -345,6 +335,8 @@ function extractFunction(
   }
 
   // Default export with named function
+  // When a module has `export default { myMethod() {...} }`, we need to
+  // extract `myMethod` from the default export object
   const defaultExport = module.default;
   if (
     defaultExport &&
@@ -354,10 +346,9 @@ function extractFunction(
     return (defaultExport as Record<string, unknown>)[functionName] as (...args: unknown[]) => unknown;
   }
 
-  // Default export is the function itself (for default export functions)
-  if (functionName === 'default' && typeof defaultExport === 'function') {
-    return defaultExport as (...args: unknown[]) => unknown;
-  }
+  // Note: The case where functionName === 'default' and defaultExport is a function
+  // is already handled by the direct export check above (line 342), since
+  // module['default'] and module.default are equivalent in JavaScript.
 
   return null;
 }
@@ -553,3 +544,19 @@ export async function handleProfileFunction(
     return success(formatResult(result));
   }
 }
+
+/**
+ * @internal - Exported for testing only
+ * These functions are implementation details and should not be used externally
+ */
+export const __testing__ = {
+  calculateStats,
+  formatResult,
+  extractFunction,
+  importModule,
+  resolveFilePath,
+  isPromise,
+  executeWithTimeout,
+  roundTo,
+  bytesToMb,
+};

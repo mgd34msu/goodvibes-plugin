@@ -1519,6 +1519,162 @@ describe('SQLite Schema Functions', () => {
       expect(result.tables.map(t => t.name)).toEqual(['users', 'posts', 'comments']);
       expect(result.views.map(v => v.name)).toEqual(['view1', 'view2']);
     });
+
+    it('should process tables with indexes in buildTableSchemaSync', async () => {
+      const mockDb = createMockDatabase();
+      const versionData = { version: '3.45.0' };
+      const tableRowsData = [
+        { name: 'users', type: 'table', sql: 'CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT)' },
+      ];
+      const viewRowsData: unknown[] = [];
+      const columnsData = [
+        { cid: 0, name: 'id', type: 'INTEGER', notnull: 1, dflt_value: null, pk: 1 },
+        { cid: 1, name: 'email', type: 'TEXT', notnull: 0, dflt_value: null, pk: 0 },
+      ];
+      const indexListData = [
+        { seq: 0, name: 'idx_users_email', unique: 1, origin: 'c', partial: 0 },
+        { seq: 1, name: 'idx_users_composite', unique: 0, origin: 'c', partial: 1 },
+      ];
+      const indexInfoEmail = [{ seqno: 0, cid: 1, name: 'email' }];
+      const indexInfoComposite = [
+        { seqno: 0, cid: 0, name: 'id' },
+        { seqno: 1, cid: 1, name: 'email' },
+      ];
+      const triggerData: unknown[] = [];
+      const countData = { count: 100 };
+
+      mockDb.pragma = vi.fn().mockReturnValue(50);
+
+      mockDb.prepare = vi.fn().mockImplementation((sql: string) => {
+        if (sql.includes('sqlite_version()')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(versionData) };
+        }
+        if (sql.includes("type = 'table'") && sql.includes('sqlite_master')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(tableRowsData) };
+        }
+        if (sql.includes("type = 'view'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(viewRowsData) };
+        }
+        if (sql.includes('table_info')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(columnsData) };
+        }
+        if (sql.includes('index_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexListData) };
+        }
+        if (sql.includes('index_info') && sql.includes('idx_users_email')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexInfoEmail) };
+        }
+        if (sql.includes('index_info') && sql.includes('idx_users_composite')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexInfoComposite) };
+        }
+        if (sql.includes('index_info')) {
+          // Fallback for any other index_info queries
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue([]) };
+        }
+        if (sql.includes('foreign_key_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue([]) };
+        }
+        if (sql.includes("type = 'trigger'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(triggerData) };
+        }
+        if (sql.includes('COUNT(*)')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(countData) };
+        }
+        return createMockStatement();
+      });
+
+      withConnection.mockImplementation(async (options: unknown, callback: (db: unknown) => unknown) => {
+        return callback(mockDb);
+      });
+
+      const result = await getDatabaseSchema({ filepath: ':memory:' });
+
+      expect(result.tables).toHaveLength(1);
+      expect(result.tables[0].indexes).toHaveLength(2);
+
+      // Verify first index (unique, non-partial, single column)
+      const emailIndex = result.tables[0].indexes.find(idx => idx.name === 'idx_users_email');
+      expect(emailIndex).toBeDefined();
+      expect(emailIndex!.unique).toBe(true);
+      expect(emailIndex!.partial).toBe(false);
+      expect(emailIndex!.origin).toBe('c');
+      expect(emailIndex!.columns).toEqual(['email']);
+
+      // Verify second index (non-unique, partial, composite columns)
+      const compositeIndex = result.tables[0].indexes.find(idx => idx.name === 'idx_users_composite');
+      expect(compositeIndex).toBeDefined();
+      expect(compositeIndex!.unique).toBe(false);
+      expect(compositeIndex!.partial).toBe(true);
+      expect(compositeIndex!.columns).toEqual(['id', 'email']);
+    });
+
+    it('should sanitize index names when fetching index info in buildTableSchemaSync', async () => {
+      const mockDb = createMockDatabase();
+      const versionData = { version: '3.45.0' };
+      const tableRowsData = [
+        { name: 'test_table', type: 'table', sql: 'CREATE TABLE test_table (id INTEGER)' },
+      ];
+      const viewRowsData: unknown[] = [];
+      const columnsData = [{ cid: 0, name: 'id', type: 'INTEGER', notnull: 0, dflt_value: null, pk: 0 }];
+      // Index name with characters that need sanitization
+      const indexListData = [
+        { seq: 0, name: 'idx"with"quotes', unique: 0, origin: 'c', partial: 0 },
+      ];
+      const indexInfoData = [{ seqno: 0, cid: 0, name: 'id' }];
+      const triggerData: unknown[] = [];
+      const countData = { count: 10 };
+
+      mockDb.pragma = vi.fn().mockReturnValue(10);
+
+      const preparedStatements: string[] = [];
+      mockDb.prepare = vi.fn().mockImplementation((sql: string) => {
+        preparedStatements.push(sql);
+        if (sql.includes('sqlite_version()')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(versionData) };
+        }
+        if (sql.includes("type = 'table'") && sql.includes('sqlite_master')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(tableRowsData) };
+        }
+        if (sql.includes("type = 'view'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(viewRowsData) };
+        }
+        if (sql.includes('table_info')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(columnsData) };
+        }
+        if (sql.includes('index_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexListData) };
+        }
+        if (sql.includes('index_info')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexInfoData) };
+        }
+        if (sql.includes('foreign_key_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue([]) };
+        }
+        if (sql.includes("type = 'trigger'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(triggerData) };
+        }
+        if (sql.includes('COUNT(*)')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(countData) };
+        }
+        return createMockStatement();
+      });
+
+      withConnection.mockImplementation(async (options: unknown, callback: (db: unknown) => unknown) => {
+        return callback(mockDb);
+      });
+
+      const result = await getDatabaseSchema({ filepath: ':memory:' });
+
+      // Verify index was processed
+      expect(result.tables[0].indexes).toHaveLength(1);
+      expect(result.tables[0].indexes[0].name).toBe('idx"with"quotes');
+      expect(result.tables[0].indexes[0].columns).toEqual(['id']);
+
+      // Verify the index name was sanitized in the PRAGMA query (quotes removed)
+      const indexInfoQuery = preparedStatements.find(s => s.includes('index_info'));
+      expect(indexInfoQuery).toBeDefined();
+      expect(indexInfoQuery).toBe('PRAGMA index_info("idxwithquotes")');
+    });
   });
 });
 

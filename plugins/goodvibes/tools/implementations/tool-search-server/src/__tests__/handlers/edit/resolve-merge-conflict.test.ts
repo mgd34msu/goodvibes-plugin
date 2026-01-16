@@ -1084,4 +1084,216 @@ const x = 2;
       expect(data.conflicts_found).toBe(1);
     });
   });
+
+  describe('Additional Coverage', () => {
+    test('correctly parses base ref and content in diff3 format', async () => {
+      const filePath = path.join(tempDir, 'diff3-check.ts');
+      // Intentionally using diff3 format
+      const content = `<<<<<<< HEAD
+ours
+||||||| ancestor-ref
+base-content
+=======
+theirs
+>>>>>>> feature`;
+      fs.writeFileSync(filePath, content);
+
+      // Mock spawn to succeed immediately
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        dry_run: true,
+      });
+
+      // Provide dummy LLM response
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'ours',
+          explanation: 'kept ours',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await resultPromise;
+    });
+
+    test('handles validation errors reported in error property', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'error-prop.ts');
+      fs.writeFileSync(filePath, '<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> feature');
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      // Mock safeExec to return error in error property
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        error: "file.ts(1,1): error TS2304: Cannot find name 'content'.",
+      });
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'content',
+          explanation: 'ok',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      if (result.isError) {
+        throw new Error(`Tool returned error: ${data.error}`);
+      }
+
+      expect(data.validation?.passed).toBe(false);
+      expect(data.validation?.errors[0]).toContain('TS2304');
+    });
+
+    test('collects stderr output from Claude CLI (line 272)', async () => {
+      const filePath = path.join(tempDir, 'stderr-test.ts');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        dry_run: true,
+      });
+
+      // Emit stderr data to cover line 272, then fail with non-zero exit
+      setTimeout(() => {
+        mockProcess.stderr.emit('data', Buffer.from('Some warning from Claude CLI'));
+        mockProcess.emit('close', 1);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // Should fall back to ours
+      expect(data.resolutions[0]).toHaveProperty('merged');
+      expect(data.resolutions[0].explanation).toContain('failed');
+    });
+
+    test('handles JSON with invalid content between braces (line 313)', async () => {
+      const filePath = path.join(tempDir, 'invalid-json-parse.ts');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        dry_run: true,
+      });
+
+      // Return something with { and } but invalid JSON between them
+      // This will trigger the JSON.parse catch block at line 313
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from('Here is the result: { invalid json syntax : }'));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // Should fall back to preference-based resolution
+      expect(data.resolutions[0]).toHaveProperty('merged');
+      expect(data.resolutions[0].explanation).toContain('failed');
+    });
+
+    test('handles unexpected exception in main handler (lines 548-549)', async () => {
+      // Create a file that exists but will cause readFileSync to fail
+      // by making it a directory instead of a file
+      const dirPath = path.join(tempDir, 'not-a-file-dir');
+      fs.mkdirSync(dirPath);
+
+      const result = await handleResolveMergeConflict({
+        file: dirPath,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('Failed to resolve merge conflicts');
+    });
+
+    test('handles timeout from Claude CLI (lines 276-277)', async () => {
+      const filePath = path.join(tempDir, 'timeout-test.ts');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+      mockProcess.kill = vi.fn();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      // Use fake timers to control the timeout
+      vi.useFakeTimers();
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        dry_run: true,
+      });
+
+      // Advance time past the timeout (60000ms default)
+      await vi.advanceTimersByTimeAsync(61000);
+
+      // Restore real timers before awaiting result
+      vi.useRealTimers();
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // Should have called kill on the process
+      expect(mockProcess.kill).toHaveBeenCalled();
+
+      // Should fall back to preference-based resolution due to timeout
+      expect(data.resolutions[0]).toHaveProperty('merged');
+      expect(data.resolutions[0].explanation).toContain('failed');
+    });
+  });
 });

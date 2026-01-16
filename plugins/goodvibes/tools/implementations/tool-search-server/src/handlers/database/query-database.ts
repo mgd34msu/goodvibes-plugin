@@ -274,9 +274,38 @@ function parseDatabaseUrl(url: string): DatabaseConnectionInfo {
 type AnyModule = any;
 
 /**
+ * Mock driver storage for testing
+ * @internal - Only used for unit testing
+ */
+const mockDrivers: Record<string, AnyModule | null> = {};
+
+/**
+ * Set a mock driver for testing purposes
+ * @internal
+ */
+function setMockDriver(moduleName: string, driver: AnyModule | null): void {
+  mockDrivers[moduleName] = driver;
+}
+
+/**
+ * Clear all mock drivers
+ * @internal
+ */
+function clearMockDrivers(): void {
+  for (const key of Object.keys(mockDrivers)) {
+    delete mockDrivers[key];
+  }
+}
+
+/**
  * Dynamic import helper that avoids TypeScript checking the module path
  */
 async function dynamicImport(moduleName: string): Promise<AnyModule | null> {
+  // Check for test mock first
+  if (moduleName in mockDrivers) {
+    return mockDrivers[moduleName];
+  }
+
   try {
     // Use indirect eval to avoid TypeScript module resolution
     const importFn = new Function('name', 'return import(name)');
@@ -918,3 +947,34 @@ function formatErrorResponse(message: string): ToolResponse {
     isError: true,
   };
 }
+
+// =============================================================================
+// Internal exports for testing
+// These functions are exported solely for unit testing purposes
+// =============================================================================
+
+/** @internal - Exported for testing only */
+export const __testing__ = {
+  getPostgresTypeName,
+  getMysqlTypeName,
+  addLimitClause,
+  hasLimitClause,
+  isWriteOperation,
+  isSelectQuery,
+  parseDatabaseUrl,
+  executeQuery,
+  executePostgresQuery,
+  executeMysqlQuery,
+  executeSqliteQuery,
+  formatAsTable,
+  formatCellValue,
+  enhanceSqliteError,
+  inferSqliteType,
+  dynamicImport,
+  getPostgresDriver,
+  getMysqlDriver,
+  getSqliteDriver,
+  // Mock driver helpers for testing
+  setMockDriver,
+  clearMockDrivers,
+};

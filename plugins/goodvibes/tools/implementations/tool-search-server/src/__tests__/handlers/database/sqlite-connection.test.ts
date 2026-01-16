@@ -946,6 +946,24 @@ describe('Driver loading', () => {
     // Reset for other tests
     simulateNoDefaultExport = false;
   });
+
+  it('should throw descriptive error when better-sqlite3 is not installed', async () => {
+    // Simulate driver load failure (e.g., module not installed)
+    driverLoadError = new Error('Cannot find module better-sqlite3');
+
+    vi.resetModules();
+    const module = await import('../../../handlers/database/sqlite-connection.js');
+    shutdownConnectionPool = module.shutdownConnectionPool;
+    withConnection = module.withConnection;
+    shutdownConnectionPool();
+
+    await expect(
+      withConnection({ filepath: ':memory:' }, () => 'done')
+    ).rejects.toThrow('SQLite driver (better-sqlite3) is not installed. Install with: npm install better-sqlite3');
+
+    // Reset for other tests
+    driverLoadError = null;
+  });
 });
 
 // =============================================================================

@@ -37,8 +37,11 @@ vi.mock('../../../config.js', () => ({
 
 import {
   handleAnalyzeBundle,
+  extractPackageName,
+  generateRecommendations,
   type AnalyzeBundleArgs,
   type BundleFormat,
+  type BundleAnalysis,
 } from '../../../handlers/build/bundle-analyzer.js';
 import { fileExists, readJsonFile } from '../../../utils.js';
 
@@ -1681,6 +1684,7 @@ describe('bundle-analyzer', () => {
         // This is an edge case but the code handles it without crashing
         expect(data.largest_modules.some((m: { from_package: string }) => m.from_package === '@scope/')).toBe(true);
       });
+
     });
 
     describe('package-lock edge cases', () => {
@@ -1778,6 +1782,169 @@ describe('bundle-analyzer', () => {
         expect(data.total_size.raw).toBe(6000); // 1000 + 2000 + 3000
         expect(data.total_size.gzip).toBe(3000); // 500 + 1000 + 1500
       });
+    });
+  });
+
+  // Direct unit tests for exported internal functions
+  describe('extractPackageName', () => {
+    it('should extract package name from node_modules path', () => {
+      expect(extractPackageName('node_modules/lodash/index.js')).toBe('lodash');
+    });
+
+    it('should extract scoped package from node_modules path', () => {
+      expect(extractPackageName('node_modules/@babel/core/lib/index.js')).toBe('@babel/core');
+    });
+
+    it('should extract scoped package from direct import path', () => {
+      expect(extractPackageName('@testing-library/react/pure')).toBe('@testing-library/react');
+    });
+
+    it('should extract regular package from import path', () => {
+      expect(extractPackageName('express/lib/router')).toBe('express');
+    });
+
+    it('should return null for relative paths starting with dot', () => {
+      expect(extractPackageName('./local/module')).toBeNull();
+      expect(extractPackageName('../parent/module')).toBeNull();
+    });
+
+    it('should return empty string for empty string input', () => {
+      // Empty string split('/') gives [''], parts.length = 1 > 0
+      // parts[0] = '' doesn't start with '.', so returns ''
+      expect(extractPackageName('')).toBe('');
+    });
+
+    // Coverage for line 240: scoped package with only scope (parts.length < 2)
+    it('should return first part for scoped package with no slash (parts.length < 2)', () => {
+      // When modulePath = "@scope" (no slash), split('/') gives ["@scope"], length = 1
+      // The condition parts.length >= 2 is false, so it falls through to regular handling
+      // At line 247, parts[0] = "@scope" doesn't start with ".", so returns "@scope"
+      const result = extractPackageName('@scope');
+      expect(result).toBe('@scope');
+    });
+
+    it('should handle single word package name', () => {
+      expect(extractPackageName('react')).toBe('react');
+    });
+
+    it('should handle paths that start with dot after split', () => {
+      // This path has a leading dot when we get to the regular package handling
+      expect(extractPackageName('.hidden')).toBeNull();
+    });
+  });
+
+  describe('generateRecommendations', () => {
+    it('should recommend code splitting for bundles over 1MB', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        total_size: { raw: 1.5 * 1024 * 1024, gzip: 100 * 1024, formatted: '1.5 MB' },
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.some(r => r.includes('1MB') && r.includes('code splitting'))).toBe(true);
+    });
+
+    it('should warn about gzipped size over 250KB', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        total_size: { raw: 500 * 1024, gzip: 300 * 1024, formatted: '500 KB' },
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.some(r => r.includes('250KB'))).toBe(true);
+    });
+
+    it('should recommend npm dedupe for duplicates', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        duplicates: [{ package: 'lodash', versions: ['4.17.21', '4.17.15'], total_size: 0 }],
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.some(r => r.includes('duplicate') && r.includes('npm dedupe'))).toBe(true);
+    });
+
+    it('should include tree-shaking issues', () => {
+      const analysis: Partial<BundleAnalysis> = {};
+      const treeShakingIssues = ['Consider adding sideEffects: false'];
+      const recommendations = generateRecommendations(analysis, treeShakingIssues);
+      expect(recommendations).toContain('Consider adding sideEffects: false');
+    });
+
+    it('should warn about large chunks over 500KB', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        chunks: [
+          { name: 'vendor.js', size: 600 * 1024, gzip_size: 200 * 1024, modules: 5 },
+          { name: 'main.js', size: 100 * 1024, gzip_size: 30 * 1024, modules: 2 },
+        ],
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.some(r => r.includes('500KB') && r.includes('splitting'))).toBe(true);
+    });
+
+    // Coverage for line 364: when analysis.chunks is undefined
+    it('should handle undefined chunks gracefully (line 364 branch)', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        total_size: { raw: 100 * 1024, gzip: 30 * 1024, formatted: '100 KB' },
+        // chunks is explicitly undefined
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      // Should not crash and should not include chunk-related recommendations
+      expect(recommendations.every(r => !r.includes('500KB'))).toBe(true);
+    });
+
+    it('should handle empty analysis object', () => {
+      const recommendations = generateRecommendations({}, []);
+      expect(Array.isArray(recommendations)).toBe(true);
+    });
+
+    it('should limit recommendations to 10', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        total_size: { raw: 2 * 1024 * 1024, gzip: 500 * 1024, formatted: '2 MB' },
+        duplicates: Array.from({ length: 5 }, (_, i) => ({
+          package: `pkg${i}`,
+          versions: ['1.0.0', '2.0.0'],
+          total_size: 0,
+        })),
+        chunks: Array.from({ length: 10 }, (_, i) => ({
+          name: `chunk${i}.js`,
+          size: 600 * 1024,
+          gzip_size: 200 * 1024,
+          modules: 3,
+        })),
+      };
+      const treeShakingIssues = Array.from({ length: 10 }, (_, i) => `Issue ${i}`);
+      const recommendations = generateRecommendations(analysis, treeShakingIssues);
+      expect(recommendations.length).toBeLessThanOrEqual(10);
+    });
+
+    it('should not warn about small bundles under 1MB', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        total_size: { raw: 500 * 1024, gzip: 100 * 1024, formatted: '500 KB' },
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.every(r => !r.includes('1MB'))).toBe(true);
+    });
+
+    it('should not warn about small gzipped size under 250KB', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        total_size: { raw: 800 * 1024, gzip: 200 * 1024, formatted: '800 KB' },
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.every(r => !r.includes('250KB'))).toBe(true);
+    });
+
+    it('should not warn about chunks when all are under 500KB', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        chunks: [
+          { name: 'main.js', size: 400 * 1024, gzip_size: 100 * 1024, modules: 3 },
+          { name: 'vendor.js', size: 300 * 1024, gzip_size: 80 * 1024, modules: 5 },
+        ],
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.every(r => !r.includes('500KB'))).toBe(true);
+    });
+
+    it('should not warn about duplicates when array is empty', () => {
+      const analysis: Partial<BundleAnalysis> = {
+        duplicates: [],
+      };
+      const recommendations = generateRecommendations(analysis, []);
+      expect(recommendations.every(r => !r.includes('duplicate'))).toBe(true);
     });
   });
 });

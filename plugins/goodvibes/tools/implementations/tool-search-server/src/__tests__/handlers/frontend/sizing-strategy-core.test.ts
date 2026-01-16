@@ -581,4 +581,76 @@ describe('sizing-strategy-core', () => {
       expect(elements.some((e) => e.selector === '.second')).toBe(true);
     });
   });
+
+  describe('Extra Coverage', () => {
+    describe('parseJsxTree edge cases', () => {
+      it('covers self-closing element with selector mismatch (line 237)', () => {
+        const code = `const C = () => <div className="no" />`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxTree(root, sourceFile, undefined, '.target');
+        expect(node).toBeNull();
+      });
+
+      it('covers recursion into non-JSX nodes (lines 274-278)', () => {
+        const code = `function App() { return <div className="target" />; }`;
+        const sourceFile = createSourceFile(code);
+        const node = parseJsxTree(sourceFile, sourceFile, undefined, '.target');
+        expect(node).not.toBeNull();
+        expect(node!.tagName).toBe('div');
+      });
+
+      it('covers JSX expression in search (line 265)', () => {
+        const code = `const C = () => <div>{condition && <span className="target" />}</div>`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxTree(root, sourceFile, undefined, '.target');
+        expect(node).not.toBeNull();
+        expect(node!.tagName).toBe('span');
+      });
+    });
+
+    describe('getAllElements edge cases', () => {
+      it('handles JSX expression in getAllElements (lines 438-441)', () => {
+        const code = `const C = () => <div>{condition && <span className="expr" />}</div>`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const elements = getAllElements(root, sourceFile);
+        expect(elements.some(e => e.tag === 'span')).toBe(true);
+      });
+
+      it('handles recursion into other nodes in getAllElements (line 446)', () => {
+        const code = `function App() { return <div className="app" />; }`;
+        const sourceFile = createSourceFile(code);
+        const elements = getAllElements(sourceFile, sourceFile);
+        expect(elements.some(e => e.tag === 'div')).toBe(true);
+      });
+    });
+
+    describe('parseJsxTreeForChildren with fragments', () => {
+      it('handles fragments in children parsing', () => {
+        const code = `
+          const C = () => (
+            <div className="target">
+              <>
+                <span className="child">1</span>
+              </>
+            </div>
+          );
+        `;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxTree(root, sourceFile, undefined, '.target');
+        expect(node).not.toBeNull();
+        expect(node!.children.length).toBe(1);
+        expect(node!.children[0].tagName).toBe('Fragment');
+        expect(node!.children[0].children.length).toBe(1);
+        expect(node!.children[0].children[0].tagName).toBe('span');
+      });
+    });
+  });
 });

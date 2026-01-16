@@ -185,8 +185,10 @@ function getProcessMemory(pid: number): { rss_mb: number } | null {
 /**
  * Perform linear regression on x,y data points
  * Returns slope (MB/second), intercept, and R-squared
+ *
+ * @internal Exported for testing purposes
  */
-function linearRegression(x: number[], y: number[]): LinearRegressionResult {
+export function linearRegression(x: number[], y: number[]): LinearRegressionResult {
   const n = x.length;
   if (n < 2) {
     return { slope: 0, intercept: y[0] || 0, r_squared: 0 };
@@ -228,8 +230,10 @@ function linearRegression(x: number[], y: number[]): LinearRegressionResult {
 
 /**
  * Analyze memory snapshots for trends
+ *
+ * @internal Exported for testing purposes
  */
-function analyzeTrend(snapshots: MemorySnapshot[], durationSeconds: number): MemoryAnalysis {
+export function analyzeTrend(snapshots: MemorySnapshot[], durationSeconds: number): MemoryAnalysis {
   const rssValues = snapshots.map(s => s.rss_mb);
   const initial = rssValues[0];
   const final = rssValues[rssValues.length - 1];
@@ -276,8 +280,10 @@ function analyzeTrend(snapshots: MemorySnapshot[], durationSeconds: number): Mem
 
 /**
  * Generate leak suspects based on analysis
+ *
+ * @internal Exported for testing purposes
  */
-function generateSuspects(analysis: MemoryAnalysis): LeakSuspect[] {
+export function generateSuspects(analysis: MemoryAnalysis): LeakSuspect[] {
   const suspects: LeakSuspect[] = [];
 
   // High growth rate with good linear fit

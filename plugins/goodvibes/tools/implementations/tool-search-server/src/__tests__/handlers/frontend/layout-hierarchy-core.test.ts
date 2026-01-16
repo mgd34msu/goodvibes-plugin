@@ -527,4 +527,98 @@ describe('layout-hierarchy-core', () => {
       expect(rootJsx).toBeNull();
     });
   });
+
+  describe('Extra Coverage', () => {
+    describe('parseJsxElement edge cases', () => {
+      it('covers selector matching multiple children (line 255)', () => {
+        const code = `
+          <div>
+            <span className="target">1</span>
+            <span className="target">2</span>
+          </div>
+        `;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxElement(root, sourceFile, '.target');
+        
+        expect(node).not.toBeNull();
+        expect(node!.children.length).toBe(2);
+        expect(node!.tag).toBe('div');
+      });
+
+      it('covers selector mismatch with no matching children (line 262)', () => {
+        const code = `<div><span>No match</span></div>`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxElement(root, sourceFile, '.missing');
+        expect(node).toBeNull();
+      });
+
+      it('covers self-closing element with selector mismatch (line 279 branch)', () => {
+        const code = `<div className="not-it" />`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxElement(root, sourceFile, '.target');
+        expect(node).toBeNull();
+      });
+
+      it('covers fragment with exactly one child (line 294)', () => {
+        const code = `<><div className="only" /></>`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxElement(root, sourceFile);
+        expect(node).not.toBeNull();
+        expect(node!.tag).toBe('div');
+        expect(node!.classes).toContain('only');
+      });
+
+      it('covers JSX expression with elements (lines 317-323)', () => {
+        const code = `
+          <div>
+            {condition && <span className="expr-child" />}
+          </div>
+        `;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile)!;
+
+        const node = parseJsxElement(root, sourceFile);
+        expect(node).not.toBeNull();
+        expect(node!.children.length).toBe(1);
+        expect(node!.children[0].tag).toBe('span');
+      });
+    });
+
+    describe('findRootJsx improvements', () => {
+      it('finds top-level JSX elements (ExpressionStatement)', () => {
+        const code = `<div className="top-level">Hello</div>`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile);
+
+        expect(root).not.toBeNull();
+        expect(ts.isJsxElement(root!)).toBe(true);
+      });
+
+      it('finds top-level self-closing JSX element', () => {
+        const code = `<img src="test.png" />`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile);
+
+        expect(root).not.toBeNull();
+        expect(ts.isJsxSelfClosingElement(root!)).toBe(true);
+      });
+
+      it('finds top-level fragment', () => {
+        const code = `<><div /><span /></>`;
+        const sourceFile = createSourceFile(code);
+        const root = findRootJsx(sourceFile);
+
+        expect(root).not.toBeNull();
+        expect(ts.isJsxFragment(root!)).toBe(true);
+      });
+    });
+  });
 });

@@ -99,8 +99,9 @@ function runCommand(
 
 /**
  * Get the validation command based on trigger type
+ * @internal Exported for testing purposes
  */
-async function getValidationCommand(
+export async function getValidationCommand(
   trigger: RollbackTrigger,
   customCommand?: string
 ): Promise<string> {

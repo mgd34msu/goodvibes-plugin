@@ -53,8 +53,9 @@ export interface GenerateTypesResult {
 
 /**
  * Internal type information structure
+ * @internal Exported for testing
  */
-interface TypeInfo {
+export interface TypeInfo {
   type: 'string' | 'number' | 'boolean' | 'null' | 'undefined' | 'array' | 'object' | 'union' | 'unknown';
   nullable: boolean;
   optional: boolean;
@@ -63,6 +64,14 @@ interface TypeInfo {
   unionTypes?: TypeInfo[];
   exampleValue?: unknown;
 }
+
+/**
+ * Internal reference for testability
+ * @internal
+ */
+const _internal = {
+  fetchData: (args: GenerateTypesArgs) => fetchData(args),
+};
 
 /**
  * Handle generate_types tool call
@@ -80,8 +89,8 @@ export async function handleGenerateTypes(args: GenerateTypesArgs): Promise<Tool
       return errorResponse('data is required when source is "inline"');
     }
 
-    // Fetch data samples
-    const samples = await fetchData(args);
+    // Fetch data samples (using internal reference for testability)
+    const samples = await _internal.fetchData(args);
     if (samples.length === 0) {
       return errorResponse('No data samples could be retrieved');
     }
@@ -574,3 +583,19 @@ function errorResponse(message: string): ToolResponse {
     isError: true,
   };
 }
+
+/**
+ * Export internal functions for testing
+ * @internal
+ */
+export const __testInternals = {
+  inferType,
+  mergeTypes,
+  typeInfoToTS,
+  generateInlineObject,
+  getTypeKey,
+  toPascalCase,
+  generateTypeScript,
+  fetchData,
+  _internal, // Expose for mocking in tests
+};

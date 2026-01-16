@@ -24,7 +24,7 @@ vi.mock('../../../utils.js', () => ({
 
 // Import after mocks are set up
 import { execSync } from 'child_process';
-import { handleAutoRollback } from '../../../handlers/edit/auto-rollback.js';
+import { handleAutoRollback, getValidationCommand } from '../../../handlers/edit/auto-rollback.js';
 import { detectPackageManager } from '../../../utils.js';
 
 // Type the mocked function
@@ -44,6 +44,18 @@ function gitStatus(entries: Array<{ status: string; path: string }>): string {
     })
     .join('\n');
 }
+
+describe('getValidationCommand', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('throws error when custom trigger has no command', async () => {
+    await expect(getValidationCommand('custom')).rejects.toThrow(
+      'validation_command is required when trigger is "custom"'
+    );
+  });
+});
 
 describe('handleAutoRollback', () => {
   beforeEach(() => {
@@ -712,6 +724,90 @@ describe('handleAutoRollback', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.validation_output.length).toBeLessThan(6000);
+    });
+  });
+
+  describe('additional coverage tests', () => {
+    test('throws error for unknown trigger type', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'unknown_trigger' as any,
+      });
+      
+      const data = JSON.parse(result.content[0].text);
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('Unknown trigger type');
+    });
+
+    test('filters files correctly when files argument is provided', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file1.ts\n M file2.ts\n?? new.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+           const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        files: ['file1.ts', 'new.ts'],
+        include_untracked: true
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      
+      expect(data.files_reverted).toContain('file1.ts');
+      expect(data.files_reverted).not.toContain('file2.ts');
+      expect(data.files_deleted).toContain('new.ts');
+    });
+
+     test('stashes untracked files when include_untracked is true', async () => {
+      let stashUntrackedCalled = false;
+
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts\n?? new.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash push -m')) {
+           return 'Saved working directory';
+        }
+        if (cmdStr.includes('git stash push -u -m')) {
+          stashUntrackedCalled = true;
+          return 'Saved working directory';
+        }
+        if (cmdStr.includes('git stash list')) {
+          return 'stash@{0}: auto-rollback';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        stash_before_rollback: true,
+        include_untracked: true
+      });
+      
+      const data = JSON.parse(result.content[0].text);
+      expect(stashUntrackedCalled).toBe(true);
+      expect(data.files_deleted).toContain('new.ts');
     });
   });
 });

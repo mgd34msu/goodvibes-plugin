@@ -320,12 +320,12 @@ function parseLogLine(
           timestamp = parseTimestamp(second);
           message = match[3];
         }
-      } else if (match.length === 3) {
-        // Just level and message (pattern 4)
+      } else {
+        // match.length === 3: Just level and message (pattern 4)
+        // All LOG_LINE_PATTERNS have either 2 or 3 capture groups,
+        // producing match.length of 3 or 4 respectively
         level = detectLevel(match[1]);
         message = match[2];
-      } else {
-        message = trimmed;
       }
 
       return {

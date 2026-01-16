@@ -773,6 +773,38 @@ describe('handleRetryWithLearning', () => {
       expect(data.success).toBe(false);
     });
 
+    test('handles malformed JSON in LLM response (JSON.parse throws)', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error');
+
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Return text that matches the JSON regex but is invalid JSON
+          // This will cause JSON.parse to throw, hitting lines 265-266
+          return createMockProcess(0, '{ invalid json syntax: }', '', 10);
+        }
+        return createMockProcess(1, '', 'Command error', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+      // Should log the parse error
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to parse Claude response:',
+        expect.any(Error)
+      );
+    });
+
     test('handles LLM CLI exit with non-zero code', async () => {
       mockSpawn.mockImplementation((cmd: string, args: string[]) => {
         if (cmd === 'claude') {
@@ -1079,6 +1111,41 @@ describe('handleRetryWithLearning', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.attempts[0].suggested_fix).toBe('Run npm install');
+    });
+  });
+
+  describe('Additional Coverage', () => {
+    test('captures stderr from Claude CLI when it fails', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error');
+      
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            // Version check succeeds
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Analysis fails with stderr output
+          return createMockProcess(1, '', 'Specific Claude Error', 10);
+        }
+        // Command fails
+        return createMockProcess(1, '', 'Command Failed', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'test-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Check if console.error was called with the captured stderr
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('exited with code:'),
+        1,
+        'stderr:',
+        expect.stringContaining('Specific Claude Error')
+      );
     });
   });
 });

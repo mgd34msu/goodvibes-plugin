@@ -22,7 +22,7 @@ vi.mock('../../../config.js', () => ({
   PROJECT_ROOT: '/mock/project/root',
 }));
 
-import { handleFindCircularDeps, FindCircularDepsArgs } from '../../../handlers/deps/circular.js';
+import { handleFindCircularDeps, FindCircularDepsArgs, findCycles, extractCycle } from '../../../handlers/deps/circular.js';
 
 describe('handleFindCircularDeps', () => {
   beforeEach(() => {
@@ -901,5 +901,233 @@ describe('handleFindCircularDeps', () => {
 
       expect(result.isError).toBeUndefined();
     });
+  });
+
+  describe('edge case coverage', () => {
+    it('should return empty array when scanning non-existent subdirectory (line 108)', async () => {
+      // This tests getSourceFiles returning early when dir doesn't exist
+      // We simulate a directory that exists at the root but has a subdirectory that doesn't
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        // Root path exists, but when recursing into a listed subdir, it doesn't exist
+        if (pathStr.endsWith('src')) return true;
+        if (pathStr.includes('ghost')) return false;
+        return true;
+      });
+      vi.mocked(fs.readdirSync).mockImplementation((dir) => {
+        const d = String(dir);
+        if (d.endsWith('src')) {
+          return [
+            { name: 'ghost', isDirectory: () => true, isFile: () => false },
+            { name: 'real.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        // The ghost directory doesn't exist, so this shouldn't be called
+        return [];
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue('export const x = 1;');
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(0);
+    });
+
+    it('should resolve imports with explicit file extension (line 214)', async () => {
+      // This tests resolveImportPath finding exact path match with extension
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        // Import with explicit .ts extension - should hit line 214
+        if (p.includes('a.ts')) return "import { b } from './b.ts';";
+        if (p.includes('b.ts')) return "import { a } from './a.ts';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBeGreaterThan(0);
+    });
+
+    it('should skip neighbors not in graph during DFS (line 311)', async () => {
+      // This tests the continue statement when a neighbor import resolves
+      // to a file that's not in the graph. This happens when parseImports returns
+      // a path that exists in the fileSet but the import graph doesn't have it as a key.
+      // This can occur with path normalization edge cases on Windows.
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      // Create a file that imports another file that will resolve but with
+      // a path that might not match exactly in the graph
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) {
+          return `
+            import { b } from './b';
+            import { x } from './external-resolved';
+          `;
+        }
+        if (p.includes('b.ts')) return "import { a } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(1); // Should still detect a<->b cycle
+    });
+
+    it('should handle cycle signature creation with non-alphabetical order (line 382)', async () => {
+      // This tests createCycleSignature finding minIndex > 0
+      // Create a cycle where the lexicographically smallest file is not first in DFS order
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'z-last.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'a-first.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'm-middle.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        // Create cycle: z -> m -> a -> z
+        // When DFS starts from z, cycle is [z, m, a]
+        // createCycleSignature should rotate to start with 'a' (smallest)
+        if (p.includes('z-last.ts')) return "import { m } from './m-middle';";
+        if (p.includes('m-middle.ts')) return "import { a } from './a-first';";
+        if (p.includes('a-first.ts')) return "import { z } from './z-last';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(1);
+      // The cycle should be deduplicated correctly via signature rotation
+      expect(data.cycles[0].length).toBe(3);
+    });
+
+    it('should handle deeply nested cycles for signature rotation (line 382)', async () => {
+      // Create a 4-node cycle where rotation is needed: d -> c -> b -> a -> d
+      // DFS starting from 'd' would find [d, c, b, a], needs rotation to [a, ...]
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'd.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'c.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('d.ts')) return "import { c } from './c';";
+        if (p.includes('c.ts')) return "import { b } from './b';";
+        if (p.includes('b.ts')) return "import { a } from './a';";
+        if (p.includes('a.ts')) return "import { d } from './d';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(1);
+      expect(data.cycles[0].length).toBe(4);
+      expect(data.affected_files.length).toBe(4);
+    });
+  });
+});
+
+describe('findCycles (direct unit tests)', () => {
+  it('should skip neighbors not in graph (line 311)', () => {
+    // Create a graph where a node has a neighbor that is NOT a key in the graph
+    // This tests the defensive check: if (!graph.has(neighbor)) continue;
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b', 'external-not-in-graph']); // 'external-not-in-graph' is not a graph key
+    graph.set('b', ['a']);
+
+    const cycles = findCycles(graph);
+
+    // Should still detect the a <-> b cycle, skipping the external neighbor
+    expect(cycles.length).toBe(1);
+    expect(cycles[0].length).toBe(2);
+  });
+
+  it('should handle graph with only non-existent neighbors (line 311)', () => {
+    // All neighbors point to non-existent nodes
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['non-existent-1', 'non-existent-2']);
+    graph.set('b', ['non-existent-3']);
+
+    const cycles = findCycles(graph);
+
+    // No cycles should be found since all neighbors are skipped
+    expect(cycles.length).toBe(0);
+  });
+
+  it('should handle mixed existent and non-existent neighbors (line 311)', () => {
+    // Create a 3-node cycle with extra non-existent neighbors sprinkled in
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['non-existent', 'b', 'another-non-existent']);
+    graph.set('b', ['c', 'missing']);
+    graph.set('c', ['a', 'phantom']);
+
+    const cycles = findCycles(graph);
+
+    // Should detect the a -> b -> c -> a cycle
+    expect(cycles.length).toBe(1);
+    expect(cycles[0].length).toBe(3);
+  });
+});
+
+describe('extractCycle (direct unit tests)', () => {
+  it('should return null when cycleStart is not in stack (line 360)', () => {
+    const stack = ['a', 'b', 'c'];
+    const result = extractCycle(stack, 'not-in-stack');
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null for empty stack (line 360)', () => {
+    const stack: string[] = [];
+    const result = extractCycle(stack, 'any');
+
+    expect(result).toBeNull();
+  });
+
+  it('should extract cycle when cycleStart is at beginning of stack', () => {
+    const stack = ['a', 'b', 'c'];
+    const result = extractCycle(stack, 'a');
+
+    expect(result).toEqual(['a', 'b', 'c']);
+  });
+
+  it('should extract cycle when cycleStart is in middle of stack', () => {
+    const stack = ['a', 'b', 'c', 'd'];
+    const result = extractCycle(stack, 'b');
+
+    expect(result).toEqual(['b', 'c', 'd']);
+  });
+
+  it('should extract cycle when cycleStart is at end of stack', () => {
+    const stack = ['a', 'b', 'c'];
+    const result = extractCycle(stack, 'c');
+
+    expect(result).toEqual(['c']);
   });
 });

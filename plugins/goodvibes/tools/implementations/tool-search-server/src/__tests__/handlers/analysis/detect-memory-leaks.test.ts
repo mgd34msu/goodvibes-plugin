@@ -47,6 +47,9 @@ vi.mock('../../../utils.js', () => ({
 
 import {
   handleDetectMemoryLeaks,
+  linearRegression,
+  analyzeTrend,
+  generateSuspects,
   type DetectMemoryLeaksArgs,
   type MemorySnapshot,
   type MemoryAnalysis,
@@ -1726,6 +1729,265 @@ describe('handleDetectMemoryLeaks', () => {
 
       expect(result.target).toContain('node app.js');
       expect(result.target).toContain('12345');
+    });
+  });
+
+  // ===========================================================================
+  // Direct Unit Tests for linearRegression (Coverage for lines 192, 204)
+  // ===========================================================================
+
+  describe('linearRegression function', () => {
+    it('should return slope 0 and intercept y[0] when n < 2 (line 192 - single point)', () => {
+      // Test with single data point
+      const result = linearRegression([1], [50]);
+
+      expect(result.slope).toBe(0);
+      expect(result.intercept).toBe(50);
+      expect(result.r_squared).toBe(0);
+    });
+
+    it('should return slope 0 and intercept 0 when n < 2 with empty y array (line 192 - edge case)', () => {
+      // Test with empty arrays
+      const result = linearRegression([], []);
+
+      expect(result.slope).toBe(0);
+      expect(result.intercept).toBe(0);
+      expect(result.r_squared).toBe(0);
+    });
+
+    it('should return slope 0 when all x values are the same (line 204 - denominator ~0)', () => {
+      // All x values are identical (0), y values vary
+      const result = linearRegression([0, 0, 0, 0], [10, 20, 30, 40]);
+
+      expect(result.slope).toBe(0);
+      // intercept should be average of y values: (10+20+30+40)/4 = 25
+      expect(result.intercept).toBe(25);
+      expect(result.r_squared).toBe(0);
+    });
+
+    it('should return slope 0 when all x values are very close (line 204 - near-zero denominator)', () => {
+      // All x values are effectively the same (within 1e-10 tolerance)
+      const tiny = 1e-12;
+      const result = linearRegression([0, tiny, tiny * 2, tiny * 3], [10, 20, 30, 40]);
+
+      expect(result.slope).toBe(0);
+      expect(result.r_squared).toBe(0);
+    });
+
+    it('should calculate correct linear regression for perfect linear data', () => {
+      // y = 2x + 10 (slope=2, intercept=10)
+      const result = linearRegression([0, 1, 2, 3, 4], [10, 12, 14, 16, 18]);
+
+      expect(result.slope).toBe(2);
+      expect(result.intercept).toBe(10);
+      expect(result.r_squared).toBe(1); // Perfect fit
+    });
+
+    it('should calculate correct regression for imperfect data', () => {
+      // Noisy data
+      const result = linearRegression([0, 1, 2, 3, 4], [10, 11, 15, 14, 20]);
+
+      expect(result.slope).toBeGreaterThan(0);
+      expect(result.r_squared).toBeGreaterThan(0);
+      expect(result.r_squared).toBeLessThan(1);
+    });
+  });
+
+  // ===========================================================================
+  // Direct Unit Tests for analyzeTrend (Coverage for line 262)
+  // ===========================================================================
+
+  describe('analyzeTrend function', () => {
+    it('should detect growing trend when R-squared <= 0.5 but growth > 5MB (line 262)', () => {
+      // Create snapshots with noisy data (low R-squared) but significant growth
+      const snapshots: MemorySnapshot[] = [
+        { timestamp: '2024-01-01T00:00:00Z', elapsed_ms: 0, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 50 },
+        { timestamp: '2024-01-01T00:00:01Z', elapsed_ms: 1000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 80 },
+        { timestamp: '2024-01-01T00:00:02Z', elapsed_ms: 2000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 40 },
+        { timestamp: '2024-01-01T00:00:03Z', elapsed_ms: 3000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 90 },
+        { timestamp: '2024-01-01T00:00:04Z', elapsed_ms: 4000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 60 },
+      ];
+
+      const result = analyzeTrend(snapshots, 4);
+
+      // Growth is 60 - 50 = 10MB (> 5MB threshold)
+      expect(result.heap_growth_mb).toBe(10);
+      // With this noisy data, R-squared should be low
+      // The trend should be 'growing' because growth > 5 even if R-squared <= 0.5
+      if (result.linear_regression && result.linear_regression.r_squared <= 0.5) {
+        expect(result.trend).toBe('growing');
+      }
+    });
+
+    it('should detect declining trend when R-squared <= 0.5 but growth < -5MB', () => {
+      // Create snapshots with noisy data but significant decline
+      const snapshots: MemorySnapshot[] = [
+        { timestamp: '2024-01-01T00:00:00Z', elapsed_ms: 0, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 100 },
+        { timestamp: '2024-01-01T00:00:01Z', elapsed_ms: 1000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 60 },
+        { timestamp: '2024-01-01T00:00:02Z', elapsed_ms: 2000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 120 },
+        { timestamp: '2024-01-01T00:00:03Z', elapsed_ms: 3000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 50 },
+        { timestamp: '2024-01-01T00:00:04Z', elapsed_ms: 4000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 90 },
+      ];
+
+      const result = analyzeTrend(snapshots, 4);
+
+      // Growth is 90 - 100 = -10MB (< -5MB threshold)
+      expect(result.heap_growth_mb).toBe(-10);
+      // With noisy data and R-squared <= 0.5, trend should be 'declining' due to growth < -5
+      if (result.linear_regression && result.linear_regression.r_squared <= 0.5) {
+        expect(result.trend).toBe('declining');
+      }
+    });
+
+    it('should detect stable trend when R-squared <= 0.5 and -5 <= growth <= 5', () => {
+      // Create snapshots with noisy data and small overall change
+      const snapshots: MemorySnapshot[] = [
+        { timestamp: '2024-01-01T00:00:00Z', elapsed_ms: 0, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 50 },
+        { timestamp: '2024-01-01T00:00:01Z', elapsed_ms: 1000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 80 },
+        { timestamp: '2024-01-01T00:00:02Z', elapsed_ms: 2000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 30 },
+        { timestamp: '2024-01-01T00:00:03Z', elapsed_ms: 3000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 70 },
+        { timestamp: '2024-01-01T00:00:04Z', elapsed_ms: 4000, heap_used_mb: null, heap_total_mb: null, external_mb: null, rss_mb: 52 },
+      ];
+
+      const result = analyzeTrend(snapshots, 4);
+
+      // Growth is 52 - 50 = 2MB (within -5 to 5 range)
+      expect(result.heap_growth_mb).toBe(2);
+      // With noisy data and small growth, trend should be 'stable'
+      expect(result.trend).toBe('stable');
+    });
+  });
+
+  // ===========================================================================
+  // Direct Unit Tests for generateSuspects (Coverage for line 317)
+  // ===========================================================================
+
+  describe('generateSuspects function', () => {
+    it('should generate probable_leak suspect when R-squared is 0.5-0.8 and slope > 0.05 (line 317)', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 5,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.1, // > 0.05 MB/s
+          intercept: 50,
+          r_squared: 0.7, // Between 0.5 and 0.8
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const probableLeak = suspects.find(s => s.type === 'probable_leak');
+      expect(probableLeak).toBeDefined();
+      expect(probableLeak?.confidence).toBe('medium');
+      expect(probableLeak?.description).toContain('slope=0.1');
+      expect(probableLeak?.description).toContain('moderate correlation');
+    });
+
+    it('should NOT generate probable_leak when R-squared > 0.8 (uses consistent_growth instead)', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 5,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.15, // > 0.1 MB/s (triggers consistent_growth)
+          intercept: 50,
+          r_squared: 0.9, // > 0.8 (too high for probable_leak)
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const probableLeak = suspects.find(s => s.type === 'probable_leak');
+      expect(probableLeak).toBeUndefined();
+
+      const consistentGrowth = suspects.find(s => s.type === 'consistent_growth');
+      expect(consistentGrowth).toBeDefined();
+    });
+
+    it('should NOT generate probable_leak when R-squared <= 0.5', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 5,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.1,
+          intercept: 50,
+          r_squared: 0.4, // <= 0.5 (too low for probable_leak)
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const probableLeak = suspects.find(s => s.type === 'probable_leak');
+      expect(probableLeak).toBeUndefined();
+    });
+
+    it('should NOT generate probable_leak when slope <= 0.05', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 55,
+        heap_growth_mb: 5,
+        growth_rate_mb_per_minute: 1,
+        trend: 'stable',
+        linear_regression: {
+          slope: 0.03, // <= 0.05 (too low for probable_leak)
+          intercept: 50,
+          r_squared: 0.7, // In range, but slope is too low
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const probableLeak = suspects.find(s => s.type === 'probable_leak');
+      expect(probableLeak).toBeUndefined();
+    });
+
+    it('should generate probable_leak at boundary R-squared = 0.51', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 5,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.06, // Just above 0.05
+          intercept: 50,
+          r_squared: 0.51, // Just above 0.5
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const probableLeak = suspects.find(s => s.type === 'probable_leak');
+      expect(probableLeak).toBeDefined();
+      expect(probableLeak?.confidence).toBe('medium');
+    });
+
+    it('should generate probable_leak at boundary R-squared = 0.8', () => {
+      const analysis: MemoryAnalysis = {
+        initial_heap_mb: 50,
+        final_heap_mb: 100,
+        heap_growth_mb: 50,
+        growth_rate_mb_per_minute: 5,
+        trend: 'growing',
+        linear_regression: {
+          slope: 0.06, // Just above 0.05 but not > 0.1
+          intercept: 50,
+          r_squared: 0.8, // Exactly 0.8 (should still trigger probable_leak since <= 0.8)
+        },
+      };
+
+      const suspects = generateSuspects(analysis);
+
+      const probableLeak = suspects.find(s => s.type === 'probable_leak');
+      expect(probableLeak).toBeDefined();
     });
   });
 

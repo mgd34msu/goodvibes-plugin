@@ -381,6 +381,21 @@ export function findRootJsx(sourceFile: ts.SourceFile): ts.Node | null {
     ts.forEachChild(node, visit);
   }
 
+  // First pass: look for returns and arrow functions
   visit(sourceFile);
+
+  // Second pass: if not found, look for top-level JSX expressions
+  if (!rootJsx) {
+    for (const statement of sourceFile.statements) {
+      if (ts.isExpressionStatement(statement)) {
+        const expr = statement.expression;
+        if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
+          rootJsx = expr;
+          break;
+        }
+      }
+    }
+  }
+
   return rootJsx;
 }

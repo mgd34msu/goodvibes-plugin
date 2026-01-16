@@ -36,8 +36,9 @@ export interface FindCircularDepsArgs {
  * A detected circular dependency cycle in the import graph.
  * @property path - Files forming the cycle (first file repeated at end to show closure)
  * @property length - Number of unique files in the cycle
+ * @internal Exported for testing
  */
-interface Cycle {
+export interface Cycle {
   /** Files forming the cycle, with first file repeated at end (e.g., [A, B, C, A]) */
   path: string[];
   /** Number of unique files in the cycle (path.length - 1) */
@@ -285,8 +286,9 @@ enum Color {
  *
  * @param graph - Import graph (file -> imported files)
  * @returns Array of unique cycles found in the graph
+ * @internal Exported for testing
  */
-function findCycles(graph: Map<string, string[]>): Cycle[] {
+export function findCycles(graph: Map<string, string[]>): Cycle[] {
   const cycles: Cycle[] = [];
   const color = new Map<string, Color>();
   const parent = new Map<string, string>();
@@ -353,8 +355,9 @@ function findCycles(graph: Map<string, string[]>): Cycle[] {
  * @param stack - Current DFS stack of file paths
  * @param cycleStart - The file that completes the cycle (back edge target)
  * @returns Array of files forming the cycle, or null if cycleStart not in stack
+ * @internal Exported for testing
  */
-function extractCycle(stack: string[], cycleStart: string): string[] | null {
+export function extractCycle(stack: string[], cycleStart: string): string[] | null {
   const cycleStartIndex = stack.indexOf(cycleStart);
   if (cycleStartIndex === -1) {
     return null;

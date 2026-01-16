@@ -1816,4 +1816,80 @@ describe('validate-env-complete handler', () => {
       });
     });
   });
+
+  describe('Extra Coverage', () => {
+    it('covers scanFileForEnvVars catch block (lines 173-178)', () => {
+      // Force readFileSync to throw when reading a specific .ts file
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        if (pathStr.endsWith('error.ts')) {
+          throw new Error('Forced read error');
+        }
+        return '';
+      });
+
+      vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+        if (options && typeof options === 'object' && 'withFileTypes' in options) {
+          const dirStr = String(dir).replace(/\\/g, '/');
+          if (dirStr === '/mock/project') {
+            return [createMockDirent('error.ts', false)];
+          }
+        }
+        return [];
+      });
+
+      handleValidateEnvComplete({});
+      
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to scan'),
+        expect.stringContaining('Forced read error')
+      );
+    });
+
+    it('covers scanDirectory maxFiles break (line 214)', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('');
+
+      // Return many files to trigger the limit loop
+      const manyFiles = Array.from({ length: 1005 }, (_, i) => 
+        createMockDirent(`file${i}.ts`, false)
+      );
+
+      vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+        if (options && typeof options === 'object' && 'withFileTypes' in options) {
+          return manyFiles;
+        }
+        return [];
+      });
+
+      handleValidateEnvComplete({});
+    });
+
+    it('covers scanDirectory catch block (line 227)', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('');
+
+      // Force readdirSync to throw
+      vi.mocked(fs.readdirSync).mockImplementation(() => {
+        throw new Error('Forced dir error');
+      });
+
+      handleValidateEnvComplete({});
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to read directory'),
+        expect.stringContaining('Forced dir error')
+      );
+    });
+
+    it('covers ignore loop (line 480)', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('');
+      vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+      // Provide ignore list to trigger the loop
+      handleValidateEnvComplete({ ignore: ['VAR1', 'VAR2'] });
+    });
+  });
 });

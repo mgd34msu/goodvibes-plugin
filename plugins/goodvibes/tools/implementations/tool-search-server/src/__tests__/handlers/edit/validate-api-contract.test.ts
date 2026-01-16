@@ -31,6 +31,100 @@ vi.mock('../../../utils.js', () => ({
 
 import { handleValidateApiContract } from '../../../handlers/edit/validate-api-contract.js';
 
+// Test the YAML unavailable paths using a separate module import with mocked js-yaml
+// These tests MUST run in isolation because they mock the js-yaml module
+describe('handleValidateApiContract with js-yaml unavailable', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-contract-yaml-test-'));
+    vi.clearAllMocks();
+
+    mockFileExists.mockImplementation(async (filePath: string) => {
+      return fs.existsSync(filePath);
+    });
+
+    mockSuccess.mockImplementation((data) => ({
+      content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+    }));
+
+    mockError.mockImplementation((msg) => ({
+      content: [{ type: 'text', text: JSON.stringify({ error: msg }) }],
+      isError: true,
+    }));
+  });
+
+  afterEach(async () => {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+    // Important: unmock js-yaml and reset modules before next test
+    vi.doUnmock('js-yaml');
+    vi.resetModules();
+  });
+
+  test('returns error when YAML file needs parsing but js-yaml unavailable', async () => {
+    // First reset modules to clear any cached imports
+    vi.resetModules();
+
+    // Mock js-yaml to throw on import
+    vi.doMock('js-yaml', () => {
+      throw new Error('Cannot find module js-yaml');
+    });
+
+    // Re-import the module to get the version with mocked js-yaml
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+
+    const yamlSpec = `
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      responses:
+        '200':
+          description: Success
+`;
+    const specPath = path.join(tempDir, 'spec.yaml');
+    fs.writeFileSync(specPath, yamlSpec);
+
+    await handleWithMock({
+      spec_path: specPath,
+      base_url: 'http://localhost:9999',
+    });
+
+    expect(mockError).toHaveBeenCalledWith(expect.stringContaining('js-yaml'));
+  });
+
+  test('returns error for unknown extension with invalid JSON when js-yaml unavailable', async () => {
+    // First reset modules to clear any cached imports
+    vi.resetModules();
+
+    // Mock js-yaml to throw on import
+    vi.doMock('js-yaml', () => {
+      throw new Error('Cannot find module js-yaml');
+    });
+
+    // Re-import the module to get the version with mocked js-yaml
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+
+    // Write invalid JSON with unknown extension
+    const specPath = path.join(tempDir, 'spec.txt');
+    fs.writeFileSync(specPath, 'this is { not valid json at all');
+
+    await handleWithMock({
+      spec_path: specPath,
+      base_url: 'http://localhost:9999',
+    });
+
+    expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Unable to parse spec file'));
+  });
+});
+
 describe('handleValidateApiContract', () => {
   let tempDir: string;
   let mockServer: http.Server;
@@ -2031,6 +2125,360 @@ describe('handleValidateApiContract', () => {
       });
 
       expect(mockSuccess).toHaveBeenCalled();
+    });
+  });
+
+  describe('Additional Coverage', () => {
+    test('handles external $ref that does not start with #/', async () => {
+      const port = await createMockServer({
+        'GET /users/1': { status: 200, body: { id: 1 } },
+      });
+
+      const spec = {
+        openapi: '3.0.0',
+        info: { title: 'Test API', version: '1.0.0' },
+        paths: {
+          '/users/{id}': {
+            get: {
+              parameters: [
+                { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+              ],
+              responses: {
+                '200': {
+                  description: 'Success',
+                  content: {
+                    'application/json': {
+                      schema: { $ref: 'external.json#/definitions/User' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      // External $ref should result in unresolved reference
+      expect(callArg.results[0].valid).toBe(false);
+      expect(callArg.results[0].violations[0].rule).toBe('$ref');
+      expect(callArg.results[0].violations[0].message).toContain('Unable to resolve reference');
+    });
+
+    test('uses integer schema type hint for path parameter substitution', async () => {
+      const port = await createMockServer({
+        'GET /items/1': { status: 200, body: { id: 1 } },
+      });
+
+      const spec = createOpenAPISpec({
+        '/items/{customIntParam}': {
+          get: {
+            parameters: [
+              { name: 'customIntParam', in: 'path', required: true, schema: { type: 'integer' } },
+            ],
+            responses: {
+              '200': { description: 'Success' },
+            },
+          },
+        },
+      });
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      expect(callArg.results[0].request.url).toContain('/items/1');
+      expect(callArg.results[0].tested).toBe(true);
+    });
+
+    test('returns undefined when no request example found', async () => {
+      const port = await createMockServer({
+        'POST /items': { status: 201, body: { id: 1 } },
+      });
+
+      const spec = createOpenAPISpec({
+        '/items': {
+          post: {
+            requestBody: {
+              content: {
+                'application/json': {
+                  schema: { type: 'object' },
+                  // No example or examples provided
+                },
+              },
+            },
+            responses: {
+              '201': { description: 'Created' },
+            },
+          },
+        },
+      });
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      // Request body should be undefined since no example was provided
+      expect(callArg.results[0].request.body).toBeUndefined();
+    });
+
+    test('uses wildcard response schema (2XX) for validation', async () => {
+      const port = await createMockServer({
+        'GET /users': { status: 201, body: { name: 123 } }, // Should fail type validation
+      });
+
+      const spec = createOpenAPISpec({
+        '/users': {
+          get: {
+            responses: {
+              '2XX': {
+                description: 'Success',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      // Status code should be documented via 2XX wildcard
+      expect(callArg.results[0].violations.filter((v: any) => v.rule === 'status_code')).toHaveLength(0);
+      // But the type validation should fail (name should be string, got number)
+      expect(callArg.results[0].valid).toBe(false);
+      expect(callArg.results[0].violations.some((v: any) => v.rule === 'type')).toBe(true);
+    });
+
+    test('handles request timeout', async () => {
+      // Create a server that never responds
+      mockServer = http.createServer((req, res) => {
+        // Intentionally don't respond - let the timeout happen
+      });
+
+      const port = await new Promise<number>((resolve) => {
+        mockServer.listen(0, () => {
+          resolve((mockServer.address() as { port: number }).port);
+        });
+      });
+
+      const spec = createOpenAPISpec({
+        '/slow': {
+          get: {
+            responses: { '200': { description: 'Success' } },
+          },
+        },
+      });
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+        timeout: 100, // Very short timeout
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      expect(callArg.results[0].tested).toBe(false);
+      expect(callArg.results[0].skip_reason).toContain('timed out');
+    });
+
+    test('handles invalid URL in makeRequest', async () => {
+      const spec = createOpenAPISpec({
+        '/users': {
+          get: {
+            responses: { '200': { description: 'Success' } },
+          },
+        },
+      });
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      // Use an invalid URL that will cause URL parsing to fail
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: 'not-a-valid-url',
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      expect(callArg.results[0].tested).toBe(false);
+      expect(callArg.results[0].skip_reason).toContain('failed');
+    });
+
+    test('parses YAML spec file (.yaml)', async () => {
+      const port = await createMockServer({
+        'GET /users': { status: 200, body: [] },
+      });
+
+      const yamlSpec = `
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+`;
+
+      const specPath = path.join(tempDir, 'spec.yaml');
+      fs.writeFileSync(specPath, yamlSpec);
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      expect(callArg.spec_info.title).toBe('Test API');
+    });
+
+    test('parses YAML spec file with unknown extension (fallback)', async () => {
+      const port = await createMockServer({
+        'GET /users': { status: 200, body: [] },
+      });
+
+      const yamlSpec = `
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+`;
+
+      const specPath = path.join(tempDir, 'spec.txt'); // Unknown extension
+      fs.writeFileSync(specPath, yamlSpec);
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      expect(callArg.spec_info.title).toBe('Test API');
+    });
+
+    test('handles unknown extension with invalid content that parses as invalid spec', async () => {
+      // Write invalid JSON to file with unknown extension
+      const specPath = path.join(tempDir, 'spec.unknown');
+      fs.writeFileSync(specPath, 'this is not json { invalid');
+
+      // Since js-yaml IS installed, it will try to parse as YAML
+      // YAML is lenient and will parse this as a string
+      // The validation will then fail because it's not a valid OpenAPI spec
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: 'http://localhost:9999',
+      });
+
+      // Should get an error about invalid spec (missing info or paths)
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Invalid OpenAPI spec'));
+    });
+
+    test('fails validation when $ref resolves to non-object', async () => {
+      const port = await createMockServer({
+        'GET /users/1': { status: 200, body: { id: 1 } },
+      });
+
+      const spec = {
+        openapi: '3.0.0',
+        info: { title: 'Test API', version: '1.0.0' },
+        paths: {
+          '/users/{id}': {
+            get: {
+              parameters: [
+                { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+              ],
+              responses: {
+                '200': {
+                  description: 'Success',
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/StringVal/prop' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        components: {
+          schemas: {
+            StringVal: "I am a string",
+          },
+        },
+      };
+
+      const specPath = path.join(tempDir, 'spec.json');
+      fs.writeFileSync(specPath, JSON.stringify(spec));
+
+      await handleValidateApiContract({
+        spec_path: specPath,
+        base_url: `http://localhost:${port}`,
+      });
+
+      expect(mockSuccess).toHaveBeenCalled();
+      const callArg = mockSuccess.mock.calls[0][0];
+      expect(callArg.results[0].valid).toBe(false);
+      expect(callArg.results[0].violations[0].message).toContain('Unable to resolve reference');
     });
   });
 });

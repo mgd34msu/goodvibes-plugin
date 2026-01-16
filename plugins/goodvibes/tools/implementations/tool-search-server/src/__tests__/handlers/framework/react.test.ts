@@ -18,7 +18,8 @@ import * as path from 'path';
 // Mock modules before imports
 vi.mock('fs');
 
-import { handleGetReactComponentTree, GetReactComponentTreeArgs } from '../../../handlers/framework/react.js';
+import { handleGetReactComponentTree, GetReactComponentTreeArgs, getComponentName } from '../../../handlers/framework/react.js';
+import ts from 'typescript';
 
 describe('handleGetReactComponentTree', () => {
   const originalCwd = process.cwd;
@@ -679,6 +680,46 @@ const result = (function() { return <div />; })();
 
       // The IIFE isn't detected as a component
       expect(data.components.some((c: { name: string }) => c.name === 'result')).toBe(false);
+    });
+
+    it('should return null when getComponentName is called with unsupported node type', () => {
+      // Line 166: Direct test of getComponentName with an ImportDeclaration node
+      const code = `import React from 'react';`;
+      const sourceFile = ts.createSourceFile(
+        'test.tsx',
+        code,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX
+      );
+
+      // Get the ImportDeclaration node (first child)
+      const importNode = sourceFile.statements[0];
+      expect(ts.isImportDeclaration(importNode)).toBe(true);
+
+      // Call getComponentName directly with an ImportDeclaration - should return null
+      const result = getComponentName(importNode, sourceFile);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when getComponentName is called with ExpressionStatement', () => {
+      // Line 166: Direct test of getComponentName with an ExpressionStatement node
+      const code = `console.log('hello');`;
+      const sourceFile = ts.createSourceFile(
+        'test.tsx',
+        code,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX
+      );
+
+      // Get the ExpressionStatement node
+      const exprNode = sourceFile.statements[0];
+      expect(ts.isExpressionStatement(exprNode)).toBe(true);
+
+      // Call getComponentName directly - should return null
+      const result = getComponentName(exprNode, sourceFile);
+      expect(result).toBeNull();
     });
   });
 

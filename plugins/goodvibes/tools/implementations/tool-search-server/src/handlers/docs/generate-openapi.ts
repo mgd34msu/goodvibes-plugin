@@ -338,8 +338,9 @@ function typeToJsonSchema(typeStr: string): JSONSchema {
 
 /**
  * Generate example value from JSON Schema
+ * @internal Exported for testing
  */
-function generateExample(schema: JSONSchema): unknown {
+export function generateExample(schema: JSONSchema): unknown {
   if (schema.$ref) {
     return { '...': 'Reference object' };
   }
@@ -513,8 +514,9 @@ function parseInterfaceToSchema(interfaceBody: string): JSONSchema {
 
 /**
  * Convert spec to YAML format
+ * @internal Exported for testing
  */
-function toYaml(obj: unknown, indent: number = 0): string {
+export function toYaml(obj: unknown, indent: number = 0): string {
   const spaces = '  '.repeat(indent);
 
   if (obj === null || obj === undefined) {
@@ -563,6 +565,28 @@ function toYaml(obj: unknown, indent: number = 0): string {
   }
 
   return String(obj);
+}
+
+/**
+ * Wrapper for toYaml that enables mocking in tests
+ * @internal Exported for testing
+ */
+export let convertToYaml: (obj: unknown) => string = toYaml;
+
+/**
+ * Set a custom YAML converter (for testing)
+ * @internal Exported for testing
+ */
+export function setYamlConverter(converter: (obj: unknown) => string): void {
+  convertToYaml = converter;
+}
+
+/**
+ * Reset to the default YAML converter
+ * @internal Exported for testing
+ */
+export function resetYamlConverter(): void {
+  convertToYaml = toYaml;
 }
 
 // ============================================================================
@@ -774,7 +798,7 @@ export function handleGenerateOpenApi(args: GenerateOpenApiArgs): ToolResponse {
   let specContent: string;
   if (format === 'yaml') {
     try {
-      specContent = toYaml(spec);
+      specContent = convertToYaml(spec);
     } catch (yamlError) {
       warnings.push(`YAML conversion warning: ${yamlError instanceof Error ? yamlError.message : 'Unknown error'}. Falling back to JSON.`);
       specContent = JSON.stringify(spec, null, 2);

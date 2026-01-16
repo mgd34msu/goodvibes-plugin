@@ -1229,4 +1229,133 @@ src/utils.ts(20,10): error TS2339: Property 'foo' does not exist on type 'Bar'.`
       expect(mockSafeExec).not.toHaveBeenCalled();
     });
   });
+
+  describe('Additional Coverage', () => {
+    test('applyEdit reads file directly when no backup exists (file created between phases)', async () => {
+      const filePath = path.join(tempDir, 'late-created.ts');
+
+      // Track which phase we're in by counting fileExists calls
+      // - First call: during backup phase (for uniqueFiles loop) - return false
+      // - Second call: during applyEdit (checking if file exists) - return true
+      let fileExistsCallCount = 0;
+
+      mockFileExists.mockImplementation(async (p: string) => {
+        if (p === filePath || p.includes('late-created.ts')) {
+          fileExistsCallCount++;
+          // First call is during backup creation loop - file doesn't exist yet
+          // Second call is during applyEdit - file now exists
+          return fileExistsCallCount > 1;
+        }
+        return fs.existsSync(p);
+      });
+
+      // Mock readFile - the file "appears" with content during the edit phase
+      vi.mocked(fsp.readFile).mockImplementation(async (pathLike: any, options?: any) => {
+        const p = String(pathLike);
+        if (p === filePath || p.includes('late-created.ts')) {
+          // Return content for the file that was "created" after backup phase
+          return 'const late = true;';
+        }
+        // For other files (backup operations), use actual fs
+        const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+        return actual.readFile(pathLike, options);
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const late = true;',
+            new_text: 'const late = false;',
+          },
+        ],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // The edit should succeed because:
+      // 1. No backup was created (file didn't exist during backup phase)
+      // 2. File exists and is readable during edit phase (line 217 branch)
+      // 3. old_text is found and replaced
+      expect(data.success).toBe(true);
+      expect(data.edits[0].success).toBe(true);
+      expect(data.edits[0].old_text_found).toBe(true);
+    });
+
+    test('runLint passes when ESLint output is invalid JSON but exit code is 0', async () => {
+      const filePath = path.join(tempDir, 'lint-warn.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Mock ESLint returning non-JSON output (e.g. text warnings) but success (error: null)
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'Warning: something is deprecated',
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      
+      expect(data.success).toBe(true);
+      // validation.lint.passed should be true
+      expect(data.validation?.lint?.passed).toBe(true);
+    });
+
+    test('performs rollback when an unexpected error occurs after partial backups', async () => {
+      const file1 = path.join(tempDir, 'file1.ts');
+      const file2 = path.join(tempDir, 'file2.ts');
+      fs.writeFileSync(file1, 'content1');
+      fs.writeFileSync(file2, 'content2');
+
+      // Mock fs.promises.readFile to succeed for first file (backup 1) but fail for second
+      vi.mocked(fsp.readFile).mockImplementation(async (pathLike: any, options: any) => {
+        const p = String(pathLike);
+        if (p.includes('file1.ts')) {
+          return 'content1';
+        }
+        if (p.includes('file2.ts')) {
+          throw new Error('Unexpected backup failure');
+        }
+        // Default behavior
+        const actual = await vi.importActual<typeof import('fs')>('fs');
+        return actual.readFileSync(pathLike, options);
+      });
+      
+      // Also need to ensure fileExists returns true for both so it attempts to backup both
+      mockFileExists.mockResolvedValue(true);
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: file1,
+            old_text: 'content1',
+            new_text: 'new1',
+          },
+          {
+            file: file2,
+            old_text: 'content2',
+            new_text: 'new2',
+          },
+        ],
+      });
+
+      const data = JSON.parse(result.content[0].text);
+      
+      expect(result.isError).toBe(true);
+      expect(data.error).toBe('Unexpected backup failure');
+      // Expect rollback to be performed because at least one backup was made (file1)
+      expect(data.rollback_performed).toBe(true);
+    });
+  });
 });

@@ -69,7 +69,7 @@ const STACK_PATTERNS = {
   v8Async: /^\s*at\s+async\s+(?:(?<func>[^\s(]+)\s+\()?(?<file>[^:]+):(?<line>\d+):(?<column>\d+)\)?$/,
 
   // Node.js internal: "    at Object.<anonymous> (node:internal/...)"
-  nodeInternal: /^\s*at\s+(?:(?<func>[^\s(]+)\s+\()?\(?(node:[^:]+):(?<line>\d+):(?<column>\d+)\)?$/,
+  nodeInternal: /^\s*at\s+(?:(?<func>[^\s(]+)\s+\()?\(?(?<file>node:[^:]+):(?<line>\d+):(?<column>\d+)\)?$/,
 
   // Firefox/SpiderMonkey: "functionName@file:line:column"
   spiderMonkey: /^(?<func>[^@]*)@(?<file>[^:]+):(?<line>\d+):(?<column>\d+)$/,

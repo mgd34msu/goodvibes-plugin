@@ -799,4 +799,70 @@ const c = 3;`;
       }
     });
   });
+
+  describe('Extra Coverage', () => {
+    describe('extractEventHandlers nesting (lines 238-268)', () => {
+      it('covers explicit recursion through children of full JSX elements', () => {
+        const code = `
+          const App = () => (
+            <div id="outer" onClick={h1}>
+              <section id="inner" onMouseEnter={h2}>
+                <button onClick={h3}>Click</button>
+              </section>
+            </div>
+          );
+        `;
+        const sourceFile = createSourceFile(code);
+        const component = findReactComponent(sourceFile)!;
+
+        const { handlers, tree } = extractEventHandlers(component, sourceFile);
+
+        expect(tree.children.length).toBe(1);
+        expect(tree.children[0].element).toBe('div');
+        expect(tree.children[0].children.length).toBe(1);
+        expect(tree.children[0].children[0].element).toBe('section');
+        expect(tree.children[0].children[0].children.length).toBe(1);
+        expect(handlers.some(h => h.element === 'button')).toBe(true);
+      });
+    });
+
+    describe('resolveHandlerBody edge cases (line 143)', () => {
+      it('returns null for identifiers that are not functions', () => {
+        const code = `
+          const notAFunction = 42;
+          const App = () => <div onClick={notAFunction} />;
+        `;
+        const sourceFile = createSourceFile(code);
+        
+        let expr: ts.Expression | null = null;
+        function findOnClick(node: ts.Node) {
+          if (expr) return;
+          if (ts.isJsxAttribute(node) && node.name.text === 'onClick' && node.initializer && ts.isJsxExpression(node.initializer)) {
+            expr = node.initializer.expression || null;
+          }
+          ts.forEachChild(node, findOnClick);
+        }
+        findOnClick(sourceFile);
+
+        const body = resolveHandlerBody(expr!, sourceFile);
+        expect(body).toBeNull();
+      });
+    });
+
+    describe('findReactComponent edge cases', () => {
+      it('covers React.memo with member access (React.memo)', () => {
+        const code = `const C = React.memo(() => <div />);`;
+        const sourceFile = createSourceFile(code);
+        const component = findReactComponent(sourceFile);
+        expect(component).not.toBeNull();
+      });
+
+      it('covers function expressions in variable declarations', () => {
+        const code = `const C = function() { return <div />; };`;
+        const sourceFile = createSourceFile(code);
+        const component = findReactComponent(sourceFile);
+        expect(component).not.toBeNull();
+      });
+    });
+  });
 });

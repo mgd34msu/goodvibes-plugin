@@ -204,12 +204,35 @@ function parsePrismaSchemaContent(content: string): Map<string, PrismaModel> {
 
 /**
  * Extract default value from Prisma field attributes.
+ * Handles nested parentheses like @default(cuid()) or @default(now())
  */
 function extractDefaultValue(attributes: string): string | undefined {
-  const match = /@default\(([^)]+)\)/.exec(attributes);
-  if (match) {
-    return match[1];
+  // Match @default( and then capture everything until the matching closing )
+  // For simple values like @default(true), capture 'true'
+  // For function calls like @default(cuid()), capture 'cuid()'
+  const defaultStart = attributes.indexOf('@default(');
+  if (defaultStart === -1) {
+    return undefined;
   }
+
+  const contentStart = defaultStart + '@default('.length;
+  let depth = 1;
+  let i = contentStart;
+
+  while (i < attributes.length && depth > 0) {
+    if (attributes[i] === '(') {
+      depth++;
+    } else if (attributes[i] === ')') {
+      depth--;
+    }
+    i++;
+  }
+
+  if (depth === 0) {
+    // i is now one past the matching ), so extract from contentStart to i-1
+    return attributes.slice(contentStart, i - 1);
+  }
+
   return undefined;
 }
 

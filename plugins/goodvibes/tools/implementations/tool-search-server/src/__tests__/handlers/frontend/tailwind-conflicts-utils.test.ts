@@ -21,7 +21,9 @@ import {
   SIZE_SETS_BOTH,
   stripPrefixes,
   getBreakpointPrefix,
+  getVariantPrefix,
   groupByBreakpoint,
+  groupByVariant,
   getCategory,
   getShorthandPrefix,
   longhandOverridesShorthand,
@@ -430,6 +432,80 @@ describe('tailwind-conflicts-utils', () => {
     it('should work with prefixed classes', () => {
       expect(longhandOverridesShorthand('sm:p-4', 'sm:pt-2')).toBe(true);
       expect(longhandOverridesShorthand('hover:m-4', 'hover:mt-2')).toBe(true);
+    });
+  });
+
+  describe('Extra Coverage', () => {
+    describe('getVariantPrefix', () => {
+      it('should extract single variant', () => {
+        expect(getVariantPrefix('hover:flex')).toBe('hover:');
+        expect(getVariantPrefix('sm:block')).toBe('sm:');
+        expect(getVariantPrefix('dark:bg-white')).toBe('dark:');
+      });
+
+      it('should extract multiple variants', () => {
+        expect(getVariantPrefix('sm:hover:flex')).toBe('sm:hover:');
+        expect(getVariantPrefix('md:dark:focus:block')).toBe('md:dark:focus:');
+      });
+
+      it('should handle !important prefix', () => {
+        expect(getVariantPrefix('!flex')).toBe('!');
+        expect(getVariantPrefix('sm:!block')).toBe('sm:!');
+      });
+
+      it('should handle complex state variants', () => {
+        expect(getVariantPrefix('group-hover:visible')).toBe('group-hover:');
+        expect(getVariantPrefix('focus-within:ring')).toBe('focus-within:');
+        expect(getVariantPrefix('motion-safe:animate-bounce')).toBe('motion-safe:');
+      });
+
+      it('should handle data and aria variants', () => {
+        expect(getVariantPrefix('data-[state=open]:block')).toBe('data-[state=open]:');
+        expect(getVariantPrefix('aria-[expanded=true]:rotate-180')).toBe('aria-[expanded=true]:');
+      });
+
+      it('should return empty string for no variant', () => {
+        expect(getVariantPrefix('flex')).toBe('');
+        expect(getVariantPrefix('w-full')).toBe('');
+      });
+    });
+
+    describe('groupByVariant', () => {
+      it('should group classes by full variant prefix', () => {
+        const classes = [
+          'flex',
+          'hover:bg-blue-500',
+          'sm:hover:flex',
+          'hover:text-white',
+          'sm:hover:block',
+          'w-full'
+        ];
+
+        const groups = groupByVariant(classes);
+
+        expect(groups.get('')).toEqual(['flex', 'w-full']);
+        expect(groups.get('hover:')).toEqual(['hover:bg-blue-500', 'hover:text-white']);
+        expect(groups.get('sm:hover:')).toEqual(['sm:hover:flex', 'sm:hover:block']);
+      });
+    });
+
+    describe('getCategory arbitrary value edge cases (lines 514-519)', () => {
+      it('should handle arbitrary values with multiple hyphens', () => {
+        expect(getCategory('grid-cols-[1fr_500px_2fr]')).toBe('grid-template-columns');
+      });
+
+      it('should handle arbitrary values without extra hyphen before bracket', () => {
+        expect(getCategory('top-[10px]')).toBe('top');
+      });
+
+      it('should handle arbitrary values where prefix match is needed', () => {
+        // rounded-t matches 'rounded-' prefix in 'border-radius' category first
+        expect(getCategory('rounded-t-[5px]')).toBe('border-radius');
+      });
+
+      it('should return null for arbitrary values with unknown prefix', () => {
+        expect(getCategory('unknown-pref-[10px]')).toBeNull();
+      });
     });
   });
 });

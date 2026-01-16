@@ -145,8 +145,9 @@ function containsJsxReturn(node: ts.Node, sourceFile: ts.SourceFile): boolean {
 
 /**
  * Extract component name from a node
+ * @internal Exported for testing
  */
-function getComponentName(node: ts.Node, sourceFile: ts.SourceFile): string | null {
+export function getComponentName(node: ts.Node, sourceFile: ts.SourceFile): string | null {
   if (ts.isFunctionDeclaration(node) && node.name) {
     return node.name.getText(sourceFile);
   }

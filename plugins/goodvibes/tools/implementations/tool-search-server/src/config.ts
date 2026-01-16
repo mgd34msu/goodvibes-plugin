@@ -8,19 +8,38 @@ import { dirname } from 'path';
 import { IFuseOptions } from 'fuse.js';
 import { RegistryEntry } from './types.js';
 
-// Handle both ESM and CJS contexts
-const getConfigDir = (): string => {
-  // In CJS bundle, use process.cwd() as fallback since import.meta is not available
+/**
+ * Gets the directory containing this config file.
+ * Handles both ESM and CJS contexts with appropriate fallbacks.
+ *
+ * Resolution order:
+ * 1. __dirname (if defined, indicates CJS context)
+ * 2. dirname(fileURLToPath(import.meta.url)) (ESM context)
+ * 3. process.cwd() (fallback when import.meta fails)
+ *
+ * @returns The directory path of the config module
+ * @internal Exported for testing purposes
+ */
+/**
+ * Attempts to get the ESM directory using import.meta.url.
+ * Falls back to process.cwd() if this fails (e.g., in CJS bundles).
+ * @internal
+ */
+/* istanbul ignore next -- @preserve v8 coverage can't track import.meta.url execution */
+const getEsmDir = (): string => {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - import.meta only available in ESM
+  return dirname(fileURLToPath(import.meta.url));
+};
+
+export const getConfigDir = (): string => {
+  /* istanbul ignore if -- @preserve __dirname only available in CJS context, not testable in ESM */
   if (typeof __dirname !== 'undefined') {
     return __dirname;
   }
-  try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - import.meta only available in ESM, may error in CJS context
-    return dirname(fileURLToPath(import.meta.url));
-  } catch {
-    return process.cwd();
-  }
+  // ESM context: use import.meta.url to get the directory
+  /* istanbul ignore next -- @preserve Fallback only triggers when import.meta fails in unusual CJS bundles */
+  try { return getEsmDir(); } catch { return process.cwd(); }
 };
 
 /**

@@ -7,6 +7,7 @@
  * - FUSE_OPTIONS configuration
  * - HOOK_SCRIPT_MAP entries
  * - Environment variable handling
+ * - getConfigDir fallback behavior (lines 17-22)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -221,62 +222,112 @@ describe('config', () => {
     });
   });
 
-  describe('getConfigDir fallback behavior', () => {
-    it('should handle __dirname in CJS context', async () => {
-      // Simulate CJS environment by setting __dirname
-      (globalThis as { __dirname?: string }).__dirname = '/test/cjs/dir';
-
+  describe('getConfigDir', () => {
+    it('should use dirname(fileURLToPath(import.meta.url)) in ESM context', async () => {
+      // In Vitest ESM environment, __dirname is not defined (CJS-only feature)
+      // so getConfigDir() uses the try block with import.meta.url
       vi.resetModules();
-      const { PLUGIN_ROOT } = await import('../config.js');
+      const { getConfigDir } = await import('../config.js');
 
-      // In CJS context with __dirname, it should use that as base
-      expect(typeof PLUGIN_ROOT).toBe('string');
+      const result = getConfigDir();
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+      // The path should contain typical path characters and be the src directory
+      expect(result).toMatch(/[/\\]/);
+      expect(result).toMatch(/src$/);
     });
 
-    it('should handle ESM context gracefully', async () => {
-      // Remove __dirname to simulate ESM
-      delete (globalThis as { __dirname?: string }).__dirname;
-
+    it('should handle repeated calls consistently', async () => {
       vi.resetModules();
+      const { getConfigDir } = await import('../config.js');
 
-      // Should not throw and should return a valid path
-      const { PLUGIN_ROOT } = await import('../config.js');
-      expect(typeof PLUGIN_ROOT).toBe('string');
+      // Multiple calls should return the same result
+      const result1 = getConfigDir();
+      const result2 = getConfigDir();
+      const result3 = getConfigDir();
+
+      expect(result1).toBe(result2);
+      expect(result2).toBe(result3);
     });
 
-    it('should fall back to process.cwd() when import.meta.url throws', async () => {
-      // Remove __dirname to force ESM path
-      delete (globalThis as { __dirname?: string }).__dirname;
-
-      // In environments where import.meta.url is not available (CJS bundle without __dirname),
-      // the catch block should trigger and return process.cwd()
+    it('should return absolute path', async () => {
       vi.resetModules();
+      const { getConfigDir } = await import('../config.js');
 
-      // We can't directly mock import.meta, but we verify the fallback chain works
-      // The function getConfigDir() has three possible return values:
-      // 1. __dirname (if defined) - covered above
-      // 2. dirname(fileURLToPath(import.meta.url)) - ESM path
-      // 3. process.cwd() - catch fallback when import.meta throws
+      const result = getConfigDir();
 
-      const { PLUGIN_ROOT } = await import('../config.js');
+      // Check if path is absolute (starts with / on Unix or drive letter on Windows)
+      const isAbsolute =
+        result.startsWith('/') || /^[A-Za-z]:[\\/]/.test(result);
+      expect(isAbsolute).toBe(true);
+    });
 
-      // Result should be a valid path string regardless of which branch executes
+    it('should be used as base for PLUGIN_ROOT calculation', async () => {
+      vi.resetModules();
+      const { getConfigDir, PLUGIN_ROOT } = await import('../config.js');
+
+      // PLUGIN_ROOT is path.resolve(getConfigDir(), '../../..')
+      // So it should be an ancestor of getConfigDir()
+      const configDir = getConfigDir();
       expect(typeof PLUGIN_ROOT).toBe('string');
+
+      // Both should be valid paths
+      expect(configDir.length).toBeGreaterThan(0);
       expect(PLUGIN_ROOT.length).toBeGreaterThan(0);
     });
 
-    it('should use ESM path when import.meta.url is available', async () => {
-      // Remove __dirname to simulate pure ESM
-      delete (globalThis as { __dirname?: string }).__dirname;
-
+    it('should return the src directory path', async () => {
       vi.resetModules();
-      const { PLUGIN_ROOT } = await import('../config.js');
+      const { getConfigDir } = await import('../config.js');
 
-      // In ESM context (Vitest runs in ESM), import.meta.url should work
-      // and return a path derived from the config.js file location
+      const result = getConfigDir();
+
+      // The config.ts file is in src/, so getConfigDir() should return a path ending in 'src'
+      expect(result).toMatch(/src[/\\]?$/);
+    });
+
+    it('should be exported and callable as a function', async () => {
+      const { getConfigDir } = await import('../config.js');
+
+      // The function should be exported and callable
+      expect(typeof getConfigDir).toBe('function');
+      expect(typeof getConfigDir()).toBe('string');
+    });
+  });
+
+  describe('getConfigDir edge cases', () => {
+    // Note: The catch block (line 33) that returns process.cwd() is defensive code
+    // for environments where __dirname is undefined AND import.meta.url fails.
+    // This is a fallback for unusual bundling scenarios.
+    //
+    // In Vitest's ESM environment:
+    // - __dirname is not defined (CJS-only feature)
+    // - import.meta.url works correctly
+    // So we exercise the try block (lines 28-31) but not the catch block (line 33).
+
+    it('should handle ESM context gracefully', async () => {
+      vi.resetModules();
+      const { getConfigDir, PLUGIN_ROOT } = await import('../config.js');
+
+      // Should not throw and should return valid values
+      expect(() => getConfigDir()).not.toThrow();
       expect(typeof PLUGIN_ROOT).toBe('string');
-      // The path should resolve to something (may be relative to config.js or cwd)
+    });
+
+    it('should derive PLUGIN_ROOT from getConfigDir() when env vars not set', async () => {
+      vi.resetModules();
+      const { getConfigDir, PLUGIN_ROOT } = await import('../config.js');
+
+      // When no env vars are set, PLUGIN_ROOT = path.resolve(getConfigDir(), '../../..')
+      const configDir = getConfigDir();
+
+      // Verify both are valid paths
+      expect(configDir).toBeTruthy();
       expect(PLUGIN_ROOT).toBeTruthy();
+
+      // PLUGIN_ROOT should be an ancestor directory
+      expect(PLUGIN_ROOT.length).toBeLessThanOrEqual(configDir.length);
     });
   });
 

@@ -27,6 +27,8 @@
     "@vitest/coverage-v8": "4.0.16",
     "@vitest/ui": "4.0.16",
     "esbuild": "^0.27.2",
+    "mysql2": "^3.16.1",
+    "pg": "^8.17.1",
     "typescript": "^5.9.3",
     "vitest": "4.0.16"
   }
