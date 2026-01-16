@@ -11,7 +11,7 @@
  * - Idle connection cleanup
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 
 // =============================================================================
 // Mock Setup - Must be before imports
@@ -43,28 +43,65 @@ const createMockDatabase = (overrides: Partial<{
   ...overrides,
 });
 
-// Mock database constructor
-const mockDatabaseConstructor = vi.fn().mockImplementation((filepath, options) => {
+// Mock database constructor - when a function returns an object, `new` uses that object
+// This mock tracks calls while returning a proper mock database
+function MockDatabase(this: unknown, filepath: string, options?: { readonly?: boolean; timeout?: number }) {
   return createMockDatabase({
     name: filepath,
     memory: filepath === ':memory:',
     readonly: options?.readonly ?? false,
   });
-});
+}
+const mockDatabaseConstructor = vi.fn(MockDatabase);
 
 // Mock for better-sqlite3 module - track import attempts
 let driverLoadError: Error | null = null;
 let driverLoadCount = 0;
+// Control flag for simulating module without default export
+let simulateNoDefaultExport = false;
 
-vi.mock('better-sqlite3', () => {
-  return {
-    default: mockDatabaseConstructor,
+// Store original Function constructor
+const OriginalFunction = global.Function;
+
+// Create a mock import function that returns our mock database constructor
+const createMockImportFn = () => {
+  return function mockImportFn(moduleName: string) {
+    driverLoadCount++;
+    if (driverLoadError) {
+      return Promise.reject(driverLoadError);
+    }
+    if (moduleName === 'better-sqlite3') {
+      // Support testing both default export and direct constructor patterns
+      if (simulateNoDefaultExport) {
+        return Promise.resolve(mockDatabaseConstructor);
+      }
+      return Promise.resolve({ default: mockDatabaseConstructor });
+    }
+    // Fallback to real import for other modules
+    return import(moduleName);
   };
-});
+};
 
-// We need to create a custom module mock that intercepts the dynamic import
-// Since the code uses `new Function('name', 'return import(name)')`, we mock it differently
-const originalFunction = global.Function;
+// Replace global Function with a wrapper that intercepts the dynamic import pattern
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(global as any).Function = function MockedFunction(this: unknown, ...args: string[]) {
+  // Check if this is the dynamic import pattern used by loadDriver
+  if (args.length === 2 && args[0] === 'name' && args[1] === 'return import(name)') {
+    return createMockImportFn();
+  }
+  // For all other cases, delegate to original Function
+  // Using Reflect.construct to properly handle `new` calls
+  return Reflect.construct(OriginalFunction, args);
+};
+
+// Ensure our mock Function has the same prototype chain
+Object.setPrototypeOf((global as any).Function, OriginalFunction);
+(global as any).Function.prototype = OriginalFunction.prototype;
+
+// Cleanup: restore original Function after all tests
+afterAll(() => {
+  global.Function = OriginalFunction;
+});
 
 describe('SQLite Connection Pool', () => {
   beforeEach(() => {
@@ -72,6 +109,7 @@ describe('SQLite Connection Pool', () => {
     vi.resetModules();
     driverLoadError = null;
     driverLoadCount = 0;
+    simulateNoDefaultExport = false;
   });
 
   afterEach(() => {
@@ -870,11 +908,8 @@ describe('Driver loading', () => {
   });
 
   it('should handle driver without default export', async () => {
-    // Simulate module with no default export
-    vi.doMock('better-sqlite3', () => {
-      const constructor = mockDatabaseConstructor;
-      return constructor;
-    });
+    // Simulate module with no default export using our control flag
+    simulateNoDefaultExport = true;
 
     vi.resetModules();
     const module = await import('../../../handlers/database/sqlite-connection.js');
@@ -886,8 +921,11 @@ describe('Driver loading', () => {
 
     await withConnection({ filepath: ':memory:' }, () => 'done');
 
-    // Should still work
+    // Should still work - source code uses `module.default || module`
     expect(mockDatabaseConstructor).toHaveBeenCalled();
+
+    // Reset for other tests
+    simulateNoDefaultExport = false;
   });
 });
 

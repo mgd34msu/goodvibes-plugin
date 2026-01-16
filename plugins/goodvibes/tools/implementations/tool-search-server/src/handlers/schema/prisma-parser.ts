@@ -9,7 +9,18 @@ import { ToolResponse } from '../../types.js';
 import { Column, Relation, Index, Table } from './types.js';
 
 /**
- * Parse Prisma schema
+ * Parses a Prisma schema file and extracts table definitions, columns, relations, and indexes.
+ *
+ * @param projectPath - The root path of the project containing the prisma directory
+ * @param filterTables - Optional array of table names to include; if empty, all tables are returned
+ * @returns A ToolResponse containing JSON with source, tables array, and raw_path
+ * @throws Error if the Prisma schema file is not found at prisma/schema.prisma
+ *
+ * @example
+ * ```typescript
+ * const result = parsePrismaSchema('/path/to/project');
+ * // Returns: { content: [{ type: 'text', text: '{"source":"prisma","tables":[...],...}' }] }
+ * ```
  */
 export function parsePrismaSchema(projectPath: string, filterTables?: string[]): ToolResponse {
   const schemaPath = path.join(projectPath, 'prisma', 'schema.prisma');

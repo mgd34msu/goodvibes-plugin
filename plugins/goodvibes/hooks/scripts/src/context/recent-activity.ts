@@ -22,7 +22,10 @@ import type {
   RecentCommit,
 } from '../types/recent-activity.js';
 
-/** Re-export of recent activity types for consumer convenience. */
+/**
+ * Re-exported types for recent activity analysis.
+ * Consumers can import these types directly from this module.
+ */
 export type { RecentActivity, FileChange, Hotspot, RecentCommit };
 
 /**

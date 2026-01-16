@@ -32,7 +32,10 @@ import type {
   TypeScriptHealth,
 } from './project-health-types.js';
 
-// Re-export types for backward compatibility
+/**
+ * Re-exported types for backward compatibility.
+ * Consumers can import these types directly from this module.
+ */
 export type { ProjectHealth, TypeScriptHealth, HealthWarning } from './project-health-types.js';
 
 const LOCKFILES: Record<string, string> = {

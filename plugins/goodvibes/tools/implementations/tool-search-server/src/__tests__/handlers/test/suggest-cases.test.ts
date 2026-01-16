@@ -4,8 +4,9 @@
  * Tests cover:
  * - handleSuggestTestCases function
  * - Argument validation
+ * - Function parsing
+ * - Test suggestion generation
  * - Error handling
- * - Integration with find-tests handler
  *
  * Note: Function parsing is tested through integration with real TypeScript files
  * since mocking the TypeScript compiler's createSourceFile is complex.
@@ -25,21 +26,47 @@ vi.mock('../../../config.js', () => ({
   PROJECT_ROOT: '/project',
 }));
 
-// Mock find-tests module
-vi.mock('../../../handlers/test/find-tests.js', () => ({
-  handleFindTestsForFile: vi.fn().mockResolvedValue({
-    isError: false,
-    content: [{ type: 'text', text: JSON.stringify({ tests: [], count: 0 }) }],
+// Mock lsp/utils module - need to provide all the used functions
+vi.mock('../../../handlers/lsp/utils.js', () => ({
+  createSuccessResponse: vi.fn((data) => ({
+    content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+  })),
+  createErrorResponse: vi.fn((message, context) => ({
+    content: [{ type: 'text', text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true,
+  })),
+  normalizeFilePath: vi.fn((p: string) => p.replace(/\\/g, '/')),
+  makeRelativePath: vi.fn((abs: string, root: string) => {
+    const relative = path.relative(root, abs);
+    return relative.replace(/\\/g, '/');
   }),
+  resolveFilePath: vi.fn((filePath: string, projectRoot: string) => {
+    if (path.isAbsolute(filePath)) return filePath;
+    return path.join(projectRoot, filePath).replace(/\\/g, '/');
+  }),
+}));
+
+// Mock find-tests module
+const mockHandleFindTestsForFile = vi.fn().mockResolvedValue({
+  isError: false,
+  content: [{ type: 'text', text: JSON.stringify({ tests: [], count: 0 }) }],
+});
+vi.mock('../../../handlers/test/find-tests.js', () => ({
+  handleFindTestsForFile: mockHandleFindTestsForFile,
 }));
 
 describe('handleSuggestTestCases', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-establish the default mock return value after clearing
+    mockHandleFindTestsForFile.mockResolvedValue({
+      isError: false,
+      content: [{ type: 'text', text: JSON.stringify({ tests: [], count: 0 }) }],
+    });
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Argument Validation', () => {
@@ -99,6 +126,11 @@ export function calculateSum(a: number, b: number): number {
 
       const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'calculateSum' };
       const response = await handleSuggestTestCases(args);
+
+      // Debug: check what error we're getting if there is one
+      if (response.isError) {
+        console.log('Error response:', response.content[0].text);
+      }
 
       expect(response.isError).toBeUndefined();
       const parsed = JSON.parse(response.content[0].text);

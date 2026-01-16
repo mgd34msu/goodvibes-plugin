@@ -6,8 +6,9 @@
  */
 
 /**
- * Module marker to ensure this file is included in coverage.
- * This is necessary because TypeScript interfaces compile to empty JavaScript.
+ * Module marker constant to ensure this file is included in coverage.
+ * TypeScript interfaces compile to empty JavaScript, so this constant
+ * provides a runtime value that coverage tools can detect.
  * @internal
  */
 export const PROJECT_HEALTH_TYPES_MODULE = 'project-health-types' as const;
