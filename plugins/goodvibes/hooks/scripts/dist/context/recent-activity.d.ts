@@ -4,7 +4,10 @@
  * Analyzes recent git changes to identify hotspots and activity patterns.
  */
 import type { RecentActivity, FileChange, Hotspot, RecentCommit } from '../types/recent-activity.js';
-/** Re-export of recent activity types for consumer convenience. */
+/**
+ * Re-exported types for recent activity analysis.
+ * Consumers can import these types directly from this module.
+ */
 export type { RecentActivity, FileChange, Hotspot, RecentCommit };
 /**
  * Gather all recent git activity context for the project.

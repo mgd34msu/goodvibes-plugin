@@ -8,13 +8,27 @@
  * Can be overridden via GOODVIBES_STDIN_TIMEOUT_MS environment variable.
  */
 export declare const STDIN_TIMEOUT_MS: number;
-/** Triggers that determine when quality checkpoints should run. */
+/**
+ * Triggers that determine when quality checkpoints should run.
+ *
+ * @property fileCountThreshold - Number of file changes before triggering a checkpoint
+ * @property afterAgentComplete - Whether to trigger after an agent completes
+ * @property afterMajorChange - Whether to trigger after major changes
+ */
 export declare const CHECKPOINT_TRIGGERS: {
     fileCountThreshold: number;
     afterAgentComplete: boolean;
     afterMajorChange: boolean;
 };
-/** Default quality gate checks with auto-fix commands. */
+/**
+ * Default quality gate checks with auto-fix commands.
+ *
+ * Each gate has:
+ * - name: Display name for the check
+ * - check: Command to run for validation
+ * - autoFix: Command to auto-fix issues (null if not available)
+ * - blocking: Whether failures should block the workflow
+ */
 export declare const QUALITY_GATES: ({
     name: string;
     check: string;

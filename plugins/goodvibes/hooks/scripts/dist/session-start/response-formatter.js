@@ -8,10 +8,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { PLUGIN_ROOT } from '../shared/constants.js';
-/** Length of session ID suffix to display */
+/**
+ * Length of session ID suffix to display in system messages.
+ * Shows only the last N characters for brevity.
+ */
 const SESSION_ID_DISPLAY_LENGTH = 8;
 /**
- * Get the plugin version from manifest
+ * Gets the plugin version from the manifest file.
+ *
+ * @returns Version string prefixed with 'v' (e.g., 'v1.0.0'), or 'v0.0.0' if unavailable
  */
 function getPluginVersion() {
     try {
@@ -25,7 +30,9 @@ function getPluginVersion() {
     }
 }
 /**
- * Get the number of available tools from the registry
+ * Gets the number of available tools from the registry.
+ *
+ * @returns Total count of registered tools, or 0 if registry is unavailable
  */
 function getToolCount() {
     try {

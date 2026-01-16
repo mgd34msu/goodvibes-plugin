@@ -5,7 +5,11 @@
  */
 import * as fs from 'fs/promises';
 import { debug } from './logging.js';
-/** Maximum length for transcript summary text. */
+/**
+ * Maximum length for transcript summary text.
+ * Longer summaries are truncated to this length.
+ * @internal
+ */
 const TRANSCRIPT_SUMMARY_MAX_LENGTH = 500;
 /**
  * Parses a Claude Code transcript file to extract tools used and files modified.

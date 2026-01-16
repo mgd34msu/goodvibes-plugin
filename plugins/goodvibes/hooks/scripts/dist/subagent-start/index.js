@@ -18,7 +18,14 @@ import { saveAgentTracking } from '../subagent-stop/telemetry.js';
 import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from '../telemetry/index.js';
 import { getActiveAgentsFilePath } from '../telemetry/index.js';
 import { buildSubagentContext } from './context-injection.js';
-/** Creates a hook response with optional system message and additional context. */
+/**
+ * Creates a hook response with optional system message and additional context.
+ *
+ * @param options - Optional configuration for the response
+ * @param options.systemMessage - System message to include
+ * @param options.additionalContext - Additional context to inject
+ * @returns SubagentStartResponse object with continue: true
+ */
 function createResponse(options) {
     const response = {
         continue: true,
@@ -31,7 +38,10 @@ function createResponse(options) {
     }
     return response;
 }
-/** Known GoodVibes agent types that receive system messages. */
+/**
+ * Known GoodVibes agent types that receive system messages.
+ * These agents are part of the GoodVibes ecosystem and get special handling.
+ */
 const GOODVIBES_AGENTS = new Set([
     'goodvibes:factory',
     'goodvibes:skill-creator',
@@ -44,7 +54,13 @@ const GOODVIBES_AGENTS = new Set([
     'goodvibes:brutal-reviewer',
     'goodvibes:workflow-planner',
 ]);
-/** Extracts normalized input fields from raw hook input. */
+/**
+ * Extracts normalized input fields from raw hook input.
+ * Handles field name variations (agent_id vs subagent_id, etc.).
+ *
+ * @param input - Raw hook input from Claude
+ * @returns Normalized fields with consistent naming
+ */
 function extractStartInputFields(input) {
     return {
         agentId: input.agent_id ?? input.subagent_id ?? 'agent_' + Date.now(),
@@ -54,7 +70,17 @@ function extractStartInputFields(input) {
         sessionId: input.session_id ?? '',
     };
 }
-/** Creates a telemetry tracking entry. */
+/**
+ * Creates a telemetry tracking entry for the starting agent.
+ *
+ * @param agentId - Unique identifier for the agent
+ * @param agentType - Type of agent (e.g., 'backend-engineer')
+ * @param sessionId - Current session identifier
+ * @param cwd - Current working directory
+ * @param projectName - Derived project name
+ * @param gitInfo - Git branch and commit information
+ * @returns TelemetryTracking object for persistence
+ */
 function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo) {
     return {
         agent_id: agentId,
@@ -67,7 +93,15 @@ function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gi
         started_at: new Date().toISOString(),
     };
 }
-/** Tracks subagent spawn in analytics. */
+/**
+ * Tracks subagent spawn in analytics.
+ * Appends spawn info to the subagents_spawned array.
+ *
+ * @param agentType - Type of agent being spawned
+ * @param taskDescription - Description of the task (truncated to 200 chars)
+ * @param startedAt - ISO timestamp of when agent started
+ * @returns Loaded analytics object or null if unavailable
+ */
 async function trackInAnalytics(agentType, taskDescription, startedAt) {
     const analytics = await loadAnalytics();
     if (!analytics) {
@@ -83,7 +117,15 @@ async function trackInAnalytics(agentType, taskDescription, startedAt) {
     await saveAnalytics(analytics);
     return analytics;
 }
-/** Builds project reminders for context injection. */
+/**
+ * Builds project reminders for context injection.
+ * Includes stack info, git branch, and project name.
+ *
+ * @param projectName - Name of the current project
+ * @param gitBranch - Current git branch, if available
+ * @param stackInfo - Detected stack information
+ * @returns Array of reminder strings
+ */
 function buildReminders(projectName, gitBranch, stackInfo) {
     const reminders = [];
     if (stackInfo) {
@@ -95,14 +137,29 @@ function buildReminders(projectName, gitBranch, stackInfo) {
     reminders.push('Project: ' + projectName);
     return reminders;
 }
-/** Combines subagent context with project reminders. */
+/**
+ * Combines subagent context with project reminders.
+ * Merges agent-specific context with project-level information.
+ *
+ * @param subagentContext - Context built for the specific agent type
+ * @param reminders - Array of project reminder strings
+ * @returns Combined context string for injection
+ */
 function buildAdditionalContext(subagentContext, reminders) {
     if (subagentContext.additionalContext) {
         return subagentContext.additionalContext + '\n\n' + reminders.join('\n');
     }
     return '[GoodVibes Project Context]\n' + reminders.join('\n');
 }
-/** Builds system message for GoodVibes agents. */
+/**
+ * Builds system message for GoodVibes agents.
+ * Only generates messages for known GoodVibes agent types.
+ *
+ * @param agentType - Type of agent starting
+ * @param projectName - Name of the current project
+ * @param gitBranch - Current git branch, if available
+ * @returns System message string, or undefined for non-GoodVibes agents
+ */
 function buildSystemMessage(agentType, projectName, gitBranch) {
     if (!GOODVIBES_AGENTS.has(agentType)) {
         debug('Non-GoodVibes agent started: ' + agentType);
@@ -115,7 +172,12 @@ function buildSystemMessage(agentType, projectName, gitBranch) {
         projectName +
         (gitBranch ? ', Branch: ' + gitBranch : ''));
 }
-/** Main entry point for subagent-start hook. Captures telemetry and injects project context. */
+/**
+ * Main entry point for subagent-start hook.
+ * Captures telemetry data, stores tracking info, and injects project context.
+ *
+ * @returns Promise that resolves when hook processing completes
+ */
 async function runSubagentStartHook() {
     try {
         debug('SubagentStart hook starting');

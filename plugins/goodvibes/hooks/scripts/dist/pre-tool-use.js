@@ -21,18 +21,22 @@ import { promisify } from "util";
 
 // src/shared/constants.ts
 import * as path from "path";
-function resolvePluginRoot() {
+function resolvePluginRootFromDirname(dirname) {
   if (process.env.CLAUDE_PLUGIN_ROOT) {
     return process.env.CLAUDE_PLUGIN_ROOT;
   }
-  if (typeof __dirname !== "undefined" && __dirname.includes("hooks")) {
-    const hooksIndex = __dirname.indexOf("hooks");
+  if (dirname !== void 0 && dirname.includes("hooks")) {
+    const hooksIndex = dirname.indexOf("hooks");
     if (hooksIndex > 0) {
-      return __dirname.substring(0, hooksIndex - 1);
+      return dirname.substring(0, hooksIndex - 1);
     }
   }
   const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
   return devPluginPath;
+}
+function resolvePluginRoot() {
+  const currentDirname = typeof __dirname !== "undefined" ? __dirname : void 0;
+  return resolvePluginRootFromDirname(currentDirname);
 }
 var PLUGIN_ROOT = resolvePluginRoot();
 var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -334,3 +338,4 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
 
 // src/automation/git-operations.ts
 var execAsync2 = promisify3(exec3);
+/* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */

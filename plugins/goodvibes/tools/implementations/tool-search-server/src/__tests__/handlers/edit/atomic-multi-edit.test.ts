@@ -7,8 +7,37 @@
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
+import * as fsp from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+
+// Mock fs to allow spying/mocking its methods in ESM
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    readFileSync: vi.fn(actual.readFileSync),
+    writeFileSync: vi.fn(actual.writeFileSync),
+    existsSync: vi.fn(actual.existsSync),
+    unlinkSync: vi.fn(actual.unlinkSync),
+    renameSync: vi.fn(actual.renameSync),
+    mkdtempSync: vi.fn(actual.mkdtempSync),
+    rmSync: vi.fn(actual.rmSync),
+    readdirSync: vi.fn(actual.readdirSync),
+  };
+});
+
+// Mock fs/promises
+vi.mock('fs/promises', async () => {
+  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  return {
+    ...actual,
+    readFile: vi.fn(actual.readFile),
+    writeFile: vi.fn(actual.writeFile),
+    mkdir: vi.fn(actual.mkdir),
+    rm: vi.fn(actual.rm),
+  };
+});
 
 // Create mock functions using vi.hoisted() to ensure they're available before vi.mock() is hoisted
 const { mockFileExists, mockSafeExec } = vi.hoisted(() => ({
@@ -1095,17 +1124,15 @@ src/utils.ts(20,10): error TS2339: Property 'foo' does not exist on type 'Bar'.`
   describe('Error handling edge cases', () => {
     test('handles error thrown during file read in applyEdit', async () => {
       const filePath = path.join(tempDir, 'read-error.ts');
-      fs.writeFileSync(filePath, 'const x = 1;');
-
-      // Make the file unreadable after backup
-      const originalReadFile = fs.readFileSync;
+      
       let readCount = 0;
-      vi.spyOn(fs, 'readFileSync').mockImplementation((p: any, options?: any) => {
+      vi.mocked(fsp.readFile).mockImplementation(async (p: any, options?: any) => {
         readCount++;
-        if (readCount > 1 && p === filePath) {
-          throw new Error('Read permission denied');
-        }
-        return originalReadFile(p, options);
+        // First read is for backup (Phase 1)
+        if (readCount === 1) return 'const x = 1;';
+        // Second read is for applyEdit (Phase 2)
+        if (readCount === 2) throw new Error('Read permission denied');
+        return 'const x = 1;';
       });
 
       const result = await handleAtomicMultiEdit({

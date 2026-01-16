@@ -274,17 +274,23 @@ function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@')) continue;
 
-      const fieldMatch = /^(\w+)\s+(\w+)(?:(\[\])|(\?))?(?:(\[\])|(\?))?\s*(.*)$/.exec(trimmed);
+      const fieldMatch = /^(\w+)\s+(\w+)(.*)$/.exec(trimmed);
       if (fieldMatch) {
-        const [, fieldName, fieldType, m1, m2, m3, m4, rest] = fieldMatch;
-        const isArray = m1 === '[]' || m2 === '[]' || m3 === '[]' || m4 === '[]';
-        const nullable = m1 === '?' || m2 === '?' || m3 === '?' || m4 === '?' ;
+        const [, fieldName, fieldType, rawRest] = fieldMatch;
+        const rest = rawRest.trim();
+        const isArray = rest.startsWith('[]');
+        const nullable = isArray ? rest.slice(2).trim().startsWith('?') : rest.startsWith('?');
+
+        // Adjust rest to remove markers
+        let cleanRest = rest;
+        if (isArray) cleanRest = cleanRest.slice(2).trim();
+        if (nullable) cleanRest = cleanRest.slice(1).trim();
 
         const isRelation = /^[A-Z]/.test(fieldType) && !prismaScalars.includes(fieldType);
 
         if (isRelation) {
           // Parse @relation directive for foreign key info
-          const relationMatch = rest.match(/@relation\s*\([^)]*fields:\s*\[([^\]]+)\][^)]*references:\s*\[([^\]]+)\]/);
+          const relationMatch = cleanRest.match(/@relation\s*\([^)]*fields:\s*\[([^\]]+)\][^)]*references:\s*\[([^\]]+)\]/);
           if (relationMatch) {
             const fromColumns = relationMatch[1].split(',').map(c => c.trim());
             const toColumns = relationMatch[2].split(',').map(c => c.trim());
@@ -298,23 +304,23 @@ function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
                 type: isArray ? 'one-to-many' : 'one-to-one',
               });
             }
-          } else if (!isArray) {
+          } else {
             // Implicit relation without @relation directive
             relations.push({
               from_table: modelName,
-              from_column: `${fieldName}Id`,
+              from_column: isArray ? 'id' : `${fieldName}Id`,
               to_table: fieldType,
-              to_column: 'id',
-              type: 'one-to-one',
+              to_column: isArray ? `${modelName.toLowerCase()}Id` : 'id',
+              type: isArray ? 'one-to-many' : 'one-to-one',
             });
           }
         } else {
-          const isPrimary = rest.includes('@id');
-          const isUnique = rest.includes('@unique');
+          const isPrimary = cleanRest.includes('@id');
+          const isUnique = cleanRest.includes('@unique');
 
           // Check for @relation references
           let references: DatabaseColumn['references'] | undefined;
-          const refMatch = rest.match(/@relation\s*\([^)]*references:\s*\[([^\]]+)\]/);
+          const refMatch = cleanRest.match(/@relation\s*\([^)]*references:\s*\[([^\]]+)\]/);
           if (refMatch) {
             // This is a foreign key column
             const referencedColumn = refMatch[1].trim();
@@ -331,7 +337,7 @@ function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
           columns.push({
             name: fieldName,
             type: fieldType,
-            nullable: nullable === '?',
+            nullable: nullable,
             primary_key: isPrimary,
             references,
           });

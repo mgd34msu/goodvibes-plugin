@@ -411,17 +411,24 @@ describe('handleGetApiSurface', () => {
 
     test('detects src/index.ts as entry point', async () => {
       mockFs.existsSync.mockImplementation((p: string) => {
-        if (p.includes('package.json')) return false;
-        if (p.endsWith('/src')) return true;
-        if (p.endsWith('src/index.ts')) return true;
-        return p === '/mock/project/lib' || p.includes('lib');
+        const normalized = p.replace(/\\/g, '/');
+        if (normalized.includes('package.json')) return false;
+        if (normalized.endsWith('/src')) return true;
+        if (normalized.endsWith('src/index.ts')) return true;
+        // Match the root lib directory
+        if (normalized.endsWith('/lib')) return true;
+        return false;
       });
-      mockFs.statSync.mockImplementation((p: string) => ({
-        isDirectory: () => p.endsWith('/src') || p.endsWith('/lib') || p === '/mock/project/lib',
-      }));
-      mockFs.readdirSync.mockReturnValue([
-        createDirEntry('src', false, true),
-      ]);
+      mockFs.statSync.mockImplementation((p: string) => {
+        const normalized = p.replace(/\\/g, '/');
+        return {
+          isDirectory: () => normalized.endsWith('/src') || normalized.endsWith('/lib') || normalized === '/mock/project/lib',
+        };
+      });
+      mockFs.readdirSync.mockImplementation((p: string) => {
+        if (p.endsWith('src')) return [createDirEntry('index.ts', true, false)];
+        return [createDirEntry('src', false, true)];
+      });
 
       const sourceFiles = new Map<string, ReturnType<typeof createMockSourceFile>>();
       const typeChecker = createMockTypeChecker([]);
@@ -435,6 +442,8 @@ describe('handleGetApiSurface', () => {
 
       const result = await handleGetApiSurface({ path: 'lib' });
       const data = JSON.parse(result.content[0].text);
+
+      if (result.isError) console.log('DEBUG ERROR:', data.error || result.content[0].text);
 
       expect(result.isError).toBeFalsy();
       expect(Array.isArray(data.entry_points)).toBe(true);

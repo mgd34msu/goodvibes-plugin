@@ -11,7 +11,10 @@
  */
 import { detectStack, formatStackInfo, getGitContext, formatGitContext, checkEnvStatus, formatEnvStatus, scanTodos, formatTodos, checkProjectHealth, formatHealthStatus, analyzeFolderStructure, formatFolderAnalysis, isEmptyProject, formatEmptyProjectContext, } from '../context/index.js';
 import { loadProjectMemory, formatMemoryContext } from '../memory/index.js';
-/** Width of the separator line in context output */
+/**
+ * Width of the separator line in context output.
+ * Used for visual separation between context sections.
+ */
 const SEPARATOR_WIDTH = 50;
 /**
  * Gathers project context and formats it for session injection.

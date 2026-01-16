@@ -3,9 +3,15 @@
  *
  * Provides transcript parsing, keyword extraction, and content analysis.
  */
-/** Maximum length for truncated output text. */
+/**
+ * Maximum length for truncated output text.
+ * Output longer than this will be truncated with '...' suffix.
+ */
 export declare const MAX_OUTPUT_LENGTH = 500;
-/** Parsed transcript data extracted from session logs. */
+/**
+ * Parsed transcript data extracted from session logs.
+ * Contains files modified, tools used, and success/error indicators.
+ */
 export interface ParsedTranscript {
     files_modified: string[];
     tools_used: string[];
@@ -16,6 +22,8 @@ export interface ParsedTranscript {
 /**
  * Keyword categories for classifying agent tasks and transcript content.
  * Re-exported from the consolidated keywords module for backwards compatibility.
+ *
+ * @see {@link ../shared/keywords} for the source definition
  */
 export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /**

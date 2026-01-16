@@ -16,6 +16,10 @@
  * use health-checker.ts for quick status checks.
  */
 import type { ProjectHealth } from './project-health-types.js';
+/**
+ * Re-exported types for backward compatibility.
+ * Consumers can import these types directly from this module.
+ */
 export type { ProjectHealth, TypeScriptHealth, HealthWarning } from './project-health-types.js';
 /**
  * Check overall project health with comprehensive analysis.

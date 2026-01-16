@@ -1673,18 +1673,22 @@ import { promisify } from "util";
 
 // src/shared/constants.ts
 import * as path from "path";
-function resolvePluginRoot() {
+function resolvePluginRootFromDirname(dirname2) {
   if (process.env.CLAUDE_PLUGIN_ROOT) {
     return process.env.CLAUDE_PLUGIN_ROOT;
   }
-  if (typeof __dirname !== "undefined" && __dirname.includes("hooks")) {
-    const hooksIndex = __dirname.indexOf("hooks");
+  if (dirname2 !== void 0 && dirname2.includes("hooks")) {
+    const hooksIndex = dirname2.indexOf("hooks");
     if (hooksIndex > 0) {
-      return __dirname.substring(0, hooksIndex - 1);
+      return dirname2.substring(0, hooksIndex - 1);
     }
   }
   const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
   return devPluginPath;
+}
+function resolvePluginRoot() {
+  const currentDirname = typeof __dirname !== "undefined" ? __dirname : void 0;
+  return resolvePluginRootFromDirname(currentDirname);
 }
 var PLUGIN_ROOT = resolvePluginRoot();
 var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -3043,5 +3047,6 @@ if (!isTestEnvironment()) {
     respond(createResponse2(`Uncaught error: ${String(error)}`));
   });
 }
+/* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */
 /* v8 ignore else -- @preserve defensive check: match[1] is always truthy with (.+) patterns */
 /* v8 ignore else -- @preserve defensive: all exported functions always provide timeout */

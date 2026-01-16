@@ -30,20 +30,32 @@ export const TRANSCRIPT_KEYWORD_CATEGORIES = keywordData.transcriptKeywords;
 // Unified Access
 // =============================================================================
 /**
- * Default keyword categories - uses stack detection keywords.
+ * Default keyword categories for tech stack detection.
+ *
  * This is the primary export for backwards compatibility with shared.ts.
+ * Alias for STACK_KEYWORD_CATEGORIES.
+ *
+ * @see {@link STACK_KEYWORD_CATEGORIES}
  */
 export const KEYWORD_CATEGORIES = STACK_KEYWORD_CATEGORIES;
 /**
- * Flat list of all stack detection keywords.
+ * Flat array of all stack detection keywords.
+ *
+ * Contains all keywords from all categories in STACK_KEYWORD_CATEGORIES,
+ * useful for iterating over all keywords without category grouping.
  */
 export const ALL_STACK_KEYWORDS = Object.values(STACK_KEYWORD_CATEGORIES).flat();
 /**
- * Flat list of all transcript classification keywords.
+ * Flat array of all transcript classification keywords.
+ *
+ * Contains all keywords from all categories in TRANSCRIPT_KEYWORD_CATEGORIES,
+ * useful for comprehensive text analysis.
  */
 export const ALL_TRANSCRIPT_KEYWORDS = Object.values(TRANSCRIPT_KEYWORD_CATEGORIES).flat();
 /**
- * Combined flat list of all unique keywords from both categories.
+ * Combined flat array of all unique keywords from both categories.
+ *
+ * Deduplicates keywords that appear in both stack and transcript categories.
  */
 export const ALL_KEYWORDS = [
     ...new Set([...ALL_STACK_KEYWORDS, ...ALL_TRANSCRIPT_KEYWORDS]),
@@ -76,14 +88,23 @@ const TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(ALL_TRANSCRIPT_KEYWORDS.map((keywor
 // =============================================================================
 // Utility Functions
 // =============================================================================
-/** Maximum number of keywords to extract from text. */
+/**
+ * Maximum number of keywords to extract from text.
+ * @internal
+ */
 const MAX_EXTRACTED_KEYWORDS = 50;
 /**
- * Extract known keywords from text using stack detection categories.
- * Uses pre-compiled regex patterns for performance.
+ * Extracts known keywords from text using stack detection categories.
+ *
+ * Uses pre-compiled regex patterns for performance. Scans the input text
+ * for all keywords in STACK_KEYWORD_CATEGORIES and returns matches.
  *
  * @param text - Text to search for keywords
- * @returns Array of found keywords (max 50)
+ * @returns Array of found keywords (max 50), deduplicated
+ *
+ * @example
+ * const keywords = extractStackKeywords('Using React with TypeScript and Prisma');
+ * // => ['react', 'typescript', 'prisma']
  */
 export function extractStackKeywords(text) {
     const found = new Set();
@@ -96,14 +117,22 @@ export function extractStackKeywords(text) {
     return Array.from(found).slice(0, MAX_EXTRACTED_KEYWORDS);
 }
 /**
- * Extract keywords from text with category metadata.
- * Used for transcript classification.
+ * Extracts keywords from text with category metadata for transcript classification.
+ *
+ * Scans the combined input text for keywords and adds category meta-keywords
+ * (e.g., 'category:frontend') when matches are found. Also adds agent type
+ * as a meta-keyword if provided.
+ *
  * Uses pre-compiled regex patterns for performance.
  *
- * @param taskDescription - Optional task description
- * @param transcriptContent - Optional transcript content
- * @param agentType - Optional agent type
- * @returns Array of keywords including category meta-keywords
+ * @param taskDescription - Optional task description to analyze
+ * @param transcriptContent - Optional transcript content to analyze
+ * @param agentType - Optional agent type (e.g., 'goodvibes:frontend-architect')
+ * @returns Sorted array of keywords including 'category:*' and 'agent:*' meta-keywords
+ *
+ * @example
+ * const keywords = extractTranscriptKeywords('Build a React component', '', 'goodvibes:frontend-architect');
+ * // => ['agent:frontend architect', 'category:frontend', 'react']
  */
 export function extractTranscriptKeywords(taskDescription, transcriptContent, agentType) {
     const keywords = new Set();

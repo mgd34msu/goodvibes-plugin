@@ -552,8 +552,8 @@ function isSelectQuery(query: string): boolean {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .trim();
 
-  // Check if it starts with SELECT or WITH (CTEs)
-  if (withoutComments.startsWith('SELECT')) {
+  // Check if it starts with SELECT, WITH (CTEs), or EXPLAIN
+  if (withoutComments.startsWith('SELECT') || withoutComments.startsWith('EXPLAIN')) {
     return true;
   }
 

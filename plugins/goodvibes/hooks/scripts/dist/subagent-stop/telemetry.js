@@ -21,7 +21,10 @@ import { debug } from '../shared/logging.js';
 function isTrackingsRecord(value) {
     return typeof value === 'object' && value !== null;
 }
-/** Relative path to the agent tracking file within .goodvibes */
+/**
+ * Relative path to the agent tracking file within .goodvibes.
+ * Stores active agent entries for SubagentStart/Stop correlation.
+ */
 const TRACKING_FILE = 'state/agent-tracking.json';
 /**
  * Persists agent tracking data to disk.

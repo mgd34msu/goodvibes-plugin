@@ -3,10 +3,15 @@
  *
  * Utilities for parsing Claude Code transcript files.
  */
-/** Parsed transcript data containing tools used and files modified. */
+/**
+ * Parsed transcript data containing tools used and files modified.
+ */
 export interface TranscriptData {
+    /** Array of unique tool names that were used in the session. */
     toolsUsed: string[];
+    /** Array of unique file paths that were modified (via Write/Edit tools). */
     filesModified: string[];
+    /** Summary from the last assistant message (truncated to 500 chars). */
     summary: string;
 }
 /**

@@ -20,7 +20,14 @@ import { buildOrchestratorContext } from './context-injection.js';
 import { validateAgentOutput } from './output-validation.js';
 import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
-/** Creates a hook response with optional system message and output data. */
+/**
+ * Creates a hook response with optional system message and output data.
+ *
+ * @param options - Optional configuration for the response
+ * @param options.systemMessage - System message to include
+ * @param options.output - Output data from processing
+ * @returns SubagentStopResponse object with continue: true
+ */
 function createResponse(options) {
     const response = {
         continue: true,
@@ -33,7 +40,13 @@ function createResponse(options) {
     }
     return response;
 }
-/** Extracts normalized input fields from raw hook input. */
+/**
+ * Extracts normalized input fields from raw hook input.
+ * Handles field name variations (agent_id vs subagent_id, etc.).
+ *
+ * @param input - Raw hook input from Claude
+ * @returns Normalized fields with consistent naming
+ */
 function extractInputFields(input) {
     return {
         agentId: input.agent_id ?? input.subagent_id ?? '',
@@ -42,7 +55,15 @@ function extractInputFields(input) {
         cwd: input.cwd ?? process.cwd(),
     };
 }
-/** Validates agent output and runs tests on modified files. */
+/**
+ * Validates agent output and runs tests on modified files.
+ * Performs type checking and test verification for modified TypeScript files.
+ *
+ * @param cwd - Current working directory
+ * @param transcriptPath - Path to the agent transcript file
+ * @param state - Current hooks state
+ * @returns Object containing validation result, test result, and updated state
+ */
 async function validateAndTest(cwd, transcriptPath, state) {
     if (!transcriptPath) {
         return { validationResult: undefined, testResult: undefined, updatedState: state };
@@ -66,7 +87,14 @@ async function validateAndTest(cwd, transcriptPath, state) {
     }
     return { validationResult, testResult, updatedState };
 }
-/** Updates analytics with subagent completion info. */
+/**
+ * Updates analytics with subagent completion info.
+ * Marks the matching subagent entry with completion timestamp and status.
+ *
+ * @param tracking - Tracking data from agent start
+ * @param status - Completion status ('completed' or 'failed')
+ * @returns Promise that resolves when analytics are updated
+ */
 async function updateAnalytics(tracking, status) {
     const analytics = await loadAnalytics();
     if (!analytics?.subagents_spawned) {
@@ -79,13 +107,28 @@ async function updateAnalytics(tracking, status) {
         await saveAnalytics(analytics);
     }
 }
-/** Determines the completion status based on validation and test results. */
+/**
+ * Determines the completion status based on validation and test results.
+ * Returns 'failed' if there are validation errors or test failures.
+ *
+ * @param validationResult - Result of output validation, if performed
+ * @param testResult - Result of test verification, if performed
+ * @returns 'completed' if no issues, 'failed' otherwise
+ */
 function determineStatus(validationResult, testResult) {
     const hasValidationErrors = validationResult?.valid === false;
     const hasTestFailures = testResult?.passed === false;
     return hasValidationErrors || hasTestFailures ? 'failed' : 'completed';
 }
-/** Builds a system message summarizing any issues found. */
+/**
+ * Builds a system message summarizing any issues found.
+ * Combines validation errors and test failures into a single message.
+ *
+ * @param agentType - Type of agent that completed
+ * @param validationResult - Result of output validation, if performed
+ * @param testResult - Result of test verification, if performed
+ * @returns Issue summary message, or undefined if no issues
+ */
 function buildIssuesMessage(agentType, validationResult, testResult) {
     const issues = [];
     if (validationResult && !validationResult.valid) {
@@ -99,7 +142,12 @@ function buildIssuesMessage(agentType, validationResult, testResult) {
     }
     return '[GoodVibes] Agent ' + agentType + ' completed with issues: ' + issues.join('; ');
 }
-/** Main entry point for subagent-stop hook. Correlates with start, validates output, writes telemetry. */
+/**
+ * Main entry point for subagent-stop hook.
+ * Correlates with SubagentStart, validates output, and writes telemetry.
+ *
+ * @returns Promise that resolves when hook processing completes
+ */
 async function runSubagentStopHook() {
     try {
         debug('SubagentStop hook starting');

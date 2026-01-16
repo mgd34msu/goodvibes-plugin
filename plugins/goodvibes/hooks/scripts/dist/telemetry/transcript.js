@@ -9,9 +9,15 @@ import { TRANSCRIPT_KEYWORD_CATEGORIES, extractTranscriptKeywords, } from '../sh
 // ============================================================================
 // Constants
 // ============================================================================
-/** Maximum length for truncated output text. */
+/**
+ * Maximum length for truncated output text.
+ * Output longer than this will be truncated with '...' suffix.
+ */
 export const MAX_OUTPUT_LENGTH = 500;
-/** Regex patterns for detecting tool usage in plain text lines. */
+/**
+ * Regex patterns for detecting tool usage in plain text lines.
+ * Used when parsing non-JSON transcript content.
+ */
 const TOOL_PATTERNS = [
     /using\s+(\w+)\s+tool/i,
     /calling\s+(\w+)/i,
@@ -24,6 +30,8 @@ const TOOL_PATTERNS = [
 /**
  * Keyword categories for classifying agent tasks and transcript content.
  * Re-exported from the consolidated keywords module for backwards compatibility.
+ *
+ * @see {@link ../shared/keywords} for the source definition
  */
 export const KEYWORD_CATEGORIES = TRANSCRIPT_KEYWORD_CATEGORIES;
 // ============================================================================

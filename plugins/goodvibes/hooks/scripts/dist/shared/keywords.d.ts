@@ -20,38 +20,64 @@ export declare const STACK_KEYWORD_CATEGORIES: Record<string, string[]>;
  */
 export declare const TRANSCRIPT_KEYWORD_CATEGORIES: Record<string, string[]>;
 /**
- * Default keyword categories - uses stack detection keywords.
+ * Default keyword categories for tech stack detection.
+ *
  * This is the primary export for backwards compatibility with shared.ts.
+ * Alias for STACK_KEYWORD_CATEGORIES.
+ *
+ * @see {@link STACK_KEYWORD_CATEGORIES}
  */
 export declare const KEYWORD_CATEGORIES: Record<string, string[]>;
 /**
- * Flat list of all stack detection keywords.
+ * Flat array of all stack detection keywords.
+ *
+ * Contains all keywords from all categories in STACK_KEYWORD_CATEGORIES,
+ * useful for iterating over all keywords without category grouping.
  */
 export declare const ALL_STACK_KEYWORDS: string[];
 /**
- * Flat list of all transcript classification keywords.
+ * Flat array of all transcript classification keywords.
+ *
+ * Contains all keywords from all categories in TRANSCRIPT_KEYWORD_CATEGORIES,
+ * useful for comprehensive text analysis.
  */
 export declare const ALL_TRANSCRIPT_KEYWORDS: string[];
 /**
- * Combined flat list of all unique keywords from both categories.
+ * Combined flat array of all unique keywords from both categories.
+ *
+ * Deduplicates keywords that appear in both stack and transcript categories.
  */
 export declare const ALL_KEYWORDS: string[];
 /**
- * Extract known keywords from text using stack detection categories.
- * Uses pre-compiled regex patterns for performance.
+ * Extracts known keywords from text using stack detection categories.
+ *
+ * Uses pre-compiled regex patterns for performance. Scans the input text
+ * for all keywords in STACK_KEYWORD_CATEGORIES and returns matches.
  *
  * @param text - Text to search for keywords
- * @returns Array of found keywords (max 50)
+ * @returns Array of found keywords (max 50), deduplicated
+ *
+ * @example
+ * const keywords = extractStackKeywords('Using React with TypeScript and Prisma');
+ * // => ['react', 'typescript', 'prisma']
  */
 export declare function extractStackKeywords(text: string): string[];
 /**
- * Extract keywords from text with category metadata.
- * Used for transcript classification.
+ * Extracts keywords from text with category metadata for transcript classification.
+ *
+ * Scans the combined input text for keywords and adds category meta-keywords
+ * (e.g., 'category:frontend') when matches are found. Also adds agent type
+ * as a meta-keyword if provided.
+ *
  * Uses pre-compiled regex patterns for performance.
  *
- * @param taskDescription - Optional task description
- * @param transcriptContent - Optional transcript content
- * @param agentType - Optional agent type
- * @returns Array of keywords including category meta-keywords
+ * @param taskDescription - Optional task description to analyze
+ * @param transcriptContent - Optional transcript content to analyze
+ * @param agentType - Optional agent type (e.g., 'goodvibes:frontend-architect')
+ * @returns Sorted array of keywords including 'category:*' and 'agent:*' meta-keywords
+ *
+ * @example
+ * const keywords = extractTranscriptKeywords('Build a React component', '', 'goodvibes:frontend-architect');
+ * // => ['agent:frontend architect', 'category:frontend', 'react']
  */
 export declare function extractTranscriptKeywords(taskDescription?: string, transcriptContent?: string, agentType?: string): string[];
