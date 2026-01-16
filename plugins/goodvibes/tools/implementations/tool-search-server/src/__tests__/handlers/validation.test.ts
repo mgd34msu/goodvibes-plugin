@@ -677,5 +677,255 @@ export const z = eval('3');
       expect(data.errors[0].suggestion).toBeDefined();
       expect(data.errors[0].suggestion.length).toBeGreaterThan(0);
     });
+
+    describe('tsconfig.json discovery (findTsConfig)', () => {
+      it('should use --project flag when tsconfig.json is found', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+        // Simulate tsconfig.json exists in project root
+        vi.mocked(fileExists).mockResolvedValue(true);
+
+        await handleCheckTypes({});
+
+        // Should include --project flag with tsconfig path
+        expect(safeExec).toHaveBeenCalledWith(
+          expect.stringContaining('--project'),
+          expect.any(String),
+          expect.any(Number)
+        );
+      });
+
+      it('should not use --project flag when no tsconfig.json found', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+        // Simulate no tsconfig.json anywhere
+        vi.mocked(fileExists).mockResolvedValue(false);
+
+        await handleCheckTypes({});
+
+        // The command should not contain --project
+        const callArgs = vi.mocked(safeExec).mock.calls[0][0];
+        expect(callArgs).not.toContain('--project');
+      });
+
+      it('should search parent directories for tsconfig.json', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+        // Simulate tsconfig only exists in a parent directory
+        vi.mocked(fileExists).mockImplementation(async (p: string) => {
+          // Only return true for a specific parent path
+          return String(p).endsWith('tsconfig.json') && String(p).includes('mock');
+        });
+
+        await handleCheckTypes({ files: ['src/deep/nested/file.ts'] });
+
+        // fileExists should be called multiple times walking up the tree
+        expect(fileExists).toHaveBeenCalled();
+      });
+
+      it('should check root directory for tsconfig.json as last resort', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+
+        // Track all paths checked
+        const checkedPaths: string[] = [];
+        vi.mocked(fileExists).mockImplementation(async (p: string) => {
+          checkedPaths.push(String(p));
+          // Return true only for root tsconfig
+          return String(p) === '/tsconfig.json' || String(p) === 'C:\\tsconfig.json';
+        });
+
+        await handleCheckTypes({});
+
+        // Should have checked multiple paths
+        expect(checkedPaths.length).toBeGreaterThan(0);
+      });
+
+      it('should include tsconfig path in summary when found', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+        vi.mocked(fileExists).mockResolvedValue(true);
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        // tsconfig should be reported in summary
+        expect(data.summary.tsconfig).not.toBeNull();
+      });
+
+      it('should report null tsconfig in summary when not found', async () => {
+        const { safeExec, fileExists } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+        vi.mocked(fileExists).mockResolvedValue(false);
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.summary.tsconfig).toBeNull();
+      });
+    });
+
+    describe('error path normalization', () => {
+      it('should normalize absolute paths in errors to relative paths', async () => {
+        const { safeExec } = await import('../../utils.js');
+        // Return error with absolute path
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "/mock/project/root/src/file.ts(5,10): error TS2345: Argument type mismatch.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        // Error file path should be normalized to relative
+        expect(data.errors.length).toBe(1);
+        expect(data.errors[0].file).not.toContain('/mock/project/root/');
+      });
+
+      it('should keep relative paths unchanged', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "src/utils.ts(15,3): error TS2551: Property 'naem' does not exist.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.errors[0].file).toBe('src/utils.ts');
+      });
+
+      it('should handle errors from both stdout and stderr', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "file1.ts(1,1): error TS2304: Cannot find name 'a'.",
+          stderr: "file2.ts(2,2): error TS2304: Cannot find name 'b'.",
+        });
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        // Should parse errors from both stdout and stderr
+        expect(data.errors.length).toBe(2);
+      });
+    });
+
+    describe('suggestion generation (getSuggestionForError)', () => {
+      it('should provide suggestion for TS2307 (module not found)', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS2307: Cannot find module './missing'.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: true });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.errors[0].suggestion).toContain('module path');
+      });
+
+      it('should provide suggestion for TS2345 (argument type mismatch)', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS2345: Argument type mismatch.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: true });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.errors[0].suggestion).toContain('argument');
+      });
+
+      it('should provide suggestion for TS2339 (property does not exist)', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS2339: Property 'foo' does not exist.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: true });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.errors[0].suggestion).toContain('Property');
+      });
+
+      it('should provide suggestion for TS2532 (possibly undefined)', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS2532: Object is possibly 'undefined'.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: true });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.errors[0].suggestion).toContain('null check');
+      });
+
+      it('should provide suggestion for TS6133 (unused variable)', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS6133: 'x' is declared but never used.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: true });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.errors[0].suggestion).toContain('Unused');
+      });
+
+      it('should provide generic suggestion for unknown error codes', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS9999: Some unknown error.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: true });
+        const data = JSON.parse(result.content[0].text);
+
+        // Should have a default suggestion
+        expect(data.errors[0].suggestion).toBeDefined();
+        expect(data.errors[0].suggestion.length).toBeGreaterThan(0);
+      });
+
+      it('should not include suggestions when include_suggestions is false', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({
+          stdout: "test.ts(1,1): error TS2304: Cannot find name 'x'.",
+          stderr: '',
+        });
+
+        const result = await handleCheckTypes({ include_suggestions: false });
+        const data = JSON.parse(result.content[0].text);
+
+        // Suggestion should be empty string when not requested
+        expect(data.errors[0].suggestion).toBe('');
+      });
+    });
+
+    describe('files_checked in summary', () => {
+      it('should report "all" when no specific files provided', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+
+        const result = await handleCheckTypes({});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.summary.files_checked).toBe('all');
+      });
+
+      it('should report count when specific files provided', async () => {
+        const { safeExec } = await import('../../utils.js');
+        vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '' });
+
+        const result = await handleCheckTypes({ files: ['a.ts', 'b.ts', 'c.ts'] });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.summary.files_checked).toBe(3);
+      });
+    });
   });
 });

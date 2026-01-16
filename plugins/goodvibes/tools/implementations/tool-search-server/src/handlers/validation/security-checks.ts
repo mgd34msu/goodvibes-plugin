@@ -18,7 +18,13 @@ export const SECRET_PATTERNS = [
   { pattern: /private[_-]?key\s*[:=]\s*['"][^'"]+['"]/gi, name: 'private key' },
 ];
 
-const DANGEROUS_PATTERNS = [
+/**
+ * Patterns for detecting dangerous code constructs that may introduce security vulnerabilities.
+ * @property pattern - Regex to match the dangerous pattern
+ * @property rule - Rule identifier for the validation issue
+ * @property message - Description of the security concern
+ */
+export const DANGEROUS_PATTERNS = [
   { pattern: /eval\s*\(/, rule: 'security/no-eval', message: 'Use of eval() is dangerous' },
   { pattern: /innerHTML\s*=/, rule: 'security/no-innerhtml', message: 'innerHTML can lead to XSS' },
   { pattern: /dangerouslySetInnerHTML/, rule: 'security/dangerously-set-inner-html', message: 'dangerouslySetInnerHTML should be used carefully' },
@@ -26,6 +32,17 @@ const DANGEROUS_PATTERNS = [
   { pattern: /new\s+Function\s*\(/, rule: 'security/no-new-function', message: 'new Function() is similar to eval()' },
 ];
 
+/**
+ * Runs security-focused validation checks on a file.
+ * Detects hardcoded secrets, dangerous functions (eval, innerHTML), and SQL injection risks.
+ * @param ctx - Validation context containing file content and metadata
+ * @returns Array of security-related validation issues
+ * @example
+ * const issues = runSecurityChecks(ctx);
+ * // May return issues like:
+ * // { rule: 'security/no-hardcoded-secrets', severity: 'error', message: 'Potential hardcoded API key' }
+ * // { rule: 'security/sql-injection', severity: 'error', message: 'Potential SQL injection vulnerability' }
+ */
 export function runSecurityChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 

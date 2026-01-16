@@ -797,5 +797,98 @@ export function* numberGenerator(): Generator<number> {
 
       expect(response.isError).toBeUndefined();
     });
+
+    it('should handle undefined type in parameters', async () => {
+      // This covers line 648: if (t.includes('undefined')) return 'undefined';
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function processOptional(value: string | undefined): string {
+  return value ?? 'default';
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processOptional' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should generate tests including undefined case
+      const undefinedTest = parsed.suggested_tests.find(
+        (t: { name: string }) => t.name.toLowerCase().includes('undefined')
+      );
+      expect(undefinedTest).toBeDefined();
+    });
+
+    it('should handle unknown types with fallback value', async () => {
+      // This covers line 650: return '/* value */';
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+export function processCustomType(value: CustomType): void {
+  console.log(value);
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'processCustomType' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+    });
+
+    it('should return null when no JSDoc comment exists', async () => {
+      // This covers line 293: return null when extractJSDoc doesn't find a comment
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(`
+// Regular comment, not JSDoc
+export function noJsDoc(x: number): number {
+  return x * 2;
+}
+`);
+
+      const args: SuggestTestCasesArgs = { file: 'src/utils.ts', function: 'noJsDoc' };
+      const response = await handleSuggestTestCases(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should still work, just without JSDoc info
+      expect(parsed.suggested_tests.length).toBeGreaterThan(0);
+    });
+
+    it('should handle test file read errors gracefully', async () => {
+      // This covers line 336: return [] in extractTestNames catch block
+      mockHandleFindTestsForFile.mockResolvedValue({
+        isError: false,
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tests: [{ file: 'src/utils.test.ts' }],
+            count: 1,
+          }),
+        }],
+      });
+
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockImplementation((p: fs.PathLike) => {
+        const pathStr = String(p);
+        if (pathStr.includes('.test.ts')) {
+          // Throw error when reading test file to trigger catch block
+          throw new Error('Cannot read test file');
+        }
+        return `
+export function myFunc(x: number): number {
+  return x * 2;
+}
+`;
+      });
+
+      const args: SuggestTestCasesArgs = {
+        file: 'src/utils.ts',
+        function: 'myFunc',
+        include_existing: true,
+      };
+      const response = await handleSuggestTestCases(args);
+
+      // Should still succeed, just with empty existing tests
+      expect(response.isError).toBeUndefined();
+    });
   });
 });

@@ -9,7 +9,21 @@ import { EnvironmentIssue } from './types.js';
 import { SENSITIVE_PATTERNS, ENV_FILES, ENV_EXAMPLE_FILES } from './constants.js';
 
 /**
- * Check environment configuration
+ * Checks environment configuration for potential issues.
+ *
+ * Performs the following checks:
+ * - Compares .env files against .env.example to find missing variables
+ * - Detects sensitive variables (API keys, secrets) that may not be gitignored
+ * - Validates that environment files are properly protected
+ *
+ * @param cwd - Current working directory (project root) to check
+ * @returns Array of EnvironmentIssue objects describing found problems
+ *
+ * @example
+ * ```typescript
+ * const issues = checkEnvironment('/path/to/project');
+ * // Returns: [{ type: 'missing_var', message: 'Missing env var: DATABASE_URL...' }]
+ * ```
  */
 export function checkEnvironment(cwd: string): EnvironmentIssue[] {
   const issues: EnvironmentIssue[] = [];

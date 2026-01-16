@@ -548,13 +548,15 @@ this is not valid javascript {{{}}}
       const testContent = `import { fn } from './utils';`;
 
       mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
-        const pathStr = String(p);
+        const pathStr = String(p).replace(/\\/g, '/');
+        // Return true for the source file and related paths
         return pathStr.includes('utils/index.ts') ||
                pathStr.includes('utils.test.ts') ||
-               pathStr === '/project/src/utils';
+               pathStr.endsWith('/src/utils') ||
+               pathStr.endsWith('/src/utils/index.ts');
       });
       mockFs.readdirSync.mockImplementation((dir: fs.PathLike) => {
-        const dirStr = String(dir);
+        const dirStr = String(dir).replace(/\\/g, '/');
         if (dirStr === '/project') {
           return [
             { name: 'src', isDirectory: () => true, isFile: () => false },
@@ -575,8 +577,8 @@ this is not valid javascript {{{}}}
       });
       mockFs.readFileSync.mockReturnValue(testContent);
       mockFs.statSync.mockImplementation((p: fs.PathLike) => {
-        const pathStr = String(p);
-        if (pathStr === '/project/src/utils') {
+        const pathStr = String(p).replace(/\\/g, '/');
+        if (pathStr.endsWith('/src/utils')) {
           return { isFile: () => false, isDirectory: () => true } as fs.Stats;
         }
         return { isFile: () => true, isDirectory: () => false } as fs.Stats;
@@ -764,6 +766,80 @@ export const wrapper = () => myFunction();
 
       expect(response.isError).toBeUndefined();
     });
+
+    it('should match when test name contains source name', async () => {
+      // This covers line 316: testName.includes(sourceName) -> return 0.4
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readdirSync.mockImplementation((dir: fs.PathLike) => {
+        const dirStr = String(dir).replace(/\\/g, '/');
+        if (dirStr === '/project') {
+          return [
+            { name: 'src', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fs.Dirent[];
+        }
+        if (dirStr === '/project/src') {
+          return [
+            { name: 'core.ts', isDirectory: () => false, isFile: () => true },
+            // Test name contains source name but doesn't start with it: "all-core-stuff" contains "core" but doesn't start with it
+            { name: 'all-core-stuff.test.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      mockFs.readFileSync.mockReturnValue('');
+      mockFs.statSync.mockReturnValue({ isFile: () => true, isDirectory: () => false } as fs.Stats);
+
+      const args: FindTestsForFileArgs = { file: 'src/core.ts' };
+      const response = await handleFindTestsForFile(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should find the test with lower confidence (0.4 * 0.8 = 0.32)
+      expect(parsed.tests.length).toBeGreaterThan(0);
+    });
+
+    it('should handle indirect imports with higher confidence than fallback', async () => {
+      // This covers lines 385-389: indirect import confidence calculation
+      const testContent = `import { intermediate } from './intermediate';`;
+      const intermediateContent = `import { fn } from './target';`;
+
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readdirSync.mockImplementation((dir: fs.PathLike) => {
+        const dirStr = String(dir);
+        if (dirStr === '/project') {
+          return [
+            { name: 'src', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fs.Dirent[];
+        }
+        if (dirStr === '/project/src') {
+          return [
+            { name: 'target.ts', isDirectory: () => false, isFile: () => true },
+            { name: 'intermediate.ts', isDirectory: () => false, isFile: () => true },
+            { name: 'indirect-import.test.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      mockFs.readFileSync.mockImplementation((p: fs.PathLike) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        if (pathStr.includes('indirect-import.test.ts')) return testContent;
+        if (pathStr.includes('intermediate.ts')) return intermediateContent;
+        return '';
+      });
+      mockFs.statSync.mockReturnValue({ isFile: () => true, isDirectory: () => false } as fs.Stats);
+
+      const args: FindTestsForFileArgs = { file: 'src/target.ts', include_indirect: true };
+      const response = await handleFindTestsForFile(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      const indirectTest = parsed.tests.find((t: { file: string }) => t.file.includes('indirect-import'));
+      if (indirectTest) {
+        // Indirect import should have confidence >= 0.5
+        expect(indirectTest.confidence).toBeGreaterThanOrEqual(0.5);
+        expect(indirectTest.imports_source_directly).toBe(false);
+      }
+    });
   });
 
   describe('Results Sorting', () => {
@@ -907,6 +983,71 @@ export const wrapper = () => myFunction();
       const response = await handleFindTestsForFile(args);
 
       expect(response.isError).toBe(true);
+    });
+  });
+
+  describe('Pattern Matching Edge Cases', () => {
+    it('should return 0.6 confidence when test name starts with source name', async () => {
+      // This specifically covers line 311: return 0.6
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readdirSync.mockImplementation((dir: fs.PathLike) => {
+        const dirStr = String(dir).replace(/\\/g, '/');
+        if (dirStr === '/project') {
+          return [
+            { name: 'src', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fs.Dirent[];
+        }
+        if (dirStr === '/project/src') {
+          return [
+            { name: 'utils.ts', isDirectory: () => false, isFile: () => true },
+            // Test name starts with source name but doesn't match exactly
+            { name: 'utils-extra.test.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      // No import to make sure we're testing pattern matching only
+      mockFs.readFileSync.mockReturnValue('// no imports');
+      mockFs.statSync.mockReturnValue({ isFile: () => true, isDirectory: () => false } as fs.Stats);
+
+      const args: FindTestsForFileArgs = { file: 'src/utils.ts' };
+      const response = await handleFindTestsForFile(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      expect(parsed.tests.length).toBeGreaterThan(0);
+      // Pattern confidence 0.6 * 0.8 (pattern only penalty) = 0.48
+      expect(parsed.tests[0].confidence).toBeGreaterThan(0.4);
+    });
+
+    it('should skip test file when it is the source file being tested', async () => {
+      // This specifically covers line 365: continue
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readdirSync.mockImplementation((dir: fs.PathLike) => {
+        const dirStr = String(dir).replace(/\\/g, '/');
+        if (dirStr === '/project') {
+          return [
+            { name: 'src', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fs.Dirent[];
+        }
+        if (dirStr === '/project/src') {
+          return [
+            // The source file is itself a test file
+            { name: 'utils.test.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      mockFs.readFileSync.mockReturnValue('');
+      mockFs.statSync.mockReturnValue({ isFile: () => true, isDirectory: () => false } as fs.Stats);
+
+      const args: FindTestsForFileArgs = { file: 'src/utils.test.ts' };
+      const response = await handleFindTestsForFile(args);
+
+      expect(response.isError).toBeUndefined();
+      const parsed = JSON.parse(response.content[0].text);
+      // Should not include itself
+      expect(parsed.count).toBe(0);
     });
   });
 

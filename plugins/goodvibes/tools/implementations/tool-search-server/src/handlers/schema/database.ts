@@ -14,72 +14,132 @@ import { ToolResponse } from '../../types.js';
 import { PROJECT_ROOT } from '../../config.js';
 
 /**
- * Column definition in unified format
+ * Column definition in unified format across all schema sources.
+ * @property name - Column name as defined in the schema
+ * @property type - Data type (e.g., 'String', 'Int', 'VARCHAR')
+ * @property nullable - Whether the column accepts NULL values
+ * @property primary_key - Whether this column is a primary key
+ * @property references - Foreign key reference if applicable
  */
 export interface DatabaseColumn {
+  /** Column name as defined in the schema */
   name: string;
+  /** Data type (varies by schema source: Prisma types, SQL types, etc.) */
   type: string;
+  /** Whether the column accepts NULL values */
   nullable: boolean;
+  /** Whether this column is part of the primary key */
   primary_key: boolean;
+  /** Foreign key reference to another table and column */
   references?: {
+    /** Referenced table name */
     table: string;
+    /** Referenced column name */
     column: string;
   };
 }
 
 /**
- * Index definition
+ * Database index definition.
+ * @property name - Index name (auto-generated or explicit)
+ * @property columns - Columns included in the index
+ * @property unique - Whether the index enforces uniqueness
  */
 export interface DatabaseIndex {
+  /** Index name (may be auto-generated from table and column names) */
   name: string;
+  /** Array of column names included in the index */
   columns: string[];
+  /** Whether this is a unique constraint index */
   unique: boolean;
 }
 
 /**
- * Table definition in unified format
+ * Database table definition in unified format.
+ * @property name - Table name
+ * @property columns - Array of column definitions
+ * @property indexes - Array of index definitions
  */
 export interface DatabaseTable {
+  /** Table name as defined in the schema */
   name: string;
+  /** Array of column definitions for this table */
   columns: DatabaseColumn[];
+  /** Array of indexes defined on this table */
   indexes: DatabaseIndex[];
 }
 
 /**
- * Relation definition
+ * Database relation (foreign key relationship) definition.
+ * @property from_table - Source table containing the foreign key
+ * @property from_column - Column in source table holding the foreign key
+ * @property to_table - Target table being referenced
+ * @property to_column - Column in target table being referenced
+ * @property type - Cardinality of the relationship
  */
 export interface DatabaseRelation {
+  /** Source table containing the foreign key */
   from_table: string;
+  /** Column in the source table that holds the foreign key */
   from_column: string;
+  /** Target table being referenced */
   to_table: string;
+  /** Column in the target table being referenced (usually 'id') */
   to_column: string;
+  /** Cardinality type of the relationship */
   type: 'one-to-one' | 'one-to-many' | 'many-to-many';
 }
 
 /**
- * Schema source types
+ * Supported schema source types for database schema extraction.
+ * - 'prisma': Prisma ORM schema.prisma files
+ * - 'drizzle': Drizzle ORM TypeScript schema files
+ * - 'sql': Raw SQL CREATE TABLE statements
+ * - 'unknown': Schema source could not be determined
  */
 export type SchemaSource = 'prisma' | 'drizzle' | 'sql' | 'unknown';
 
 /**
- * Result of schema extraction
+ * Result of database schema extraction operation.
+ * @property source - The detected schema source type
+ * @property tables - Array of extracted table definitions
+ * @property relations - Array of extracted relationship definitions
+ * @property raw_path - Path to the schema file that was parsed
  */
 export interface DatabaseSchemaResult {
+  /** The schema source that was detected and parsed */
   source: SchemaSource;
+  /** Array of table definitions extracted from the schema */
   tables: DatabaseTable[];
+  /** Array of relationship definitions between tables */
   relations: DatabaseRelation[];
+  /** Absolute or relative path to the parsed schema file */
   raw_path: string;
 }
 
 /**
- * Arguments for get_database_schema handler
+ * Arguments for the get_database_schema MCP tool.
+ * @property path - Optional project path relative to PROJECT_ROOT
  */
 export interface GetDatabaseSchemaArgs {
+  /** Project path relative to PROJECT_ROOT (defaults to '.') */
   path?: string;
 }
 
 /**
- * Handle get_database_schema tool call
+ * Handles the get_database_schema MCP tool call.
+ *
+ * Auto-detects and parses database schema from Prisma, Drizzle, or SQL files.
+ * Searches in order of priority: Prisma -> Drizzle -> SQL files.
+ *
+ * @param args - Tool arguments containing optional project path
+ * @returns A ToolResponse with JSON containing tables, relations, and source info
+ *
+ * @example
+ * ```typescript
+ * const result = handleGetDatabaseSchema({ path: 'my-project' });
+ * // Returns unified schema from detected source
+ * ```
  */
 export function handleGetDatabaseSchema(args: GetDatabaseSchemaArgs): ToolResponse {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
@@ -172,7 +232,10 @@ export function handleGetDatabaseSchema(args: GetDatabaseSchemaArgs): ToolRespon
 }
 
 /**
- * Format the result as a ToolResponse
+ * Formats a DatabaseSchemaResult as a ToolResponse with JSON content.
+ *
+ * @param result - The schema extraction result to format
+ * @returns A ToolResponse containing pretty-printed JSON
  */
 function formatResponse(result: DatabaseSchemaResult): ToolResponse {
   return {
@@ -184,7 +247,12 @@ function formatResponse(result: DatabaseSchemaResult): ToolResponse {
 }
 
 /**
- * Parse Prisma schema into unified format
+ * Parses a Prisma schema file into the unified DatabaseSchemaResult format.
+ *
+ * Extracts models, fields, relations, and indexes from Prisma schema syntax.
+ *
+ * @param schemaPath - Absolute path to the schema.prisma file
+ * @returns Unified schema result with tables, relations, and source info
  */
 function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
   const content = fs.readFileSync(schemaPath, 'utf-8');
@@ -206,9 +274,11 @@ function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@')) continue;
 
-      const fieldMatch = /^(\w+)\s+(\w+)(\??)(\[\])?(.*)$/.exec(trimmed);
+      const fieldMatch = /^(\w+)\s+(\w+)(?:(\[\])|(\?))?(?:(\[\])|(\?))?\s*(.*)$/.exec(trimmed);
       if (fieldMatch) {
-        const [, fieldName, fieldType, nullable, isArray, rest] = fieldMatch;
+        const [, fieldName, fieldType, m1, m2, m3, m4, rest] = fieldMatch;
+        const isArray = m1 === '[]' || m2 === '[]' || m3 === '[]' || m4 === '[]';
+        const nullable = m1 === '?' || m2 === '?' || m3 === '?' || m4 === '?' ;
 
         const isRelation = /^[A-Z]/.test(fieldType) && !prismaScalars.includes(fieldType);
 
@@ -316,7 +386,12 @@ function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
 }
 
 /**
- * Parse Drizzle schema into unified format
+ * Parses a Drizzle ORM schema file into the unified DatabaseSchemaResult format.
+ *
+ * Supports pgTable, mysqlTable, and sqliteTable definitions with relations().
+ *
+ * @param schemaPath - Absolute path to the Drizzle schema TypeScript file
+ * @returns Unified schema result with tables, relations, and source info
  */
 function parseDrizzleForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
   const content = fs.readFileSync(schemaPath, 'utf-8');
@@ -472,7 +547,12 @@ function parseDrizzleForUnifiedSchema(schemaPath: string): DatabaseSchemaResult 
 }
 
 /**
- * Parse SQL schema into unified format
+ * Parses raw SQL schema files into the unified DatabaseSchemaResult format.
+ *
+ * Extracts CREATE TABLE statements, column definitions, constraints, and indexes.
+ *
+ * @param schemaPath - Absolute path to the SQL schema file
+ * @returns Unified schema result with tables, relations, and source info
  */
 function parseSQLForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
   const content = fs.readFileSync(schemaPath, 'utf-8');
@@ -489,94 +569,102 @@ function parseSQLForUnifiedSchema(schemaPath: string): DatabaseSchemaResult {
     const columns: DatabaseColumn[] = [];
     const indexes: DatabaseIndex[] = [];
 
-    // Parse columns and constraints
-    const lines = columnsBlock.split(',').map(l => l.trim());
+    // Parse columns and constraints more robustly
+    const lines: string[] = [];
+    let currentLine = '';
+    let parenDepth = 0;
+
+    for (let i = 0; i < columnsBlock.length; i++) {
+      const char = columnsBlock[i];
+      if (char === '(') parenDepth++;
+      else if (char === ')') parenDepth--;
+
+      if (char === ',' && parenDepth === 0) {
+        if (currentLine.trim()) lines.push(currentLine.trim());
+        currentLine = '';
+      } else {
+        currentLine += char;
+      }
+    }
+    if (currentLine.trim()) {
+      lines.push(currentLine.trim());
+    }
 
     for (const line of lines) {
-      // Skip table-level constraints
-      if (/^(PRIMARY|UNIQUE|CHECK|CONSTRAINT|INDEX|KEY)\s/i.test(line)) {
-        // Parse FOREIGN KEY constraint
-        const fkMatch = line.match(/FOREIGN\s+KEY\s*\([`"']?(\w+)[`"']?\)\s*REFERENCES\s+[`"']?(\w+)[`"']?\s*\([`"']?(\w+)[`"']?\)/i);
-        if (fkMatch) {
-          const fromCol = fkMatch[1];
-          const toTable = fkMatch[2];
-          const toCol = fkMatch[3];
+      const normalizedLine = line.replace(/\s+/g, ' ').trim();
 
-          // Update column with reference
+      // Table-level constraints
+      if (/^(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN|INDEX|KEY)\b/i.test(normalizedLine)) {
+        // FOREIGN KEY
+        const fkMatch = normalizedLine.match(/(?:CONSTRAINT\s+[`"']?(\w+)[`"']?\s+)?FOREIGN\s+KEY\s*\(\s*[`"']?(\w+)[`"']?\s*\)\s*REFERENCES\s+[`"']?(\w+)[`"']?\s*\(\s*[`"']?(\w+)[`"']?\s*\)/i);
+        if (fkMatch) {
+          const fromCol = fkMatch[2];
+          const toTable = fkMatch[3];
+          const toCol = fkMatch[4];
+
           const col = columns.find(c => c.name === fromCol);
-          if (col) {
-            col.references = { table: toTable, column: toCol };
-          }
+          if (col) col.references = { table: toTable, column: toCol };
 
           relations.push({
-            from_table: tableName,
-            from_column: fromCol,
-            to_table: toTable,
-            to_column: toCol,
+            from_table: tableName, from_column: fromCol,
+            to_table: toTable, to_column: toCol,
             type: 'one-to-many',
           });
         }
 
-        // Parse UNIQUE constraint
-        const uniqueMatch = line.match(/UNIQUE\s*(?:KEY\s*)?(?:[`"']?\w+[`"']?\s*)?\(([^)]+)\)/i);
+        // UNIQUE
+        const uniqueMatch = normalizedLine.match(/(?:CONSTRAINT\s+[`"']?(\w+)[`"']?\s+)?UNIQUE\s*(?:KEY|INDEX)?\s*(?:[`"']?(\w+)[`"']?\s*)?\(\s*([^)]+)\s*\)/i);
         if (uniqueMatch) {
-          const idxCols = uniqueMatch[1].split(',').map(c => c.trim().replace(/[`"']/g, ''));
+          const constraintName = uniqueMatch[1] || uniqueMatch[2];
+          const idxCols = uniqueMatch[3].split(',').map(c => c.trim().replace(/[`"']/g, ''));
           indexes.push({
-            name: `${tableName}_${idxCols.join('_')}_unique`,
-            columns: idxCols,
-            unique: true,
+            name: constraintName || `${tableName}_${idxCols.join('_')}_unique`,
+            columns: idxCols, unique: true,
           });
         }
 
-        // Parse INDEX/KEY
-        const idxMatch = line.match(/(?:INDEX|KEY)\s*(?:[`"']?(\w+)[`"']?\s*)?\(([^)]+)\)/i);
-        if (idxMatch && !line.toUpperCase().includes('PRIMARY') && !line.toUpperCase().includes('UNIQUE')) {
+        // INDEX / KEY
+        const idxMatch = normalizedLine.match(/(?:INDEX|KEY)\s*(?:[`"']?(\w+)[`"']?\s*)?\(\s*([^)]+)\s*\)/i);
+        if (idxMatch && !/UNIQUE/i.test(normalizedLine) && !/PRIMARY/i.test(normalizedLine)) {
+          const name = idxMatch[1];
           const idxCols = idxMatch[2].split(',').map(c => c.trim().replace(/[`"']/g, ''));
           indexes.push({
-            name: idxMatch[1] || `${tableName}_${idxCols.join('_')}_idx`,
-            columns: idxCols,
-            unique: false,
+            name: name || `${tableName}_${idxCols.join('_')}_idx`,
+            columns: idxCols, unique: false,
           });
         }
-
         continue;
       }
 
-      // Parse column definition
-      const colMatch = line.match(/^[`"']?(\w+)[`"']?\s+(\w+)(?:\s*\([^)]*\))?(.*)$/i);
+      // Column definition
+      const colMatch = normalizedLine.match(/^[`"']?(\w+)[`"']?\s+(\w+)(?:\s*\([^)]*\))?(.*)$/i);
       if (colMatch) {
         const [, colName, colType, rest] = colMatch;
         const isPrimary = /PRIMARY\s+KEY/i.test(rest);
         const isNullable = !/NOT\s+NULL/i.test(rest);
         const isUnique = /UNIQUE/i.test(rest);
 
-        // Parse inline REFERENCES
         let references: DatabaseColumn['references'] | undefined;
-        const refMatch = rest.match(/REFERENCES\s+[`"']?(\w+)[`"']?\s*\([`"']?(\w+)[`"']?\)/i);
+        const refMatch = rest.match(/REFERENCES\s+[`"']?(\w+)[`"']?\s*\(\s*[`"']?(\w+)[`"']?\s*\)/i);
         if (refMatch) {
           references = { table: refMatch[1], column: refMatch[2] };
           relations.push({
-            from_table: tableName,
-            from_column: colName,
-            to_table: refMatch[1],
-            to_column: refMatch[2],
+            from_table: tableName, from_column: colName,
+            to_table: refMatch[1], to_column: refMatch[2],
             type: 'one-to-many',
           });
         }
 
         columns.push({
-          name: colName,
-          type: colType.toUpperCase(),
-          nullable: isNullable,
-          primary_key: isPrimary,
+          name: colName, type: colType.toUpperCase(),
+          nullable: isNullable, primary_key: isPrimary,
           references,
         });
 
         if (isUnique) {
           indexes.push({
             name: `${tableName}_${colName}_unique`,
-            columns: [colName],
-            unique: true,
+            columns: [colName], unique: true,
           });
         }
       }

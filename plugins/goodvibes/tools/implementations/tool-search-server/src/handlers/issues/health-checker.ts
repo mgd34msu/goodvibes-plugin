@@ -9,7 +9,23 @@ import { HealthWarning } from './types.js';
 import { LOCKFILES } from './constants.js';
 
 /**
- * Check project health
+ * Checks overall project health and configuration.
+ *
+ * Performs the following checks:
+ * - Verifies node_modules exists when lockfiles are present
+ * - Detects multiple conflicting lockfiles (npm, yarn, pnpm)
+ * - Checks TypeScript strict mode configuration
+ * - Suggests missing lint and test scripts
+ *
+ * @param cwd - Current working directory (project root) to check
+ * @returns Object with warnings array and suggestions array
+ *
+ * @example
+ * ```typescript
+ * const { warnings, suggestions } = checkHealth('/path/to/project');
+ * // warnings: [{ type: 'warning', message: 'node_modules not found...' }]
+ * // suggestions: ['Add a `lint` script to catch code issues']
+ * ```
  */
 export function checkHealth(cwd: string): { warnings: HealthWarning[]; suggestions: string[] } {
   const warnings: HealthWarning[] = [];

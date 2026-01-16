@@ -190,27 +190,23 @@ function parseNextJsRoutes(projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
 
   // App Router: app/api/**/route.ts
+  const srcAppApiDir = path.join(projectPath, 'src', 'app', 'api');
   const appApiDir = path.join(projectPath, 'app', 'api');
-  if (fs.existsSync(appApiDir)) {
+
+  if (fs.existsSync(srcAppApiDir)) {
+    routes.push(...parseNextJsAppRouter(srcAppApiDir, projectPath));
+  } else if (fs.existsSync(appApiDir)) {
     routes.push(...parseNextJsAppRouter(appApiDir, projectPath));
   }
 
-  // Also check src/app/api for projects with src directory
-  const srcAppApiDir = path.join(projectPath, 'src', 'app', 'api');
-  if (fs.existsSync(srcAppApiDir)) {
-    routes.push(...parseNextJsAppRouter(srcAppApiDir, projectPath));
-  }
-
   // Pages Router: pages/api/**/*.ts
-  const pagesApiDir = path.join(projectPath, 'pages', 'api');
-  if (fs.existsSync(pagesApiDir)) {
-    routes.push(...parseNextJsPagesRouter(pagesApiDir, projectPath));
-  }
-
-  // Also check src/pages/api
   const srcPagesApiDir = path.join(projectPath, 'src', 'pages', 'api');
+  const pagesApiDir = path.join(projectPath, 'pages', 'api');
+
   if (fs.existsSync(srcPagesApiDir)) {
     routes.push(...parseNextJsPagesRouter(srcPagesApiDir, projectPath));
+  } else if (fs.existsSync(pagesApiDir)) {
+    routes.push(...parseNextJsPagesRouter(pagesApiDir, projectPath));
   }
 
   return routes;
@@ -456,7 +452,11 @@ function parseExpressFileRoutes(content: string, filePath: string): ApiRoute[] {
 }
 
 /**
- * Extract middleware from Express route definition
+ * Extracts middleware function names from an Express route definition.
+ *
+ * @param content - Full source file content
+ * @param startIndex - Character index where the route definition starts
+ * @returns Array of middleware function names
  */
 function extractExpressMiddleware(content: string, startIndex: number): string[] {
   const middleware: string[] = [];
@@ -486,7 +486,12 @@ function extractExpressMiddleware(content: string, startIndex: number): string[]
 }
 
 /**
- * Parse Fastify routes
+ * Parses Fastify route definitions from source files.
+ *
+ * Scans for fastify.get(), server.post(), and fastify.route() patterns.
+ *
+ * @param projectPath - Absolute path to the project root
+ * @returns Array of discovered Fastify API routes
  */
 function parseFastifyRoutes(projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -508,7 +513,11 @@ function parseFastifyRoutes(projectPath: string): ApiRoute[] {
 }
 
 /**
- * Parse Fastify routes from a single file
+ * Parses Fastify route definitions from a single source file.
+ *
+ * @param content - Source file content
+ * @param filePath - Relative file path for error reporting
+ * @returns Array of routes found in the file
  */
 function parseFastifyFileRoutes(content: string, filePath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -559,7 +568,12 @@ function parseFastifyFileRoutes(content: string, filePath: string): ApiRoute[] {
 }
 
 /**
- * Parse Hono routes
+ * Parses Hono route definitions from source files.
+ *
+ * Scans for app.get(), api.post(), and hono.on() patterns.
+ *
+ * @param projectPath - Absolute path to the project root
+ * @returns Array of discovered Hono API routes
  */
 function parseHonoRoutes(projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -581,7 +595,11 @@ function parseHonoRoutes(projectPath: string): ApiRoute[] {
 }
 
 /**
- * Parse Hono routes from a single file
+ * Parses Hono route definitions from a single source file.
+ *
+ * @param content - Source file content
+ * @param filePath - Relative file path for error reporting
+ * @returns Array of routes found in the file
  */
 function parseHonoFileRoutes(content: string, filePath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -632,7 +650,12 @@ function parseHonoFileRoutes(content: string, filePath: string): ApiRoute[] {
 }
 
 /**
- * Recursively find files matching a pattern
+ * Recursively finds files matching a pattern in a directory.
+ *
+ * @param dir - Directory to search
+ * @param includePattern - RegExp pattern that file names must match
+ * @param excludePattern - Optional RegExp pattern to exclude files
+ * @returns Array of absolute file paths matching the criteria
  */
 function findFiles(dir: string, includePattern: RegExp, excludePattern?: RegExp): string[] {
   const files: string[] = [];
@@ -666,7 +689,11 @@ function findFiles(dir: string, includePattern: RegExp, excludePattern?: RegExp)
 }
 
 /**
- * Get line number from character index
+ * Converts a character index to a line number in source content.
+ *
+ * @param content - Full source file content
+ * @param index - Character index position
+ * @returns 1-based line number
  */
 function getLineNumber(content: string, index: number): number {
   const lines = content.substring(0, index).split('\n');

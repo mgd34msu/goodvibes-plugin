@@ -703,5 +703,260 @@ const handler = function() { return 1; };
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
     });
+
+    test('returns error response when exception occurs', async () => {
+      // Create a file then delete it to cause an error during processing
+      const file = path.join(tempDir, 'will-delete.ts');
+      fs.writeFileSync(file, 'const x = 1;');
+
+      // Mock the language service manager to throw
+      const originalGetServiceForFile = languageServiceManager.getServiceForFile;
+      languageServiceManager.getServiceForFile = vi.fn().mockRejectedValue(
+        new Error('Service initialization failed')
+      );
+
+      try {
+        const result = await handleGetDocumentSymbols({ file });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(result.isError).toBe(true);
+        expect(data.error).toContain('Failed to get document symbols');
+      } finally {
+        languageServiceManager.getServiceForFile = originalGetServiceForFile;
+      }
+    });
+
+    test('handles non-Error exceptions in catch block', async () => {
+      const file = path.join(tempDir, 'error-test.ts');
+      fs.writeFileSync(file, 'const x = 1;');
+
+      // Mock to throw a non-Error value
+      const originalGetServiceForFile = languageServiceManager.getServiceForFile;
+      languageServiceManager.getServiceForFile = vi.fn().mockRejectedValue('string error');
+
+      try {
+        const result = await handleGetDocumentSymbols({ file });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(result.isError).toBe(true);
+        expect(data.error).toContain('string error');
+      } finally {
+        languageServiceManager.getServiceForFile = originalGetServiceForFile;
+      }
+    });
+  });
+
+  describe('navigation tree edge cases', () => {
+    test('handles navigation tree with null spans', async () => {
+      // A file that might produce a node with no spans
+      const file = path.join(tempDir, 'no-spans.ts');
+      fs.writeFileSync(file, `
+// This is just a comment file
+/* with multiple
+   comment styles */
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Should return empty or handle gracefully
+      expect(Array.isArray(data.symbols)).toBe(true);
+    });
+
+    test('filters out anonymous function nodes (nodes with <> names)', async () => {
+      const file = path.join(tempDir, 'anon-func.ts');
+      // This creates anonymous callback functions that TypeScript represents as <function>
+      fs.writeFileSync(file, `
+const arr = [1, 2, 3];
+arr.forEach(function(item) {
+  console.log(item);
+});
+arr.map(function(x) { return x * 2; });
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Should not include any symbols starting with < and ending with >
+      const allNames = getAllSymbolNames(data.symbols);
+      expect(allNames.every((name: string) => !(name.startsWith('<') && name.endsWith('>')))).toBe(true);
+    });
+
+    test('handles file with only whitespace', async () => {
+      const file = path.join(tempDir, 'whitespace-only.ts');
+      fs.writeFileSync(file, '   \n   \n   ');
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols).toEqual([]);
+    });
+
+    test('handles non-script root element in navigation tree', async () => {
+      // A module declaration at root level
+      const file = path.join(tempDir, 'module-root.ts');
+      fs.writeFileSync(file, `
+declare module "my-module" {
+  export function doSomething(): void;
+}
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBeGreaterThanOrEqual(0);
+    });
+
+    test('handles deeply nested childItems in navigation tree', async () => {
+      const file = path.join(tempDir, 'deep-children.ts');
+      fs.writeFileSync(file, `
+namespace Level1 {
+  export namespace Level2 {
+    export namespace Level3 {
+      export interface DeepInterface {
+        value: string;
+        nested: {
+          innerValue: number;
+        };
+      }
+    }
+  }
+}
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Should have properly nested structure
+      expect(data.symbols.length).toBeGreaterThan(0);
+    });
+
+    test('handles nodes with empty childItems array', async () => {
+      const file = path.join(tempDir, 'empty-children.ts');
+      fs.writeFileSync(file, `
+interface EmptyInterface {}
+class EmptyClass {}
+type EmptyType = {};
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Each symbol should have an empty children array
+      for (const symbol of data.symbols) {
+        expect(Array.isArray(symbol.children)).toBe(true);
+      }
+    });
+  });
+
+  describe('symbol kind edge cases', () => {
+    test('handles unknown symbol kind', async () => {
+      const file = path.join(tempDir, 'unknown-kind.ts');
+      // Create a file with various declarations
+      fs.writeFileSync(file, `
+const x = 1;
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Should not crash on any symbol kind
+      expect(data.symbols.length).toBeGreaterThan(0);
+    });
+
+    test('handles all mapped symbol kinds', async () => {
+      const file = path.join(tempDir, 'all-kinds.ts');
+      fs.writeFileSync(file, `
+// Module/namespace
+namespace MyNamespace {
+  export const nsConst = 1;
+}
+
+// Class with various members
+class MyClass {
+  property: string;
+  constructor() {}
+  method() {}
+  get getter() { return 1; }
+  set setter(v: number) {}
+  static staticMethod() {}
+}
+
+// Interface
+interface MyInterface {
+  prop: string;
+}
+
+// Type alias
+type MyType = string | number;
+
+// Enum
+enum MyEnum {
+  A,
+  B,
+}
+
+// Function
+function myFunction() {}
+
+// Variables
+const myConst = 1;
+let myLet = 2;
+var myVar = 3;
+
+// Arrow function
+const myArrow = () => {};
+`);
+
+      const result = await handleGetDocumentSymbols({ file });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBeGreaterThan(5);
+
+      // Verify various kinds are present
+      const allKinds = getAllSymbolKinds(data.symbols);
+      expect(allKinds).toContain('namespace');
+      expect(allKinds).toContain('class');
+      expect(allKinds).toContain('interface');
+      expect(allKinds).toContain('type');
+      expect(allKinds).toContain('enum');
+      expect(allKinds).toContain('function');
+    });
   });
 });
+
+/**
+ * Helper function to recursively get all symbol names
+ */
+function getAllSymbolNames(symbols: Array<{ name: string; children?: Array<{ name: string; children?: unknown[] }> }>): string[] {
+  const names: string[] = [];
+  for (const symbol of symbols) {
+    names.push(symbol.name);
+    if (symbol.children && symbol.children.length > 0) {
+      names.push(...getAllSymbolNames(symbol.children));
+    }
+  }
+  return names;
+}
+
+/**
+ * Helper function to recursively get all symbol kinds
+ */
+function getAllSymbolKinds(symbols: Array<{ kind: string; children?: Array<{ kind: string; children?: unknown[] }> }>): string[] {
+  const kinds: string[] = [];
+  for (const symbol of symbols) {
+    kinds.push(symbol.kind);
+    if (symbol.children && symbol.children.length > 0) {
+      kinds.push(...getAllSymbolKinds(symbol.children));
+    }
+  }
+  return kinds;
+}

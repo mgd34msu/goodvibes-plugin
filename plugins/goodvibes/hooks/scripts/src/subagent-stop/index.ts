@@ -206,7 +206,14 @@ async function updateAnalytics(
   }
 }
 
-/** Determines the completion status based on validation and test results. */
+/**
+ * Determines the completion status based on validation and test results.
+ * Returns 'failed' if there are validation errors or test failures.
+ *
+ * @param validationResult - Result of output validation, if performed
+ * @param testResult - Result of test verification, if performed
+ * @returns 'completed' if no issues, 'failed' otherwise
+ */
 function determineStatus(
   validationResult: ValidationResult | undefined,
   testResult: TestVerificationResult | undefined
@@ -216,7 +223,15 @@ function determineStatus(
   return hasValidationErrors || hasTestFailures ? 'failed' : 'completed';
 }
 
-/** Builds a system message summarizing any issues found. */
+/**
+ * Builds a system message summarizing any issues found.
+ * Combines validation errors and test failures into a single message.
+ *
+ * @param agentType - Type of agent that completed
+ * @param validationResult - Result of output validation, if performed
+ * @param testResult - Result of test verification, if performed
+ * @returns Issue summary message, or undefined if no issues
+ */
 function buildIssuesMessage(
   agentType: string,
   validationResult: ValidationResult | undefined,
@@ -239,7 +254,12 @@ function buildIssuesMessage(
   return '[GoodVibes] Agent ' + agentType + ' completed with issues: ' + issues.join('; ');
 }
 
-/** Main entry point for subagent-stop hook. Correlates with start, validates output, writes telemetry. */
+/**
+ * Main entry point for subagent-stop hook.
+ * Correlates with SubagentStart, validates output, and writes telemetry.
+ *
+ * @returns Promise that resolves when hook processing completes
+ */
 async function runSubagentStopHook(): Promise<void> {
   try {
     debug('SubagentStop hook starting');

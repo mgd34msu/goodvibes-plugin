@@ -658,4 +658,548 @@ describe('handleAtomicMultiEdit', () => {
       expect(data.message).toContain('Validation failed');
     });
   });
+
+  describe('ESLint validation', () => {
+    test('runs ESLint and parses JSON output with errors', async () => {
+      const filePath = path.join(tempDir, 'eslint-test.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Mock successful edit, then ESLint with errors
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: JSON.stringify([
+          {
+            filePath: filePath,
+            messages: [
+              {
+                line: 1,
+                column: 7,
+                severity: 2,
+                ruleId: 'no-unused-vars',
+                message: "'x' is assigned a value but never used",
+              },
+            ],
+          },
+        ]),
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(false);
+      expect(data.validation?.lint?.errors).toBeDefined();
+      expect(data.validation?.lint?.errors.length).toBeGreaterThan(0);
+      expect(data.rollback_performed).toBe(true);
+    });
+
+    test('runs ESLint and passes when no errors', async () => {
+      const filePath = path.join(tempDir, 'eslint-pass.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: JSON.stringify([
+          {
+            filePath: filePath,
+            messages: [],
+          },
+        ]),
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(true);
+    });
+
+    test('handles ESLint with warnings (severity 1) - should pass', async () => {
+      const filePath = path.join(tempDir, 'eslint-warn.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: JSON.stringify([
+          {
+            filePath: filePath,
+            messages: [
+              {
+                line: 1,
+                column: 7,
+                severity: 1, // Warning, not error
+                ruleId: 'no-unused-vars',
+                message: "'x' is assigned a value but never used",
+              },
+            ],
+          },
+        ]),
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(true);
+    });
+
+    test('handles ESLint JSON parsing failure gracefully', async () => {
+      const filePath = path.join(tempDir, 'eslint-bad-json.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'not valid json',
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should pass when JSON parsing fails and there's no error
+      expect(data.success).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(true);
+    });
+
+    test('handles ESLint failure to run', async () => {
+      const filePath = path.join(tempDir, 'eslint-fail-run.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'not valid json',
+        stderr: 'ESLint not found',
+        error: 'command failed',
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(false);
+      expect(data.validation?.lint?.errors).toContain('ESLint failed to run');
+    });
+  });
+
+  describe('Test validation', () => {
+    test('runs npm test and passes when successful', async () => {
+      const filePath = path.join(tempDir, 'test-pass.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'All tests passed',
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          test: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.validation?.test?.passed).toBe(true);
+      expect(data.validation?.test?.output).toContain('All tests passed');
+    });
+
+    test('runs npm test and rolls back when tests fail', async () => {
+      const filePath = path.join(tempDir, 'test-fail.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '1 test failed',
+        stderr: 'AssertionError',
+        error: 'test failed',
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          test: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.test?.passed).toBe(false);
+      expect(data.rollback_performed).toBe(true);
+
+      // File should be rolled back
+      expect(fs.readFileSync(filePath, 'utf-8')).toBe('const x = 1;');
+    });
+  });
+
+  describe('Type check validation parsing', () => {
+    test('parses TypeScript errors from tsc output', async () => {
+      const filePath = path.join(tempDir, 'typecheck-parse.ts');
+      fs.writeFileSync(filePath, 'const x: number = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: `src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/utils.ts(20,10): error TS2339: Property 'foo' does not exist on type 'Bar'.`,
+        stderr: '',
+        error: 'type errors found',
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x: number = 1;',
+            new_text: 'const x: number = "string";',
+          },
+        ],
+        validate: {
+          type_check: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.type_check?.passed).toBe(false);
+      expect(data.validation?.type_check?.errors).toBeDefined();
+      expect(data.validation?.type_check?.errors.length).toBe(2);
+      expect(data.validation?.type_check?.errors[0]).toContain('TS2322');
+      expect(data.validation?.type_check?.errors[1]).toContain('TS2339');
+    });
+  });
+
+  describe('Dry run with validation', () => {
+    test('runs validation in dry run mode', async () => {
+      const filePath = path.join(tempDir, 'dry-run-validate.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        dry_run: true,
+        validate: {
+          type_check: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.applied).toBe(false);
+      expect(data.validation?.type_check?.passed).toBe(true);
+      expect(data.message).toContain('Dry run');
+
+      // File should NOT be modified in dry run
+      expect(fs.readFileSync(filePath, 'utf-8')).toBe('const x = 1;');
+    });
+
+    test('dry run reports file not found error', async () => {
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: path.join(tempDir, 'nonexistent-dry-run.ts'),
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        dry_run: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+      expect(data.edits[0].success).toBe(false);
+      expect(data.edits[0].error).toContain('not found');
+    });
+  });
+
+  describe('Multiple validations', () => {
+    test('runs multiple validations and fails on first failure', async () => {
+      const filePath = path.join(tempDir, 'multi-val.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Type check succeeds
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+        error: null,
+      });
+
+      // Lint fails
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: JSON.stringify([
+          {
+            filePath: filePath,
+            messages: [{ line: 1, column: 1, severity: 2, ruleId: 'error', message: 'error' }],
+          },
+        ]),
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          type_check: true,
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.type_check?.passed).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(false);
+      expect(data.rollback_performed).toBe(true);
+    });
+
+    test('runs all validations including tests and custom', async () => {
+      const filePath = path.join(tempDir, 'all-val.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Type check succeeds
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+        error: null,
+      });
+
+      // Lint succeeds
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: JSON.stringify([{ filePath: filePath, messages: [] }]),
+        stderr: '',
+        error: null,
+      });
+
+      // Test succeeds
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'All tests passed',
+        stderr: '',
+        error: null,
+      });
+
+      // Custom succeeds
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'Custom validation passed',
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          type_check: true,
+          lint: true,
+          test: true,
+          custom: 'my-validator',
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.validation?.type_check?.passed).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(true);
+      expect(data.validation?.test?.passed).toBe(true);
+      expect(data.validation?.custom?.passed).toBe(true);
+    });
+  });
+
+  describe('Error handling edge cases', () => {
+    test('handles error thrown during file read in applyEdit', async () => {
+      const filePath = path.join(tempDir, 'read-error.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Make the file unreadable after backup
+      const originalReadFile = fs.readFileSync;
+      let readCount = 0;
+      vi.spyOn(fs, 'readFileSync').mockImplementation((p: any, options?: any) => {
+        readCount++;
+        if (readCount > 1 && p === filePath) {
+          throw new Error('Read permission denied');
+        }
+        return originalReadFile(p, options);
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Restore spy
+      vi.restoreAllMocks();
+
+      expect(result.isError).toBe(true);
+      expect(data.edits[0].success).toBe(false);
+    });
+
+    test('handles non-Error thrown in catch block', async () => {
+      // Force an error by making backup creation fail
+      mockFileExists.mockRejectedValueOnce('string error instead of Error');
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: path.join(tempDir, 'any-error.ts'),
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toBe('Unknown error');
+    });
+
+    test('handles restore failure in catch block gracefully', async () => {
+      const filePath = path.join(tempDir, 'restore-fail.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // First edit succeeds, then we cause an error during second phase
+      // This requires triggering the catch block with backups.size > 0
+
+      // Mock fileExists to succeed initially, then fail during validation
+      let callCount = 0;
+      mockFileExists.mockImplementation(async (p: string) => {
+        callCount++;
+        if (callCount > 2) {
+          throw new Error('Unexpected error during validation phase');
+        }
+        return fs.existsSync(p);
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          type_check: true,
+        },
+      });
+
+      // The error is caught and handled gracefully
+      expect(result.content[0].type).toBe('text');
+    });
+  });
+
+  describe('Empty validation options', () => {
+    test('skips validation when validate is empty object', async () => {
+      const filePath = path.join(tempDir, 'empty-validate.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {},
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.validation).toBeUndefined();
+      expect(mockSafeExec).not.toHaveBeenCalled();
+    });
+  });
 });

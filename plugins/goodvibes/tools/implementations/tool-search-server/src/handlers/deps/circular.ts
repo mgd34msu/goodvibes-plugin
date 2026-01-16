@@ -21,34 +21,41 @@ import {
 // =============================================================================
 
 /**
- * Arguments for the find_circular_deps tool.
+ * Arguments for the find_circular_deps MCP tool.
+ * @property path - Directory to scan (relative to project root or absolute)
+ * @property include_node_modules - Include node_modules in scan (default: false)
  */
 export interface FindCircularDepsArgs {
-  /** Directory to scan (relative to project root or absolute) */
+  /** Directory to scan (relative to project root or absolute, defaults to '.') */
   path?: string;
-  /** Include node_modules in scan (default: false) */
+  /** Include node_modules in scan (default: false, typically left false for performance) */
   include_node_modules?: boolean;
 }
 
 /**
- * A cycle in the import graph.
+ * A detected circular dependency cycle in the import graph.
+ * @property path - Files forming the cycle (first file repeated at end to show closure)
+ * @property length - Number of unique files in the cycle
  */
 interface Cycle {
-  /** Files forming the cycle (first file repeated at end) */
+  /** Files forming the cycle, with first file repeated at end (e.g., [A, B, C, A]) */
   path: string[];
-  /** Number of unique files in the cycle */
+  /** Number of unique files in the cycle (path.length - 1) */
   length: number;
 }
 
 /**
- * Result of the find_circular_deps tool.
+ * Result of the find_circular_deps MCP tool.
+ * @property cycles - All cycles detected, sorted by length then alphabetically
+ * @property count - Total number of unique cycles found
+ * @property affected_files - All files involved in at least one cycle
  */
 interface FindCircularDepsResult {
-  /** All cycles detected */
+  /** All detected cycles, sorted by length (shortest first) then by first file */
   cycles: Cycle[];
-  /** Total number of cycles */
+  /** Total number of unique cycles detected */
   count: number;
-  /** All files involved in at least one cycle */
+  /** Sorted list of all files that participate in at least one cycle */
   affected_files: string[];
 }
 
@@ -63,7 +70,10 @@ const SUPPORTED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs', '.ct
 const SKIP_DIRECTORIES = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out'];
 
 /**
- * Check if a file is a TypeScript/JavaScript source file.
+ * Checks if a file is a TypeScript/JavaScript source file based on extension.
+ *
+ * @param filePath - File path to check
+ * @returns True if the file has a supported source file extension
  */
 function isSourceFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
@@ -71,7 +81,11 @@ function isSourceFile(filePath: string): boolean {
 }
 
 /**
- * Check if a directory should be skipped.
+ * Determines if a directory should be skipped during scanning.
+ *
+ * @param dirName - Directory name (not full path)
+ * @param includeNodeModules - Whether to include node_modules in scan
+ * @returns True if the directory should be skipped
  */
 function shouldSkipDirectory(dirName: string, includeNodeModules: boolean): boolean {
   if (dirName === 'node_modules') {
@@ -81,7 +95,11 @@ function shouldSkipDirectory(dirName: string, includeNodeModules: boolean): bool
 }
 
 /**
- * Get all source files in a directory recursively.
+ * Recursively collects all source files in a directory.
+ *
+ * @param dir - Directory to scan
+ * @param includeNodeModules - Whether to include files in node_modules
+ * @returns Array of absolute file paths to source files
  */
 function getSourceFiles(dir: string, includeNodeModules: boolean): string[] {
   const files: string[] = [];
@@ -122,8 +140,14 @@ const IMPORT_PATTERNS = [
 ];
 
 /**
- * Parse imports from a source file.
- * Returns an array of resolved absolute file paths.
+ * Parses import statements from a source file.
+ *
+ * Extracts ES6 imports, re-exports, dynamic imports, and CommonJS requires.
+ * Only returns imports that resolve to files in the provided set.
+ *
+ * @param filePath - Absolute path to the file to parse
+ * @param allFiles - Set of all source files for resolution
+ * @returns Array of resolved absolute file paths that this file imports
  */
 function parseImports(filePath: string, allFiles: Set<string>): string[] {
   const imports: string[] = [];
@@ -163,7 +187,18 @@ function parseImports(filePath: string, allFiles: Set<string>): string[] {
 }
 
 /**
- * Resolve an import path to an absolute file path.
+ * Resolves an import path to an absolute file path.
+ *
+ * Handles various resolution strategies:
+ * - Exact path with extension
+ * - Path with implicit extension (.ts, .tsx, .js, etc.)
+ * - Directory index files (index.ts, index.js, etc.)
+ * - .js imports that map to .ts files
+ *
+ * @param importPath - Import path from source (e.g., './utils', '../lib/helpers')
+ * @param fromDir - Directory containing the importing file
+ * @param allFiles - Set of all known source files for validation
+ * @returns Resolved absolute path, or null if not found in allFiles
  */
 function resolveImportPath(
   importPath: string,
@@ -209,8 +244,12 @@ function resolveImportPath(
 }
 
 /**
- * Build an import graph from all source files.
- * Returns a map of file -> array of files it imports.
+ * Builds a directed import graph from source files.
+ *
+ * Each node represents a file, edges represent import relationships.
+ *
+ * @param files - Array of absolute file paths to include in the graph
+ * @returns Map where keys are normalized file paths and values are arrays of imported files
  */
 function buildImportGraph(
   files: string[]
@@ -239,8 +278,13 @@ enum Color {
 }
 
 /**
- * Find all cycles in the import graph using DFS.
- * Uses a color-based approach to detect back edges.
+ * Finds all cycles in the import graph using depth-first search.
+ *
+ * Uses a three-color algorithm (WHITE, GRAY, BLACK) to detect back edges.
+ * Deduplicates cycles using canonical signatures.
+ *
+ * @param graph - Import graph (file -> imported files)
+ * @returns Array of unique cycles found in the graph
  */
 function findCycles(graph: Map<string, string[]>): Cycle[] {
   const cycles: Cycle[] = [];
@@ -304,7 +348,11 @@ function findCycles(graph: Map<string, string[]>): Cycle[] {
 }
 
 /**
- * Extract the cycle from the current DFS stack.
+ * Extracts the cycle path from the current DFS stack.
+ *
+ * @param stack - Current DFS stack of file paths
+ * @param cycleStart - The file that completes the cycle (back edge target)
+ * @returns Array of files forming the cycle, or null if cycleStart not in stack
  */
 function extractCycle(stack: string[], cycleStart: string): string[] | null {
   const cycleStartIndex = stack.indexOf(cycleStart);
@@ -315,8 +363,14 @@ function extractCycle(stack: string[], cycleStart: string): string[] | null {
 }
 
 /**
- * Create a canonical signature for a cycle to detect duplicates.
- * The signature is the smallest rotation of the sorted cycle path.
+ * Creates a canonical signature for a cycle to detect duplicates.
+ *
+ * Rotates the cycle to start with the lexicographically smallest element,
+ * ensuring the same cycle detected from different starting points produces
+ * the same signature.
+ *
+ * @param cycle - Array of file paths forming the cycle
+ * @returns Canonical string signature for deduplication
  */
 function createCycleSignature(cycle: string[]): string {
   if (cycle.length === 0) return '';
@@ -335,7 +389,11 @@ function createCycleSignature(cycle: string[]): string {
 }
 
 /**
- * Make a path relative to the project root.
+ * Converts an absolute path to a relative path from the project root.
+ *
+ * @param absolutePath - Absolute file path to convert
+ * @param projectRoot - Project root directory for computing relative path
+ * @returns Relative path with forward slashes
  */
 function makeRelativePath(absolutePath: string, projectRoot: string): string {
   const relative = path.relative(projectRoot, absolutePath);

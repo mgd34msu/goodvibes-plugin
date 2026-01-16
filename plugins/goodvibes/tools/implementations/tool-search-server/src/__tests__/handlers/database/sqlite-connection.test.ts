@@ -1076,13 +1076,14 @@ describe('Idle connection cleanup', () => {
     });
 
     // Advance time but not enough for the operation to complete
-    vi.advanceTimersByTime(30000);
+    // Use async version to properly handle promise microtasks
+    await vi.advanceTimersByTimeAsync(30000);
 
     // Connection should not be closed while in use
     expect(closeFn).not.toHaveBeenCalled();
 
-    // Complete the operation
-    vi.advanceTimersByTime(100000);
+    // Complete the operation - advance past the 120000ms timeout
+    await vi.advanceTimersByTimeAsync(100000);
     await longOperation;
   });
 
@@ -1351,32 +1352,34 @@ describe('Connection pool max connections', () => {
       })
     );
 
-    // Advance time to let operations start
-    vi.advanceTimersByTime(10);
+    // Advance time to let operations start - use async version
+    await vi.advanceTimersByTimeAsync(10);
 
-    // Should have created 5 connections
+    // Should have created up to 5 connections
     expect(mockDatabaseConstructor.mock.calls.length).toBeLessThanOrEqual(5);
 
     // Complete all operations
-    vi.advanceTimersByTime(200);
+    await vi.advanceTimersByTimeAsync(200);
     await Promise.all(operations);
   });
 
   it('should wait when pool is exhausted', async () => {
     mockDatabaseConstructor.mockClear();
 
-    const operationStarted: boolean[] = [];
-    const operationCompleted: boolean[] = [];
-
-    // Fill the pool with 5 connections
-    const blockedOperations = Array.from({ length: 5 }, (_, i) =>
-      withConnection({ filepath: ':memory:' }, async () => {
-        operationStarted[i] = true;
+    // Fill the pool with 5 connections sequentially to avoid race conditions
+    const blockedOperations: Promise<string>[] = [];
+    for (let i = 0; i < 5; i++) {
+      const op = withConnection({ filepath: ':memory:' }, async () => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        operationCompleted[i] = true;
         return `blocked-${i}`;
-      })
-    );
+      });
+      blockedOperations.push(op);
+      // Allow each operation to start before starting the next
+      await vi.advanceTimersByTimeAsync(10);
+    }
+
+    // Should have created 5 connections
+    expect(mockDatabaseConstructor.mock.calls.length).toBe(5);
 
     // Start 6th operation that should wait
     let sixthStarted = false;
@@ -1385,19 +1388,16 @@ describe('Connection pool max connections', () => {
       return 'sixth';
     });
 
-    // Advance time a bit - 6th should not have started yet
-    vi.advanceTimersByTime(100);
-
-    // Pool should be full
-    expect(mockDatabaseConstructor.mock.calls.length).toBe(5);
+    // Give it a moment - 6th should still be waiting
+    await vi.advanceTimersByTimeAsync(50);
     expect(sixthStarted).toBe(false);
 
     // Complete the blocked operations
-    vi.advanceTimersByTime(1000);
+    await vi.advanceTimersByTimeAsync(1000);
     await Promise.all(blockedOperations);
 
-    // Now 6th should be able to acquire
-    vi.advanceTimersByTime(100);
+    // Now 6th should be able to acquire (reuse released connection)
+    await vi.advanceTimersByTimeAsync(100);
     await sixthOperation;
 
     expect(sixthStarted).toBe(true);
@@ -1406,31 +1406,46 @@ describe('Connection pool max connections', () => {
   it('should timeout when waiting too long for connection', async () => {
     mockDatabaseConstructor.mockClear();
 
-    // Fill the pool with 5 long-running operations
-    const blockedOperations = Array.from({ length: 5 }, (_, i) =>
-      withConnection({ filepath: ':memory:' }, async () => {
+    // Fill the pool with 5 long-running operations sequentially
+    const blockedOperations: Promise<string>[] = [];
+    for (let i = 0; i < 5; i++) {
+      const op = withConnection({ filepath: ':memory:' }, async () => {
         await new Promise((resolve) => setTimeout(resolve, 10000));
         return `blocked-${i}`;
-      })
-    );
+      });
+      blockedOperations.push(op);
+      // Allow each operation to acquire connection before starting next
+      await vi.advanceTimersByTimeAsync(10);
+    }
+
+    // Verify pool is full
+    expect(mockDatabaseConstructor.mock.calls.length).toBe(5);
 
     // Start 6th operation with short timeout
+    // Immediately store and handle the promise to prevent unhandled rejection
+    let timeoutError: Error | null = null;
+    let sixthResolved = false;
     const sixthOperation = withConnection(
       { filepath: ':memory:', timeout: 500 },
       async () => 'sixth'
     );
 
-    // Advance time to let operations start
-    vi.advanceTimersByTime(100);
+    // Attach handler immediately to catch rejection when it occurs
+    sixthOperation.then(
+      () => { sixthResolved = true; },
+      (err: Error) => { timeoutError = err; }
+    );
 
-    // Advance past timeout
-    vi.advanceTimersByTime(600);
+    // Advance past timeout - 6th should timeout since pool is exhausted
+    await vi.advanceTimersByTimeAsync(600);
 
     // 6th operation should have timed out
-    await expect(sixthOperation).rejects.toThrow(/timeout/i);
+    expect(timeoutError).toBeTruthy();
+    expect(timeoutError?.message).toMatch(/timeout/i);
+    expect(sixthResolved).toBe(false);
 
     // Complete blocked operations
-    vi.advanceTimersByTime(10000);
+    await vi.advanceTimersByTimeAsync(10000);
     await Promise.allSettled(blockedOperations);
   });
 });

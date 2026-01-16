@@ -615,5 +615,374 @@ export function MyComponent() {
       // Should not crash, may return empty or partial results
       expect(result.content[0].text).toBeDefined();
     });
+
+    it('should handle non-existent file in analyzeFile', async () => {
+      // Line 350: Test when fs.existsSync returns false for file in analyzeFile
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        // Return true for directory but false for specific file
+        if (pathStr.includes('src') && !pathStr.endsWith('.tsx')) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'Missing.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should return empty components since file doesn't exist
+      expect(data.components).toHaveLength(0);
+    });
+
+    it('should handle exceptions in handler with error response', async () => {
+      // Lines 535-536: Test catch block error handling
+      vi.mocked(fs.existsSync).mockImplementation(() => {
+        throw new Error('Unexpected filesystem error');
+      });
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/Component.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('Unexpected filesystem error');
+    });
+  });
+
+  describe('getComponentName edge cases', () => {
+    it('should return null for unrecognized node types', async () => {
+      // Line 166: Test null return from getComponentName
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+// Expression statement that won't match any component pattern
+const result = (function() { return <div />; })();
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/Edge.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // The IIFE isn't detected as a component
+      expect(data.components.some((c: { name: string }) => c.name === 'result')).toBe(false);
+    });
+  });
+
+  describe('type alias props extraction', () => {
+    it('should extract props from type alias', async () => {
+      // Lines 255-258: Test type alias props extraction
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+type CardProps = {
+  title: string;
+  description: string;
+  onClick?: () => void;
+};
+
+export function Card(props: CardProps) {
+  return <div onClick={props.onClick}>{props.title}</div>;
+}
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/Card.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      const card = data.components.find((c: { name: string }) => c.name === 'Card');
+      expect(card).toBeDefined();
+      expect(card.props).toContain('title');
+      expect(card.props).toContain('description');
+      expect(card.props).toContain('onClick');
+    });
+  });
+
+  describe('directory walking - skip patterns', () => {
+    it('should skip build, dist, coverage directories', async () => {
+      // Lines 321-324: Test directory skipping
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockImplementation((dir) => {
+        const d = String(dir);
+        if (d.endsWith('src')) {
+          return [
+            { name: 'dist', isDirectory: () => true, isFile: () => false },
+            { name: 'build', isDirectory: () => true, isFile: () => false },
+            { name: 'coverage', isDirectory: () => true, isFile: () => false },
+            { name: '.next', isDirectory: () => true, isFile: () => false },
+            { name: 'components', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fs.Dirent[];
+        }
+        if (d.includes('components')) {
+          return [
+            { name: 'Button.tsx', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import React from 'react';
+        export function Button() { return <button />; }
+      `);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should only find Button from components directory, not from skipped directories
+      expect(data.components.length).toBe(1);
+      expect(data.components[0].name).toBe('Button');
+    });
+  });
+
+  describe('findRootComponent edge cases', () => {
+    it('should fallback to first component when no root candidates', async () => {
+      // Line 460: Test fallback to first component
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'widgets.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // No App, Main, Root, etc. - all components have parents
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+export function WidgetA() {
+  return <WidgetB />;
+}
+
+export function WidgetB() {
+  return <WidgetA />;
+}
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Both components have parents (circular reference), so fallback to first
+      expect(data.tree?.name).toBeDefined();
+    });
+
+    it('should detect Main as root component', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'Main.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+export function Main() { return <div />; }
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.tree?.name).toBe('Main');
+    });
+
+    it('should detect Root as root component', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'Root.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+export function Root() { return <div />; }
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.tree?.name).toBe('Root');
+    });
+
+    it('should detect Layout as root component', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'Layout.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+export function Layout() { return <div />; }
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.tree?.name).toBe('Layout');
+    });
+  });
+
+  describe('tree building - circular reference handling', () => {
+    it('should prevent infinite loops with circular component references', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'Circular.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+export function ComponentA() {
+  return <ComponentB />;
+}
+
+export function ComponentB() {
+  return <ComponentC />;
+}
+
+export function ComponentC() {
+  return <ComponentA />;
+}
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+        root_component: 'ComponentA',
+        depth: 10,
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should not crash and should have finite tree
+      expect(data.tree).toBeDefined();
+      expect(data.tree.name).toBe('ComponentA');
+    });
+
+    it('should respect depth limit of 0', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'App.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+export function App() { return <Child />; }
+export function Child() { return <div />; }
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        path: 'src',
+        depth: 0,
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // With depth 0, tree should be null
+      expect(data.tree).toBeNull();
+    });
+  });
+
+  describe('JSX fragment handling', () => {
+    it('should detect components that return JSX fragments', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+export function FragmentComponent() {
+  return (
+    <>
+      <div>First</div>
+      <div>Second</div>
+    </>
+  );
+}
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/Fragment.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.components.some((c: { name: string }) => c.name === 'FragmentComponent')).toBe(true);
+    });
+  });
+
+  describe('function expression components', () => {
+    it('should detect function expression components', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+export const FunctionExpr = function() {
+  return <div>Function expression</div>;
+};
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/FunctionExpr.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.components.some((c: { name: string }) => c.name === 'FunctionExpr')).toBe(true);
+    });
+  });
+
+  describe('namespace component usage', () => {
+    it('should extract component name from namespace prefix', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+export function Container() {
+  return (
+    <div>
+      <React.Fragment>
+        <span>Content</span>
+      </React.Fragment>
+    </div>
+  );
+}
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/Container.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      const container = data.components.find((c: { name: string }) => c.name === 'Container');
+      // React.Fragment should be extracted as Fragment
+      expect(container.uses).toContain('Fragment');
+    });
   });
 });

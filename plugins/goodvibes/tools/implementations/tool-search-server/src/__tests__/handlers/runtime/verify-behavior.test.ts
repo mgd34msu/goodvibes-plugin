@@ -27,18 +27,24 @@ vi.mock('https', () => ({
   request: vi.fn(),
 }));
 
-// Mock utils
-vi.mock('../../utils.js', () => ({
-  success: vi.fn((data: unknown) => ({
+// Create mock functions using vi.hoisted()
+const { mockSuccess, mockError } = vi.hoisted(() => ({
+  mockSuccess: vi.fn((data: unknown) => ({
     content: [{
       type: 'text',
       text: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
     }],
   })),
-  error: vi.fn((message: string) => ({
+  mockError: vi.fn((message: string) => ({
     content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
     isError: true,
   })),
+}));
+
+// Mock utils
+vi.mock('../../../utils.js', () => ({
+  success: mockSuccess,
+  error: mockError,
 }));
 
 // Import after mocks

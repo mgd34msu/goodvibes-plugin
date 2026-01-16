@@ -29,95 +29,142 @@ import {
 // =============================================================================
 
 /**
- * Arguments for the get_test_coverage tool.
+ * Arguments for the get_test_coverage MCP tool.
+ * @property file - Specific source file to check coverage for (optional)
+ * @property coverage_path - Path to coverage report directory or file
+ * @property path - Alias for coverage_path (for convenience)
  */
 export interface GetTestCoverageArgs {
-  /** Specific source file to check coverage for */
+  /** Specific source file to check coverage for (if omitted, returns overall coverage) */
   file?: string;
-  /** Path to coverage report directory or file */
+  /** Path to coverage report directory or file (relative to PROJECT_ROOT) */
   coverage_path?: string;
-  /** Alias for coverage_path */
+  /** Alias for coverage_path (either can be used) */
   path?: string;
 }
 
 /**
- * Coverage percentages for different metrics.
+ * Coverage percentages for different code coverage metrics.
+ * All values are percentages from 0-100, rounded to one decimal place.
+ * @property lines - Percentage of source lines executed
+ * @property branches - Percentage of conditional branches taken
+ * @property functions - Percentage of functions called
+ * @property statements - Percentage of statements executed
  */
 interface CoverageMetrics {
-  /** Line coverage percentage (0-100) */
+  /** Line coverage percentage (0-100, one decimal place) */
   lines: number;
-  /** Branch coverage percentage (0-100) */
+  /** Branch coverage percentage (0-100, one decimal place) */
   branches: number;
-  /** Function coverage percentage (0-100) */
+  /** Function coverage percentage (0-100, one decimal place) */
   functions: number;
-  /** Statement coverage percentage (0-100) */
+  /** Statement coverage percentage (0-100, one decimal place) */
   statements: number;
 }
 
 /**
- * Uncovered lines in a file.
+ * Uncovered lines in a source file.
+ * @property file - Source file path relative to project root
+ * @property lines - Sorted array of uncovered line numbers
  */
 interface UncoveredLines {
   /** Source file path relative to project root */
   file: string;
-  /** Array of uncovered line numbers */
+  /** Sorted array of 1-based line numbers that were not executed */
   lines: number[];
 }
 
 /**
- * Uncovered function in a file.
+ * An uncovered function in a source file.
+ * @property file - Source file path relative to project root
+ * @property name - Function name as it appears in source
+ * @property line - Line number where the function is defined
  */
 interface UncoveredFunction {
   /** Source file path relative to project root */
   file: string;
-  /** Function name */
+  /** Function name as declared in source code */
   name: string;
-  /** Line number where function is defined */
+  /** 1-based line number where the function is defined */
   line: number;
 }
 
 /**
- * Coverage report type.
+ * Supported coverage report format types.
+ * - 'lcov': LCOV format (lcov.info files)
+ * - 'istanbul': Istanbul/NYC JSON format
+ * - 'c8': C8 coverage format
+ * - 'vitest': Vitest coverage output
+ * - 'jest': Jest coverage output
  */
 type CoverageReportType = 'lcov' | 'istanbul' | 'c8' | 'vitest' | 'jest';
 
 /**
- * Result of the get_test_coverage tool.
+ * Result of the get_test_coverage MCP tool.
+ * @property coverage - Coverage percentages for all metrics
+ * @property uncovered_lines - Files with their uncovered line numbers
+ * @property uncovered_functions - Functions that were never called
+ * @property report_path - Path to the coverage report that was parsed
+ * @property report_type - Format type of the coverage report
  */
 interface CoverageResult {
-  /** Coverage percentages */
+  /** Coverage percentages for lines, branches, functions, and statements */
   coverage: CoverageMetrics;
-  /** Array of files with uncovered lines */
+  /** Array of files with their uncovered line numbers */
   uncovered_lines: UncoveredLines[];
-  /** Array of uncovered functions */
+  /** Array of functions that were never executed during tests */
   uncovered_functions: UncoveredFunction[];
-  /** Path where coverage report was found */
+  /** Relative path to the coverage report that was parsed */
   report_path: string;
-  /** Type of coverage report detected */
+  /** Format type of the coverage report that was detected and parsed */
   report_type: CoverageReportType;
 }
 
 /**
- * LCOV file coverage data.
+ * Parsed LCOV coverage data for a single file.
+ * Internal representation used during parsing.
+ * @property file - Absolute file path
+ * @property lines - Map of line number to execution count
+ * @property functions - Map of function name to definition info and hit count
+ * @property branches - Map of line number to branch coverage info
  */
 interface LcovFileCoverage {
+  /** Absolute path to the source file */
   file: string;
-  lines: Map<number, number>; // line -> hit count
+  /** Map of line number -> execution count (0 = uncovered) */
+  lines: Map<number, number>;
+  /** Map of function name -> { line where defined, number of calls } */
   functions: Map<string, { line: number; hits: number }>;
+  /** Map of line number -> { branches taken, total branches } */
   branches: Map<number, { taken: number; total: number }>;
 }
 
 /**
- * Istanbul coverage format for a single file.
+ * Istanbul/NYC JSON coverage format for a single file.
+ * Represents the raw JSON structure from coverage-final.json.
+ * @property path - Source file path
+ * @property statementMap - Statement ID to location mapping
+ * @property fnMap - Function ID to metadata mapping
+ * @property branchMap - Branch ID to location mapping
+ * @property s - Statement hit counts by ID
+ * @property f - Function hit counts by ID
+ * @property b - Branch hit counts by ID (array for each branch point)
  */
 interface IstanbulFileCoverage {
+  /** Absolute or relative path to source file */
   path: string;
+  /** Map of statement ID to start/end line locations */
   statementMap: Record<string, { start: { line: number }; end: { line: number } }>;
+  /** Map of function ID to name and location metadata */
   fnMap: Record<string, { name: string; decl: { start: { line: number } }; loc: { start: { line: number } } }>;
+  /** Map of branch ID to location */
   branchMap: Record<string, { loc: { start: { line: number } } }>;
-  s: Record<string, number>; // statement hits
-  f: Record<string, number>; // function hits
-  b: Record<string, number[]>; // branch hits
+  /** Statement execution counts (key is statement ID) */
+  s: Record<string, number>;
+  /** Function call counts (key is function ID) */
+  f: Record<string, number>;
+  /** Branch execution counts (key is branch ID, value is array of counts per branch) */
+  b: Record<string, number[]>;
 }
 
 // =============================================================================
@@ -192,10 +239,12 @@ function findCoverageReport(
 }
 
 /**
- * Detect the type of coverage report from file path and content.
+ * Detects the type of coverage report from file path and content.
  *
- * @param filePath - Path to the coverage file
- * @returns Coverage report type or null if unknown
+ * Uses file name patterns and JSON structure to identify the format.
+ *
+ * @param filePath - Absolute path to the coverage file
+ * @returns Coverage report type, or null if format is unrecognized
  */
 function detectCoverageType(filePath: string): CoverageReportType | null {
   const fileName = path.basename(filePath).toLowerCase();
@@ -343,10 +392,12 @@ function parseLcov(content: string): Map<string, LcovFileCoverage> {
 // =============================================================================
 
 /**
- * Parse Istanbul/NYC JSON coverage format.
+ * Parses Istanbul/NYC JSON coverage format into unified LcovFileCoverage format.
  *
- * @param content - JSON file content
- * @returns Parsed coverage data per file
+ * Converts Istanbul's statement-based format to line-based format.
+ *
+ * @param content - Raw JSON string from coverage-final.json
+ * @returns Map of normalized file paths to parsed coverage data
  */
 function parseIstanbul(content: string): Map<string, LcovFileCoverage> {
   const files = new Map<string, LcovFileCoverage>();
@@ -408,11 +459,14 @@ function parseIstanbul(content: string): Map<string, LcovFileCoverage> {
 // =============================================================================
 
 /**
- * Calculate coverage metrics from parsed file data.
+ * Calculates coverage metrics from parsed file data.
+ *
+ * Aggregates line, function, and branch coverage across all files or a specific file.
+ * Returns percentages rounded to one decimal place.
  *
  * @param files - Map of file paths to coverage data
- * @param targetFile - Optional specific file to calculate coverage for
- * @returns Coverage metrics
+ * @param targetFile - Optional specific file to calculate coverage for (if omitted, all files)
+ * @returns Coverage metrics with percentages for lines, branches, functions, and statements
  */
 function calculateMetrics(
   files: Map<string, LcovFileCoverage>,
@@ -460,12 +514,14 @@ function calculateMetrics(
 }
 
 /**
- * Extract uncovered lines from parsed coverage data.
+ * Extracts uncovered lines from parsed coverage data.
+ *
+ * Identifies lines with zero execution count and groups them by file.
  *
  * @param files - Map of file paths to coverage data
- * @param projectRoot - Project root for relative paths
- * @param targetFile - Optional specific file to check
- * @returns Array of uncovered lines per file
+ * @param projectRoot - Project root for computing relative paths
+ * @param targetFile - Optional specific file to check (if omitted, all files)
+ * @returns Array of UncoveredLines objects, one per file with uncovered lines
  */
 function extractUncoveredLines(
   files: Map<string, LcovFileCoverage>,
@@ -502,12 +558,14 @@ function extractUncoveredLines(
 }
 
 /**
- * Extract uncovered functions from parsed coverage data.
+ * Extracts uncovered functions from parsed coverage data.
+ *
+ * Identifies functions with zero call count.
  *
  * @param files - Map of file paths to coverage data
- * @param projectRoot - Project root for relative paths
- * @param targetFile - Optional specific file to check
- * @returns Array of uncovered functions
+ * @param projectRoot - Project root for computing relative paths
+ * @param targetFile - Optional specific file to check (if omitted, all files)
+ * @returns Array of UncoveredFunction objects, sorted by file then line number
  */
 function extractUncoveredFunctions(
   files: Map<string, LcovFileCoverage>,

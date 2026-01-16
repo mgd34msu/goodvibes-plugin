@@ -187,7 +187,7 @@ function findTsConfig(startDir: string): string | null {
   while (dir !== root) {
     const tsconfigPath = path.join(dir, 'tsconfig.json');
     if (fs.existsSync(tsconfigPath)) {
-      return tsconfigPath;
+      return normalizeFilePath(tsconfigPath);
     }
     const parentDir = path.dirname(dir);
     if (parentDir === dir) break;
@@ -221,7 +221,7 @@ const DEFAULT_COMPILER_OPTIONS: ts.CompilerOptions = {
  * Read and parse tsconfig.json.
  */
 function readTsConfig(configPath: string): ts.CompilerOptions {
-  const configDir = path.dirname(configPath);
+  const configDir = normalizeFilePath(path.dirname(configPath));
   const result = ts.readConfigFile(configPath, ts.sys.readFile);
 
   if (result.error) {
@@ -411,6 +411,7 @@ export async function handleValidateEditsPreview(
       PROJECT_ROOT
     );
     const baselineDiagnostics = getDiagnosticsForFiles(baselineService, affectedFilesArray);
+    baselineService.dispose();
 
     // Create a set of baseline diagnostic keys for comparison
     const baselineKeys = new Set<string>();
@@ -458,6 +459,7 @@ export async function handleValidateEditsPreview(
       PROJECT_ROOT
     );
     const editedDiagnostics = getDiagnosticsForFiles(editedService, affectedFilesArray);
+    editedService.dispose();
 
     // Step 4: Find new errors (errors in edited state that weren't in baseline)
     const newErrors: NewError[] = [];

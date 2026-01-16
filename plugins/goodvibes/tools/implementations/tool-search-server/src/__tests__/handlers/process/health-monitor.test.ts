@@ -950,7 +950,7 @@ describe('health-monitor handler', () => {
         expect(data.status).toBe('crashed');
       });
 
-      it('should return unhealthy when health check returns non-zero failure status', async () => {
+      it('should return degraded when health check returns non-zero failure status', async () => {
         mockSafeExec.mockResolvedValue({
           stdout: '1234 51200 5.0 10:30',
           stderr: '',
@@ -969,7 +969,7 @@ describe('health-monitor handler', () => {
         });
         const data = JSON.parse(result.content[0].text);
 
-        expect(data.status).toBe('unhealthy');
+        expect(data.status).toBe('degraded');
       });
 
       it('should return unhealthy when error count >= 5', async () => {

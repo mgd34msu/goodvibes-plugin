@@ -662,5 +662,301 @@ describe('handleGetPrismaOperations', () => {
       const data = JSON.parse(result.content[0].text);
       expect(data.error).toBeDefined();
     });
+
+    it('should handle non-existent file path in analyzeFile', async () => {
+      // Line 346: Test when fs.existsSync returns false inside analyzeFile
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        // Return true for directory but false for individual file
+        if (pathStr.includes('src') && !pathStr.includes('.ts')) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'missing.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should return empty operations since file doesn't exist
+      expect(result.isError).toBeUndefined();
+      expect(data.operations).toHaveLength(0);
+    });
+  });
+
+  describe('recursive directory walking', () => {
+    it('should recursively walk subdirectories', async () => {
+      // Line 176: Test recursive walk call
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockImplementation((dir) => {
+        const d = String(dir);
+        if (d.endsWith('src')) {
+          return [
+            { name: 'subdir', isDirectory: () => true, isFile: () => false },
+            { name: 'root.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        if (d.includes('subdir')) {
+          return [
+            { name: 'nested.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export const getUser = () => prisma.user.findUnique({ where: { id: '1' } });
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should find operations in both root.ts and nested.ts
+      expect(data.operations.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('AST edge cases', () => {
+    it('should return null for non-PropertyAccessExpression in extractModelFromPrismaCall', async () => {
+      // Lines 261, 275: Test when expr is not PropertyAccessExpression
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'edge.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // Regular function call, not a property access
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        // This is a direct function call, not prisma.model.operation pattern
+        export const query = () => someFindUnique({ where: { id: '1' } });
+        export const query2 = () => findUnique();
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should not detect any Prisma operations
+      expect(data.operations).toHaveLength(0);
+    });
+
+    it('should return null for invalid client names', async () => {
+      // Line 291: Test when client is not a valid Prisma client name
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'invalid.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // Use a non-standard client name that's not in the validClients list
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { PrismaClient } from '@prisma/client';
+        const unknownClient = new PrismaClient();
+        export const query = () => unknownClient.user.findUnique({ where: { id: '1' } });
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // unknownClient is not in the validClients list, so no operations detected
+      expect(data.operations).toHaveLength(0);
+    });
+  });
+
+  describe('loop detection - while/do loops', () => {
+    it('should detect queries inside while loops', async () => {
+      // Lines 312-313: Test while loop detection
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'while-loop.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export async function processQueue() {
+          let hasMore = true;
+          while (hasMore) {
+            const item = await prisma.queue.findFirst({ where: { processed: false } });
+            hasMore = !!item;
+          }
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = {
+        path: 'src',
+        include_n1_detection: true,
+      };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.n1_patterns.length).toBeGreaterThan(0);
+      expect(data.n1_patterns[0].description).toContain('loop');
+    });
+
+    it('should detect queries inside do-while loops', async () => {
+      // Line 312-313: Test do-while loop detection
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'do-while.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export async function processBatch() {
+          let cursor = 0;
+          do {
+            const batch = await prisma.item.findMany({ skip: cursor, take: 10 });
+            cursor += 10;
+          } while (cursor < 100);
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = {
+        path: 'src',
+        include_n1_detection: true,
+      };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.n1_patterns.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('recommendation generation - additional cases', () => {
+    it('should recommend transactions for many findMany operations', async () => {
+      // Line 456: Test when findMany count > 5
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'many-queries.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export const q1 = () => prisma.user.findMany();
+        export const q2 = () => prisma.post.findMany();
+        export const q3 = () => prisma.comment.findMany();
+        export const q4 = () => prisma.tag.findMany();
+        export const q5 = () => prisma.category.findMany();
+        export const q6 = () => prisma.like.findMany();
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.recommendations.some((r: string) => r.includes('transaction'))).toBe(true);
+    });
+
+    it('should recommend connection pooling for high operation count', async () => {
+      // Line 494: Test when operations > 20
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'high-ops.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // Generate 21+ operations
+      const operations = Array.from({ length: 21 }, (_, i) =>
+        `export const q${i} = () => prisma.user.findUnique({ where: { id: '${i}' } });`
+      ).join('\n');
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        ${operations}
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.recommendations.some((r: string) => r.includes('pooling') || r.includes('PgBouncer'))).toBe(true);
+    });
+
+    it('should show positive message when no issues detected', async () => {
+      // Test the "no issues" recommendation path
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'clean.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // Single operation with include - no issues
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export const getUser = () => prisma.user.findUnique({
+          where: { id: '1' },
+          include: { posts: true }
+        });
+      `);
+
+      const args: GetPrismaOperationsArgs = {
+        path: 'src',
+        include_n1_detection: false,
+      };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.recommendations.some((r: string) => r.includes('Good work'))).toBe(true);
+    });
+  });
+
+  describe('N+1 detection severity', () => {
+    it('should assign high severity to queries without include/select in loops', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'high-severity.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export async function bad(ids: string[]) {
+          for (const id of ids) {
+            await prisma.user.findUnique({ where: { id } });
+          }
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = {
+        path: 'src',
+        include_n1_detection: true,
+      };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.n1_patterns.length).toBeGreaterThan(0);
+      expect(data.n1_patterns[0].severity).toBe('high');
+    });
+
+    it('should assign medium severity to queries with include in loops', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'medium-severity.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export async function bad(ids: string[]) {
+          for (const id of ids) {
+            await prisma.user.findUnique({
+              where: { id },
+              include: { posts: true }
+            });
+          }
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = {
+        path: 'src',
+        include_n1_detection: true,
+      };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.n1_patterns.length).toBeGreaterThan(0);
+      expect(data.n1_patterns[0].severity).toBe('medium');
+    });
   });
 });

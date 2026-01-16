@@ -20,7 +20,7 @@ import * as path from 'path';
 
 // Mock modules before imports
 vi.mock('fs');
-vi.mock('../../config.js', () => ({
+vi.mock('../../../config.js', () => ({
   PROJECT_ROOT: '/mock/project',
 }));
 
@@ -593,7 +593,8 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
+            console.log('DEBUG readdirSync dir:', dirStr);
             if (dirStr === '/mock/project') {
               return [
                 createMockDirent('src', true),
@@ -631,7 +632,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -661,7 +662,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -691,7 +692,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -728,7 +729,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -811,7 +812,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [
                 createMockDirent('app.ts', false),
@@ -860,7 +861,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [
                 createMockDirent('file1.ts', false),
@@ -964,7 +965,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -990,7 +991,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -1205,7 +1206,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -1256,7 +1257,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [
                 createMockDirent('file1.ts', false),
@@ -1294,7 +1295,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [
                 createMockDirent('file1.ts', false),
@@ -1395,7 +1396,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -1474,7 +1475,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return manyFiles;
             }
@@ -1502,7 +1503,7 @@ describe('validate-env-complete handler', () => {
         // Create directories with many files each
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               const files = Array.from({ length: 600 }, (_, i) =>
                 createMockDirent(`file${i}.ts`, false)
@@ -1725,7 +1726,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -1756,7 +1757,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }
@@ -1795,7 +1796,7 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           if (options && typeof options === 'object' && 'withFileTypes' in options) {
-            const dirStr = String(dir);
+            const dirStr = String(dir).replace(/\\/g, '/');
             if (dirStr === '/mock/project') {
               return [createMockDirent('app.ts', false)];
             }

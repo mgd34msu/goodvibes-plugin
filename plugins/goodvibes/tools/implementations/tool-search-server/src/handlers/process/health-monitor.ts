@@ -379,9 +379,9 @@ function determineStatus(
     return 'not_found';
   }
 
-  // Health check failed
-  if (healthCheck && !healthCheck.ok) {
-    return healthCheck.status === 0 ? 'crashed' : 'unhealthy';
+  // Health check failed with connection error (process likely down/unreachable)
+  if (healthCheck && !healthCheck.ok && healthCheck.status === 0) {
+    return 'crashed';
   }
 
   // High error count indicates unhealthy
@@ -505,8 +505,12 @@ export async function handleHealthMonitor(args: HealthMonitorArgs) {
 
     // Process died during monitoring
     if (!lastMetrics.alive) {
+      // If process disappeared immediately despite isProcessAlive check, treat as not found
+      // This handles race conditions where PID existed but process was gone by the time we checked metrics
+      const status = i === 0 ? 'not_found' : 'crashed';
+
       return success({
-        status: 'crashed',
+        status,
         pid,
         alive: false,
         uptime_ms: lastMetrics.uptime_ms,

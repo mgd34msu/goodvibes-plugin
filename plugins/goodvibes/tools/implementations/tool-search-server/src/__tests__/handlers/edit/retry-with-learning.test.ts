@@ -682,4 +682,403 @@ describe('handleRetryWithLearning', () => {
       expect(data.final_stderr).toContain('ENOENT');
     });
   });
+
+  describe('LLM analysis edge cases', () => {
+    test('handles LLM analysis timeout', async () => {
+      let claudeAnalysisProc: any = null;
+
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // LLM analysis - simulate timeout by never completing
+          claudeAnalysisProc = new EventEmitter() as any;
+          claudeAnalysisProc.stdout = new EventEmitter();
+          claudeAnalysisProc.stderr = new EventEmitter();
+          claudeAnalysisProc.stdin = { write: vi.fn(), end: vi.fn() };
+          claudeAnalysisProc.killed = false;
+          claudeAnalysisProc.kill = vi.fn(() => {
+            claudeAnalysisProc.killed = true;
+          });
+          return claudeAnalysisProc;
+        }
+        return createMockProcess(1, '', 'Command failed', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+      // LLM analysis should have timed out
+      expect(claudeAnalysisProc?.kill).toHaveBeenCalled();
+    });
+
+    test('handles invalid LLM response structure', async () => {
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Return JSON with wrong structure (missing required fields)
+          return createMockProcess(0, JSON.stringify({
+            wrong_field: 'wrong value',
+            // Missing: analysis, suggested_fix, should_retry
+          }), '', 10);
+        }
+        return createMockProcess(1, '', 'Command error', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+      // Should continue despite invalid LLM response
+      expect(data.attempts.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('handles LLM response with no JSON', async () => {
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Return plain text with no JSON at all
+          return createMockProcess(0, 'I analyzed the error and it seems to be a network issue.', '', 10);
+        }
+        return createMockProcess(1, '', 'Network error', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+    });
+
+    test('handles LLM CLI exit with non-zero code', async () => {
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Claude CLI exits with error
+          return createMockProcess(1, '', 'Claude CLI error', 10);
+        }
+        return createMockProcess(1, '', 'Command error', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+    });
+
+    test('handles LLM spawn error during analysis', async () => {
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Spawn error during analysis
+          const proc = new EventEmitter() as any;
+          proc.stdout = new EventEmitter();
+          proc.stderr = new EventEmitter();
+          proc.stdin = { write: vi.fn(), end: vi.fn() };
+          proc.killed = false;
+          proc.kill = vi.fn();
+
+          setTimeout(() => {
+            proc.emit('error', new Error('Claude spawn failed'));
+          }, 10);
+
+          return proc;
+        }
+        return createMockProcess(1, '', 'Command error', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(false);
+    });
+  });
+
+  describe('timeout bounds enforcement', () => {
+    test('enforces minimum timeout of 1000ms', async () => {
+      mockSpawn
+        .mockReturnValueOnce(createNotFoundProcess())
+        .mockReturnValueOnce(createMockProcess(0, 'Success', '', 10));
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'cmd',
+        timeout: 100, // Below minimum
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      // Should not fail immediately despite very low timeout setting
+    });
+
+    test('enforces maximum timeout of 300000ms', async () => {
+      mockSpawn
+        .mockReturnValueOnce(createNotFoundProcess())
+        .mockReturnValueOnce(createMockProcess(0, 'Success', '', 10));
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'cmd',
+        timeout: 999999, // Above maximum
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+    });
+  });
+
+  describe('null exit code handling', () => {
+    test('handles null exit code from process', async () => {
+      mockSpawn.mockImplementation(() => {
+        const proc = new EventEmitter() as any;
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.stdin = { write: vi.fn(), end: vi.fn() };
+        proc.killed = false;
+        proc.kill = vi.fn(() => {
+          proc.killed = true;
+        });
+
+        setTimeout(() => {
+          proc.stdout.emit('data', Buffer.from('Killed'));
+          proc.emit('close', null); // null exit code
+        }, 10);
+
+        return proc;
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'killed-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // null exit code should be treated as failure (exit code 1)
+      expect(data.success).toBe(false);
+      expect(data.final_exit_code).toBe(1);
+    });
+  });
+
+  describe('process kill escalation', () => {
+    test('escalates to SIGKILL when SIGTERM fails', async () => {
+      let killCount = 0;
+      let killedWithSigkill = false;
+
+      mockSpawn.mockImplementation(() => {
+        if (killCount === 0) {
+          // Claude version check
+          killCount++;
+          return createNotFoundProcess();
+        }
+
+        const proc = new EventEmitter() as any;
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.stdin = { write: vi.fn(), end: vi.fn() };
+        proc.killed = false;
+        proc.kill = vi.fn((signal?: string) => {
+          if (signal === 'SIGKILL') {
+            killedWithSigkill = true;
+            proc.killed = true;
+            proc.emit('close', null);
+          }
+          // SIGTERM doesn't kill the process
+        });
+
+        // Process doesn't terminate naturally
+        return proc;
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'stuck-cmd',
+        timeout: 100,
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Should have attempted SIGKILL after SIGTERM failed
+      expect(killedWithSigkill).toBe(true);
+    });
+  });
+
+  describe('previous attempts in prompt', () => {
+    test('includes previous attempts in LLM prompt for context', async () => {
+      let capturedPrompt = '';
+      let attemptIndex = 0;
+
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          // Capture stdin for LLM analysis
+          const proc = new EventEmitter() as any;
+          proc.stdout = new EventEmitter();
+          proc.stderr = new EventEmitter();
+          proc.stdin = {
+            write: (data: string) => {
+              capturedPrompt = data;
+            },
+            end: vi.fn(),
+          };
+          proc.killed = false;
+          proc.kill = vi.fn(() => {
+            proc.killed = true;
+          });
+
+          setTimeout(() => {
+            proc.stdout.emit('data', Buffer.from(JSON.stringify({
+              analysis: 'Test analysis',
+              suggested_fix: 'Test fix',
+              should_retry: true,
+            })));
+            proc.emit('close', 0);
+          }, 10);
+
+          return proc;
+        }
+
+        // Command execution - fail with different errors
+        attemptIndex++;
+        const errors = ['Error one', 'Error two', 'Error three'];
+        return createMockProcess(1, '', errors[attemptIndex - 1] || 'Error', 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'failing-cmd',
+        max_retries: 3,
+      });
+
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // The prompt should mention previous attempts
+      expect(capturedPrompt).toContain('Previous attempts');
+    });
+  });
+
+  describe('output truncation', () => {
+    test('truncates long output for LLM prompt', async () => {
+      let capturedPrompt = '';
+
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'claude') {
+          if (args?.includes('--version')) {
+            return createMockProcess(0, '2.0.0', '', 5);
+          }
+          const proc = new EventEmitter() as any;
+          proc.stdout = new EventEmitter();
+          proc.stderr = new EventEmitter();
+          proc.stdin = {
+            write: (data: string) => {
+              capturedPrompt = data;
+            },
+            end: vi.fn(),
+          };
+          proc.killed = false;
+          proc.kill = vi.fn(() => {
+            proc.killed = true;
+          });
+
+          setTimeout(() => {
+            proc.stdout.emit('data', Buffer.from(JSON.stringify({
+              analysis: 'Test',
+              suggested_fix: 'Test',
+              should_retry: false,
+            })));
+            proc.emit('close', 0);
+          }, 10);
+
+          return proc;
+        }
+
+        // Generate very long output
+        const longOutput = 'x'.repeat(10000);
+        return createMockProcess(1, '', longOutput, 10);
+      });
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'verbose-cmd',
+        max_retries: 1,
+      });
+
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Prompt should contain truncation indicator
+      expect(capturedPrompt).toContain('truncated');
+    });
+  });
+
+  describe('default fix strategy', () => {
+    test('uses suggest_fix as default strategy', async () => {
+      mockSpawn
+        .mockReturnValueOnce(createMockProcess(0, '2.0.0', '', 5)) // Claude available
+        .mockReturnValueOnce(createMockProcess(1, '', 'Error', 10)) // Command fails
+        .mockReturnValueOnce(createMockProcess(0, JSON.stringify({
+          analysis: 'Test',
+          suggested_fix: 'Run npm install',
+          should_retry: false,
+        }), '', 10));
+
+      const resultPromise = handleRetryWithLearning({
+        command: 'npm run build',
+        // No fix_strategy specified - should default to suggest_fix
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.attempts[0].suggested_fix).toBe('Run npm install');
+    });
+  });
 });

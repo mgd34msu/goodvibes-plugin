@@ -5,10 +5,11 @@
  * that provide quick fixes and refactorings for TypeScript/JavaScript code.
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import ts from 'typescript';
 
 import {
   handleGetCodeActions,
@@ -852,5 +853,739 @@ describe('code actions integration', () => {
 
     // Either actions or error is valid response
     expect(data.actions || data.error).toBeDefined();
+  });
+});
+
+describe('handleGetCodeActions with mocked language service', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'code-actions-mock-test-'));
+  });
+
+  afterEach(() => {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+    languageServiceManager.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  test('generates consistent action IDs for same input', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x: number = "string";');
+
+    // Get actions twice at the same position
+    const result1 = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const result2 = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data1 = JSON.parse(result1.content[0].text);
+    const data2 = JSON.parse(result2.content[0].text);
+
+    if (data1.actions && data1.actions.length > 0 && data2.actions && data2.actions.length > 0) {
+      // Same position and title should produce same ID
+      expect(data1.actions[0].id).toBe(data2.actions[0].id);
+    }
+  });
+
+  test('generates different action IDs for different positions', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x: number = "string";\nconst y: number = "string";');
+
+    const result1 = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const result2 = await handleGetCodeActions({ file, line: 2, column: 1 });
+    const data1 = JSON.parse(result1.content[0].text);
+    const data2 = JSON.parse(result2.content[0].text);
+
+    if (
+      data1.actions &&
+      data1.actions.length > 0 &&
+      data2.actions &&
+      data2.actions.length > 0
+    ) {
+      // Different positions should produce different IDs
+      expect(data1.actions[0].id).not.toBe(data2.actions[0].id);
+    }
+  });
+
+  test('handles diagnostics with undefined start position', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    // Create a spy that returns a diagnostic with undefined start
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      // Wrap service to return diagnostic with undefined start
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [
+          {
+            file: result.program.getSourceFile(filePath.replace(/\\/g, '/')),
+            start: undefined,
+            length: 5,
+            messageText: 'Test diagnostic',
+            category: ts.DiagnosticCategory.Error,
+            code: 1234,
+          } as ts.Diagnostic,
+        ],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: result.service.getCodeFixesAtPosition.bind(result.service),
+        getApplicableRefactors: result.service.getApplicableRefactors.bind(result.service),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data = JSON.parse(resultData.content[0].text);
+
+    // Should handle gracefully - diagnostics with undefined start are filtered out
+    expect(data).toBeDefined();
+  });
+
+  test('handles non-numeric diagnostic codes', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [
+          {
+            file: result.program.getSourceFile(filePath.replace(/\\/g, '/')),
+            start: 0,
+            length: 5,
+            messageText: 'Test diagnostic',
+            category: ts.DiagnosticCategory.Error,
+            code: 'string-code' as unknown as number, // Non-numeric code
+          } as ts.Diagnostic,
+        ],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: result.service.getCodeFixesAtPosition.bind(result.service),
+        getApplicableRefactors: result.service.getApplicableRefactors.bind(result.service),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data = JSON.parse(resultData.content[0].text);
+
+    // Should handle non-numeric codes by filtering them out
+    expect(data).toBeDefined();
+  });
+
+  test('handles code fixes with fixAllDescription (preferred actions)', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x: number = "string";');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () =>
+          [
+            {
+              description: 'Fix all type errors',
+              fixName: 'fixTypeError',
+              fixAllDescription: 'Fix all type errors in file', // This makes it preferred
+              changes: [
+                {
+                  fileName: filePath.replace(/\\/g, '/'),
+                  textChanges: [{ span: { start: 0, length: 5 }, newText: 'const' }],
+                },
+              ],
+            },
+          ] as ts.CodeFixAction[],
+        getApplicableRefactors: () => [],
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data = JSON.parse(resultData.content[0].text);
+
+    if (data.actions && data.actions.length > 0) {
+      expect(data.actions[0].is_preferred).toBe(true);
+    }
+  });
+
+  test('handles refactoring with isPreferred property', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() { return 1 + 2; }');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () => [],
+        getApplicableRefactors: () =>
+          [
+            {
+              name: 'Extract Symbol',
+              description: 'Extract to function',
+              actions: [
+                {
+                  name: 'extractFunction',
+                  description: 'Extract to function',
+                  isPreferred: true, // Preferred refactoring
+                },
+              ],
+            },
+          ] as ts.ApplicableRefactorInfo[],
+        getEditsForRefactor: () => ({
+          edits: [
+            {
+              fileName: filePath.replace(/\\/g, '/'),
+              textChanges: [{ span: { start: 0, length: 5 }, newText: 'const' }],
+            },
+          ],
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetCodeActions({
+      file,
+      line: 1,
+      column: 17,
+      end_line: 1,
+      end_column: 22,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    if (data.actions && data.actions.length > 0) {
+      const refactorAction = data.actions.find((a: { kind: string }) =>
+        a.kind.includes('refactor')
+      );
+      if (refactorAction) {
+        expect(refactorAction.is_preferred).toBe(true);
+      }
+    }
+  });
+
+  test('handles refactoring when getEditsForRefactor returns null', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() { return 1 + 2; }');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () => [],
+        getApplicableRefactors: () =>
+          [
+            {
+              name: 'Extract Symbol',
+              description: 'Extract to function',
+              actions: [
+                {
+                  name: 'extractFunction',
+                  description: 'Extract to function',
+                },
+              ],
+            },
+          ] as ts.ApplicableRefactorInfo[],
+        getEditsForRefactor: () => undefined, // Returns null/undefined
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetCodeActions({
+      file,
+      line: 1,
+      column: 17,
+      end_line: 1,
+      end_column: 22,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    // Should not include refactoring if edits are null
+    expect(data.actions).toBeDefined();
+    expect(Array.isArray(data.actions)).toBe(true);
+  });
+
+  test('handles multiple text changes across multiple files', async () => {
+    const file = path.join(tempDir, 'main.ts');
+    const otherFile = path.join(tempDir, 'other.ts');
+    fs.writeFileSync(file, 'import { foo } from "./other";\nfoo();');
+    fs.writeFileSync(otherFile, 'export function foo() {}');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () =>
+          [
+            {
+              description: 'Multi-file fix',
+              fixName: 'multiFileFix',
+              changes: [
+                {
+                  fileName: file.replace(/\\/g, '/'),
+                  textChanges: [
+                    { span: { start: 0, length: 5 }, newText: 'const' },
+                    { span: { start: 10, length: 3 }, newText: 'bar' },
+                  ],
+                },
+                {
+                  fileName: otherFile.replace(/\\/g, '/'),
+                  textChanges: [{ span: { start: 0, length: 6 }, newText: 'export' }],
+                },
+              ],
+            },
+          ] as ts.CodeFixAction[],
+        getApplicableRefactors: () => [],
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data = JSON.parse(resultData.content[0].text);
+
+    if (data.actions && data.actions.length > 0) {
+      // Should have edits for multiple files
+      expect(data.actions[0].edits.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  test('handles error thrown by language service', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockRejectedValue(
+      new Error('Language service error')
+    );
+
+    const result = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Language service error');
+  });
+
+  test('handles non-Error thrown by language service', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockRejectedValue('String error');
+
+    const result = await handleGetCodeActions({ file, line: 1, column: 1 });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toBe('Unknown error');
+  });
+
+  test('includes diagnostic position in output', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x: number = "string";');
+
+    const result = await handleGetCodeActions({ file, line: 1, column: 19 });
+    const data = JSON.parse(result.content[0].text);
+
+    if (data.diagnostics && data.diagnostics.length > 0) {
+      expect(data.diagnostics[0].line).toBeDefined();
+      expect(data.diagnostics[0].column).toBeDefined();
+    }
+  });
+
+  test('handles diagnostics with complex messageText (DiagnosticMessageChain)', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x: number = "string";');
+
+    // The actual error from TypeScript for type mismatch creates a message chain
+    const result = await handleGetCodeActions({ file, line: 1, column: 19 });
+    const data = JSON.parse(result.content[0].text);
+
+    if (data.diagnostics && data.diagnostics.length > 0) {
+      // Message should be flattened to a string
+      expect(typeof data.diagnostics[0].message).toBe('string');
+    }
+  });
+});
+
+describe('handleApplyCodeAction with mocked language service', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apply-action-mock-test-'));
+  });
+
+  afterEach(() => {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+    languageServiceManager.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  test('applies refactoring action successfully', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() { return 1 + 2; }');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () => [], // No code fixes
+        getApplicableRefactors: () =>
+          [
+            {
+              name: 'Extract Symbol',
+              description: 'Extract to function',
+              actions: [
+                {
+                  name: 'extractFunction',
+                  description: 'Extract to function in module scope',
+                },
+              ],
+            },
+          ] as ts.ApplicableRefactorInfo[],
+        getEditsForRefactor: () => ({
+          edits: [
+            {
+              fileName: filePath.replace(/\\/g, '/'),
+              textChanges: [
+                { span: { start: 17, length: 5 }, newText: 'newFunction()' },
+              ],
+            },
+          ],
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 17,
+      action_title: 'Extract to function in module scope',
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(data.success).toBe(true);
+    expect(data.action_title).toBe('Extract to function in module scope');
+    expect(data.edits).toBeDefined();
+    expect(data.files_affected).toBeDefined();
+  });
+
+  test('returns unique files_affected for multiple edits in same file', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;\nconst y = 2;');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () =>
+          [
+            {
+              description: 'Multi-change fix',
+              fixName: 'multiChange',
+              changes: [
+                {
+                  fileName: normalizedPath,
+                  textChanges: [
+                    { span: { start: 0, length: 5 }, newText: 'let' },
+                    { span: { start: 13, length: 5 }, newText: 'let' },
+                  ],
+                },
+              ],
+            },
+          ] as ts.CodeFixAction[],
+        getApplicableRefactors: () => [],
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 1,
+      action_title: 'Multi-change fix',
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    if (data.success) {
+      // files_affected should have unique entries only
+      const uniqueFiles = [...new Set(data.files_affected)];
+      expect(data.files_affected.length).toBe(uniqueFiles.length);
+    }
+  });
+
+  test('handles error thrown by language service', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockRejectedValue(
+      new Error('Language service error')
+    );
+
+    const result = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 1,
+      action_title: 'Some action',
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Language service error');
+  });
+
+  test('handles non-Error thrown by language service', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockRejectedValue('String error');
+
+    const result = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 1,
+      action_title: 'Some action',
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toBe('Unknown error');
+  });
+
+  test('includes file and position in error context', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const result = await handleApplyCodeAction({
+      file,
+      line: 5,
+      column: 10,
+      action_title: 'Non-existent action',
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(data.file).toBeDefined();
+    expect(data.line).toBe(5);
+    expect(data.column).toBe(10);
+  });
+
+  test('handles diagnostics with undefined start during apply', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [
+          {
+            file: result.program.getSourceFile(filePath.replace(/\\/g, '/')),
+            start: undefined,
+            length: 5,
+            messageText: 'Test diagnostic',
+            category: ts.DiagnosticCategory.Error,
+            code: 1234,
+          } as ts.Diagnostic,
+        ],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () => [],
+        getApplicableRefactors: () => [],
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 1,
+      action_title: 'Some action',
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    // Should handle gracefully and return not found error
+    expect(data.error).toContain('not found');
+  });
+
+  test('handles refactoring with getEditsForRefactor returning null during apply', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() { return 1 + 2; }');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () => [],
+        getApplicableRefactors: () =>
+          [
+            {
+              name: 'Extract Symbol',
+              description: 'Extract to function',
+              actions: [
+                {
+                  name: 'extractFunction',
+                  description: 'Extract to function',
+                },
+              ],
+            },
+          ] as ts.ApplicableRefactorInfo[],
+        getEditsForRefactor: () => undefined, // Returns null
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 17,
+      action_title: 'Extract to function',
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    // Should return not found since editInfo is null
+    expect(data.error).toContain('not found');
+  });
+
+  test('handles multiple text changes in refactoring apply', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    const otherFile = path.join(tempDir, 'other.ts');
+    fs.writeFileSync(file, 'function foo() { return 1 + 2; }');
+    fs.writeFileSync(otherFile, '// other file');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSemanticDiagnostics: () => [],
+        getSyntacticDiagnostics: () => [],
+        getSuggestionDiagnostics: () => [],
+        getCodeFixesAtPosition: () => [],
+        getApplicableRefactors: () =>
+          [
+            {
+              name: 'Move to file',
+              description: 'Move to new file',
+              actions: [
+                {
+                  name: 'moveToFile',
+                  description: 'Move to other.ts',
+                },
+              ],
+            },
+          ] as ts.ApplicableRefactorInfo[],
+        getEditsForRefactor: () => ({
+          edits: [
+            {
+              fileName: file.replace(/\\/g, '/'),
+              textChanges: [
+                { span: { start: 0, length: 10 }, newText: 'import' },
+                { span: { start: 15, length: 5 }, newText: 'bar()' },
+              ],
+            },
+            {
+              fileName: otherFile.replace(/\\/g, '/'),
+              textChanges: [
+                { span: { start: 0, length: 0 }, newText: 'export function foo() {}' },
+              ],
+            },
+          ],
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleApplyCodeAction({
+      file,
+      line: 1,
+      column: 1,
+      action_title: 'Move to other.ts',
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    if (data.success) {
+      expect(data.edits.length).toBeGreaterThanOrEqual(2);
+      expect(data.files_affected.length).toBe(2);
+    }
   });
 });

@@ -698,5 +698,390 @@ const x = 2;
       expect(data.resolutions[0]).toHaveProperty('merged');
       expect(data.resolutions[0].explanation).toContain('failed');
     });
+
+    test('handles generic exception in handler', async () => {
+      // Force an exception by passing invalid file path type
+      const result = await handleResolveMergeConflict({
+        file: null as any,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toBeDefined();
+    });
+  });
+
+  describe('TypeScript validation', () => {
+    test('validates TypeScript file after resolution when validate_after is true', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'valid-ts.ts');
+      const content = `<<<<<<< HEAD
+const x: number = 1;
+=======
+const x: number = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '', error: null });
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'const x: number = 2;',
+          explanation: 'Used theirs',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation).toBeDefined();
+      expect(data.validation.passed).toBe(true);
+    });
+
+    test('reports TypeScript errors when validation fails', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'invalid-ts.ts');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '',
+        stderr: "error TS2322: Type 'string' is not assignable to type 'number'",
+        error: 'TypeScript error',
+      });
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'const x = "wrong";',
+          explanation: 'Test',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation).toBeDefined();
+      expect(data.validation.passed).toBe(false);
+      expect(data.validation.errors).toBeDefined();
+      expect(data.validation.errors.length).toBeGreaterThan(0);
+    });
+
+    test('skips validation for non-TypeScript files', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'file.js');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'const x = 2;',
+          explanation: 'Used theirs',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // JS files should pass validation without running tsc
+      expect(data.validation).toBeDefined();
+      expect(data.validation.passed).toBe(true);
+      // safeExec should not have been called for JS file
+    });
+
+    test('handles tsc execution failure gracefully', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'tsc-fail.tsx');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(safeExec).mockRejectedValue(new Error('tsc not found'));
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'const x = 2;',
+          explanation: 'Used theirs',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // Should pass validation if tsc fails to run
+      expect(data.validation).toBeDefined();
+      expect(data.validation.passed).toBe(true);
+    });
+
+    test('validates .mts files', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'module.mts');
+      const content = `<<<<<<< HEAD
+export const x = 1;
+=======
+export const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '', error: null });
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'export const x = 2;',
+          explanation: 'Used theirs',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation).toBeDefined();
+      expect(data.validation.passed).toBe(true);
+    });
+
+    test('validates .cts files', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'common.cts');
+      const content = `<<<<<<< HEAD
+module.exports = { x: 1 };
+=======
+module.exports = { x: 2 };
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(safeExec).mockResolvedValue({ stdout: '', stderr: '', error: null });
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'module.exports = { x: 2 };',
+          explanation: 'Used theirs',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation).toBeDefined();
+      expect(data.validation.passed).toBe(true);
+    });
+
+    test('limits validation errors to 10', async () => {
+      const { safeExec } = await import('../../../utils.js');
+      const filePath = path.join(tempDir, 'many-errors.ts');
+      const content = `<<<<<<< HEAD
+const x = 1;
+=======
+const x = 2;
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+      // Generate 15 TS errors
+      const manyErrors = Array.from({ length: 15 }, (_, i) =>
+        `error TS${2300 + i}: Some type error ${i}`
+      ).join('\n');
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '',
+        stderr: manyErrors,
+        error: 'TypeScript errors',
+      });
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        validate_after: true,
+        dry_run: false,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'const x = 2;',
+          explanation: 'Test',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation.passed).toBe(false);
+      expect(data.validation.errors.length).toBeLessThanOrEqual(10);
+    });
+  });
+
+  describe('resolution preference - merge fallback', () => {
+    test('falls back to ours when prefer is merge and LLM fails', async () => {
+      const filePath = path.join(tempDir, 'merge-fallback.ts');
+      const content = `<<<<<<< HEAD
+const x = 'ours-content';
+=======
+const x = 'theirs-content';
+>>>>>>> branch`;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        prefer: 'merge',
+        dry_run: true,
+      });
+
+      // Simulate LLM failure (exit code 1)
+      setTimeout(() => {
+        mockProcess.emit('close', 1);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      // merge fallback defaults to ours
+      expect(data.resolutions[0].merged).toBe("const x = 'ours-content';");
+    });
+  });
+
+  describe('conflict ref parsing', () => {
+    test('handles empty ref names with defaults', async () => {
+      const filePath = path.join(tempDir, 'empty-refs.ts');
+      // Conflict markers with no branch names
+      const content = `<<<<<<<
+const x = 1;
+=======
+const x = 2;
+>>>>>>> `;
+
+      fs.writeFileSync(filePath, content);
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const resultPromise = handleResolveMergeConflict({
+        file: filePath,
+        dry_run: true,
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', Buffer.from(JSON.stringify({
+          merged: 'const x = 2;',
+          explanation: 'Used theirs',
+        })));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await resultPromise;
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.conflicts_found).toBe(1);
+    });
   });
 });

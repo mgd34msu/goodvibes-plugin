@@ -133,7 +133,7 @@ function parseEnvFile(content: string): Map<string, string> {
       continue;
     }
     // Match VAR_NAME=value
-    const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/i);
+    const match = trimmed.match(/^([A-Z][A-Z0-9_]*)=(.*)$/i);
     if (match) {
       const name = match[1].toUpperCase();
       // Remove surrounding quotes from value

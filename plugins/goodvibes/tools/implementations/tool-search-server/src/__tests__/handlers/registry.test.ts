@@ -473,3 +473,112 @@ describe('Registry Consistency', () => {
     expect(toolsFromKeys.length).toBe(toolsFromGetter.length);
   });
 });
+
+describe('noContext wrapper behavior', () => {
+  it('should pass args correctly to context-independent handlers', async () => {
+    // detect_stack is wrapped with noContext - test that args flow through
+    const handler = getHandler('detect_stack');
+    expect(handler).toBeDefined();
+
+    // Call with mock context (should be ignored) and empty args
+    const result = handler!(mockContext, {});
+    const response = result instanceof Promise ? await result : result;
+
+    // Should return a valid response (the handler works without needing context)
+    expect(response).toHaveProperty('content');
+    expect(Array.isArray(response.content)).toBe(true);
+  });
+
+  it('should ignore context parameter for noContext-wrapped handlers', async () => {
+    // check_versions is wrapped with noContext
+    const handler = getHandler('check_versions');
+    expect(handler).toBeDefined();
+
+    // Passing different context objects should not affect behavior
+    const context1: HandlerContext = { skillsIndex: null, agentsIndex: null, toolsIndex: null, skillsRegistry: null };
+    const context2: HandlerContext = { skillsIndex: {} as any, agentsIndex: {} as any, toolsIndex: {} as any, skillsRegistry: {} as any };
+
+    const result1 = await handler!(context1, { packages: [] });
+    const result2 = await handler!(context2, { packages: [] });
+
+    // Both should produce equivalent responses since context is ignored
+    expect(result1).toHaveProperty('content');
+    expect(result2).toHaveProperty('content');
+  });
+
+  it('should properly forward args to scan_patterns handler', async () => {
+    const handler = getHandler('scan_patterns');
+    expect(handler).toBeDefined();
+
+    // Call with empty args (defaults will be used)
+    const result = handler!(mockContext, {});
+    const response = result instanceof Promise ? await result : result;
+
+    expect(response).toHaveProperty('content');
+    expect(response.content[0]).toHaveProperty('type', 'text');
+  });
+});
+
+describe('Context-dependent handler behavior', () => {
+  it('should use skillsIndex from context for search_skills', async () => {
+    const handler = getHandler('search_skills');
+    expect(handler).toBeDefined();
+
+    // With null index, should return appropriate response
+    const result = await handler!(mockContext, { query: 'react' });
+    expect(result).toHaveProperty('content');
+
+    // The response should indicate no results or error due to null index
+    const text = result.content[0].text;
+    expect(typeof text).toBe('string');
+  });
+
+  it('should use agentsIndex from context for search_agents', async () => {
+    const handler = getHandler('search_agents');
+    expect(handler).toBeDefined();
+
+    const result = await handler!(mockContext, { query: 'frontend' });
+    expect(result).toHaveProperty('content');
+  });
+
+  it('should use toolsIndex from context for search_tools', async () => {
+    const handler = getHandler('search_tools');
+    expect(handler).toBeDefined();
+
+    const result = await handler!(mockContext, { query: 'build' });
+    expect(result).toHaveProperty('content');
+  });
+
+  it('should use skillsRegistry from context for skill_dependencies', async () => {
+    const handler = getHandler('skill_dependencies');
+    expect(handler).toBeDefined();
+
+    // skill_dependencies needs both skillsIndex and skillsRegistry
+    // With null values, it should throw 'Skill not found'
+    await expect(async () => {
+      await handler!(mockContext, { skill: 'nonexistent/skill' });
+    }).rejects.toThrow('Skill not found');
+  });
+});
+
+describe('Handler response format consistency', () => {
+  it('should return content array with text type for all simple handlers', async () => {
+    const simpleHandlers = [
+      'plugin_status',
+      'detect_stack',
+    ];
+
+    for (const handlerName of simpleHandlers) {
+      const handler = getHandler(handlerName);
+      expect(handler).toBeDefined();
+
+      const result = handler!(mockContext, {});
+      const response = result instanceof Promise ? await result : result;
+
+      expect(response).toHaveProperty('content');
+      expect(Array.isArray(response.content)).toBe(true);
+      expect(response.content.length).toBeGreaterThan(0);
+      expect(response.content[0]).toHaveProperty('type', 'text');
+    }
+  });
+});

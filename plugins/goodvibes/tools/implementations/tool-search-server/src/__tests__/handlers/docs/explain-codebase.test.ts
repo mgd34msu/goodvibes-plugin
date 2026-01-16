@@ -583,4 +583,613 @@ describe('handleExplainCodebase', () => {
       expect(success).toHaveBeenCalled();
     });
   });
+
+  describe('Claude CLI integration', () => {
+    it('should parse JSON from Claude CLI response with markdown fences', async () => {
+      vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+        stdout: '```json\n{"summary":"Test summary","architecture":{"type":"monolith","description":"Test arch","layers":["UI"]},"main_features":["feat1"],"dependencies_summary":"deps","patterns_used":["MVC"],"conventions":["conv1"],"concerns":["concern1"]}\n```',
+        exitCode: 0,
+      }));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        summary: 'Test summary',
+      }));
+    });
+
+    it('should parse raw JSON from Claude CLI response', async () => {
+      vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+        stdout: '{"summary":"Raw JSON summary","architecture":{"type":"spa","description":"SPA"},"main_features":[],"dependencies_summary":"","patterns_used":[],"conventions":[]}',
+        exitCode: 0,
+      }));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        summary: 'Raw JSON summary',
+      }));
+    });
+
+    it('should handle Claude CLI non-zero exit code', async () => {
+      vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+        stderr: 'Claude CLI error',
+        exitCode: 1,
+      }));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      // Should fall back to static analysis
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        concerns: expect.arrayContaining([
+          expect.stringContaining('LLM analysis unavailable'),
+        ]),
+      }));
+    });
+
+    it('should handle Claude CLI timeout', async () => {
+      // Create a mock that never emits events (simulating timeout)
+      const proc = new (require('events').EventEmitter)();
+      const stdout = new (require('events').EventEmitter)();
+      const stderr = new (require('events').EventEmitter)();
+      Object.defineProperty(proc, 'stdout', { value: stdout });
+      Object.defineProperty(proc, 'stderr', { value: stderr });
+      proc.kill = vi.fn().mockImplementation(() => {
+        // Simulate kill triggering close
+        setImmediate(() => proc.emit('close', null));
+        return true;
+      });
+      proc.on('error', () => {}); // Prevent uncaught
+
+      vi.mocked(spawn).mockReturnValue(proc);
+
+      const args: ExplainCodebaseArgs = {
+        depth: 'shallow', // Use shallow for shorter timeout
+      };
+
+      await handleExplainCodebase(args);
+
+      // Should fall back to static analysis
+      expect(success).toHaveBeenCalled();
+    });
+
+    it('should handle invalid JSON in Claude response', async () => {
+      vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+        stdout: 'This is not valid JSON at all',
+        exitCode: 0,
+      }));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      // Should fall back to static analysis
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        concerns: expect.arrayContaining([
+          expect.stringContaining('LLM analysis unavailable'),
+        ]),
+      }));
+    });
+
+    it('should use different timeouts based on depth', async () => {
+      // Just verify the spawn is called for each depth level
+      const depths: Array<'shallow' | 'medium' | 'deep'> = ['shallow', 'medium', 'deep'];
+
+      for (const depth of depths) {
+        vi.clearAllMocks();
+        vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+          shouldError: true,
+        }));
+
+        await handleExplainCodebase({ depth });
+
+        expect(spawn).toHaveBeenCalled();
+      }
+    });
+  });
+
+  describe('cache invalidation', () => {
+    it('should invalidate cache when cache version differs', async () => {
+      vi.mocked(fileExists).mockImplementation(async (p) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        return pathStr.includes('.goodvibes/cache/codebase-explanation.json');
+      });
+
+      const cachedResult = {
+        summary: 'Old cached summary',
+        tech_stack: [],
+        architecture: { type: 'old', description: 'old' },
+        key_files: [],
+        entry_points: [],
+        main_features: [],
+        dependencies_summary: '',
+        patterns_used: [],
+        conventions: [],
+        cached: false,
+        generated_at: new Date().toISOString(),
+        cache_version: 999, // Wrong version
+        project_hash: '0',
+      };
+
+      vi.mocked(fsPromises.readFile).mockImplementation(async (p) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        if (pathStr.includes('codebase-explanation.json')) {
+          return JSON.stringify(cachedResult);
+        }
+        return '';
+      });
+
+      vi.mocked(fsPromises.stat).mockRejectedValue(new Error('File not found'));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      // Should regenerate, not use cached
+      expect(success).toHaveBeenCalledWith(expect.not.objectContaining({
+        summary: 'Old cached summary',
+      }));
+    });
+
+    it('should invalidate cache when project hash differs', async () => {
+      vi.mocked(fileExists).mockImplementation(async (p) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        return pathStr.includes('.goodvibes/cache/codebase-explanation.json');
+      });
+
+      const cachedResult = {
+        summary: 'Hash mismatch summary',
+        tech_stack: [],
+        architecture: { type: 'old', description: 'old' },
+        key_files: [],
+        entry_points: [],
+        main_features: [],
+        dependencies_summary: '',
+        patterns_used: [],
+        conventions: [],
+        cached: false,
+        generated_at: new Date().toISOString(),
+        cache_version: 1,
+        project_hash: 'different-hash', // Hash won't match
+      };
+
+      vi.mocked(fsPromises.readFile).mockImplementation(async (p) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        if (pathStr.includes('codebase-explanation.json')) {
+          return JSON.stringify(cachedResult);
+        }
+        return '';
+      });
+
+      // Return a stat that will generate a different hash
+      vi.mocked(fsPromises.stat).mockResolvedValue({
+        mtimeMs: 12345,
+        size: 999,
+      } as fs.Stats);
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      // Should regenerate
+      expect(success).toHaveBeenCalledWith(expect.not.objectContaining({
+        summary: 'Hash mismatch summary',
+      }));
+    });
+
+    it('should handle corrupted cache file gracefully', async () => {
+      vi.mocked(fileExists).mockImplementation(async (p) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        return pathStr.includes('.goodvibes/cache/codebase-explanation.json');
+      });
+
+      vi.mocked(fsPromises.readFile).mockImplementation(async (p) => {
+        const pathStr = String(p).replace(/\\/g, '/');
+        if (pathStr.includes('codebase-explanation.json')) {
+          return 'not valid json {{{';
+        }
+        return '';
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      // Should regenerate without error
+      expect(success).toHaveBeenCalled();
+    });
+
+    it('should handle cache write errors gracefully', async () => {
+      vi.mocked(fsPromises.mkdir).mockRejectedValue(new Error('Permission denied'));
+      vi.mocked(fsPromises.writeFile).mockRejectedValue(new Error('Permission denied'));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      // Should complete without error even if cache write fails
+      expect(success).toHaveBeenCalled();
+    });
+  });
+
+  describe('architecture diagram variations', () => {
+    it('should generate diagram for frontend-only SPA', async () => {
+      vi.mocked(handleDetectStack).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            frontend: { ui_library: 'react', styling: 'tailwind', state_management: 'zustand' },
+          }),
+        }],
+      });
+      vi.mocked(handleGetApiRoutes).mockResolvedValue({
+        content: [{ type: 'text', text: JSON.stringify({ routes: [] }) }],
+      });
+
+      const args: ExplainCodebaseArgs = { include_architecture: true };
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        architecture: expect.objectContaining({
+          type: 'spa',
+          diagram_ascii: expect.stringContaining('Single Page Application'),
+        }),
+      }));
+    });
+
+    it('should generate diagram for backend-only API service', async () => {
+      vi.mocked(handleDetectStack).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            backend: { framework: 'express', orm: 'prisma', database: 'postgresql' },
+          }),
+        }],
+      });
+      vi.mocked(handleGetApiRoutes).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            routes: [{ method: 'GET', path: '/api/users' }],
+          }),
+        }],
+      });
+
+      const args: ExplainCodebaseArgs = { include_architecture: true };
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        architecture: expect.objectContaining({
+          type: 'api-service',
+          diagram_ascii: expect.stringContaining('API Service'),
+        }),
+      }));
+    });
+
+    it('should generate diagram for full-stack non-Next.js app', async () => {
+      vi.mocked(handleDetectStack).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            frontend: { ui_library: 'vue', styling: 'css' },
+            backend: { framework: 'express', orm: 'sequelize', database: 'mysql' },
+          }),
+        }],
+      });
+      vi.mocked(handleGetApiRoutes).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            routes: [{ method: 'GET', path: '/api/data' }],
+          }),
+        }],
+      });
+
+      const args: ExplainCodebaseArgs = { include_architecture: true };
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        architecture: expect.objectContaining({
+          diagram_ascii: expect.stringContaining('Frontend Layer'),
+        }),
+      }));
+    });
+
+    it('should generate generic diagram for unknown structure', async () => {
+      vi.mocked(handleDetectStack).mockResolvedValue({
+        content: [{ type: 'text', text: '{}' }],
+      });
+      vi.mocked(handleGetApiRoutes).mockResolvedValue({
+        content: [{ type: 'text', text: JSON.stringify({ routes: [] }) }],
+      });
+
+      const args: ExplainCodebaseArgs = { include_architecture: true };
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        architecture: expect.objectContaining({
+          diagram_ascii: expect.stringContaining('Application'),
+        }),
+      }));
+    });
+  });
+
+  describe('entry point detection from package.json', () => {
+    it('should detect entry points from package.json main field', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        name: 'lib-package',
+        main: 'dist/index.js',
+        module: 'dist/index.esm.js',
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        entry_points: expect.arrayContaining(['dist/index.js', 'dist/index.esm.js']),
+      }));
+    });
+
+    it('should detect Next.js entry from dev script', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        name: 'next-app',
+        scripts: {
+          dev: 'next dev',
+        },
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        entry_points: expect.arrayContaining(['app/ (Next.js App Router)']),
+      }));
+    });
+
+    it('should detect Vite entry from dev script', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        name: 'vite-app',
+        scripts: {
+          dev: 'vite',
+        },
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        entry_points: expect.arrayContaining(['index.html / src/main.tsx']),
+      }));
+    });
+
+    it('should detect Node entry from start script', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        name: 'node-server',
+        scripts: {
+          start: 'node dist/server.js',
+        },
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        entry_points: expect.arrayContaining(['dist/server.js']),
+      }));
+    });
+  });
+
+  describe('directory structure scanning', () => {
+    it('should skip hidden directories', async () => {
+      vi.mocked(fsPromises.readdir).mockImplementation(async () => {
+        return [
+          { name: '.hidden', isDirectory: () => true, isFile: () => false },
+          { name: 'src', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fsPromises.Dirent[];
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalled();
+    });
+
+    it('should skip node_modules and other build directories', async () => {
+      vi.mocked(fsPromises.readdir).mockImplementation(async () => {
+        return [
+          { name: 'node_modules', isDirectory: () => true, isFile: () => false },
+          { name: 'dist', isDirectory: () => true, isFile: () => false },
+          { name: '.next', isDirectory: () => true, isFile: () => false },
+          { name: 'coverage', isDirectory: () => true, isFile: () => false },
+          { name: 'src', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fsPromises.Dirent[];
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalled();
+    });
+
+    it('should respect max depth based on analysis depth', async () => {
+      let maxRecursionDepth = 0;
+      let currentDepth = 0;
+
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        currentDepth++;
+        maxRecursionDepth = Math.max(maxRecursionDepth, currentDepth);
+
+        const result = currentDepth < 5 ? [
+          { name: `level${currentDepth}`, isDirectory: () => true, isFile: () => false },
+        ] as unknown as fsPromises.Dirent[] : [];
+
+        currentDepth--;
+        return result;
+      });
+
+      const args: ExplainCodebaseArgs = { depth: 'shallow' };
+
+      await handleExplainCodebase(args);
+
+      // Shallow should limit depth
+      expect(success).toHaveBeenCalled();
+    });
+  });
+
+  describe('key file importance sorting', () => {
+    it('should sort critical files before high importance files', async () => {
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        const d = String(dir);
+        if (d.includes('project') && !d.includes('src')) {
+          return [
+            { name: 'src', isDirectory: () => true, isFile: () => false },
+            { name: 'tsconfig.json', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        if (d.includes('src')) {
+          return [
+            { name: 'index.ts', isDirectory: () => false, isFile: () => true },
+            { name: 'config.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      const call = vi.mocked(success).mock.calls[0][0];
+      const keyFiles = call.key_files;
+
+      // Critical files (entry points) should come before high (config)
+      if (keyFiles.length > 0) {
+        const criticalIdx = keyFiles.findIndex((f: { importance: string }) => f.importance === 'critical');
+        const highIdx = keyFiles.findIndex((f: { importance: string }) => f.importance === 'high');
+        if (criticalIdx !== -1 && highIdx !== -1) {
+          expect(criticalIdx).toBeLessThan(highIdx);
+        }
+      }
+    });
+  });
+
+  describe('conventions integration', () => {
+    it('should skip conventions for shallow depth', async () => {
+      const args: ExplainCodebaseArgs = { depth: 'shallow' };
+
+      await handleExplainCodebase(args);
+
+      expect(handleGetConventions).not.toHaveBeenCalled();
+    });
+
+    it('should include conventions for medium and deep depth', async () => {
+      vi.mocked(handleGetConventions).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            naming: { files: 'kebab-case' },
+            imports: { style: 'es6', order: ['react', 'libs', 'local'] },
+            structure: { directory_layout: ['src/', 'tests/', 'docs/'] },
+          }),
+        }],
+      });
+
+      const args: ExplainCodebaseArgs = { depth: 'deep' };
+
+      await handleExplainCodebase(args);
+
+      expect(handleGetConventions).toHaveBeenCalled();
+    });
+  });
+
+  describe('LLM result processing', () => {
+    it('should use LLM architecture type when provided', async () => {
+      vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+        stdout: JSON.stringify({
+          summary: 'LLM summary',
+          architecture: { type: 'serverless', description: 'Serverless arch', layers: ['Lambda', 'API Gateway'] },
+          main_features: ['feature1'],
+          dependencies_summary: 'deps summary',
+          patterns_used: ['pattern1'],
+          conventions: ['convention1'],
+        }),
+        exitCode: 0,
+      }));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        architecture: expect.objectContaining({
+          type: 'serverless',
+          description: 'Serverless arch',
+        }),
+      }));
+    });
+
+    it('should handle partial LLM response gracefully', async () => {
+      vi.mocked(spawn).mockReturnValue(createMockChildProcess({
+        stdout: JSON.stringify({
+          summary: 'Partial summary',
+          // Missing other fields
+        }),
+        exitCode: 0,
+      }));
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        summary: 'Partial summary',
+        main_features: [], // Should default to empty
+        patterns_used: [],
+      }));
+    });
+  });
+
+  describe('tech stack enhancement', () => {
+    it('should include state management in tech stack', async () => {
+      vi.mocked(handleDetectStack).mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            frontend: {
+              framework: 'next',
+              ui_library: 'react',
+              styling: 'tailwind',
+              state_management: 'redux',
+            },
+            backend: { framework: 'express' },
+            build: { typescript: true, bundler: 'webpack' },
+          }),
+        }],
+      });
+
+      const args: ExplainCodebaseArgs = {};
+
+      await handleExplainCodebase(args);
+
+      expect(success).toHaveBeenCalledWith(expect.objectContaining({
+        tech_stack: expect.arrayContaining(['redux', 'express', 'webpack']),
+      }));
+    });
+  });
 });

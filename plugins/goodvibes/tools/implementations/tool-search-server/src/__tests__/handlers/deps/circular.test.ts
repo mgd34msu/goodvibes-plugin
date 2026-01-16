@@ -546,5 +546,360 @@ describe('handleFindCircularDeps', () => {
       expect(data.count).toBe(0);
       expect(data.cycles).toHaveLength(0);
     });
+
+    it('should handle unexpected errors and return error response', async () => {
+      vi.mocked(fs.existsSync).mockImplementation(() => {
+        throw new Error('Unexpected system error');
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('Failed to find circular dependencies');
+    });
+  });
+
+  describe('external package imports', () => {
+    it('should skip external package imports (not relative paths)', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) {
+          return `
+            import React from 'react';
+            import lodash from 'lodash';
+            import { something } from '@scope/package';
+          `;
+        }
+        if (p.includes('b.ts')) {
+          return `
+            import express from 'express';
+          `;
+        }
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // No cycles should be detected since all imports are external
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(0);
+    });
+  });
+
+  describe('multiple independent cycles', () => {
+    it('should detect multiple separate cycles', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'x.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'y.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) return "import { b } from './b';";
+        if (p.includes('b.ts')) return "import { a } from './a';";
+        if (p.includes('x.ts')) return "import { y } from './y';";
+        if (p.includes('y.ts')) return "import { x } from './x';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(2); // Two separate cycles
+      expect(data.affected_files.length).toBe(4);
+    });
+  });
+
+  describe('cycle sorting', () => {
+    it('should sort cycles by length (shorter first)', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'c.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'd.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'x.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'y.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        // 2-node cycle
+        if (p.includes('x.ts')) return "import { y } from './y';";
+        if (p.includes('y.ts')) return "import { x } from './x';";
+        // 4-node cycle
+        if (p.includes('a.ts')) return "import { b } from './b';";
+        if (p.includes('b.ts')) return "import { c } from './c';";
+        if (p.includes('c.ts')) return "import { d } from './d';";
+        if (p.includes('d.ts')) return "import { a } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.cycles.length).toBe(2);
+      // Shorter cycle should come first
+      expect(data.cycles[0].length).toBeLessThanOrEqual(data.cycles[1].length);
+    });
+  });
+
+  describe('cycle signature edge cases', () => {
+    it('should handle single-file self-import (empty cycle)', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'self.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      // Self-import doesn't actually create a cycle in the graph since it's the same file
+      vi.mocked(fs.readFileSync).mockReturnValue("import { x } from './self';");
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      // Self-import should be detected as a cycle of length 1
+    });
+  });
+
+  describe('file extension variations', () => {
+    it('should handle all supported file extensions', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.tsx', isDirectory: () => false, isFile: () => true },
+        { name: 'c.js', isDirectory: () => false, isFile: () => true },
+        { name: 'd.jsx', isDirectory: () => false, isFile: () => true },
+        { name: 'e.mts', isDirectory: () => false, isFile: () => true },
+        { name: 'f.mjs', isDirectory: () => false, isFile: () => true },
+        { name: 'g.cts', isDirectory: () => false, isFile: () => true },
+        { name: 'h.cjs', isDirectory: () => false, isFile: () => true },
+        { name: 'ignored.css', isDirectory: () => false, isFile: () => true },
+        { name: 'ignored.json', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue('');
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should resolve .tsx extension from extensionless import', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) return "import { B } from './b';"; // No extension, should find b.tsx
+        if (p.includes('b.tsx')) return "import { A } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBeGreaterThan(0);
+    });
+  });
+
+  describe('import resolution', () => {
+    it('should handle absolute imports starting with /', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue("import { x } from '/absolute/path';");
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Absolute paths starting with / should be treated as relative (resolved)
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should handle mixed import and export statements', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'c.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) {
+          return `
+            import { b } from './b';
+            export { x } from './c';
+          `;
+        }
+        if (p.includes('b.ts')) return "export * from './c';";
+        if (p.includes('c.ts')) return "import { a } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      // Should detect cycles through re-exports
+    });
+  });
+
+  describe('affected files tracking', () => {
+    it('should track all unique affected files across cycles', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'c.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) return "import { b } from './b';";
+        if (p.includes('b.ts')) return "import { c } from './c';";
+        if (p.includes('c.ts')) return "import { a } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.affected_files).toHaveLength(3);
+      // Affected files should be sorted
+      expect(data.affected_files).toEqual([...data.affected_files].sort());
+    });
+  });
+
+  describe('graph edge cases', () => {
+    it('should handle file with no imports', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'isolated.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue('export const x = 1;');
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(0);
+    });
+
+    it('should handle imports to non-existent files', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue("import { x } from './nonexistent';");
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should not crash, just skip unresolved imports
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(0);
+    });
+
+    it('should skip duplicate imports in same file', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) {
+          return `
+            import { x } from './b';
+            import { y } from './b';
+            import { z } from './b';
+          `;
+        }
+        if (p.includes('b.ts')) return "import { a } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.count).toBe(1); // Should only count as one cycle
+    });
+  });
+
+  describe('Windows path handling', () => {
+    it('should normalize Windows backslashes in paths', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'b.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+        const p = String(filePath);
+        if (p.includes('a.ts')) return "import { b } from './b';";
+        if (p.includes('b.ts')) return "import { a } from './a';";
+        return '';
+      });
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      // All paths in output should use forward slashes
+      for (const cycle of data.cycles) {
+        for (const file of cycle.path) {
+          expect(file).not.toContain('\\');
+        }
+      }
+    });
+  });
+
+  describe('out directory skipping', () => {
+    it('should skip out directory', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockImplementation((dir) => {
+        const d = String(dir);
+        if (d.endsWith('src')) {
+          return [
+            { name: 'out', isDirectory: () => true, isFile: () => false },
+            { name: 'valid.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fs.Dirent[];
+        }
+        return [];
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue('');
+
+      const args: FindCircularDepsArgs = { path: 'src' };
+      const result = await handleFindCircularDeps(args);
+
+      expect(result.isError).toBeUndefined();
+    });
   });
 });

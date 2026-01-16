@@ -621,4 +621,439 @@ describe('handleAnalyzeDependencies', () => {
       expect(dep).toHaveProperty('import_count');
     });
   });
+
+  describe('recursive directory scanning', () => {
+    it('should scan nested subdirectories recursively (lines 78-79)', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          react: '^18.2.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      // Mock a nested directory structure
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        const dirStr = String(dir);
+        if (dirStr.endsWith('src')) {
+          return [
+            { name: 'components', isDirectory: () => true, isFile: () => false },
+            { name: 'app.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        if (dirStr.includes('components')) {
+          return [
+            { name: 'nested', isDirectory: () => true, isFile: () => false },
+            { name: 'Button.tsx', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        if (dirStr.includes('nested')) {
+          return [
+            { name: 'DeepComponent.tsx', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+
+      vi.mocked(fsPromises.readFile).mockImplementation(async (filePath) => {
+        const p = String(filePath);
+        if (p.includes('DeepComponent')) {
+          return "import React from 'react';";
+        }
+        return '';
+      });
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      const reactDep = data.dependencies.find((d: { name: string }) => d.name === 'react');
+      expect(reactDep.used).toBe(true);
+    });
+
+    it('should skip build directories during recursion', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: { react: '^18.2.0' },
+      });
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        const dirStr = String(dir);
+        if (dirStr.endsWith('src')) {
+          return [
+            // These should be skipped
+            { name: 'dist', isDirectory: () => true, isFile: () => false },
+            { name: 'build', isDirectory: () => true, isFile: () => false },
+            { name: '.next', isDirectory: () => true, isFile: () => false },
+            { name: 'coverage', isDirectory: () => true, isFile: () => false },
+            { name: '.turbo', isDirectory: () => true, isFile: () => false },
+            { name: '.cache', isDirectory: () => true, isFile: () => false },
+            { name: '.git', isDirectory: () => true, isFile: () => false },
+            // This should be scanned
+            { name: 'valid', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        if (dirStr.includes('valid')) {
+          return [
+            { name: 'file.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+      vi.mocked(fsPromises.readFile).mockResolvedValue("import React from 'react';");
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe('npm registry error handling', () => {
+    it('should handle safeExec throwing an exception (line 159)', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          'some-package': '^1.0.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+
+      // Make safeExec throw an exception (not just return error)
+      vi.mocked(safeExec).mockRejectedValue(new Error('Network timeout'));
+
+      const args: AnalyzeDependenciesArgs = {
+        check_updates: true,
+      };
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      // Should still return result, just without version info
+      const dep = data.dependencies.find((d: { name: string }) => d.name === 'some-package');
+      expect(dep.latest_version).toBeUndefined();
+    });
+  });
+
+  describe('root-level file scanning', () => {
+    it('should scan root-level source files (lines 246-249)', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          lodash: '^4.17.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false); // No src directories
+
+      // Mock readdir to return root-level files
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        const dirStr = String(dir);
+        // Root directory should contain source files
+        if (dirStr.includes('project') && !dirStr.includes('src')) {
+          return [
+            { name: 'index.ts', isDirectory: () => false, isFile: () => true },
+            { name: 'config.js', isDirectory: () => false, isFile: () => true },
+            { name: 'utils.tsx', isDirectory: () => false, isFile: () => true },
+            { name: 'helper.jsx', isDirectory: () => false, isFile: () => true },
+            { name: 'module.mjs', isDirectory: () => false, isFile: () => true },
+            { name: 'legacy.cjs', isDirectory: () => false, isFile: () => true },
+            { name: 'readme.md', isDirectory: () => false, isFile: () => true }, // Should be ignored
+            { name: 'package.json', isDirectory: () => false, isFile: () => true }, // Should be ignored
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+
+      vi.mocked(fsPromises.readFile).mockImplementation(async (filePath) => {
+        const p = String(filePath);
+        if (p.includes('index.ts')) {
+          return "import _ from 'lodash';";
+        }
+        return '';
+      });
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      const lodashDep = data.dependencies.find((d: { name: string }) => d.name === 'lodash');
+      expect(lodashDep.used).toBe(true);
+    });
+
+    it('should handle root directory read errors gracefully (lines 253-255)', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: { react: '^18.0.0' },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+
+      // First call for standard dirs returns empty, second for root throws
+      let callCount = 0;
+      vi.mocked(fsPromises.readdir).mockImplementation(async () => {
+        callCount++;
+        if (callCount > 6) { // After checking all standard directories
+          throw new Error('Root read error');
+        }
+        return [];
+      });
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.dependencies).toBeDefined();
+    });
+  });
+
+  describe('file read errors during import extraction', () => {
+    it('should handle individual file read errors (lines 268-270)', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          react: '^18.2.0',
+          lodash: '^4.17.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(true);
+
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        if (String(dir).includes('src')) {
+          return [
+            { name: 'good.ts', isDirectory: () => false, isFile: () => true },
+            { name: 'bad.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+
+      vi.mocked(fsPromises.readFile).mockImplementation(async (filePath) => {
+        const p = String(filePath);
+        if (p.includes('bad.ts')) {
+          throw new Error('File read error');
+        }
+        if (p.includes('good.ts')) {
+          return "import React from 'react';";
+        }
+        return '';
+      });
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      // Should still count react from good.ts
+      const reactDep = data.dependencies.find((d: { name: string }) => d.name === 'react');
+      expect(reactDep.used).toBe(true);
+    });
+  });
+
+  describe('custom path handling', () => {
+    it('should use custom path when provided', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: { axios: '^1.0.0' },
+      });
+      vi.mocked(fileExists).mockResolvedValue(true);
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        if (String(dir).includes('custom-path')) {
+          return [
+            { name: 'src', isDirectory: () => true, isFile: () => false },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        if (String(dir).includes('src')) {
+          return [
+            { name: 'api.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+      vi.mocked(fsPromises.readFile).mockResolvedValue("import axios from 'axios';");
+
+      const args: AnalyzeDependenciesArgs = {
+        path: 'custom-path',
+      };
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe('version comparison edge cases', () => {
+    it('should handle patch version difference', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          pkg: '^1.0.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '1.0.5',
+        stderr: '',
+        error: null,
+      });
+
+      const args: AnalyzeDependenciesArgs = {
+        check_updates: true,
+      };
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.dependencies[0].outdated).toBe(true);
+    });
+
+    it('should handle version with prerelease tag', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          pkg: '^1.0.0-beta.1',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '1.0.0',
+        stderr: '',
+        error: null,
+      });
+
+      const args: AnalyzeDependenciesArgs = {
+        check_updates: true,
+      };
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // 1.0.0 is not greater than 1.0.0 (after stripping prerelease)
+      expect(data.dependencies[0].outdated).toBe(false);
+    });
+
+    it('should handle newer installed version than latest', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          pkg: '^2.0.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '1.5.0', // Latest is older than installed
+        stderr: '',
+        error: null,
+      });
+
+      const args: AnalyzeDependenciesArgs = {
+        check_updates: true,
+      };
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.dependencies[0].outdated).toBe(false);
+    });
+
+    it('should handle version ranges (>=, ~, etc)', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          pkg1: '>=1.0.0',
+          pkg2: '~1.0.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+      vi.mocked(safeExec).mockResolvedValue({
+        stdout: '2.0.0',
+        stderr: '',
+        error: null,
+      });
+
+      const args: AnalyzeDependenciesArgs = {
+        check_updates: true,
+      };
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe('empty dependencies', () => {
+    it('should handle empty dependencies object', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {},
+        devDependencies: {},
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.dependencies).toHaveLength(0);
+      expect(data.summary.total).toBe(0);
+    });
+
+    it('should handle missing dependencies and devDependencies keys', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        name: 'test-package',
+        version: '1.0.0',
+        // No dependencies or devDependencies
+      });
+      vi.mocked(fileExists).mockResolvedValue(false);
+      vi.mocked(fsPromises.readdir).mockResolvedValue([]);
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.dependencies).toHaveLength(0);
+    });
+  });
+
+  describe('subpath imports', () => {
+    it('should handle regular package subpath imports', async () => {
+      vi.mocked(readJsonFile).mockResolvedValue({
+        dependencies: {
+          lodash: '^4.17.0',
+        },
+      });
+      vi.mocked(fileExists).mockResolvedValue(true);
+      vi.mocked(fsPromises.readdir).mockImplementation(async (dir) => {
+        if (String(dir).includes('src')) {
+          return [
+            { name: 'utils.ts', isDirectory: () => false, isFile: () => true },
+          ] as unknown as fsPromises.Dirent[];
+        }
+        return [];
+      });
+      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+        import debounce from 'lodash/debounce';
+        import throttle from 'lodash/throttle';
+      `);
+
+      const args: AnalyzeDependenciesArgs = {};
+
+      const result = await handleAnalyzeDependencies(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      const lodashDep = data.dependencies.find((d: { name: string }) => d.name === 'lodash');
+      expect(lodashDep.used).toBe(true);
+      expect(lodashDep.import_count).toBe(2);
+    });
+  });
 });

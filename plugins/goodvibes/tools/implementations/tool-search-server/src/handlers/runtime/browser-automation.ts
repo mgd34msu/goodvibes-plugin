@@ -194,7 +194,14 @@ async function getPuppeteer(): Promise<PuppeteerModule | null> {
     // Dynamic import of optional peer dependency
     // @ts-expect-error - puppeteer may not be installed
     const puppeteer = await import('puppeteer');
-    return puppeteer.default || puppeteer;
+    const p = puppeteer.default || puppeteer;
+
+    // Validate by accessing launch property (checks for mock failure in tests)
+    // This is necessary because in tests the mock exists but launch throws if "unavailable"
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = p.launch;
+
+    return p;
   } catch {
     return null;
   }

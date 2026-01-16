@@ -6,7 +6,23 @@ import { ProjectIssuesResult } from './types.js';
 import { ICONS } from './constants.js';
 
 /**
- * Format issues for display
+ * Formats project issues result as a human-readable Markdown string.
+ *
+ * Organizes output into sections:
+ * - High-priority TODOs (with file:line references)
+ * - Health warnings (with severity icons)
+ * - Environment issues (with type-specific icons)
+ * - Medium-priority TODOs (summarized)
+ * - Suggestions for improvement
+ *
+ * @param result - The ProjectIssuesResult to format
+ * @returns Markdown-formatted string for display
+ *
+ * @example
+ * ```typescript
+ * const markdown = formatIssues(result);
+ * // Returns formatted Markdown with sections for each issue type
+ * ```
  */
 export function formatIssues(result: ProjectIssuesResult): string {
   const sections: string[] = [];

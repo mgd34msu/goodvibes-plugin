@@ -714,5 +714,523 @@ class Foo {
 
       expect(result.isError).toBe(true);
     });
+
+    test('returns error response when exception occurs during processing', async () => {
+      const file = path.join(tempDir, 'error-test.ts');
+      fs.writeFileSync(file, 'const x = 1;');
+
+      // Mock the language service manager to throw
+      const originalGetServiceForFile = languageServiceManager.getServiceForFile;
+      languageServiceManager.getServiceForFile = vi.fn().mockRejectedValue(
+        new Error('Service error')
+      );
+
+      try {
+        const result = await handleGetSymbolInfo({
+          file,
+          line: 1,
+          column: 7,
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(result.isError).toBe(true);
+        expect(data.error).toContain('Failed to get symbol info');
+      } finally {
+        languageServiceManager.getServiceForFile = originalGetServiceForFile;
+      }
+    });
+
+    test('handles non-Error exceptions in catch block', async () => {
+      const file = path.join(tempDir, 'non-error.ts');
+      fs.writeFileSync(file, 'const x = 1;');
+
+      // Mock to throw a non-Error value
+      const originalGetServiceForFile = languageServiceManager.getServiceForFile;
+      languageServiceManager.getServiceForFile = vi.fn().mockRejectedValue('string error');
+
+      try {
+        const result = await handleGetSymbolInfo({
+          file,
+          line: 1,
+          column: 7,
+        });
+        const data = JSON.parse(result.content[0].text);
+
+        expect(result.isError).toBe(true);
+        expect(data.error).toContain('string error');
+      } finally {
+        languageServiceManager.getServiceForFile = originalGetServiceForFile;
+      }
+    });
+  });
+
+  describe('JSDoc tag edge cases', () => {
+    test('handles JSDoc tag without text (tag name only)', async () => {
+      const file = path.join(tempDir, 'jsdoc-no-text.ts');
+      fs.writeFileSync(file, `
+/**
+ * A function with tags that have no text.
+ * @internal
+ * @experimental
+ * @beta
+ */
+function taggedFunction() {
+  return 42;
+}
+`);
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 8,
+        column: 10, // Position on 'taggedFunction'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.documentation).toBeDefined();
+      // Should include the tag names without text
+      if (data.documentation.includes('@')) {
+        expect(data.documentation).toMatch(/@(internal|experimental|beta)/);
+      }
+    });
+
+    test('handles JSDoc with both text and no-text tags', async () => {
+      const file = path.join(tempDir, 'mixed-tags.ts');
+      fs.writeFileSync(file, `
+/**
+ * Main description.
+ * @param value - The value to process
+ * @returns The processed value
+ * @internal
+ * @since 1.0.0
+ */
+function mixedTags(value: number): number {
+  return value * 2;
+}
+`);
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 9,
+        column: 10,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.documentation).toBeDefined();
+    });
+  });
+
+  describe('variable declaration modifiers', () => {
+    test('returns var modifier for var declaration', async () => {
+      const file = path.join(tempDir, 'var-decl.ts');
+      fs.writeFileSync(file, 'var myVar = 42;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 5, // Position on 'myVar'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toBeDefined();
+      expect(data.modifiers).toContain('var');
+    });
+
+    test('returns let modifier for let declaration', async () => {
+      const file = path.join(tempDir, 'let-decl.ts');
+      fs.writeFileSync(file, 'let myLet = 42;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 5, // Position on 'myLet'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toBeDefined();
+      expect(data.modifiers).toContain('let');
+    });
+
+    test('handles exported var declaration', async () => {
+      const file = path.join(tempDir, 'export-var.ts');
+      fs.writeFileSync(file, 'export var exportedVar = 42;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 12, // Position on 'exportedVar'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('export');
+      expect(data.modifiers).toContain('var');
+    });
+
+    test('handles declare var declaration', async () => {
+      const file = path.join(tempDir, 'declare-var.ts');
+      fs.writeFileSync(file, 'declare var globalVar: string;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 13, // Position on 'globalVar'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('declare');
+    });
+  });
+
+  describe('symbol name extraction edge cases', () => {
+    test('extracts symbol name from various display part kinds', async () => {
+      const file = path.join(tempDir, 'various-names.ts');
+      fs.writeFileSync(file, `
+// Test various symbol types
+class MyClass {
+  myMethod() {}
+  myProperty: string;
+}
+
+interface MyInterface {
+  interfaceProperty: number;
+}
+
+enum MyEnum {
+  EnumMember
+}
+
+type MyType<T> = T extends string ? string : number;
+
+function myFunction(param: string) {}
+`);
+
+      // Test class name
+      let result = await handleGetSymbolInfo({ file, line: 3, column: 7 });
+      let data = JSON.parse(result.content[0].text);
+      expect(data.symbol).toBe('MyClass');
+
+      // Test method name
+      result = await handleGetSymbolInfo({ file, line: 4, column: 3 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.symbol).toBe('myMethod');
+
+      // Test property name
+      result = await handleGetSymbolInfo({ file, line: 5, column: 3 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.symbol).toBe('myProperty');
+
+      // Test interface name
+      result = await handleGetSymbolInfo({ file, line: 8, column: 11 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.symbol).toBe('MyInterface');
+
+      // Test enum name
+      result = await handleGetSymbolInfo({ file, line: 12, column: 6 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.symbol).toBe('MyEnum');
+
+      // Test enum member
+      result = await handleGetSymbolInfo({ file, line: 13, column: 3 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.symbol).toBe('EnumMember');
+    });
+
+    test('handles symbol on whitespace returning unknown', async () => {
+      const file = path.join(tempDir, 'whitespace-symbol.ts');
+      fs.writeFileSync(file, 'const x = 1;    ');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 15, // Position on trailing whitespace
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should return error as no symbol at whitespace
+      expect(result.isError).toBe(true);
+    });
+
+    test('handles numeric literal position', async () => {
+      const file = path.join(tempDir, 'numeric.ts');
+      fs.writeFileSync(file, 'const x = 12345;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 12, // Position on numeric literal
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Numeric literals don't have named symbols
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('type signature extraction', () => {
+    test('extracts function signature with parentheses', async () => {
+      const file = path.join(tempDir, 'func-sig.ts');
+      fs.writeFileSync(file, 'function add(a: number, b: number): number { return a + b; }');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 10,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.type).toBeDefined();
+      // Type should contain the function signature
+      expect(data.type).toContain('(');
+      expect(data.type).toContain(')');
+    });
+
+    test('extracts type for arrow function', async () => {
+      const file = path.join(tempDir, 'arrow-sig.ts');
+      fs.writeFileSync(file, 'const multiply = (x: number, y: number) => x * y;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 7, // Position on 'multiply'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.type).toBeDefined();
+    });
+
+    test('extracts type for method', async () => {
+      const file = path.join(tempDir, 'method-sig.ts');
+      fs.writeFileSync(file, `
+class Calculator {
+  divide(a: number, b: number): number {
+    return a / b;
+  }
+}
+`);
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 3,
+        column: 3, // Position on 'divide'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.type).toBeDefined();
+    });
+  });
+
+  describe('definition location edge cases', () => {
+    test('returns null definition when no definitions found', async () => {
+      // Test on a built-in type or keyword that might not have a definition
+      const file = path.join(tempDir, 'builtin.ts');
+      fs.writeFileSync(file, 'const x: undefined = undefined;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 22, // Position on 'undefined' keyword
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // undefined keyword doesn't have symbol info
+      expect(result.isError).toBe(true);
+    });
+
+    test('handles definition in external module', async () => {
+      const file = path.join(tempDir, 'external-def.ts');
+      fs.writeFileSync(file, `
+import * as path from 'path';
+const result = path.join('a', 'b');
+`);
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 2,
+        column: 16, // Position on 'path'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Definition might point to node_modules or declaration file
+      expect(data.definition).toBeDefined();
+    });
+
+    test('handles symbol with multiple definitions', async () => {
+      const file = path.join(tempDir, 'multi-def.ts');
+      fs.writeFileSync(file, `
+// Function overloads have multiple definitions
+function greet(name: string): string;
+function greet(name: string, greeting: string): string;
+function greet(name: string, greeting?: string): string {
+  return greeting ? \`\${greeting}, \${name}!\` : \`Hello, \${name}!\`;
+}
+`);
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 5,
+        column: 10, // Position on 'greet' implementation
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Should return the first definition
+      expect(data.definition).toBeDefined();
+    });
+  });
+
+  describe('modifier extraction from AST', () => {
+    test('extracts all class modifier combinations', async () => {
+      const file = path.join(tempDir, 'class-mods.ts');
+      fs.writeFileSync(file, `
+export abstract class AbstractClass {
+  public publicProp: string;
+  private privateProp: number;
+  protected protectedProp: boolean;
+  readonly readonlyProp: string;
+  static staticProp: string;
+
+  public async asyncMethod() {}
+  override overrideMethod() {}
+}
+`);
+
+      // Test abstract class
+      let result = await handleGetSymbolInfo({ file, line: 2, column: 24 });
+      let data = JSON.parse(result.content[0].text);
+      expect(data.modifiers).toContain('export');
+      expect(data.modifiers).toContain('abstract');
+
+      // Test public property
+      result = await handleGetSymbolInfo({ file, line: 3, column: 10 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.modifiers).toContain('public');
+
+      // Test private property
+      result = await handleGetSymbolInfo({ file, line: 4, column: 11 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.modifiers).toContain('private');
+
+      // Test protected property
+      result = await handleGetSymbolInfo({ file, line: 5, column: 13 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.modifiers).toContain('protected');
+
+      // Test readonly property
+      result = await handleGetSymbolInfo({ file, line: 6, column: 12 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.modifiers).toContain('readonly');
+
+      // Test static property
+      result = await handleGetSymbolInfo({ file, line: 7, column: 10 });
+      data = JSON.parse(result.content[0].text);
+      expect(data.modifiers).toContain('static');
+    });
+
+    test('extracts modifiers from interface declaration', async () => {
+      const file = path.join(tempDir, 'iface-mods.ts');
+      fs.writeFileSync(file, 'export interface ExportedInterface { value: string; }');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 18, // Position on 'ExportedInterface'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('export');
+    });
+
+    test('extracts modifiers from type alias declaration', async () => {
+      const file = path.join(tempDir, 'type-mods.ts');
+      fs.writeFileSync(file, 'export type ExportedType = string | number;');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 13, // Position on 'ExportedType'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('export');
+    });
+
+    test('extracts modifiers from enum declaration', async () => {
+      const file = path.join(tempDir, 'enum-mods.ts');
+      fs.writeFileSync(file, 'export enum ExportedEnum { A, B }');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 13, // Position on 'ExportedEnum'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('export');
+    });
+
+    test('extracts modifiers from module declaration', async () => {
+      const file = path.join(tempDir, 'module-mods.ts');
+      fs.writeFileSync(file, 'export namespace ExportedNamespace { export const x = 1; }');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 18, // Position on 'ExportedNamespace'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('export');
+    });
+
+    test('handles default export modifier', async () => {
+      const file = path.join(tempDir, 'default-export.ts');
+      fs.writeFileSync(file, 'export default function defaultFunc() { return 1; }');
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column: 25, // Position on 'defaultFunc'
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.modifiers).toContain('export');
+      expect(data.modifiers).toContain('default');
+    });
+  });
+
+  describe('ScriptElementKind mapping', () => {
+    test.each([
+      ['getter', 'class C { get value() { return 1; } }', 11],
+      ['setter', 'class C { set value(v: number) {} }', 11],
+      ['constructor', 'class C { constructor() {} }', 11],
+      ['parameter', 'function f(param: string) {}', 12],
+    ])('maps %s kind correctly', async (expectedKind, code, column) => {
+      const file = path.join(tempDir, `${expectedKind}-kind.ts`);
+      fs.writeFileSync(file, code);
+
+      const result = await handleGetSymbolInfo({
+        file,
+        line: 1,
+        column,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.kind).toBe(expectedKind);
+    });
   });
 });

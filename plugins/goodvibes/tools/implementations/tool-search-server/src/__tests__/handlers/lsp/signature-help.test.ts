@@ -10,6 +10,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import ts from 'typescript';
 
 import { handleGetSignatureHelp } from '../../../handlers/lsp/signature-help.js';
 import { languageServiceManager } from '../../../handlers/lsp/language-service.js';
@@ -694,5 +695,748 @@ test(
         expect(data.signatures[0].label).toContain('c');
       }
     });
+  });
+});
+
+describe('handleGetSignatureHelp with mocked language service', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'signature-help-mock-test-'));
+  });
+
+  afterEach(() => {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+    languageServiceManager.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  test('handles undefined displayParts in signature', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: undefined,
+              suffixDisplayParts: undefined,
+              separatorDisplayParts: undefined,
+              parameters: [],
+              documentation: undefined,
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 0,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    expect(data.signatures).toBeDefined();
+    if (data.signatures.length > 0) {
+      expect(data.signatures[0].label).toBe('');
+    }
+  });
+
+  test('handles parameter with undefined displayParts', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: number) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: 'x',
+                  displayParts: undefined, // undefined displayParts
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Type should be empty string when displayParts is undefined
+      expect(data.signatures[0].parameters[0].type).toBe('');
+    }
+  });
+
+  test('handles parameter with empty displayParts array', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: number) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: 'x',
+                  displayParts: [], // empty displayParts
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Type should be empty string when displayParts is empty
+      expect(data.signatures[0].parameters[0].type).toBe('');
+    }
+  });
+
+  test('handles parameter without name property (fallback extraction)', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: number) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: '', // empty name, should fallback to displayParts extraction
+                  displayParts: [
+                    { kind: 'parameterName', text: 'myParam' },
+                    { kind: 'punctuation', text: ':' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'keyword', text: 'number' },
+                  ],
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Name should be extracted from displayParts
+      expect(data.signatures[0].parameters[0].name).toBe('myParam');
+    }
+  });
+
+  test('handles parameter displayParts without colon (no type)', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: 'x',
+                  displayParts: [
+                    { kind: 'parameterName', text: 'x' },
+                    // No colon, so no type
+                  ],
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Type should be empty when no colon found
+      expect(data.signatures[0].parameters[0].type).toBe('');
+    }
+  });
+
+  test('extracts type parts after colon correctly', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: number) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: 'x',
+                  displayParts: [
+                    { kind: 'parameterName', text: 'x' },
+                    { kind: 'punctuation', text: ':' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'keyword', text: 'number' },
+                  ],
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Type should be "number" (trimmed)
+      expect(data.signatures[0].parameters[0].type).toBe('number');
+    }
+  });
+
+  test('handles error thrown by language service', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() {}\nfoo(');
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockRejectedValue(
+      new Error('Language service error')
+    );
+
+    const result = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Language service error');
+  });
+
+  test('handles non-Error thrown by language service', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() {}\nfoo(');
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockRejectedValue('String error');
+
+    const result = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('String error');
+  });
+
+  test('handles null signature help response', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => undefined, // Returns null
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 1,
+      column: 1,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    expect(data.signatures).toEqual([]);
+    expect(data.active_signature).toBe(0);
+  });
+
+  test('handles signature help with empty items array', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [], // Empty items array
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 0,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 1,
+      column: 1,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    expect(data.signatures).toEqual([]);
+    expect(data.active_signature).toBe(0);
+  });
+
+  test('handles parameter with undefined name (uses empty fallback)', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: number) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: undefined as unknown as string, // undefined name
+                  displayParts: [], // and empty displayParts
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Name should fall back to empty string
+      expect(data.signatures[0].parameters[0].name).toBe('');
+    }
+  });
+
+  test('handles complex type with multiple parts after colon', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: { a: number; b: string }) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: 'x',
+                  displayParts: [
+                    { kind: 'parameterName', text: 'x' },
+                    { kind: 'punctuation', text: ':' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'punctuation', text: '{' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'propertyName', text: 'a' },
+                    { kind: 'punctuation', text: ':' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'keyword', text: 'number' },
+                    { kind: 'punctuation', text: ';' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'propertyName', text: 'b' },
+                    { kind: 'punctuation', text: ':' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'keyword', text: 'string' },
+                    { kind: 'punctuation', text: '}' },
+                  ],
+                  documentation: [],
+                  isOptional: false,
+                },
+              ],
+              documentation: [],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0 && data.signatures[0].parameters.length > 0) {
+      // Type should contain the complex object type
+      expect(data.signatures[0].parameters[0].type).toContain('{');
+      expect(data.signatures[0].parameters[0].type).toContain('number');
+      expect(data.signatures[0].parameters[0].type).toContain('string');
+    }
+  });
+
+  test('handles absolute file path correctly', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, `
+function greet(name: string): void {}
+greet(
+`);
+
+    const result = await handleGetSignatureHelp({
+      file: file, // Absolute path
+      line: 3,
+      column: 7,
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  test('handles file path with backslashes (Windows-style)', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, `
+function greet(name: string): void {}
+greet(
+`);
+
+    const windowsPath = file.replace(/\//g, '\\');
+
+    const result = await handleGetSignatureHelp({
+      file: windowsPath,
+      line: 3,
+      column: 7,
+    });
+
+    // Should work without error
+    expect(result).toBeDefined();
+    expect(result.content).toBeDefined();
+  });
+
+  test('handles parameter with documentation', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo(x: number) {}\nfoo(');
+
+    const originalGetServiceForFile = languageServiceManager.getServiceForFile.bind(languageServiceManager);
+
+    vi.spyOn(languageServiceManager, 'getServiceForFile').mockImplementation(async (filePath) => {
+      const result = await originalGetServiceForFile(filePath);
+
+      const mockService = {
+        ...result.service,
+        getSignatureHelpItems: () => ({
+          items: [
+            {
+              prefixDisplayParts: [{ kind: 'text', text: 'foo(' }],
+              suffixDisplayParts: [{ kind: 'text', text: ')' }],
+              separatorDisplayParts: [{ kind: 'punctuation', text: ', ' }],
+              parameters: [
+                {
+                  name: 'x',
+                  displayParts: [
+                    { kind: 'parameterName', text: 'x' },
+                    { kind: 'punctuation', text: ':' },
+                    { kind: 'space', text: ' ' },
+                    { kind: 'keyword', text: 'number' },
+                  ],
+                  documentation: [{ kind: 'text', text: 'The parameter documentation' }],
+                  isOptional: false,
+                },
+              ],
+              documentation: [{ kind: 'text', text: 'Function documentation' }],
+            },
+          ] as ts.SignatureHelpItem[],
+          applicableSpan: { start: 0, length: 0 },
+          selectedItemIndex: 0,
+          argumentIndex: 0,
+          argumentCount: 1,
+        }),
+        getProgram: result.service.getProgram.bind(result.service),
+      } as unknown as ts.LanguageService;
+
+      return { ...result, service: mockService };
+    });
+
+    const resultData = await handleGetSignatureHelp({
+      file,
+      line: 2,
+      column: 5,
+    });
+    const data = JSON.parse(resultData.content[0].text);
+
+    expect(resultData.isError).toBeFalsy();
+    if (data.signatures.length > 0) {
+      expect(data.signatures[0].documentation).toBe('Function documentation');
+      if (data.signatures[0].parameters.length > 0) {
+        expect(data.signatures[0].parameters[0].documentation).toBe('The parameter documentation');
+      }
+    }
+  });
+});
+
+describe('handleGetSignatureHelp validation edge cases', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'signature-help-validation-test-'));
+  });
+
+  afterEach(() => {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+    languageServiceManager.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  test('handles line as non-number type', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() {}\nfoo(');
+
+    const result = await handleGetSignatureHelp({
+      file,
+      line: 'invalid' as unknown as number,
+      column: 1,
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('line');
+  });
+
+  test('handles column as non-number type', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'function foo() {}\nfoo(');
+
+    const result = await handleGetSignatureHelp({
+      file,
+      line: 1,
+      column: 'invalid' as unknown as number,
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('column');
+  });
+
+  test('handles very large line number', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const result = await handleGetSignatureHelp({
+      file,
+      line: 999999,
+      column: 1,
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    // Should return error or empty signatures
+    expect(result).toBeDefined();
+  });
+
+  test('handles very large column number', async () => {
+    const file = path.join(tempDir, 'test.ts');
+    fs.writeFileSync(file, 'const x = 1;');
+
+    const result = await handleGetSignatureHelp({
+      file,
+      line: 1,
+      column: 999999,
+    });
+
+    // Should return error or empty signatures
+    expect(result).toBeDefined();
   });
 });

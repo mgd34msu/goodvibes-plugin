@@ -15,49 +15,82 @@ import { PROJECT_ROOT } from '../../config.js';
 import { readJsonFile, fileExists, safeExec } from '../../utils.js';
 
 /**
- * Arguments for the analyze_dependencies MCP tool
+ * Arguments for the analyze_dependencies MCP tool.
+ * @property path - Project root path (defaults to PROJECT_ROOT)
+ * @property check_updates - Whether to check npm registry for latest versions (slower)
+ * @property include_dev - Include devDependencies in analysis
  */
 export interface AnalyzeDependenciesArgs {
-  /** Project root path (defaults to PROJECT_ROOT) */
+  /** Project root path relative to PROJECT_ROOT (defaults to '.') */
   path?: string;
-  /** Whether to check npm registry for latest versions (slower) */
+  /** Whether to check npm registry for latest versions (slower, requires network) */
   check_updates?: boolean;
-  /** Include devDependencies in analysis */
+  /** Include devDependencies in the analysis (default: true) */
   include_dev?: boolean;
 }
 
 /**
- * Information about a single dependency
+ * Information about a single npm dependency.
+ * @property name - Package name (e.g., 'react', '@types/node')
+ * @property declared_version - Version string from package.json
+ * @property used - Whether the package is imported in source files
+ * @property import_count - Number of times the package is imported
+ * @property latest_version - Latest version from npm registry (if check_updates enabled)
+ * @property outdated - Whether declared version is behind latest (if check_updates enabled)
  */
 interface DependencyInfo {
+  /** Package name from package.json */
   name: string;
+  /** Version string as declared in package.json (e.g., '^1.2.3') */
   declared_version: string;
+  /** Whether the package is imported anywhere in source files */
   used: boolean;
+  /** Number of import statements referencing this package */
   import_count: number;
+  /** Latest version from npm registry (only if check_updates is true) */
   latest_version?: string;
+  /** Whether the package is outdated compared to latest (only if check_updates is true) */
   outdated?: boolean;
 }
 
 /**
- * Summary statistics for the analysis
+ * Summary statistics for the dependency analysis.
+ * @property total - Total number of dependencies analyzed
+ * @property used - Number of dependencies that are imported in source
+ * @property unused - Number of dependencies not found in any imports
+ * @property outdated - Number of outdated dependencies (only with check_updates)
  */
 interface AnalysisSummary {
+  /** Total number of dependencies analyzed */
   total: number;
+  /** Number of dependencies that are used (found in imports) */
   used: number;
+  /** Number of dependencies that appear unused (not found in imports) */
   unused: number;
+  /** Number of outdated dependencies (0 if check_updates was false) */
   outdated: number;
 }
 
 /**
- * Result of the dependency analysis
+ * Result of the dependency analysis operation.
+ * @property dependencies - Array of analyzed dependencies (sorted: unused first, then by import count)
+ * @property summary - Summary statistics for the analysis
  */
 interface AnalysisResult {
+  /** Array of analyzed dependencies, sorted with unused first then by import count */
   dependencies: DependencyInfo[];
+  /** Summary statistics for the analysis */
   summary: AnalysisSummary;
 }
 
 /**
- * Recursively find all source files in a directory
+ * Recursively finds all source files in a directory.
+ *
+ * Skips common non-source directories (node_modules, .git, dist, etc.).
+ *
+ * @param dir - Directory to search
+ * @param extensions - File extensions to include (default: .ts, .tsx, .js, .jsx, .mjs, .cjs)
+ * @returns Promise resolving to array of absolute file paths
  */
 async function findSourceFiles(
   dir: string,
@@ -93,8 +126,13 @@ async function findSourceFiles(
 }
 
 /**
- * Extract import statements from file content
- * Returns a map of package names to import count
+ * Extracts import statements from file content.
+ *
+ * Parses ES6 imports, require() calls, and dynamic imports.
+ * Skips relative imports and extracts base package names (handles scoped packages).
+ *
+ * @param content - Source file content to parse
+ * @returns Map of package names to their import count in this file
  */
 function extractImports(content: string): Map<string, number> {
   const imports = new Map<string, number>();
@@ -146,7 +184,12 @@ function extractImports(content: string): Map<string, number> {
 }
 
 /**
- * Fetch latest version from npm registry
+ * Fetches the latest version of a package from the npm registry.
+ *
+ * Uses `npm view` command with a 10 second timeout.
+ *
+ * @param packageName - npm package name to look up
+ * @returns Latest version string, or null if lookup fails
  */
 async function fetchLatestVersion(packageName: string): Promise<string | null> {
   try {
@@ -161,8 +204,14 @@ async function fetchLatestVersion(packageName: string): Promise<string | null> {
 }
 
 /**
- * Compare version strings to check if outdated
- * Returns true if installed version is less than latest
+ * Compares version strings to determine if installed version is outdated.
+ *
+ * Strips version prefixes (^, ~, >=) and pre-release suffixes before comparing.
+ * Compares major.minor.patch numerically.
+ *
+ * @param installed - Installed version string (may include prefixes like ^, ~)
+ * @param latest - Latest version string from npm registry
+ * @returns True if installed version is less than latest
  */
 function isOutdated(installed: string, latest: string): boolean {
   // Clean version strings (remove ^, ~, >=, etc.)
