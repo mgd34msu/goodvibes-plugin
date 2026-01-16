@@ -11,49 +11,21 @@ import * as path from 'path';
 import type ts from 'typescript';
 
 // =============================================================================
-// Response Types
+// Response Utilities (re-exported from centralized module)
 // =============================================================================
 
-/**
- * Standard MCP tool response format.
- */
-export interface ToolResponse {
-  content: Array<{ type: 'text'; text: string }>;
-  isError?: boolean;
-}
-
-// =============================================================================
-// Response Helpers
-// =============================================================================
-
-/**
- * Create a successful MCP tool response with JSON content.
- *
- * @param data - The data to serialize as JSON
- * @returns Formatted tool response
- */
-export function createSuccessResponse<T>(data: T): ToolResponse {
-  return {
-    content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-  };
-}
-
-/**
- * Create an error MCP tool response.
- *
- * @param message - The error message
- * @param context - Optional additional context to include
- * @returns Formatted error response
- */
-export function createErrorResponse(
-  message: string,
-  context?: Record<string, unknown>
-): ToolResponse {
-  return {
-    content: [{ type: 'text', text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true,
-  };
-}
+// Re-export response utilities from the centralized module
+export {
+  createSuccessResponse,
+  createErrorResponse,
+  createTextResponse,
+  createErrorFromException,
+  createNotFoundResponse,
+  createMissingArgumentResponse,
+  createInvalidArgumentResponse,
+  type ToolResponse,
+  type ToolResponseContent,
+} from '../response-utils.js';
 
 // =============================================================================
 // Path Helpers

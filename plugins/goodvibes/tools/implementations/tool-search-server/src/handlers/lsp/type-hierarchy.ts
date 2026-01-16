@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -148,7 +148,7 @@ function createHierarchyItem(
   return {
     name: getTypeName(node),
     kind: getTypeKind(node),
-    file: makeRelativePath(sourceFile.fileName, PROJECT_ROOT),
+    file: makeRelativePath(sourceFile.fileName, getProjectRoot()),
     line,
     column,
   };
@@ -524,10 +524,10 @@ export async function handleGetTypeHierarchy(
       return createErrorResponse('Invalid depth: must be between 1 and 20');
     }
 
-    // Resolve file path relative to PROJECT_ROOT
+    // Resolve file path relative to getProjectRoot()
     const filePath = path.isAbsolute(args.file)
       ? args.file
-      : path.resolve(PROJECT_ROOT, args.file);
+      : path.resolve(getProjectRoot(), args.file);
 
     // Normalize path separators for cross-platform compatibility
     const normalizedFilePath = filePath.replace(/\\/g, '/');

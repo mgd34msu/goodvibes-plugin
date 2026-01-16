@@ -608,8 +608,9 @@ function tailFile(filePath: string, lines: number): string[] {
     const content = fs.readFileSync(filePath, 'utf-8');
     const allLines = content.split('\n');
     return allLines.slice(-lines);
-  } catch (err) {
-    throw new Error(`Failed to read file: ${(err as Error).message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read file: ${message}`);
   }
 }
 
@@ -822,8 +823,9 @@ export async function handleLogAnalyzer(
       rawLines = await captureCommand(args.command!, duration, cwd);
       sourceDescription = args.command!;
     }
-  } catch (err) {
-    return error((err as Error).message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return error(message);
   }
 
   // Filter empty lines

@@ -7,9 +7,12 @@
  * @module handlers/docs
  */
 
-import { ToolResponse } from '../types.js';
 import { fetchUrl } from '../utils.js';
 import { fetchNpmReadme } from './npm.js';
+import {
+  createSuccessResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Cache entry with TTL tracking for documentation responses
@@ -489,10 +492,5 @@ export async function handleFetchDocs(args: FetchDocsArgs): Promise<ToolResponse
     }
   }
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify(result, null, 2),
-    }],
-  };
+  return createSuccessResponse(result);
 }

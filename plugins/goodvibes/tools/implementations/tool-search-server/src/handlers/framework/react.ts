@@ -11,6 +11,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  type ToolResponse,
+} from '../response-utils.js';
 
 // =============================================================================
 // Types
@@ -59,31 +64,6 @@ interface ComponentTreeResult {
   tree: ComponentTreeNode | null;
   components: ComponentInfo[];
   count: number;
-}
-
-/**
- * Tool response format
- */
-interface ToolResponse {
-  content: Array<{ type: 'text'; text: string }>;
-  isError?: boolean;
-}
-
-// =============================================================================
-// Response Helpers
-// =============================================================================
-
-function createSuccessResponse<T>(data: T): ToolResponse {
-  return {
-    content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-  };
-}
-
-function createErrorResponse(message: string, context?: Record<string, unknown>): ToolResponse {
-  return {
-    content: [{ type: 'text', text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true,
-  };
 }
 
 // =============================================================================

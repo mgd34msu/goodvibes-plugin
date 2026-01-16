@@ -20,7 +20,10 @@ export interface TodoItem {
  *
  * @example
  * const todos = await scanTodos('/my-project');
- * const highPriority = todos.filter(t => t.type === 'FIXME' || t.type === 'BUG');
+ * // => [
+ * //   { type: 'FIXME', file: 'src/utils.ts', line: 42, text: '// FIXME: Handle edge case' },
+ * //   { type: 'TODO', file: 'src/api.ts', line: 15, text: '// TODO: Add caching' }
+ * // ]
  */
 export declare function scanTodos(cwd: string, limit?: number): Promise<TodoItem[]>;
 /**
@@ -32,6 +35,6 @@ export declare function scanTodos(cwd: string, limit?: number): Promise<TodoItem
  *
  * @example
  * const formatted = formatTodos(todos);
- * // Returns: "TODOs in code:\n- FIXME: src/utils.ts:42 - Fix edge case handling..."
+ * // => 'TODOs in code:\n- FIXME: src/utils.ts:42 - Fix edge case handling...'
  */
 export declare function formatTodos(todos: TodoItem[]): string;

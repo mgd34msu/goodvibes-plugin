@@ -389,6 +389,111 @@ describe('todo-scanner', () => {
       expect(results).toHaveLength(1);
     });
 
+    it('should skip todo-scanner.ts file itself', async () => {
+      const mockCwd = '/test/project';
+
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
+        if (dirPath === mockCwd) {
+          return createMockReaddirResult([
+            { name: 'todo-scanner.ts', type: 'file' },
+            { name: 'other-file.ts', type: 'file' },
+          ]);
+        }
+        return createMockReaddirResult([]);
+      });
+
+      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Some todo comment\n');
+
+      const results = await scanTodos(mockCwd);
+
+      // Should only find TODO in other-file.ts, not todo-scanner.ts
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe('other-file.ts');
+    });
+
+    it('should skip todo-scanner.js compiled file', async () => {
+      const mockCwd = '/test/project';
+
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
+        if (dirPath === mockCwd) {
+          return createMockReaddirResult([
+            { name: 'todo-scanner.js', type: 'file' },
+            { name: 'app.js', type: 'file' },
+          ]);
+        }
+        return createMockReaddirResult([]);
+      });
+
+      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Some todo comment\n');
+
+      const results = await scanTodos(mockCwd);
+
+      // Should only find TODO in app.js, not todo-scanner.js
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe('app.js');
+    });
+
+    it('should skip files matching generator script path patterns', async () => {
+      const mockCwd = '/test/project';
+
+      // Create a path structure where the relative path includes /scripts/generate-
+      // The pattern /\/scripts\/generate-/ needs to match in the relative path
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
+        if (dirPath === mockCwd) {
+          return createMockReaddirResult([{ name: 'src', type: 'directory' }]);
+        }
+        if (dirPath === path.join(mockCwd, 'src')) {
+          return createMockReaddirResult([{ name: 'scripts', type: 'directory' }]);
+        }
+        if (dirPath === path.join(mockCwd, 'src', 'scripts')) {
+          return createMockReaddirResult([
+            { name: 'generate-component.ts', type: 'file' },
+            { name: 'utils.ts', type: 'file' },
+          ]);
+        }
+        return createMockReaddirResult([]);
+      });
+
+      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Template placeholder\n');
+
+      const results = await scanTodos(mockCwd);
+
+      // The pattern /\/scripts\/generate-/ matches against 'src/scripts/generate-component.ts'
+      // Should only find TODO in utils.ts
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe('src/scripts/utils.ts');
+    });
+
+    it('should skip files matching other generator path patterns', async () => {
+      const mockCwd = '/test/project';
+
+      // Create a path structure where the relative path includes /scripts/*-generator
+      vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
+        if (dirPath === mockCwd) {
+          return createMockReaddirResult([{ name: 'src', type: 'directory' }]);
+        }
+        if (dirPath === path.join(mockCwd, 'src')) {
+          return createMockReaddirResult([{ name: 'scripts', type: 'directory' }]);
+        }
+        if (dirPath === path.join(mockCwd, 'src', 'scripts')) {
+          return createMockReaddirResult([
+            { name: 'template-generator.ts', type: 'file' },
+            { name: 'build.ts', type: 'file' },
+          ]);
+        }
+        return createMockReaddirResult([]);
+      });
+
+      vi.mocked(fs.readFile).mockResolvedValue('// TODO: Generator TODO\n');
+
+      const results = await scanTodos(mockCwd);
+
+      // The pattern /\/scripts\/.*-generator/ matches against 'src/scripts/template-generator.ts'
+      // Should only find TODO in build.ts
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe('src/scripts/build.ts');
+    });
+
     it('should only scan .ts files', async () => {
       const mockCwd = '/test/project';
 

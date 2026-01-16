@@ -18,26 +18,25 @@ export const LOCKFILES = [
 ] as const;
 
 /**
- * Determines the plugin root directory.
- * Priority:
- * 1. CLAUDE_PLUGIN_ROOT env var (set by Claude Code during hook execution)
- * 2. Detect from script location (hooks/scripts/dist -> go up 3 levels)
- * 3. Fallback to plugins/goodvibes relative to cwd (for development)
+ * Internal helper to resolve plugin root from a given dirname.
+ * Extracted for testability.
+ *
+ * @internal Exported for testing purposes only
+ * @param dirname - The __dirname value to use for resolution
+ * @returns The resolved plugin root path
  */
-function resolvePluginRoot(): string {
-  // Official Claude Code env var
+export function resolvePluginRootFromDirname(dirname: string | undefined): string {
+  // Official Claude Code env var takes priority
   if (process.env.CLAUDE_PLUGIN_ROOT) {
     return process.env.CLAUDE_PLUGIN_ROOT;
   }
 
-  // Try to resolve from __dirname if available (works in CommonJS)
-  // __dirname in hooks/scripts/dist should go up 3 levels to plugin root
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (typeof __dirname !== 'undefined' && __dirname.includes('hooks')) {
+  // Try to resolve from dirname if available and contains 'hooks'
+  if (dirname !== undefined && dirname.includes('hooks')) {
     // Find the hooks path segment and go to its parent
-    const hooksIndex = __dirname.indexOf('hooks');
+    const hooksIndex = dirname.indexOf('hooks');
     if (hooksIndex > 0) {
-      return __dirname.substring(0, hooksIndex - 1);
+      return dirname.substring(0, hooksIndex - 1);
     }
   }
 
@@ -45,6 +44,25 @@ function resolvePluginRoot(): string {
   // and plugin is at plugins/goodvibes
   const devPluginPath = path.join(process.cwd(), 'plugins', 'goodvibes');
   return devPluginPath;
+}
+
+/**
+ * Determines the plugin root directory.
+ * Priority:
+ * 1. CLAUDE_PLUGIN_ROOT env var (set by Claude Code during hook execution)
+ * 2. Detect from script location (hooks/scripts/dist -> go up 3 levels)
+ * 3. Fallback to plugins/goodvibes relative to cwd (for development)
+ *
+ * @internal Exported for testing purposes only
+ */
+export function resolvePluginRoot(): string {
+  // In Node.js CJS, __dirname is always defined.
+  // In ESM, __dirname would be undefined (but we compile to CJS).
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  /* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */
+  const currentDirname: string | undefined =
+    typeof __dirname !== 'undefined' ? __dirname : undefined;
+  return resolvePluginRootFromDirname(currentDirname);
 }
 
 /**

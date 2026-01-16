@@ -43,10 +43,12 @@ export const SECURITY_GITIGNORE_ENTRIES: Record<string, string[]> = {
  * @example
  * // Ensure security entries are present
  * await ensureSecureGitignore('/path/to/project');
+ * // => undefined (gitignore file updated with security entries)
  *
  * @example
  * // Called automatically when .goodvibes directory is created
  * await ensureGoodVibesDir(cwd); // internally calls ensureSecureGitignore
+ * // => undefined
  */
 export async function ensureSecureGitignore(cwd: string): Promise<void> {
   const gitignorePath = path.join(cwd, '.gitignore');

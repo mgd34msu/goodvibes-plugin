@@ -77,7 +77,9 @@ function runCommand(
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 120000, // 2 minute timeout
     });
-    return { stdout: stdout.trim(), exitCode: 0 };
+    // Only trim trailing whitespace to preserve leading spaces in git status output
+    // (e.g., " M file.ts" where the leading space is part of the status code)
+    return { stdout: stdout.trimEnd(), exitCode: 0 };
   } catch (err: unknown) {
     const execError = err as {
       stdout?: string | Buffer;

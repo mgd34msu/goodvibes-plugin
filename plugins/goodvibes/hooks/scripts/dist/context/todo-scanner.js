@@ -128,7 +128,10 @@ async function scanFile(filePath, patterns) {
  *
  * @example
  * const todos = await scanTodos('/my-project');
- * const highPriority = todos.filter(t => t.type === 'FIXME' || t.type === 'BUG');
+ * // => [
+ * //   { type: 'FIXME', file: 'src/utils.ts', line: 42, text: '// FIXME: Handle edge case' },
+ * //   { type: 'TODO', file: 'src/api.ts', line: 15, text: '// TODO: Add caching' }
+ * // ]
  */
 export async function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
     const results = [];
@@ -169,7 +172,7 @@ export async function scanTodos(cwd, limit = DEFAULT_TODO_LIMIT) {
  *
  * @example
  * const formatted = formatTodos(todos);
- * // Returns: "TODOs in code:\n- FIXME: src/utils.ts:42 - Fix edge case handling..."
+ * // => 'TODOs in code:\n- FIXME: src/utils.ts:42 - Fix edge case handling...'
  */
 export function formatTodos(todos) {
     if (todos.length === 0) {

@@ -80,8 +80,7 @@ export interface HookResponse {
  *
  * @example
  * const input = await readHookInput();
- * debug(input.hook_event_name); // 'PreToolUse'
- * debug(input.tool_name); // 'Bash'
+ * // => { session_id: '123', cwd: '/project', hook_event_name: 'PreToolUse', tool_name: 'Bash', ... }
  */
 export async function readHookInput(): Promise<HookInput> {
   return new Promise((resolve, reject) => {
@@ -127,12 +126,12 @@ export async function readHookInput(): Promise<HookInput> {
  * @returns A HookResponse object with continue=true and allow decision
  *
  * @example
- * // Allow a Bash command with no message
- * respond(allowTool('PreToolUse'));
+ * const response = allowTool('PreToolUse');
+ * // => { continue: true, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } }
  *
  * @example
- * // Allow with a helpful system message
- * respond(allowTool('PreToolUse', 'Remember to run tests after this change'));
+ * const response = allowTool('PreToolUse', 'Remember to run tests');
+ * // => { continue: true, systemMessage: 'Remember...', hookSpecificOutput: {...} }
  */
 export function allowTool(
   hookEventName: string,
@@ -159,12 +158,8 @@ export function allowTool(
  * @returns A HookResponse object with continue=false and deny decision
  *
  * @example
- * // Block a dangerous command
- * respond(blockTool('PreToolUse', 'rm -rf commands are not permitted'), true);
- *
- * @example
- * // Block due to security policy
- * respond(blockTool('PermissionRequest', 'Access to .env files is restricted'));
+ * const response = blockTool('PreToolUse', 'rm -rf commands are not permitted');
+ * // => { continue: false, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: '...' } }
  */
 export function blockTool(hookEventName: string, reason: string): HookResponse {
   return {
@@ -189,12 +184,7 @@ export function blockTool(hookEventName: string, reason: string): HookResponse {
  *
  * @example
  * const jsonString = formatResponse(allowTool('PreToolUse'));
- * // Returns: '{"continue":true,"hookSpecificOutput":{...}}'
- *
- * @example
- * // Use in tests or where you need formatted output without exiting
- * const formatted = formatResponse(createResponse({ systemMessage: 'Test' }));
- * debug(formatted);
+ * // => '{"continue":true,"hookSpecificOutput":{...}}'
  */
 export function formatResponse(response: HookResponse): string {
   return JSON.stringify(response);
@@ -213,12 +203,12 @@ export function formatResponse(response: HookResponse): string {
  * @returns never - This function exits the process and never returns
  *
  * @example
- * // Allow the tool to proceed
  * respond(allowTool('PreToolUse'));
+ * // Outputs JSON to stdout and exits with code 0
  *
  * @example
- * // Block the tool with exit code 2
  * respond(blockTool('PreToolUse', 'Operation not permitted'), true);
+ * // Outputs JSON to stdout and exits with code 2
  */
 export function respond(response: HookResponse, block: boolean = false): never {
   console.log(formatResponse(response));
@@ -253,19 +243,16 @@ export interface ExtendedHookResponse extends HookResponse {
  * @returns A HookResponse object with continue=true
  *
  * @example
- * // Simple continue response
- * respond(createResponse());
+ * const response = createResponse();
+ * // => { continue: true }
  *
  * @example
- * // With a system message
- * respond(createResponse({ systemMessage: 'Plugin initialized' }));
+ * const response = createResponse({ systemMessage: 'Plugin initialized' });
+ * // => { continue: true, systemMessage: 'Plugin initialized' }
  *
  * @example
- * // With additional context (for session-start)
- * respond(createResponse({
- *   systemMessage: 'GoodVibes ready',
- *   additionalContext: projectContextString
- * }));
+ * const response = createResponse({ additionalContext: '# Project Context\n...' });
+ * // => { continue: true, additionalContext: '# Project Context\n...' }
  */
 export function createResponse(
   options: CreateResponseOptions = {}
@@ -301,16 +288,12 @@ export type PermissionDecision = 'allow' | 'deny' | 'ask';
  * @returns A HookResponse object with the permission decision
  *
  * @example
- * // Auto-approve a tool
- * respond(createPermissionResponse('allow'));
+ * const response = createPermissionResponse('allow');
+ * // => { continue: true, hookSpecificOutput: { hookEventName: 'PermissionRequest', permissionDecision: 'allow' } }
  *
  * @example
- * // Let user decide
- * respond(createPermissionResponse('ask'));
- *
- * @example
- * // Deny with reason
- * respond(createPermissionResponse('deny', 'Tool not permitted'));
+ * const response = createPermissionResponse('deny', 'Tool not permitted');
+ * // => { continue: true, hookSpecificOutput: { ..., permissionDecision: 'deny', permissionDecisionReason: '...' } }
  */
 export function createPermissionResponse(
   decision: PermissionDecision = 'allow',

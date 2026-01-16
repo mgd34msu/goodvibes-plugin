@@ -5,13 +5,16 @@
  * in TypeScript/JavaScript files.
  */
 
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
 import { handleFindReferences } from '../../../handlers/lsp/find-references.js';
 import { languageServiceManager } from '../../../handlers/lsp/language-service.js';
+
+// Mock console.warn to suppress expected warnings during tests
+vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 describe('handleFindReferences', () => {
   let tempDir: string;
@@ -27,6 +30,7 @@ describe('handleFindReferences', () => {
       // Ignore cleanup errors
     }
     languageServiceManager.cleanup();
+    vi.clearAllMocks();
   });
 
   describe('basic functionality', () => {

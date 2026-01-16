@@ -22,9 +22,10 @@ Each decision includes the date, alternatives considered, rationale, and the age
  *
  * @example
  * const decisions = await readDecisions('/path/to/project');
- * for (const decision of decisions) {
- *   debug(`${decision.title}: ${decision.rationale}`);
- * }
+ * // => [
+ * //   { title: 'Use tRPC for API', date: '2024-01-04', rationale: 'End-to-end type safety', alternatives: [...] },
+ * //   { title: 'Choose Prisma', date: '2024-01-03', rationale: 'Best DX', alternatives: [...] }
+ * // ]
  */
 export async function readDecisions(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
@@ -64,6 +65,7 @@ export async function readDecisions(cwd) {
  *   rationale: 'End-to-end type safety with minimal boilerplate',
  *   alternatives: ['REST', 'GraphQL']
  * });
+ * // => undefined (decision appended to decisions.md)
  */
 export async function writeDecision(cwd, decision) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');

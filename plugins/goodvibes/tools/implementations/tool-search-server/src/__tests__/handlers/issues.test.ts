@@ -11,7 +11,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
-import * as path from 'path';
 
 import { handleProjectIssues } from '../../handlers/issues.js';
 
@@ -83,22 +82,37 @@ function mockReaddirSyncImpl(impl: (dir: fs.PathLike) => fs.Dirent[]): void {
 }
 
 describe('handleProjectIssues', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: path exists and is a directory
-    vi.mocked(fs.existsSync).mockReturnValue(true);
+    // Mock console.error to suppress expected error output during tests
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Default: path exists and is a directory, but config files do not exist
+    // This prevents health-checker from trying to parse non-mocked config files
+    vi.mocked(fs.existsSync).mockImplementation((p) => {
+      const pathStr = String(p);
+      // Only return true for test directories, not for config files
+      return pathStr.endsWith('test') || pathStr.endsWith('test\\') || pathStr.endsWith('test/') || pathStr === 'C:\\test' || pathStr === '/test';
+    });
     vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
     // Default: empty directory
     mockReaddirSync([]);
+    // Default: return valid empty JSON for any config file that might be read
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockRestore();
     vi.resetAllMocks();
   });
 
   describe('TODO scanning', () => {
     it('should detect FIXME as high priority', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
       mockReaddirSync([
         createMockDirent('app.ts', { isDirectory: false }),
@@ -114,7 +128,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should detect BUG as high priority', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('api.ts', { isDirectory: false }),
       ]);
@@ -128,7 +145,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should detect TODO with urgent keyword as high priority', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('service.ts', { isDirectory: false }),
       ]);
@@ -141,7 +161,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should detect regular TODO as medium priority', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('utils.ts', { isDirectory: false }),
       ]);
@@ -155,7 +178,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should detect NOTE as low priority', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('config.ts', { isDirectory: false }),
       ]);
@@ -168,7 +194,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should include file:line location', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('handler.ts', { isDirectory: false }),
       ]);
@@ -181,7 +210,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should skip node_modules directory', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSyncImpl((dir) => {
         if (String(dir) === '/test') {
           return [
@@ -205,7 +237,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should skip test files', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('handler.test.ts', { isDirectory: false }),
       ]);
@@ -461,7 +496,10 @@ describe('handleProjectIssues', () => {
 
   describe('edge cases', () => {
     it('should handle read errors gracefully', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('broken.ts', { isDirectory: false }),
       ]);
@@ -487,8 +525,13 @@ describe('handleProjectIssues', () => {
 
     it('should use current directory when path not specified', () => {
       // When path is not specified, handler uses process.cwd()
-      // Mock to pass path validation for any path (since cwd is dynamic)
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      // Mock existsSync to pass path validation for cwd but not for config files
+      const cwd = process.cwd();
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        // Pass validation for cwd but not for config files like tsconfig.json
+        return pathStr === cwd || pathStr === cwd + '\\' || pathStr === cwd + '/';
+      });
       vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
       vi.mocked(fs.readdirSync).mockReturnValue([]);
 
@@ -498,7 +541,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should limit medium-priority TODOs when include_low_priority is false', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       mockReaddirSync([
         createMockDirent('big.ts', { isDirectory: false }),
       ]);
@@ -524,7 +570,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should return error when path is not a directory', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return pathStr.includes('file.ts');
+      });
       vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: false }));
 
       const result = handleProjectIssues({ path: '/test/file.ts' });
@@ -534,7 +583,10 @@ describe('handleProjectIssues', () => {
     });
 
     it('should detect multi-line TODO comment', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        const pathStr = String(p);
+        return isTestPath(pathStr);
+      });
       vi.mocked(fs.statSync).mockReturnValue(createMockStats({ isDirectory: true }));
       mockReaddirSync([
         createMockDirent('code.ts', { isDirectory: false }),

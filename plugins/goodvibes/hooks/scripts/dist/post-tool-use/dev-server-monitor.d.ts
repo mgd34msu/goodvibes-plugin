@@ -17,9 +17,12 @@ import type { HooksState } from '../types/state.js';
  * @returns True if the command appears to be starting a dev server
  *
  * @example
- * isDevServerCommand('npm run dev');  // true
- * isDevServerCommand('vite --port 3000');  // true
- * isDevServerCommand('npm install');  // false
+ * isDevServerCommand('npm run dev');
+ * // => true
+ * isDevServerCommand('vite --port 3000');
+ * // => true
+ * isDevServerCommand('npm install');
+ * // => false
  */
 export declare function isDevServerCommand(command: string): boolean;
 /**
@@ -33,6 +36,7 @@ export declare function isDevServerCommand(command: string): boolean;
  *
  * @example
  * registerDevServer(state, 'bash_12345', 'npm run dev', 3000);
+ * // => undefined (state.devServers['bash_12345'] now contains server info)
  */
 export declare function registerDevServer(state: HooksState, pid: string, command: string, port: number): void;
 /**
@@ -44,6 +48,7 @@ export declare function registerDevServer(state: HooksState, pid: string, comman
  *
  * @example
  * unregisterDevServer(state, 'bash_12345');
+ * // => undefined (server removed from state.devServers)
  */
 export declare function unregisterDevServer(state: HooksState, pid: string): void;
 /**
@@ -56,6 +61,7 @@ export declare function unregisterDevServer(state: HooksState, pid: string): voi
  *
  * @example
  * recordDevServerError(state, 'bash_12345', 'Module not found: ./missing');
+ * // => undefined (error recorded in state.devServers['bash_12345'].lastError)
  */
 export declare function recordDevServerError(state: HooksState, pid: string, error: string): void;
 /**
@@ -67,6 +73,6 @@ export declare function recordDevServerError(state: HooksState, pid: string, err
  *
  * @example
  * const errors = parseDevServerErrors('Error: Cannot find module "foo"\nCompiled successfully');
- * // Returns: ['Cannot find module "foo"']
+ * // => ['Cannot find module "foo"']
  */
 export declare function parseDevServerErrors(output: string): string[];

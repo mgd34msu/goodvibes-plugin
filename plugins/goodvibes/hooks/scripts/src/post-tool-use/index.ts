@@ -14,6 +14,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+import merge from 'lodash/merge.js';
+
 import { fileExists } from '../shared/file-utils.js';
 import {
   respond,
@@ -38,31 +40,14 @@ import {
 import { createResponse, combineMessages } from './response.js';
 
 /**
- * Deep merge two objects
- */
-function deepMerge<T extends object>(target: T, source: Partial<T>): T {
-  const result = { ...target };
-  for (const key in source) {
-    if (
-      source[key] &&
-      typeof source[key] === 'object' &&
-      !Array.isArray(source[key])
-    ) {
-      result[key] = deepMerge(
-        result[key] as object,
-        source[key] as object
-      ) as T[typeof key];
-    } else if (source[key] !== undefined) {
-      result[key] = source[key] as T[typeof key];
-    }
-  }
-  return result;
-}
-
-/**
  * Load automation configuration from .goodvibes/automation.json if it exists,
  * otherwise return default config from types/config.ts.
  * This provides build/test/git automation settings.
+ *
+ * Uses lodash merge for deep merging of nested configuration objects.
+ * Arrays are merged by index (lodash default behavior), which matches
+ * the previous custom implementation's array replacement behavior for
+ * typical config use cases where arrays don't overlap by index.
  */
 async function loadAutomationConfig(cwd: string): Promise<GoodVibesConfig> {
   const configPath = path.join(cwd, '.goodvibes', 'automation.json');
@@ -76,7 +61,8 @@ async function loadAutomationConfig(cwd: string): Promise<GoodVibesConfig> {
     const content = await fs.readFile(configPath, 'utf-8');
     const userConfig: unknown = JSON.parse(content);
     if (typeof userConfig === 'object' && userConfig !== null) {
-      return deepMerge(defaults, userConfig as Partial<GoodVibesConfig>);
+      // Use lodash merge for deep merging - mutates first argument, so spread defaults
+      return merge({}, defaults, userConfig as Partial<GoodVibesConfig>);
     }
     return defaults;
   } catch (error: unknown) {

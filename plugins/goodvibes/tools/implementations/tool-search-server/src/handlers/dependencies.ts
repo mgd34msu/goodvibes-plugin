@@ -8,8 +8,12 @@
  */
 
 import Fuse from 'fuse.js';
-import { RegistryEntry, Registry, ToolResponse } from '../types.js';
+import { RegistryEntry, Registry } from '../types.js';
 import { search, parseSkillMetadata } from '../utils.js';
+import {
+  createSuccessResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Arguments for the skill_dependencies MCP tool
@@ -202,31 +206,26 @@ export async function handleSkillDependencies(
     }
   }
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        skill: skill.name,
-        path: skill.path,
-        metadata: {
-          category: skillMetadata.category || category,
-          technologies: skillMetadata.technologies || [],
-          difficulty: skillMetadata.difficulty,
-        },
-        dependencies: {
-          required,
-          optional: optional.slice(0, 5),
-          conflicts,
-        },
-        dependents: dependents.slice(0, 5),
-        suggested_bundle: suggestedBundle,
-        analysis: {
-          has_prerequisites: required.length > 0,
-          has_conflicts: conflicts.length > 0,
-          dependency_count: required.length + optional.length,
-          is_foundational: dependents.length > 2,
-        },
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    skill: skill.name,
+    path: skill.path,
+    metadata: {
+      category: skillMetadata.category || category,
+      technologies: skillMetadata.technologies || [],
+      difficulty: skillMetadata.difficulty,
+    },
+    dependencies: {
+      required,
+      optional: optional.slice(0, 5),
+      conflicts,
+    },
+    dependents: dependents.slice(0, 5),
+    suggested_bundle: suggestedBundle,
+    analysis: {
+      has_prerequisites: required.length > 0,
+      has_conflicts: conflicts.length > 0,
+      dependency_count: required.length + optional.length,
+      is_foundational: dependents.length > 2,
+    },
+  });
 }

@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -150,7 +150,7 @@ function extractDocumentation(quickInfo: ts.QuickInfo): string {
 /**
  * Extract modifiers from the display parts.
  */
-function extractModifiers(quickInfo: ts.QuickInfo): string[] {
+function extractModifiersFromDisplayParts(quickInfo: ts.QuickInfo): string[] {
   const modifiers: string[] = [];
 
   if (!quickInfo.displayParts) return modifiers;
@@ -177,6 +177,97 @@ function extractModifiers(quickInfo: ts.QuickInfo): string[] {
   for (const part of quickInfo.displayParts) {
     if (part.kind === 'keyword' && modifierKeywords.has(part.text)) {
       modifiers.push(part.text);
+    }
+  }
+
+  return [...new Set(modifiers)]; // Remove duplicates
+}
+
+/**
+ * Extract modifiers from the AST node at a given position.
+ */
+function extractModifiersFromAST(
+  service: ts.LanguageService,
+  filePath: string,
+  position: number
+): string[] {
+  const modifiers: string[] = [];
+  const program = service.getProgram();
+  if (!program) return modifiers;
+
+  const sourceFile = program.getSourceFile(filePath);
+  if (!sourceFile) return modifiers;
+
+  // Find the node at the position
+  function findNode(node: ts.Node): ts.Node | undefined {
+    if (position >= node.getStart(sourceFile) && position < node.getEnd()) {
+      const child = ts.forEachChild(node, findNode);
+      if (child) return child;
+      return node;
+    }
+    return undefined;
+  }
+
+  const targetNode = findNode(sourceFile);
+  if (!targetNode) return modifiers;
+
+  // Walk up to find the declaration node
+  let declarationNode: ts.Node | undefined = targetNode;
+  while (declarationNode && !ts.isVariableStatement(declarationNode) &&
+         !ts.isFunctionDeclaration(declarationNode) &&
+         !ts.isClassDeclaration(declarationNode) &&
+         !ts.isMethodDeclaration(declarationNode) &&
+         !ts.isPropertyDeclaration(declarationNode) &&
+         !ts.isInterfaceDeclaration(declarationNode) &&
+         !ts.isTypeAliasDeclaration(declarationNode) &&
+         !ts.isEnumDeclaration(declarationNode) &&
+         !ts.isModuleDeclaration(declarationNode)) {
+    declarationNode = declarationNode.parent;
+  }
+
+  if (!declarationNode) return modifiers;
+
+  // Check for export modifier on variable statements
+  if (ts.isVariableStatement(declarationNode)) {
+    const nodeModifiers = ts.getModifiers(declarationNode);
+    if (nodeModifiers) {
+      for (const mod of nodeModifiers) {
+        if (mod.kind === ts.SyntaxKind.ExportKeyword) modifiers.push('export');
+        if (mod.kind === ts.SyntaxKind.DeclareKeyword) modifiers.push('declare');
+        if (mod.kind === ts.SyntaxKind.DefaultKeyword) modifiers.push('default');
+      }
+    }
+    // Check variable declaration list for const/let/var
+    const declList = declarationNode.declarationList;
+    if (declList.flags & ts.NodeFlags.Const) modifiers.push('const');
+    else if (declList.flags & ts.NodeFlags.Let) modifiers.push('let');
+    else modifiers.push('var');
+  }
+
+  // Check for modifiers on functions, classes, methods, properties
+  if (ts.isFunctionDeclaration(declarationNode) ||
+      ts.isClassDeclaration(declarationNode) ||
+      ts.isMethodDeclaration(declarationNode) ||
+      ts.isPropertyDeclaration(declarationNode) ||
+      ts.isInterfaceDeclaration(declarationNode) ||
+      ts.isTypeAliasDeclaration(declarationNode) ||
+      ts.isEnumDeclaration(declarationNode) ||
+      ts.isModuleDeclaration(declarationNode)) {
+    const nodeModifiers = ts.getModifiers(declarationNode);
+    if (nodeModifiers) {
+      for (const mod of nodeModifiers) {
+        if (mod.kind === ts.SyntaxKind.ExportKeyword) modifiers.push('export');
+        if (mod.kind === ts.SyntaxKind.DefaultKeyword) modifiers.push('default');
+        if (mod.kind === ts.SyntaxKind.AsyncKeyword) modifiers.push('async');
+        if (mod.kind === ts.SyntaxKind.DeclareKeyword) modifiers.push('declare');
+        if (mod.kind === ts.SyntaxKind.AbstractKeyword) modifiers.push('abstract');
+        if (mod.kind === ts.SyntaxKind.StaticKeyword) modifiers.push('static');
+        if (mod.kind === ts.SyntaxKind.ReadonlyKeyword) modifiers.push('readonly');
+        if (mod.kind === ts.SyntaxKind.PrivateKeyword) modifiers.push('private');
+        if (mod.kind === ts.SyntaxKind.ProtectedKeyword) modifiers.push('protected');
+        if (mod.kind === ts.SyntaxKind.PublicKeyword) modifiers.push('public');
+        if (mod.kind === ts.SyntaxKind.OverrideKeyword) modifiers.push('override');
+      }
     }
   }
 
@@ -270,7 +361,7 @@ async function getDefinitionLocation(
   );
 
   return {
-    file: makeRelativePath(def.fileName, PROJECT_ROOT),
+    file: makeRelativePath(def.fileName, getProjectRoot()),
     line,
     column,
   };
@@ -324,7 +415,7 @@ export async function handleGetSymbolInfo(
   // Resolve file path
   const filePath = path.isAbsolute(args.file)
     ? args.file
-    : path.resolve(PROJECT_ROOT, args.file);
+    : path.resolve(getProjectRoot(), args.file);
 
   // Verify file exists
   if (!fs.existsSync(filePath)) {
@@ -359,7 +450,10 @@ export async function handleGetSymbolInfo(
     const kind = mapScriptElementKind(quickInfo.kind);
     const type = extractTypeSignature(quickInfo);
     const documentation = extractDocumentation(quickInfo);
-    const modifiers = extractModifiers(quickInfo);
+    // Use AST-based extraction for more complete modifiers, fall back to display parts
+    const astModifiers = extractModifiersFromAST(service, filePath, position);
+    const displayModifiers = extractModifiersFromDisplayParts(quickInfo);
+    const modifiers = [...new Set([...astModifiers, ...displayModifiers])];
 
     // Get definition location
     const definition = await getDefinitionLocation(service, filePath, position);

@@ -30,8 +30,12 @@ const MAX_MINIMAL_FRAMEWORKS = 3;
  *
  * @example
  * const formatted = formatContext(context);
- * debug(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
- * debug(formatted.full); // Full multi-section report
+ * // => {
+ * //   full: '# Project Context\n\n## Tech Stack\nStack: Next.js, TypeScript...',
+ * //   summary: 'Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes',
+ * //   hasIssues: true,
+ * //   issueCount: 2
+ * // }
  */
 export function formatContext(context) {
     const sections = [];
@@ -117,7 +121,7 @@ export function formatContext(context) {
  *
  * @example
  * const minimal = formatMinimalContext(context);
- * // Returns: "Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)"
+ * // => 'Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)'
  */
 export function formatMinimalContext(context) {
     const parts = [];

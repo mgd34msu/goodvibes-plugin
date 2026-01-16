@@ -14,7 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -231,7 +231,7 @@ function processImplementation(
   const containerName = findContainerName(sourceFile, impl.textSpan.start);
 
   return {
-    file: makeRelativePath(impl.fileName, PROJECT_ROOT),
+    file: makeRelativePath(impl.fileName, getProjectRoot()),
     line,
     column,
     kind: mapScriptElementKind(impl.kind),
@@ -295,7 +295,7 @@ export async function handleGetImplementations(
   // Resolve file path
   const filePath = path.isAbsolute(args.file)
     ? args.file
-    : path.resolve(PROJECT_ROOT, args.file);
+    : path.resolve(getProjectRoot(), args.file);
 
   // Verify file exists
   if (!fs.existsSync(filePath)) {
@@ -324,11 +324,15 @@ export async function handleGetImplementations(
     const implLocations = service.getImplementationAtPosition(filePath, position);
 
     if (implLocations) {
+      // Get the source position to filter out self-references
+      const sourceKey = `${makeRelativePath(filePath, getProjectRoot())}:${args.line}:${args.column}`;
+
       for (const impl of implLocations) {
         const processed = processImplementation(service, impl);
         if (processed) {
           const locationKey = `${processed.file}:${processed.line}:${processed.column}`;
-          if (!seenLocations.has(locationKey)) {
+          // Skip self-references (same location as the query) and duplicates
+          if (!seenLocations.has(locationKey) && locationKey !== sourceKey) {
             seenLocations.add(locationKey);
             implementations.push(processed);
           }

@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -166,7 +166,7 @@ function convertCallHierarchyItem(
   return {
     name: item.name,
     kind: mapScriptElementKind(item.kind),
-    file: makeRelativePath(item.file, PROJECT_ROOT),
+    file: makeRelativePath(item.file, getProjectRoot()),
     line,
     column,
   };
@@ -235,10 +235,10 @@ export async function handleGetCallHierarchy(
       return createErrorResponse('Invalid direction: must be "incoming", "outgoing", or "both"');
     }
 
-    // Resolve file path relative to PROJECT_ROOT
+    // Resolve file path relative to getProjectRoot()
     const filePath = path.isAbsolute(args.file)
       ? args.file
-      : path.resolve(PROJECT_ROOT, args.file);
+      : path.resolve(getProjectRoot(), args.file);
 
     // Normalize path separators for cross-platform compatibility
     const normalizedFilePath = filePath.replace(/\\/g, '/');

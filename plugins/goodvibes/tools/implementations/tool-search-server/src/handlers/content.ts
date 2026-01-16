@@ -10,6 +10,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PLUGIN_ROOT } from '../config.js';
+import {
+  createTextResponse,
+  createNotFoundResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Handles the get_skill_content MCP tool call.
@@ -27,7 +32,7 @@ import { PLUGIN_ROOT } from '../config.js';
  * await handleGetSkillContent({ path: 'webdev/databases-orms/prisma' });
  * // Returns: { content: [{ type: 'text', text: '# Prisma...' }] }
  */
-export async function handleGetSkillContent(args: { path: string }): Promise<{ content: Array<{ type: string; text: string }> }> {
+export async function handleGetSkillContent(args: { path: string }): Promise<ToolResponse> {
   const attempts = [
     path.join(PLUGIN_ROOT, 'skills', args.path, 'SKILL.md'),
     path.join(PLUGIN_ROOT, 'skills', args.path + '.md'),
@@ -37,7 +42,7 @@ export async function handleGetSkillContent(args: { path: string }): Promise<{ c
   for (const skillPath of attempts) {
     if (fs.existsSync(skillPath)) {
       const content = await fs.promises.readFile(skillPath, 'utf-8');
-      return { content: [{ type: 'text', text: content }] };
+      return createTextResponse(content);
     }
   }
 
@@ -59,7 +64,7 @@ export async function handleGetSkillContent(args: { path: string }): Promise<{ c
  * await handleGetAgentContent({ path: 'backend-engineer' });
  * // Returns: { content: [{ type: 'text', text: '# Backend Engineer...' }] }
  */
-export async function handleGetAgentContent(args: { path: string }): Promise<{ content: Array<{ type: string; text: string }> }> {
+export async function handleGetAgentContent(args: { path: string }): Promise<ToolResponse> {
   const attempts = [
     path.join(PLUGIN_ROOT, 'agents', `${args.path}.md`),
     path.join(PLUGIN_ROOT, 'agents', args.path),
@@ -69,7 +74,7 @@ export async function handleGetAgentContent(args: { path: string }): Promise<{ c
   for (const agentPath of attempts) {
     if (fs.existsSync(agentPath)) {
       const content = await fs.promises.readFile(agentPath, 'utf-8');
-      return { content: [{ type: 'text', text: content }] };
+      return createTextResponse(content);
     }
   }
 

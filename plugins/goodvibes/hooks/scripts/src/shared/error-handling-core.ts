@@ -50,13 +50,13 @@ const SIGNATURE_MAX_LENGTH = 20;
  *
  * @example
  * // With tool name (fix-loop style)
- * generateErrorSignature('Bash', 'Error at line 42: file.ts')
- * // Returns: 'Bash:bm9ybWFsaXplZF9lcnI='
+ * generateErrorSignature('Bash', 'Error at line 42: file.ts');
+ * // => 'Bash:bm9ybWFsaXplZF9lcnI='
  *
  * @example
  * // Without tool name (retry-tracker style)
- * generateErrorSignature('Error at line 42: file.ts')
- * // Returns: 'err_a1b2c3d4'
+ * generateErrorSignature('Error at line 42: file.ts');
+ * // => 'err_a1b2c3d4'
  */
 export function generateErrorSignature(
   errorOrToolName: string,
@@ -118,9 +118,10 @@ export function generateErrorSignature(
  * @returns True if the phase is 1, 2, or 3
  *
  * @example
- * if (isValidPhase(nextPhase)) {
- *   // nextPhase is type-narrowed to 1 | 2 | 3
- * }
+ * isValidPhase(2);
+ * // => true
+ * isValidPhase(4);
+ * // => false
  */
 function isValidPhase(phase: number): phase is 1 | 2 | 3 {
   return phase === 1 || phase === 2 || phase === 3;
@@ -138,7 +139,8 @@ function isValidPhase(phase: number): phase is 1 | 2 | 3 {
  *
  * @example
  * const state = { category: 'typescript_error', phase: 1, attemptsThisPhase: 3 };
- * shouldEscalatePhase(state); // true (typescript_error limit is 3)
+ * shouldEscalatePhase(state);
+ * // => true (typescript_error limit is 3)
  */
 export function shouldEscalatePhase(state: ErrorState): boolean {
   const maxPerPhase = PHASE_RETRY_LIMITS[state.category] || DEFAULT_RETRY_LIMIT;
@@ -154,9 +156,9 @@ export function shouldEscalatePhase(state: ErrorState): boolean {
  * @returns A new error state with incremented phase and reset attempts
  *
  * @example
- * const state = { phase: 1, attemptsThisPhase: 3, ... };
+ * const state = { phase: 1, attemptsThisPhase: 3, category: 'typescript_error', ... };
  * const escalated = escalatePhase(state);
- * // { phase: 2, attemptsThisPhase: 0, ... }
+ * // => { phase: 2, attemptsThisPhase: 0, category: 'typescript_error', ... }
  */
 export function escalatePhase(state: ErrorState): ErrorState {
   if (state.phase >= MAX_PHASE) {
@@ -194,7 +196,8 @@ export function escalatePhase(state: ErrorState): ErrorState {
  *
  * @example
  * const state = { category: 'npm_install', phase: 3, attemptsThisPhase: 2 };
- * hasExhaustedRetries(state); // true (npm_install limit is 2)
+ * hasExhaustedRetries(state);
+ * // => true (npm_install limit is 2)
  */
 export function hasExhaustedRetries(state: ErrorState): boolean {
   const maxPerPhase = PHASE_RETRY_LIMITS[state.category] || DEFAULT_RETRY_LIMIT;

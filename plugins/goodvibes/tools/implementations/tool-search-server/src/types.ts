@@ -2,6 +2,17 @@
  * Type definitions for GoodVibes MCP Server
  */
 
+// =============================================================================
+// Response Types (re-exported from centralized module)
+// =============================================================================
+
+// Re-export ToolResponse from the centralized location
+export { type ToolResponse, type ToolResponseContent } from './handlers/response-utils.js';
+
+// =============================================================================
+// Registry Types
+// =============================================================================
+
 export interface RegistryEntry {
   name: string;
   path: string;
@@ -22,58 +33,144 @@ export interface SearchResult {
   relevance: number;
 }
 
+// =============================================================================
+// Stack Detection Types (Interface Segregation)
+// =============================================================================
+
+/**
+ * Frontend-specific stack information.
+ * Follows Interface Segregation Principle - read-only data about frontend tech.
+ */
+export interface FrontendStackInfo {
+  framework?: string;
+  ui_library?: string;
+  styling?: string;
+  state_management?: string;
+}
+
+/**
+ * Backend-specific stack information.
+ * Follows Interface Segregation Principle - read-only data about backend tech.
+ */
+export interface BackendStackInfo {
+  runtime?: string;
+  framework?: string;
+  database?: string;
+  orm?: string;
+}
+
+/**
+ * Build tooling stack information.
+ * Follows Interface Segregation Principle - read-only data about build tools.
+ */
+export interface BuildStackInfo {
+  bundler?: string;
+  package_manager?: string;
+  typescript: boolean;
+}
+
+/**
+ * Complete stack information combining all domains.
+ * Composed from segregated interfaces for flexibility.
+ */
 export interface StackInfo {
-  frontend: {
-    framework?: string;
-    ui_library?: string;
-    styling?: string;
-    state_management?: string;
-  };
-  backend: {
-    runtime?: string;
-    framework?: string;
-    database?: string;
-    orm?: string;
-  };
-  build: {
-    bundler?: string;
-    package_manager?: string;
-    typescript: boolean;
-  };
+  frontend: FrontendStackInfo;
+  backend: BackendStackInfo;
+  build: BuildStackInfo;
   detected_configs: string[];
   recommended_skills: string[];
 }
 
-export interface PackageInfo {
+// =============================================================================
+// Package Types
+// =============================================================================
+
+/**
+ * Read-only package version information.
+ */
+export interface PackageVersionInfo {
   name: string;
   installed: string;
   latest?: string;
   wanted?: string;
+}
+
+/**
+ * Package status with update information.
+ * Extends read-only version info with mutation-relevant flags.
+ */
+export interface PackageInfo extends PackageVersionInfo {
   outdated: boolean;
   breaking_changes?: boolean;
 }
 
+// =============================================================================
+// Plugin Status Types (Interface Segregation)
+// =============================================================================
+
+/**
+ * Manifest validation status - read-only.
+ */
+export interface ManifestStatus {
+  exists: boolean;
+  valid: boolean;
+  version?: string;
+}
+
+/**
+ * Registry status - read-only.
+ */
+export interface RegistryStatus {
+  exists: boolean;
+  count: number;
+}
+
+/**
+ * All registries status - read-only.
+ */
+export interface RegistriesStatus {
+  agents: RegistryStatus;
+  skills: RegistryStatus;
+  tools: RegistryStatus;
+}
+
+/**
+ * Hook event status - read-only.
+ */
+export interface HookEventStatus {
+  name: string;
+  script: string;
+  exists: boolean;
+}
+
+/**
+ * Hooks configuration status - read-only.
+ */
+export interface HooksStatus {
+  config_exists: boolean;
+  config_valid: boolean;
+  events: HookEventStatus[];
+}
+
+/**
+ * MCP server status - read-only.
+ */
+export interface McpServerStatus {
+  running: boolean;
+}
+
+/**
+ * Complete plugin health status.
+ * Composed from segregated status interfaces.
+ */
 export interface PluginStatus {
   version: string;
   status: 'healthy' | 'degraded' | 'error';
   issues: string[];
-  manifest: { exists: boolean; valid: boolean; version?: string };
-  registries: {
-    agents: { exists: boolean; count: number };
-    skills: { exists: boolean; count: number };
-    tools: { exists: boolean; count: number };
-  };
-  hooks: {
-    config_exists: boolean;
-    config_valid: boolean;
-    events: Array<{ name: string; script: string; exists: boolean }>;
-  };
-  mcp_server: { running: boolean };
-}
-
-export interface ToolResponse {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
+  manifest: ManifestStatus;
+  registries: RegistriesStatus;
+  hooks: HooksStatus;
+  mcp_server: McpServerStatus;
 }
 
 // =============================================================================

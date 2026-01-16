@@ -5,7 +5,7 @@
  * that provide quick fixes and refactorings for TypeScript/JavaScript code.
  */
 
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -15,6 +15,9 @@ import {
   handleApplyCodeAction,
 } from '../../../handlers/lsp/code-actions.js';
 import { languageServiceManager } from '../../../handlers/lsp/language-service.js';
+
+// Mock console.warn to suppress expected warnings during tests
+vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 describe('handleGetCodeActions', () => {
   let tempDir: string;
@@ -30,6 +33,7 @@ describe('handleGetCodeActions', () => {
       // Ignore cleanup errors
     }
     languageServiceManager.cleanup();
+    vi.clearAllMocks();
   });
 
   describe('basic functionality', () => {

@@ -13,16 +13,9 @@
  * @returns Promise resolving to true if the file exists, false otherwise
  *
  * @example
- * const pkgPath = path.join(cwd, 'package.json');
- * if (await fileExists(pkgPath)) {
- *   debug('This is a Node.js project');
- * }
- *
- * @example
- * const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
- * if (await fileExists(tsconfigPath)) {
- *   debug('TypeScript is configured');
- * }
+ * const exists = await fileExists('/path/to/project/package.json');
+ * // => true (if file exists)
+ * // => false (if file does not exist)
  */
 export declare function fileExists(filePath: string): Promise<boolean>;
 /**
@@ -40,15 +33,13 @@ export declare function fileExists(filePath: string): Promise<boolean>;
  *
  * @example
  * // Check relative to PROJECT_ROOT
- * if (await fileExistsRelative('package.json')) {
- *   debug('This is a Node.js project');
- * }
+ * const exists = await fileExistsRelative('package.json');
+ * // => true (if PROJECT_ROOT/package.json exists)
  *
  * @example
  * // Check relative to custom directory
- * if (await fileExistsRelative('src/index.ts', '/path/to/project')) {
- *   debug('Source file found');
- * }
+ * const exists = await fileExistsRelative('src/index.ts', '/path/to/project');
+ * // => true (if /path/to/project/src/index.ts exists)
  */
 export declare function fileExistsRelative(filePath: string, baseDir?: string): Promise<boolean>;
 /**
@@ -62,15 +53,12 @@ export declare function fileExistsRelative(filePath: string, baseDir?: string): 
  * @returns Promise resolving to true if the command is available in PATH, false otherwise
  *
  * @example
- * if (await commandExists('git')) {
- *   debug('Git is available');
- * }
+ * const hasGit = await commandExists('git');
+ * // => true (if git is in PATH)
  *
  * @example
- * // Check before running a tool
- * if (!(await commandExists('pnpm'))) {
- *   debug('pnpm not found, falling back to npm');
- * }
+ * const hasPnpm = await commandExists('pnpm');
+ * // => false (if pnpm is not installed)
  */
 export declare function commandExists(cmd: string): Promise<boolean>;
 /**
@@ -85,9 +73,9 @@ export declare function commandExists(cmd: string): Promise<boolean>;
  *
  * @example
  * const result = await validateRegistries();
- * if (!result.valid) {
- *   debug('Missing registries:', result.missing.join(', '));
- * }
+ * // => { valid: true, missing: [] }
+ * // OR
+ * // => { valid: false, missing: ['skills/_registry.yaml'] }
  */
 export declare function validateRegistries(): Promise<{
     valid: boolean;
@@ -110,10 +98,8 @@ export declare function validateRegistries(): Promise<{
  *
  * @example
  * const goodvibesDir = await ensureGoodVibesDir('/path/to/project');
- * debug(goodvibesDir); // '/path/to/project/.goodvibes'
- *
- * // Now safe to write to subdirectories
- * fs.writeFileSync(path.join(goodvibesDir, 'state', 'session.json'), data);
+ * // => '/path/to/project/.goodvibes'
+ * // Creates: .goodvibes/memory/, .goodvibes/state/, .goodvibes/logs/, .goodvibes/telemetry/
  */
 export declare function ensureGoodVibesDir(cwd: string): Promise<string>;
 /**
@@ -130,7 +116,7 @@ export declare function ensureGoodVibesDir(cwd: string): Promise<string>;
  *   execSync('npm test');
  * } catch (error) {
  *   const output = extractErrorOutput(error);
- *   debug('Test failed:', output);
+ *   // => 'FAIL src/utils.test.ts\n  Expected: 1, Received: 2'
  * }
  */
 export declare function extractErrorOutput(error: unknown): string;

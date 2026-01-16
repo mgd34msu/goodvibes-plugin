@@ -13,9 +13,10 @@ import type { MemoryDecision } from '../types/memory.js';
  *
  * @example
  * const decisions = await readDecisions('/path/to/project');
- * for (const decision of decisions) {
- *   debug(`${decision.title}: ${decision.rationale}`);
- * }
+ * // => [
+ * //   { title: 'Use tRPC for API', date: '2024-01-04', rationale: 'End-to-end type safety', alternatives: [...] },
+ * //   { title: 'Choose Prisma', date: '2024-01-03', rationale: 'Best DX', alternatives: [...] }
+ * // ]
  */
 export declare function readDecisions(cwd: string): Promise<MemoryDecision[]>;
 /**
@@ -34,5 +35,6 @@ export declare function readDecisions(cwd: string): Promise<MemoryDecision[]>;
  *   rationale: 'End-to-end type safety with minimal boilerplate',
  *   alternatives: ['REST', 'GraphQL']
  * });
+ * // => undefined (decision appended to decisions.md)
  */
 export declare function writeDecision(cwd: string, decision: MemoryDecision): Promise<void>;

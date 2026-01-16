@@ -46,8 +46,7 @@ export interface SessionAnalytics {
  *
  * @example
  * await ensureCacheDir();
- * // Now safe to write to CACHE_DIR
- * await fs.writeFile(path.join(CACHE_DIR, 'data.json'), JSON.stringify(data));
+ * // => undefined (creates CACHE_DIR if it doesn't exist)
  */
 export declare function ensureCacheDir(): Promise<void>;
 /**
@@ -60,10 +59,9 @@ export declare function ensureCacheDir(): Promise<void>;
  *
  * @example
  * const analytics = await loadAnalytics();
- * if (analytics) {
- *   debug(`Session: ${analytics.session_id}`);
- *   debug(`Tools used: ${analytics.tool_usage.length}`);
- * }
+ * // => { session_id: 'session_123', started_at: '...', tool_usage: [...], ... }
+ * // OR
+ * // => null (if no analytics file exists)
  */
 export declare function loadAnalytics(): Promise<SessionAnalytics | null>;
 /**
@@ -85,6 +83,7 @@ export declare function loadAnalytics(): Promise<SessionAnalytics | null>;
  *   issues_found: 0,
  * };
  * await saveAnalytics(analytics);
+ * // => undefined (analytics saved to ANALYTICS_FILE)
  */
 export declare function saveAnalytics(analytics: SessionAnalytics): Promise<void>;
 /**
@@ -97,7 +96,7 @@ export declare function saveAnalytics(analytics: SessionAnalytics): Promise<void
  *
  * @example
  * const sessionId = await getSessionId();
- * debug(sessionId); // 'session_1705234567890'
+ * // => 'session_1705234567890'
  */
 export declare function getSessionId(): Promise<string>;
 /**
@@ -118,5 +117,6 @@ export declare function getSessionId(): Promise<string>;
  *   success: true,
  *   args: { command: 'npm test' },
  * });
+ * // => undefined (usage appended to analytics)
  */
 export declare function logToolUsage(usage: ToolUsage): Promise<void>;

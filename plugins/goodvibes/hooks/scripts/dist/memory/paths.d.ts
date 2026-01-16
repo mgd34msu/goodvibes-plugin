@@ -28,7 +28,7 @@ export type MemoryFileType = keyof typeof MEMORY_FILES;
  *
  * @example
  * const dir = getGoodVibesDir('/path/to/project');
- * // Returns: '/path/to/project/.goodvibes'
+ * // => '/path/to/project/.goodvibes'
  */
 export declare function getGoodVibesDir(cwd: string): string;
 /**
@@ -42,7 +42,7 @@ export declare function getGoodVibesDir(cwd: string): string;
  *
  * @example
  * const dir = getMemoryDir('/path/to/project');
- * // Returns: '/path/to/project/.goodvibes/memory'
+ * // => '/path/to/project/.goodvibes/memory'
  */
 export declare function getMemoryDir(cwd: string): string;
 /**
@@ -57,6 +57,6 @@ export declare function getMemoryDir(cwd: string): string;
  *
  * @example
  * const filePath = getMemoryFilePath('/path/to/project', 'decisions');
- * // Returns: '/path/to/project/.goodvibes/memory/decisions.md'
+ * // => '/path/to/project/.goodvibes/memory/decisions.md'
  */
 export declare function getMemoryFilePath(cwd: string, type: MemoryFileType): string;

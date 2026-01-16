@@ -6,6 +6,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0\\hooks\\scripts\\dist\\subagent-start.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes\\hooks\\scripts\\dist\\subagent-start.js\"",
             "timeout": 10
           }
@@ -13,6 +23,16 @@
       }
     ],
     "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0\\hooks\\scripts\\dist\\subagent-stop.js\"",
+            "timeout": 10
+          }
+        ]
+      },
       {
         "matcher": "*",
         "hooks": [

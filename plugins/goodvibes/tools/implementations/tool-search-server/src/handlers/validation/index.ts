@@ -9,9 +9,12 @@
 
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
-import { ToolResponse } from '../../types.js';
 import { PROJECT_ROOT } from '../../config.js';
 import { safeExec, parseSkillMetadata, extractSkillPatterns, fileExists } from '../../utils.js';
+import {
+  createSuccessResponse,
+  type ToolResponse,
+} from '../response-utils.js';
 
 import { ValidationIssue, ValidationContext, SkillPatterns, ValidateImplementationArgs, CheckTypesArgs } from './types.js';
 import { runSecurityChecks } from './security-checks.js';
@@ -142,25 +145,20 @@ export async function handleValidateImplementation(args: ValidateImplementationA
   const info = issues.filter(i => i.severity === 'info').length;
   const score = Math.max(0, 100 - (errors * 20) - (warnings * 5) - (info * 1));
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        valid: errors === 0,
-        score,
-        grade: score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F',
-        issues,
-        summary: {
-          errors,
-          warnings,
-          info,
-          files_checked: args.files.length,
-          checks_run: [...new Set(checksRun)],
-        },
-        skill: args.skill || null,
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    valid: errors === 0,
+    score,
+    grade: score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F',
+    issues,
+    summary: {
+      errors,
+      warnings,
+      info,
+      files_checked: args.files.length,
+      checks_run: [...new Set(checksRun)],
+    },
+    skill: args.skill || null,
+  });
 }
 
 /**
@@ -286,21 +284,16 @@ export async function handleCheckTypes(args: CheckTypesArgs): Promise<ToolRespon
     });
   }
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        valid: errors.length === 0,
-        errors,
-        summary: {
-          files_checked: args.files?.length || 'all',
-          errors: errors.length,
-          warnings: 0,
-          tsconfig: tsconfigPath ? path.relative(PROJECT_ROOT, tsconfigPath) : null,
-        },
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    valid: errors.length === 0,
+    errors,
+    summary: {
+      files_checked: args.files?.length || 'all',
+      errors: errors.length,
+      warnings: 0,
+      tsconfig: tsconfigPath ? path.relative(PROJECT_ROOT, tsconfigPath) : null,
+    },
+  });
 }
 
 /**

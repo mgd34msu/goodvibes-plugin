@@ -13,9 +13,10 @@ import type { MemoryFailure } from '../types/memory.js';
  *
  * @example
  * const failures = await readFailures('/path/to/project');
- * for (const failure of failures) {
- *   debug(`Avoid: ${failure.approach} - ${failure.reason}`);
- * }
+ * // => [
+ * //   { approach: 'Direct DOM manipulation', date: '2024-01-04', reason: 'Conflicts with React', ... },
+ * //   { approach: 'Global state', date: '2024-01-03', reason: 'Race conditions', ... }
+ * // ]
  */
 export declare function readFailures(cwd: string): Promise<MemoryFailure[]>;
 /**
@@ -36,5 +37,6 @@ export declare function readFailures(cwd: string): Promise<MemoryFailure[]>;
  *   context: 'Tried to optimize performance',
  *   suggestion: 'Use refs or state management instead'
  * });
+ * // => undefined (failure appended to failures.md)
  */
 export declare function writeFailure(cwd: string, failure: MemoryFailure): Promise<void>;

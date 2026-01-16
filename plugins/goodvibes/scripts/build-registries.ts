@@ -4,6 +4,11 @@
  * Scans agents/, skills/, and tools/ directories to generate
  * searchable _registry.yaml index files.
  *
+ * Registry files use an underscore prefix (_registry.yaml) by convention:
+ * - Excluded from content scanning (files/dirs starting with _ are skipped)
+ * - Visually distinct as generated/metadata files
+ * - Appear first in alphabetical directory listings
+ *
  * Usage: npx tsx scripts/build-registries.ts
  */
 

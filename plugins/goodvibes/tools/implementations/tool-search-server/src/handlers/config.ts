@@ -9,8 +9,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { ToolResponse } from '../types.js';
 import { PROJECT_ROOT } from '../config.js';
+import {
+  createSuccessResponse,
+  createNotFoundResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Arguments for the read_config MCP tool
@@ -93,19 +97,14 @@ export function handleReadConfig(args: ReadConfigArgs): ToolResponse {
         // Not JSON, return raw content
       }
 
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            config_type: args.config,
-            file_path: file,
-            format: file.endsWith('.json') ? 'json' : file.endsWith('.js') || file.endsWith('.ts') ? 'javascript' : 'text',
-            content: parsed || content,
-            extends: [],
-            env_vars: [],
-          }, null, 2),
-        }],
-      };
+      return createSuccessResponse({
+        config_type: args.config,
+        file_path: file,
+        format: file.endsWith('.json') ? 'json' : file.endsWith('.js') || file.endsWith('.ts') ? 'javascript' : 'text',
+        content: parsed || content,
+        extends: [],
+        env_vars: [],
+      });
     }
   }
 

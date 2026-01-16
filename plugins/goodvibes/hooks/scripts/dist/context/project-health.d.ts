@@ -15,30 +15,8 @@
  * Use this when you need comprehensive health analysis with suggestions;
  * use health-checker.ts for quick status checks.
  */
-/** Comprehensive project health analysis results. */
-export interface ProjectHealth {
-    hasNodeModules: boolean;
-    lockfiles: string[];
-    hasMultipleLockfiles: boolean;
-    typescript: TypeScriptHealth | null;
-    packageManager: string | null;
-    scripts: string[];
-    warnings: HealthWarning[];
-    suggestions: string[];
-}
-/** TypeScript configuration health indicators. */
-export interface TypeScriptHealth {
-    hasConfig: boolean;
-    strict: boolean;
-    strictNullChecks: boolean;
-    noImplicitAny: boolean;
-    target: string | null;
-}
-/** A health check warning or informational message. */
-export interface HealthWarning {
-    type: 'error' | 'warning' | 'info';
-    message: string;
-}
+import type { ProjectHealth } from './project-health-types.js';
+export type { ProjectHealth, TypeScriptHealth, HealthWarning } from './project-health-types.js';
 /**
  * Check overall project health with comprehensive analysis.
  * Performs full analysis including TypeScript details and suggestions.

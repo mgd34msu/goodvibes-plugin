@@ -21,9 +21,9 @@ import { getCurrentBranch } from '../automation/git-operations.js';
  *
  * @example
  * const result = await checkBranchGuard('git push --force origin main', '/repo', state);
- * if (!result.allowed) {
- *   debug(result.reason);
- * }
+ * // => { allowed: false, reason: 'Force push to main is not allowed' }
+ * // OR
+ * // => { allowed: true, warning: 'Force push detected - ensure this is intentional' }
  */
 export async function checkBranchGuard(command, cwd, state) {
     // Check for dangerous commands on main branch
@@ -69,9 +69,9 @@ export async function checkBranchGuard(command, cwd, state) {
  *
  * @example
  * const result = checkMergeReadiness('/repo', state);
- * if (!result.allowed) {
- *   debug('Cannot merge:', result.reason);
- * }
+ * // => { allowed: true }
+ * // OR
+ * // => { allowed: false, reason: 'Cannot merge: 3 test files failing' }
  */
 export function checkMergeReadiness(_cwd, state) {
     // Check if tests are passing
@@ -104,8 +104,10 @@ export function checkMergeReadiness(_cwd, state) {
  * @returns True if the command starts with 'git', false otherwise
  *
  * @example
- * isGitCommand('git status');  // true
- * isGitCommand('npm install'); // false
+ * isGitCommand('git status');
+ * // => true
+ * isGitCommand('npm install');
+ * // => false
  */
 export function isGitCommand(command) {
     return /^\s*git\s+/.test(command);
@@ -117,8 +119,10 @@ export function isGitCommand(command) {
  * @returns True if the command contains 'git merge', false otherwise
  *
  * @example
- * isMergeCommand('git merge feature-branch'); // true
- * isMergeCommand('git status');               // false
+ * isMergeCommand('git merge feature-branch');
+ * // => true
+ * isMergeCommand('git status');
+ * // => false
  */
 export function isMergeCommand(command) {
     return /git\s+merge/.test(command);

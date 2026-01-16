@@ -8,9 +8,13 @@
  */
 
 import * as path from 'path';
-import { PackageInfo, ToolResponse } from '../types.js';
+import { PackageInfo } from '../types.js';
 import { PROJECT_ROOT } from '../config.js';
 import { readJsonFile, safeExec } from '../utils.js';
+import {
+  createSuccessResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Arguments for the check_versions MCP tool
@@ -199,18 +203,13 @@ export async function handleCheckVersions(args: CheckVersionsArgs): Promise<Tool
   const outdatedCount = packages.filter(p => p.outdated).length;
   const majorUpdates = packages.filter(p => p.breaking_changes).length;
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        packages,
-        summary: {
-          total: packages.length,
-          outdated: outdatedCount,
-          major_updates: majorUpdates,
-          up_to_date: packages.length - outdatedCount,
-        },
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    packages,
+    summary: {
+      total: packages.length,
+      outdated: outdatedCount,
+      major_updates: majorUpdates,
+      up_to_date: packages.length - outdatedCount,
+    },
+  });
 }

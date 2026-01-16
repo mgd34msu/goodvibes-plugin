@@ -52,6 +52,7 @@ export interface TelemetryRecord {
  *
  * @example
  * await ensureGoodVibesDirs('/project/.goodvibes', 'state', 'telemetry');
+ * // => undefined (creates directories if they don't exist)
  */
 export async function ensureGoodVibesDirs(
   goodVibesDir: string,
@@ -85,6 +86,7 @@ export async function ensureGoodVibesDirs(
  *
  * @example
  * await writeTelemetryRecord('/project/.goodvibes/telemetry', record);
+ * // => undefined (appends record to 2024-01.jsonl)
  */
 export async function writeTelemetryRecord(
   telemetryDir: string,
@@ -113,6 +115,7 @@ export async function writeTelemetryRecord(
  *
  * @example
  * const record = createTelemetryRecord(startEntry, parsedTranscript, ['backend', 'api']);
+ * // => { type: 'subagent_complete', agent_id: '...', duration_ms: 12500, success: true, ... }
  */
 export function createTelemetryRecord(
   startEntry: ActiveAgentEntry,

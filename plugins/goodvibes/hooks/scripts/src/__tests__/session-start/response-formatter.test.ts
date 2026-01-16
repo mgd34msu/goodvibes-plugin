@@ -9,15 +9,40 @@
  * - Performance metrics display
  * - Session ID truncation
  * - Edge cases and boundary conditions
+ * - Error handling in getPluginVersion and getToolCount
  */
 
-import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { buildSystemMessage } from '../../session-start/response-formatter.js';
 
 import type { ContextGatheringResult } from '../../session-start/context-builder.js';
 
+// Mock fs module
+vi.mock('fs');
+
 describe('response-formatter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default mock for plugin.json - returns valid version
+    vi.mocked(fs.readFileSync).mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+      const pathStr = String(filePath);
+      if (pathStr.includes('plugin.json')) {
+        return JSON.stringify({ version: '2.1.0' });
+      }
+      if (pathStr.includes('_registry.yaml')) {
+        return 'total: 17\ntools:\n  - name: tool1\n';
+      }
+      throw new Error(`Unexpected file read: ${pathStr}`);
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('buildSystemMessage', () => {
     describe('base message components', () => {
       it('should include plugin version', () => {
@@ -585,6 +610,164 @@ describe('response-formatter', () => {
         const message = buildSystemMessage('test-session', context);
 
         expect(message.endsWith('| Test')).toBe(true);
+      });
+    });
+
+    describe('error handling and fallbacks', () => {
+      it('should fallback to v0.0.0 when plugin.json read fails', () => {
+        vi.mocked(fs.readFileSync).mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+          const pathStr = String(filePath);
+          if (pathStr.includes('plugin.json')) {
+            throw new Error('File not found');
+          }
+          if (pathStr.includes('_registry.yaml')) {
+            return 'total: 17\ntools:\n  - name: tool1\n';
+          }
+          throw new Error(`Unexpected file read: ${pathStr}`);
+        });
+
+        const context: ContextGatheringResult = {
+          additionalContext: '',
+          summary: '',
+          isEmptyProject: false,
+          hasIssues: false,
+          issueCount: 0,
+          gatherTimeMs: 0,
+          needsRecovery: false,
+        };
+
+        const message = buildSystemMessage('test-session', context);
+
+        expect(message).toContain('GoodVibes plugin v0.0.0 initialized.');
+      });
+
+      it('should fallback to v0.0.0 when manifest has no version field', () => {
+        vi.mocked(fs.readFileSync).mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+          const pathStr = String(filePath);
+          if (pathStr.includes('plugin.json')) {
+            return JSON.stringify({ name: 'goodvibes' }); // No version field
+          }
+          if (pathStr.includes('_registry.yaml')) {
+            return 'total: 17\ntools:\n  - name: tool1\n';
+          }
+          throw new Error(`Unexpected file read: ${pathStr}`);
+        });
+
+        const context: ContextGatheringResult = {
+          additionalContext: '',
+          summary: '',
+          isEmptyProject: false,
+          hasIssues: false,
+          issueCount: 0,
+          gatherTimeMs: 0,
+          needsRecovery: false,
+        };
+
+        const message = buildSystemMessage('test-session', context);
+
+        expect(message).toContain('GoodVibes plugin v0.0.0 initialized.');
+      });
+
+      it('should fallback to v0.0.0 when manifest version is empty string', () => {
+        vi.mocked(fs.readFileSync).mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+          const pathStr = String(filePath);
+          if (pathStr.includes('plugin.json')) {
+            return JSON.stringify({ version: '' }); // Empty version
+          }
+          if (pathStr.includes('_registry.yaml')) {
+            return 'total: 17\ntools:\n  - name: tool1\n';
+          }
+          throw new Error(`Unexpected file read: ${pathStr}`);
+        });
+
+        const context: ContextGatheringResult = {
+          additionalContext: '',
+          summary: '',
+          isEmptyProject: false,
+          hasIssues: false,
+          issueCount: 0,
+          gatherTimeMs: 0,
+          needsRecovery: false,
+        };
+
+        const message = buildSystemMessage('test-session', context);
+
+        expect(message).toContain('GoodVibes plugin v0.0.0 initialized.');
+      });
+
+      it('should fallback to 0 tools when registry read fails', () => {
+        vi.mocked(fs.readFileSync).mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+          const pathStr = String(filePath);
+          if (pathStr.includes('plugin.json')) {
+            return JSON.stringify({ version: '2.1.0' });
+          }
+          if (pathStr.includes('_registry.yaml')) {
+            throw new Error('File not found');
+          }
+          throw new Error(`Unexpected file read: ${pathStr}`);
+        });
+
+        const context: ContextGatheringResult = {
+          additionalContext: '',
+          summary: '',
+          isEmptyProject: false,
+          hasIssues: false,
+          issueCount: 0,
+          gatherTimeMs: 0,
+          needsRecovery: false,
+        };
+
+        const message = buildSystemMessage('test-session', context);
+
+        expect(message).toContain('0 tools available.');
+      });
+
+      it('should fallback to 0 tools when registry has no total field', () => {
+        vi.mocked(fs.readFileSync).mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+          const pathStr = String(filePath);
+          if (pathStr.includes('plugin.json')) {
+            return JSON.stringify({ version: '2.1.0' });
+          }
+          if (pathStr.includes('_registry.yaml')) {
+            return 'tools:\n  - name: tool1\n'; // No total field
+          }
+          throw new Error(`Unexpected file read: ${pathStr}`);
+        });
+
+        const context: ContextGatheringResult = {
+          additionalContext: '',
+          summary: '',
+          isEmptyProject: false,
+          hasIssues: false,
+          issueCount: 0,
+          gatherTimeMs: 0,
+          needsRecovery: false,
+        };
+
+        const message = buildSystemMessage('test-session', context);
+
+        expect(message).toContain('0 tools available.');
+      });
+
+      it('should handle both plugin.json and registry failures', () => {
+        vi.mocked(fs.readFileSync).mockImplementation(() => {
+          throw new Error('File not found');
+        });
+
+        const context: ContextGatheringResult = {
+          additionalContext: '',
+          summary: '',
+          isEmptyProject: false,
+          hasIssues: false,
+          issueCount: 0,
+          gatherTimeMs: 0,
+          needsRecovery: false,
+        };
+
+        const message = buildSystemMessage('test-session', context);
+
+        expect(message).toContain('GoodVibes plugin v0.0.0 initialized.');
+        expect(message).toContain('0 tools available.');
       });
     });
   });

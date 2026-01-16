@@ -13,9 +13,10 @@ import type { MemoryPattern } from '../types/memory.js';
  *
  * @example
  * const patterns = await readPatterns('/path/to/project');
- * for (const pattern of patterns) {
- *   debug(`${pattern.name}: ${pattern.description}`);
- * }
+ * // => [
+ * //   { name: 'Repository Pattern', date: '2024-01-04', description: 'Use repository classes...', ... },
+ * //   { name: 'Error Boundary', date: '2024-01-03', description: 'Wrap components in...', ... }
+ * // ]
  */
 export declare function readPatterns(cwd: string): Promise<MemoryPattern[]>;
 /**
@@ -36,5 +37,6 @@ export declare function readPatterns(cwd: string): Promise<MemoryPattern[]>;
  *   example: 'class UserRepository { async findById(id) { ... } }',
  *   files: ['src/repositories/user.ts']
  * });
+ * // => undefined (pattern appended to patterns.md)
  */
 export declare function writePattern(cwd: string, pattern: MemoryPattern): Promise<void>;

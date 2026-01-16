@@ -26,9 +26,9 @@ const execAsync = promisify(exec);
  *
  * @example
  * const branch = await execGit('git branch --show-current', '/repo');
- * if (branch) {
- *   debug('Current branch:', branch);
- * }
+ * // => 'main' (trimmed output from git command)
+ * // OR
+ * // => null (if command failed)
  */
 export async function execGit(
   command: string,
@@ -54,9 +54,9 @@ export async function execGit(
  * @returns Promise resolving to true if the directory contains a .git folder, false otherwise
  *
  * @example
- * if (await isGitRepo('/my-project')) {
- *   debug('This is a git repository');
- * }
+ * const isRepo = await isGitRepo('/my-project');
+ * // => true (if .git directory exists)
+ * // => false (if not a git repository)
  */
 export async function isGitRepo(cwd: string): Promise<boolean> {
   return fileExists(path.join(cwd, '.git'));
@@ -71,7 +71,8 @@ export async function isGitRepo(cwd: string): Promise<boolean> {
  *
  * @example
  * const mainBranch = await detectMainBranch('/repo');
- * debug('Main branch is:', mainBranch);
+ * // => 'main' (most repos)
+ * // => 'master' (older repos)
  */
 export async function detectMainBranch(cwd: string): Promise<string> {
   const main = await execGit('git rev-parse --verify main', cwd);
@@ -95,9 +96,8 @@ export async function detectMainBranch(cwd: string): Promise<string> {
  *
  * @example
  * const branch = await getCurrentBranch('/repo');
- * if (branch === 'main') {
- *   debug('On main branch');
- * }
+ * // => 'feature/new-login' (if on a branch)
+ * // => null (if in detached HEAD state)
  */
 export async function getCurrentBranch(cwd: string): Promise<string | null> {
   return execGit('git branch --show-current', cwd);
@@ -111,9 +111,9 @@ export async function getCurrentBranch(cwd: string): Promise<string | null> {
  * @returns Promise resolving to true if there are uncommitted changes, false otherwise
  *
  * @example
- * if (await hasUncommittedChanges('/repo')) {
- *   debug('You have uncommitted changes');
- * }
+ * const hasChanges = await hasUncommittedChanges('/repo');
+ * // => true (if there are staged or unstaged changes)
+ * // => false (if working directory is clean)
  */
 export async function hasUncommittedChanges(cwd: string): Promise<boolean> {
   const status = await execGit('git status --porcelain', cwd);
@@ -129,7 +129,8 @@ export async function hasUncommittedChanges(cwd: string): Promise<boolean> {
  *
  * @example
  * const files = await getUncommittedFiles('/repo');
- * files.forEach(f => debug('Modified:', f));
+ * // => ['src/index.ts', 'package.json'] (files with changes)
+ * // => [] (if no uncommitted changes)
  */
 export async function getUncommittedFiles(cwd: string): Promise<string[]> {
   const status = await execGit('git status --porcelain', cwd);
@@ -152,9 +153,9 @@ export async function getUncommittedFiles(cwd: string): Promise<string[]> {
  * @returns Promise resolving to true if the checkpoint was created successfully, false otherwise
  *
  * @example
- * if (await createCheckpoint('/repo', 'pre-refactor state')) {
- *   debug('Checkpoint created');
- * }
+ * const created = await createCheckpoint('/repo', 'pre-refactor state');
+ * // => true (commit created: 'checkpoint: pre-refactor state')
+ * // => false (no changes to commit or error occurred)
  */
 export async function createCheckpoint(
   cwd: string,
@@ -191,9 +192,9 @@ export async function createCheckpoint(
  * @returns Promise resolving to true if the branch was created successfully, false otherwise
  *
  * @example
- * if (await createFeatureBranch('/repo', 'Add User Authentication')) {
- *   // Creates and checks out branch: feature/add-user-authentication
- * }
+ * const created = await createFeatureBranch('/repo', 'Add User Authentication');
+ * // => true (created and checked out 'feature/add-user-authentication')
+ * // => false (branch creation failed)
  */
 export async function createFeatureBranch(
   cwd: string,
@@ -229,9 +230,9 @@ export async function createFeatureBranch(
  * @returns Promise resolving to true if merge and cleanup succeeded, false otherwise
  *
  * @example
- * if (await mergeFeatureBranch('/repo', 'feature/new-login', 'main')) {
- *   debug('Feature merged and branch cleaned up');
- * }
+ * const merged = await mergeFeatureBranch('/repo', 'feature/new-login', 'main');
+ * // => true (merged to main and deleted feature branch)
+ * // => false (merge failed or cleanup failed)
  */
 export async function mergeFeatureBranch(
   cwd: string,

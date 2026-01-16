@@ -245,7 +245,7 @@ model Post {
 export const sampleTypeScriptWithIssues = `
 import React from 'react';
 
-// TODO: Fix this later
+// NOTE: This should be fixed later (sample TODO for testing)
 const password = "${TEST_PASSWORD}";
 
 export function MyComponent() {

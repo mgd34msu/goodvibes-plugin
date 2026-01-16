@@ -41,6 +41,9 @@ export interface CheckpointTrigger {
  *
  * @example
  * const trigger = shouldCheckpoint(state, '/project');
+ * // => { triggered: true, reason: '5 files modified' }
+ * // OR
+ * // => { triggered: false, reason: '' }
  * if (trigger.triggered) {
  *   debug('Checkpoint needed:', trigger.reason);
  * }
@@ -71,10 +74,14 @@ export function shouldCheckpoint(
  * @example
  * // Conditional checkpoint based on thresholds
  * const result = await createCheckpointIfNeeded(state, '/project');
+ * // => { created: true, message: 'Checkpoint: 5 files modified', state: {...} }
+ * // OR
+ * // => { created: false, message: '', state: {...} }
  *
  * @example
  * // Forced checkpoint with custom reason
  * const result = await createCheckpointIfNeeded(state, '/project', 'pre-refactor backup');
+ * // => { created: true, message: 'Checkpoint: pre-refactor backup', state: {...} }
  */
 export async function createCheckpointIfNeeded(
   state: HooksState,

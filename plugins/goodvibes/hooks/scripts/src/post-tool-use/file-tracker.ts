@@ -22,6 +22,7 @@ import type { HooksState } from '../types/state.js';
  *
  * @example
  * const newState = trackFileModification(state, '/project/src/utils.ts');
+ * // => HooksState with '/project/src/utils.ts' added to modifiedThisSession and modifiedSinceCheckpoint
  */
 export function trackFileModification(
   state: HooksState,
@@ -55,6 +56,7 @@ export function trackFileModification(
  *
  * @example
  * const newState = trackFileCreation(state, '/project/src/newFile.ts');
+ * // => HooksState with '/project/src/newFile.ts' added to createdThisSession and modifiedSinceCheckpoint
  */
 export function trackFileCreation(
   state: HooksState,
@@ -86,6 +88,7 @@ export function trackFileCreation(
  * @example
  * // After creating a checkpoint
  * const newState = clearCheckpointTracking(state);
+ * // => HooksState with modifiedSinceCheckpoint reset to []
  */
 export function clearCheckpointTracking(state: HooksState): HooksState {
   return {
@@ -106,9 +109,7 @@ export function clearCheckpointTracking(state: HooksState): HooksState {
  *
  * @example
  * const count = getModifiedFileCount(state);
- * if (count >= 5) {
- *   debug('Threshold reached, creating checkpoint');
- * }
+ * // => 5 (number of unique files modified since last checkpoint)
  */
 export function getModifiedFileCount(state: HooksState): number {
   return state.files.modifiedSinceCheckpoint.length;

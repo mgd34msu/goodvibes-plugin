@@ -27,32 +27,13 @@ import {
   generateSuggestions,
 } from './project-health-formatter.js';
 
-/** Comprehensive project health analysis results. */
-export interface ProjectHealth {
-  hasNodeModules: boolean;
-  lockfiles: string[];
-  hasMultipleLockfiles: boolean;
-  typescript: TypeScriptHealth | null;
-  packageManager: string | null;
-  scripts: string[];
-  warnings: HealthWarning[];
-  suggestions: string[];
-}
+import type {
+  ProjectHealth,
+  TypeScriptHealth,
+} from './project-health-types.js';
 
-/** TypeScript configuration health indicators. */
-export interface TypeScriptHealth {
-  hasConfig: boolean;
-  strict: boolean;
-  strictNullChecks: boolean;
-  noImplicitAny: boolean;
-  target: string | null;
-}
-
-/** A health check warning or informational message. */
-export interface HealthWarning {
-  type: 'error' | 'warning' | 'info';
-  message: string;
-}
+// Re-export types for backward compatibility
+export type { ProjectHealth, TypeScriptHealth, HealthWarning } from './project-health-types.js';
 
 const LOCKFILES: Record<string, string> = {
   'package-lock.json': 'npm',

@@ -11,8 +11,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { fileExists } from '../shared/file-utils.js';
 import { PLUGIN_ROOT } from '../shared/constants.js';
+import { fileExists } from '../shared/file-utils.js';
 import { debug, logError } from '../shared/logging.js';
 
 /** Structure for a single hook entry */

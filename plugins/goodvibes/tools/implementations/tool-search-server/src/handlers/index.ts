@@ -305,3 +305,21 @@ export type {
   AnalyzeEventFlowArgs,
   AnalyzeTailwindConflictsArgs,
 } from './frontend/index.js';
+
+// =============================================================================
+// REGISTRY AND TYPES
+// Centralized tool handler registry and shared type definitions
+// =============================================================================
+
+// Registry - the main export for tool dispatching
+export { TOOL_HANDLERS, getHandler, hasHandler, getRegisteredTools } from './registry.js';
+
+// Types - shared type definitions for handlers
+export type {
+  HandlerContext,
+  ToolHandlerResponse,
+  ToolHandler,
+  ToolHandlerRegistry,
+  ToolCategory,
+  ToolHandlerMeta,
+} from './types.js';

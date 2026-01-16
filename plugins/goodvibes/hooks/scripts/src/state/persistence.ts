@@ -37,15 +37,9 @@ export interface StateOptions {
  *
  * @example
  * const state = await loadState('/path/to/project');
- * debug(state.session.id);
- *
- * @example
- * // Throw errors instead of using defaults
- * try {
- *   const state = await loadState('/path/to/project', { throwOnError: true });
- * } catch (error) {
- *   logError('Failed to load state:', error);
- * }
+ * // => { session: { id: 'session_123', ... }, files: {...}, git: {...}, ... }
+ * // OR (if file doesn't exist)
+ * // => { session: { id: '', ... }, files: {...}, git: {...}, ... } (default state)
  */
 export async function loadState(
   cwd: string,
@@ -87,17 +81,8 @@ export async function loadState(
  * @returns Promise that resolves when the state is saved
  *
  * @example
- * const state = await loadState(cwd);
- * state.session.id = 'new-session-id';
- * await saveState(cwd, state);
- *
- * @example
- * // Throw errors instead of swallowing them
- * try {
- *   await saveState(cwd, state, { throwOnError: true });
- * } catch (error) {
- *   logError('Failed to save state:', error);
- * }
+ * await saveState('/path/to/project', state);
+ * // => undefined (state saved to .goodvibes/state/hooks-state.json)
  */
 export async function saveState(
   cwd: string,

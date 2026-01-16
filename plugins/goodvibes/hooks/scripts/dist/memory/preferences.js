@@ -22,9 +22,10 @@ These preferences guide agent behavior and decision-making.
  *
  * @example
  * const preferences = await readPreferences('/path/to/project');
- * for (const pref of preferences) {
- *   debug(`${pref.key}: ${pref.value}`);
- * }
+ * // => [
+ * //   { key: 'code-style', value: 'functional', date: '2024-01-04', notes: '...' },
+ * //   { key: 'test-framework', value: 'vitest', date: '2024-01-03', notes: '...' }
+ * // ]
  */
 export async function readPreferences(cwd) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
@@ -61,6 +62,7 @@ export async function readPreferences(cwd) {
  *   date: '2024-01-04',
  *   notes: 'Prefer functional components over class components'
  * });
+ * // => undefined (preference appended to preferences.md)
  */
 export async function writePreference(cwd, preference) {
     const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');

@@ -26,9 +26,12 @@ const DEV_SERVER_PATTERNS = [
  * @returns True if the command appears to be starting a dev server
  *
  * @example
- * isDevServerCommand('npm run dev');  // true
- * isDevServerCommand('vite --port 3000');  // true
- * isDevServerCommand('npm install');  // false
+ * isDevServerCommand('npm run dev');
+ * // => true
+ * isDevServerCommand('vite --port 3000');
+ * // => true
+ * isDevServerCommand('npm install');
+ * // => false
  */
 export function isDevServerCommand(command) {
     return DEV_SERVER_PATTERNS.some((pattern) => pattern.test(command));
@@ -44,6 +47,7 @@ export function isDevServerCommand(command) {
  *
  * @example
  * registerDevServer(state, 'bash_12345', 'npm run dev', 3000);
+ * // => undefined (state.devServers['bash_12345'] now contains server info)
  */
 export function registerDevServer(state, pid, command, port) {
     state.devServers[pid] = {
@@ -62,6 +66,7 @@ export function registerDevServer(state, pid, command, port) {
  *
  * @example
  * unregisterDevServer(state, 'bash_12345');
+ * // => undefined (server removed from state.devServers)
  */
 export function unregisterDevServer(state, pid) {
     delete state.devServers[pid];
@@ -76,6 +81,7 @@ export function unregisterDevServer(state, pid) {
  *
  * @example
  * recordDevServerError(state, 'bash_12345', 'Module not found: ./missing');
+ * // => undefined (error recorded in state.devServers['bash_12345'].lastError)
  */
 export function recordDevServerError(state, pid, error) {
     if (state.devServers[pid]) {
@@ -100,7 +106,7 @@ const ERROR_PATTERNS = [
  *
  * @example
  * const errors = parseDevServerErrors('Error: Cannot find module "foo"\nCompiled successfully');
- * // Returns: ['Cannot find module "foo"']
+ * // => ['Cannot find module "foo"']
  */
 export function parseDevServerErrors(output) {
     const errors = [];

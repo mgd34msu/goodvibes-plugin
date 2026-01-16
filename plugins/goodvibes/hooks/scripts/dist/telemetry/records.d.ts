@@ -36,6 +36,7 @@ export interface TelemetryRecord {
  *
  * @example
  * await ensureGoodVibesDirs('/project/.goodvibes', 'state', 'telemetry');
+ * // => undefined (creates directories if they don't exist)
  */
 export declare function ensureGoodVibesDirs(goodVibesDir: string, stateDir: string, telemetryDir: string): Promise<void>;
 /**
@@ -48,6 +49,7 @@ export declare function ensureGoodVibesDirs(goodVibesDir: string, stateDir: stri
  *
  * @example
  * await writeTelemetryRecord('/project/.goodvibes/telemetry', record);
+ * // => undefined (appends record to 2024-01.jsonl)
  */
 export declare function writeTelemetryRecord(telemetryDir: string, record: TelemetryRecord): Promise<void>;
 /**
@@ -61,5 +63,6 @@ export declare function writeTelemetryRecord(telemetryDir: string, record: Telem
  *
  * @example
  * const record = createTelemetryRecord(startEntry, parsedTranscript, ['backend', 'api']);
+ * // => { type: 'subagent_complete', agent_id: '...', duration_ms: 12500, success: true, ... }
  */
 export declare function createTelemetryRecord(startEntry: ActiveAgentEntry, parsedTranscript: ParsedTranscript, keywords: string[]): TelemetryRecord;

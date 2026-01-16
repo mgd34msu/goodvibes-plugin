@@ -28,13 +28,13 @@ export declare const DEFAULT_RETRY_LIMIT = 2;
  *
  * @example
  * // With tool name (fix-loop style)
- * generateErrorSignature('Bash', 'Error at line 42: file.ts')
- * // Returns: 'Bash:bm9ybWFsaXplZF9lcnI='
+ * generateErrorSignature('Bash', 'Error at line 42: file.ts');
+ * // => 'Bash:bm9ybWFsaXplZF9lcnI='
  *
  * @example
  * // Without tool name (retry-tracker style)
- * generateErrorSignature('Error at line 42: file.ts')
- * // Returns: 'err_a1b2c3d4'
+ * generateErrorSignature('Error at line 42: file.ts');
+ * // => 'err_a1b2c3d4'
  */
 export declare function generateErrorSignature(errorOrToolName: string, errorMessage?: string): string;
 /**
@@ -49,7 +49,8 @@ export declare function generateErrorSignature(errorOrToolName: string, errorMes
  *
  * @example
  * const state = { category: 'typescript_error', phase: 1, attemptsThisPhase: 3 };
- * shouldEscalatePhase(state); // true (typescript_error limit is 3)
+ * shouldEscalatePhase(state);
+ * // => true (typescript_error limit is 3)
  */
 export declare function shouldEscalatePhase(state: ErrorState): boolean;
 /**
@@ -61,9 +62,9 @@ export declare function shouldEscalatePhase(state: ErrorState): boolean;
  * @returns A new error state with incremented phase and reset attempts
  *
  * @example
- * const state = { phase: 1, attemptsThisPhase: 3, ... };
+ * const state = { phase: 1, attemptsThisPhase: 3, category: 'typescript_error', ... };
  * const escalated = escalatePhase(state);
- * // { phase: 2, attemptsThisPhase: 0, ... }
+ * // => { phase: 2, attemptsThisPhase: 0, category: 'typescript_error', ... }
  */
 export declare function escalatePhase(state: ErrorState): ErrorState;
 /**
@@ -78,7 +79,8 @@ export declare function escalatePhase(state: ErrorState): ErrorState;
  *
  * @example
  * const state = { category: 'npm_install', phase: 3, attemptsThisPhase: 2 };
- * hasExhaustedRetries(state); // true (npm_install limit is 2)
+ * hasExhaustedRetries(state);
+ * // => true (npm_install limit is 2)
  */
 export declare function hasExhaustedRetries(state: ErrorState): boolean;
 /**

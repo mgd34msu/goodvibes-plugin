@@ -149,8 +149,41 @@ export function fetchUrl(url: string): Promise<string> {
   });
 }
 
+// =============================================================================
+// Response Utilities (re-exported from centralized module)
+// =============================================================================
+
+// Import from centralized response utilities
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  createTextResponse,
+  createErrorFromException,
+  createNotFoundResponse,
+  createMissingArgumentResponse,
+  createInvalidArgumentResponse,
+  type ToolResponse,
+  type ToolResponseContent,
+} from './handlers/response-utils.js';
+
+// Re-export for convenience
+export {
+  createSuccessResponse,
+  createErrorResponse,
+  createTextResponse,
+  createErrorFromException,
+  createNotFoundResponse,
+  createMissingArgumentResponse,
+  createInvalidArgumentResponse,
+  type ToolResponse,
+  type ToolResponseContent,
+};
+
 /**
- * Create a successful tool response
+ * Create a successful tool response.
+ *
+ * @deprecated Use `createSuccessResponse` instead for consistency across handlers.
+ * This function is kept for backwards compatibility.
  */
 export function success(data: unknown): { content: Array<{ type: string; text: string }> } {
   return {
@@ -162,7 +195,10 @@ export function success(data: unknown): { content: Array<{ type: string; text: s
 }
 
 /**
- * Create an error tool response
+ * Create an error tool response.
+ *
+ * @deprecated Use `createErrorResponse` instead for consistency across handlers.
+ * This function is kept for backwards compatibility.
  */
 export function error(message: string): { content: Array<{ type: string; text: string }>; isError: boolean } {
   return {

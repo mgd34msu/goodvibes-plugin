@@ -28,13 +28,10 @@ import type { HooksState } from '../types/state.js';
  * @returns Object with `isDevServer` boolean and `errors` array of extracted error messages
  *
  * @example
- * const { isDevServer, errors } = handleBashTool(state, input);
- * if (isDevServer) {
- *   debug('Dev server started');
- * }
- * if (errors.length > 0) {
- *   debug('Errors detected:', errors);
- * }
+ * const result = handleBashTool(state, input);
+ * // => { isDevServer: true, errors: [] } (if dev server command like 'npm run dev')
+ * // OR
+ * // => { isDevServer: false, errors: ['Error: Cannot find module...'] } (if errors in output)
  */
 export function handleBashTool(
   state: HooksState,

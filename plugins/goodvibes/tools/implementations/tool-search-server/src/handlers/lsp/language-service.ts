@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 
 // =============================================================================
 // Types
@@ -41,11 +41,53 @@ interface CachedService {
 }
 
 // =============================================================================
+// Configuration
+// =============================================================================
+
+/**
+ * Get cache TTL from environment variable or use default.
+ *
+ * Environment variables (checked in order):
+ * - LSP_CACHE_TTL_MS: TTL in milliseconds (e.g., "600000" for 10 minutes)
+ * - LSP_CACHE_TTL_SECONDS: TTL in seconds (e.g., "600" for 10 minutes)
+ *
+ * Default: 5 minutes (300000ms)
+ * Minimum: 30 seconds (30000ms) - prevents excessive re-initialization
+ * Maximum: 1 hour (3600000ms) - prevents stale cache issues
+ */
+function getCacheTTL(): number {
+  const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  const MIN_TTL_MS = 30 * 1000;         // 30 seconds minimum
+  const MAX_TTL_MS = 60 * 60 * 1000;    // 1 hour maximum
+
+  // Check for milliseconds env var first
+  const ttlMsEnv = process.env.LSP_CACHE_TTL_MS;
+  if (ttlMsEnv) {
+    const parsed = parseInt(ttlMsEnv, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return Math.min(Math.max(parsed, MIN_TTL_MS), MAX_TTL_MS);
+    }
+  }
+
+  // Check for seconds env var
+  const ttlSecondsEnv = process.env.LSP_CACHE_TTL_SECONDS;
+  if (ttlSecondsEnv) {
+    const parsed = parseInt(ttlSecondsEnv, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      const ttlMs = parsed * 1000;
+      return Math.min(Math.max(ttlMs, MIN_TTL_MS), MAX_TTL_MS);
+    }
+  }
+
+  return DEFAULT_TTL_MS;
+}
+
+// =============================================================================
 // Constants
 // =============================================================================
 
-/** Cache TTL in milliseconds (5 minutes) */
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/** Cache TTL in milliseconds - configurable via LSP_CACHE_TTL_MS or LSP_CACHE_TTL_SECONDS env vars */
+const CACHE_TTL_MS = getCacheTTL();
 
 /** Default compiler options when no tsconfig is found */
 const DEFAULT_COMPILER_OPTIONS: ts.CompilerOptions = {
@@ -84,7 +126,8 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
     if (path.isAbsolute(filePath)) {
       absolutePath = filePath;
     } else {
-      const projectRoot = this.findProjectRoot(PROJECT_ROOT) || PROJECT_ROOT;
+      const currentProjectRoot = getProjectRoot();
+      const projectRoot = this.findProjectRoot(currentProjectRoot) || currentProjectRoot;
       absolutePath = path.resolve(projectRoot, filePath);
     }
 
@@ -347,7 +390,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
         if (configPath) {
           return path.dirname(configPath);
         }
-        return PROJECT_ROOT;
+        return getProjectRoot();
       },
       getCompilationSettings: () => compilerOptions,
       getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),

@@ -12,6 +12,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import merge from 'lodash/merge.js';
 import { fileExists } from '../shared/file-utils.js';
 import { respond, readHookInput, debug, logError, isTestEnvironment, } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
@@ -21,26 +22,14 @@ import { processFileAutomation } from './file-automation.js';
 import { handleDetectStack, handleRecommendSkills, handleSearch, handleValidateImplementation, handleRunSmokeTest, handleCheckTypes, } from './mcp-handlers.js';
 import { createResponse, combineMessages } from './response.js';
 /**
- * Deep merge two objects
- */
-function deepMerge(target, source) {
-    const result = { ...target };
-    for (const key in source) {
-        if (source[key] &&
-            typeof source[key] === 'object' &&
-            !Array.isArray(source[key])) {
-            result[key] = deepMerge(result[key], source[key]);
-        }
-        else if (source[key] !== undefined) {
-            result[key] = source[key];
-        }
-    }
-    return result;
-}
-/**
  * Load automation configuration from .goodvibes/automation.json if it exists,
  * otherwise return default config from types/config.ts.
  * This provides build/test/git automation settings.
+ *
+ * Uses lodash merge for deep merging of nested configuration objects.
+ * Arrays are merged by index (lodash default behavior), which matches
+ * the previous custom implementation's array replacement behavior for
+ * typical config use cases where arrays don't overlap by index.
  */
 async function loadAutomationConfig(cwd) {
     const configPath = path.join(cwd, '.goodvibes', 'automation.json');
@@ -52,7 +41,8 @@ async function loadAutomationConfig(cwd) {
         const content = await fs.readFile(configPath, 'utf-8');
         const userConfig = JSON.parse(content);
         if (typeof userConfig === 'object' && userConfig !== null) {
-            return deepMerge(defaults, userConfig);
+            // Use lodash merge for deep merging - mutates first argument, so spread defaults
+            return merge({}, defaults, userConfig);
         }
         return defaults;
     }

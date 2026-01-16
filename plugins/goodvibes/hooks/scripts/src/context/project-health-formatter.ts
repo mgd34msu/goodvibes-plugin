@@ -4,7 +4,7 @@
  * Formats project health analysis results for display in context output.
  */
 
-import type { ProjectHealth, HealthWarning } from './project-health.js';
+import type { ProjectHealth, HealthWarning } from './project-health-types.js';
 
 /**
  * Maximum number of suggestions to return.

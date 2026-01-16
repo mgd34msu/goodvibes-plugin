@@ -61,8 +61,12 @@ export interface FormattedContext {
  *
  * @example
  * const formatted = formatContext(context);
- * debug(formatted.summary); // "Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes"
- * debug(formatted.full); // Full multi-section report
+ * // => {
+ * //   full: '# Project Context\n\n## Tech Stack\nStack: Next.js, TypeScript...',
+ * //   summary: 'Next.js + TypeScript + Tailwind CSS | 3 uncommitted changes',
+ * //   hasIssues: true,
+ * //   issueCount: 2
+ * // }
  */
 export function formatContext(context: GatheredContext): FormattedContext {
   const sections: string[] = [];
@@ -170,7 +174,7 @@ export function formatContext(context: GatheredContext): FormattedContext {
  *
  * @example
  * const minimal = formatMinimalContext(context);
- * // Returns: "Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)"
+ * // => 'Stack: Next.js, TypeScript | Branch: main | 2 health warning(s)'
  */
 export function formatMinimalContext(context: GatheredContext): string {
   const parts: string[] = [];

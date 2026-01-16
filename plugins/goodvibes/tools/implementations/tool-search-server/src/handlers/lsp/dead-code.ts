@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -368,7 +368,7 @@ export async function handleFindDeadCode(args: FindDeadCodeArgs): Promise<ToolRe
     // Resolve the path
     const absolutePath = path.isAbsolute(targetPath)
       ? targetPath
-      : path.resolve(PROJECT_ROOT, targetPath);
+      : path.resolve(getProjectRoot(), targetPath);
 
     // Determine if it's a file or directory
     let filesToAnalyze: string[];
@@ -433,7 +433,7 @@ export async function handleFindDeadCode(args: FindDeadCodeArgs): Promise<ToolRe
         // If no external references, it's dead code
         if (external === 0) {
           deadExports.push({
-            file: makeRelativePath(exp.file, PROJECT_ROOT),
+            file: makeRelativePath(exp.file, getProjectRoot()),
             name: exp.name,
             kind: exp.kind,
             line: exp.line,

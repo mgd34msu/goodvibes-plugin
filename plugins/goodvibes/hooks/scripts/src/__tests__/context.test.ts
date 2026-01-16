@@ -5,9 +5,8 @@
 import { exec, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
-import * as _path from 'path';
 
-import { describe, it, expect, vi, beforeEach, _beforeAll, _afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock fs, fs/promises, and child_process
 vi.mock('fs');

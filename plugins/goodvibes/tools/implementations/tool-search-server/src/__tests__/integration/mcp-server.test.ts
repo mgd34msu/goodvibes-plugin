@@ -28,7 +28,7 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 }));
 
 import { sampleSkillsRegistry, sampleAgentsRegistry, sampleToolsRegistry } from '../setup.js';
-import { TOOL_SCHEMAS } from '../../tool-schemas.js';
+import { TOOL_SCHEMAS } from '../../schemas/index.js';
 import { createContext } from '../../context.js';
 
 describe('MCP Server Integration', () => {

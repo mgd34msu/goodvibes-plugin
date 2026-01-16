@@ -10,6 +10,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PROJECT_ROOT } from '../../config.js';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  type ToolResponse,
+} from '../response-utils.js';
 
 // =============================================================================
 // Types
@@ -45,37 +50,6 @@ interface FindCircularDepsResult {
   count: number;
   /** All files involved in at least one cycle */
   affected_files: string[];
-}
-
-/**
- * Standard MCP tool response format.
- */
-interface ToolResponse {
-  content: Array<{ type: 'text'; text: string }>;
-  isError?: boolean;
-}
-
-// =============================================================================
-// Response Helpers
-// =============================================================================
-
-/**
- * Create a successful MCP tool response with JSON content.
- */
-function createSuccessResponse<T>(data: T): ToolResponse {
-  return {
-    content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-  };
-}
-
-/**
- * Create an error MCP tool response.
- */
-function createErrorResponse(message: string): ToolResponse {
-  return {
-    content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }],
-    isError: true,
-  };
 }
 
 // =============================================================================

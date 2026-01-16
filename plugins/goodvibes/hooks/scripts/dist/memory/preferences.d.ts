@@ -13,9 +13,10 @@ import type { MemoryPreference } from '../types/memory.js';
  *
  * @example
  * const preferences = await readPreferences('/path/to/project');
- * for (const pref of preferences) {
- *   debug(`${pref.key}: ${pref.value}`);
- * }
+ * // => [
+ * //   { key: 'code-style', value: 'functional', date: '2024-01-04', notes: '...' },
+ * //   { key: 'test-framework', value: 'vitest', date: '2024-01-03', notes: '...' }
+ * // ]
  */
 export declare function readPreferences(cwd: string): Promise<MemoryPreference[]>;
 /**
@@ -35,5 +36,6 @@ export declare function readPreferences(cwd: string): Promise<MemoryPreference[]
  *   date: '2024-01-04',
  *   notes: 'Prefer functional components over class components'
  * });
+ * // => undefined (preference appended to preferences.md)
  */
 export declare function writePreference(cwd: string, preference: MemoryPreference): Promise<void>;

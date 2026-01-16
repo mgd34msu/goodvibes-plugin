@@ -12,7 +12,7 @@ import { execSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -112,7 +112,7 @@ function getChangedFiles(
     // Get list of changed files
     const filesOutput = execSync(
       `git diff --name-status ${beforeRef}..${afterRef} ${pathArg}`,
-      { cwd: PROJECT_ROOT, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
+      { cwd: getProjectRoot(), encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
     );
 
     const changedFiles: ChangedFile[] = [];
@@ -132,7 +132,7 @@ function getChangedFiles(
       try {
         diff = execSync(
           `git diff ${beforeRef}..${afterRef} -- "${file}"`,
-          { cwd: PROJECT_ROOT, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
+          { cwd: getProjectRoot(), encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
         );
       } catch {
         // File might not exist in one of the refs
@@ -158,7 +158,7 @@ function getChangedFiles(
 function getFileAtRef(file: string, ref: string): string | null {
   try {
     return execSync(`git show ${ref}:"${file}"`, {
-      cwd: PROJECT_ROOT,
+      cwd: getProjectRoot(),
       encoding: 'utf-8',
       maxBuffer: 10 * 1024 * 1024,
     });
@@ -180,7 +180,7 @@ async function extractTypeInfo(filePath: string): Promise<FileTypeInfo> {
   try {
     const absolutePath = path.isAbsolute(filePath)
       ? filePath
-      : path.resolve(PROJECT_ROOT, filePath);
+      : path.resolve(getProjectRoot(), filePath);
 
     if (!fs.existsSync(absolutePath)) {
       return { file: filePath, symbols };
@@ -244,7 +244,7 @@ async function extractTypeInfoFromContent(
   originalPath: string,
   content: string
 ): Promise<FileTypeInfo> {
-  const tempDir = path.join(PROJECT_ROOT, '.goodvibes-temp');
+  const tempDir = path.join(getProjectRoot(), '.goodvibes-temp');
   const tempFile = path.join(tempDir, path.basename(originalPath));
 
   try {
@@ -379,7 +379,7 @@ If there are no relevant API changes, return empty arrays and severity "none".`;
   return new Promise((resolve, reject) => {
     // Use stdin to pass prompt (avoids shell length limits with large diffs)
     const claudeProcess = spawn('claude', ['--print', '--model', model, '-p', '-'], {
-      cwd: PROJECT_ROOT,
+      cwd: getProjectRoot(),
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -488,8 +488,8 @@ export async function handleDetectBreakingChanges(
   try {
     // Verify git is available and refs exist
     try {
-      execSync(`git rev-parse ${beforeRef}`, { cwd: PROJECT_ROOT, stdio: 'pipe' });
-      execSync(`git rev-parse ${afterRef}`, { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      execSync(`git rev-parse ${beforeRef}`, { cwd: getProjectRoot(), stdio: 'pipe' });
+      execSync(`git rev-parse ${afterRef}`, { cwd: getProjectRoot(), stdio: 'pipe' });
     } catch {
       return createErrorResponse(`Invalid git refs: ${beforeRef} or ${afterRef}`);
     }
@@ -539,14 +539,14 @@ export async function handleDetectBreakingChanges(
     result.breaking_changes = result.breaking_changes.map(change => ({
       ...change,
       file: change.file.startsWith('/')
-        ? makeRelativePath(change.file, PROJECT_ROOT)
+        ? makeRelativePath(change.file, getProjectRoot())
         : change.file,
     }));
 
     result.non_breaking_changes = result.non_breaking_changes.map(change => ({
       ...change,
       file: change.file.startsWith('/')
-        ? makeRelativePath(change.file, PROJECT_ROOT)
+        ? makeRelativePath(change.file, getProjectRoot())
         : change.file,
     }));
 

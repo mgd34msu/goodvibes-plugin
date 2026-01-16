@@ -21,7 +21,11 @@ export { generateErrorSignature, shouldEscalatePhase, escalatePhase, hasExhauste
  *
  * @example
  * const category = categorizeError('npm ERR! ERESOLVE could not resolve');
- * // Returns: 'npm_install'
+ * // => 'npm_install'
+ *
+ * @example
+ * const category = categorizeError("TS2322: Type 'string' is not assignable");
+ * // => 'typescript_error'
  */
 export declare function categorizeError(errorMessage: string): ErrorCategory;
 /**
@@ -34,7 +38,15 @@ export declare function categorizeError(errorMessage: string): ErrorCategory;
  *
  * @example
  * const state = createErrorState('hash123', 'typescript_error');
- * // Returns initialized error state ready for fix tracking
+ * // => {
+ * //   signature: 'hash123',
+ * //   category: 'typescript_error',
+ * //   phase: 1,
+ * //   attemptsThisPhase: 0,
+ * //   totalAttempts: 0,
+ * //   officialDocsSearched: [],
+ * //   ...
+ * // }
  */
 export declare function createErrorState(signature: string, category: ErrorCategory): ErrorState;
 /**
@@ -48,6 +60,6 @@ export declare function createErrorState(signature: string, category: ErrorCateg
  *
  * @example
  * const context = buildFixContext(errorState, 'Cannot find module...');
- * // Returns multi-line string with phase, error, docs, and history
+ * // => '[GoodVibes Fix Loop - Phase 1/3]\nError: Cannot find module...\nAttempt: 1 this phase\n...'
  */
 export declare function buildFixContext(state: ErrorState, error: string): string;

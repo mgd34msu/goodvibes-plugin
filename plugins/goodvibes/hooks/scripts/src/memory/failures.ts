@@ -32,9 +32,10 @@ Reference this to avoid repeating unsuccessful strategies.
  *
  * @example
  * const failures = await readFailures('/path/to/project');
- * for (const failure of failures) {
- *   debug(`Avoid: ${failure.approach} - ${failure.reason}`);
- * }
+ * // => [
+ * //   { approach: 'Direct DOM manipulation', date: '2024-01-04', reason: 'Conflicts with React', ... },
+ * //   { approach: 'Global state', date: '2024-01-03', reason: 'Race conditions', ... }
+ * // ]
  */
 export async function readFailures(cwd: string): Promise<MemoryFailure[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
@@ -76,6 +77,7 @@ export async function readFailures(cwd: string): Promise<MemoryFailure[]> {
  *   context: 'Tried to optimize performance',
  *   suggestion: 'Use refs or state management instead'
  * });
+ * // => undefined (failure appended to failures.md)
  */
 export async function writeFailure(
   cwd: string,

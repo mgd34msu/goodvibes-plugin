@@ -22,9 +22,9 @@ import type { ErrorState, ErrorCategory } from '../types/errors.js';
  *
  * @example
  * const pattern = findMatchingPattern('typescript_error', "Type 'string' is not assignable to type 'number'");
- * if (pattern) {
- *   debug(pattern.suggestedFix);  // 'Run `npx tsc --noEmit`...'
- * }
+ * // => { category: 'type_error', severity: 'high', suggestedFix: 'Run `npx tsc --noEmit`...', ... }
+ * // OR
+ * // => null (if no pattern matches)
  */
 export function findMatchingPattern(
   category: ErrorCategory,
@@ -65,7 +65,7 @@ export function findMatchingPattern(
  *
  * @example
  * const patterns = findAllMatchingPatterns('Error: Cannot find module "foo"');
- * // May return both 'missing_import' and 'npm_error' patterns
+ * // => [{ category: 'missing_import', ... }, { category: 'npm_error', ... }]
  */
 export function findAllMatchingPatterns(error: string): RecoveryPattern[] {
   const matches: RecoveryPattern[] = [];
@@ -90,11 +90,9 @@ export function findAllMatchingPatterns(error: string): RecoveryPattern[] {
  * @returns The highest ErrorSeverity found, or 'low' if array is empty
  *
  * @example
- * const patterns = findAllMatchingPatterns(errorMessage);
  * const severity = getHighestSeverity(patterns);
- * if (severity === 'critical') {
- *   debug('Immediate attention required');
- * }
+ * // => 'critical' (highest severity among all patterns)
+ * // => 'low' (if no patterns provided)
  */
 export function getHighestSeverity(patterns: RecoveryPattern[]): ErrorSeverity {
   const severityOrder: ErrorSeverity[] = ['low', 'medium', 'high', 'critical'];
@@ -124,7 +122,7 @@ export function getHighestSeverity(patterns: RecoveryPattern[]): ErrorSeverity {
  *
  * @example
  * const fix = getSuggestedFix('npm_install', 'Module not found: lodash', errorState);
- * debug(fix);  // 'Run `npm install` to ensure all dependencies...'
+ * // => 'Run `npm install` to ensure all dependencies...'
  */
 export function getSuggestedFix(
   category: ErrorCategory,

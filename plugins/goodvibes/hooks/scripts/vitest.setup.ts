@@ -1,12 +1,13 @@
-import { vi, beforeEach } from 'vitest';
-import { vol } from 'memfs';
 import * as os from 'os';
 import * as path from 'path';
+
+import { vol } from 'memfs';
+import { vi, beforeEach } from 'vitest';
 
 // Spy on process methods to mock them effectively
 // We use a no-op for chdir and a mock for exit that prevents actual exit
 vi.spyOn(process, 'chdir').mockImplementation(() => {});
-vi.spyOn(process, 'exit').mockImplementation((code?: number | string | null) => { return undefined as never; });
+vi.spyOn(process, 'exit').mockImplementation((_code?: number | string | null) => { return undefined as never; });
 
 // Mock fs and fs/promises using memfs
 // We import memfs inside the factory because vi.mock is hoisted above top-level imports
@@ -44,7 +45,7 @@ vi.mock('node:fs/promises', async () => {
 
 // Mock isTestEnvironment
 vi.mock('./shared/hook-io.js', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = await importOriginal();
   return {
     ...actual,
     isTestEnvironment: true,
@@ -52,7 +53,7 @@ vi.mock('./shared/hook-io.js', async (importOriginal) => {
 });
 
 // Helper to reset the virtual FS
-export function resetMockFs() {
+export function resetMockFs(): void {
   vol.reset();
   const cwd = process.cwd();
   const tmpDir = os.tmpdir();
@@ -83,7 +84,7 @@ export function resetMockFs() {
   // Ensure temp directory exists
   try {
     vol.mkdirSync(tmpDir, { recursive: true });
-  } catch (error) {
+  } catch {
     // Ignore if already exists or other non-critical error during setup
   }
 }

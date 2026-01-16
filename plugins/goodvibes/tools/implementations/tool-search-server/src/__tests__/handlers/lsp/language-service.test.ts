@@ -15,6 +15,9 @@ import ts from 'typescript';
 // Import the module to test the singleton behavior
 import { languageServiceManager } from '../../../handlers/lsp/language-service.js';
 
+// Mock console.warn to suppress expected warnings during tests
+vi.spyOn(console, 'warn').mockImplementation(() => {});
+
 describe('LanguageServiceManager', () => {
   let tempDir: string;
   let testFile: string;
@@ -34,6 +37,7 @@ describe('LanguageServiceManager', () => {
     }
     // Run cleanup to clear cached services
     languageServiceManager.cleanup();
+    vi.clearAllMocks();
   });
 
   describe('getServiceForFile', () => {

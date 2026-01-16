@@ -22,6 +22,20 @@ import type { ProjectIssuesResult, TodoItem } from '../../../handlers/issues/typ
 // Mock fs module
 vi.mock('fs');
 
+// Mock console.error to suppress expected error logging in tests
+const originalConsoleError = console.error;
+const mockConsoleError = vi.fn();
+
+// Setup and teardown for console mocking
+beforeEach(() => {
+  console.error = mockConsoleError;
+  mockConsoleError.mockClear();
+});
+
+afterEach(() => {
+  console.error = originalConsoleError;
+});
+
 // Type-safe mock helpers
 function createMockStats(options: { isDirectory: boolean }): fs.Stats {
   return {
@@ -53,6 +67,8 @@ function createMockDirent(name: string, options: { isDirectory: boolean; isFile?
 describe('environment-checker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return empty content for any file that might be read
+    vi.mocked(fs.readFileSync).mockReturnValue('');
   });
 
   afterEach(() => {
@@ -372,6 +388,8 @@ describe('formatter', () => {
 describe('todo-scanner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return valid empty content for any file that might be read
+    vi.mocked(fs.readFileSync).mockReturnValue('');
   });
 
   afterEach(() => {
@@ -568,6 +586,8 @@ describe('todo-scanner', () => {
 describe('health-checker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return valid empty JSON for any config file that might be read
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
   });
 
   afterEach(() => {

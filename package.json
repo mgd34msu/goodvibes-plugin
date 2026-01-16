@@ -1,0 +1,21 @@
+{
+  "name": "vibeplug",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VibePlug - Claude Code Plugin Framework",
+  "workspaces": [
+    "plugins/goodvibes",
+    "plugins/goodvibes/tools/implementations/tool-search-server",
+    "plugins/goodvibes/hooks/scripts"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=plugins/goodvibes",
+    "build:server": "npm run build --workspace=plugins/goodvibes/tools/implementations/tool-search-server",
+    "build:hooks": "npm run build --workspace=plugins/goodvibes/hooks/scripts",
+    "test": "npm run test --workspaces --if-present",
+    "postinstall": "echo 'Run npm run build to build all workspaces'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

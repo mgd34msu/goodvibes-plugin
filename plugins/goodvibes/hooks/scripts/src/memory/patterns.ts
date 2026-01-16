@@ -32,9 +32,10 @@ These patterns help maintain consistency across the codebase.
  *
  * @example
  * const patterns = await readPatterns('/path/to/project');
- * for (const pattern of patterns) {
- *   debug(`${pattern.name}: ${pattern.description}`);
- * }
+ * // => [
+ * //   { name: 'Repository Pattern', date: '2024-01-04', description: 'Use repository classes...', ... },
+ * //   { name: 'Error Boundary', date: '2024-01-03', description: 'Wrap components in...', ... }
+ * // ]
  */
 export async function readPatterns(cwd: string): Promise<MemoryPattern[]> {
   const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
@@ -76,6 +77,7 @@ export async function readPatterns(cwd: string): Promise<MemoryPattern[]> {
  *   example: 'class UserRepository { async findById(id) { ... } }',
  *   files: ['src/repositories/user.ts']
  * });
+ * // => undefined (pattern appended to patterns.md)
  */
 export async function writePattern(
   cwd: string,

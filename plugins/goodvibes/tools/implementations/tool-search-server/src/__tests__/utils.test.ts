@@ -46,10 +46,19 @@ import {
   sampleSkillContent,
 } from './setup.js';
 
-// Mock the fs/promises module
+// Mock the fs/promises module - use vi.hoisted to ensure mocks are available when factory runs
+const { mockAccess, mockReadFile } = vi.hoisted(() => ({
+  mockAccess: vi.fn(),
+  mockReadFile: vi.fn(),
+}));
+
 vi.mock('fs/promises', () => ({
-  access: vi.fn(),
-  readFile: vi.fn(),
+  default: {
+    access: mockAccess,
+    readFile: mockReadFile,
+  },
+  access: mockAccess,
+  readFile: mockReadFile,
 }));
 vi.mock('child_process', () => ({
   exec: vi.fn((cmd: string, opts: unknown, cb: (err: unknown, result: { stdout: string; stderr: string }) => void) => {
@@ -93,8 +102,8 @@ describe('utils', () => {
 
   describe('loadRegistry', () => {
     it('should load and parse a valid YAML registry', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(yaml.dump(sampleSkillsRegistry));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(yaml.dump(sampleSkillsRegistry));
 
       const result = await loadRegistry('skills/_registry.yaml');
 
@@ -104,17 +113,20 @@ describe('utils', () => {
     });
 
     it('should return null when registry file does not exist', async () => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const result = await loadRegistry('nonexistent/_registry.yaml');
 
       expect(result).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Registry not found'));
+      consoleSpy.mockRestore();
     });
 
     it('should return null and log error for invalid YAML', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue('invalid: yaml: content: [');
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue('invalid: yaml: content: [');
 
       const result = await loadRegistry('skills/_registry.yaml');
 
@@ -125,8 +137,8 @@ describe('utils', () => {
 
     it('should handle read errors gracefully', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Read error'));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockRejectedValue(new Error('Read error'));
 
       const result = await loadRegistry('skills/_registry.yaml');
 
@@ -235,8 +247,8 @@ describe('utils', () => {
 
   describe('readJsonFile', () => {
     it('should parse valid JSON file', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(JSON.stringify(samplePackageJson));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify(samplePackageJson));
 
       const result = await readJsonFile('/path/to/package.json');
 
@@ -244,7 +256,7 @@ describe('utils', () => {
     });
 
     it('should return null for non-existent file', async () => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const result = await readJsonFile('/path/to/nonexistent.json');
 
@@ -252,8 +264,8 @@ describe('utils', () => {
     });
 
     it('should return null for invalid JSON', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue('invalid json {');
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue('invalid json {');
 
       const result = await readJsonFile('/path/to/invalid.json');
 
@@ -261,8 +273,8 @@ describe('utils', () => {
     });
 
     it('should return null on read error', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Read error'));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockRejectedValue(new Error('Read error'));
 
       const result = await readJsonFile('/path/to/error.json');
 
@@ -363,7 +375,7 @@ describe('utils', () => {
 
   describe('detectPackageManager', () => {
     it('should detect pnpm by lock file', async () => {
-      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+      mockAccess.mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
         if (String(p).includes('pnpm-lock.yaml')) return Promise.resolve();
         return Promise.reject(new Error('ENOENT'));
       });
@@ -374,7 +386,7 @@ describe('utils', () => {
     });
 
     it('should detect yarn by lock file', async () => {
-      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+      mockAccess.mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
         if (String(p).includes('yarn.lock')) return Promise.resolve();
         return Promise.reject(new Error('ENOENT'));
       });
@@ -385,7 +397,7 @@ describe('utils', () => {
     });
 
     it('should detect bun by lock file', async () => {
-      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+      mockAccess.mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
         if (String(p).includes('bun.lockb')) return Promise.resolve();
         return Promise.reject(new Error('ENOENT'));
       });
@@ -396,7 +408,7 @@ describe('utils', () => {
     });
 
     it('should default to npm when no lock file found', async () => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const result = await detectPackageManager('/project');
 
@@ -404,7 +416,7 @@ describe('utils', () => {
     });
 
     it('should prioritize pnpm over other package managers', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined); // All lock files exist
+      mockAccess.mockResolvedValue(undefined); // All lock files exist
 
       const result = await detectPackageManager('/project');
 
@@ -629,15 +641,15 @@ describe('utils', () => {
 
   describe('parseSkillMetadata', () => {
     beforeEach(() => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
     });
 
     it('should parse YAML frontmatter from skill file', async () => {
-      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+      mockAccess.mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
         if (String(p).includes('SKILL.md')) return Promise.resolve();
         return Promise.reject(new Error('ENOENT'));
       });
-      vi.mocked(fsPromises.readFile).mockResolvedValue(sampleSkillContent);
+      mockReadFile.mockResolvedValue(sampleSkillContent);
 
       const result = await parseSkillMetadata('testing/react-testing');
 
@@ -649,7 +661,7 @@ describe('utils', () => {
     });
 
     it('should return empty object when skill file not found', async () => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const result = await parseSkillMetadata('nonexistent/skill');
 
@@ -658,7 +670,7 @@ describe('utils', () => {
 
     it('should try multiple file paths', async () => {
       const checkCalls: string[] = [];
-      vi.mocked(fsPromises.access).mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
+      mockAccess.mockImplementation((p: Parameters<typeof fsPromises.access>[0]) => {
         checkCalls.push(String(p));
         return Promise.reject(new Error('ENOENT'));
       });
@@ -670,8 +682,8 @@ describe('utils', () => {
     });
 
     it('should handle file read errors gracefully', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Read error'));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockRejectedValue(new Error('Read error'));
 
       const result = await parseSkillMetadata('error/skill');
 
@@ -679,8 +691,8 @@ describe('utils', () => {
     });
 
     it('should extract metadata from content when no frontmatter', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # React Testing
 
 Prerequisites:
@@ -701,8 +713,8 @@ This skill covers react testing with vitest.
     });
 
     it('should extract technology keywords from content', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Next.js with Prisma
 
 Build apps with Next.js and Prisma ORM using TypeScript.
@@ -716,8 +728,8 @@ Build apps with Next.js and Prisma ORM using TypeScript.
     });
 
     it('should use related field when complements is not an array', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`---
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`---
 name: Test Skill
 related:
   - related-skill-1
@@ -733,8 +745,8 @@ related:
     });
 
     it('should use tech field when technologies is not an array', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`---
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`---
 name: Test Skill
 tech:
   - react
@@ -750,9 +762,9 @@ tech:
     });
 
     it('should handle content sections with empty match results', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
       // Content has section headers but the match pattern returns null for items
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Prerequisites:
@@ -769,8 +781,8 @@ No actual list items here, just empty sections.
     });
 
     it('should return undefined for complements when neither complements nor related are arrays', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`---
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`---
 name: Test Skill
 complements: "not an array"
 related: "also not an array"
@@ -784,8 +796,8 @@ related: "also not an array"
     });
 
     it('should parse conflicts array from frontmatter', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`---
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`---
 name: Test Skill
 conflicts:
   - conflicting-skill-1
@@ -801,8 +813,8 @@ conflicts:
     });
 
     it('should return undefined for conflicts when not an array', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`---
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`---
 name: Test Skill
 conflicts: "not an array"
 ---
@@ -815,9 +827,9 @@ conflicts: "not an array"
     });
 
     it('should handle Prerequisites section with valid list items', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
       // Content has Prerequisites: header followed by valid list items
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Prerequisites:
@@ -835,9 +847,9 @@ More content here.
     });
 
     it('should handle Related section with valid list items', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
       // Content has Related: header followed by valid list items
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Related:
@@ -855,8 +867,8 @@ More content.
     });
 
     it('should use Dependencies section for requires', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Dependencies:
@@ -873,8 +885,8 @@ More content.
     });
 
     it('should use See also section for complements', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 See also:
@@ -891,8 +903,8 @@ More content.
     });
 
     it('should use Complements section for complements', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Complements:
@@ -963,12 +975,12 @@ async function nested() {
 
   describe('extractSkillPatterns', () => {
     beforeEach(() => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
     });
 
     it('should extract required imports from skill content', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(sampleSkillContent);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(sampleSkillContent);
 
       const result = await extractSkillPatterns('testing/react');
 
@@ -977,8 +989,8 @@ async function nested() {
     });
 
     it('should extract must not include patterns', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(sampleSkillContent);
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(sampleSkillContent);
 
       const result = await extractSkillPatterns('testing/react');
 
@@ -987,7 +999,7 @@ async function nested() {
     });
 
     it('should return empty object when skill not found', async () => {
-      vi.mocked(fsPromises.access).mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const result = await extractSkillPatterns('nonexistent/skill');
 
@@ -995,8 +1007,8 @@ async function nested() {
     });
 
     it('should extract imports from code blocks', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 \`\`\`typescript
@@ -1012,8 +1024,8 @@ import { expect } from 'vitest';
     });
 
     it('should not include relative imports', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 \`\`\`typescript
 import { Component } from './components';
 import { helper } from '../utils';
@@ -1031,8 +1043,8 @@ import { external } from 'external-package';
     it('should handle read errors gracefully and continue to next path', async () => {
       // File exists check passes but reading throws an error
       // This should trigger the catch block's continue statement
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Permission denied'));
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockRejectedValue(new Error('Permission denied'));
 
       const result = await extractSkillPatterns('error/skill');
 
@@ -1041,8 +1053,8 @@ import { external } from 'external-package';
     });
 
     it('should handle code blocks without imports', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 \`\`\`typescript
@@ -1059,9 +1071,9 @@ console.log(x + y);
     });
 
     it('should handle code blocks that exist but have empty length check', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
+      mockAccess.mockResolvedValue(undefined);
       // Content with code block markers but no actual blocks matched
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Just some text without proper code blocks.
@@ -1073,8 +1085,8 @@ Just some text without proper code blocks.
     });
 
     it('should skip imports that already exist in required_imports', async () => {
-      vi.mocked(fsPromises.access).mockResolvedValue(undefined);
-      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(`
 # Test Skill
 
 Required imports:

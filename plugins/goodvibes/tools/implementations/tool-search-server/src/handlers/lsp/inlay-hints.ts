@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import ts from 'typescript';
 
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -146,7 +146,7 @@ export async function handleGetInlayHints(
   }
 
   // Resolve file path
-  const filePath = resolveFilePath(args.file, PROJECT_ROOT);
+  const filePath = resolveFilePath(args.file, getProjectRoot());
 
   // Verify file exists
   if (!fs.existsSync(filePath)) {
@@ -238,7 +238,7 @@ export async function handleGetInlayHints(
 
     const result: InlayHintsResult = {
       hints,
-      file: makeRelativePath(filePath, PROJECT_ROOT),
+      file: makeRelativePath(filePath, getProjectRoot()),
       range: {
         start_line: startLine,
         end_line: endLine,

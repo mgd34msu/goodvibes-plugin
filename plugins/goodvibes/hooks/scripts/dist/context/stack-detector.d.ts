@@ -10,6 +10,7 @@
  *
  * @example
  * clearStackCache();
+ * // => undefined (cache is cleared)
  * const freshStack = await detectStack('/my-project'); // Will re-scan filesystem
  */
 export declare function clearStackCache(): void;
@@ -30,11 +31,12 @@ export interface StackInfo {
  *
  * @example
  * const stack = await detectStack('/my-project');
- * if (stack.frameworks.includes('Next.js')) {
- *   debug('Next.js project detected');
- * }
- * debug(`Package manager: ${stack.packageManager}`);
- * debug(`TypeScript strict mode: ${stack.isStrict}`);
+ * // => {
+ * //   frameworks: ['Next.js', 'TypeScript', 'Tailwind CSS'],
+ * //   packageManager: 'pnpm',
+ * //   hasTypeScript: true,
+ * //   isStrict: true
+ * // }
  */
 export declare function detectStack(cwd: string): Promise<StackInfo>;
 /**
@@ -46,6 +48,6 @@ export declare function detectStack(cwd: string): Promise<StackInfo>;
  *
  * @example
  * const formatted = formatStackInfo(stack);
- * // Returns: "Stack: Next.js, TypeScript, Tailwind CSS\nTypeScript: strict\nPackage Manager: pnpm"
+ * // => "Stack: Next.js, TypeScript, Tailwind CSS\nTypeScript: strict\nPackage Manager: pnpm"
  */
 export declare function formatStackInfo(info: StackInfo): string;

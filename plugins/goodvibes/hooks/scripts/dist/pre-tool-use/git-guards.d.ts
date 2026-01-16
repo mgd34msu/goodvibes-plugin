@@ -30,9 +30,9 @@ export interface GitGuardResult {
  *
  * @example
  * const result = await checkBranchGuard('git push --force origin main', '/repo', state);
- * if (!result.allowed) {
- *   debug(result.reason);
- * }
+ * // => { allowed: false, reason: 'Force push to main is not allowed' }
+ * // OR
+ * // => { allowed: true, warning: 'Force push detected - ensure this is intentional' }
  */
 export declare function checkBranchGuard(command: string, cwd: string, state: HooksState): Promise<GitGuardResult>;
 /**
@@ -45,9 +45,9 @@ export declare function checkBranchGuard(command: string, cwd: string, state: Ho
  *
  * @example
  * const result = checkMergeReadiness('/repo', state);
- * if (!result.allowed) {
- *   debug('Cannot merge:', result.reason);
- * }
+ * // => { allowed: true }
+ * // OR
+ * // => { allowed: false, reason: 'Cannot merge: 3 test files failing' }
  */
 export declare function checkMergeReadiness(_cwd: string, state: HooksState): GitGuardResult;
 /**
@@ -57,8 +57,10 @@ export declare function checkMergeReadiness(_cwd: string, state: HooksState): Gi
  * @returns True if the command starts with 'git', false otherwise
  *
  * @example
- * isGitCommand('git status');  // true
- * isGitCommand('npm install'); // false
+ * isGitCommand('git status');
+ * // => true
+ * isGitCommand('npm install');
+ * // => false
  */
 export declare function isGitCommand(command: string): boolean;
 /**
@@ -68,7 +70,9 @@ export declare function isGitCommand(command: string): boolean;
  * @returns True if the command contains 'git merge', false otherwise
  *
  * @example
- * isMergeCommand('git merge feature-branch'); // true
- * isMergeCommand('git status');               // false
+ * isMergeCommand('git merge feature-branch');
+ * // => true
+ * isMergeCommand('git status');
+ * // => false
  */
 export declare function isMergeCommand(command: string): boolean;

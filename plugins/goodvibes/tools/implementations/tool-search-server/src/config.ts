@@ -15,7 +15,8 @@ const getConfigDir = (): string => {
     return __dirname;
   }
   try {
-    // @ts-expect-error - import.meta only available in ESM
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - import.meta only available in ESM, may error in CJS context
     return dirname(fileURLToPath(import.meta.url));
   } catch {
     return process.cwd();
@@ -24,6 +25,14 @@ const getConfigDir = (): string => {
 
 export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), '../../..');
 export const PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+
+/**
+ * Get current PROJECT_ROOT dynamically.
+ * Useful for cases where process.env.PROJECT_ROOT may change at runtime (e.g., tests).
+ */
+export function getProjectRoot(): string {
+  return process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+}
 
 export const FUSE_OPTIONS: IFuseOptions<RegistryEntry> = {
   keys: [

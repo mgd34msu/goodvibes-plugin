@@ -10,9 +10,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { ToolResponse } from '../types.js';
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../config.js';
 import { safeExec, detectPackageManager } from '../utils.js';
+import {
+  createSuccessResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Arguments for the scaffold_project MCP tool
@@ -240,21 +243,16 @@ export async function handleScaffoldProject(args: ScaffoldProjectArgs): Promise<
 
   nextSteps.push('npm run dev');
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        success: true,
-        template: args.template,
-        output_dir: args.output_dir,
-        created_files: createdFiles,
-        variables_applied: variables,
-        post_create_results: postCreateResults,
-        recommended_skills: templateConfig.required_skills || [],
-        next_steps: nextSteps,
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    success: true,
+    template: args.template,
+    output_dir: args.output_dir,
+    created_files: createdFiles,
+    variables_applied: variables,
+    post_create_results: postCreateResults,
+    recommended_skills: templateConfig.required_skills || [],
+    next_steps: nextSteps,
+  });
 }
 
 /**
@@ -296,14 +294,9 @@ export async function handleListTemplates(args: ListTemplatesArgs): Promise<Tool
     templates = templates.filter(t => t.category === args.category);
   }
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        templates,
-        total: templates.length,
-        categories: ['minimal', 'full'],
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    templates,
+    total: templates.length,
+    categories: ['minimal', 'full'],
+  });
 }

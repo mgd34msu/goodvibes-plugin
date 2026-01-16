@@ -79,9 +79,15 @@ async function directoryExists(dirPath: string): Promise<boolean> {
  *
  * @example
  * const context = await getGitContext('/my-repo');
- * if (context.isRepo && context.hasUncommittedChanges) {
- *   debug(`${context.uncommittedFileCount} uncommitted files`);
- * }
+ * // => {
+ * //   isRepo: true,
+ * //   branch: 'main',
+ * //   hasUncommittedChanges: true,
+ * //   uncommittedFileCount: 3,
+ * //   lastCommit: 'fix: bug (2 hours ago)',
+ * //   recentCommits: ['- fix: bug', '- feat: new feature'],
+ * //   aheadBehind: { ahead: 2, behind: 0 }
+ * // }
  */
 export async function getGitContext(cwd: string): Promise<GitContext> {
   const gitDir = path.join(cwd, '.git');
@@ -136,7 +142,7 @@ export async function getGitContext(cwd: string): Promise<GitContext> {
  *
  * @example
  * const formatted = formatGitContext(context);
- * // Returns: "Git: main branch, 3 uncommitted files, 2 ahead\nLast: \"fix: bug\" (2 hours ago)"
+ * // => 'Git: main branch, 3 uncommitted files, 2 ahead\nLast: "fix: bug (2 hours ago)"'
  */
 export function formatGitContext(context: GitContext): string {
   if (!context.isRepo) {

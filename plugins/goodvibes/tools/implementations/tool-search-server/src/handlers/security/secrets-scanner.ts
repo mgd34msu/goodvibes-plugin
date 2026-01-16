@@ -25,6 +25,10 @@ export interface ScanForSecretsArgs {
   path?: string;
   include_staged?: boolean;
   severity_threshold?: SecretSeverity;
+  /** Maximum directory depth to scan (default: 10, configurable via SECRETS_SCAN_MAX_DEPTH env var) */
+  max_depth?: number;
+  /** Stop scanning after first match if true - useful for presence checks (default: false) */
+  check_presence_only?: boolean;
 }
 
 /**
@@ -347,13 +351,49 @@ function isScannable(filePath: string): boolean {
 }
 
 /**
+ * Get the default max depth from environment variable or use 10.
+ *
+ * Environment variable: SECRETS_SCAN_MAX_DEPTH
+ * Default: 10
+ * Minimum: 1
+ * Maximum: 50
+ */
+function getDefaultMaxDepth(): number {
+  const DEFAULT_DEPTH = 10;
+  const MIN_DEPTH = 1;
+  const MAX_DEPTH = 50;
+
+  const envDepth = process.env.SECRETS_SCAN_MAX_DEPTH;
+  if (envDepth) {
+    const parsed = parseInt(envDepth, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return Math.min(Math.max(parsed, MIN_DEPTH), MAX_DEPTH);
+    }
+  }
+
+  return DEFAULT_DEPTH;
+}
+
+/**
  * Recursively gets all files in a directory
  *
  * @param dirPath - Directory to scan
  * @param files - Accumulator for found files
+ * @param currentDepth - Current recursion depth (0-indexed)
+ * @param maxDepth - Maximum depth to recurse (default: 10)
  * @returns Array of file paths
  */
-async function getFilesRecursively(dirPath: string, files: string[] = []): Promise<string[]> {
+async function getFilesRecursively(
+  dirPath: string,
+  files: string[] = [],
+  currentDepth: number = 0,
+  maxDepth: number = getDefaultMaxDepth()
+): Promise<string[]> {
+  // Stop if we've reached the maximum depth
+  if (currentDepth >= maxDepth) {
+    return files;
+  }
+
   try {
     const entries = await fsPromises.readdir(dirPath, { withFileTypes: true });
 
@@ -365,13 +405,15 @@ async function getFilesRecursively(dirPath: string, files: string[] = []): Promi
       }
 
       if (entry.isDirectory()) {
-        await getFilesRecursively(fullPath, files);
+        await getFilesRecursively(fullPath, files, currentDepth + 1, maxDepth);
       } else if (entry.isFile() && isScannable(fullPath)) {
         files.push(fullPath);
       }
     }
-  } catch {
-    // Directory may not exist or be inaccessible
+  } catch (error: unknown) {
+    // Directory may not exist or be inaccessible - log for debugging
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[secrets-scanner] Could not read directory ${dirPath}: ${message}`);
   }
 
   return files;
@@ -398,13 +440,27 @@ async function getStagedFiles(projectPath: string): Promise<string[]> {
 }
 
 /**
+ * Result type for scanFile that supports early exit
+ */
+interface ScanFileResult {
+  findings: SecretFinding[];
+  /** True if scanning was stopped early (early exit optimization) */
+  stoppedEarly: boolean;
+}
+
+/**
  * Scans a single file for secrets
  *
  * @param filePath - Path to the file
  * @param projectRoot - Project root for relative paths
- * @returns Array of findings
+ * @param earlyExit - If true, stop after first match (for presence-only checks)
+ * @returns Object with findings array and stoppedEarly flag
  */
-async function scanFile(filePath: string, projectRoot: string): Promise<SecretFinding[]> {
+async function scanFile(
+  filePath: string,
+  projectRoot: string,
+  earlyExit: boolean = false
+): Promise<ScanFileResult> {
   const findings: SecretFinding[] = [];
 
   try {
@@ -440,14 +496,21 @@ async function scanFile(filePath: string, projectRoot: string): Promise<SecretFi
             preview: redactSecret(matchValue),
             recommendation: pattern.recommendation,
           });
+
+          // Early exit optimization: stop after first real match
+          if (earlyExit) {
+            return { findings, stoppedEarly: true };
+          }
         }
       }
     }
-  } catch {
-    // File may be binary or inaccessible
+  } catch (error: unknown) {
+    // File may be binary or inaccessible - log for debugging
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[secrets-scanner] Could not read file ${filePath}: ${message}`);
   }
 
-  return findings;
+  return { findings, stoppedEarly: false };
 }
 
 /**
@@ -542,6 +605,8 @@ function filterBySeverity(findings: SecretFinding[], threshold: SecretSeverity):
  * @param args.path - Directory to scan (defaults to PROJECT_ROOT)
  * @param args.include_staged - Whether to include git staged files (default: true)
  * @param args.severity_threshold - Minimum severity to report (default: 'low')
+ * @param args.max_depth - Maximum directory depth (default: 10, configurable via SECRETS_SCAN_MAX_DEPTH)
+ * @param args.check_presence_only - Stop after first match for faster presence checks (default: false)
  * @returns MCP tool response with findings and summary
  *
  * @example
@@ -551,14 +616,22 @@ function filterBySeverity(findings: SecretFinding[], threshold: SecretSeverity):
  * //   count: 1,
  * //   by_severity: { high: 1, medium: 0, low: 0 }
  * // }
+ *
+ * @example
+ * // Fast presence check - stops after first secret found
+ * await handleScanForSecrets({ check_presence_only: true });
+ * // Returns: { has_secrets: true, findings: [...first match only...], ... }
  */
 export async function handleScanForSecrets(args: ScanForSecretsArgs): Promise<ToolResponse> {
   const scanPath = path.resolve(PROJECT_ROOT, args.path || '.');
   const includeStagedFiles = args.include_staged !== false;
   const severityThreshold = args.severity_threshold || 'low';
+  const maxDepth = args.max_depth ?? getDefaultMaxDepth();
+  const checkPresenceOnly = args.check_presence_only === true;
 
   let allFindings: SecretFinding[] = [];
   const scannedFiles = new Set<string>();
+  let stoppedEarly = false;
 
   // Check if scan path exists
   if (!await fileExists(scanPath)) {
@@ -576,12 +649,12 @@ export async function handleScanForSecrets(args: ScanForSecretsArgs): Promise<To
     };
   }
 
-  // Get files to scan
+  // Get files to scan (with configurable depth)
   const stats = await fsPromises.stat(scanPath);
   let filesToScan: string[] = [];
 
   if (stats.isDirectory()) {
-    filesToScan = await getFilesRecursively(scanPath);
+    filesToScan = await getFilesRecursively(scanPath, [], 0, maxDepth);
   } else if (stats.isFile()) {
     filesToScan = [scanPath];
   }
@@ -593,15 +666,21 @@ export async function handleScanForSecrets(args: ScanForSecretsArgs): Promise<To
     filesToScan = Array.from(new Set(allFiles));
   }
 
-  // Scan all files
+  // Scan all files (with early exit support for presence-only checks)
   for (const filePath of filesToScan) {
     if (scannedFiles.has(filePath)) {
       continue;
     }
     scannedFiles.add(filePath);
 
-    const findings = await scanFile(filePath, PROJECT_ROOT);
-    allFindings.push(...findings);
+    const result = await scanFile(filePath, PROJECT_ROOT, checkPresenceOnly);
+    allFindings.push(...result.findings);
+
+    // Early exit: stop scanning more files if we found a secret in presence-only mode
+    if (checkPresenceOnly && result.stoppedEarly) {
+      stoppedEarly = true;
+      break;
+    }
   }
 
   // Filter by severity threshold
@@ -624,16 +703,26 @@ export async function handleScanForSecrets(args: ScanForSecretsArgs): Promise<To
     low: allFindings.filter(f => f.severity === 'low').length,
   };
 
+  // Build response object
+  const response: Record<string, unknown> = {
+    findings: allFindings,
+    count: allFindings.length,
+    by_severity: bySeverity,
+    files_scanned: scannedFiles.size,
+    scan_path: path.relative(PROJECT_ROOT, scanPath) || '.',
+    max_depth: maxDepth,
+  };
+
+  // Add presence-only mode specific fields
+  if (checkPresenceOnly) {
+    response.has_secrets = allFindings.length > 0;
+    response.stopped_early = stoppedEarly;
+  }
+
   return {
     content: [{
       type: 'text',
-      text: JSON.stringify({
-        findings: allFindings,
-        count: allFindings.length,
-        by_severity: bySeverity,
-        files_scanned: scannedFiles.size,
-        scan_path: path.relative(PROJECT_ROOT, scanPath) || '.',
-      }, null, 2),
+      text: JSON.stringify(response, null, 2),
     }],
   };
 }

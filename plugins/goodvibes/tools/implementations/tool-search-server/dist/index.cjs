@@ -1516,8 +1516,8 @@ var require_dataType = __commonJS({
       return types2;
     }
     exports2.getSchemaTypes = getSchemaTypes;
-    function getJSONTypes(ts28) {
-      const types2 = Array.isArray(ts28) ? ts28 : ts28 ? [ts28] : [];
+    function getJSONTypes(ts46) {
+      const types2 = Array.isArray(ts46) ? ts46 : ts46 ? [ts46] : [];
       if (types2.every(rules_1.isJSONType))
         return types2;
       throw new Error("type must be JSONType or JSONType[]: " + types2.join(","));
@@ -2559,18 +2559,18 @@ var require_validate = __commonJS({
       });
       narrowSchemaTypes(it, types2);
     }
-    function checkMultipleTypes(it, ts28) {
-      if (ts28.length > 1 && !(ts28.length === 2 && ts28.includes("null"))) {
+    function checkMultipleTypes(it, ts46) {
+      if (ts46.length > 1 && !(ts46.length === 2 && ts46.includes("null"))) {
         strictTypesError(it, "use allowUnionTypes to allow union type keyword");
       }
     }
-    function checkKeywordTypes(it, ts28) {
+    function checkKeywordTypes(it, ts46) {
       const rules = it.self.RULES.all;
       for (const keyword in rules) {
         const rule = rules[keyword];
         if (typeof rule == "object" && (0, applicability_1.shouldUseRule)(it.schema, rule)) {
           const { type: type2 } = rule.definition;
-          if (type2.length && !type2.some((t) => hasApplicableType(ts28, t))) {
+          if (type2.length && !type2.some((t) => hasApplicableType(ts46, t))) {
             strictTypesError(it, `missing type "${type2.join(",")}" for keyword "${keyword}"`);
           }
         }
@@ -2579,18 +2579,18 @@ var require_validate = __commonJS({
     function hasApplicableType(schTs, kwdT) {
       return schTs.includes(kwdT) || kwdT === "number" && schTs.includes("integer");
     }
-    function includesType(ts28, t) {
-      return ts28.includes(t) || t === "integer" && ts28.includes("number");
+    function includesType(ts46, t) {
+      return ts46.includes(t) || t === "integer" && ts46.includes("number");
     }
     function narrowSchemaTypes(it, withTypes) {
-      const ts28 = [];
+      const ts46 = [];
       for (const t of it.dataTypes) {
         if (includesType(withTypes, t))
-          ts28.push(t);
+          ts46.push(t);
         else if (withTypes.includes("integer") && t === "number")
-          ts28.push("integer");
+          ts46.push("integer");
       }
-      it.dataTypes = ts28;
+      it.dataTypes = ts46;
     }
     function strictTypesError(it, msg) {
       const schemaPath = it.schemaEnv.baseId + it.errSchemaPath;
@@ -3225,8 +3225,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path81) {
-      let input = path81;
+    function removeDotSegments(path84) {
+      let input = path84;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3425,8 +3425,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path81, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path81 && path81 !== "/" ? path81 : void 0;
+        const [path84, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path84 && path84 !== "/" ? path84 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -9441,7 +9441,7 @@ var init_js_yaml = __esm({
 // node_modules/typescript/lib/typescript.js
 var require_typescript = __commonJS({
   "node_modules/typescript/lib/typescript.js"(exports2, module2) {
-    var ts28 = {};
+    var ts46 = {};
     ((module3) => {
       "use strict";
       var __defProp2 = Object.defineProperty;
@@ -17312,17 +17312,17 @@ ${lanes.join("\n")}
       }
       function createSingleWatcherPerName(cache, useCaseSensitiveFileNames2, name, callback, createWatcher) {
         const toCanonicalFileName = createGetCanonicalFileName(useCaseSensitiveFileNames2);
-        const path81 = toCanonicalFileName(name);
-        const existing = cache.get(path81);
+        const path84 = toCanonicalFileName(name);
+        const existing = cache.get(path84);
         if (existing) {
           existing.callbacks.push(callback);
         } else {
-          cache.set(path81, {
+          cache.set(path84, {
             watcher: createWatcher(
               // Cant infer types correctly so lets satisfy checker
               (param1, param2, param3) => {
                 var _a2;
-                return (_a2 = cache.get(path81)) == null ? void 0 : _a2.callbacks.slice().forEach((cb) => cb(param1, param2, param3));
+                return (_a2 = cache.get(path84)) == null ? void 0 : _a2.callbacks.slice().forEach((cb) => cb(param1, param2, param3));
               }
             ),
             callbacks: [callback]
@@ -17330,10 +17330,10 @@ ${lanes.join("\n")}
         }
         return {
           close: () => {
-            const watcher = cache.get(path81);
+            const watcher = cache.get(path84);
             if (!watcher) return;
             if (!orderedRemoveItem(watcher.callbacks, callback) || watcher.callbacks.length) return;
-            cache.delete(path81);
+            cache.delete(path84);
             closeFileWatcherOf(watcher);
           }
         };
@@ -17585,13 +17585,13 @@ ${lanes.join("\n")}
             (newChildWatches || (newChildWatches = [])).push(childWatcher);
           }
         }
-        function isIgnoredPath(path81, options) {
-          return some(ignoredPaths, (searchPath) => isInPath(path81, searchPath)) || isIgnoredByWatchOptions(path81, options, useCaseSensitiveFileNames2, getCurrentDirectory);
+        function isIgnoredPath(path84, options) {
+          return some(ignoredPaths, (searchPath) => isInPath(path84, searchPath)) || isIgnoredByWatchOptions(path84, options, useCaseSensitiveFileNames2, getCurrentDirectory);
         }
-        function isInPath(path81, searchPath) {
-          if (path81.includes(searchPath)) return true;
+        function isInPath(path84, searchPath) {
+          if (path84.includes(searchPath)) return true;
           if (useCaseSensitiveFileNames2) return false;
-          return toCanonicalFilePath(path81).includes(searchPath);
+          return toCanonicalFilePath(path84).includes(searchPath);
         }
       }
       var FileSystemEntryKind = /* @__PURE__ */ ((FileSystemEntryKind2) => {
@@ -17969,8 +17969,8 @@ ${lanes.join("\n")}
       }
       function patchWriteFileEnsuringDirectory(sys2) {
         const originalWriteFile = sys2.writeFile;
-        sys2.writeFile = (path81, data, writeBom) => writeFileEnsuringDirectories(
-          path81,
+        sys2.writeFile = (path84, data, writeBom) => writeFileEnsuringDirectories(
+          path84,
           data,
           !!writeBom,
           (path210, data2, writeByteOrderMark) => originalWriteFile.call(sys2, path210, data2, writeByteOrderMark),
@@ -18014,7 +18014,7 @@ ${lanes.join("\n")}
             // Node 4.0 `fs.watch` function supports the "recursive" option on both OSX and Windows
             // (ref: https://github.com/nodejs/node/pull/2649 and https://github.com/Microsoft/TypeScript/issues/4643)
             fsSupportsRecursiveFsWatch,
-            getAccessibleSortedChildDirectories: (path81) => getAccessibleFileSystemEntries(path81).directories,
+            getAccessibleSortedChildDirectories: (path84) => getAccessibleFileSystemEntries(path84).directories,
             realpath,
             tscWatchFile: process.env.TSC_WATCHFILE,
             useNonPollingWatchers: !!process.env.TSC_NONPOLLING_WATCHER,
@@ -18041,7 +18041,7 @@ ${lanes.join("\n")}
             watchFile: watchFile2,
             watchDirectory,
             preferNonRecursiveWatch: !fsSupportsRecursiveFsWatch,
-            resolvePath: (path81) => _path.resolve(path81),
+            resolvePath: (path84) => _path.resolve(path84),
             fileExists: fileExists2,
             directoryExists,
             getAccessibleFileSystemEntries,
@@ -18076,8 +18076,8 @@ ${lanes.join("\n")}
               }
               return process.memoryUsage().heapUsed;
             },
-            getFileSize(path81) {
-              const stat4 = statSync7(path81);
+            getFileSize(path84) {
+              const stat4 = statSync7(path84);
               if (stat4 == null ? void 0 : stat4.isFile()) {
                 return stat4.size;
               }
@@ -18121,14 +18121,14 @@ ${lanes.join("\n")}
             }
           };
           return nodeSystem;
-          function statSync7(path81) {
+          function statSync7(path84) {
             try {
-              return _fs.statSync(path81, statSyncOptions);
+              return _fs.statSync(path84, statSyncOptions);
             } catch {
               return void 0;
             }
           }
-          function enableCPUProfiler(path81, cb) {
+          function enableCPUProfiler(path84, cb) {
             if (activeSession) {
               cb();
               return false;
@@ -18143,7 +18143,7 @@ ${lanes.join("\n")}
             session.post("Profiler.enable", () => {
               session.post("Profiler.start", () => {
                 activeSession = session;
-                profilePath = path81;
+                profilePath = path84;
                 cb();
               });
             });
@@ -18287,9 +18287,9 @@ ${lanes.join("\n")}
               }
             }
           }
-          function getAccessibleFileSystemEntries(path81) {
+          function getAccessibleFileSystemEntries(path84) {
             try {
-              const entries = _fs.readdirSync(path81 || ".", { withFileTypes: true });
+              const entries = _fs.readdirSync(path84 || ".", { withFileTypes: true });
               const files = [];
               const directories = [];
               for (const dirent of entries) {
@@ -18299,7 +18299,7 @@ ${lanes.join("\n")}
                 }
                 let stat4;
                 if (typeof dirent === "string" || dirent.isSymbolicLink()) {
-                  const name = combinePaths(path81, entry);
+                  const name = combinePaths(path84, entry);
                   stat4 = statSync7(name);
                   if (!stat4) {
                     continue;
@@ -18320,11 +18320,11 @@ ${lanes.join("\n")}
               return emptyFileSystemEntries;
             }
           }
-          function readDirectory(path81, extensions, excludes, includes, depth) {
-            return matchFiles(path81, extensions, excludes, includes, useCaseSensitiveFileNames2, process.cwd(), depth, getAccessibleFileSystemEntries, realpath);
+          function readDirectory(path84, extensions, excludes, includes, depth) {
+            return matchFiles(path84, extensions, excludes, includes, useCaseSensitiveFileNames2, process.cwd(), depth, getAccessibleFileSystemEntries, realpath);
           }
-          function fileSystemEntryExists(path81, entryKind) {
-            const stat4 = statSync7(path81);
+          function fileSystemEntryExists(path84, entryKind) {
+            const stat4 = statSync7(path84);
             if (!stat4) {
               return false;
             }
@@ -18337,47 +18337,47 @@ ${lanes.join("\n")}
                 return false;
             }
           }
-          function fileExists2(path81) {
+          function fileExists2(path84) {
             return fileSystemEntryExists(
-              path81,
+              path84,
               0
               /* File */
             );
           }
-          function directoryExists(path81) {
+          function directoryExists(path84) {
             return fileSystemEntryExists(
-              path81,
+              path84,
               1
               /* Directory */
             );
           }
-          function getDirectories(path81) {
-            return getAccessibleFileSystemEntries(path81).directories.slice();
+          function getDirectories(path84) {
+            return getAccessibleFileSystemEntries(path84).directories.slice();
           }
-          function fsRealPathHandlingLongPath(path81) {
-            return path81.length < 260 ? _fs.realpathSync.native(path81) : _fs.realpathSync(path81);
+          function fsRealPathHandlingLongPath(path84) {
+            return path84.length < 260 ? _fs.realpathSync.native(path84) : _fs.realpathSync(path84);
           }
-          function realpath(path81) {
+          function realpath(path84) {
             try {
-              return fsRealpath(path81);
+              return fsRealpath(path84);
             } catch {
-              return path81;
+              return path84;
             }
           }
-          function getModifiedTime3(path81) {
+          function getModifiedTime3(path84) {
             var _a2;
-            return (_a2 = statSync7(path81)) == null ? void 0 : _a2.mtime;
+            return (_a2 = statSync7(path84)) == null ? void 0 : _a2.mtime;
           }
-          function setModifiedTime(path81, time3) {
+          function setModifiedTime(path84, time3) {
             try {
-              _fs.utimesSync(path81, time3, time3);
+              _fs.utimesSync(path84, time3, time3);
             } catch {
               return;
             }
           }
-          function deleteFile(path81) {
+          function deleteFile(path84) {
             try {
-              return _fs.unlinkSync(path81);
+              return _fs.unlinkSync(path84);
             } catch {
               return;
             }
@@ -18417,41 +18417,41 @@ ${lanes.join("\n")}
       function isAnyDirectorySeparator(charCode) {
         return charCode === 47 || charCode === 92;
       }
-      function isUrl(path81) {
-        return getEncodedRootLength(path81) < 0;
+      function isUrl(path84) {
+        return getEncodedRootLength(path84) < 0;
       }
-      function isRootedDiskPath(path81) {
-        return getEncodedRootLength(path81) > 0;
+      function isRootedDiskPath(path84) {
+        return getEncodedRootLength(path84) > 0;
       }
-      function isDiskPathRoot(path81) {
-        const rootLength = getEncodedRootLength(path81);
-        return rootLength > 0 && rootLength === path81.length;
+      function isDiskPathRoot(path84) {
+        const rootLength = getEncodedRootLength(path84);
+        return rootLength > 0 && rootLength === path84.length;
       }
-      function pathIsAbsolute(path81) {
-        return getEncodedRootLength(path81) !== 0;
+      function pathIsAbsolute(path84) {
+        return getEncodedRootLength(path84) !== 0;
       }
-      function pathIsRelative(path81) {
-        return /^\.\.?(?:$|[\\/])/.test(path81);
+      function pathIsRelative(path84) {
+        return /^\.\.?(?:$|[\\/])/.test(path84);
       }
-      function pathIsBareSpecifier(path81) {
-        return !pathIsAbsolute(path81) && !pathIsRelative(path81);
+      function pathIsBareSpecifier(path84) {
+        return !pathIsAbsolute(path84) && !pathIsRelative(path84);
       }
       function hasExtension(fileName) {
         return getBaseFileName(fileName).includes(".");
       }
-      function fileExtensionIs(path81, extension) {
-        return path81.length > extension.length && endsWith(path81, extension);
+      function fileExtensionIs(path84, extension) {
+        return path84.length > extension.length && endsWith(path84, extension);
       }
-      function fileExtensionIsOneOf(path81, extensions) {
+      function fileExtensionIsOneOf(path84, extensions) {
         for (const extension of extensions) {
-          if (fileExtensionIs(path81, extension)) {
+          if (fileExtensionIs(path84, extension)) {
             return true;
           }
         }
         return false;
       }
-      function hasTrailingDirectorySeparator(path81) {
-        return path81.length > 0 && isAnyDirectorySeparator(path81.charCodeAt(path81.length - 1));
+      function hasTrailingDirectorySeparator(path84) {
+        return path84.length > 0 && isAnyDirectorySeparator(path84.charCodeAt(path84.length - 1));
       }
       function isVolumeCharacter(charCode) {
         return charCode >= 97 && charCode <= 122 || charCode >= 65 && charCode <= 90;
@@ -18465,111 +18465,111 @@ ${lanes.join("\n")}
         }
         return -1;
       }
-      function getEncodedRootLength(path81) {
-        if (!path81) return 0;
-        const ch0 = path81.charCodeAt(0);
+      function getEncodedRootLength(path84) {
+        if (!path84) return 0;
+        const ch0 = path84.charCodeAt(0);
         if (ch0 === 47 || ch0 === 92) {
-          if (path81.charCodeAt(1) !== ch0) return 1;
-          const p1 = path81.indexOf(ch0 === 47 ? directorySeparator : altDirectorySeparator, 2);
-          if (p1 < 0) return path81.length;
+          if (path84.charCodeAt(1) !== ch0) return 1;
+          const p1 = path84.indexOf(ch0 === 47 ? directorySeparator : altDirectorySeparator, 2);
+          if (p1 < 0) return path84.length;
           return p1 + 1;
         }
-        if (isVolumeCharacter(ch0) && path81.charCodeAt(1) === 58) {
-          const ch2 = path81.charCodeAt(2);
+        if (isVolumeCharacter(ch0) && path84.charCodeAt(1) === 58) {
+          const ch2 = path84.charCodeAt(2);
           if (ch2 === 47 || ch2 === 92) return 3;
-          if (path81.length === 2) return 2;
+          if (path84.length === 2) return 2;
         }
-        const schemeEnd = path81.indexOf(urlSchemeSeparator);
+        const schemeEnd = path84.indexOf(urlSchemeSeparator);
         if (schemeEnd !== -1) {
           const authorityStart = schemeEnd + urlSchemeSeparator.length;
-          const authorityEnd = path81.indexOf(directorySeparator, authorityStart);
+          const authorityEnd = path84.indexOf(directorySeparator, authorityStart);
           if (authorityEnd !== -1) {
-            const scheme = path81.slice(0, schemeEnd);
-            const authority = path81.slice(authorityStart, authorityEnd);
-            if (scheme === "file" && (authority === "" || authority === "localhost") && isVolumeCharacter(path81.charCodeAt(authorityEnd + 1))) {
-              const volumeSeparatorEnd = getFileUrlVolumeSeparatorEnd(path81, authorityEnd + 2);
+            const scheme = path84.slice(0, schemeEnd);
+            const authority = path84.slice(authorityStart, authorityEnd);
+            if (scheme === "file" && (authority === "" || authority === "localhost") && isVolumeCharacter(path84.charCodeAt(authorityEnd + 1))) {
+              const volumeSeparatorEnd = getFileUrlVolumeSeparatorEnd(path84, authorityEnd + 2);
               if (volumeSeparatorEnd !== -1) {
-                if (path81.charCodeAt(volumeSeparatorEnd) === 47) {
+                if (path84.charCodeAt(volumeSeparatorEnd) === 47) {
                   return ~(volumeSeparatorEnd + 1);
                 }
-                if (volumeSeparatorEnd === path81.length) {
+                if (volumeSeparatorEnd === path84.length) {
                   return ~volumeSeparatorEnd;
                 }
               }
             }
             return ~(authorityEnd + 1);
           }
-          return ~path81.length;
+          return ~path84.length;
         }
         return 0;
       }
-      function getRootLength(path81) {
-        const rootLength = getEncodedRootLength(path81);
+      function getRootLength(path84) {
+        const rootLength = getEncodedRootLength(path84);
         return rootLength < 0 ? ~rootLength : rootLength;
       }
-      function getDirectoryPath(path81) {
-        path81 = normalizeSlashes(path81);
-        const rootLength = getRootLength(path81);
-        if (rootLength === path81.length) return path81;
-        path81 = removeTrailingDirectorySeparator(path81);
-        return path81.slice(0, Math.max(rootLength, path81.lastIndexOf(directorySeparator)));
+      function getDirectoryPath(path84) {
+        path84 = normalizeSlashes(path84);
+        const rootLength = getRootLength(path84);
+        if (rootLength === path84.length) return path84;
+        path84 = removeTrailingDirectorySeparator(path84);
+        return path84.slice(0, Math.max(rootLength, path84.lastIndexOf(directorySeparator)));
       }
-      function getBaseFileName(path81, extensions, ignoreCase) {
-        path81 = normalizeSlashes(path81);
-        const rootLength = getRootLength(path81);
-        if (rootLength === path81.length) return "";
-        path81 = removeTrailingDirectorySeparator(path81);
-        const name = path81.slice(Math.max(getRootLength(path81), path81.lastIndexOf(directorySeparator) + 1));
+      function getBaseFileName(path84, extensions, ignoreCase) {
+        path84 = normalizeSlashes(path84);
+        const rootLength = getRootLength(path84);
+        if (rootLength === path84.length) return "";
+        path84 = removeTrailingDirectorySeparator(path84);
+        const name = path84.slice(Math.max(getRootLength(path84), path84.lastIndexOf(directorySeparator) + 1));
         const extension = extensions !== void 0 && ignoreCase !== void 0 ? getAnyExtensionFromPath(name, extensions, ignoreCase) : void 0;
         return extension ? name.slice(0, name.length - extension.length) : name;
       }
-      function tryGetExtensionFromPath(path81, extension, stringEqualityComparer) {
+      function tryGetExtensionFromPath(path84, extension, stringEqualityComparer) {
         if (!startsWith(extension, ".")) extension = "." + extension;
-        if (path81.length >= extension.length && path81.charCodeAt(path81.length - extension.length) === 46) {
-          const pathExtension = path81.slice(path81.length - extension.length);
+        if (path84.length >= extension.length && path84.charCodeAt(path84.length - extension.length) === 46) {
+          const pathExtension = path84.slice(path84.length - extension.length);
           if (stringEqualityComparer(pathExtension, extension)) {
             return pathExtension;
           }
         }
       }
-      function getAnyExtensionFromPathWorker(path81, extensions, stringEqualityComparer) {
+      function getAnyExtensionFromPathWorker(path84, extensions, stringEqualityComparer) {
         if (typeof extensions === "string") {
-          return tryGetExtensionFromPath(path81, extensions, stringEqualityComparer) || "";
+          return tryGetExtensionFromPath(path84, extensions, stringEqualityComparer) || "";
         }
         for (const extension of extensions) {
-          const result = tryGetExtensionFromPath(path81, extension, stringEqualityComparer);
+          const result = tryGetExtensionFromPath(path84, extension, stringEqualityComparer);
           if (result) return result;
         }
         return "";
       }
-      function getAnyExtensionFromPath(path81, extensions, ignoreCase) {
+      function getAnyExtensionFromPath(path84, extensions, ignoreCase) {
         if (extensions) {
-          return getAnyExtensionFromPathWorker(removeTrailingDirectorySeparator(path81), extensions, ignoreCase ? equateStringsCaseInsensitive : equateStringsCaseSensitive);
+          return getAnyExtensionFromPathWorker(removeTrailingDirectorySeparator(path84), extensions, ignoreCase ? equateStringsCaseInsensitive : equateStringsCaseSensitive);
         }
-        const baseFileName = getBaseFileName(path81);
+        const baseFileName = getBaseFileName(path84);
         const extensionIndex = baseFileName.lastIndexOf(".");
         if (extensionIndex >= 0) {
           return baseFileName.substring(extensionIndex);
         }
         return "";
       }
-      function pathComponents(path81, rootLength) {
-        const root = path81.substring(0, rootLength);
-        const rest = path81.substring(rootLength).split(directorySeparator);
+      function pathComponents(path84, rootLength) {
+        const root = path84.substring(0, rootLength);
+        const rest = path84.substring(rootLength).split(directorySeparator);
         if (rest.length && !lastOrUndefined(rest)) rest.pop();
         return [root, ...rest];
       }
-      function getPathComponents(path81, currentDirectory = "") {
-        path81 = combinePaths(currentDirectory, path81);
-        return pathComponents(path81, getRootLength(path81));
+      function getPathComponents(path84, currentDirectory = "") {
+        path84 = combinePaths(currentDirectory, path84);
+        return pathComponents(path84, getRootLength(path84));
       }
       function getPathFromPathComponents(pathComponents2, length2) {
         if (pathComponents2.length === 0) return "";
         const root = pathComponents2[0] && ensureTrailingDirectorySeparator(pathComponents2[0]);
         return root + pathComponents2.slice(1, length2).join(directorySeparator);
       }
-      function normalizeSlashes(path81) {
-        return path81.includes("\\") ? path81.replace(backslashRegExp, directorySeparator) : path81;
+      function normalizeSlashes(path84) {
+        return path84.includes("\\") ? path84.replace(backslashRegExp, directorySeparator) : path84;
       }
       function reducePathComponents(components) {
         if (!some(components)) return [];
@@ -18590,39 +18590,39 @@ ${lanes.join("\n")}
         }
         return reduced;
       }
-      function combinePaths(path81, ...paths) {
-        if (path81) path81 = normalizeSlashes(path81);
+      function combinePaths(path84, ...paths) {
+        if (path84) path84 = normalizeSlashes(path84);
         for (let relativePath of paths) {
           if (!relativePath) continue;
           relativePath = normalizeSlashes(relativePath);
-          if (!path81 || getRootLength(relativePath) !== 0) {
-            path81 = relativePath;
+          if (!path84 || getRootLength(relativePath) !== 0) {
+            path84 = relativePath;
           } else {
-            path81 = ensureTrailingDirectorySeparator(path81) + relativePath;
+            path84 = ensureTrailingDirectorySeparator(path84) + relativePath;
           }
         }
-        return path81;
+        return path84;
       }
-      function resolvePath(path81, ...paths) {
-        return normalizePath(some(paths) ? combinePaths(path81, ...paths) : normalizeSlashes(path81));
+      function resolvePath(path84, ...paths) {
+        return normalizePath(some(paths) ? combinePaths(path84, ...paths) : normalizeSlashes(path84));
       }
-      function getNormalizedPathComponents(path81, currentDirectory) {
-        return reducePathComponents(getPathComponents(path81, currentDirectory));
+      function getNormalizedPathComponents(path84, currentDirectory) {
+        return reducePathComponents(getPathComponents(path84, currentDirectory));
       }
-      function getNormalizedAbsolutePath(path81, currentDirectory) {
-        let rootLength = getRootLength(path81);
+      function getNormalizedAbsolutePath(path84, currentDirectory) {
+        let rootLength = getRootLength(path84);
         if (rootLength === 0 && currentDirectory) {
-          path81 = combinePaths(currentDirectory, path81);
-          rootLength = getRootLength(path81);
+          path84 = combinePaths(currentDirectory, path84);
+          rootLength = getRootLength(path84);
         } else {
-          path81 = normalizeSlashes(path81);
+          path84 = normalizeSlashes(path84);
         }
-        const simpleNormalized = simpleNormalizePath(path81);
+        const simpleNormalized = simpleNormalizePath(path84);
         if (simpleNormalized !== void 0) {
           return simpleNormalized.length > rootLength ? removeTrailingDirectorySeparator(simpleNormalized) : simpleNormalized;
         }
-        const length2 = path81.length;
-        const root = path81.substring(0, rootLength);
+        const length2 = path84.length;
+        const root = path84.substring(0, rootLength);
         let normalized;
         let index = rootLength;
         let segmentStart = index;
@@ -18630,23 +18630,23 @@ ${lanes.join("\n")}
         let seenNonDotDotSegment = rootLength !== 0;
         while (index < length2) {
           segmentStart = index;
-          let ch = path81.charCodeAt(index);
+          let ch = path84.charCodeAt(index);
           while (ch === 47 && index + 1 < length2) {
             index++;
-            ch = path81.charCodeAt(index);
+            ch = path84.charCodeAt(index);
           }
           if (index > segmentStart) {
-            normalized ?? (normalized = path81.substring(0, segmentStart - 1));
+            normalized ?? (normalized = path84.substring(0, segmentStart - 1));
             segmentStart = index;
           }
-          let segmentEnd = path81.indexOf(directorySeparator, index + 1);
+          let segmentEnd = path84.indexOf(directorySeparator, index + 1);
           if (segmentEnd === -1) {
             segmentEnd = length2;
           }
           const segmentLength = segmentEnd - segmentStart;
-          if (segmentLength === 1 && path81.charCodeAt(index) === 46) {
-            normalized ?? (normalized = path81.substring(0, normalizedUpTo));
-          } else if (segmentLength === 2 && path81.charCodeAt(index) === 46 && path81.charCodeAt(index + 1) === 46) {
+          if (segmentLength === 1 && path84.charCodeAt(index) === 46) {
+            normalized ?? (normalized = path84.substring(0, normalizedUpTo));
+          } else if (segmentLength === 2 && path84.charCodeAt(index) === 46 && path84.charCodeAt(index + 1) === 46) {
             if (!seenNonDotDotSegment) {
               if (normalized !== void 0) {
                 normalized += normalized.length === rootLength ? ".." : "/..";
@@ -18655,9 +18655,9 @@ ${lanes.join("\n")}
               }
             } else if (normalized === void 0) {
               if (normalizedUpTo - 2 >= 0) {
-                normalized = path81.substring(0, Math.max(rootLength, path81.lastIndexOf(directorySeparator, normalizedUpTo - 2)));
+                normalized = path84.substring(0, Math.max(rootLength, path84.lastIndexOf(directorySeparator, normalizedUpTo - 2)));
               } else {
-                normalized = path81.substring(0, normalizedUpTo);
+                normalized = path84.substring(0, normalizedUpTo);
               }
             } else {
               const lastSlash = normalized.lastIndexOf(directorySeparator);
@@ -18675,36 +18675,36 @@ ${lanes.join("\n")}
               normalized += directorySeparator;
             }
             seenNonDotDotSegment = true;
-            normalized += path81.substring(segmentStart, segmentEnd);
+            normalized += path84.substring(segmentStart, segmentEnd);
           } else {
             seenNonDotDotSegment = true;
             normalizedUpTo = segmentEnd;
           }
           index = segmentEnd + 1;
         }
-        return normalized ?? (length2 > rootLength ? removeTrailingDirectorySeparator(path81) : path81);
+        return normalized ?? (length2 > rootLength ? removeTrailingDirectorySeparator(path84) : path84);
       }
-      function normalizePath(path81) {
-        path81 = normalizeSlashes(path81);
-        let normalized = simpleNormalizePath(path81);
+      function normalizePath(path84) {
+        path84 = normalizeSlashes(path84);
+        let normalized = simpleNormalizePath(path84);
         if (normalized !== void 0) {
           return normalized;
         }
-        normalized = getNormalizedAbsolutePath(path81, "");
-        return normalized && hasTrailingDirectorySeparator(path81) ? ensureTrailingDirectorySeparator(normalized) : normalized;
+        normalized = getNormalizedAbsolutePath(path84, "");
+        return normalized && hasTrailingDirectorySeparator(path84) ? ensureTrailingDirectorySeparator(normalized) : normalized;
       }
-      function simpleNormalizePath(path81) {
-        if (!relativePathSegmentRegExp.test(path81)) {
-          return path81;
+      function simpleNormalizePath(path84) {
+        if (!relativePathSegmentRegExp.test(path84)) {
+          return path84;
         }
-        let simplified = path81.replace(/\/\.\//g, "/");
+        let simplified = path84.replace(/\/\.\//g, "/");
         if (simplified.startsWith("./")) {
           simplified = simplified.slice(2);
         }
-        if (simplified !== path81) {
-          path81 = simplified;
-          if (!relativePathSegmentRegExp.test(path81)) {
-            return path81;
+        if (simplified !== path84) {
+          path84 = simplified;
+          if (!relativePathSegmentRegExp.test(path84)) {
+            return path84;
           }
         }
         return void 0;
@@ -18720,31 +18720,31 @@ ${lanes.join("\n")}
         const nonCanonicalizedPath = isRootedDiskPath(fileName) ? normalizePath(fileName) : getNormalizedAbsolutePath(fileName, basePath);
         return getCanonicalFileName(nonCanonicalizedPath);
       }
-      function removeTrailingDirectorySeparator(path81) {
-        if (hasTrailingDirectorySeparator(path81)) {
-          return path81.substr(0, path81.length - 1);
+      function removeTrailingDirectorySeparator(path84) {
+        if (hasTrailingDirectorySeparator(path84)) {
+          return path84.substr(0, path84.length - 1);
         }
-        return path81;
+        return path84;
       }
-      function ensureTrailingDirectorySeparator(path81) {
-        if (!hasTrailingDirectorySeparator(path81)) {
-          return path81 + directorySeparator;
+      function ensureTrailingDirectorySeparator(path84) {
+        if (!hasTrailingDirectorySeparator(path84)) {
+          return path84 + directorySeparator;
         }
-        return path81;
+        return path84;
       }
-      function ensurePathIsNonModuleName(path81) {
-        return !pathIsAbsolute(path81) && !pathIsRelative(path81) ? "./" + path81 : path81;
+      function ensurePathIsNonModuleName(path84) {
+        return !pathIsAbsolute(path84) && !pathIsRelative(path84) ? "./" + path84 : path84;
       }
-      function changeAnyExtension(path81, ext, extensions, ignoreCase) {
-        const pathext = extensions !== void 0 && ignoreCase !== void 0 ? getAnyExtensionFromPath(path81, extensions, ignoreCase) : getAnyExtensionFromPath(path81);
-        return pathext ? path81.slice(0, path81.length - pathext.length) + (startsWith(ext, ".") ? ext : "." + ext) : path81;
+      function changeAnyExtension(path84, ext, extensions, ignoreCase) {
+        const pathext = extensions !== void 0 && ignoreCase !== void 0 ? getAnyExtensionFromPath(path84, extensions, ignoreCase) : getAnyExtensionFromPath(path84);
+        return pathext ? path84.slice(0, path84.length - pathext.length) + (startsWith(ext, ".") ? ext : "." + ext) : path84;
       }
-      function changeFullExtension(path81, newExtension) {
-        const declarationExtension = getDeclarationFileExtension(path81);
+      function changeFullExtension(path84, newExtension) {
+        const declarationExtension = getDeclarationFileExtension(path84);
         if (declarationExtension) {
-          return path81.slice(0, path81.length - declarationExtension.length) + (startsWith(newExtension, ".") ? newExtension : "." + newExtension);
+          return path84.slice(0, path84.length - declarationExtension.length) + (startsWith(newExtension, ".") ? newExtension : "." + newExtension);
         }
-        return changeAnyExtension(path81, newExtension);
+        return changeAnyExtension(path84, newExtension);
       }
       var relativePathSegmentRegExp = /\/\/|(?:^|\/)\.\.?(?:$|\/)/;
       function comparePathsWorker(a, b, componentComparer) {
@@ -30197,8 +30197,8 @@ ${lanes.join("\n")}
       function getResolvedExternalModuleName(host, file2, referenceFile) {
         return file2.moduleName || getExternalModuleNameFromPath(host, file2.fileName, referenceFile && referenceFile.fileName);
       }
-      function getCanonicalAbsolutePath(host, path81) {
-        return host.getCanonicalFileName(getNormalizedAbsolutePath(path81, host.getCurrentDirectory()));
+      function getCanonicalAbsolutePath(host, path84) {
+        return host.getCanonicalFileName(getNormalizedAbsolutePath(path84, host.getCurrentDirectory()));
       }
       function getExternalModuleNameFromDeclaration(host, resolver, declaration) {
         const file2 = resolver.getExternalModuleFileFromDeclaration(declaration);
@@ -30241,20 +30241,20 @@ ${lanes.join("\n")}
       }
       function getDeclarationEmitOutputFilePathWorker(fileName, options, host) {
         const outputDir = options.declarationDir || options.outDir;
-        const path81 = outputDir ? getSourceFilePathInNewDirWorker(fileName, outputDir, host.getCurrentDirectory(), host.getCommonSourceDirectory(), (f) => host.getCanonicalFileName(f)) : fileName;
-        const declarationExtension = getDeclarationEmitExtensionForPath(path81);
-        return removeFileExtension(path81) + declarationExtension;
+        const path84 = outputDir ? getSourceFilePathInNewDirWorker(fileName, outputDir, host.getCurrentDirectory(), host.getCommonSourceDirectory(), (f) => host.getCanonicalFileName(f)) : fileName;
+        const declarationExtension = getDeclarationEmitExtensionForPath(path84);
+        return removeFileExtension(path84) + declarationExtension;
       }
-      function getDeclarationEmitExtensionForPath(path81) {
-        return fileExtensionIsOneOf(path81, [
+      function getDeclarationEmitExtensionForPath(path84) {
+        return fileExtensionIsOneOf(path84, [
           ".mjs",
           ".mts"
           /* Mts */
-        ]) ? ".d.mts" : fileExtensionIsOneOf(path81, [
+        ]) ? ".d.mts" : fileExtensionIsOneOf(path84, [
           ".cjs",
           ".cts"
           /* Cts */
-        ]) ? ".d.cts" : fileExtensionIsOneOf(path81, [
+        ]) ? ".d.cts" : fileExtensionIsOneOf(path84, [
           ".json"
           /* Json */
         ]) ? `.d.json.ts` : (
@@ -30262,8 +30262,8 @@ ${lanes.join("\n")}
           ".d.ts"
         );
       }
-      function getPossibleOriginalInputExtensionForExtension(path81) {
-        return fileExtensionIsOneOf(path81, [
+      function getPossibleOriginalInputExtensionForExtension(path84) {
+        return fileExtensionIsOneOf(path84, [
           ".d.mts",
           ".mjs",
           ".mts"
@@ -30272,7 +30272,7 @@ ${lanes.join("\n")}
           ".mts",
           ".mjs"
           /* Mjs */
-        ] : fileExtensionIsOneOf(path81, [
+        ] : fileExtensionIsOneOf(path84, [
           ".d.cts",
           ".cjs",
           ".cts"
@@ -30281,7 +30281,7 @@ ${lanes.join("\n")}
           ".cts",
           ".cjs"
           /* Cjs */
-        ] : fileExtensionIsOneOf(path81, [`.d.json.ts`]) ? [
+        ] : fileExtensionIsOneOf(path84, [`.d.json.ts`]) ? [
           ".json"
           /* Json */
         ] : [
@@ -30366,12 +30366,12 @@ ${lanes.join("\n")}
           createDirectory(directoryPath);
         }
       }
-      function writeFileEnsuringDirectories(path81, data, writeByteOrderMark, writeFile22, createDirectory, directoryExists) {
+      function writeFileEnsuringDirectories(path84, data, writeByteOrderMark, writeFile22, createDirectory, directoryExists) {
         try {
-          writeFile22(path81, data, writeByteOrderMark);
+          writeFile22(path84, data, writeByteOrderMark);
         } catch {
-          ensureDirectoriesExist(getDirectoryPath(normalizePath(path81)), createDirectory, directoryExists);
-          writeFile22(path81, data, writeByteOrderMark);
+          ensureDirectoriesExist(getDirectoryPath(normalizePath(path84)), createDirectory, directoryExists);
+          writeFile22(path84, data, writeByteOrderMark);
         }
       }
       function getLineOfLocalPosition(sourceFile, pos) {
@@ -31071,20 +31071,20 @@ ${lanes.join("\n")}
         }
         return getStringFromExpandedCharCodes(expandedCharCodes);
       }
-      function readJsonOrUndefined(path81, hostOrText) {
-        const jsonText = isString2(hostOrText) ? hostOrText : hostOrText.readFile(path81);
+      function readJsonOrUndefined(path84, hostOrText) {
+        const jsonText = isString2(hostOrText) ? hostOrText : hostOrText.readFile(path84);
         if (!jsonText) return void 0;
         let result = tryParseJson(jsonText);
         if (result === void 0) {
-          const looseResult = parseConfigFileTextToJson(path81, jsonText);
+          const looseResult = parseConfigFileTextToJson(path84, jsonText);
           if (!looseResult.error) {
             result = looseResult.config;
           }
         }
         return result;
       }
-      function readJson(path81, host) {
-        return readJsonOrUndefined(path81, host) || {};
+      function readJson(path84, host) {
+        return readJsonOrUndefined(path84, host) || {};
       }
       function tryParseJson(text) {
         try {
@@ -32234,7 +32234,7 @@ ${lanes.join("\n")}
           getSymlinkedFiles: () => symlinkedFiles,
           getSymlinkedDirectories: () => symlinkedDirectories,
           getSymlinkedDirectoriesByRealpath: () => symlinkedDirectoriesByRealpath,
-          setSymlinkedFile: (path81, real) => (symlinkedFiles || (symlinkedFiles = /* @__PURE__ */ new Map())).set(path81, real),
+          setSymlinkedFile: (path84, real) => (symlinkedFiles || (symlinkedFiles = /* @__PURE__ */ new Map())).set(path84, real),
           setSymlinkedDirectory: (symlink, real) => {
             let symlinkPath = toPath(symlink, cwd, getCanonicalFileName);
             if (!containsIgnoredPath(symlinkPath)) {
@@ -32294,8 +32294,8 @@ ${lanes.join("\n")}
       function stripLeadingDirectorySeparator(s) {
         return isAnyDirectorySeparator(s.charCodeAt(0)) ? s.slice(1) : void 0;
       }
-      function tryRemoveDirectoryPrefix(path81, dirPath, getCanonicalFileName) {
-        const withoutPrefix = tryRemovePrefix(path81, dirPath, getCanonicalFileName);
+      function tryRemoveDirectoryPrefix(path84, dirPath, getCanonicalFileName) {
+        const withoutPrefix = tryRemovePrefix(path84, dirPath, getCanonicalFileName);
         return withoutPrefix === void 0 ? void 0 : stripLeadingDirectorySeparator(withoutPrefix);
       }
       var reservedCharacterPattern = /[^\w\s/]/g;
@@ -32421,25 +32421,25 @@ ${lanes.join("\n")}
       function replaceWildcardCharacter(match, singleAsteriskRegexFragment) {
         return match === "*" ? singleAsteriskRegexFragment : match === "?" ? "[^/]" : "\\" + match;
       }
-      function getFileMatcherPatterns(path81, excludes, includes, useCaseSensitiveFileNames2, currentDirectory) {
-        path81 = normalizePath(path81);
+      function getFileMatcherPatterns(path84, excludes, includes, useCaseSensitiveFileNames2, currentDirectory) {
+        path84 = normalizePath(path84);
         currentDirectory = normalizePath(currentDirectory);
-        const absolutePath = combinePaths(currentDirectory, path81);
+        const absolutePath = combinePaths(currentDirectory, path84);
         return {
           includeFilePatterns: map3(getRegularExpressionsForWildcards(includes, absolutePath, "files"), (pattern) => `^${pattern}$`),
           includeFilePattern: getRegularExpressionForWildcard(includes, absolutePath, "files"),
           includeDirectoryPattern: getRegularExpressionForWildcard(includes, absolutePath, "directories"),
           excludePattern: getRegularExpressionForWildcard(excludes, absolutePath, "exclude"),
-          basePaths: getBasePaths(path81, includes, useCaseSensitiveFileNames2)
+          basePaths: getBasePaths(path84, includes, useCaseSensitiveFileNames2)
         };
       }
       function getRegexFromPattern(pattern, useCaseSensitiveFileNames2) {
         return new RegExp(pattern, useCaseSensitiveFileNames2 ? "" : "i");
       }
-      function matchFiles(path81, extensions, excludes, includes, useCaseSensitiveFileNames2, currentDirectory, depth, getFileSystemEntries, realpath) {
-        path81 = normalizePath(path81);
+      function matchFiles(path84, extensions, excludes, includes, useCaseSensitiveFileNames2, currentDirectory, depth, getFileSystemEntries, realpath) {
+        path84 = normalizePath(path84);
         currentDirectory = normalizePath(currentDirectory);
-        const patterns = getFileMatcherPatterns(path81, excludes, includes, useCaseSensitiveFileNames2, currentDirectory);
+        const patterns = getFileMatcherPatterns(path84, excludes, includes, useCaseSensitiveFileNames2, currentDirectory);
         const includeFileRegexes = patterns.includeFilePatterns && patterns.includeFilePatterns.map((pattern) => getRegexFromPattern(pattern, useCaseSensitiveFileNames2));
         const includeDirectoryRegex = patterns.includeDirectoryPattern && getRegexFromPattern(patterns.includeDirectoryPattern, useCaseSensitiveFileNames2);
         const excludeRegex = patterns.excludePattern && getRegexFromPattern(patterns.excludePattern, useCaseSensitiveFileNames2);
@@ -32484,17 +32484,17 @@ ${lanes.join("\n")}
           }
         }
       }
-      function getBasePaths(path81, includes, useCaseSensitiveFileNames2) {
-        const basePaths = [path81];
+      function getBasePaths(path84, includes, useCaseSensitiveFileNames2) {
+        const basePaths = [path84];
         if (includes) {
           const includeBasePaths = [];
           for (const include of includes) {
-            const absolute = isRootedDiskPath(include) ? include : normalizePath(combinePaths(path81, include));
+            const absolute = isRootedDiskPath(include) ? include : normalizePath(combinePaths(path84, include));
             includeBasePaths.push(getIncludeBasePath(absolute));
           }
           includeBasePaths.sort(getStringComparer(!useCaseSensitiveFileNames2));
           for (const includeBasePath of includeBasePaths) {
-            if (every(basePaths, (basePath) => !containsPath(basePath, includeBasePath, path81, !useCaseSensitiveFileNames2))) {
+            if (every(basePaths, (basePath) => !containsPath(basePath, includeBasePath, path84, !useCaseSensitiveFileNames2))) {
               basePaths.push(includeBasePath);
             }
           }
@@ -32758,24 +32758,24 @@ ${lanes.join("\n")}
         ".json"
         /* Json */
       ];
-      function removeFileExtension(path81) {
+      function removeFileExtension(path84) {
         for (const ext of extensionsToRemove) {
-          const extensionless = tryRemoveExtension(path81, ext);
+          const extensionless = tryRemoveExtension(path84, ext);
           if (extensionless !== void 0) {
             return extensionless;
           }
         }
-        return path81;
+        return path84;
       }
-      function tryRemoveExtension(path81, extension) {
-        return fileExtensionIs(path81, extension) ? removeExtension(path81, extension) : void 0;
+      function tryRemoveExtension(path84, extension) {
+        return fileExtensionIs(path84, extension) ? removeExtension(path84, extension) : void 0;
       }
-      function removeExtension(path81, extension) {
-        return path81.substring(0, path81.length - extension.length);
+      function removeExtension(path84, extension) {
+        return path84.substring(0, path84.length - extension.length);
       }
-      function changeExtension(path81, newExtension) {
+      function changeExtension(path84, newExtension) {
         return changeAnyExtension(
-          path81,
+          path84,
           newExtension,
           extensionsToRemove,
           /*ignoreCase*/
@@ -32801,8 +32801,8 @@ ${lanes.join("\n")}
         let matchableStringSet;
         let patterns;
         const pathList = getOwnKeys(paths);
-        for (const path81 of pathList) {
-          const patternOrStr = tryParsePattern(path81);
+        for (const path84 of pathList) {
+          const patternOrStr = tryParsePattern(path84);
           if (patternOrStr === void 0) {
             continue;
           } else if (typeof patternOrStr === "string") {
@@ -32829,15 +32829,15 @@ ${lanes.join("\n")}
       function resolutionExtensionIsTSOrJson(ext) {
         return extensionIsTS(ext) || ext === ".json";
       }
-      function extensionFromPath(path81) {
-        const ext = tryGetExtensionFromPath2(path81);
-        return ext !== void 0 ? ext : Debug.fail(`File ${path81} has unknown extension.`);
+      function extensionFromPath(path84) {
+        const ext = tryGetExtensionFromPath2(path84);
+        return ext !== void 0 ? ext : Debug.fail(`File ${path84} has unknown extension.`);
       }
-      function isAnySupportedFileExtension(path81) {
-        return tryGetExtensionFromPath2(path81) !== void 0;
+      function isAnySupportedFileExtension(path84) {
+        return tryGetExtensionFromPath2(path84) !== void 0;
       }
-      function tryGetExtensionFromPath2(path81) {
-        return find(extensionsToRemove, (e) => fileExtensionIs(path81, e));
+      function tryGetExtensionFromPath2(path84) {
+        return find(extensionsToRemove, (e) => fileExtensionIs(path84, e));
       }
       function isCheckJsEnabledForFile(sourceFile, compilerOptions) {
         return sourceFile.checkJsDirective ? sourceFile.checkJsDirective.enabled : compilerOptions.checkJs;
@@ -33146,8 +33146,8 @@ ${lanes.join("\n")}
           return false;
         }
       }
-      function containsIgnoredPath(path81) {
-        return some(ignoredPaths, (p) => path81.includes(p));
+      function containsIgnoredPath(path84) {
+        return some(ignoredPaths, (p) => path84.includes(p));
       }
       function getContainingNodeArray(node) {
         if (!node.parent) return void 0;
@@ -52955,7 +52955,7 @@ ${lanes.join("\n")}
               const typeReferenceDirectives = context.typeReferenceDirectives;
               const libReferenceDirectives = context.libReferenceDirectives;
               forEach(toArray2(entryOrList), (arg) => {
-                const { types: types2, lib, path: path81, ["resolution-mode"]: res, preserve: _preserve } = arg.arguments;
+                const { types: types2, lib, path: path84, ["resolution-mode"]: res, preserve: _preserve } = arg.arguments;
                 const preserve = _preserve === "true" ? true : void 0;
                 if (arg.arguments["no-default-lib"] === "true") {
                   context.hasNoDefaultLib = true;
@@ -52964,8 +52964,8 @@ ${lanes.join("\n")}
                   typeReferenceDirectives.push({ pos: types2.pos, end: types2.end, fileName: types2.value, ...parsed ? { resolutionMode: parsed } : {}, ...preserve ? { preserve } : {} });
                 } else if (lib) {
                   libReferenceDirectives.push({ pos: lib.pos, end: lib.end, fileName: lib.value, ...preserve ? { preserve } : {} });
-                } else if (path81) {
-                  referencedFiles.push({ pos: path81.pos, end: path81.end, fileName: path81.value, ...preserve ? { preserve } : {} });
+                } else if (path84) {
+                  referencedFiles.push({ pos: path84.pos, end: path84.end, fileName: path84.value, ...preserve ? { preserve } : {} });
                 } else {
                   reportDiagnostic(arg.range.pos, arg.range.end - arg.range.pos, Diagnostics.Invalid_reference_directive_syntax);
                 }
@@ -55394,9 +55394,9 @@ ${lanes.join("\n")}
         if (specs[0] === defaultIncludeSpec) return void 0;
         return specs;
       }
-      function matchesSpecs(path81, includeSpecs, excludeSpecs, host) {
+      function matchesSpecs(path84, includeSpecs, excludeSpecs, host) {
         if (!includeSpecs) return returnTrue;
-        const patterns = getFileMatcherPatterns(path81, excludeSpecs, includeSpecs, host.useCaseSensitiveFileNames, host.getCurrentDirectory());
+        const patterns = getFileMatcherPatterns(path84, excludeSpecs, includeSpecs, host.useCaseSensitiveFileNames, host.getCurrentDirectory());
         const excludeRe = patterns.excludePattern && getRegexFromPattern(patterns.excludePattern, host.useCaseSensitiveFileNames);
         const includeRe = patterns.includeFilePattern && getRegexFromPattern(patterns.includeFilePattern, host.useCaseSensitiveFileNames);
         if (includeRe) {
@@ -56041,9 +56041,9 @@ ${lanes.join("\n")}
             const setPropertyInResultIfNotUndefined = (propertyName) => {
               if (ownConfig.raw[propertyName]) return;
               if (extendsRaw[propertyName]) {
-                result[propertyName] = map3(extendsRaw[propertyName], (path81) => startsWithConfigDirTemplate(path81) || isRootedDiskPath(path81) ? path81 : combinePaths(
+                result[propertyName] = map3(extendsRaw[propertyName], (path84) => startsWithConfigDirTemplate(path84) || isRootedDiskPath(path84) ? path84 : combinePaths(
                   relativeDifference || (relativeDifference = convertToRelativePath(getDirectoryPath(extendedConfigPath), basePath, createGetCanonicalFileName(host.useCaseSensitiveFileNames))),
-                  path81
+                  path84
                 ));
               }
             };
@@ -56197,11 +56197,11 @@ ${lanes.join("\n")}
         return void 0;
       }
       function getExtendedConfig(sourceFile, extendedConfigPath, host, resolutionStack, errors, extendedConfigCache, result) {
-        const path81 = host.useCaseSensitiveFileNames ? extendedConfigPath : toFileNameLowerCase(extendedConfigPath);
+        const path84 = host.useCaseSensitiveFileNames ? extendedConfigPath : toFileNameLowerCase(extendedConfigPath);
         let value;
         let extendedResult;
         let extendedConfig;
-        if (extendedConfigCache && (value = extendedConfigCache.get(path81))) {
+        if (extendedConfigCache && (value = extendedConfigCache.get(path84))) {
           ({ extendedResult, extendedConfig } = value);
         } else {
           extendedResult = readJsonConfigFile(extendedConfigPath, (path210) => host.readFile(path210));
@@ -56219,7 +56219,7 @@ ${lanes.join("\n")}
             );
           }
           if (extendedConfigCache) {
-            extendedConfigCache.set(path81, { extendedResult, extendedConfig });
+            extendedConfigCache.set(path84, { extendedResult, extendedConfig });
           }
         }
         if (sourceFile) {
@@ -56487,24 +56487,24 @@ ${lanes.join("\n")}
             }
             const match = getWildcardDirectoryFromSpec(spec, useCaseSensitiveFileNames2);
             if (match) {
-              const { key, path: path81, flags } = match;
+              const { key, path: path84, flags } = match;
               const existingPath = wildCardKeyToPath.get(key);
               const existingFlags = existingPath !== void 0 ? wildcardDirectories[existingPath] : void 0;
               if (existingFlags === void 0 || existingFlags < flags) {
-                wildcardDirectories[existingPath !== void 0 ? existingPath : path81] = flags;
-                if (existingPath === void 0) wildCardKeyToPath.set(key, path81);
+                wildcardDirectories[existingPath !== void 0 ? existingPath : path84] = flags;
+                if (existingPath === void 0) wildCardKeyToPath.set(key, path84);
                 if (flags === 1) {
                   recursiveKeys.push(key);
                 }
               }
             }
           }
-          for (const path81 in wildcardDirectories) {
-            if (hasProperty(wildcardDirectories, path81)) {
+          for (const path84 in wildcardDirectories) {
+            if (hasProperty(wildcardDirectories, path84)) {
               for (const recursiveKey of recursiveKeys) {
-                const key = toCanonicalKey(path81, useCaseSensitiveFileNames2);
+                const key = toCanonicalKey(path84, useCaseSensitiveFileNames2);
                 if (key !== recursiveKey && containsPath(recursiveKey, key, basePath, !useCaseSensitiveFileNames2)) {
-                  delete wildcardDirectories[path81];
+                  delete wildcardDirectories[path84];
                 }
               }
             }
@@ -56512,8 +56512,8 @@ ${lanes.join("\n")}
         }
         return wildcardDirectories;
       }
-      function toCanonicalKey(path81, useCaseSensitiveFileNames2) {
-        return useCaseSensitiveFileNames2 ? path81 : toFileNameLowerCase(path81);
+      function toCanonicalKey(path84, useCaseSensitiveFileNames2) {
+        return useCaseSensitiveFileNames2 ? path84 : toFileNameLowerCase(path84);
       }
       function getWildcardDirectoryFromSpec(spec, useCaseSensitiveFileNames2) {
         const match = wildcardDirectoryPattern.exec(spec);
@@ -56529,10 +56529,10 @@ ${lanes.join("\n")}
           };
         }
         if (isImplicitGlob(spec.substring(spec.lastIndexOf(directorySeparator) + 1))) {
-          const path81 = removeTrailingDirectorySeparator(spec);
+          const path84 = removeTrailingDirectorySeparator(spec);
           return {
-            key: toCanonicalKey(path81, useCaseSensitiveFileNames2),
-            path: path81,
+            key: toCanonicalKey(path84, useCaseSensitiveFileNames2),
+            path: path84,
             flags: 1
             /* Recursive */
           };
@@ -56771,11 +56771,11 @@ ${lanes.join("\n")}
           }
           return;
         }
-        const path81 = normalizePath(combinePaths(baseDirectory, fileName));
+        const path84 = normalizePath(combinePaths(baseDirectory, fileName));
         if (state.traceEnabled) {
-          trace(state.host, Diagnostics.package_json_has_0_field_1_that_references_2, fieldName, fileName, path81);
+          trace(state.host, Diagnostics.package_json_has_0_field_1_that_references_2, fieldName, fileName, path84);
         }
-        return path81;
+        return path84;
       }
       function readPackageJsonTypesFields(jsonContent, baseDirectory, state) {
         return readPackageJsonPathField(jsonContent, "typings", baseDirectory, state) || readPackageJsonPathField(jsonContent, "types", baseDirectory, state);
@@ -57289,13 +57289,13 @@ ${lanes.join("\n")}
           directoryToModuleNameMap.update(options2);
         }
         function getOrCreateCacheForDirectory(directoryName, redirectedReference) {
-          const path81 = toPath(directoryName, currentDirectory, getCanonicalFileName);
-          return getOrCreateCache(directoryToModuleNameMap, redirectedReference, path81, () => createModeAwareCache());
+          const path84 = toPath(directoryName, currentDirectory, getCanonicalFileName);
+          return getOrCreateCache(directoryToModuleNameMap, redirectedReference, path84, () => createModeAwareCache());
         }
         function getFromDirectoryCache(name, mode, directoryName, redirectedReference) {
           var _a2, _b;
-          const path81 = toPath(directoryName, currentDirectory, getCanonicalFileName);
-          return (_b = (_a2 = directoryToModuleNameMap.getMapOfCacheRedirects(redirectedReference)) == null ? void 0 : _a2.get(path81)) == null ? void 0 : _b.get(name, mode);
+          const path84 = toPath(directoryName, currentDirectory, getCanonicalFileName);
+          return (_b = (_a2 = directoryToModuleNameMap.getMapOfCacheRedirects(redirectedReference)) == null ? void 0 : _a2.get(path84)) == null ? void 0 : _b.get(name, mode);
         }
       }
       function createModeAwareCacheKey(specifier, mode) {
@@ -57372,14 +57372,14 @@ ${lanes.join("\n")}
             return directoryPathMap.get(toPath(directory, currentDirectory, getCanonicalFileName));
           }
           function set3(directory, result) {
-            const path81 = toPath(directory, currentDirectory, getCanonicalFileName);
-            if (directoryPathMap.has(path81)) {
+            const path84 = toPath(directory, currentDirectory, getCanonicalFileName);
+            if (directoryPathMap.has(path84)) {
               return;
             }
-            directoryPathMap.set(path81, result);
+            directoryPathMap.set(path84, result);
             const resolvedFileName = getResolvedFileName(result);
-            const commonPrefix = resolvedFileName && getCommonPrefix(path81, resolvedFileName);
-            let current = path81;
+            const commonPrefix = resolvedFileName && getCommonPrefix(path84, resolvedFileName);
+            let current = path84;
             while (current !== commonPrefix) {
               const parent2 = getDirectoryPath(current);
               if (parent2 === current || directoryPathMap.has(parent2)) {
@@ -57943,16 +57943,16 @@ ${lanes.join("\n")}
         const combined = combinePaths(containingDirectory, moduleName);
         const parts = getPathComponents(combined);
         const lastPart = lastOrUndefined(parts);
-        const path81 = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath(combined)) : normalizePath(combined);
-        return { path: path81, parts };
+        const path84 = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath(combined)) : normalizePath(combined);
+        return { path: path84, parts };
       }
-      function realPath(path81, host, traceEnabled) {
+      function realPath(path84, host, traceEnabled) {
         if (!host.realpath) {
-          return path81;
+          return path84;
         }
-        const real = normalizePath(host.realpath(path81));
+        const real = normalizePath(host.realpath(path84));
         if (traceEnabled) {
-          trace(host, Diagnostics.Resolving_real_path_for_0_result_1, path81, real);
+          trace(host, Diagnostics.Resolving_real_path_for_0_result_1, path84, real);
         }
         return real;
       }
@@ -57997,25 +57997,25 @@ ${lanes.join("\n")}
         return void 0;
       }
       var nodeModulesPathPart = "/node_modules/";
-      function pathContainsNodeModules(path81) {
-        return path81.includes(nodeModulesPathPart);
+      function pathContainsNodeModules(path84) {
+        return path84.includes(nodeModulesPathPart);
       }
       function parseNodeModuleFromPath(resolved, isFolder) {
-        const path81 = normalizePath(resolved);
-        const idx = path81.lastIndexOf(nodeModulesPathPart);
+        const path84 = normalizePath(resolved);
+        const idx = path84.lastIndexOf(nodeModulesPathPart);
         if (idx === -1) {
           return void 0;
         }
         const indexAfterNodeModules = idx + nodeModulesPathPart.length;
-        let indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path81, indexAfterNodeModules, isFolder);
-        if (path81.charCodeAt(indexAfterNodeModules) === 64) {
-          indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path81, indexAfterPackageName, isFolder);
+        let indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path84, indexAfterNodeModules, isFolder);
+        if (path84.charCodeAt(indexAfterNodeModules) === 64) {
+          indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path84, indexAfterPackageName, isFolder);
         }
-        return path81.slice(0, indexAfterPackageName);
+        return path84.slice(0, indexAfterPackageName);
       }
-      function moveToNextDirectorySeparatorIfAvailable(path81, prevSeparatorIndex, isFolder) {
-        const nextSeparatorIndex = path81.indexOf(directorySeparator, prevSeparatorIndex + 1);
-        return nextSeparatorIndex === -1 ? isFolder ? path81.length : prevSeparatorIndex : nextSeparatorIndex;
+      function moveToNextDirectorySeparatorIfAvailable(path84, prevSeparatorIndex, isFolder) {
+        const nextSeparatorIndex = path84.indexOf(directorySeparator, prevSeparatorIndex + 1);
+        return nextSeparatorIndex === -1 ? isFolder ? path84.length : prevSeparatorIndex : nextSeparatorIndex;
       }
       function loadModuleFromFileNoPackageId(extensions, candidate, onlyRecordFailures, state) {
         return noPackageId(loadModuleFromFile(extensions, candidate, onlyRecordFailures, state));
@@ -58157,8 +58157,8 @@ ${lanes.join("\n")}
             return extensions & 4 && !isDeclarationFileName(candidate + originalExtension) && tryExtension(`.d${originalExtension}.ts`) || void 0;
         }
         function tryExtension(ext, resolvedUsingTsExtension) {
-          const path81 = tryFile(candidate + ext, onlyRecordFailures, state);
-          return path81 === void 0 ? void 0 : { path: path81, ext, resolvedUsingTsExtension: !state.candidateIsFromPackageJsonField && resolvedUsingTsExtension };
+          const path84 = tryFile(candidate + ext, onlyRecordFailures, state);
+          return path84 === void 0 ? void 0 : { path: path84, ext, resolvedUsingTsExtension: !state.candidateIsFromPackageJsonField && resolvedUsingTsExtension };
         }
       }
       function tryFile(fileName, onlyRecordFailures, state) {
@@ -58854,10 +58854,10 @@ ${lanes.join("\n")}
             /*value*/
             void 0
           );
-          function toAbsolutePath(path81) {
+          function toAbsolutePath(path84) {
             var _a22, _b2;
-            if (path81 === void 0) return path81;
-            return getNormalizedAbsolutePath(path81, (_b2 = (_a22 = state.host).getCurrentDirectory) == null ? void 0 : _b2.call(_a22));
+            if (path84 === void 0) return path84;
+            return getNormalizedAbsolutePath(path84, (_b2 = (_a22 = state.host).getCurrentDirectory) == null ? void 0 : _b2.call(_a22));
           }
           function combineDirectoryPath(root, dir) {
             return ensureTrailingDirectorySeparator(combinePaths(root, dir));
@@ -59108,10 +59108,10 @@ ${lanes.join("\n")}
             trace(state.host, Diagnostics.Module_name_0_matched_pattern_1, moduleName, matchedPatternText);
           }
           const resolved = forEach(paths[matchedPatternText], (subst) => {
-            const path81 = matchedStar ? replaceFirstStar(subst, matchedStar) : subst;
-            const candidate = normalizePath(combinePaths(baseDirectory, path81));
+            const path84 = matchedStar ? replaceFirstStar(subst, matchedStar) : subst;
+            const candidate = normalizePath(combinePaths(baseDirectory, path84));
             if (state.traceEnabled) {
-              trace(state.host, Diagnostics.Trying_substitution_0_candidate_module_location_Colon_1, subst, path81);
+              trace(state.host, Diagnostics.Trying_substitution_0_candidate_module_location_Colon_1, subst, path84);
             }
             const extension = tryGetExtensionFromPath2(subst);
             if (extension !== void 0) {
@@ -63264,10 +63264,10 @@ ${lanes.join("\n")}
         if (a === void 0 || b === void 0) return false;
         return comparePaths(a, b, ignoreCase) === 0;
       }
-      function countPathComponents(path81) {
+      function countPathComponents(path84) {
         let count = 0;
-        for (let i = startsWith(path81, "./") ? 2 : 0; i < path81.length; i++) {
-          if (path81.charCodeAt(i) === 47) count++;
+        for (let i = startsWith(path84, "./") ? 2 : 0; i < path84.length; i++) {
+          if (path84.charCodeAt(i) === 47) count++;
         }
         return count;
       }
@@ -63384,9 +63384,9 @@ ${lanes.join("\n")}
           host,
           /*preferSymlinks*/
           true,
-          (path81, isRedirect) => {
-            const isInNodeModules = pathContainsNodeModules(path81);
-            allFileNames.set(path81, { path: info.getCanonicalFileName(path81), isRedirect, isInNodeModules });
+          (path84, isRedirect) => {
+            const isInNodeModules = pathContainsNodeModules(path84);
+            allFileNames.set(path84, { path: info.getCanonicalFileName(path84), isRedirect, isInNodeModules });
             importedFileFromNodeModules = importedFileFromNodeModules || isInNodeModules;
           }
         );
@@ -63394,8 +63394,8 @@ ${lanes.join("\n")}
         for (let directory = info.canonicalSourceDirectory; allFileNames.size !== 0; ) {
           const directoryStart = ensureTrailingDirectorySeparator(directory);
           let pathsInDirectory;
-          allFileNames.forEach(({ path: path81, isRedirect, isInNodeModules }, fileName) => {
-            if (startsWith(path81, directoryStart)) {
+          allFileNames.forEach(({ path: path84, isRedirect, isInNodeModules }, fileName) => {
+            if (startsWith(path84, directoryStart)) {
               (pathsInDirectory || (pathsInDirectory = [])).push({ path: fileName, isRedirect, isInNodeModules });
               allFileNames.delete(fileName);
             }
@@ -63698,17 +63698,17 @@ ${lanes.join("\n")}
         }
         return processEnding(shortest, allowedEndings, compilerOptions);
       }
-      function tryGetModuleNameAsNodeModule({ path: path81, isRedirect }, { getCanonicalFileName, canonicalSourceDirectory }, importingSourceFile, host, options, userPreferences, packageNameOnly, overrideMode) {
+      function tryGetModuleNameAsNodeModule({ path: path84, isRedirect }, { getCanonicalFileName, canonicalSourceDirectory }, importingSourceFile, host, options, userPreferences, packageNameOnly, overrideMode) {
         if (!host.fileExists || !host.readFile) {
           return void 0;
         }
-        const parts = getNodeModulePathParts(path81);
+        const parts = getNodeModulePathParts(path84);
         if (!parts) {
           return void 0;
         }
         const preferences = getModuleSpecifierPreferences(userPreferences, host, options, importingSourceFile);
         const allowedEndings = preferences.getAllowedEndingsInPreferredOrder();
-        let moduleSpecifier = path81;
+        let moduleSpecifier = path84;
         let isPackageRootPath = false;
         if (!packageNameOnly) {
           let packageRootIndex = parts.packageRootIndex;
@@ -63729,7 +63729,7 @@ ${lanes.join("\n")}
               break;
             }
             if (!moduleFileName) moduleFileName = moduleFileToTry;
-            packageRootIndex = path81.indexOf(directorySeparator, packageRootIndex + 1);
+            packageRootIndex = path84.indexOf(directorySeparator, packageRootIndex + 1);
             if (packageRootIndex === -1) {
               moduleSpecifier = processEnding(moduleFileName, allowedEndings, options, host);
               break;
@@ -63749,9 +63749,9 @@ ${lanes.join("\n")}
         return getEmitModuleResolutionKind(options) === 1 && packageName === nodeModulesDirectoryName ? void 0 : packageName;
         function tryDirectoryWithPackageJson(packageRootIndex) {
           var _a2, _b;
-          const packageRootPath = path81.substring(0, packageRootIndex);
+          const packageRootPath = path84.substring(0, packageRootIndex);
           const packageJsonPath = combinePaths(packageRootPath, "package.json");
-          let moduleFileToTry = path81;
+          let moduleFileToTry = path84;
           let maybeBlockedByTypesVersions = false;
           const cachedPackageJson = (_b = (_a2 = host.getPackageJsonInfoCache) == null ? void 0 : _a2.call(host)) == null ? void 0 : _b.getPackageJsonInfo(packageJsonPath);
           if (isPackageJsonInfo(cachedPackageJson) || cachedPackageJson === void 0 && host.fileExists(packageJsonPath)) {
@@ -63764,7 +63764,7 @@ ${lanes.join("\n")}
               const fromExports = (packageJsonContent == null ? void 0 : packageJsonContent.exports) ? tryGetModuleNameFromExports(
                 options,
                 host,
-                path81,
+                path84,
                 packageRootPath,
                 packageName2,
                 packageJsonContent.exports,
@@ -63774,12 +63774,12 @@ ${lanes.join("\n")}
                 return { ...fromExports, verbatimFromExports: true };
               }
               if (packageJsonContent == null ? void 0 : packageJsonContent.exports) {
-                return { moduleFileToTry: path81, blockedByExports: true };
+                return { moduleFileToTry: path84, blockedByExports: true };
               }
             }
             const versionPaths = (packageJsonContent == null ? void 0 : packageJsonContent.typesVersions) ? getPackageJsonTypesVersionsPaths(packageJsonContent.typesVersions) : void 0;
             if (versionPaths) {
-              const subModuleName = path81.slice(packageRootPath.length + 1);
+              const subModuleName = path84.slice(packageRootPath.length + 1);
               const fromPaths = tryGetModuleNameFromPaths(
                 subModuleName,
                 versionPaths.paths,
@@ -63814,7 +63814,7 @@ ${lanes.join("\n")}
           return { moduleFileToTry };
         }
       }
-      function tryGetAnyFileFromPath(host, path81) {
+      function tryGetAnyFileFromPath(host, path84) {
         if (!host.fileExists) return;
         const extensions = flatten(getSupportedExtensions({ allowJs: true }, [{ extension: "node", isMixedContent: false }, {
           extension: "json",
@@ -63823,15 +63823,15 @@ ${lanes.join("\n")}
           /* JSON */
         }]));
         for (const e of extensions) {
-          const fullPath = path81 + e;
+          const fullPath = path84 + e;
           if (host.fileExists(fullPath)) {
             return fullPath;
           }
         }
       }
-      function getPathsRelativeToRootDirs(path81, rootDirs, getCanonicalFileName) {
+      function getPathsRelativeToRootDirs(path84, rootDirs, getCanonicalFileName) {
         return mapDefined(rootDirs, (rootDir) => {
-          const relativePath = getRelativePathIfInSameVolume(path81, rootDir, getCanonicalFileName);
+          const relativePath = getRelativePathIfInSameVolume(path84, rootDir, getCanonicalFileName);
           return relativePath !== void 0 && isPathRelativeToParent(relativePath) ? void 0 : relativePath;
         });
       }
@@ -63948,10 +63948,10 @@ ${lanes.join("\n")}
             return void 0;
         }
       }
-      function getRelativePathIfInSameVolume(path81, directoryPath, getCanonicalFileName) {
+      function getRelativePathIfInSameVolume(path84, directoryPath, getCanonicalFileName) {
         const relativePath = getRelativePathToDirectoryOrUrl(
           directoryPath,
-          path81,
+          path84,
           directoryPath,
           getCanonicalFileName,
           /*isAbsolutePathAnUrl*/
@@ -63959,8 +63959,8 @@ ${lanes.join("\n")}
         );
         return isRootedDiskPath(relativePath) ? void 0 : relativePath;
       }
-      function isPathRelativeToParent(path81) {
-        return startsWith(path81, "..");
+      function isPathRelativeToParent(path84) {
+        return startsWith(path84, "..");
       }
       function getDefaultResolutionModeForFile(file2, host, compilerOptions) {
         return isFullSourceFile(file2) ? host.getDefaultResolutionModeForFile(file2) : getDefaultResolutionModeForFileWorker(file2, compilerOptions);
@@ -79009,10 +79009,10 @@ ${lanes.join("\n")}
           const text = identifier.escapedText;
           if (text) {
             const parentSymbol = name.kind === 167 ? getUnresolvedSymbolForEntityName(name.left) : name.kind === 212 ? getUnresolvedSymbolForEntityName(name.expression) : void 0;
-            const path81 = parentSymbol ? `${getSymbolPath(parentSymbol)}.${text}` : text;
-            let result = unresolvedSymbols.get(path81);
+            const path84 = parentSymbol ? `${getSymbolPath(parentSymbol)}.${text}` : text;
+            let result = unresolvedSymbols.get(path84);
             if (!result) {
-              unresolvedSymbols.set(path81, result = createSymbol(
+              unresolvedSymbols.set(path84, result = createSymbol(
                 524288,
                 text,
                 1048576
@@ -83813,24 +83813,24 @@ ${lanes.join("\n")}
               }
               return;
             }
-            let path81 = "";
+            let path84 = "";
             const secondaryRootErrors = [];
             while (stack.length) {
               const [msg, ...args] = stack.pop();
               switch (msg.code) {
                 case Diagnostics.Types_of_property_0_are_incompatible.code: {
-                  if (path81.indexOf("new ") === 0) {
-                    path81 = `(${path81})`;
+                  if (path84.indexOf("new ") === 0) {
+                    path84 = `(${path84})`;
                   }
                   const str2 = "" + args[0];
-                  if (path81.length === 0) {
-                    path81 = `${str2}`;
+                  if (path84.length === 0) {
+                    path84 = `${str2}`;
                   } else if (isIdentifierText(str2, getEmitScriptTarget(compilerOptions))) {
-                    path81 = `${path81}.${str2}`;
+                    path84 = `${path84}.${str2}`;
                   } else if (str2[0] === "[" && str2[str2.length - 1] === "]") {
-                    path81 = `${path81}${str2}`;
+                    path84 = `${path84}${str2}`;
                   } else {
-                    path81 = `${path81}[${str2}]`;
+                    path84 = `${path84}[${str2}]`;
                   }
                   break;
                 }
@@ -83838,7 +83838,7 @@ ${lanes.join("\n")}
                 case Diagnostics.Construct_signature_return_types_0_and_1_are_incompatible.code:
                 case Diagnostics.Call_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code:
                 case Diagnostics.Construct_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code: {
-                  if (path81.length === 0) {
+                  if (path84.length === 0) {
                     let mappedMsg = msg;
                     if (msg.code === Diagnostics.Call_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code) {
                       mappedMsg = Diagnostics.Call_signature_return_types_0_and_1_are_incompatible;
@@ -83849,7 +83849,7 @@ ${lanes.join("\n")}
                   } else {
                     const prefix = msg.code === Diagnostics.Construct_signature_return_types_0_and_1_are_incompatible.code || msg.code === Diagnostics.Construct_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code ? "new " : "";
                     const params = msg.code === Diagnostics.Call_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code || msg.code === Diagnostics.Construct_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code ? "" : "...";
-                    path81 = `${prefix}${path81}(${params})`;
+                    path84 = `${prefix}${path84}(${params})`;
                   }
                   break;
                 }
@@ -83865,10 +83865,10 @@ ${lanes.join("\n")}
                   return Debug.fail(`Unhandled Diagnostic: ${msg.code}`);
               }
             }
-            if (path81) {
+            if (path84) {
               reportError(
-                path81[path81.length - 1] === ")" ? Diagnostics.The_types_returned_by_0_are_incompatible_between_these_types : Diagnostics.The_types_of_0_are_incompatible_between_these_types,
-                path81
+                path84[path84.length - 1] === ")" ? Diagnostics.The_types_returned_by_0_are_incompatible_between_these_types : Diagnostics.The_types_of_0_are_incompatible_between_these_types,
+                path84
               );
             } else {
               secondaryRootErrors.shift();
@@ -138936,9 +138936,9 @@ ${lanes.join("\n")}
       function createAddOutput() {
         let outputs;
         return { addOutput, getOutputs };
-        function addOutput(path81) {
-          if (path81) {
-            (outputs || (outputs = [])).push(path81);
+        function addOutput(path84) {
+          if (path84) {
+            (outputs || (outputs = [])).push(path84);
           }
         }
         function getOutputs() {
@@ -144164,7 +144164,7 @@ ${lanes.join("\n")}
         return {
           useCaseSensitiveFileNames: useCaseSensitiveFileNames2,
           fileExists: fileExists2,
-          readFile: (path81, encoding) => host.readFile(path81, encoding),
+          readFile: (path84, encoding) => host.readFile(path84, encoding),
           directoryExists: host.directoryExists && directoryExists,
           getDirectories,
           readDirectory,
@@ -144181,8 +144181,8 @@ ${lanes.join("\n")}
         function getCachedFileSystemEntries(rootDirPath) {
           return cachedReadDirectoryResult.get(ensureTrailingDirectorySeparator(rootDirPath));
         }
-        function getCachedFileSystemEntriesForBaseDir(path81) {
-          const entries = getCachedFileSystemEntries(getDirectoryPath(path81));
+        function getCachedFileSystemEntriesForBaseDir(path84) {
+          const entries = getCachedFileSystemEntries(getDirectoryPath(path84));
           if (!entries) {
             return entries;
           }
@@ -144237,8 +144237,8 @@ ${lanes.join("\n")}
           return index >= 0;
         }
         function writeFile22(fileName, data, writeByteOrderMark) {
-          const path81 = toPath3(fileName);
-          const result = getCachedFileSystemEntriesForBaseDir(path81);
+          const path84 = toPath3(fileName);
+          const result = getCachedFileSystemEntriesForBaseDir(path84);
           if (result) {
             updateFilesOfFileSystemEntry(
               result,
@@ -144250,17 +144250,17 @@ ${lanes.join("\n")}
           return host.writeFile(fileName, data, writeByteOrderMark);
         }
         function fileExists2(fileName) {
-          const path81 = toPath3(fileName);
-          const result = getCachedFileSystemEntriesForBaseDir(path81);
+          const path84 = toPath3(fileName);
+          const result = getCachedFileSystemEntriesForBaseDir(path84);
           return result && hasEntry(result.sortedAndCanonicalizedFiles, getCanonicalFileName(getBaseNameOfFileName(fileName))) || host.fileExists(fileName);
         }
         function directoryExists(dirPath) {
-          const path81 = toPath3(dirPath);
-          return cachedReadDirectoryResult.has(ensureTrailingDirectorySeparator(path81)) || host.directoryExists(dirPath);
+          const path84 = toPath3(dirPath);
+          return cachedReadDirectoryResult.has(ensureTrailingDirectorySeparator(path84)) || host.directoryExists(dirPath);
         }
         function createDirectory(dirPath) {
-          const path81 = toPath3(dirPath);
-          const result = getCachedFileSystemEntriesForBaseDir(path81);
+          const path84 = toPath3(dirPath);
+          const result = getCachedFileSystemEntriesForBaseDir(path84);
           if (result) {
             const baseName = getBaseNameOfFileName(dirPath);
             const canonicalizedBaseName = getCanonicalFileName(baseName);
@@ -144288,15 +144288,15 @@ ${lanes.join("\n")}
           }
           return host.readDirectory(rootDir, extensions, excludes, includes, depth);
           function getFileSystemEntries(dir) {
-            const path81 = toPath3(dir);
-            if (path81 === rootDirPath) {
-              return rootResult || getFileSystemEntriesFromHost(dir, path81);
+            const path84 = toPath3(dir);
+            if (path84 === rootDirPath) {
+              return rootResult || getFileSystemEntriesFromHost(dir, path84);
             }
-            const result = tryReadDirectory2(dir, path81);
-            return result !== void 0 ? result || getFileSystemEntriesFromHost(dir, path81) : emptyFileSystemEntries;
+            const result = tryReadDirectory2(dir, path84);
+            return result !== void 0 ? result || getFileSystemEntriesFromHost(dir, path84) : emptyFileSystemEntries;
           }
-          function getFileSystemEntriesFromHost(dir, path81) {
-            if (rootSymLinkResult && path81 === rootDirPath) return rootSymLinkResult;
+          function getFileSystemEntriesFromHost(dir, path84) {
+            if (rootSymLinkResult && path84 === rootDirPath) return rootSymLinkResult;
             const result = {
               files: map3(host.readDirectory(
                 dir,
@@ -144309,7 +144309,7 @@ ${lanes.join("\n")}
               ), getBaseNameOfFileName) || emptyArray,
               directories: host.getDirectories(dir) || emptyArray
             };
-            if (path81 === rootDirPath) rootSymLinkResult = result;
+            if (path84 === rootDirPath) rootSymLinkResult = result;
             return result;
           }
         }
@@ -144768,15 +144768,15 @@ ${lanes.join("\n")}
           return getDirectoryPath(normalizePath(system.getExecutingFilePath()));
         }
         const newLine = getNewLineCharacter(options);
-        const realpath = system.realpath && ((path81) => system.realpath(path81));
+        const realpath = system.realpath && ((path84) => system.realpath(path84));
         const compilerHost = {
           getSourceFile: createGetSourceFile((fileName) => compilerHost.readFile(fileName), setParentNodes),
           getDefaultLibLocation,
           getDefaultLibFileName: (options2) => combinePaths(getDefaultLibLocation(), getDefaultLibFileName(options2)),
           writeFile: createWriteFileMeasuringIO(
-            (path81, data, writeByteOrderMark) => system.writeFile(path81, data, writeByteOrderMark),
-            (path81) => (compilerHost.createDirectory || system.createDirectory)(path81),
-            (path81) => directoryExists(path81)
+            (path84, data, writeByteOrderMark) => system.writeFile(path84, data, writeByteOrderMark),
+            (path84) => (compilerHost.createDirectory || system.createDirectory)(path84),
+            (path84) => directoryExists(path84)
           ),
           getCurrentDirectory: memoize(() => system.getCurrentDirectory()),
           useCaseSensitiveFileNames: () => system.useCaseSensitiveFileNames,
@@ -144787,9 +144787,9 @@ ${lanes.join("\n")}
           trace: (s) => system.write(s + newLine),
           directoryExists: (directoryName) => system.directoryExists(directoryName),
           getEnvironmentVariable: (name) => system.getEnvironmentVariable ? system.getEnvironmentVariable(name) : "",
-          getDirectories: (path81) => system.getDirectories(path81),
+          getDirectories: (path84) => system.getDirectories(path84),
           realpath,
-          readDirectory: (path81, extensions, include, exclude, depth) => system.readDirectory(path81, extensions, include, exclude, depth),
+          readDirectory: (path84, extensions, include, exclude, depth) => system.readDirectory(path84, extensions, include, exclude, depth),
           createDirectory: (d) => system.createDirectory(d),
           createHash: maybeBind(system, system.createHash)
         };
@@ -145228,13 +145228,13 @@ ${lanes.join("\n")}
       }
       function getLibraryNameFromLibFileName(libFileName) {
         const components = libFileName.split(".");
-        let path81 = components[1];
+        let path84 = components[1];
         let i = 2;
         while (components[i] && components[i] !== "d") {
-          path81 += (i === 2 ? "/" : "-") + components[i];
+          path84 += (i === 2 ? "/" : "-") + components[i];
           i++;
         }
-        return "@typescript/lib-" + path81;
+        return "@typescript/lib-" + path84;
       }
       function isReferencedFile(reason) {
         switch (reason == null ? void 0 : reason.kind) {
@@ -146310,18 +146310,18 @@ ${lanes.join("\n")}
             filesByName.set(newSourceFile.path, newSourceFile);
           }
           const oldFilesByNameMap = oldProgram.getFilesByNameMap();
-          oldFilesByNameMap.forEach((oldFile, path81) => {
+          oldFilesByNameMap.forEach((oldFile, path84) => {
             if (!oldFile) {
-              filesByName.set(path81, oldFile);
+              filesByName.set(path84, oldFile);
               return;
             }
-            if (oldFile.path === path81) {
+            if (oldFile.path === path84) {
               if (oldProgram.isSourceFileFromExternalLibrary(oldFile)) {
                 sourceFilesFoundSearchingNodeModules.set(oldFile.path, true);
               }
               return;
             }
-            filesByName.set(path81, filesByName.get(oldFile.path));
+            filesByName.set(path84, filesByName.get(oldFile.path));
           });
           const isConfigIdentical = oldOptions.configFile && oldOptions.configFile === options.configFile || !oldOptions.configFile && !options.configFile && !optionsHaveChanges(oldOptions, options, optionDeclarations);
           programDiagnostics.reuseStateFromOldProgram(oldProgram.getProgramDiagnosticsContainer(), isConfigIdentical);
@@ -146359,9 +146359,9 @@ ${lanes.join("\n")}
             getModeForResolutionAtIndex: getModeForResolutionAtIndex2,
             readFile: (f) => host.readFile(f),
             fileExists: (f) => {
-              const path81 = toPath3(f);
-              if (getSourceFileByPath(path81)) return true;
-              if (missingFileNames.has(path81)) return false;
+              const path84 = toPath3(f);
+              if (getSourceFileByPath(path84)) return true;
+              if (missingFileNames.has(path84)) return false;
               return host.fileExists(f);
             },
             realpath: maybeBind(host, host.realpath),
@@ -146501,8 +146501,8 @@ ${lanes.join("\n")}
         function getSourceFile(fileName) {
           return getSourceFileByPath(toPath3(fileName));
         }
-        function getSourceFileByPath(path81) {
-          return filesByName.get(path81) || void 0;
+        function getSourceFileByPath(path84) {
+          return filesByName.get(path84) || void 0;
         }
         function getDiagnosticsHelper(sourceFile, getDiagnostics2, cancellationToken) {
           if (sourceFile) {
@@ -147145,16 +147145,16 @@ ${lanes.join("\n")}
             addFilePreprocessingFileExplainingDiagnostic(existingFile, reason, Diagnostics.File_name_0_differs_from_already_included_file_name_1_only_in_casing, [fileName, existingFile.fileName]);
           }
         }
-        function createRedirectedSourceFile(redirectTarget, unredirected, fileName, path81, resolvedPath, originalFileName, sourceFileOptions) {
+        function createRedirectedSourceFile(redirectTarget, unredirected, fileName, path84, resolvedPath, originalFileName, sourceFileOptions) {
           var _a22;
           const redirect = parseNodeFactory.createRedirectedSourceFile({ redirectTarget, unredirected });
           redirect.fileName = fileName;
-          redirect.path = path81;
+          redirect.path = path84;
           redirect.resolvedPath = resolvedPath;
           redirect.originalFileName = originalFileName;
           redirect.packageJsonLocations = ((_a22 = sourceFileOptions.packageJsonLocations) == null ? void 0 : _a22.length) ? sourceFileOptions.packageJsonLocations : void 0;
           redirect.packageJsonScope = sourceFileOptions.packageJsonScope;
-          sourceFilesFoundSearchingNodeModules.set(path81, currentNodeModulesDepth > 0);
+          sourceFilesFoundSearchingNodeModules.set(path84, currentNodeModulesDepth > 0);
           return redirect;
         }
         function findSourceFile(fileName, isDefaultLib, ignoreNoDefaultLib, reason, packageId) {
@@ -147176,18 +147176,18 @@ ${lanes.join("\n")}
         }
         function findSourceFileWorker(fileName, isDefaultLib, ignoreNoDefaultLib, reason, packageId) {
           var _a22, _b2;
-          const path81 = toPath3(fileName);
+          const path84 = toPath3(fileName);
           if (useSourceOfProjectReferenceRedirect) {
-            let source = getRedirectFromOutput(path81);
+            let source = getRedirectFromOutput(path84);
             if (!source && host.realpath && options.preserveSymlinks && isDeclarationFileName(fileName) && fileName.includes(nodeModulesPathPart)) {
               const realPath2 = toPath3(host.realpath(fileName));
-              if (realPath2 !== path81) source = getRedirectFromOutput(realPath2);
+              if (realPath2 !== path84) source = getRedirectFromOutput(realPath2);
             }
             if (source == null ? void 0 : source.source) {
               const file22 = findSourceFile(source.source, isDefaultLib, ignoreNoDefaultLib, reason, packageId);
               if (file22) addFileToFilesByName(
                 file22,
-                path81,
+                path84,
                 fileName,
                 /*redirectedPath*/
                 void 0
@@ -147196,8 +147196,8 @@ ${lanes.join("\n")}
             }
           }
           const originalFileName = fileName;
-          if (filesByName.has(path81)) {
-            const file22 = filesByName.get(path81);
+          if (filesByName.has(path84)) {
+            const file22 = filesByName.get(path84);
             const addedReason = addFileIncludeReason(
               file22 || void 0,
               reason,
@@ -147263,28 +147263,28 @@ ${lanes.join("\n")}
             const packageIdKey = packageIdToString(packageId);
             const fileFromPackageId = packageIdToSourceFile.get(packageIdKey);
             if (fileFromPackageId) {
-              const dupFile = createRedirectedSourceFile(fileFromPackageId, file2, fileName, path81, toPath3(fileName), originalFileName, sourceFileOptions);
+              const dupFile = createRedirectedSourceFile(fileFromPackageId, file2, fileName, path84, toPath3(fileName), originalFileName, sourceFileOptions);
               redirectTargetsMap.add(fileFromPackageId.path, fileName);
-              addFileToFilesByName(dupFile, path81, fileName, redirectedPath);
+              addFileToFilesByName(dupFile, path84, fileName, redirectedPath);
               addFileIncludeReason(
                 dupFile,
                 reason,
                 /*checkExisting*/
                 false
               );
-              sourceFileToPackageName.set(path81, packageIdToPackageName(packageId));
+              sourceFileToPackageName.set(path84, packageIdToPackageName(packageId));
               processingOtherFiles.push(dupFile);
               return dupFile;
             } else if (file2) {
               packageIdToSourceFile.set(packageIdKey, file2);
-              sourceFileToPackageName.set(path81, packageIdToPackageName(packageId));
+              sourceFileToPackageName.set(path84, packageIdToPackageName(packageId));
             }
           }
-          addFileToFilesByName(file2, path81, fileName, redirectedPath);
+          addFileToFilesByName(file2, path84, fileName, redirectedPath);
           if (file2) {
-            sourceFilesFoundSearchingNodeModules.set(path81, currentNodeModulesDepth > 0);
+            sourceFilesFoundSearchingNodeModules.set(path84, currentNodeModulesDepth > 0);
             file2.fileName = fileName;
-            file2.path = path81;
+            file2.path = path84;
             file2.resolvedPath = toPath3(fileName);
             file2.originalFileName = originalFileName;
             file2.packageJsonLocations = ((_b2 = sourceFileOptions.packageJsonLocations) == null ? void 0 : _b2.length) ? sourceFileOptions.packageJsonLocations : void 0;
@@ -147296,7 +147296,7 @@ ${lanes.join("\n")}
               false
             );
             if (host.useCaseSensitiveFileNames()) {
-              const pathLowerCase = toFileNameLowerCase(path81);
+              const pathLowerCase = toFileNameLowerCase(path84);
               const existingFile = filesByNameIgnoreCase.get(pathLowerCase);
               if (existingFile) {
                 reportFileNamesDifferOnlyInCasingError(fileName, existingFile, reason);
@@ -147329,18 +147329,18 @@ ${lanes.join("\n")}
           }
           return false;
         }
-        function addFileToFilesByName(file2, path81, fileName, redirectedPath) {
+        function addFileToFilesByName(file2, path84, fileName, redirectedPath) {
           if (redirectedPath) {
             updateFilesByNameMap(fileName, redirectedPath, file2);
-            updateFilesByNameMap(fileName, path81, file2 || false);
+            updateFilesByNameMap(fileName, path84, file2 || false);
           } else {
-            updateFilesByNameMap(fileName, path81, file2);
+            updateFilesByNameMap(fileName, path84, file2);
           }
         }
-        function updateFilesByNameMap(fileName, path81, file2) {
-          filesByName.set(path81, file2);
-          if (file2 !== void 0) missingFileNames.delete(path81);
-          else missingFileNames.set(path81, fileName);
+        function updateFilesByNameMap(fileName, path84, file2) {
+          filesByName.set(path84, file2);
+          if (file2 !== void 0) missingFileNames.delete(path84);
+          else missingFileNames.set(path84, fileName);
         }
         function getRedirectFromSourceFile(fileName) {
           return mapSourceFileToResolvedRef == null ? void 0 : mapSourceFileToResolvedRef.get(toPath3(fileName));
@@ -147348,8 +147348,8 @@ ${lanes.join("\n")}
         function forEachResolvedProjectReference2(cb) {
           return forEachResolvedProjectReference(resolvedProjectReferences, cb);
         }
-        function getRedirectFromOutput(path81) {
-          return mapOutputFileToResolvedRef == null ? void 0 : mapOutputFileToResolvedRef.get(path81);
+        function getRedirectFromOutput(path84) {
+          return mapOutputFileToResolvedRef == null ? void 0 : mapOutputFileToResolvedRef.get(path84);
         }
         function isSourceOfProjectReferenceRedirect(fileName) {
           return useSourceOfProjectReferenceRedirect && !!getRedirectFromSourceFile(fileName);
@@ -147648,7 +147648,7 @@ ${lanes.join("\n")}
             }
             const getCommonSourceDirectory3 = memoize(() => getCommonSourceDirectoryOfConfig(resolvedRef.commandLine, !host.useCaseSensitiveFileNames()));
             commandLine.fileNames.forEach((fileName) => {
-              const path81 = toPath3(fileName);
+              const path84 = toPath3(fileName);
               let outputDts;
               if (!isDeclarationFileName(fileName) && !fileExtensionIs(
                 fileName,
@@ -147662,7 +147662,7 @@ ${lanes.join("\n")}
                   outputDts = outDts;
                 }
               }
-              mapSourceFileToResolvedRef.set(path81, { resolvedRef, outputDts });
+              mapSourceFileToResolvedRef.set(path84, { resolvedRef, outputDts });
             });
           }
           if (commandLine.projectReferences) {
@@ -148350,9 +148350,9 @@ ${lanes.join("\n")}
         host.compilerHost.fileExists = fileExists2;
         let directoryExists;
         if (originalDirectoryExists) {
-          directoryExists = host.compilerHost.directoryExists = (path81) => {
-            if (originalDirectoryExists.call(host.compilerHost, path81)) {
-              handleDirectoryCouldBeSymlink(path81);
+          directoryExists = host.compilerHost.directoryExists = (path84) => {
+            if (originalDirectoryExists.call(host.compilerHost, path84)) {
+              handleDirectoryCouldBeSymlink(path84);
               return true;
             }
             if (!host.getResolvedProjectReferences()) return false;
@@ -148371,14 +148371,14 @@ ${lanes.join("\n")}
               });
             }
             return fileOrDirectoryExistsUsingSource(
-              path81,
+              path84,
               /*isFile*/
               false
             );
           };
         }
         if (originalGetDirectories) {
-          host.compilerHost.getDirectories = (path81) => !host.getResolvedProjectReferences() || originalDirectoryExists && originalDirectoryExists.call(host.compilerHost, path81) ? originalGetDirectories.call(host.compilerHost, path81) : [];
+          host.compilerHost.getDirectories = (path84) => !host.getResolvedProjectReferences() || originalDirectoryExists && originalDirectoryExists.call(host.compilerHost, path84) ? originalGetDirectories.call(host.compilerHost, path84) : [];
         }
         if (originalRealpath) {
           host.compilerHost.realpath = (s) => {
@@ -149045,12 +149045,12 @@ ${lanes.join("\n")}
           state.allFileNames = void 0;
         }
         BuilderState2.releaseCache = releaseCache2;
-        function getFilesAffectedBy(state, programOfThisState, path81, cancellationToken, host) {
+        function getFilesAffectedBy(state, programOfThisState, path84, cancellationToken, host) {
           var _a2;
           const result = getFilesAffectedByWithOldState(
             state,
             programOfThisState,
-            path81,
+            path84,
             cancellationToken,
             host
           );
@@ -149058,8 +149058,8 @@ ${lanes.join("\n")}
           return result;
         }
         BuilderState2.getFilesAffectedBy = getFilesAffectedBy;
-        function getFilesAffectedByWithOldState(state, programOfThisState, path81, cancellationToken, host) {
-          const sourceFile = programOfThisState.getSourceFileByPath(path81);
+        function getFilesAffectedByWithOldState(state, programOfThisState, path84, cancellationToken, host) {
+          const sourceFile = programOfThisState.getSourceFileByPath(path84);
           if (!sourceFile) {
             return emptyArray;
           }
@@ -149069,9 +149069,9 @@ ${lanes.join("\n")}
           return (state.referencedMap ? getFilesAffectedByUpdatedShapeWhenModuleEmit : getFilesAffectedByUpdatedShapeWhenNonModuleEmit)(state, programOfThisState, sourceFile, cancellationToken, host);
         }
         BuilderState2.getFilesAffectedByWithOldState = getFilesAffectedByWithOldState;
-        function updateSignatureOfFile(state, signature, path81) {
-          state.fileInfos.get(path81).signature = signature;
-          (state.hasCalledUpdateShapeSignature || (state.hasCalledUpdateShapeSignature = /* @__PURE__ */ new Set())).add(path81);
+        function updateSignatureOfFile(state, signature, path84) {
+          state.fileInfos.get(path84).signature = signature;
+          (state.hasCalledUpdateShapeSignature || (state.hasCalledUpdateShapeSignature = /* @__PURE__ */ new Set())).add(path84);
         }
         BuilderState2.updateSignatureOfFile = updateSignatureOfFile;
         function computeDtsSignature(programOfThisState, sourceFile, cancellationToken, host, onNewSignature) {
@@ -149140,10 +149140,10 @@ ${lanes.join("\n")}
           const seenMap = /* @__PURE__ */ new Set();
           const queue = [sourceFile.resolvedPath];
           while (queue.length) {
-            const path81 = queue.pop();
-            if (!seenMap.has(path81)) {
-              seenMap.add(path81);
-              const references = state.referencedMap.getValues(path81);
+            const path84 = queue.pop();
+            if (!seenMap.has(path84)) {
+              seenMap.add(path84);
+              const references = state.referencedMap.getValues(path84);
               if (references) {
                 for (const key of references.keys()) {
                   queue.push(key);
@@ -149151,9 +149151,9 @@ ${lanes.join("\n")}
               }
             }
           }
-          return arrayFrom(mapDefinedIterator(seenMap.keys(), (path81) => {
+          return arrayFrom(mapDefinedIterator(seenMap.keys(), (path84) => {
             var _a2;
-            return ((_a2 = programOfThisState.getSourceFileByPath(path81)) == null ? void 0 : _a2.fileName) ?? path81;
+            return ((_a2 = programOfThisState.getSourceFileByPath(path84)) == null ? void 0 : _a2.fileName) ?? path84;
           }));
         }
         BuilderState2.getAllDependencies = getAllDependencies;
@@ -149332,7 +149332,7 @@ ${lanes.join("\n")}
           oldInfo.version !== info.version || // Implied formats dont match
           oldInfo.impliedFormat !== info.impliedFormat || // Referenced files changed
           !hasSameKeys(newReferences = referencedMap && referencedMap.getValues(sourceFilePath), oldReferencedMap && oldReferencedMap.getValues(sourceFilePath)) || // Referenced file was deleted in the new program
-          newReferences && forEachKey(newReferences, (path81) => !state.fileInfos.has(path81) && oldState.fileInfos.has(path81))) {
+          newReferences && forEachKey(newReferences, (path84) => !state.fileInfos.has(path84) && oldState.fileInfos.has(path84))) {
             addFileToChangeSet(sourceFilePath);
           } else {
             const sourceFile = newProgram.getSourceFileByPath(sourceFilePath);
@@ -149398,8 +149398,8 @@ ${lanes.join("\n")}
         }
         if (useOldState && state.semanticDiagnosticsPerFile.size !== state.fileInfos.size && oldState.checkPending !== state.checkPending) state.buildInfoEmitPending = true;
         return state;
-        function addFileToChangeSet(path81) {
-          state.changedFilesSet.add(path81);
+        function addFileToChangeSet(path84) {
+          state.changedFilesSet.add(path84);
           if (outFilePath) {
             canCopySemanticDiagnostics = false;
             canCopyEmitDiagnostics = false;
@@ -149463,9 +149463,9 @@ ${lanes.join("\n")}
           result.relatedInformation = relatedInformation ? relatedInformation.length ? relatedInformation.map((r) => convertToDiagnosticRelatedInformation(r, diagnosticFilePath, newProgram, toPathInBuildInfoDirectory)) : [] : void 0;
           return result;
         });
-        function toPathInBuildInfoDirectory(path81) {
+        function toPathInBuildInfoDirectory(path84) {
           buildInfoDirectory ?? (buildInfoDirectory = getDirectoryPath(getNormalizedAbsolutePath(getTsBuildInfoEmitOutputFilePath(newProgram.getCompilerOptions()), newProgram.getCurrentDirectory())));
-          return toPath(path81, buildInfoDirectory, newProgram.getCanonicalFileName);
+          return toPath(path84, buildInfoDirectory, newProgram.getCanonicalFileName);
         }
       }
       function convertToDiagnosticRelatedInformation(diagnostic, diagnosticFilePath, newProgram, toPath3) {
@@ -149540,10 +149540,10 @@ ${lanes.join("\n")}
           state.affectedFilesPendingEmit = void 0;
           state.programEmitPending = void 0;
         }
-        (_b = state.affectedFilesPendingEmit) == null ? void 0 : _b.forEach((emitKind, path81) => {
+        (_b = state.affectedFilesPendingEmit) == null ? void 0 : _b.forEach((emitKind, path84) => {
           const pending = !isForDtsErrors ? emitKind & 7 : emitKind & (7 | 48);
-          if (!pending) state.affectedFilesPendingEmit.delete(path81);
-          else state.affectedFilesPendingEmit.set(path81, pending);
+          if (!pending) state.affectedFilesPendingEmit.delete(path84);
+          else state.affectedFilesPendingEmit.set(path84, pending);
         });
         if (state.programEmitPending) {
           const pending = !isForDtsErrors ? state.programEmitPending & 7 : state.programEmitPending & (7 | 48);
@@ -149563,11 +149563,11 @@ ${lanes.join("\n")}
       function getNextAffectedFilePendingEmit(state, emitOnlyDtsFiles, isForDtsErrors) {
         var _a2;
         if (!((_a2 = state.affectedFilesPendingEmit) == null ? void 0 : _a2.size)) return void 0;
-        return forEachEntry(state.affectedFilesPendingEmit, (emitKind, path81) => {
+        return forEachEntry(state.affectedFilesPendingEmit, (emitKind, path84) => {
           var _a22;
-          const affectedFile = state.program.getSourceFileByPath(path81);
+          const affectedFile = state.program.getSourceFileByPath(path84);
           if (!affectedFile || !sourceFileMayBeEmitted(affectedFile, state.program)) {
-            state.affectedFilesPendingEmit.delete(path81);
+            state.affectedFilesPendingEmit.delete(path84);
             return void 0;
           }
           const seenKind = (_a22 = state.seenEmittedFiles) == null ? void 0 : _a22.get(affectedFile.resolvedPath);
@@ -149583,11 +149583,11 @@ ${lanes.join("\n")}
       function getNextPendingEmitDiagnosticsFile(state, isForDtsErrors) {
         var _a2;
         if (!((_a2 = state.emitDiagnosticsPerFile) == null ? void 0 : _a2.size)) return void 0;
-        return forEachEntry(state.emitDiagnosticsPerFile, (diagnostics, path81) => {
+        return forEachEntry(state.emitDiagnosticsPerFile, (diagnostics, path84) => {
           var _a22;
-          const affectedFile = state.program.getSourceFileByPath(path81);
+          const affectedFile = state.program.getSourceFileByPath(path84);
           if (!affectedFile || !sourceFileMayBeEmitted(affectedFile, state.program)) {
-            state.emitDiagnosticsPerFile.delete(path81);
+            state.emitDiagnosticsPerFile.delete(path84);
             return void 0;
           }
           const seenKind = ((_a22 = state.seenEmittedFiles) == null ? void 0 : _a22.get(affectedFile.resolvedPath)) || 0;
@@ -149622,10 +149622,10 @@ ${lanes.join("\n")}
           host
         );
       }
-      function handleDtsMayChangeOf(state, path81, invalidateJsFiles, cancellationToken, host) {
-        removeSemanticDiagnosticsOf(state, path81);
-        if (!state.changedFilesSet.has(path81)) {
-          const sourceFile = state.program.getSourceFileByPath(path81);
+      function handleDtsMayChangeOf(state, path84, invalidateJsFiles, cancellationToken, host) {
+        removeSemanticDiagnosticsOf(state, path84);
+        if (!state.changedFilesSet.has(path84)) {
+          const sourceFile = state.program.getSourceFileByPath(path84);
           if (sourceFile) {
             BuilderState.updateShapeSignature(
               state,
@@ -149639,13 +149639,13 @@ ${lanes.join("\n")}
             if (invalidateJsFiles) {
               addToAffectedFilesPendingEmit(
                 state,
-                path81,
+                path84,
                 getBuilderFileEmit(state.compilerOptions)
               );
             } else if (getEmitDeclarations(state.compilerOptions)) {
               addToAffectedFilesPendingEmit(
                 state,
-                path81,
+                path84,
                 state.compilerOptions.declarationMap ? 56 : 24
                 /* Dts */
               );
@@ -149653,17 +149653,17 @@ ${lanes.join("\n")}
           }
         }
       }
-      function removeSemanticDiagnosticsOf(state, path81) {
+      function removeSemanticDiagnosticsOf(state, path84) {
         if (!state.semanticDiagnosticsFromOldState) {
           return true;
         }
-        state.semanticDiagnosticsFromOldState.delete(path81);
-        state.semanticDiagnosticsPerFile.delete(path81);
+        state.semanticDiagnosticsFromOldState.delete(path84);
+        state.semanticDiagnosticsPerFile.delete(path84);
         return !state.semanticDiagnosticsFromOldState.size;
       }
-      function isChangedSignature(state, path81) {
-        const oldSignature = Debug.checkDefined(state.oldSignatures).get(path81) || void 0;
-        const newSignature = Debug.checkDefined(state.fileInfos.get(path81)).signature;
+      function isChangedSignature(state, path84) {
+        const oldSignature = Debug.checkDefined(state.oldSignatures).get(path84) || void 0;
+        const newSignature = Debug.checkDefined(state.fileInfos.get(path84)).signature;
         return newSignature !== oldSignature;
       }
       function handleDtsMayChangeOfGlobalScope(state, filePath, invalidateJsFiles, cancellationToken, host) {
@@ -149770,13 +149770,13 @@ ${lanes.join("\n")}
       }
       function getBinderAndCheckerDiagnosticsOfFile(state, sourceFile, cancellationToken, semanticDiagnosticsPerFile) {
         semanticDiagnosticsPerFile ?? (semanticDiagnosticsPerFile = state.semanticDiagnosticsPerFile);
-        const path81 = sourceFile.resolvedPath;
-        const cachedDiagnostics = semanticDiagnosticsPerFile.get(path81);
+        const path84 = sourceFile.resolvedPath;
+        const cachedDiagnostics = semanticDiagnosticsPerFile.get(path84);
         if (cachedDiagnostics) {
           return filterSemanticDiagnostics(cachedDiagnostics, state.compilerOptions);
         }
         const diagnostics = state.program.getBindAndCheckDiagnostics(sourceFile, cancellationToken);
-        semanticDiagnosticsPerFile.set(path81, diagnostics);
+        semanticDiagnosticsPerFile.set(path84, diagnostics);
         state.buildInfoEmitPending = true;
         return filterSemanticDiagnostics(diagnostics, state.compilerOptions);
       }
@@ -149924,11 +149924,11 @@ ${lanes.join("\n")}
         if ((_b = state.affectedFilesPendingEmit) == null ? void 0 : _b.size) {
           const fullEmitForOptions = getBuilderFileEmit(state.compilerOptions);
           const seenFiles = /* @__PURE__ */ new Set();
-          for (const path81 of arrayFrom(state.affectedFilesPendingEmit.keys()).sort(compareStringsCaseSensitive)) {
-            if (tryAddToSet(seenFiles, path81)) {
-              const file2 = state.program.getSourceFileByPath(path81);
+          for (const path84 of arrayFrom(state.affectedFilesPendingEmit.keys()).sort(compareStringsCaseSensitive)) {
+            if (tryAddToSet(seenFiles, path84)) {
+              const file2 = state.program.getSourceFileByPath(path84);
               if (!file2 || !sourceFileMayBeEmitted(file2, state.program)) continue;
-              const fileId = toFileId(path81), pendingEmit = state.affectedFilesPendingEmit.get(path81);
+              const fileId = toFileId(path84), pendingEmit = state.affectedFilesPendingEmit.get(path84);
               affectedFilesPendingEmit = append(
                 affectedFilesPendingEmit,
                 pendingEmit === fullEmitForOptions ? fileId : (
@@ -149962,17 +149962,17 @@ ${lanes.join("\n")}
           version: version2
         };
         return buildInfo;
-        function relativeToBuildInfoEnsuringAbsolutePath(path81) {
-          return relativeToBuildInfo(getNormalizedAbsolutePath(path81, currentDirectory));
+        function relativeToBuildInfoEnsuringAbsolutePath(path84) {
+          return relativeToBuildInfo(getNormalizedAbsolutePath(path84, currentDirectory));
         }
-        function relativeToBuildInfo(path81) {
-          return ensurePathIsNonModuleName(getRelativePathFromDirectory(buildInfoDirectory, path81, state.program.getCanonicalFileName));
+        function relativeToBuildInfo(path84) {
+          return ensurePathIsNonModuleName(getRelativePathFromDirectory(buildInfoDirectory, path84, state.program.getCanonicalFileName));
         }
-        function toFileId(path81) {
-          let fileId = fileNameToFileId.get(path81);
+        function toFileId(path84) {
+          let fileId = fileNameToFileId.get(path84);
           if (fileId === void 0) {
-            fileNames.push(relativeToBuildInfo(path81));
-            fileNameToFileId.set(path81, fileId = fileNames.length);
+            fileNames.push(relativeToBuildInfo(path84));
+            fileNameToFileId.set(path84, fileId = fileNames.length);
           }
           return fileId;
         }
@@ -149986,8 +149986,8 @@ ${lanes.join("\n")}
           }
           return fileIdListId;
         }
-        function tryAddRoot(path81, fileId) {
-          const file2 = state.program.getSourceFile(path81);
+        function tryAddRoot(path84, fileId) {
+          const file2 = state.program.getSourceFile(path84);
           if (!state.program.getFileIncludeReasons().get(file2.path).some(
             (r) => r.kind === 0
             /* RootFile */
@@ -150004,10 +150004,10 @@ ${lanes.join("\n")}
         }
         function toResolvedRoot() {
           let result;
-          rootFileNames.forEach((path81) => {
-            const file2 = state.program.getSourceFileByPath(path81);
-            if (file2 && path81 !== file2.resolvedPath) {
-              result = append(result, [toFileId(file2.resolvedPath), toFileId(path81)]);
+          rootFileNames.forEach((path84) => {
+            const file2 = state.program.getSourceFileByPath(path84);
+            if (file2 && path84 !== file2.resolvedPath) {
+              result = append(result, [toFileId(file2.resolvedPath), toFileId(path84)]);
             }
           });
           return result;
@@ -150115,8 +150115,8 @@ ${lanes.join("\n")}
         function toChangeFileSet() {
           let changeFileSet;
           if (state.changedFilesSet.size) {
-            for (const path81 of arrayFrom(state.changedFilesSet.keys()).sort(compareStringsCaseSensitive)) {
-              changeFileSet = append(changeFileSet, toFileId(path81));
+            for (const path84 of arrayFrom(state.changedFilesSet.keys()).sort(compareStringsCaseSensitive)) {
+              changeFileSet = append(changeFileSet, toFileId(path84));
             }
           }
           return changeFileSet;
@@ -150615,8 +150615,8 @@ ${lanes.join("\n")}
         const changedFilesSet = new Set(map3(buildInfo.changeFileSet, toFilePath));
         if (isIncrementalBundleEmitBuildInfo(buildInfo)) {
           buildInfo.fileInfos.forEach((fileInfo, index) => {
-            const path81 = toFilePath(index + 1);
-            fileInfos.set(path81, isString2(fileInfo) ? { version: fileInfo, signature: void 0, affectsGlobalScope: void 0, impliedFormat: void 0 } : fileInfo);
+            const path84 = toFilePath(index + 1);
+            fileInfos.set(path84, isString2(fileInfo) ? { version: fileInfo, signature: void 0, affectsGlobalScope: void 0, impliedFormat: void 0 } : fileInfo);
           });
           state = {
             fileInfos,
@@ -150635,10 +150635,10 @@ ${lanes.join("\n")}
           filePathsSetList = (_b = buildInfo.fileIdsList) == null ? void 0 : _b.map((fileIds) => new Set(fileIds.map(toFilePath)));
           const emitSignatures = ((_c = buildInfo.options) == null ? void 0 : _c.composite) && !buildInfo.options.outFile ? /* @__PURE__ */ new Map() : void 0;
           buildInfo.fileInfos.forEach((fileInfo, index) => {
-            const path81 = toFilePath(index + 1);
+            const path84 = toFilePath(index + 1);
             const stateFileInfo = toBuilderStateFileInfoForMultiEmit(fileInfo);
-            fileInfos.set(path81, stateFileInfo);
-            if (emitSignatures && stateFileInfo.signature) emitSignatures.set(path81, stateFileInfo.signature);
+            fileInfos.set(path84, stateFileInfo);
+            if (emitSignatures && stateFileInfo.signature) emitSignatures.set(path84, stateFileInfo.signature);
           });
           (_d = buildInfo.emitSignatures) == null ? void 0 : _d.forEach((value) => {
             if (isNumber2(value)) emitSignatures.delete(toFilePath(value));
@@ -150692,11 +150692,11 @@ ${lanes.join("\n")}
           close: noop,
           hasChangedEmitSignature: returnFalse
         };
-        function toPathInBuildInfoDirectory(path81) {
-          return toPath(path81, buildInfoDirectory, getCanonicalFileName);
+        function toPathInBuildInfoDirectory(path84) {
+          return toPath(path84, buildInfoDirectory, getCanonicalFileName);
         }
-        function toAbsolutePath(path81) {
-          return getNormalizedAbsolutePath(path81, buildInfoDirectory);
+        function toAbsolutePath(path84) {
+          return getNormalizedAbsolutePath(path84, buildInfoDirectory);
         }
         function toFilePath(fileId) {
           return filePaths[fileId - 1];
@@ -150735,30 +150735,30 @@ ${lanes.join("\n")}
         const roots = /* @__PURE__ */ new Map();
         const resolvedRoots = new Map(program.resolvedRoot);
         program.fileInfos.forEach((fileInfo, index) => {
-          const path81 = toPath(program.fileNames[index], buildInfoDirectory, getCanonicalFileName);
+          const path84 = toPath(program.fileNames[index], buildInfoDirectory, getCanonicalFileName);
           const version22 = isString2(fileInfo) ? fileInfo : fileInfo.version;
-          fileInfos.set(path81, version22);
+          fileInfos.set(path84, version22);
           if (rootIndex < program.root.length) {
             const current = program.root[rootIndex];
             const fileId = index + 1;
             if (isArray2(current)) {
               if (current[0] <= fileId && fileId <= current[1]) {
-                addRoot(fileId, path81);
+                addRoot(fileId, path84);
                 if (current[1] === fileId) rootIndex++;
               }
             } else if (current === fileId) {
-              addRoot(fileId, path81);
+              addRoot(fileId, path84);
               rootIndex++;
             }
           }
         });
         return { fileInfos, roots };
-        function addRoot(fileId, path81) {
+        function addRoot(fileId, path84) {
           const root = resolvedRoots.get(fileId);
           if (root) {
-            roots.set(toPath(program.fileNames[root - 1], buildInfoDirectory, getCanonicalFileName), path81);
+            roots.set(toPath(program.fileNames[root - 1], buildInfoDirectory, getCanonicalFileName), path84);
           } else {
-            roots.set(path81, void 0);
+            roots.set(path84, void 0);
           }
         }
       }
@@ -150833,11 +150833,11 @@ ${lanes.join("\n")}
           newConfigFileParsingDiagnostics
         );
       }
-      function removeIgnoredPath(path81) {
-        if (endsWith(path81, "/node_modules/.staging")) {
-          return removeSuffix(path81, "/.staging");
+      function removeIgnoredPath(path84) {
+        if (endsWith(path84, "/node_modules/.staging")) {
+          return removeSuffix(path84, "/.staging");
         }
-        return some(ignoredPaths, (searchPath) => path81.includes(searchPath)) ? void 0 : path81;
+        return some(ignoredPaths, (searchPath) => path84.includes(searchPath)) ? void 0 : path84;
       }
       function perceivedOsRootLengthForWatching(pathComponents2, length2) {
         if (length2 <= 1) return 1;
@@ -150863,8 +150863,8 @@ ${lanes.join("\n")}
         const perceivedOsRootLength = perceivedOsRootLengthForWatching(pathComponents2, length2);
         return length2 > perceivedOsRootLength + 1;
       }
-      function canWatchDirectoryOrFilePath(path81) {
-        return canWatchDirectoryOrFile(getPathComponents(path81));
+      function canWatchDirectoryOrFilePath(path84) {
+        return canWatchDirectoryOrFile(getPathComponents(path84));
       }
       function canWatchAtTypes(atTypes) {
         return canWatchAffectedPackageJsonOrNodeModulesOfAtTypes(getDirectoryPath(atTypes));
@@ -151158,11 +151158,11 @@ ${lanes.join("\n")}
           filesWithChangedSetOfUnresolvedImports = void 0;
           return collected;
         }
-        function isFileWithInvalidatedNonRelativeUnresolvedImports(path81) {
+        function isFileWithInvalidatedNonRelativeUnresolvedImports(path84) {
           if (!filesWithInvalidatedNonRelativeUnresolvedImports) {
             return false;
           }
-          const value = filesWithInvalidatedNonRelativeUnresolvedImports.get(path81);
+          const value = filesWithInvalidatedNonRelativeUnresolvedImports.get(path84);
           return !!value && !!value.length;
         }
         function createHasInvalidatedResolutions(customHasInvalidatedResolutions, customHasInvalidatedLibResolutions) {
@@ -151170,7 +151170,7 @@ ${lanes.join("\n")}
           const collected = filesWithInvalidatedResolutions;
           filesWithInvalidatedResolutions = void 0;
           return {
-            hasInvalidatedResolutions: (path81) => customHasInvalidatedResolutions(path81) || allModuleAndTypeResolutionsAreInvalidated || !!(collected == null ? void 0 : collected.has(path81)) || isFileWithInvalidatedNonRelativeUnresolvedImports(path81),
+            hasInvalidatedResolutions: (path84) => customHasInvalidatedResolutions(path84) || allModuleAndTypeResolutionsAreInvalidated || !!(collected == null ? void 0 : collected.has(path84)) || isFileWithInvalidatedNonRelativeUnresolvedImports(path84),
             hasInvalidatedLibResolutions: (libFileName) => {
               var _a2;
               return customHasInvalidatedLibResolutions(libFileName) || !!((_a2 = resolvedLibraries == null ? void 0 : resolvedLibraries.get(libFileName)) == null ? void 0 : _a2.isInvalidated);
@@ -151226,11 +151226,11 @@ ${lanes.join("\n")}
               if (expected) impliedFormatPackageJsons.set(newFile.resolvedPath, newFile.packageJsonLocations);
               else impliedFormatPackageJsons.delete(newFile.resolvedPath);
             });
-            impliedFormatPackageJsons.forEach((existing, path81) => {
-              const newFile = newProgram == null ? void 0 : newProgram.getSourceFileByPath(path81);
-              if (!newFile || newFile.resolvedPath !== path81) {
+            impliedFormatPackageJsons.forEach((existing, path84) => {
+              const newFile = newProgram == null ? void 0 : newProgram.getSourceFileByPath(path84);
+              if (!newFile || newFile.resolvedPath !== path84) {
                 existing.forEach((location) => fileWatchesOfAffectingLocations.get(location).files--);
-                impliedFormatPackageJsons.delete(path81);
+                impliedFormatPackageJsons.delete(path84);
               }
             });
           }
@@ -151249,16 +151249,16 @@ ${lanes.join("\n")}
             packageDirWatchers.delete(packageDirPath);
           }
         }
-        function closeDirectoryWatchesOfFailedLookup(watcher, path81) {
+        function closeDirectoryWatchesOfFailedLookup(watcher, path84) {
           if (watcher.refCount === 0) {
-            directoryWatchesOfFailedLookups.delete(path81);
+            directoryWatchesOfFailedLookups.delete(path84);
             watcher.watcher.close();
           }
         }
-        function closeFileWatcherOfAffectingLocation(watcher, path81) {
+        function closeFileWatcherOfAffectingLocation(watcher, path84) {
           var _a2;
           if (watcher.files === 0 && watcher.resolutions === 0 && !((_a2 = watcher.symlinks) == null ? void 0 : _a2.size)) {
-            fileWatchesOfAffectingLocations.delete(path81);
+            fileWatchesOfAffectingLocations.delete(path84);
             watcher.watcher.close();
           }
         }
@@ -151277,10 +151277,10 @@ ${lanes.join("\n")}
           logChanges
         }) {
           var _a2;
-          const path81 = resolutionHost.toPath(containingFile);
-          const resolutionsInFile = perFileCache.get(path81) || perFileCache.set(path81, createModeAwareCache()).get(path81);
+          const path84 = resolutionHost.toPath(containingFile);
+          const resolutionsInFile = perFileCache.get(path84) || perFileCache.set(path84, createModeAwareCache()).get(path84);
           const resolvedModules = [];
-          const hasInvalidatedNonRelativeUnresolvedImport = logChanges && isFileWithInvalidatedNonRelativeUnresolvedImports(path81);
+          const hasInvalidatedNonRelativeUnresolvedImport = logChanges && isFileWithInvalidatedNonRelativeUnresolvedImports(path84);
           const program = resolutionHost.getCurrentProgram();
           const oldRedirect = program && ((_a2 = program.getRedirectFromSourceFile(containingFile)) == null ? void 0 : _a2.resolvedRef);
           const unmatchedRedirects = oldRedirect ? !redirectedReference || redirectedReference.sourceFile.path !== oldRedirect.sourceFile.path : !!redirectedReference;
@@ -151298,13 +151298,13 @@ ${lanes.join("\n")}
               }
               resolutionsInFile.set(name, mode, resolution);
               if (resolution !== existingResolution) {
-                watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution, path81, getResolutionWithResolvedFileName, deferWatchingNonRelativeResolution);
+                watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution, path84, getResolutionWithResolvedFileName, deferWatchingNonRelativeResolution);
                 if (existingResolution) {
-                  stopWatchFailedLookupLocationOfResolution(existingResolution, path81, getResolutionWithResolvedFileName);
+                  stopWatchFailedLookupLocationOfResolution(existingResolution, path84, getResolutionWithResolvedFileName);
                 }
               }
               if (logChanges && filesWithChangedSetOfUnresolvedImports && !resolutionIsEqualTo(existingResolution, resolution)) {
-                filesWithChangedSetOfUnresolvedImports.push(path81);
+                filesWithChangedSetOfUnresolvedImports.push(path84);
                 logChanges = false;
               }
             } else {
@@ -151335,7 +151335,7 @@ ${lanes.join("\n")}
           if (resolutionsInFile.size() !== seenNamesInFile.size()) {
             resolutionsInFile.forEach((resolution, name, mode) => {
               if (!seenNamesInFile.has(name, mode)) {
-                stopWatchFailedLookupLocationOfResolution(resolution, path81, getResolutionWithResolvedFileName);
+                stopWatchFailedLookupLocationOfResolution(resolution, path84, getResolutionWithResolvedFileName);
                 resolutionsInFile.delete(name, mode);
               }
             });
@@ -151409,18 +151409,18 @@ ${lanes.join("\n")}
           if (!resolution || resolution.isInvalidated) {
             const existingResolution = resolution;
             resolution = resolveLibrary(libraryName, resolveFrom, options, host, libraryResolutionCache);
-            const path81 = resolutionHost.toPath(resolveFrom);
+            const path84 = resolutionHost.toPath(resolveFrom);
             watchFailedLookupLocationsOfExternalModuleResolutions(
               libraryName,
               resolution,
-              path81,
+              path84,
               getResolvedModuleFromResolution,
               /*deferWatchingNonRelativeResolution*/
               false
             );
             resolvedLibraries.set(libFileName, resolution);
             if (existingResolution) {
-              stopWatchFailedLookupLocationOfResolution(existingResolution, path81, getResolvedModuleFromResolution);
+              stopWatchFailedLookupLocationOfResolution(existingResolution, path84, getResolvedModuleFromResolution);
             }
           } else {
             if (isTraceEnabled(options, host)) {
@@ -151439,8 +151439,8 @@ ${lanes.join("\n")}
         }
         function resolveSingleModuleNameWithoutWatching(moduleName, containingFile) {
           var _a2, _b;
-          const path81 = resolutionHost.toPath(containingFile);
-          const resolutionsInFile = resolvedModuleNames.get(path81);
+          const path84 = resolutionHost.toPath(containingFile);
+          const resolutionsInFile = resolvedModuleNames.get(path84);
           const resolution = resolutionsInFile == null ? void 0 : resolutionsInFile.get(
             moduleName,
             /*mode*/
@@ -151597,13 +151597,13 @@ ${lanes.join("\n")}
             (symlinkWatcher.symlinks ?? (symlinkWatcher.symlinks = /* @__PURE__ */ new Set())).add(affectingLocation);
           }
         }
-        function invalidateAffectingFileWatcher(path81, packageJsonMap) {
+        function invalidateAffectingFileWatcher(path84, packageJsonMap) {
           var _a2;
-          const watcher = fileWatchesOfAffectingLocations.get(path81);
-          if (watcher == null ? void 0 : watcher.resolutions) (affectingPathChecks ?? (affectingPathChecks = /* @__PURE__ */ new Set())).add(path81);
-          if (watcher == null ? void 0 : watcher.files) (affectingPathChecksForFile ?? (affectingPathChecksForFile = /* @__PURE__ */ new Set())).add(path81);
+          const watcher = fileWatchesOfAffectingLocations.get(path84);
+          if (watcher == null ? void 0 : watcher.resolutions) (affectingPathChecks ?? (affectingPathChecks = /* @__PURE__ */ new Set())).add(path84);
+          if (watcher == null ? void 0 : watcher.files) (affectingPathChecksForFile ?? (affectingPathChecksForFile = /* @__PURE__ */ new Set())).add(path84);
           (_a2 = watcher == null ? void 0 : watcher.symlinks) == null ? void 0 : _a2.forEach((path210) => invalidateAffectingFileWatcher(path210, packageJsonMap));
-          packageJsonMap == null ? void 0 : packageJsonMap.delete(resolutionHost.toPath(path81));
+          packageJsonMap == null ? void 0 : packageJsonMap.delete(resolutionHost.toPath(path84));
         }
         function watchFailedLookupLocationOfNonRelativeModuleResolutions() {
           nonRelativeExternalModuleResolutions.forEach(watchFailedLookupLocationOfResolution);
@@ -151842,7 +151842,7 @@ ${lanes.join("\n")}
         function invalidatePackageJsonMap() {
           const packageJsonMap = moduleResolutionCache.getPackageJsonInfoCache().getInternalMap();
           if (packageJsonMap && (failedLookupChecks || startsWithPathChecks || isInDirectoryChecks)) {
-            packageJsonMap.forEach((_value, path81) => isInvalidatedFailedLookup(path81) ? packageJsonMap.delete(path81) : void 0);
+            packageJsonMap.forEach((_value, path84) => isInvalidatedFailedLookup(path84) ? packageJsonMap.delete(path84) : void 0);
           }
         }
         function invalidateResolutionsOfFailedLookupLocations() {
@@ -152460,9 +152460,9 @@ ${lanes.join("\n")}
           getDefaultLibLocation: maybeBind(host, host.getDefaultLibLocation),
           getDefaultLibFileName: (options) => host.getDefaultLibFileName(options),
           writeFile: createWriteFileMeasuringIO(
-            (path81, data, writeByteOrderMark) => host.writeFile(path81, data, writeByteOrderMark),
-            (path81) => host.createDirectory(path81),
-            (path81) => host.directoryExists(path81)
+            (path84, data, writeByteOrderMark) => host.writeFile(path84, data, writeByteOrderMark),
+            (path84) => host.createDirectory(path84),
+            (path84) => host.directoryExists(path84)
           ),
           getCurrentDirectory: memoize(() => host.getCurrentDirectory()),
           useCaseSensitiveFileNames: () => useCaseSensitiveFileNames2,
@@ -152533,16 +152533,16 @@ ${lanes.join("\n")}
           getCurrentDirectory: memoize(() => system.getCurrentDirectory()),
           getDefaultLibLocation,
           getDefaultLibFileName: (options) => combinePaths(getDefaultLibLocation(), getDefaultLibFileName(options)),
-          fileExists: (path81) => system.fileExists(path81),
-          readFile: (path81, encoding) => system.readFile(path81, encoding),
-          directoryExists: (path81) => system.directoryExists(path81),
-          getDirectories: (path81) => system.getDirectories(path81),
-          readDirectory: (path81, extensions, exclude, include, depth) => system.readDirectory(path81, extensions, exclude, include, depth),
+          fileExists: (path84) => system.fileExists(path84),
+          readFile: (path84, encoding) => system.readFile(path84, encoding),
+          directoryExists: (path84) => system.directoryExists(path84),
+          getDirectories: (path84) => system.getDirectories(path84),
+          readDirectory: (path84, extensions, exclude, include, depth) => system.readDirectory(path84, extensions, exclude, include, depth),
           realpath: maybeBind(system, system.realpath),
           getEnvironmentVariable: maybeBind(system, system.getEnvironmentVariable),
           trace: (s) => system.write(s + system.newLine),
-          createDirectory: (path81) => system.createDirectory(path81),
-          writeFile: (path81, data, writeByteOrderMark) => system.writeFile(path81, data, writeByteOrderMark),
+          createDirectory: (path84) => system.createDirectory(path84),
+          writeFile: (path84, data, writeByteOrderMark) => system.writeFile(path84, data, writeByteOrderMark),
           createHash: maybeBind(system, system.createHash),
           createProgram: createProgram2 || createEmitAndSemanticDiagnosticsBuilderProgram,
           storeSignatureInfo: system.storeSignatureInfo,
@@ -152855,7 +152855,7 @@ ${lanes.join("\n")}
             originalWriteFile,
             readFileWithCache
           } = changeCompilerHostLikeToUseCache(compilerHost, toPath3);
-          if (isProgramUptoDate(getCurrentProgram(), rootFileNames, compilerOptions, (path81) => getSourceVersion(path81, readFileWithCache), (fileName) => compilerHost.fileExists(fileName), hasInvalidatedResolutions, hasInvalidatedLibResolutions, hasChangedAutomaticTypeDirectiveNames, getParsedCommandLine, projectReferences)) {
+          if (isProgramUptoDate(getCurrentProgram(), rootFileNames, compilerOptions, (path84) => getSourceVersion(path84, readFileWithCache), (fileName) => compilerHost.fileExists(fileName), hasInvalidatedResolutions, hasInvalidatedLibResolutions, hasChangedAutomaticTypeDirectiveNames, getParsedCommandLine, projectReferences)) {
             if (hasChangedConfigFileParsingErrors) {
               if (reportFileChangeDetectedOnCreateProgram) {
                 reportWatchDiagnostic(Diagnostics.File_change_detected_Starting_incremental_compilation);
@@ -152949,14 +152949,14 @@ ${lanes.join("\n")}
           return typeof hostSourceFile.version === "boolean";
         }
         function fileExists2(fileName) {
-          const path81 = toPath3(fileName);
-          if (isFileMissingOnHost(sourceFilesCache.get(path81))) {
+          const path84 = toPath3(fileName);
+          if (isFileMissingOnHost(sourceFilesCache.get(path84))) {
             return false;
           }
           return directoryStructureHost.fileExists(fileName);
         }
-        function getVersionedSourceFileByPath(fileName, path81, languageVersionOrOptions, onError, shouldCreateNewSourceFile) {
-          const hostSourceFile = sourceFilesCache.get(path81);
+        function getVersionedSourceFileByPath(fileName, path84, languageVersionOrOptions, onError, shouldCreateNewSourceFile) {
+          const hostSourceFile = sourceFilesCache.get(path84);
           if (isFileMissingOnHost(hostSourceFile)) {
             return void 0;
           }
@@ -152968,41 +152968,41 @@ ${lanes.join("\n")}
                 hostSourceFile.sourceFile = sourceFile;
                 hostSourceFile.version = sourceFile.version;
                 if (!hostSourceFile.fileWatcher) {
-                  hostSourceFile.fileWatcher = watchFilePath(path81, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
+                  hostSourceFile.fileWatcher = watchFilePath(path84, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
                 }
               } else {
                 if (hostSourceFile.fileWatcher) {
                   hostSourceFile.fileWatcher.close();
                 }
-                sourceFilesCache.set(path81, false);
+                sourceFilesCache.set(path84, false);
               }
             } else {
               if (sourceFile) {
-                const fileWatcher = watchFilePath(path81, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
-                sourceFilesCache.set(path81, { sourceFile, version: sourceFile.version, fileWatcher });
+                const fileWatcher = watchFilePath(path84, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
+                sourceFilesCache.set(path84, { sourceFile, version: sourceFile.version, fileWatcher });
               } else {
-                sourceFilesCache.set(path81, false);
+                sourceFilesCache.set(path84, false);
               }
             }
             return sourceFile;
           }
           return hostSourceFile.sourceFile;
         }
-        function nextSourceFileVersion(path81) {
-          const hostSourceFile = sourceFilesCache.get(path81);
+        function nextSourceFileVersion(path84) {
+          const hostSourceFile = sourceFilesCache.get(path84);
           if (hostSourceFile !== void 0) {
             if (isFileMissingOnHost(hostSourceFile)) {
-              sourceFilesCache.set(path81, { version: false });
+              sourceFilesCache.set(path84, { version: false });
             } else {
               hostSourceFile.version = false;
             }
           }
         }
-        function getSourceVersion(path81, readFileWithCache) {
-          const hostSourceFile = sourceFilesCache.get(path81);
+        function getSourceVersion(path84, readFileWithCache) {
+          const hostSourceFile = sourceFilesCache.get(path84);
           if (!hostSourceFile) return void 0;
           if (hostSourceFile.version) return hostSourceFile.version;
-          const text = readFileWithCache(path81);
+          const text = readFileWithCache(path84);
           return text !== void 0 ? getSourceFileVersionAsHashFromText(compilerHost, text) : void 0;
         }
         function onReleaseOldSourceFile(oldSourceFile, _oldOptions, hasSourceFileByPath) {
@@ -153181,28 +153181,28 @@ ${lanes.join("\n")}
         }
         function onReleaseParsedCommandLine(fileName) {
           var _a2;
-          const path81 = toPath3(fileName);
-          const config2 = parsedConfigs == null ? void 0 : parsedConfigs.get(path81);
+          const path84 = toPath3(fileName);
+          const config2 = parsedConfigs == null ? void 0 : parsedConfigs.get(path84);
           if (!config2) return;
-          parsedConfigs.delete(path81);
+          parsedConfigs.delete(path84);
           if (config2.watchedDirectories) clearMap(config2.watchedDirectories, closeFileWatcherOf);
           (_a2 = config2.watcher) == null ? void 0 : _a2.close();
-          clearSharedExtendedConfigFileWatcher(path81, sharedExtendedConfigFileWatchers);
+          clearSharedExtendedConfigFileWatcher(path84, sharedExtendedConfigFileWatchers);
         }
-        function watchFilePath(path81, file2, callback, pollingInterval, options, watchType) {
-          return watchFile2(file2, (fileName, eventKind) => callback(fileName, eventKind, path81), pollingInterval, options, watchType);
+        function watchFilePath(path84, file2, callback, pollingInterval, options, watchType) {
+          return watchFile2(file2, (fileName, eventKind) => callback(fileName, eventKind, path84), pollingInterval, options, watchType);
         }
-        function onSourceFileChange(fileName, eventKind, path81) {
-          updateCachedSystemWithFile(fileName, path81, eventKind);
-          if (eventKind === 2 && sourceFilesCache.has(path81)) {
-            resolutionCache.invalidateResolutionOfFile(path81);
+        function onSourceFileChange(fileName, eventKind, path84) {
+          updateCachedSystemWithFile(fileName, path84, eventKind);
+          if (eventKind === 2 && sourceFilesCache.has(path84)) {
+            resolutionCache.invalidateResolutionOfFile(path84);
           }
-          nextSourceFileVersion(path81);
+          nextSourceFileVersion(path84);
           scheduleProgramUpdate();
         }
-        function updateCachedSystemWithFile(fileName, path81, eventKind) {
+        function updateCachedSystemWithFile(fileName, path84, eventKind) {
           if (cachedDirectoryStructureHost) {
-            cachedDirectoryStructureHost.addOrDeleteFile(fileName, path81, eventKind);
+            cachedDirectoryStructureHost.addOrDeleteFile(fileName, path84, eventKind);
           }
         }
         function watchMissingFilePath(missingFilePath, missingFileName) {
@@ -153423,9 +153423,9 @@ ${lanes.join("\n")}
       }
       function createSolutionBuilderHostBase(system, createProgram2, reportDiagnostic, reportSolutionBuilderStatus) {
         const host = createProgramHost(system, createProgram2);
-        host.getModifiedTime = system.getModifiedTime ? (path81) => system.getModifiedTime(path81) : returnUndefined;
-        host.setModifiedTime = system.setModifiedTime ? (path81, date4) => system.setModifiedTime(path81, date4) : noop;
-        host.deleteFile = system.deleteFile ? (path81) => system.deleteFile(path81) : noop;
+        host.getModifiedTime = system.getModifiedTime ? (path84) => system.getModifiedTime(path84) : returnUndefined;
+        host.setModifiedTime = system.setModifiedTime ? (path84, date4) => system.setModifiedTime(path84, date4) : noop;
+        host.deleteFile = system.deleteFile ? (path84) => system.deleteFile(path84) : noop;
         host.reportDiagnostic = reportDiagnostic || createDiagnosticReporter(system);
         host.reportSolutionBuilderStatus = reportSolutionBuilderStatus || createBuilderStatusReporter(system);
         host.now = maybeBind(system, system.now);
@@ -153596,8 +153596,8 @@ ${lanes.join("\n")}
       }
       function toResolvedConfigFilePath(state, fileName) {
         const { resolvedConfigFilePaths } = state;
-        const path81 = resolvedConfigFilePaths.get(fileName);
-        if (path81 !== void 0) return path81;
+        const path84 = resolvedConfigFilePaths.get(fileName);
+        if (path84 !== void 0) return path84;
         const resolvedPath = toPath2(state, fileName);
         resolvedConfigFilePaths.set(fileName, resolvedPath);
         return resolvedPath;
@@ -153985,7 +153985,7 @@ ${lanes.join("\n")}
             void 0,
             (name, text, writeByteOrderMark, onError, sourceFiles, data) => {
               var _a22;
-              const path81 = toPath2(state, name);
+              const path84 = toPath2(state, name);
               emittedOutputs.set(toPath2(state, name), name);
               if (data == null ? void 0 : data.buildInfo) {
                 now || (now = getCurrentTime(state.host));
@@ -154015,7 +154015,7 @@ ${lanes.join("\n")}
               );
               if (data == null ? void 0 : data.differsOnlyInMap) state.host.setModifiedTime(name, modifiedTime);
               else if (!isIncremental && state.watch) {
-                (outputTimeStampMap || (outputTimeStampMap = getOutputTimeStampMap(state, projectPath))).set(path81, now || (now = getCurrentTime(state.host)));
+                (outputTimeStampMap || (outputTimeStampMap = getOutputTimeStampMap(state, projectPath))).set(path84, now || (now = getCurrentTime(state.host)));
               }
             },
             cancellationToken,
@@ -154199,8 +154199,8 @@ ${lanes.join("\n")}
         return !!value.watcher;
       }
       function getModifiedTime2(state, fileName) {
-        const path81 = toPath2(state, fileName);
-        const existing = state.filesWatched.get(path81);
+        const path84 = toPath2(state, fileName);
+        const existing = state.filesWatched.get(path84);
         if (state.watch && !!existing) {
           if (!isFileWatcherWithModifiedTime(existing)) return existing;
           if (existing.modifiedTime) return existing.modifiedTime;
@@ -154208,20 +154208,20 @@ ${lanes.join("\n")}
         const result = getModifiedTime(state.host, fileName);
         if (state.watch) {
           if (existing) existing.modifiedTime = result;
-          else state.filesWatched.set(path81, result);
+          else state.filesWatched.set(path84, result);
         }
         return result;
       }
       function watchFile(state, file2, callback, pollingInterval, options, watchType, project) {
-        const path81 = toPath2(state, file2);
-        const existing = state.filesWatched.get(path81);
+        const path84 = toPath2(state, file2);
+        const existing = state.filesWatched.get(path84);
         if (existing && isFileWatcherWithModifiedTime(existing)) {
           existing.callbacks.push(callback);
         } else {
           const watcher = state.watchFile(
             file2,
             (fileName, eventKind, modifiedTime) => {
-              const existing2 = Debug.checkDefined(state.filesWatched.get(path81));
+              const existing2 = Debug.checkDefined(state.filesWatched.get(path84));
               Debug.assert(isFileWatcherWithModifiedTime(existing2));
               existing2.modifiedTime = modifiedTime;
               existing2.callbacks.forEach((cb) => cb(fileName, eventKind, modifiedTime));
@@ -154231,14 +154231,14 @@ ${lanes.join("\n")}
             watchType,
             project
           );
-          state.filesWatched.set(path81, { callbacks: [callback], watcher, modifiedTime: existing });
+          state.filesWatched.set(path84, { callbacks: [callback], watcher, modifiedTime: existing });
         }
         return {
           close: () => {
-            const existing2 = Debug.checkDefined(state.filesWatched.get(path81));
+            const existing2 = Debug.checkDefined(state.filesWatched.get(path84));
             Debug.assert(isFileWatcherWithModifiedTime(existing2));
             if (existing2.callbacks.length === 1) {
-              state.filesWatched.delete(path81);
+              state.filesWatched.delete(path84);
               closeFileWatcherOf(existing2);
             } else {
               unorderedRemoveItem(existing2.callbacks, callback);
@@ -154253,19 +154253,19 @@ ${lanes.join("\n")}
         return result;
       }
       function getBuildInfoCacheEntry(state, buildInfoPath, resolvedConfigPath) {
-        const path81 = toPath2(state, buildInfoPath);
+        const path84 = toPath2(state, buildInfoPath);
         const existing = state.buildInfoCache.get(resolvedConfigPath);
-        return (existing == null ? void 0 : existing.path) === path81 ? existing : void 0;
+        return (existing == null ? void 0 : existing.path) === path84 ? existing : void 0;
       }
       function getBuildInfo3(state, buildInfoPath, resolvedConfigPath, modifiedTime) {
-        const path81 = toPath2(state, buildInfoPath);
+        const path84 = toPath2(state, buildInfoPath);
         const existing = state.buildInfoCache.get(resolvedConfigPath);
-        if (existing !== void 0 && existing.path === path81) {
+        if (existing !== void 0 && existing.path === path84) {
           return existing.buildInfo || void 0;
         }
         const value = state.readFileWithCache(buildInfoPath);
         const buildInfo = value ? getBuildInfo(buildInfoPath, value) : void 0;
-        state.buildInfoCache.set(resolvedConfigPath, { path: path81, buildInfo: buildInfo || false, modifiedTime: modifiedTime || missingFileModifiedTime });
+        state.buildInfoCache.set(resolvedConfigPath, { path: path84, buildInfo: buildInfo || false, modifiedTime: modifiedTime || missingFileModifiedTime });
         return buildInfo;
       }
       function checkConfigFileUpToDateStatus(state, configFile, oldestOutputFileTime, oldestOutputFileName) {
@@ -154446,11 +154446,11 @@ ${lanes.join("\n")}
           const outputTimeStampMap = getOutputTimeStampMap(state, resolvedPath);
           for (const output of outputs) {
             if (output === buildInfoPath) continue;
-            const path81 = toPath2(state, output);
-            let outputTime = outputTimeStampMap == null ? void 0 : outputTimeStampMap.get(path81);
+            const path84 = toPath2(state, output);
+            let outputTime = outputTimeStampMap == null ? void 0 : outputTimeStampMap.get(path84);
             if (!outputTime) {
               outputTime = getModifiedTime(state.host, output);
-              outputTimeStampMap == null ? void 0 : outputTimeStampMap.set(path81, outputTime);
+              outputTimeStampMap == null ? void 0 : outputTimeStampMap.set(path84, outputTime);
             }
             if (outputTime === missingFileModifiedTime) {
               return {
@@ -154504,7 +154504,7 @@ ${lanes.join("\n")}
         const packageJsonLookups = state.lastCachedPackageJsonLookups.get(resolvedPath);
         const dependentPackageFileStatus = packageJsonLookups && forEachKey(
           packageJsonLookups,
-          (path81) => checkConfigFileUpToDateStatus(state, path81, oldestOutputFileTime, oldestOutputFileName)
+          (path84) => checkConfigFileUpToDateStatus(state, path84, oldestOutputFileTime, oldestOutputFileName)
         );
         if (dependentPackageFileStatus) return dependentPackageFileStatus;
         return {
@@ -154554,8 +154554,8 @@ ${lanes.join("\n")}
         if (!skipOutputs || outputs.length !== skipOutputs.size) {
           let reportVerbose = !!state.options.verbose;
           for (const file2 of outputs) {
-            const path81 = toPath2(state, file2);
-            if (skipOutputs == null ? void 0 : skipOutputs.has(path81)) continue;
+            const path84 = toPath2(state, file2);
+            if (skipOutputs == null ? void 0 : skipOutputs.has(path84)) continue;
             if (reportVerbose) {
               reportVerbose = false;
               reportStatus(state, verboseMessage, proj.options.configFilePath);
@@ -154563,8 +154563,8 @@ ${lanes.join("\n")}
             host.setModifiedTime(file2, now || (now = getCurrentTime(state.host)));
             if (file2 === buildInfoPath) getBuildInfoCacheEntry(state, buildInfoPath, projectPath).modifiedTime = now;
             else if (outputTimeStampMap) {
-              outputTimeStampMap.set(path81, now);
-              modifiedOutputs.add(path81);
+              outputTimeStampMap.set(path84, now);
+              modifiedOutputs.add(path84);
             }
           }
         }
@@ -154992,8 +154992,8 @@ ${lanes.join("\n")}
           close: () => stopWatching(state)
         };
       }
-      function relName(state, path81) {
-        return convertToRelativePath(path81, state.compilerHost.getCurrentDirectory(), state.compilerHost.getCanonicalFileName);
+      function relName(state, path84) {
+        return convertToRelativePath(path84, state.compilerHost.getCurrentDirectory(), state.compilerHost.getCanonicalFileName);
       }
       function reportStatus(state, message, ...args) {
         state.host.reportSolutionBuilderStatus(createCompilerDiagnostic(message, ...args));
@@ -155212,13 +155212,13 @@ ${lanes.join("\n")}
         } else if (file2.isDeclarationFile) {
           return "Definitions";
         }
-        const path81 = file2.path;
-        if (fileExtensionIsOneOf(path81, supportedTSExtensionsFlat)) {
+        const path84 = file2.path;
+        if (fileExtensionIsOneOf(path84, supportedTSExtensionsFlat)) {
           return "TypeScript";
-        } else if (fileExtensionIsOneOf(path81, supportedJSExtensionsFlat)) {
+        } else if (fileExtensionIsOneOf(path84, supportedJSExtensionsFlat)) {
           return "JavaScript";
         } else if (fileExtensionIs(
-          path81,
+          path84,
           ".json"
           /* Json */
         )) {
@@ -155830,7 +155830,7 @@ ${lanes.join("\n")}
             );
           }
         }
-        const commandLine = parseCommandLine(commandLineArgs, (path81) => system.readFile(path81));
+        const commandLine = parseCommandLine(commandLineArgs, (path84) => system.readFile(path84));
         if (commandLine.options.generateCpuProfile && system.enableCPUProfiler) {
           system.enableCPUProfiler(commandLine.options.generateCpuProfile, () => executeCommandLineWorker(
             system,
@@ -157706,12 +157706,12 @@ ${lanes.join("\n")}
         return nodeCoreModules.has(moduleName) ? "node" : moduleName;
       }
       function loadSafeList(host, safeListPath) {
-        const result = readConfigFile(safeListPath, (path81) => host.readFile(path81));
+        const result = readConfigFile(safeListPath, (path84) => host.readFile(path84));
         return new Map(Object.entries(result.config));
       }
       function loadTypesMap(host, typesMapPath) {
         var _a2;
-        const result = readConfigFile(typesMapPath, (path81) => host.readFile(path81));
+        const result = readConfigFile(typesMapPath, (path84) => host.readFile(path84));
         if ((_a2 = result.config) == null ? void 0 : _a2.simpleMap) {
           return new Map(Object.entries(result.config.simpleMap));
         }
@@ -157723,9 +157723,9 @@ ${lanes.join("\n")}
         }
         const inferredTypings = /* @__PURE__ */ new Map();
         fileNames = mapDefined(fileNames, (fileName) => {
-          const path81 = normalizePath(fileName);
-          if (hasJSFileExtension(path81)) {
-            return path81;
+          const path84 = normalizePath(fileName);
+          if (hasJSFileExtension(path84)) {
+            return path84;
           }
         });
         const filesToWatch = [];
@@ -157787,7 +157787,7 @@ ${lanes.join("\n")}
           let manifestTypingNames;
           if (host.fileExists(manifestPath)) {
             filesToWatch2.push(manifestPath);
-            manifest = readConfigFile(manifestPath, (path81) => host.readFile(path81)).config;
+            manifest = readConfigFile(manifestPath, (path84) => host.readFile(path84)).config;
             manifestTypingNames = flatMap([manifest.dependencies, manifest.devDependencies, manifest.optionalDependencies, manifest.peerDependencies], getOwnKeys);
             addInferredTypings(manifestTypingNames, `Typing names in '${manifestPath}' dependencies`);
           }
@@ -157821,7 +157821,7 @@ ${lanes.join("\n")}
           if (log) log(`Searching for typing names in ${packagesFolderPath}; all files: ${JSON.stringify(dependencyManifestNames)}`);
           for (const manifestPath2 of dependencyManifestNames) {
             const normalizedFileName = normalizePath(manifestPath2);
-            const result2 = readConfigFile(normalizedFileName, (path81) => host.readFile(path81));
+            const result2 = readConfigFile(normalizedFileName, (path84) => host.readFile(path84));
             const manifest2 = result2.config;
             if (!manifest2.name) {
               continue;
@@ -160601,14 +160601,14 @@ ${lanes.join("\n")}
       function tryGetDirectories(host, directoryName) {
         return tryIOAndConsumeErrors(host, host.getDirectories, directoryName) || [];
       }
-      function tryReadDirectory(host, path81, extensions, exclude, include) {
-        return tryIOAndConsumeErrors(host, host.readDirectory, path81, extensions, exclude, include) || emptyArray;
+      function tryReadDirectory(host, path84, extensions, exclude, include) {
+        return tryIOAndConsumeErrors(host, host.readDirectory, path84, extensions, exclude, include) || emptyArray;
       }
-      function tryFileExists(host, path81) {
-        return tryIOAndConsumeErrors(host, host.fileExists, path81);
+      function tryFileExists(host, path84) {
+        return tryIOAndConsumeErrors(host, host.fileExists, path84);
       }
-      function tryDirectoryExists(host, path81) {
-        return tryAndIgnoreErrors(() => directoryProbablyExists(path81, host)) || false;
+      function tryDirectoryExists(host, path84) {
+        return tryAndIgnoreErrors(() => directoryProbablyExists(path84, host)) || false;
       }
       function tryAndIgnoreErrors(cb) {
         try {
@@ -161450,13 +161450,13 @@ ${lanes.join("\n")}
       function getIsExcluded(excludePatterns, host) {
         var _a2;
         const realpathsWithSymlinks = (_a2 = host.getSymlinkCache) == null ? void 0 : _a2.call(host).getSymlinkedDirectoriesByRealpath();
-        return ({ fileName, path: path81 }) => {
+        return ({ fileName, path: path84 }) => {
           if (excludePatterns.some((p) => p.test(fileName))) return true;
           if ((realpathsWithSymlinks == null ? void 0 : realpathsWithSymlinks.size) && pathContainsNodeModules(fileName)) {
             let dir = getDirectoryPath(fileName);
             return forEachAncestorDirectoryStoppingAtGlobalCache(
               host,
-              getDirectoryPath(path81),
+              getDirectoryPath(path84),
               (dirPath) => {
                 const symlinks = realpathsWithSymlinks.get(ensureTrailingDirectorySeparator(dirPath));
                 if (symlinks) {
@@ -163112,14 +163112,14 @@ ${lanes.join("\n")}
           return settingsOrHost;
         }
         function acquireDocument(fileName, compilationSettings, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
-          const path81 = toPath(fileName, currentDirectory, getCanonicalFileName);
+          const path84 = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(getCompilationSettings(compilationSettings));
-          return acquireDocumentWithKey(fileName, path81, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
+          return acquireDocumentWithKey(fileName, path84, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
         }
-        function acquireDocumentWithKey(fileName, path81, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
+        function acquireDocumentWithKey(fileName, path84, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           return acquireOrUpdateDocument(
             fileName,
-            path81,
+            path84,
             compilationSettings,
             key,
             scriptSnapshot,
@@ -163131,14 +163131,14 @@ ${lanes.join("\n")}
           );
         }
         function updateDocument(fileName, compilationSettings, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
-          const path81 = toPath(fileName, currentDirectory, getCanonicalFileName);
+          const path84 = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(getCompilationSettings(compilationSettings));
-          return updateDocumentWithKey(fileName, path81, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
+          return updateDocumentWithKey(fileName, path84, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
         }
-        function updateDocumentWithKey(fileName, path81, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
+        function updateDocumentWithKey(fileName, path84, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           return acquireOrUpdateDocument(
             fileName,
-            path81,
+            path84,
             getCompilationSettings(compilationSettings),
             key,
             scriptSnapshot,
@@ -163154,7 +163154,7 @@ ${lanes.join("\n")}
           Debug.assert(scriptKind === void 0 || !entry || entry.sourceFile.scriptKind === scriptKind, `Script kind should match provided ScriptKind:${scriptKind} and sourceFile.scriptKind: ${entry == null ? void 0 : entry.sourceFile.scriptKind}, !entry: ${!entry}`);
           return entry;
         }
-        function acquireOrUpdateDocument(fileName, path81, compilationSettingsOrHost, key, scriptSnapshot, version22, acquiring, scriptKind, languageVersionOrOptions) {
+        function acquireOrUpdateDocument(fileName, path84, compilationSettingsOrHost, key, scriptSnapshot, version22, acquiring, scriptKind, languageVersionOrOptions) {
           var _a2, _b, _c, _d;
           scriptKind = ensureScriptKind(fileName, scriptKind);
           const compilationSettings = getCompilationSettings(compilationSettingsOrHost);
@@ -163162,7 +163162,7 @@ ${lanes.join("\n")}
           const scriptTarget = scriptKind === 6 ? 100 : getEmitScriptTarget(compilationSettings);
           const sourceFileOptions = typeof languageVersionOrOptions === "object" ? languageVersionOrOptions : {
             languageVersion: scriptTarget,
-            impliedNodeFormat: host && getImpliedNodeFormatForFile(path81, (_d = (_c = (_b = (_a2 = host.getCompilerHost) == null ? void 0 : _a2.call(host)) == null ? void 0 : _b.getModuleResolutionCache) == null ? void 0 : _c.call(_b)) == null ? void 0 : _d.getPackageJsonInfoCache(), host, compilationSettings),
+            impliedNodeFormat: host && getImpliedNodeFormatForFile(path84, (_d = (_c = (_b = (_a2 = host.getCompilerHost) == null ? void 0 : _a2.call(host)) == null ? void 0 : _b.getModuleResolutionCache) == null ? void 0 : _c.call(_b)) == null ? void 0 : _d.getPackageJsonInfoCache(), host, compilationSettings),
             setExternalModuleIndicator: getSetExternalModuleIndicator(compilationSettings),
             jsDocParsingMode
           };
@@ -163175,15 +163175,15 @@ ${lanes.join("\n")}
             if (buckets.size > oldBucketCount) {
               tracing.instant(tracing.Phase.Session, "createdDocumentRegistryBucket", { configFilePath: compilationSettings.configFilePath, key: keyWithMode });
             }
-            const otherBucketKey = !isDeclarationFileName(path81) && forEachEntry(buckets, (bucket2, bucketKey) => bucketKey !== keyWithMode && bucket2.has(path81) && bucketKey);
+            const otherBucketKey = !isDeclarationFileName(path84) && forEachEntry(buckets, (bucket2, bucketKey) => bucketKey !== keyWithMode && bucket2.has(path84) && bucketKey);
             if (otherBucketKey) {
-              tracing.instant(tracing.Phase.Session, "documentRegistryBucketOverlap", { path: path81, key1: otherBucketKey, key2: keyWithMode });
+              tracing.instant(tracing.Phase.Session, "documentRegistryBucketOverlap", { path: path84, key1: otherBucketKey, key2: keyWithMode });
             }
           }
-          const bucketEntry = bucket.get(path81);
+          const bucketEntry = bucket.get(path84);
           let entry = bucketEntry && getDocumentRegistryEntry(bucketEntry, scriptKind);
           if (!entry && externalCache) {
-            const sourceFile = externalCache.getDocument(keyWithMode, path81);
+            const sourceFile = externalCache.getDocument(keyWithMode, path84);
             if (sourceFile && sourceFile.scriptKind === scriptKind && sourceFile.text === getSnapshotText(scriptSnapshot)) {
               Debug.assert(acquiring);
               entry = {
@@ -163204,7 +163204,7 @@ ${lanes.join("\n")}
               scriptKind
             );
             if (externalCache) {
-              externalCache.setDocument(keyWithMode, path81, sourceFile);
+              externalCache.setDocument(keyWithMode, path84, sourceFile);
             }
             entry = {
               sourceFile,
@@ -163215,7 +163215,7 @@ ${lanes.join("\n")}
             if (entry.sourceFile.version !== version22) {
               entry.sourceFile = updateLanguageServiceSourceFile(entry.sourceFile, scriptSnapshot, version22, scriptSnapshot.getChangeRange(entry.sourceFile.scriptSnapshot));
               if (externalCache) {
-                externalCache.setDocument(keyWithMode, path81, entry.sourceFile);
+                externalCache.setDocument(keyWithMode, path84, entry.sourceFile);
               }
             }
             if (acquiring) {
@@ -163226,35 +163226,35 @@ ${lanes.join("\n")}
           return entry.sourceFile;
           function setBucketEntry() {
             if (!bucketEntry) {
-              bucket.set(path81, entry);
+              bucket.set(path84, entry);
             } else if (isDocumentRegistryEntry(bucketEntry)) {
               const scriptKindMap = /* @__PURE__ */ new Map();
               scriptKindMap.set(bucketEntry.sourceFile.scriptKind, bucketEntry);
               scriptKindMap.set(scriptKind, entry);
-              bucket.set(path81, scriptKindMap);
+              bucket.set(path84, scriptKindMap);
             } else {
               bucketEntry.set(scriptKind, entry);
             }
           }
         }
         function releaseDocument(fileName, compilationSettings, scriptKind, impliedNodeFormat) {
-          const path81 = toPath(fileName, currentDirectory, getCanonicalFileName);
+          const path84 = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(compilationSettings);
-          return releaseDocumentWithKey(path81, key, scriptKind, impliedNodeFormat);
+          return releaseDocumentWithKey(path84, key, scriptKind, impliedNodeFormat);
         }
-        function releaseDocumentWithKey(path81, key, scriptKind, impliedNodeFormat) {
+        function releaseDocumentWithKey(path84, key, scriptKind, impliedNodeFormat) {
           const bucket = Debug.checkDefined(buckets.get(getDocumentRegistryBucketKeyWithMode(key, impliedNodeFormat)));
-          const bucketEntry = bucket.get(path81);
+          const bucketEntry = bucket.get(path84);
           const entry = getDocumentRegistryEntry(bucketEntry, scriptKind);
           entry.languageServiceRefCount--;
           Debug.assert(entry.languageServiceRefCount >= 0);
           if (entry.languageServiceRefCount === 0) {
             if (isDocumentRegistryEntry(bucketEntry)) {
-              bucket.delete(path81);
+              bucket.delete(path84);
             } else {
               bucketEntry.delete(scriptKind);
               if (bucketEntry.size === 1) {
-                bucket.set(path81, firstDefinedIterator(bucketEntry.values(), identity));
+                bucket.set(path84, firstDefinedIterator(bucketEntry.values(), identity));
               }
             }
           }
@@ -163290,10 +163290,10 @@ ${lanes.join("\n")}
       }
       function getPathUpdater(oldFileOrDirPath, newFileOrDirPath, getCanonicalFileName, sourceMapper) {
         const canonicalOldPath = getCanonicalFileName(oldFileOrDirPath);
-        return (path81) => {
-          const originalPath = sourceMapper && sourceMapper.tryGetSourcePosition({ fileName: path81, pos: 0 });
-          const updatedPath = getUpdatedPath(originalPath ? originalPath.fileName : path81);
-          return originalPath ? updatedPath === void 0 ? void 0 : makeCorrespondingRelativeChange(originalPath.fileName, updatedPath, path81, getCanonicalFileName) : updatedPath;
+        return (path84) => {
+          const originalPath = sourceMapper && sourceMapper.tryGetSourcePosition({ fileName: path84, pos: 0 });
+          const updatedPath = getUpdatedPath(originalPath ? originalPath.fileName : path84);
+          return originalPath ? updatedPath === void 0 ? void 0 : makeCorrespondingRelativeChange(originalPath.fileName, updatedPath, path84, getCanonicalFileName) : updatedPath;
         };
         function getUpdatedPath(pathToUpdate) {
           if (getCanonicalFileName(pathToUpdate) === canonicalOldPath) return newFileOrDirPath;
@@ -163369,10 +163369,10 @@ ${lanes.join("\n")}
           }
           return false;
         }
-        function relativePath(path81) {
+        function relativePath(path84) {
           return getRelativePathFromDirectory(
             configDir,
-            path81,
+            path84,
             /*ignoreCase*/
             !useCaseSensitiveFileNames2
           );
@@ -164180,8 +164180,8 @@ ${lanes.join("\n")}
           return toPath(fileName, currentDirectory, getCanonicalFileName);
         }
         function getDocumentPositionMapper2(generatedFileName, sourceFileName) {
-          const path81 = toPath3(generatedFileName);
-          const value = documentPositionMappers.get(path81);
+          const path84 = toPath3(generatedFileName);
+          const value = documentPositionMappers.get(path84);
           if (value) return value;
           let mapper;
           if (host.getDocumentPositionMapper) {
@@ -164195,7 +164195,7 @@ ${lanes.join("\n")}
               (f) => !host.fileExists || host.fileExists(f) ? host.readFile(f) : void 0
             );
           }
-          documentPositionMappers.set(path81, mapper || identitySourceMapConsumer);
+          documentPositionMappers.set(path84, mapper || identitySourceMapConsumer);
           return mapper || identitySourceMapConsumer;
         }
         function tryGetSourcePosition(info) {
@@ -164223,21 +164223,21 @@ ${lanes.join("\n")}
         function getSourceFile(fileName) {
           const program = host.getProgram();
           if (!program) return void 0;
-          const path81 = toPath3(fileName);
-          const file2 = program.getSourceFileByPath(path81);
-          return file2 && file2.resolvedPath === path81 ? file2 : void 0;
+          const path84 = toPath3(fileName);
+          const file2 = program.getSourceFileByPath(path84);
+          return file2 && file2.resolvedPath === path84 ? file2 : void 0;
         }
         function getOrCreateSourceFileLike(fileName) {
-          const path81 = toPath3(fileName);
-          const fileFromCache = sourceFileLike.get(path81);
+          const path84 = toPath3(fileName);
+          const fileFromCache = sourceFileLike.get(path84);
           if (fileFromCache !== void 0) return fileFromCache ? fileFromCache : void 0;
           if (!host.readFile || host.fileExists && !host.fileExists(fileName)) {
-            sourceFileLike.set(path81, false);
+            sourceFileLike.set(path84, false);
             return void 0;
           }
           const text = host.readFile(fileName);
           const file2 = text ? createSourceFileLike(text) : false;
-          sourceFileLike.set(path81, file2);
+          sourceFileLike.set(path84, file2);
           return file2 ? file2 : void 0;
         }
         function getSourceFileLike(fileName) {
@@ -172323,12 +172323,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             directoryExists: (directoryName) => {
               return directoryProbablyExists(directoryName, host);
             },
-            getDirectories: (path81) => {
-              return host.getDirectories ? host.getDirectories(path81) : [];
+            getDirectories: (path84) => {
+              return host.getDirectories ? host.getDirectories(path84) : [];
             },
-            readDirectory: (path81, extensions, exclude, include, depth) => {
+            readDirectory: (path84, extensions, exclude, include, depth) => {
               Debug.checkDefined(host.readDirectory, "'LanguageServiceHost.readDirectory' must be implemented to correctly process 'projectReferences'");
-              return host.readDirectory(path81, extensions, exclude, include, depth);
+              return host.readDirectory(path84, extensions, exclude, include, depth);
             },
             onReleaseOldSourceFile,
             onReleaseParsedCommandLine,
@@ -172391,11 +172391,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           program.getTypeChecker();
           return;
           function getParsedCommandLine(fileName) {
-            const path81 = toPath(fileName, currentDirectory, getCanonicalFileName);
-            const existing = parsedCommandLines == null ? void 0 : parsedCommandLines.get(path81);
+            const path84 = toPath(fileName, currentDirectory, getCanonicalFileName);
+            const existing = parsedCommandLines == null ? void 0 : parsedCommandLines.get(path84);
             if (existing !== void 0) return existing || void 0;
             const result = host.getParsedCommandLine ? host.getParsedCommandLine(fileName) : getParsedCommandLineOfConfigFileUsingSourceFile(fileName);
-            (parsedCommandLines || (parsedCommandLines = /* @__PURE__ */ new Map())).set(path81, result || false);
+            (parsedCommandLines || (parsedCommandLines = /* @__PURE__ */ new Map())).set(path84, result || false);
             return result;
           }
           function getParsedCommandLineOfConfigFileUsingSourceFile(configFileName) {
@@ -172437,7 +172437,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           function getOrCreateSourceFile(fileName, languageVersionOrOptions, onError, shouldCreateNewSourceFile) {
             return getOrCreateSourceFileByPath(fileName, toPath(fileName, currentDirectory, getCanonicalFileName), languageVersionOrOptions, onError, shouldCreateNewSourceFile);
           }
-          function getOrCreateSourceFileByPath(fileName, path81, languageVersionOrOptions, _onError, shouldCreateNewSourceFile) {
+          function getOrCreateSourceFileByPath(fileName, path84, languageVersionOrOptions, _onError, shouldCreateNewSourceFile) {
             Debug.assert(compilerHost, "getOrCreateSourceFileByPath called after typical CompilerHost lifetime, check the callstack something with a reference to an old host.");
             const scriptSnapshot = host.getScriptSnapshot(fileName);
             if (!scriptSnapshot) {
@@ -172446,17 +172446,17 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             const scriptKind = getScriptKind(fileName, host);
             const scriptVersion = host.getScriptVersion(fileName);
             if (!shouldCreateNewSourceFile) {
-              const oldSourceFile = program && program.getSourceFileByPath(path81);
+              const oldSourceFile = program && program.getSourceFileByPath(path84);
               if (oldSourceFile) {
                 if (scriptKind === oldSourceFile.scriptKind || releasedScriptKinds.has(oldSourceFile.resolvedPath)) {
-                  return documentRegistry.updateDocumentWithKey(fileName, path81, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
+                  return documentRegistry.updateDocumentWithKey(fileName, path84, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
                 } else {
                   documentRegistry.releaseDocumentWithKey(oldSourceFile.resolvedPath, documentRegistry.getKeyForCompilationSettings(program.getCompilerOptions()), oldSourceFile.scriptKind, oldSourceFile.impliedNodeFormat);
                   releasedScriptKinds.add(oldSourceFile.resolvedPath);
                 }
               }
             }
-            return documentRegistry.acquireDocumentWithKey(fileName, path81, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
+            return documentRegistry.acquireDocumentWithKey(fileName, path84, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
           }
         }
         function getProgram() {
@@ -173062,7 +173062,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return isArray2(action) ? Promise.all(action.map((a) => applySingleCodeActionCommand(a))) : applySingleCodeActionCommand(action);
         }
         function applySingleCodeActionCommand(action) {
-          const getPath = (path81) => toPath(path81, currentDirectory, getCanonicalFileName);
+          const getPath = (path84) => toPath(path84, currentDirectory, getCanonicalFileName);
           Debug.assertEqual(action.type, "install package");
           return host.installPackage ? host.installPackage({ fileName: getPath(action.file), packageName: action.packageName }) : Promise.reject("Host does not implement `installPackage`");
         }
@@ -173406,8 +173406,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           function isLetterOrDigit(char) {
             return char >= 97 && char <= 122 || char >= 65 && char <= 90 || char >= 48 && char <= 57;
           }
-          function isNodeModulesFile(path81) {
-            return path81.includes("/node_modules/");
+          function isNodeModulesFile(path84) {
+            return path84.includes("/node_modules/");
           }
         }
         function getRenameInfo2(fileName, position, preferences) {
@@ -187041,11 +187041,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
         });
       }
-      function generateJSDocParamTagsForDestructuring(path81, pattern, initializer3, dotDotDotToken, isJs, isSnippet, checker, options, preferences) {
+      function generateJSDocParamTagsForDestructuring(path84, pattern, initializer3, dotDotDotToken, isJs, isSnippet, checker, options, preferences) {
         if (!isJs) {
           return [
             getJSDocParamAnnotation(
-              path81,
+              path84,
               initializer3,
               dotDotDotToken,
               isJs,
@@ -187059,7 +187059,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             )
           ];
         }
-        return patternWorker(path81, pattern, initializer3, dotDotDotToken, { tabstop: 1 });
+        return patternWorker(path84, pattern, initializer3, dotDotDotToken, { tabstop: 1 });
         function patternWorker(path210, pattern2, initializer22, dotDotDotToken2, counter) {
           if (isObjectBindingPattern(pattern2) && !dotDotDotToken2) {
             const oldTabstop = counter.tabstop;
@@ -191682,21 +191682,21 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function getFragmentDirectory(fragment) {
         return containsSlash(fragment) ? hasTrailingDirectorySeparator(fragment) ? fragment : getDirectoryPath(fragment) : void 0;
       }
-      function getCompletionsForPathMapping(path81, patterns, fragment, packageDirectory, extensionOptions, isExports, isImports, program, host, moduleSpecifierResolutionHost) {
-        const parsedPath = tryParsePattern(path81);
+      function getCompletionsForPathMapping(path84, patterns, fragment, packageDirectory, extensionOptions, isExports, isImports, program, host, moduleSpecifierResolutionHost) {
+        const parsedPath = tryParsePattern(path84);
         if (!parsedPath) {
           return emptyArray;
         }
         if (typeof parsedPath === "string") {
           return justPathMappingName(
-            path81,
+            path84,
             "script"
             /* scriptElement */
           );
         }
         const remainingFragment = tryRemovePrefix(fragment, parsedPath.prefix);
         if (remainingFragment === void 0) {
-          const starIsFullPathComponent = endsWith(path81, "/*");
+          const starIsFullPathComponent = endsWith(path84, "/*");
           return starIsFullPathComponent ? justPathMappingName(
             parsedPath.prefix,
             "directory"
@@ -191782,9 +191782,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         function getDirectoryMatches(directoryName) {
           return mapDefined(tryGetDirectories(host, directoryName), (dir) => dir === "node_modules" ? void 0 : directoryResult(dir));
         }
-        function trimPrefixAndSuffix(path81, prefix) {
+        function trimPrefixAndSuffix(path84, prefix) {
           return firstDefined(matchingSuffixes, (suffix) => {
-            const inner = withoutStartAndEnd(normalizePath(path81), prefix, suffix);
+            const inner = withoutStartAndEnd(normalizePath(path84), prefix, suffix);
             return inner === void 0 ? void 0 : removeLeadingDirectorySeparator(inner);
           });
         }
@@ -191792,8 +191792,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function withoutStartAndEnd(s, start, end) {
         return startsWith(s, start) && endsWith(s, end) ? s.slice(start.length, s.length - end.length) : void 0;
       }
-      function removeLeadingDirectorySeparator(path81) {
-        return path81[0] === directorySeparator ? path81.slice(1) : path81;
+      function removeLeadingDirectorySeparator(path84) {
+        return path84[0] === directorySeparator ? path84.slice(1) : path84;
       }
       function getAmbientModuleCompletions(fragment, fragmentDirectory, checker) {
         const ambientModules = checker.getAmbientModules().map((sym) => stripQuotes(sym.name));
@@ -191908,10 +191908,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           /* ESNext */
         ) ? void 0 : createTextSpan(textStart + offset, length2);
       }
-      function isPathRelativeToScript(path81) {
-        if (path81 && path81.length >= 2 && path81.charCodeAt(0) === 46) {
-          const slashIndex = path81.length >= 3 && path81.charCodeAt(1) === 46 ? 2 : 1;
-          const slashCharCode = path81.charCodeAt(slashIndex);
+      function isPathRelativeToScript(path84) {
+        if (path84 && path84.length >= 2 && path84.charCodeAt(0) === 46) {
+          const slashIndex = path84.length >= 3 && path84.charCodeAt(1) === 46 ? 2 : 1;
+          const slashCharCode = path84.charCodeAt(slashIndex);
           return slashCharCode === 47 || slashCharCode === 92;
         }
         return false;
@@ -207882,17 +207882,17 @@ ${options.prefix}` : "\n" : options.prefix
       function createNormalizedPathMap() {
         const map22 = /* @__PURE__ */ new Map();
         return {
-          get(path81) {
-            return map22.get(path81);
+          get(path84) {
+            return map22.get(path84);
           },
-          set(path81, value) {
-            map22.set(path81, value);
+          set(path84, value) {
+            map22.set(path84, value);
           },
-          contains(path81) {
-            return map22.has(path81);
+          contains(path84) {
+            return map22.has(path84);
           },
-          remove(path81) {
-            map22.delete(path81);
+          remove(path84) {
+            map22.delete(path84);
           }
         };
       }
@@ -208405,12 +208405,12 @@ ${options.prefix}` : "\n" : options.prefix
         return fileName[0] === "^" || (fileName.includes("walkThroughSnippet:/") || fileName.includes("untitled:/")) && getBaseFileName(fileName)[0] === "^" || fileName.includes(":^") && !fileName.includes(directorySeparator);
       }
       var ScriptInfo = class {
-        constructor(host, fileName, scriptKind, hasMixedContent, path81, initialVersion) {
+        constructor(host, fileName, scriptKind, hasMixedContent, path84, initialVersion) {
           this.host = host;
           this.fileName = fileName;
           this.scriptKind = scriptKind;
           this.hasMixedContent = hasMixedContent;
-          this.path = path81;
+          this.path = path84;
           this.containingProjects = [];
           this.isDynamic = isDynamicFileName(fileName);
           this.textStorage = new TextStorage(host, this, initialVersion);
@@ -209045,8 +209045,8 @@ ${options.prefix}` : "\n" : options.prefix
         useCaseSensitiveFileNames() {
           return this.projectService.host.useCaseSensitiveFileNames;
         }
-        readDirectory(path81, extensions, exclude, include, depth) {
-          return this.directoryStructureHost.readDirectory(path81, extensions, exclude, include, depth);
+        readDirectory(path84, extensions, exclude, include, depth) {
+          return this.directoryStructureHost.readDirectory(path84, extensions, exclude, include, depth);
         }
         readFile(fileName) {
           return this.projectService.host.readFile(fileName);
@@ -209055,8 +209055,8 @@ ${options.prefix}` : "\n" : options.prefix
           return this.projectService.host.writeFile(fileName, content);
         }
         fileExists(file2) {
-          const path81 = this.toPath(file2);
-          return !!this.projectService.getScriptInfoForPath(path81) || !this.isWatchedMissingFile(path81) && this.directoryStructureHost.fileExists(file2);
+          const path84 = this.toPath(file2);
+          return !!this.projectService.getScriptInfoForPath(path84) || !this.isWatchedMissingFile(path84) && this.directoryStructureHost.fileExists(file2);
         }
         /** @internal */
         resolveModuleNameLiterals(moduleLiterals, containingFile, redirectedReference, options, containingSourceFile, reusedNames) {
@@ -209081,11 +209081,11 @@ ${options.prefix}` : "\n" : options.prefix
         resolveLibrary(libraryName, resolveFrom, options, libFileName) {
           return this.resolutionCache.resolveLibrary(libraryName, resolveFrom, options, libFileName);
         }
-        directoryExists(path81) {
-          return this.directoryStructureHost.directoryExists(path81);
+        directoryExists(path84) {
+          return this.directoryStructureHost.directoryExists(path84);
         }
-        getDirectories(path81) {
-          return this.directoryStructureHost.getDirectories(path81);
+        getDirectories(path84) {
+          return this.directoryStructureHost.getDirectories(path84);
         }
         /** @internal */
         getCachedDirectoryStructureHost() {
@@ -209348,16 +209348,16 @@ ${options.prefix}` : "\n" : options.prefix
             }
           }));
         }
-        getSourceFile(path81) {
+        getSourceFile(path84) {
           if (!this.program) {
             return void 0;
           }
-          return this.program.getSourceFileByPath(path81);
+          return this.program.getSourceFileByPath(path84);
         }
         /** @internal */
-        getSourceFileOrConfigFile(path81) {
+        getSourceFileOrConfigFile(path84) {
           const options = this.program.getCompilerOptions();
-          return path81 === options.configFilePath ? options.configFile : this.getSourceFile(path81);
+          return path84 === options.configFilePath ? options.configFile : this.getSourceFile(path84);
         }
         close() {
           var _a2;
@@ -209534,8 +209534,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         // add a root file that doesnt exist on host
         addMissingFileRoot(fileName) {
-          const path81 = this.projectService.toPath(fileName);
-          this.rootFilesMap.set(path81, { fileName });
+          const path84 = this.projectService.toPath(fileName);
+          this.rootFilesMap.set(path84, { fileName });
           this.markAsDirty();
         }
         removeFile(info, fileExists2, detachFromProject) {
@@ -209701,22 +209701,22 @@ ${options.prefix}` : "\n" : options.prefix
           const toRemove = new Map(this.typingWatchers);
           if (!this.typingWatchers) this.typingWatchers = /* @__PURE__ */ new Map();
           this.typingWatchers.isInvoked = false;
-          const createProjectWatcher = (path81, typingsWatcherType) => {
-            const canonicalPath = this.toPath(path81);
+          const createProjectWatcher = (path84, typingsWatcherType) => {
+            const canonicalPath = this.toPath(path84);
             toRemove.delete(canonicalPath);
             if (!this.typingWatchers.has(canonicalPath)) {
               const watchType = typingsWatcherType === "FileWatcher" ? WatchType.TypingInstallerLocationFile : WatchType.TypingInstallerLocationDirectory;
               this.typingWatchers.set(
                 canonicalPath,
                 canWatchDirectoryOrFilePath(canonicalPath) ? typingsWatcherType === "FileWatcher" ? this.projectService.watchFactory.watchFile(
-                  path81,
+                  path84,
                   () => !this.typingWatchers.isInvoked ? this.onTypingInstallerWatchInvoke() : this.writeLog(`TypingWatchers already invoked`),
                   2e3,
                   this.projectService.getWatchOptions(this),
                   watchType,
                   this
                 ) : this.projectService.watchFactory.watchDirectory(
-                  path81,
+                  path84,
                   (f) => {
                     if (this.typingWatchers.isInvoked) return this.writeLog(`TypingWatchers already invoked`);
                     if (!fileExtensionIs(
@@ -209731,7 +209731,7 @@ ${options.prefix}` : "\n" : options.prefix
                   this.projectService.getWatchOptions(this),
                   watchType,
                   this
-                ) : (this.writeLog(`Skipping watcher creation at ${path81}:: ${getDetailWatchInfo(watchType, this)}`), noopFileWatcher)
+                ) : (this.writeLog(`Skipping watcher creation at ${path84}:: ${getDetailWatchInfo(watchType, this)}`), noopFileWatcher)
               );
             }
           };
@@ -209776,9 +209776,9 @@ ${options.prefix}` : "\n" : options.prefix
               /* DirectoryWatcher */
             );
           }
-          toRemove.forEach((watch, path81) => {
+          toRemove.forEach((watch, path84) => {
             watch.close();
-            this.typingWatchers.delete(path81);
+            this.typingWatchers.delete(path84);
           });
         }
         /** @internal */
@@ -209812,9 +209812,9 @@ ${options.prefix}` : "\n" : options.prefix
           let hasNewProgram = false;
           if (this.program && (!oldProgram || this.program !== oldProgram && this.program.structureIsReused !== 2)) {
             hasNewProgram = true;
-            this.rootFilesMap.forEach((value, path81) => {
+            this.rootFilesMap.forEach((value, path84) => {
               var _a22;
-              const file2 = this.program.getSourceFileByPath(path81);
+              const file2 = this.program.getSourceFileByPath(path84);
               const info = value.info;
               if (!file2 || ((_a22 = value.info) == null ? void 0 : _a22.path) === file2.resolvedPath) return;
               value.info = this.projectService.getScriptInfo(file2.fileName);
@@ -209970,8 +209970,8 @@ ${options.prefix}` : "\n" : options.prefix
           );
           return fileWatcher;
         }
-        isWatchedMissingFile(path81) {
-          return !!this.missingFilesMap && this.missingFilesMap.has(path81);
+        isWatchedMissingFile(path84) {
+          return !!this.missingFilesMap && this.missingFilesMap.has(path84);
         }
         /** @internal */
         addGeneratedFileWatch(generatedFile, sourceFile) {
@@ -209980,17 +209980,17 @@ ${options.prefix}` : "\n" : options.prefix
               this.generatedFilesMap = this.createGeneratedFileWatcher(generatedFile);
             }
           } else {
-            const path81 = this.toPath(sourceFile);
+            const path84 = this.toPath(sourceFile);
             if (this.generatedFilesMap) {
               if (isGeneratedFileWatcher(this.generatedFilesMap)) {
                 Debug.fail(`${this.projectName} Expected to not have --out watcher for generated file with options: ${JSON.stringify(this.compilerOptions)}`);
                 return;
               }
-              if (this.generatedFilesMap.has(path81)) return;
+              if (this.generatedFilesMap.has(path84)) return;
             } else {
               this.generatedFilesMap = /* @__PURE__ */ new Map();
             }
-            this.generatedFilesMap.set(path81, this.createGeneratedFileWatcher(generatedFile));
+            this.generatedFilesMap.set(path84, this.createGeneratedFileWatcher(generatedFile));
           }
         }
         createGeneratedFileWatcher(generatedFile) {
@@ -210390,7 +210390,7 @@ ${options.prefix}` : "\n" : options.prefix
         isDefaultProjectForOpenFiles() {
           return !!forEachEntry(
             this.projectService.openFiles,
-            (_projectRootPath, path81) => this.projectService.tryGetDefaultProjectForFile(this.projectService.getScriptInfoForPath(path81)) === this
+            (_projectRootPath, path84) => this.projectService.tryGetDefaultProjectForFile(this.projectService.getScriptInfoForPath(path84)) === this
           );
         }
         /** @internal */
@@ -211564,33 +211564,33 @@ ${options.prefix}` : "\n" : options.prefix
           getCurrentDirectory: () => service.host.getCurrentDirectory(),
           useCaseSensitiveFileNames: service.host.useCaseSensitiveFileNames
         };
-        function watchFile2(path81, callback) {
+        function watchFile2(path84, callback) {
           return getOrCreateFileWatcher(
             watchedFiles,
-            path81,
+            path84,
             callback,
-            (id) => ({ eventName: CreateFileWatcherEvent, data: { id, path: path81 } })
+            (id) => ({ eventName: CreateFileWatcherEvent, data: { id, path: path84 } })
           );
         }
-        function watchDirectory(path81, callback, recursive) {
+        function watchDirectory(path84, callback, recursive) {
           return getOrCreateFileWatcher(
             recursive ? watchedDirectoriesRecursive : watchedDirectories,
-            path81,
+            path84,
             callback,
             (id) => ({
               eventName: CreateDirectoryWatcherEvent,
               data: {
                 id,
-                path: path81,
+                path: path84,
                 recursive: !!recursive,
                 // Special case node_modules as we watch it for changes to closed script infos as well
-                ignoreUpdate: !path81.endsWith("/node_modules") ? true : void 0
+                ignoreUpdate: !path84.endsWith("/node_modules") ? true : void 0
               }
             })
           );
         }
-        function getOrCreateFileWatcher({ pathToId, idToCallbacks }, path81, callback, event) {
-          const key = service.toPath(path81);
+        function getOrCreateFileWatcher({ pathToId, idToCallbacks }, path84, callback, event) {
+          const key = service.toPath(path84);
           let id = pathToId.get(key);
           if (!id) pathToId.set(key, id = ids++);
           let callbacks = idToCallbacks.get(id);
@@ -211759,13 +211759,13 @@ ${options.prefix}` : "\n" : options.prefix
           return getNormalizedAbsolutePath(fileName, this.host.getCurrentDirectory());
         }
         /** @internal */
-        setDocument(key, path81, sourceFile) {
-          const info = Debug.checkDefined(this.getScriptInfoForPath(path81));
+        setDocument(key, path84, sourceFile) {
+          const info = Debug.checkDefined(this.getScriptInfoForPath(path84));
           info.cacheSourceFile = { key, sourceFile };
         }
         /** @internal */
-        getDocument(key, path81) {
-          const info = this.getScriptInfoForPath(path81);
+        getDocument(key, path84) {
+          const info = this.getScriptInfoForPath(path84);
           return info && info.cacheSourceFile && info.cacheSourceFile.key === key ? info.cacheSourceFile.sourceFile : void 0;
         }
         /** @internal */
@@ -211887,7 +211887,7 @@ ${options.prefix}` : "\n" : options.prefix
           const event = {
             eventName: ProjectsUpdatedInBackgroundEvent,
             data: {
-              openFiles: arrayFrom(this.openFiles.keys(), (path81) => this.getScriptInfoForPath(path81).fileName)
+              openFiles: arrayFrom(this.openFiles.keys(), (path84) => this.getScriptInfoForPath(path84).fileName)
             }
           };
           this.eventHandler(event);
@@ -212109,11 +212109,11 @@ ${options.prefix}` : "\n" : options.prefix
         }
         delayUpdateSourceInfoProjects(sourceInfos) {
           if (sourceInfos) {
-            sourceInfos.forEach((_value, path81) => this.delayUpdateProjectsOfScriptInfoPath(path81));
+            sourceInfos.forEach((_value, path84) => this.delayUpdateProjectsOfScriptInfoPath(path84));
           }
         }
-        delayUpdateProjectsOfScriptInfoPath(path81) {
-          const info = this.getScriptInfoForPath(path81);
+        delayUpdateProjectsOfScriptInfoPath(path84) {
+          const info = this.getScriptInfoForPath(path84);
           if (info) {
             this.delayUpdateProjectGraphs(
               info.containingProjects,
@@ -212207,8 +212207,8 @@ ${options.prefix}` : "\n" : options.prefix
             const project = this.getConfiguredProjectByCanonicalConfigFilePath(projectCanonicalPath);
             if (!project) return;
             if (configuredProjectForConfig !== project && this.getHostPreferences().includeCompletionsForModuleExports) {
-              const path81 = this.toPath(configFileName);
-              if (find((_a2 = project.getCurrentProgram()) == null ? void 0 : _a2.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path81)) {
+              const path84 = this.toPath(configFileName);
+              if (find((_a2 = project.getCurrentProgram()) == null ? void 0 : _a2.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path84)) {
                 project.markAutoImportProviderAsDirty();
               }
             }
@@ -212263,10 +212263,10 @@ ${options.prefix}` : "\n" : options.prefix
                 });
                 return;
               }
-              const path81 = this.toPath(canonicalConfigFilePath);
-              project.resolutionCache.removeResolutionsFromProjectReferenceRedirects(path81);
+              const path84 = this.toPath(canonicalConfigFilePath);
+              project.resolutionCache.removeResolutionsFromProjectReferenceRedirects(path84);
               this.delayUpdateProjectGraph(project);
-              if (this.getHostPreferences().includeCompletionsForModuleExports && find((_c = project.getCurrentProgram()) == null ? void 0 : _c.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path81)) {
+              if (this.getHostPreferences().includeCompletionsForModuleExports && find((_c = project.getCurrentProgram()) == null ? void 0 : _c.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path84)) {
                 project.markAutoImportProviderAsDirty();
               }
             }
@@ -212291,20 +212291,20 @@ ${options.prefix}` : "\n" : options.prefix
             canonicalConfigFilePath,
             "Change in config file detected"
           );
-          this.openFiles.forEach((_projectRootPath, path81) => {
+          this.openFiles.forEach((_projectRootPath, path84) => {
             var _a2, _b;
-            const configFileForOpenFile = this.configFileForOpenFiles.get(path81);
-            if (!((_a2 = configFileExistenceInfo.openFilesImpactedByConfigFile) == null ? void 0 : _a2.has(path81))) return;
-            this.configFileForOpenFiles.delete(path81);
-            const info = this.getScriptInfoForPath(path81);
+            const configFileForOpenFile = this.configFileForOpenFiles.get(path84);
+            if (!((_a2 = configFileExistenceInfo.openFilesImpactedByConfigFile) == null ? void 0 : _a2.has(path84))) return;
+            this.configFileForOpenFiles.delete(path84);
+            const info = this.getScriptInfoForPath(path84);
             const newConfigFileNameForInfo = this.getConfigFileNameForFile(
               info,
               /*findFromCacheOnly*/
               false
             );
             if (!newConfigFileNameForInfo) return;
-            if (!((_b = this.pendingOpenFileProjectUpdates) == null ? void 0 : _b.has(path81))) {
-              (this.pendingOpenFileProjectUpdates ?? (this.pendingOpenFileProjectUpdates = /* @__PURE__ */ new Map())).set(path81, configFileForOpenFile);
+            if (!((_b = this.pendingOpenFileProjectUpdates) == null ? void 0 : _b.has(path84))) {
+              (this.pendingOpenFileProjectUpdates ?? (this.pendingOpenFileProjectUpdates = /* @__PURE__ */ new Map())).set(path84, configFileForOpenFile);
             }
           });
           this.delayEnsureProjectForOpenFiles();
@@ -212399,8 +212399,8 @@ ${options.prefix}` : "\n" : options.prefix
           return project;
         }
         assignOrphanScriptInfosToInferredProject() {
-          this.openFiles.forEach((projectRootPath, path81) => {
-            const info = this.getScriptInfoForPath(path81);
+          this.openFiles.forEach((projectRootPath, path84) => {
+            const info = this.getScriptInfoForPath(path84);
             if (info.isOrphan()) {
               this.assignOrphanScriptInfoToInferredProject(info, projectRootPath);
             }
@@ -212712,8 +212712,8 @@ ${options.prefix}` : "\n" : options.prefix
           this.configuredProjects.forEach(printProjectWithoutFileNames);
           this.inferredProjects.forEach(printProjectWithoutFileNames);
           this.logger.info("Open files: ");
-          this.openFiles.forEach((projectRootPath, path81) => {
-            const info = this.getScriptInfoForPath(path81);
+          this.openFiles.forEach((projectRootPath, path84) => {
+            const info = this.getScriptInfoForPath(path84);
             this.logger.info(`	FileName: ${info.fileName} ProjectRootPath: ${projectRootPath}`);
             this.logger.info(`		Projects: ${info.containingProjects.map((p) => p.getProjectName())}`);
           });
@@ -213039,12 +213039,12 @@ ${options.prefix}` : "\n" : options.prefix
             const newRootFile = propertyReader.getFileName(f);
             const fileName = toNormalizedPath(newRootFile);
             const isDynamic = isDynamicFileName(fileName);
-            let path81;
+            let path84;
             if (!isDynamic && !project.fileExists(newRootFile)) {
-              path81 = normalizedPathToPath(fileName, this.currentDirectory, this.toCanonicalFileName);
-              const existingValue = projectRootFilesMap.get(path81);
+              path84 = normalizedPathToPath(fileName, this.currentDirectory, this.toCanonicalFileName);
+              const existingValue = projectRootFilesMap.get(path84);
               if (existingValue) {
-                if (((_a2 = existingValue.info) == null ? void 0 : _a2.path) === path81) {
+                if (((_a2 = existingValue.info) == null ? void 0 : _a2.path) === path84) {
                   project.removeFile(
                     existingValue.info,
                     /*fileExists*/
@@ -213056,7 +213056,7 @@ ${options.prefix}` : "\n" : options.prefix
                 }
                 existingValue.fileName = fileName;
               } else {
-                projectRootFilesMap.set(path81, { fileName });
+                projectRootFilesMap.set(path84, { fileName });
               }
             } else {
               const scriptKind = propertyReader.getScriptKind(f, this.hostConfiguration.extraFileExtensions);
@@ -213070,8 +213070,8 @@ ${options.prefix}` : "\n" : options.prefix
                 /*deferredDeleteOk*/
                 false
               ));
-              path81 = scriptInfo.path;
-              const existingValue = projectRootFilesMap.get(path81);
+              path84 = scriptInfo.path;
+              const existingValue = projectRootFilesMap.get(path84);
               if (!existingValue || existingValue.info !== scriptInfo) {
                 project.addRoot(scriptInfo, fileName);
                 if (scriptInfo.isScriptOpen()) {
@@ -213081,11 +213081,11 @@ ${options.prefix}` : "\n" : options.prefix
                 existingValue.fileName = fileName;
               }
             }
-            newRootScriptInfoMap.set(path81, true);
+            newRootScriptInfoMap.set(path84, true);
           }
           if (projectRootFilesMap.size > newRootScriptInfoMap.size) {
-            projectRootFilesMap.forEach((value, path81) => {
-              if (!newRootScriptInfoMap.has(path81)) {
+            projectRootFilesMap.forEach((value, path84) => {
+              if (!newRootScriptInfoMap.has(path84)) {
                 if (value.info) {
                   project.removeFile(
                     value.info,
@@ -213094,7 +213094,7 @@ ${options.prefix}` : "\n" : options.prefix
                     true
                   );
                 } else {
-                  projectRootFilesMap.delete(path81);
+                  projectRootFilesMap.delete(path84);
                 }
               }
             });
@@ -213331,8 +213331,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         /** @internal */
         getScriptInfoOrConfig(uncheckedFileName) {
-          const path81 = toNormalizedPath(uncheckedFileName);
-          const info = this.getScriptInfoForNormalizedPath(path81);
+          const path84 = toNormalizedPath(uncheckedFileName);
+          const info = this.getScriptInfoForNormalizedPath(path84);
           if (info) return info;
           const configProject = this.configuredProjects.get(this.toPath(uncheckedFileName));
           return configProject && configProject.getCompilerOptions().configFile;
@@ -213344,7 +213344,7 @@ ${options.prefix}` : "\n" : options.prefix
               this.filenameToScriptInfo.entries(),
               (entry) => entry[1].deferredDelete ? void 0 : entry
             ),
-            ([path81, scriptInfo]) => ({ path: path81, fileName: scriptInfo.fileName })
+            ([path84, scriptInfo]) => ({ path: path84, fileName: scriptInfo.fileName })
           );
           this.logger.msg(
             `Could not find file ${JSON.stringify(fileName)}.
@@ -213376,7 +213376,7 @@ All files are: ${JSON.stringify(names)}`,
                   if (!projects) {
                     projects = createMultiMap();
                     projects.add(toAddInfo.path, project);
-                  } else if (!forEachEntry(projects, (projs, path81) => path81 === toAddInfo.path ? false : contains(projs, project))) {
+                  } else if (!forEachEntry(projects, (projs, path84) => path84 === toAddInfo.path ? false : contains(projs, project))) {
                     projects.add(toAddInfo.path, project);
                   }
                 }
@@ -213538,8 +213538,8 @@ All files are: ${JSON.stringify(names)}`,
         }
         getOrCreateScriptInfoWorker(fileName, currentDirectory, openedByClient, fileContent, scriptKind, hasMixedContent, hostToQueryFileExistsOn, deferredDeleteOk) {
           Debug.assert(fileContent === void 0 || openedByClient, "ScriptInfo needs to be opened by client to be able to set its user defined content");
-          const path81 = normalizedPathToPath(fileName, currentDirectory, this.toCanonicalFileName);
-          let info = this.filenameToScriptInfo.get(path81);
+          const path84 = normalizedPathToPath(fileName, currentDirectory, this.toCanonicalFileName);
+          let info = this.filenameToScriptInfo.get(path84);
           if (!info) {
             const isDynamic = isDynamicFileName(fileName);
             Debug.assert(isRootedDiskPath(fileName) || isDynamic || openedByClient, "", () => `${JSON.stringify({ fileName, currentDirectory, hostCurrentDirectory: this.currentDirectory, openKeys: arrayFrom(this.openFilesWithNonRootedDiskPath.keys()) })}
@@ -213551,7 +213551,7 @@ Dynamic files must always be opened with service's current directory or service 
             if (!openedByClient && !isDynamic && !(hostToQueryFileExistsOn || this.host).fileExists(fileName)) {
               return;
             }
-            info = new ScriptInfo(this.host, fileName, scriptKind, hasMixedContent, path81, this.filenameToScriptInfoVersion.get(path81));
+            info = new ScriptInfo(this.host, fileName, scriptKind, hasMixedContent, path84, this.filenameToScriptInfoVersion.get(path84));
             this.filenameToScriptInfo.set(info.path, info);
             this.filenameToScriptInfoVersion.delete(info.path);
             if (!openedByClient) {
@@ -213698,9 +213698,9 @@ Dynamic files must always be opened with service's current directory or service 
         getSourceFileLike(fileName, projectNameOrProject, declarationInfo) {
           const project = projectNameOrProject.projectName ? projectNameOrProject : this.findProject(projectNameOrProject);
           if (project) {
-            const path81 = project.toPath(fileName);
-            const sourceFile = project.getSourceFile(path81);
-            if (sourceFile && sourceFile.resolvedPath === path81) return sourceFile;
+            const path84 = project.toPath(fileName);
+            const sourceFile = project.getSourceFile(path84);
+            if (sourceFile && sourceFile.resolvedPath === path84) return sourceFile;
           }
           const info = this.getOrCreateScriptInfoNotOpenedByClient(
             fileName,
@@ -213866,8 +213866,8 @@ Dynamic files must always be opened with service's current directory or service 
               }
             });
           });
-          this.openFiles.forEach((_projectRootPath, path81) => {
-            const info = this.getScriptInfoForPath(path81);
+          this.openFiles.forEach((_projectRootPath, path84) => {
+            const info = this.getScriptInfoForPath(path84);
             if (find(info.containingProjects, isExternalProject)) return;
             this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
               info,
@@ -213920,14 +213920,14 @@ Dynamic files must always be opened with service's current directory or service 
           const pendingOpenFileProjectUpdates = this.pendingOpenFileProjectUpdates;
           this.pendingOpenFileProjectUpdates = void 0;
           pendingOpenFileProjectUpdates == null ? void 0 : pendingOpenFileProjectUpdates.forEach(
-            (_config, path81) => this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
-              this.getScriptInfoForPath(path81),
+            (_config, path84) => this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
+              this.getScriptInfoForPath(path84),
               5
               /* Create */
             )
           );
-          this.openFiles.forEach((projectRootPath, path81) => {
-            const info = this.getScriptInfoForPath(path81);
+          this.openFiles.forEach((projectRootPath, path84) => {
+            const info = this.getScriptInfoForPath(path84);
             if (info.isOrphan()) {
               this.assignOrphanScriptInfoToInferredProject(info, projectRootPath);
             } else {
@@ -214438,9 +214438,9 @@ Dynamic files must always be opened with service's current directory or service 
             }
           });
           if (!toRemoveConfiguredProjects.size) return toRemoveConfiguredProjects;
-          forEachEntry(this.openFiles, (_projectRootPath, path81) => {
-            if (openFilesWithRetainedConfiguredProject == null ? void 0 : openFilesWithRetainedConfiguredProject.has(path81)) return;
-            const info = this.getScriptInfoForPath(path81);
+          forEachEntry(this.openFiles, (_projectRootPath, path84) => {
+            if (openFilesWithRetainedConfiguredProject == null ? void 0 : openFilesWithRetainedConfiguredProject.has(path84)) return;
+            const info = this.getScriptInfoForPath(path84);
             if (find(info.containingProjects, isExternalProject)) return;
             const result = this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
               info,
@@ -214489,8 +214489,8 @@ Dynamic files must always be opened with service's current directory or service 
                 sourceInfos = info.sourceMapFilePath.sourceInfos;
               }
               if (!sourceInfos) return;
-              if (!forEachKey(sourceInfos, (path81) => {
-                const info2 = this.getScriptInfoForPath(path81);
+              if (!forEachKey(sourceInfos, (path84) => {
+                const info2 = this.getScriptInfoForPath(path84);
                 return !!info2 && (info2.isScriptOpen() || !info2.isOrphan());
               })) {
                 return;
@@ -214514,7 +214514,7 @@ Dynamic files must always be opened with service's current directory or service 
                 sourceInfos = info.sourceMapFilePath.sourceInfos;
               }
               if (sourceInfos) {
-                sourceInfos.forEach((_value, path81) => toRemoveScriptInfos.delete(path81));
+                sourceInfos.forEach((_value, path84) => toRemoveScriptInfos.delete(path84));
               }
             }
           });
@@ -214997,9 +214997,9 @@ Dynamic files must always be opened with service's current directory or service 
             }
           );
         }
-        watchPackageJsonFile(file2, path81, project) {
+        watchPackageJsonFile(file2, path84, project) {
           Debug.assert(project !== void 0);
-          let result = (this.packageJsonFilesMap ?? (this.packageJsonFilesMap = /* @__PURE__ */ new Map())).get(path81);
+          let result = (this.packageJsonFilesMap ?? (this.packageJsonFilesMap = /* @__PURE__ */ new Map())).get(path84);
           if (!result) {
             let watcher = this.watchFactory.watchFile(
               file2,
@@ -215007,11 +215007,11 @@ Dynamic files must always be opened with service's current directory or service 
                 switch (eventKind) {
                   case 0:
                   case 1:
-                    this.packageJsonCache.addOrUpdate(fileName, path81);
+                    this.packageJsonCache.addOrUpdate(fileName, path84);
                     this.onPackageJsonChange(result);
                     break;
                   case 2:
-                    this.packageJsonCache.delete(path81);
+                    this.packageJsonCache.delete(path84);
                     this.onPackageJsonChange(result);
                     result.projects.clear();
                     result.close();
@@ -215028,11 +215028,11 @@ Dynamic files must always be opened with service's current directory or service 
                 if (result.projects.size || !watcher) return;
                 watcher.close();
                 watcher = void 0;
-                (_a2 = this.packageJsonFilesMap) == null ? void 0 : _a2.delete(path81);
-                this.packageJsonCache.invalidate(path81);
+                (_a2 = this.packageJsonFilesMap) == null ? void 0 : _a2.delete(path84);
+                this.packageJsonCache.invalidate(path84);
               }
             };
-            this.packageJsonFilesMap.set(path81, result);
+            this.packageJsonFilesMap.set(path84, result);
           }
           result.projects.add(project);
           (project.packageJsonWatches ?? (project.packageJsonWatches = /* @__PURE__ */ new Set())).add(result);
@@ -215222,14 +215222,14 @@ Dynamic files must always be opened with service's current directory or service 
             );
           }
         };
-        function addOrUpdate(fileName, path81) {
+        function addOrUpdate(fileName, path84) {
           const packageJsonInfo = Debug.checkDefined(createPackageJsonInfo(fileName, host.host));
-          packageJsons.set(path81, packageJsonInfo);
-          directoriesWithoutPackageJson.delete(getDirectoryPath(path81));
+          packageJsons.set(path84, packageJsonInfo);
+          directoriesWithoutPackageJson.delete(getDirectoryPath(path84));
         }
-        function invalidate(path81) {
-          packageJsons.delete(path81);
-          directoriesWithoutPackageJson.delete(getDirectoryPath(path81));
+        function invalidate(path84) {
+          packageJsons.delete(path84);
+          directoriesWithoutPackageJson.delete(getDirectoryPath(path84));
         }
         function directoryHasPackageJson(directory) {
           return packageJsons.has(combinePaths(directory, "package.json")) ? -1 : directoriesWithoutPackageJson.has(directory) ? 0 : 3;
@@ -215426,8 +215426,8 @@ ${json3}${newLine}`;
       function combineProjectOutput(defaultValue, getValue, projects, action) {
         const outputs = flatMapToMutable(isArray2(projects) ? projects : projects.projects, (project) => action(project, defaultValue));
         if (!isArray2(projects) && projects.symLinkedProjects) {
-          projects.symLinkedProjects.forEach((projects2, path81) => {
-            const value = getValue(path81);
+          projects.symLinkedProjects.forEach((projects2, path84) => {
+            const value = getValue(path84);
             outputs.push(...flatMap(projects2, (project) => action(project, value)));
           });
         }
@@ -215573,9 +215573,9 @@ ${json3}${newLine}`;
         });
         return results.filter((o) => o.references.length !== 0);
       }
-      function forEachProjectInProjects(projects, path81, cb) {
+      function forEachProjectInProjects(projects, path84, cb) {
         for (const project of isArray2(projects) ? projects : projects.projects) {
-          cb(project, path81);
+          cb(project, path84);
         }
         if (!isArray2(projects) && projects.symLinkedProjects) {
           projects.symLinkedProjects.forEach((symlinkedProjects, symlinkedPath) => {
@@ -215589,8 +215589,8 @@ ${json3}${newLine}`;
         const resultsMap = /* @__PURE__ */ new Map();
         const queue = createQueue();
         queue.enqueue({ project: defaultProject, location: initialLocation });
-        forEachProjectInProjects(projects, initialLocation.fileName, (project, path81) => {
-          const location = { fileName: path81, pos: initialLocation.pos };
+        forEachProjectInProjects(projects, initialLocation.fileName, (project, path84) => {
+          const location = { fileName: path84, pos: initialLocation.pos };
           queue.enqueue({ project, location });
         });
         const projectService = defaultProject.projectService;
@@ -217432,8 +217432,8 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
                 nodeModulesPathParts.packageRootIndex
               );
               const packageName = getPackageNameFromTypesPackageName(unmangleScopedPackageName(packageNamePathPart));
-              const path81 = project.toPath(fileName);
-              if (entrypoints && some(entrypoints, (e) => project.toPath(e) === path81)) {
+              const path84 = project.toPath(fileName);
+              if (entrypoints && some(entrypoints, (e) => project.toPath(e) === path84)) {
                 return (_b = auxiliaryProject.resolutionCache.resolveSingleModuleNameWithoutWatching(packageName, resolveFromFile).resolvedModule) == null ? void 0 : _b.resolvedFileName;
               } else {
                 const pathToFileInPackage = fileName.substring(nodeModulesPathParts.packageRootIndex + 1);
@@ -218213,7 +218213,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
           }
           return combineProjectOutput(
             info,
-            (path81) => this.projectService.getScriptInfoForPath(path81),
+            (path84) => this.projectService.getScriptInfoForPath(path84),
             projects,
             (project, info2) => {
               if (!project.compileOnSaveEnabled || !project.languageServiceEnabled || project.isOrphan()) {
@@ -218240,7 +218240,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
             return args.richResponse ? { emitSkipped: true, diagnostics: [] } : false;
           }
           const scriptInfo = project.getScriptInfo(file2);
-          const { emitSkipped, diagnostics } = project.emitFile(scriptInfo, (path81, data, writeByteOrderMark) => this.host.writeFile(path81, data, writeByteOrderMark));
+          const { emitSkipped, diagnostics } = project.emitFile(scriptInfo, (path84, data, writeByteOrderMark) => this.host.writeFile(path84, data, writeByteOrderMark));
           return args.richResponse ? {
             emitSkipped,
             diagnostics: args.includeLinePosition ? this.convertToDiagnosticsWithLinePositionFromDiagnosticFile(diagnostics) : diagnostics.map((d) => formatDiagnosticToProtocol(
@@ -220169,9 +220169,9 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         };
       }
     })({ get exports() {
-      return ts28;
+      return ts46;
     }, set exports(v) {
-      ts28 = v;
+      ts46 = v;
       if (typeof module2 !== "undefined" && module2.exports) {
         module2.exports = v;
       }
@@ -220538,8 +220538,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path81, errorMaps, issueData } = params;
-  const fullPath = [...path81, ...issueData.path || []];
+  const { data, path: path84, errorMaps, issueData } = params;
+  const fullPath = [...path84, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -220654,11 +220654,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path81, key) {
+  constructor(parent, value, path84, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path81;
+    this._path = path84;
     this._key = key;
   }
   get path() {
@@ -224302,10 +224302,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path81) {
-  if (!path81)
+function getElementAtPath(obj, path84) {
+  if (!path84)
     return obj;
-  return path81.reduce((acc, key) => acc?.[key], obj);
+  return path84.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -224688,11 +224688,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path81, issues) {
+function prefixIssues(path84, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path81);
+    iss.path.unshift(path84);
     return iss;
   });
 }
@@ -234077,8 +234077,8 @@ var HOOK_SCRIPT_MAP = {
   Notification: "notification.js"
 };
 
-// src/tool-schemas.ts
-var TOOL_SCHEMAS = [
+// src/schemas/discovery-schemas.ts
+var DISCOVERY_SCHEMAS = [
   // Core search tools
   {
     name: "search_skills",
@@ -234164,8 +234164,11 @@ var TOOL_SCHEMAS = [
       },
       required: ["skill"]
     }
-  },
-  // Context gathering
+  }
+];
+
+// src/schemas/context-schemas.ts
+var CONTEXT_SCHEMAS = [
   {
     name: "detect_stack",
     description: "Analyze project to identify technology stack",
@@ -234205,7 +234208,6 @@ var TOOL_SCHEMAS = [
       }
     }
   },
-  // Live data
   {
     name: "fetch_docs",
     description: "Fetch current documentation for a library",
@@ -234217,70 +234219,6 @@ var TOOL_SCHEMAS = [
         version: { type: "string", description: "Specific version", default: "latest" }
       },
       required: ["library"]
-    }
-  },
-  {
-    name: "generate_openapi",
-    description: "Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and generates examples.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        output_path: { type: "string", description: 'Output file path (default: "openapi.json")', default: "openapi.json" },
-        title: { type: "string", description: "API title (default: from package.json name)" },
-        version: { type: "string", description: "API version (default: from package.json version)" },
-        description: { type: "string", description: "API description" },
-        server_url: { type: "string", description: 'Base server URL (e.g., "https://api.example.com")' },
-        include_examples: { type: "boolean", description: "Generate examples from types (default: true)", default: true },
-        format: {
-          type: "string",
-          enum: ["json", "yaml"],
-          description: 'Output format (default: "json")',
-          default: "json"
-        }
-      }
-    }
-  },
-  {
-    name: "get_schema",
-    description: "Introspect database schema",
-    inputSchema: {
-      type: "object",
-      properties: {
-        source: {
-          type: "string",
-          enum: ["prisma", "drizzle", "typeorm", "sql"],
-          description: "Schema source type"
-        },
-        path: { type: "string", description: "Path to schema file", default: "." },
-        tables: { type: "array", items: { type: "string" }, description: "Filter tables" }
-      },
-      required: ["source"]
-    }
-  },
-  {
-    name: "get_database_schema",
-    description: "Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files. Returns unified schema with tables, columns, indexes, and relations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Project root path to search for schema files", default: "." }
-      }
-    }
-  },
-  {
-    name: "get_api_routes",
-    description: "Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono. Returns HTTP method, path, handler location, and middleware information.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Project root path to scan for API routes", default: "." },
-        framework: {
-          type: "string",
-          enum: ["nextjs", "express", "fastify", "hono", "auto"],
-          description: "Framework to scan for (auto-detect if not specified)",
-          default: "auto"
-        }
-      }
     }
   },
   {
@@ -234300,101 +234238,29 @@ var TOOL_SCHEMAS = [
       required: ["config"]
     }
   },
-  // Validation
   {
-    name: "validate_implementation",
-    description: "Check code matches skill patterns",
+    name: "get_conventions",
+    description: "LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses Claude to synthesize findings into actionable convention guidelines.",
     inputSchema: {
       type: "object",
       properties: {
-        files: { type: "array", items: { type: "string" }, description: "Files to validate" },
-        skill: { type: "string", description: "Skill that was applied" },
-        checks: {
+        path: { type: "string", description: "Directory to analyze (relative to project root)", default: "." },
+        focus: {
           type: "array",
-          items: { type: "string" },
-          description: "Validation checks to run",
-          default: ["all"]
+          items: {
+            type: "string",
+            enum: ["naming", "imports", "structure", "testing", "error-handling"]
+          },
+          description: "Specific areas to focus analysis on. If empty, analyzes all areas.",
+          default: []
         }
-      },
-      required: ["files"]
-    }
-  },
-  {
-    name: "run_smoke_test",
-    description: "Quick verification generated code works",
-    inputSchema: {
-      type: "object",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["build", "typecheck", "lint", "import", "all"],
-          description: "Type of smoke test",
-          default: "all"
-        },
-        files: { type: "array", items: { type: "string" }, description: "Specific files to test" },
-        timeout: { type: "integer", description: "Timeout in seconds", default: 30 }
       }
     }
-  },
-  {
-    name: "check_types",
-    description: "Run TypeScript type checking",
-    inputSchema: {
-      type: "object",
-      properties: {
-        files: { type: "array", items: { type: "string" }, description: "Files to check" },
-        strict: { type: "boolean", description: "Use strict mode", default: false },
-        include_suggestions: { type: "boolean", description: "Include fix suggestions", default: true }
-      }
-    }
-  },
-  // Scaffolding
-  {
-    name: "scaffold_project",
-    description: "Create a new project from a template",
-    inputSchema: {
-      type: "object",
-      properties: {
-        template: { type: "string", description: "Template name (next-app, vite-react, next-saas)" },
-        output_dir: { type: "string", description: "Output directory for new project" },
-        variables: { type: "object", description: "Template variables", additionalProperties: true },
-        run_install: { type: "boolean", description: "Run npm install", default: true },
-        run_git_init: { type: "boolean", description: "Initialize git", default: true }
-      },
-      required: ["template", "output_dir"]
-    }
-  },
-  {
-    name: "list_templates",
-    description: "List available project templates",
-    inputSchema: {
-      type: "object",
-      properties: {
-        category: { type: "string", description: "Filter by category (minimal, full)" }
-      }
-    }
-  },
-  {
-    name: "plugin_status",
-    description: "Check GoodVibes plugin health: manifest, registries, hooks, MCP server status",
-    inputSchema: {
-      type: "object",
-      properties: {}
-    }
-  },
-  // Project health
-  {
-    name: "project_issues",
-    description: "Get detailed project issues: high-priority TODOs with file:line, health warnings, environment issues",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Project root path", default: "." },
-        include_low_priority: { type: "boolean", description: "Include low-priority TODOs", default: false }
-      }
-    }
-  },
-  // LSP Tools
+  }
+];
+
+// src/schemas/lsp-schemas.ts
+var LSP_SCHEMAS = [
   {
     name: "find_references",
     description: "Find all references to a symbol at a given position. Returns file locations, preview lines, and metadata for each reference.",
@@ -234614,7 +234480,6 @@ var TOOL_SCHEMAS = [
       required: ["file", "line", "column"]
     }
   },
-  // Inlay Hints
   {
     name: "get_inlay_hints",
     description: "Get inlay hints for a file to see inferred types where they're implicit. Returns hints for inferred return types, variable types, parameter names at call sites, and inferred type arguments. Helps understand code that doesn't have explicit type annotations.",
@@ -234628,7 +234493,6 @@ var TOOL_SCHEMAS = [
       required: ["file"]
     }
   },
-  // Workspace Symbols
   {
     name: "workspace_symbols",
     description: "Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container information.",
@@ -234653,144 +234517,6 @@ var TOOL_SCHEMAS = [
       required: ["query"]
     }
   },
-  // Error Tools
-  {
-    name: "parse_error_stack",
-    description: "Parse error stack traces and provide structured analysis. Extracts file paths, line numbers, and function names. Maps frames to project files and identifies root cause.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        error_text: { type: "string", description: "The full error message and stack trace" },
-        project_path: { type: "string", description: "Project root path for mapping files (defaults to cwd)" }
-      },
-      required: ["error_text"]
-    }
-  },
-  // Dependency Analysis
-  {
-    name: "analyze_dependencies",
-    description: "Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in package.json against actual imports in source files.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Project root path", default: "." },
-        check_updates: { type: "boolean", description: "Check npm registry for latest versions (slower)", default: false },
-        include_dev: { type: "boolean", description: "Include devDependencies in analysis", default: true }
-      }
-    }
-  },
-  {
-    name: "find_circular_deps",
-    description: "Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses DFS to detect cycles. Returns all cycles found with the full file paths involved.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Directory to scan (relative to project root or absolute)", default: "." },
-        include_node_modules: { type: "boolean", description: "Include node_modules in scan", default: false }
-      }
-    }
-  },
-  // Test Tools
-  {
-    name: "find_tests_for_file",
-    description: "Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find related tests. Returns a ranked list of test files with confidence scores.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        file: { type: "string", description: "Source file path (relative to project root or absolute)" },
-        include_indirect: { type: "boolean", description: "Include tests that import files which import this file", default: false }
-      },
-      required: ["file"]
-    }
-  },
-  {
-    name: "get_test_coverage",
-    description: "Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info, coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns uncovered lines and functions for targeted test writing.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        file: { type: "string", description: "Specific source file to check coverage for (relative to project root)" },
-        path: { type: "string", description: "Path to project or coverage directory (defaults to PROJECT_ROOT)" },
-        coverage_path: { type: "string", description: "Alias for path - path to coverage report directory or file" }
-      }
-    }
-  },
-  {
-    name: "suggest_test_cases",
-    description: "Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test cases with rationale.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        file: { type: "string", description: "Source file containing the function (relative to project root or absolute)" },
-        function: { type: "string", description: "Name of the function to analyze" },
-        include_existing: { type: "boolean", description: "Include existing tests for context (default true)", default: true }
-      },
-      required: ["file", "function"]
-    }
-  },
-  // Security
-  {
-    name: "scan_for_secrets",
-    description: "Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including API keys, tokens, passwords, private keys, and database connection strings.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Directory to scan for secrets", default: "." },
-        include_staged: { type: "boolean", description: "Also check git staged files", default: true },
-        severity_threshold: {
-          type: "string",
-          enum: ["low", "medium", "high"],
-          description: "Minimum severity level to report",
-          default: "low"
-        }
-      }
-    }
-  },
-  // Error Explanation
-  {
-    name: "explain_type_error",
-    description: "Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message, returns detailed explanation, common causes, and actionable fix suggestions.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        error_code: { type: "integer", description: "TypeScript error code (e.g., 2322, 2339, 7006)" },
-        error_message: { type: "string", description: "The full error message from TypeScript" },
-        context: { type: "string", description: "Optional code snippet where the error occurred" }
-      },
-      required: ["error_code", "error_message"]
-    }
-  },
-  // Project Tools
-  {
-    name: "get_env_config",
-    description: "Find all environment variable usages and their sources. Scans source files for process.env.*, import.meta.env.*, Deno.env.* and cross-references with .env files to identify documented vs undocumented variables.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Project root path to analyze", default: "." }
-      }
-    }
-  },
-  {
-    name: "get_conventions",
-    description: "LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses Claude to synthesize findings into actionable convention guidelines.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Directory to analyze (relative to project root)", default: "." },
-        focus: {
-          type: "array",
-          items: {
-            type: "string",
-            enum: ["naming", "imports", "structure", "testing", "error-handling"]
-          },
-          description: "Specific areas to focus analysis on. If empty, analyzes all areas.",
-          default: []
-        }
-      }
-    }
-  },
-  // LLM-Powered LSP Tools
   {
     name: "detect_breaking_changes",
     description: "LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and uses Claude to identify: function signature changes, interface/type property changes, exported symbol removals, and visibility changes. Returns breaking and non-breaking changes with migration guidance.",
@@ -234820,8 +234546,11 @@ var TOOL_SCHEMAS = [
       },
       required: ["before_ref"]
     }
-  },
-  // Framework Tools
+  }
+];
+
+// src/schemas/frontend-schemas.ts
+var FRONTEND_SCHEMAS = [
   {
     name: "get_react_component_tree",
     description: "Parse JSX/TSX files and build a component hierarchy tree. Uses static AST analysis to find component definitions and usages, extract props, and build parent-child relationships. Useful for understanding React component architecture.",
@@ -234836,18 +234565,6 @@ var TOOL_SCHEMAS = [
     }
   },
   {
-    name: "get_prisma_operations",
-    description: "Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation() calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Directory to analyze for Prisma operations", default: "src" },
-        include_n1_detection: { type: "boolean", description: "Run N+1 pattern detection", default: true }
-      }
-    }
-  },
-  // Frontend Analysis Tools
-  {
     name: "analyze_stacking_context",
     description: `Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my z-index working" issues.`,
     inputSchema: {
@@ -234859,370 +234576,6 @@ var TOOL_SCHEMAS = [
       required: ["file"]
     }
   },
-  // Build Analysis Tools
-  {
-    name: "analyze_bundle",
-    description: "Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/ directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and optimization recommendations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Build output directory (auto-detects dist/, .next/, build/ if not specified)" },
-        format: {
-          type: "string",
-          enum: ["summary", "detailed"],
-          description: "Output format - summary shows top chunks, detailed shows all",
-          default: "summary"
-        }
-      }
-    }
-  },
-  {
-    name: "check_permissions",
-    description: "Analyze file, network, and system access patterns in code. Scans for fs, net, child_process, http(s) imports and usages. Categorizes findings by type (filesystem, network, process, crypto) and risk level.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        file: { type: "string", description: "Specific file to analyze (optional)" },
-        path: { type: "string", description: "Directory to scan (defaults to current directory)", default: "." }
-      }
-    }
-  },
-  // Edit Validation
-  {
-    name: "validate_edits_preview",
-    description: "Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a validation/preview operation. Useful for fail-fast validation before writing code.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        edits: {
-          type: "array",
-          description: "List of proposed edits to validate",
-          items: {
-            type: "object",
-            properties: {
-              file: { type: "string", description: "File path (relative to project root or absolute)" },
-              old_text: { type: "string", description: "Text to replace (for replacement edits)" },
-              new_text: { type: "string", description: "Replacement text (used with old_text)" },
-              content: { type: "string", description: "Full file content (for full file replacement, mutually exclusive with old_text/new_text)" }
-            },
-            required: ["file"]
-          }
-        }
-      },
-      required: ["edits"]
-    }
-  },
-  // Memory Leak Detection
-  {
-    name: "detect_memory_leaks",
-    description: "Monitor process memory usage over time to detect potential memory leaks. Takes periodic snapshots, performs trend analysis with linear regression, and identifies consistent memory growth patterns. Supports monitoring existing processes by PID or spawning a new command.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        target: {
-          type: "string",
-          enum: ["pid", "command"],
-          description: 'Target type: "pid" to monitor existing process, "command" to spawn and monitor new process'
-        },
-        pid: {
-          type: "integer",
-          description: 'Process ID to monitor (required when target is "pid")'
-        },
-        command: {
-          type: "string",
-          description: 'Command to spawn and monitor (e.g., "npm run dev") - required when target is "command"'
-        },
-        duration_seconds: {
-          type: "integer",
-          description: "How long to monitor in seconds (default: 30, max: 600)",
-          default: 30
-        },
-        snapshot_interval_ms: {
-          type: "integer",
-          description: "Time between memory measurements in milliseconds (default: 5000)",
-          default: 5e3
-        },
-        threshold_mb: {
-          type: "integer",
-          description: "Minimum memory growth in MB to flag as potential leak (default: 10)",
-          default: 10
-        },
-        cwd: {
-          type: "string",
-          description: "Working directory for command execution (default: project root)"
-        }
-      },
-      required: ["target"]
-    }
-  },
-  // Database Query
-  {
-    name: "query_database",
-    description: "Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "SQL query to execute. For parameterized queries, use ? placeholders."
-        },
-        database_url: {
-          type: "string",
-          description: "Database connection URL. Formats: postgresql://user:pass@host:port/db, mysql://user:pass@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3."
-        },
-        params: {
-          type: "array",
-          items: { type: ["string", "number", "boolean", "null"] },
-          description: "Parameters for parameterized queries (replaces ? placeholders in order). Prevents SQL injection."
-        },
-        readonly: {
-          type: "boolean",
-          description: "If true (default), reject INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/TRUNCATE queries",
-          default: true
-        },
-        limit: {
-          type: "integer",
-          description: "Auto-add LIMIT to SELECT queries if not present (default: 100, set to 0 to disable)",
-          default: 100
-        },
-        format: {
-          type: "string",
-          enum: ["json", "table"],
-          description: "Output format: json (structured result object) or table (ASCII table)",
-          default: "json"
-        },
-        explain: {
-          type: "boolean",
-          description: "Prepend EXPLAIN to query and include execution plan in output",
-          default: false
-        }
-      },
-      required: ["query"]
-    }
-  },
-  // Environment Validation
-  {
-    name: "validate_env_complete",
-    description: "Validate environment variables are complete and documented. Compares .env against .env.example and code usage to identify missing, unused, and undocumented variables. Optionally validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        env_file: {
-          type: "string",
-          description: 'Path to the .env file (default: ".env")',
-          default: ".env"
-        },
-        example_file: {
-          type: "string",
-          description: 'Path to the .env.example file (default: ".env.example")',
-          default: ".env.example"
-        },
-        ignore: {
-          type: "array",
-          items: { type: "string" },
-          description: "Variable names to ignore during validation"
-        },
-        check_values: {
-          type: "boolean",
-          description: "Validate value formats based on variable naming (e.g., PORT should be numeric)",
-          default: false
-        }
-      }
-    }
-  },
-  // Package Management
-  {
-    name: "upgrade_package",
-    description: "Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes, checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe preview before making changes.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        package: {
-          type: "string",
-          description: "Name of the npm package to upgrade"
-        },
-        target_version: {
-          type: "string",
-          description: 'Target version to upgrade to (default: "latest")',
-          default: "latest"
-        },
-        include_changelog: {
-          type: "boolean",
-          description: "Fetch and analyze release notes for breaking changes (default: true)",
-          default: true
-        },
-        dry_run: {
-          type: "boolean",
-          description: "Preview only, do not actually upgrade (default: true)",
-          default: true
-        },
-        run_tests_after: {
-          type: "boolean",
-          description: "Run tests after upgrade to verify compatibility (default: false)",
-          default: false
-        },
-        path: {
-          type: "string",
-          description: "Project root path (defaults to current directory)"
-        }
-      },
-      required: ["package"]
-    }
-  },
-  // API Type Sync
-  {
-    name: "sync_api_types",
-    description: "Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that don't exist.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        backend_path: {
-          type: "string",
-          description: "Path to backend API routes (default: auto-detect from src/app/api, pages/api, src/routes)"
-        },
-        frontend_path: {
-          type: "string",
-          description: "Path to frontend source files",
-          default: "src"
-        },
-        api_pattern: {
-          type: "string",
-          description: "Regex pattern to identify API call sites",
-          default: "fetch|axios|api\\."
-        },
-        auto_fix: {
-          type: "boolean",
-          description: "Generate fix suggestions for drifts",
-          default: false
-        }
-      }
-    }
-  },
-  // Fixture Generation
-  {
-    name: "generate_fixture",
-    description: "Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript constants, and Prisma seed scripts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        model: {
-          type: "string",
-          description: "Prisma model name or TypeScript type name to generate fixtures for"
-        },
-        schema_path: {
-          type: "string",
-          description: "Path to schema file (default: auto-detect prisma/schema.prisma)"
-        },
-        count: {
-          type: "integer",
-          description: "Number of fixtures to generate (default: 1, max: 100)",
-          default: 1
-        },
-        overrides: {
-          type: "object",
-          description: "Specific values to use for fields, overriding generated values",
-          additionalProperties: true
-        },
-        with_relations: {
-          type: "array",
-          items: { type: "string" },
-          description: "Include related models in fixtures (specify relation field names)"
-        },
-        scenario: {
-          type: "string",
-          enum: ["empty", "minimal", "realistic", "edge_cases"],
-          description: "Data style: empty (minimal required), minimal (required + few optional), realistic (all fields with realistic data), edge_cases (boundary values, special chars)",
-          default: "realistic"
-        },
-        output_format: {
-          type: "string",
-          enum: ["json", "typescript", "prisma_seed"],
-          description: "Output format: json (raw array), typescript (typed const), prisma_seed (seed script)",
-          default: "json"
-        }
-      },
-      required: ["model"]
-    }
-  },
-  // Codebase Documentation
-  {
-    name: "explain_codebase",
-    description: "Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams, key files, entry points, and potential concerns.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: {
-          type: "string",
-          description: "Directory to analyze (defaults to project root)",
-          default: "."
-        },
-        depth: {
-          type: "string",
-          enum: ["shallow", "medium", "deep"],
-          description: "Analysis depth: shallow (fast overview), medium (default, balanced), deep (thorough analysis)",
-          default: "medium"
-        },
-        focus: {
-          type: "array",
-          items: { type: "string" },
-          description: 'Specific areas to detail (e.g., ["auth", "api", "database"])'
-        },
-        refresh: {
-          type: "boolean",
-          description: "Regenerate even if cached (default: false)",
-          default: false
-        },
-        include_architecture: {
-          type: "boolean",
-          description: "Generate ASCII architecture diagram (default: true)",
-          default: true
-        }
-      }
-    }
-  },
-  // Git Tools
-  {
-    name: "create_pull_request",
-    description: "Create a GitHub pull request with auto-generated descriptions. Analyzes git changes, generates title and description using LLM, pushes branch if needed, and creates PR via gh CLI. Supports draft PRs, labels, and reviewer assignment.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        base: {
-          type: "string",
-          description: 'Base branch for the PR (default: auto-detect, usually "main")'
-        },
-        title: {
-          type: "string",
-          description: "PR title (auto-generated from branch name or commits if not provided)"
-        },
-        body: {
-          type: "string",
-          description: "PR body/description (auto-generated using LLM if not provided)"
-        },
-        draft: {
-          type: "boolean",
-          description: "Create as draft PR (default: false)",
-          default: false
-        },
-        labels: {
-          type: "array",
-          items: { type: "string" },
-          description: 'Labels to add to the PR (e.g., ["bug", "enhancement"])'
-        },
-        reviewers: {
-          type: "array",
-          items: { type: "string" },
-          description: "GitHub usernames to request as reviewers"
-        },
-        auto_description: {
-          type: "boolean",
-          description: "Use LLM to generate PR description (default: true)",
-          default: true
-        }
-      }
-    }
-  },
-  // Frontend Analysis Tools
   {
     name: "analyze_responsive_breakpoints",
     description: "Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive design issues like desktop-first patterns or missing base styles.",
@@ -235401,8 +234754,284 @@ var TOOL_SCHEMAS = [
       },
       required: ["file"]
     }
+  }
+];
+
+// src/schemas/validation-schemas.ts
+var VALIDATION_SCHEMAS = [
+  {
+    name: "validate_implementation",
+    description: "Check code matches skill patterns",
+    inputSchema: {
+      type: "object",
+      properties: {
+        files: { type: "array", items: { type: "string" }, description: "Files to validate" },
+        skill: { type: "string", description: "Skill that was applied" },
+        checks: {
+          type: "array",
+          items: { type: "string" },
+          description: "Validation checks to run",
+          default: ["all"]
+        }
+      },
+      required: ["files"]
+    }
   },
-  // Process Management Tools (Phase 1)
+  {
+    name: "run_smoke_test",
+    description: "Quick verification generated code works",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: {
+          type: "string",
+          enum: ["build", "typecheck", "lint", "import", "all"],
+          description: "Type of smoke test",
+          default: "all"
+        },
+        files: { type: "array", items: { type: "string" }, description: "Specific files to test" },
+        timeout: { type: "integer", description: "Timeout in seconds", default: 30 }
+      }
+    }
+  },
+  {
+    name: "check_types",
+    description: "Run TypeScript type checking",
+    inputSchema: {
+      type: "object",
+      properties: {
+        files: { type: "array", items: { type: "string" }, description: "Files to check" },
+        strict: { type: "boolean", description: "Use strict mode", default: false },
+        include_suggestions: { type: "boolean", description: "Include fix suggestions", default: true }
+      }
+    }
+  },
+  {
+    name: "validate_edits_preview",
+    description: "Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a validation/preview operation. Useful for fail-fast validation before writing code.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        edits: {
+          type: "array",
+          description: "List of proposed edits to validate",
+          items: {
+            type: "object",
+            properties: {
+              file: { type: "string", description: "File path (relative to project root or absolute)" },
+              old_text: { type: "string", description: "Text to replace (for replacement edits)" },
+              new_text: { type: "string", description: "Replacement text (used with old_text)" },
+              content: { type: "string", description: "Full file content (for full file replacement, mutually exclusive with old_text/new_text)" }
+            },
+            required: ["file"]
+          }
+        }
+      },
+      required: ["edits"]
+    }
+  },
+  {
+    name: "validate_api_contract",
+    description: "Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes and body schemas match the spec. Reports violations with JSON paths.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec_path: {
+          type: "string",
+          description: "Path to OpenAPI spec file (JSON or YAML)"
+        },
+        base_url: {
+          type: "string",
+          description: "Base URL of running API"
+        },
+        endpoints: {
+          type: "array",
+          items: { type: "string" },
+          description: "Specific endpoints to test (default: all)"
+        },
+        include_examples: {
+          type: "boolean",
+          description: "Use spec examples as request data (default: true)",
+          default: true
+        },
+        timeout: {
+          type: "integer",
+          description: "Per-request timeout in ms (default: 10000)",
+          default: 1e4
+        },
+        auth_header: {
+          type: "string",
+          description: "Authorization header value if needed"
+        }
+      },
+      required: ["spec_path", "base_url"]
+    }
+  },
+  {
+    name: "validate_env_complete",
+    description: "Validate environment variables are complete and documented. Compares .env against .env.example and code usage to identify missing, unused, and undocumented variables. Optionally validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        env_file: {
+          type: "string",
+          description: 'Path to the .env file (default: ".env")',
+          default: ".env"
+        },
+        example_file: {
+          type: "string",
+          description: 'Path to the .env.example file (default: ".env.example")',
+          default: ".env.example"
+        },
+        ignore: {
+          type: "array",
+          items: { type: "string" },
+          description: "Variable names to ignore during validation"
+        },
+        check_values: {
+          type: "boolean",
+          description: "Validate value formats based on variable naming (e.g., PORT should be numeric)",
+          default: false
+        }
+      }
+    }
+  }
+];
+
+// src/schemas/security-schemas.ts
+var SECURITY_SCHEMAS = [
+  {
+    name: "scan_for_secrets",
+    description: "Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including API keys, tokens, passwords, private keys, and database connection strings. Supports configurable depth limit and early exit for presence-only checks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Directory to scan for secrets", default: "." },
+        include_staged: { type: "boolean", description: "Also check git staged files", default: true },
+        severity_threshold: {
+          type: "string",
+          enum: ["low", "medium", "high"],
+          description: "Minimum severity level to report",
+          default: "low"
+        },
+        max_depth: {
+          type: "integer",
+          description: "Maximum directory depth to scan (default: 10, configurable via SECRETS_SCAN_MAX_DEPTH env var)",
+          default: 10
+        },
+        check_presence_only: {
+          type: "boolean",
+          description: "Stop scanning after first match - useful for fast presence checks (default: false)",
+          default: false
+        }
+      }
+    }
+  },
+  {
+    name: "check_permissions",
+    description: "Analyze file, network, and system access patterns in code. Scans for fs, net, child_process, http(s) imports and usages. Categorizes findings by type (filesystem, network, process, crypto) and risk level.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "Specific file to analyze (optional)" },
+        path: { type: "string", description: "Directory to scan (defaults to current directory)", default: "." }
+      }
+    }
+  }
+];
+
+// src/schemas/error-schemas.ts
+var ERROR_SCHEMAS = [
+  {
+    name: "parse_error_stack",
+    description: "Parse error stack traces and provide structured analysis. Extracts file paths, line numbers, and function names. Maps frames to project files and identifies root cause.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        error_text: { type: "string", description: "The full error message and stack trace" },
+        project_path: { type: "string", description: "Project root path for mapping files (defaults to cwd)" }
+      },
+      required: ["error_text"]
+    }
+  },
+  {
+    name: "explain_type_error",
+    description: "Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message, returns detailed explanation, common causes, and actionable fix suggestions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        error_code: { type: "integer", description: "TypeScript error code (e.g., 2322, 2339, 7006)" },
+        error_message: { type: "string", description: "The full error message from TypeScript" },
+        context: { type: "string", description: "Optional code snippet where the error occurred" }
+      },
+      required: ["error_code", "error_message"]
+    }
+  }
+];
+
+// src/schemas/deps-schemas.ts
+var DEPS_SCHEMAS = [
+  {
+    name: "analyze_dependencies",
+    description: "Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in package.json against actual imports in source files.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path", default: "." },
+        check_updates: { type: "boolean", description: "Check npm registry for latest versions (slower)", default: false },
+        include_dev: { type: "boolean", description: "Include devDependencies in analysis", default: true }
+      }
+    }
+  },
+  {
+    name: "find_circular_deps",
+    description: "Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses DFS to detect cycles. Returns all cycles found with the full file paths involved.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Directory to scan (relative to project root or absolute)", default: "." },
+        include_node_modules: { type: "boolean", description: "Include node_modules in scan", default: false }
+      }
+    }
+  }
+];
+
+// src/schemas/build-schemas.ts
+var BUILD_SCHEMAS = [
+  {
+    name: "analyze_bundle",
+    description: "Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/ directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and optimization recommendations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Build output directory (auto-detects dist/, .next/, build/ if not specified)" },
+        format: {
+          type: "string",
+          enum: ["summary", "detailed"],
+          description: "Output format - summary shows top chunks, detailed shows all",
+          default: "summary"
+        }
+      }
+    }
+  }
+];
+
+// src/schemas/env-schemas.ts
+var ENV_SCHEMAS = [
+  {
+    name: "get_env_config",
+    description: "Find all environment variable usages and their sources. Scans source files for process.env.*, import.meta.env.*, Deno.env.* and cross-references with .env files to identify documented vs undocumented variables.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path to analyze", default: "." }
+      }
+    }
+  }
+];
+
+// src/schemas/process-schemas.ts
+var PROCESS_SCHEMAS = [
   {
     name: "start_dev_server",
     description: 'Start a development server and return when ready. Spawns npm/yarn/pnpm dev command, monitors output for ready signals (localhost URLs, "ready", "compiled"), and returns server URL. Supports custom commands and ports. Process runs in background and can be stopped with the returned process ID.',
@@ -235500,7 +235129,52 @@ var TOOL_SCHEMAS = [
       required: ["source"]
     }
   },
-  // Runtime Verification Tools (Phase 2)
+  {
+    name: "detect_memory_leaks",
+    description: "Monitor process memory usage over time to detect potential memory leaks. Takes periodic snapshots, performs trend analysis with linear regression, and identifies consistent memory growth patterns. Supports monitoring existing processes by PID or spawning a new command.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: {
+          type: "string",
+          enum: ["pid", "command"],
+          description: 'Target type: "pid" to monitor existing process, "command" to spawn and monitor new process'
+        },
+        pid: {
+          type: "integer",
+          description: 'Process ID to monitor (required when target is "pid")'
+        },
+        command: {
+          type: "string",
+          description: 'Command to spawn and monitor (e.g., "npm run dev") - required when target is "command"'
+        },
+        duration_seconds: {
+          type: "integer",
+          description: "How long to monitor in seconds (default: 30, max: 600)",
+          default: 30
+        },
+        snapshot_interval_ms: {
+          type: "integer",
+          description: "Time between memory measurements in milliseconds (default: 5000)",
+          default: 5e3
+        },
+        threshold_mb: {
+          type: "integer",
+          description: "Minimum memory growth in MB to flag as potential leak (default: 10)",
+          default: 10
+        },
+        cwd: {
+          type: "string",
+          description: "Working directory for command execution (default: project root)"
+        }
+      },
+      required: ["target"]
+    }
+  }
+];
+
+// src/schemas/runtime-schemas.ts
+var RUNTIME_SCHEMAS = [
   {
     name: "browser_automation",
     description: "Automate browser interactions using Puppeteer. Execute sequences of actions (navigate, click, type, scroll, screenshot) and assertions (element exists, text contains, attribute matches). Returns step-by-step results with screenshots. Requires puppeteer to be installed.",
@@ -235657,8 +235331,225 @@ var TOOL_SCHEMAS = [
       },
       required: ["url", "baseline_path"]
     }
+  }
+];
+
+// src/schemas/types-schemas.ts
+var TYPES_SCHEMAS = [
+  {
+    name: "generate_types",
+    description: "Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values. Infers types from sample data and generates .d.ts or interface definitions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: {
+          type: "string",
+          enum: ["json", "api", "database", "runtime"],
+          description: "Source to generate types from"
+        },
+        input: {
+          type: "string",
+          description: "Input path, URL, or JSON string depending on source"
+        },
+        output: {
+          type: "string",
+          description: "Output file path for generated types"
+        },
+        name: {
+          type: "string",
+          description: "Root type/interface name"
+        },
+        options: {
+          type: "object",
+          properties: {
+            optional_by_default: { type: "boolean" },
+            use_type: { type: "boolean" },
+            export: { type: "boolean" }
+          },
+          description: "Generation options"
+        }
+      },
+      required: ["source", "input"]
+    }
   },
-  // Self-Correction Tools (Phase 3)
+  {
+    name: "generate_fixture",
+    description: "Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript constants, and Prisma seed scripts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        model: {
+          type: "string",
+          description: "Prisma model name or TypeScript type name to generate fixtures for"
+        },
+        schema_path: {
+          type: "string",
+          description: "Path to schema file (default: auto-detect prisma/schema.prisma)"
+        },
+        count: {
+          type: "integer",
+          description: "Number of fixtures to generate (default: 1, max: 100)",
+          default: 1
+        },
+        overrides: {
+          type: "object",
+          description: "Specific values to use for fields, overriding generated values",
+          additionalProperties: true
+        },
+        with_relations: {
+          type: "array",
+          items: { type: "string" },
+          description: "Include related models in fixtures (specify relation field names)"
+        },
+        scenario: {
+          type: "string",
+          enum: ["empty", "minimal", "realistic", "edge_cases"],
+          description: "Data style: empty (minimal required), minimal (required + few optional), realistic (all fields with realistic data), edge_cases (boundary values, special chars)",
+          default: "realistic"
+        },
+        output_format: {
+          type: "string",
+          enum: ["json", "typescript", "prisma_seed"],
+          description: "Output format: json (raw array), typescript (typed const), prisma_seed (seed script)",
+          default: "json"
+        }
+      },
+      required: ["model"]
+    }
+  },
+  {
+    name: "sync_api_types",
+    description: "Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that don't exist.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        backend_path: {
+          type: "string",
+          description: "Path to backend API routes (default: auto-detect from src/app/api, pages/api, src/routes)"
+        },
+        frontend_path: {
+          type: "string",
+          description: "Path to frontend source files",
+          default: "src"
+        },
+        api_pattern: {
+          type: "string",
+          description: "Regex pattern to identify API call sites",
+          default: "fetch|axios|api\\."
+        },
+        auto_fix: {
+          type: "boolean",
+          description: "Generate fix suggestions for drifts",
+          default: false
+        }
+      }
+    }
+  }
+];
+
+// src/schemas/git-schemas.ts
+var GIT_SCHEMAS = [
+  {
+    name: "create_pull_request",
+    description: "Create a GitHub pull request with auto-generated descriptions. Analyzes git changes, generates title and description using LLM, pushes branch if needed, and creates PR via gh CLI. Supports draft PRs, labels, and reviewer assignment.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base: {
+          type: "string",
+          description: 'Base branch for the PR (default: auto-detect, usually "main")'
+        },
+        title: {
+          type: "string",
+          description: "PR title (auto-generated from branch name or commits if not provided)"
+        },
+        body: {
+          type: "string",
+          description: "PR body/description (auto-generated using LLM if not provided)"
+        },
+        draft: {
+          type: "boolean",
+          description: "Create as draft PR (default: false)",
+          default: false
+        },
+        labels: {
+          type: "array",
+          items: { type: "string" },
+          description: 'Labels to add to the PR (e.g., ["bug", "enhancement"])'
+        },
+        reviewers: {
+          type: "array",
+          items: { type: "string" },
+          description: "GitHub usernames to request as reviewers"
+        },
+        auto_description: {
+          type: "boolean",
+          description: "Use LLM to generate PR description (default: true)",
+          default: true
+        }
+      }
+    }
+  },
+  {
+    name: "resolve_merge_conflict",
+    description: "Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to file with merge conflicts"
+        },
+        strategy: {
+          type: "string",
+          enum: ["analyze", "ours", "theirs", "auto"],
+          description: "Resolution strategy: analyze only, take ours, take theirs, or auto-resolve",
+          default: "analyze"
+        },
+        context_lines: {
+          type: "integer",
+          description: "Lines of context around conflicts (default: 3)",
+          default: 3
+        }
+      },
+      required: ["file"]
+    }
+  },
+  {
+    name: "auto_rollback",
+    description: "Automatically rollback changes when conditions are met. Monitors for triggers (build failure, test failure, error patterns) and reverts to last known good state using git.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        trigger: {
+          type: "string",
+          enum: ["build_fail", "test_fail", "error_pattern", "manual"],
+          description: "Condition that triggers rollback"
+        },
+        scope: {
+          type: "string",
+          enum: ["file", "commit", "branch"],
+          description: "Rollback scope: single file, last commit, or entire branch",
+          default: "commit"
+        },
+        files: {
+          type: "array",
+          items: { type: "string" },
+          description: "Specific files to rollback (for file scope)"
+        },
+        to_ref: {
+          type: "string",
+          description: "Git ref to rollback to (default: HEAD~1)"
+        },
+        dry_run: {
+          type: "boolean",
+          description: "Preview rollback without applying",
+          default: false
+        }
+      },
+      required: ["trigger"]
+    }
+  },
   {
     name: "retry_with_learning",
     description: "Retry a failed operation with progressive fix strategies. Analyzes error patterns, applies fixes, and retries. Tracks attempt history to avoid repeating failed approaches. Useful for self-healing code changes.",
@@ -235693,31 +235584,6 @@ var TOOL_SCHEMAS = [
         }
       },
       required: ["command"]
-    }
-  },
-  {
-    name: "resolve_merge_conflict",
-    description: "Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        file: {
-          type: "string",
-          description: "Path to file with merge conflicts"
-        },
-        strategy: {
-          type: "string",
-          enum: ["analyze", "ours", "theirs", "auto"],
-          description: "Resolution strategy: analyze only, take ours, take theirs, or auto-resolve",
-          default: "analyze"
-        },
-        context_lines: {
-          type: "integer",
-          description: "Lines of context around conflicts (default: 3)",
-          default: 3
-        }
-      },
-      required: ["file"]
     }
   },
   {
@@ -235758,80 +235624,292 @@ var TOOL_SCHEMAS = [
       },
       required: ["edits"]
     }
-  },
+  }
+];
+
+// src/schemas/project-schemas.ts
+var PROJECT_SCHEMAS = [
   {
-    name: "auto_rollback",
-    description: "Automatically rollback changes when conditions are met. Monitors for triggers (build failure, test failure, error patterns) and reverts to last known good state using git.",
+    name: "scaffold_project",
+    description: "Create a new project from a template",
     inputSchema: {
       type: "object",
       properties: {
-        trigger: {
+        template: { type: "string", description: "Template name (next-app, vite-react, next-saas)" },
+        output_dir: { type: "string", description: "Output directory for new project" },
+        variables: { type: "object", description: "Template variables", additionalProperties: true },
+        run_install: { type: "boolean", description: "Run npm install", default: true },
+        run_git_init: { type: "boolean", description: "Initialize git", default: true }
+      },
+      required: ["template", "output_dir"]
+    }
+  },
+  {
+    name: "list_templates",
+    description: "List available project templates",
+    inputSchema: {
+      type: "object",
+      properties: {
+        category: { type: "string", description: "Filter by category (minimal, full)" }
+      }
+    }
+  },
+  {
+    name: "plugin_status",
+    description: "Check GoodVibes plugin health: manifest, registries, hooks, MCP server status",
+    inputSchema: {
+      type: "object",
+      properties: {}
+    }
+  },
+  {
+    name: "project_issues",
+    description: "Get detailed project issues: high-priority TODOs with file:line, health warnings, environment issues",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path", default: "." },
+        include_low_priority: { type: "boolean", description: "Include low-priority TODOs", default: false }
+      }
+    }
+  },
+  {
+    name: "generate_openapi",
+    description: "Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and generates examples.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        output_path: { type: "string", description: 'Output file path (default: "openapi.json")', default: "openapi.json" },
+        title: { type: "string", description: "API title (default: from package.json name)" },
+        version: { type: "string", description: "API version (default: from package.json version)" },
+        description: { type: "string", description: "API description" },
+        server_url: { type: "string", description: 'Base server URL (e.g., "https://api.example.com")' },
+        include_examples: { type: "boolean", description: "Generate examples from types (default: true)", default: true },
+        format: {
           type: "string",
-          enum: ["build_fail", "test_fail", "error_pattern", "manual"],
-          description: "Condition that triggers rollback"
-        },
-        scope: {
+          enum: ["json", "yaml"],
+          description: 'Output format (default: "json")',
+          default: "json"
+        }
+      }
+    }
+  },
+  {
+    name: "get_schema",
+    description: "Introspect database schema",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: {
           type: "string",
-          enum: ["file", "commit", "branch"],
-          description: "Rollback scope: single file, last commit, or entire branch",
-          default: "commit"
+          enum: ["prisma", "drizzle", "typeorm", "sql"],
+          description: "Schema source type"
         },
-        files: {
+        path: { type: "string", description: "Path to schema file", default: "." },
+        tables: { type: "array", items: { type: "string" }, description: "Filter tables" }
+      },
+      required: ["source"]
+    }
+  },
+  {
+    name: "get_database_schema",
+    description: "Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files. Returns unified schema with tables, columns, indexes, and relations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path to search for schema files", default: "." }
+      }
+    }
+  },
+  {
+    name: "get_api_routes",
+    description: "Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono. Returns HTTP method, path, handler location, and middleware information.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project root path to scan for API routes", default: "." },
+        framework: {
+          type: "string",
+          enum: ["nextjs", "express", "fastify", "hono", "auto"],
+          description: "Framework to scan for (auto-detect if not specified)",
+          default: "auto"
+        }
+      }
+    }
+  },
+  {
+    name: "get_prisma_operations",
+    description: "Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation() calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Directory to analyze for Prisma operations", default: "src" },
+        include_n1_detection: { type: "boolean", description: "Run N+1 pattern detection", default: true }
+      }
+    }
+  },
+  {
+    name: "query_database",
+    description: "Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only the ones you need.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "SQL query to execute. For parameterized queries, use ? placeholders."
+        },
+        database_url: {
+          type: "string",
+          description: "Database connection URL. Formats: postgresql://user:pass@host:port/db, mysql://user:pass@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3."
+        },
+        params: {
           type: "array",
-          items: { type: "string" },
-          description: "Specific files to rollback (for file scope)"
+          items: { type: ["string", "number", "boolean", "null"] },
+          description: "Parameters for parameterized queries (replaces ? placeholders in order). Prevents SQL injection."
         },
-        to_ref: {
-          type: "string",
-          description: "Git ref to rollback to (default: HEAD~1)"
-        },
-        dry_run: {
+        readonly: {
           type: "boolean",
-          description: "Preview rollback without applying",
+          description: "If true (default), reject INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/TRUNCATE queries",
+          default: true
+        },
+        limit: {
+          type: "integer",
+          description: "Auto-add LIMIT to SELECT queries if not present (default: 100, set to 0 to disable)",
+          default: 100
+        },
+        format: {
+          type: "string",
+          enum: ["json", "table"],
+          description: "Output format: json (structured result object) or table (ASCII table)",
+          default: "json"
+        },
+        explain: {
+          type: "boolean",
+          description: "Prepend EXPLAIN to query and include execution plan in output",
           default: false
         }
       },
-      required: ["trigger"]
+      required: ["query"]
     }
   },
   {
-    name: "validate_api_contract",
-    description: "Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes and body schemas match the spec. Reports violations with JSON paths.",
+    name: "upgrade_package",
+    description: "Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes, checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe preview before making changes.",
     inputSchema: {
       type: "object",
       properties: {
-        spec_path: {
+        package: {
           type: "string",
-          description: "Path to OpenAPI spec file (JSON or YAML)"
+          description: "Name of the npm package to upgrade"
         },
-        base_url: {
+        target_version: {
           type: "string",
-          description: "Base URL of running API"
+          description: 'Target version to upgrade to (default: "latest")',
+          default: "latest"
         },
-        endpoints: {
-          type: "array",
-          items: { type: "string" },
-          description: "Specific endpoints to test (default: all)"
-        },
-        include_examples: {
+        include_changelog: {
           type: "boolean",
-          description: "Use spec examples as request data (default: true)",
+          description: "Fetch and analyze release notes for breaking changes (default: true)",
           default: true
         },
-        timeout: {
-          type: "integer",
-          description: "Per-request timeout in ms (default: 10000)",
-          default: 1e4
+        dry_run: {
+          type: "boolean",
+          description: "Preview only, do not actually upgrade (default: true)",
+          default: true
         },
-        auth_header: {
+        run_tests_after: {
+          type: "boolean",
+          description: "Run tests after upgrade to verify compatibility (default: false)",
+          default: false
+        },
+        path: {
           type: "string",
-          description: "Authorization header value if needed"
+          description: "Project root path (defaults to current directory)"
         }
       },
-      required: ["spec_path", "base_url"]
+      required: ["package"]
     }
   },
-  // Analysis Tools (Phase 4)
+  {
+    name: "explain_codebase",
+    description: "Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams, key files, entry points, and potential concerns.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "Directory to analyze (defaults to project root)",
+          default: "."
+        },
+        depth: {
+          type: "string",
+          enum: ["shallow", "medium", "deep"],
+          description: "Analysis depth: shallow (fast overview), medium (default, balanced), deep (thorough analysis)",
+          default: "medium"
+        },
+        focus: {
+          type: "array",
+          items: { type: "string" },
+          description: 'Specific areas to detail (e.g., ["auth", "api", "database"])'
+        },
+        refresh: {
+          type: "boolean",
+          description: "Regenerate even if cached (default: false)",
+          default: false
+        },
+        include_architecture: {
+          type: "boolean",
+          description: "Generate ASCII architecture diagram (default: true)",
+          default: true
+        }
+      }
+    }
+  }
+];
+
+// src/schemas/test-schemas.ts
+var TEST_SCHEMAS = [
+  {
+    name: "find_tests_for_file",
+    description: "Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find related tests. Returns a ranked list of test files with confidence scores.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "Source file path (relative to project root or absolute)" },
+        include_indirect: { type: "boolean", description: "Include tests that import files which import this file", default: false }
+      },
+      required: ["file"]
+    }
+  },
+  {
+    name: "get_test_coverage",
+    description: "Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info, coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns uncovered lines and functions for targeted test writing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "Specific source file to check coverage for (relative to project root)" },
+        path: { type: "string", description: "Path to project or coverage directory (defaults to PROJECT_ROOT)" },
+        coverage_path: { type: "string", description: "Alias for path - path to coverage report directory or file" }
+      }
+    }
+  },
+  {
+    name: "suggest_test_cases",
+    description: "Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test cases with rationale.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "Source file containing the function (relative to project root or absolute)" },
+        function: { type: "string", description: "Name of the function to analyze" },
+        include_existing: { type: "boolean", description: "Include existing tests for context (default true)", default: true }
+      },
+      required: ["file", "function"]
+    }
+  }
+];
+
+// src/schemas/analysis-schemas.ts
+var ANALYSIS_SCHEMAS = [
   {
     name: "profile_function",
     description: "Profile a JavaScript/TypeScript function for performance. Measures execution time, memory usage, and call frequency. Returns timing statistics (min, max, avg, p95) and memory deltas.",
@@ -235903,42 +235981,6 @@ var TOOL_SCHEMAS = [
     }
   },
   {
-    name: "generate_types",
-    description: "Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values. Infers types from sample data and generates .d.ts or interface definitions.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        source: {
-          type: "string",
-          enum: ["json", "api", "database", "runtime"],
-          description: "Source to generate types from"
-        },
-        input: {
-          type: "string",
-          description: "Input path, URL, or JSON string depending on source"
-        },
-        output: {
-          type: "string",
-          description: "Output file path for generated types"
-        },
-        name: {
-          type: "string",
-          description: "Root type/interface name"
-        },
-        options: {
-          type: "object",
-          properties: {
-            optional_by_default: { type: "boolean" },
-            use_type: { type: "boolean" },
-            export: { type: "boolean" }
-          },
-          description: "Generation options"
-        }
-      },
-      required: ["source", "input"]
-    }
-  },
-  {
     name: "identify_tech_debt",
     description: "Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized debt items with effort estimates.",
     inputSchema: {
@@ -235970,6 +236012,27 @@ var TOOL_SCHEMAS = [
       }
     }
   }
+];
+
+// src/schemas/index.ts
+var TOOL_SCHEMAS = [
+  ...DISCOVERY_SCHEMAS,
+  ...CONTEXT_SCHEMAS,
+  ...LSP_SCHEMAS,
+  ...FRONTEND_SCHEMAS,
+  ...VALIDATION_SCHEMAS,
+  ...SECURITY_SCHEMAS,
+  ...ERROR_SCHEMAS,
+  ...DEPS_SCHEMAS,
+  ...BUILD_SCHEMAS,
+  ...ENV_SCHEMAS,
+  ...PROCESS_SCHEMAS,
+  ...RUNTIME_SCHEMAS,
+  ...TYPES_SCHEMAS,
+  ...GIT_SCHEMAS,
+  ...PROJECT_SCHEMAS,
+  ...TEST_SCHEMAS,
+  ...ANALYSIS_SCHEMAS
 ];
 
 // node_modules/fuse.js/dist/fuse.mjs
@@ -236043,14 +236106,14 @@ var KeyStore = class {
   }
 };
 function createKey(key) {
-  let path81 = null;
+  let path84 = null;
   let id = null;
   let src = null;
   let weight = 1;
   let getFn = null;
   if (isString(key) || isArray(key)) {
     src = key;
-    path81 = createKeyPath(key);
+    path84 = createKeyPath(key);
     id = createKeyId(key);
   } else {
     if (!hasOwn.call(key, "name")) {
@@ -236064,11 +236127,11 @@ function createKey(key) {
         throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
       }
     }
-    path81 = createKeyPath(name);
+    path84 = createKeyPath(name);
     id = createKeyId(name);
     getFn = key.getFn;
   }
-  return { path: path81, id, weight, src, getFn };
+  return { path: path84, id, weight, src, getFn };
 }
 function createKeyPath(key) {
   return isArray(key) ? key : key.split(".");
@@ -236076,34 +236139,34 @@ function createKeyPath(key) {
 function createKeyId(key) {
   return isArray(key) ? key.join(".") : key;
 }
-function get(obj, path81) {
+function get(obj, path84) {
   let list = [];
   let arr = false;
-  const deepGet = (obj2, path82, index) => {
+  const deepGet = (obj2, path85, index) => {
     if (!isDefined(obj2)) {
       return;
     }
-    if (!path82[index]) {
+    if (!path85[index]) {
       list.push(obj2);
     } else {
-      let key = path82[index];
+      let key = path85[index];
       const value = obj2[key];
       if (!isDefined(value)) {
         return;
       }
-      if (index === path82.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
+      if (index === path85.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
         list.push(toString(value));
       } else if (isArray(value)) {
         arr = true;
         for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path82, index + 1);
+          deepGet(value[i], path85, index + 1);
         }
-      } else if (path82.length) {
-        deepGet(value, path82, index + 1);
+      } else if (path85.length) {
+        deepGet(value, path85, index + 1);
       }
     }
   };
-  deepGet(obj, isString(path81) ? path81.split(".") : path81, 0);
+  deepGet(obj, isString(path84) ? path84.split(".") : path84, 0);
   return arr ? list : list[0];
 }
 var MatchOptions = {
@@ -237299,6 +237362,26 @@ var import_child_process = require("child_process");
 var import_util6 = require("util");
 var https = __toESM(require("https"), 1);
 var http = __toESM(require("http"), 1);
+
+// src/handlers/response-utils.ts
+function createSuccessResponse(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+  };
+}
+function createTextResponse(text) {
+  return {
+    content: [{ type: "text", text }]
+  };
+}
+function createErrorResponse(message, context) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true
+  };
+}
+
+// src/utils.ts
 var execAsync = (0, import_util6.promisify)(import_child_process.exec);
 async function fileExists(filePath) {
   try {
@@ -237689,7 +237772,7 @@ async function handleGetSkillContent(args) {
   for (const skillPath of attempts) {
     if (fs2.existsSync(skillPath)) {
       const content = await fs2.promises.readFile(skillPath, "utf-8");
-      return { content: [{ type: "text", text: content }] };
+      return createTextResponse(content);
     }
   }
   throw new Error(`Skill not found: ${args.path}`);
@@ -237703,7 +237786,7 @@ async function handleGetAgentContent(args) {
   for (const agentPath of attempts) {
     if (fs2.existsSync(agentPath)) {
       const content = await fs2.promises.readFile(agentPath, "utf-8");
-      return { content: [{ type: "text", text: content }] };
+      return createTextResponse(content);
     }
   }
   throw new Error(`Agent not found: ${args.path}`);
@@ -237969,33 +238052,28 @@ async function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
       suggestedBundle.push(opt.path);
     }
   }
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        skill: skill.name,
-        path: skill.path,
-        metadata: {
-          category: skillMetadata.category || category,
-          technologies: skillMetadata.technologies || [],
-          difficulty: skillMetadata.difficulty
-        },
-        dependencies: {
-          required: required2,
-          optional: optional2.slice(0, 5),
-          conflicts
-        },
-        dependents: dependents.slice(0, 5),
-        suggested_bundle: suggestedBundle,
-        analysis: {
-          has_prerequisites: required2.length > 0,
-          has_conflicts: conflicts.length > 0,
-          dependency_count: required2.length + optional2.length,
-          is_foundational: dependents.length > 2
-        }
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    skill: skill.name,
+    path: skill.path,
+    metadata: {
+      category: skillMetadata.category || category,
+      technologies: skillMetadata.technologies || [],
+      difficulty: skillMetadata.difficulty
+    },
+    dependencies: {
+      required: required2,
+      optional: optional2.slice(0, 5),
+      conflicts
+    },
+    dependents: dependents.slice(0, 5),
+    suggested_bundle: suggestedBundle,
+    analysis: {
+      has_prerequisites: required2.length > 0,
+      has_conflicts: conflicts.length > 0,
+      dependency_count: required2.length + optional2.length,
+      is_foundational: dependents.length > 2
+    }
+  });
 }
 
 // src/handlers/npm.ts
@@ -238080,20 +238158,15 @@ async function handleCheckVersions(args) {
   }
   const outdatedCount = packages.filter((p) => p.outdated).length;
   const majorUpdates = packages.filter((p) => p.breaking_changes).length;
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        packages,
-        summary: {
-          total: packages.length,
-          outdated: outdatedCount,
-          major_updates: majorUpdates,
-          up_to_date: packages.length - outdatedCount
-        }
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    packages,
+    summary: {
+      total: packages.length,
+      outdated: outdatedCount,
+      major_updates: majorUpdates,
+      up_to_date: packages.length - outdatedCount
+    }
+  });
 }
 
 // src/handlers/docs.ts
@@ -238343,12 +238416,7 @@ async function handleFetchDocs(args) {
       }
     }
   }
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify(result, null, 2)
-    }]
-  };
+  return createSuccessResponse(result);
 }
 
 // src/handlers/docs/explain-codebase.ts
@@ -241075,19 +241143,14 @@ function handleReadConfig(args) {
         }
       } catch {
       }
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            config_type: args.config,
-            file_path: file2,
-            format: file2.endsWith(".json") ? "json" : file2.endsWith(".js") || file2.endsWith(".ts") ? "javascript" : "text",
-            content: parsed || content,
-            extends: [],
-            env_vars: []
-          }, null, 2)
-        }]
-      };
+      return createSuccessResponse({
+        config_type: args.config,
+        file_path: file2,
+        format: file2.endsWith(".json") ? "json" : file2.endsWith(".js") || file2.endsWith(".ts") ? "javascript" : "text",
+        content: parsed || content,
+        extends: [],
+        env_vars: []
+      });
     }
   }
   throw new Error(`Config '${args.config}' not found`);
@@ -241563,25 +241626,20 @@ async function handleValidateImplementation(args) {
   const warnings = issues.filter((i) => i.severity === "warning").length;
   const info = issues.filter((i) => i.severity === "info").length;
   const score = Math.max(0, 100 - errors * 20 - warnings * 5 - info * 1);
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        valid: errors === 0,
-        score,
-        grade: score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : score >= 60 ? "D" : "F",
-        issues,
-        summary: {
-          errors,
-          warnings,
-          info,
-          files_checked: args.files.length,
-          checks_run: [...new Set(checksRun)]
-        },
-        skill: args.skill || null
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    valid: errors === 0,
+    score,
+    grade: score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : score >= 60 ? "D" : "F",
+    issues,
+    summary: {
+      errors,
+      warnings,
+      info,
+      files_checked: args.files.length,
+      checks_run: [...new Set(checksRun)]
+    },
+    skill: args.skill || null
+  });
 }
 async function findTsConfig(startDir) {
   let dir = startDir;
@@ -241636,21 +241694,16 @@ async function handleCheckTypes(args) {
       suggestion: args.include_suggestions ? getSuggestionForError(match[4], match[5]) : ""
     });
   }
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        valid: errors.length === 0,
-        errors,
-        summary: {
-          files_checked: args.files?.length || "all",
-          errors: errors.length,
-          warnings: 0,
-          tsconfig: tsconfigPath ? path19.relative(PROJECT_ROOT, tsconfigPath) : null
-        }
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    valid: errors.length === 0,
+    errors,
+    summary: {
+      files_checked: args.files?.length || "all",
+      errors: errors.length,
+      warnings: 0,
+      tsconfig: tsconfigPath ? path19.relative(PROJECT_ROOT, tsconfigPath) : null
+    }
+  });
 }
 function getSuggestionForError(errorCode, message) {
   const suggestions = {
@@ -241717,21 +241770,16 @@ async function handleRunSmokeTest(args) {
   }
   const passed = tests.filter((t) => t.passed).length;
   const failed = tests.filter((t) => !t.passed).length;
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        passed: failed === 0,
-        tests,
-        summary: {
-          total: tests.length,
-          passed,
-          failed,
-          duration_ms: tests.reduce((sum, t) => sum + t.duration_ms, 0)
-        }
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    passed: failed === 0,
+    tests,
+    summary: {
+      total: tests.length,
+      passed,
+      failed,
+      duration_ms: tests.reduce((sum, t) => sum + t.duration_ms, 0)
+    }
+  });
 }
 
 // src/handlers/scaffolding.ts
@@ -241824,21 +241872,16 @@ async function handleScaffoldProject(args) {
     nextSteps.push("npx prisma db push");
   }
   nextSteps.push("npm run dev");
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        success: true,
-        template: args.template,
-        output_dir: args.output_dir,
-        created_files: createdFiles,
-        variables_applied: variables,
-        post_create_results: postCreateResults,
-        recommended_skills: templateConfig.required_skills || [],
-        next_steps: nextSteps
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    success: true,
+    template: args.template,
+    output_dir: args.output_dir,
+    created_files: createdFiles,
+    variables_applied: variables,
+    post_create_results: postCreateResults,
+    recommended_skills: templateConfig.required_skills || [],
+    next_steps: nextSteps
+  });
 }
 async function handleListTemplates(args) {
   const templatePath = path20.join(PLUGIN_ROOT, "templates");
@@ -241851,16 +241894,11 @@ async function handleListTemplates(args) {
   if (args.category) {
     templates = templates.filter((t) => t.category === args.category);
   }
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        templates,
-        total: templates.length,
-        categories: ["minimal", "full"]
-      }, null, 2)
-    }]
-  };
+  return createSuccessResponse({
+    templates,
+    total: templates.length,
+    categories: ["minimal", "full"]
+  });
 }
 
 // src/handlers/issues/index.ts
@@ -242268,7 +242306,28 @@ Error: Path is not a directory: ${cwd}`);
 var fs18 = __toESM(require("fs"), 1);
 var path25 = __toESM(require("path"), 1);
 var import_typescript = __toESM(require_typescript(), 1);
-var CACHE_TTL_MS2 = 5 * 60 * 1e3;
+function getCacheTTL() {
+  const DEFAULT_TTL_MS = 5 * 60 * 1e3;
+  const MIN_TTL_MS = 30 * 1e3;
+  const MAX_TTL_MS = 60 * 60 * 1e3;
+  const ttlMsEnv = process.env.LSP_CACHE_TTL_MS;
+  if (ttlMsEnv) {
+    const parsed = parseInt(ttlMsEnv, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return Math.min(Math.max(parsed, MIN_TTL_MS), MAX_TTL_MS);
+    }
+  }
+  const ttlSecondsEnv = process.env.LSP_CACHE_TTL_SECONDS;
+  if (ttlSecondsEnv) {
+    const parsed = parseInt(ttlSecondsEnv, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      const ttlMs = parsed * 1e3;
+      return Math.min(Math.max(ttlMs, MIN_TTL_MS), MAX_TTL_MS);
+    }
+  }
+  return DEFAULT_TTL_MS;
+}
+var CACHE_TTL_MS2 = getCacheTTL();
 var DEFAULT_COMPILER_OPTIONS = {
   allowJs: true,
   checkJs: true,
@@ -242548,17 +242607,6 @@ if (typeof setInterval !== "undefined") {
 
 // src/handlers/lsp/utils.ts
 var path26 = __toESM(require("path"), 1);
-function createSuccessResponse(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-function createErrorResponse(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
 function normalizeFilePath(filePath) {
   return filePath.replace(/\\/g, "/");
 }
@@ -246947,17 +246995,6 @@ async function handleAnalyzeDependencies(args) {
 // src/handlers/deps/circular.ts
 var fs32 = __toESM(require("fs"), 1);
 var path45 = __toESM(require("path"), 1);
-function createSuccessResponse2(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-function createErrorResponse2(message) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message }, null, 2) }],
-    isError: true
-  };
-}
 var SUPPORTED_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs", ".cts", ".cjs"];
 var SKIP_DIRECTORIES = ["node_modules", ".git", "dist", "build", "coverage", ".next", "out"];
 function isSourceFile3(filePath) {
@@ -247136,7 +247173,7 @@ async function handleFindCircularDeps(args) {
     const includeNodeModules = args.include_node_modules ?? false;
     const absolutePath = path45.isAbsolute(scanPath) ? scanPath : path45.resolve(PROJECT_ROOT, scanPath);
     if (!fs32.existsSync(absolutePath)) {
-      return createErrorResponse2(`Path does not exist: ${scanPath}`);
+      return createErrorResponse(`Path does not exist: ${scanPath}`);
     }
     const files = getSourceFiles(absolutePath, includeNodeModules);
     if (files.length === 0) {
@@ -247145,7 +247182,7 @@ async function handleFindCircularDeps(args) {
         count: 0,
         affected_files: []
       };
-      return createSuccessResponse2(result2);
+      return createSuccessResponse(result2);
     }
     const graph = buildImportGraph(files);
     const cycles = findCycles(graph);
@@ -247171,10 +247208,10 @@ async function handleFindCircularDeps(args) {
       count: relativeCycles.length,
       affected_files: affectedFiles
     };
-    return createSuccessResponse2(result);
+    return createSuccessResponse(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : String(error3);
-    return createErrorResponse2(`Failed to find circular dependencies: ${message}`);
+    return createErrorResponse(`Failed to find circular dependencies: ${message}`);
   }
 }
 
@@ -247741,12 +247778,12 @@ var MESSAGE_PATTERNS = [
     ]
   }
 ];
-function createSuccessResponse3(data) {
+function createSuccessResponse2(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse3(message) {
+function createErrorResponse2(message) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message }, null, 2) }],
     isError: true
@@ -247806,10 +247843,10 @@ function getDefaultErrorInfo(errorCode) {
 async function handleExplainTypeError(args) {
   const { error_code, error_message, context } = args;
   if (typeof error_code !== "number" || error_code < 0) {
-    return createErrorResponse3("error_code must be a positive integer");
+    return createErrorResponse2("error_code must be a positive integer");
   }
   if (!error_message || typeof error_message !== "string") {
-    return createErrorResponse3("error_message is required and must be a string");
+    return createErrorResponse2("error_message is required and must be a string");
   }
   const errorInfo = ERROR_DATABASE[error_code] ?? getDefaultErrorInfo(error_code);
   const patternFixes = getPatternBasedFixes(error_message);
@@ -247824,7 +247861,7 @@ async function handleExplainTypeError(args) {
     suggested_fixes: uniqueFixes,
     documentation_url: buildDocUrl(errorInfo.doc_path)
   };
-  return createSuccessResponse3(explanation);
+  return createSuccessResponse2(explanation);
 }
 
 // src/handlers/test/find-tests.ts
@@ -249049,7 +249086,23 @@ function isScannable(filePath) {
   }
   return SCANNABLE_EXTENSIONS.includes(ext);
 }
-async function getFilesRecursively(dirPath, files = []) {
+function getDefaultMaxDepth() {
+  const DEFAULT_DEPTH = 10;
+  const MIN_DEPTH = 1;
+  const MAX_DEPTH = 50;
+  const envDepth = process.env.SECRETS_SCAN_MAX_DEPTH;
+  if (envDepth) {
+    const parsed = parseInt(envDepth, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return Math.min(Math.max(parsed, MIN_DEPTH), MAX_DEPTH);
+    }
+  }
+  return DEFAULT_DEPTH;
+}
+async function getFilesRecursively(dirPath, files = [], currentDepth = 0, maxDepth = getDefaultMaxDepth()) {
+  if (currentDepth >= maxDepth) {
+    return files;
+  }
   try {
     const entries = await fsPromises5.readdir(dirPath, { withFileTypes: true });
     for (const entry of entries) {
@@ -249058,12 +249111,14 @@ async function getFilesRecursively(dirPath, files = []) {
         continue;
       }
       if (entry.isDirectory()) {
-        await getFilesRecursively(fullPath, files);
+        await getFilesRecursively(fullPath, files, currentDepth + 1, maxDepth);
       } else if (entry.isFile() && isScannable(fullPath)) {
         files.push(fullPath);
       }
     }
-  } catch {
+  } catch (error3) {
+    const message = error3 instanceof Error ? error3.message : String(error3);
+    console.warn(`[secrets-scanner] Could not read directory ${dirPath}: ${message}`);
   }
   return files;
 }
@@ -249074,7 +249129,7 @@ async function getStagedFiles(projectPath) {
   }
   return result.stdout.split("\n").filter((f) => f.trim()).map((f) => path49.join(projectPath, f)).filter((f) => isScannable(f) && !shouldSkip(f));
 }
-async function scanFile2(filePath, projectRoot) {
+async function scanFile2(filePath, projectRoot, earlyExit = false) {
   const findings = [];
   try {
     const content = await fsPromises5.readFile(filePath, "utf-8");
@@ -249100,12 +249155,17 @@ async function scanFile2(filePath, projectRoot) {
             preview: redactSecret(matchValue),
             recommendation: pattern.recommendation
           });
+          if (earlyExit) {
+            return { findings, stoppedEarly: true };
+          }
         }
       }
     }
-  } catch {
+  } catch (error3) {
+    const message = error3 instanceof Error ? error3.message : String(error3);
+    console.warn(`[secrets-scanner] Could not read file ${filePath}: ${message}`);
   }
-  return findings;
+  return { findings, stoppedEarly: false };
 }
 function isLikelyPlaceholder(value, line) {
   const lowerValue = value.toLowerCase();
@@ -249167,8 +249227,11 @@ async function handleScanForSecrets(args) {
   const scanPath = path49.resolve(PROJECT_ROOT, args.path || ".");
   const includeStagedFiles = args.include_staged !== false;
   const severityThreshold = args.severity_threshold || "low";
+  const maxDepth = args.max_depth ?? getDefaultMaxDepth();
+  const checkPresenceOnly = args.check_presence_only === true;
   let allFindings = [];
   const scannedFiles = /* @__PURE__ */ new Set();
+  let stoppedEarly = false;
   if (!await fileExists(scanPath)) {
     return {
       content: [{
@@ -249186,7 +249249,7 @@ async function handleScanForSecrets(args) {
   const stats = await fsPromises5.stat(scanPath);
   let filesToScan = [];
   if (stats.isDirectory()) {
-    filesToScan = await getFilesRecursively(scanPath);
+    filesToScan = await getFilesRecursively(scanPath, [], 0, maxDepth);
   } else if (stats.isFile()) {
     filesToScan = [scanPath];
   }
@@ -249200,8 +249263,12 @@ async function handleScanForSecrets(args) {
       continue;
     }
     scannedFiles.add(filePath);
-    const findings = await scanFile2(filePath, PROJECT_ROOT);
-    allFindings.push(...findings);
+    const result = await scanFile2(filePath, PROJECT_ROOT, checkPresenceOnly);
+    allFindings.push(...result.findings);
+    if (checkPresenceOnly && result.stoppedEarly) {
+      stoppedEarly = true;
+      break;
+    }
   }
   allFindings = filterBySeverity(allFindings, severityThreshold);
   allFindings.sort((a, b) => {
@@ -249217,16 +249284,22 @@ async function handleScanForSecrets(args) {
     medium: allFindings.filter((f) => f.severity === "medium").length,
     low: allFindings.filter((f) => f.severity === "low").length
   };
+  const response = {
+    findings: allFindings,
+    count: allFindings.length,
+    by_severity: bySeverity,
+    files_scanned: scannedFiles.size,
+    scan_path: path49.relative(PROJECT_ROOT, scanPath) || ".",
+    max_depth: maxDepth
+  };
+  if (checkPresenceOnly) {
+    response.has_secrets = allFindings.length > 0;
+    response.stopped_early = stoppedEarly;
+  }
   return {
     content: [{
       type: "text",
-      text: JSON.stringify({
-        findings: allFindings,
-        count: allFindings.length,
-        by_severity: bySeverity,
-        files_scanned: scannedFiles.size,
-        scan_path: path49.relative(PROJECT_ROOT, scanPath) || "."
-      }, null, 2)
+      text: JSON.stringify(response, null, 2)
     }]
   };
 }
@@ -250016,17 +250089,6 @@ function handleGetEnvConfig(args) {
 var fs38 = __toESM(require("fs"), 1);
 var path52 = __toESM(require("path"), 1);
 var import_typescript16 = __toESM(require_typescript(), 1);
-function createSuccessResponse4(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-function createErrorResponse4(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
 function normalizeFilePath3(filePath) {
   return filePath.replace(/\\/g, "/");
 }
@@ -250305,13 +250367,13 @@ async function handleGetReactComponentTree(args) {
     if (args.file) {
       const filePath = path52.isAbsolute(args.file) ? args.file : path52.resolve(projectRoot, args.file);
       if (!fs38.existsSync(filePath)) {
-        return createErrorResponse4(`File not found: ${args.file}`, { provided_path: args.file });
+        return createErrorResponse(`File not found: ${args.file}`, { provided_path: args.file });
       }
       allComponents = analyzeFile(filePath, projectRoot);
     } else {
       const files = findComponentFiles(searchPath, projectRoot);
       if (files.length === 0) {
-        return createSuccessResponse4({
+        return createSuccessResponse({
           tree: null,
           components: [],
           count: 0,
@@ -250334,10 +250396,10 @@ async function handleGetReactComponentTree(args) {
       components: allComponents,
       count: allComponents.length
     };
-    return createSuccessResponse4(result);
+    return createSuccessResponse(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse4(message, { path: searchPath });
+    return createErrorResponse(message, { path: searchPath });
   }
 }
 
@@ -250345,12 +250407,12 @@ async function handleGetReactComponentTree(args) {
 var fs39 = __toESM(require("fs"), 1);
 var path53 = __toESM(require("path"), 1);
 var import_typescript17 = __toESM(require_typescript(), 1);
-function createSuccessResponse5(data) {
+function createSuccessResponse3(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse5(message, context) {
+function createErrorResponse3(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -250616,7 +250678,7 @@ async function handleGetPrismaOperations(args) {
   try {
     const files = findSourceFiles7(searchPath, projectRoot);
     if (files.length === 0) {
-      return createSuccessResponse5({
+      return createSuccessResponse3({
         operations: [],
         models_used: [],
         n1_patterns: [],
@@ -250642,10 +250704,10 @@ async function handleGetPrismaOperations(args) {
       n1_patterns: allN1Patterns,
       recommendations
     };
-    return createSuccessResponse5(result);
+    return createSuccessResponse3(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse5(message, { path: searchPath });
+    return createErrorResponse3(message, { path: searchPath });
   }
 }
 
@@ -251034,12 +251096,12 @@ function pollHealthUrl(url2, timeoutMs, intervalMs = 500) {
     poll();
   });
 }
-function createSuccessResponse6(data) {
+function createSuccessResponse4(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse6(message, context) {
+function createErrorResponse4(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -251047,11 +251109,11 @@ function createErrorResponse6(message, context) {
 }
 async function handleStartDevServer(args) {
   if (!args.command || typeof args.command !== "string") {
-    return createErrorResponse6("Missing required argument: command");
+    return createErrorResponse4("Missing required argument: command");
   }
   const command = args.command.trim();
   if (!command) {
-    return createErrorResponse6("Command cannot be empty");
+    return createErrorResponse4("Command cannot be empty");
   }
   const readyPattern = args.ready_pattern || DEFAULT_READY_PATTERN;
   const timeout = args.timeout ?? 3e4;
@@ -251061,7 +251123,7 @@ async function handleStartDevServer(args) {
   try {
     readyRegex = new RegExp(readyPattern, "i");
   } catch (err) {
-    return createErrorResponse6(`Invalid ready_pattern regex: ${err instanceof Error ? err.message : String(err)}`);
+    return createErrorResponse4(`Invalid ready_pattern regex: ${err instanceof Error ? err.message : String(err)}`);
   }
   const logBuffer = new LogBuffer(MAX_LOG_LINES);
   let isReady = false;
@@ -251084,7 +251146,7 @@ async function handleStartDevServer(args) {
       }
     });
     if (!proc.pid) {
-      resolve60(createErrorResponse6("Failed to spawn process - no PID assigned"));
+      resolve60(createErrorResponse4("Failed to spawn process - no PID assigned"));
       return;
     }
     const pid = proc.pid;
@@ -251127,7 +251189,7 @@ async function handleStartDevServer(args) {
     const checkReady = async () => {
       if (processError) {
         resolve60(
-          createSuccessResponse6({
+          createSuccessResponse4({
             pid,
             port: detectedPort,
             status: "failed",
@@ -251150,7 +251212,7 @@ async function handleStartDevServer(args) {
         if (!isReady) {
           result.error = `Timeout waiting for ready pattern (${timeout}ms elapsed)`;
         }
-        resolve60(createSuccessResponse6(result));
+        resolve60(createSuccessResponse4(result));
         return;
       }
       if (isReady) {
@@ -251158,7 +251220,7 @@ async function handleStartDevServer(args) {
           const remainingTime = timeout - elapsed;
           const isHealthy = await pollHealthUrl(args.health_url, remainingTime);
           resolve60(
-            createSuccessResponse6({
+            createSuccessResponse4({
               pid,
               port: detectedPort,
               status: isHealthy ? "ready" : "running",
@@ -251169,7 +251231,7 @@ async function handleStartDevServer(args) {
           );
         } else {
           resolve60(
-            createSuccessResponse6({
+            createSuccessResponse4({
               pid,
               port: detectedPort,
               status: "ready",
@@ -251903,8 +251965,8 @@ async function handleWatchForErrors(args) {
 var http4 = __toESM(require("http"), 1);
 var https4 = __toESM(require("https"), 1);
 var import_url2 = require("url");
-function getByPath(obj, path81) {
-  const parts = path81.replace(/\[(\d+)\]/g, ".$1").split(".");
+function getByPath(obj, path84) {
+  const parts = path84.replace(/\[(\d+)\]/g, ".$1").split(".");
   let current = obj;
   for (const part of parts) {
     if (current == null) return void 0;
@@ -252046,12 +252108,12 @@ function verifyResponse(actual, expect) {
     }
   }
   if (expect.json_path) {
-    for (const { path: path81, value } of expect.json_path) {
-      const actualValue = getByPath(actual.body, path81);
+    for (const { path: path84, value } of expect.json_path) {
+      const actualValue = getByPath(actual.body, path84);
       if (!deepEqual(actualValue, value)) {
         const actualStr = JSON.stringify(actualValue);
         const expectedStr = JSON.stringify(value);
-        failures.push(`JSON path "${path81}": expected ${expectedStr}, got ${actualStr}`);
+        failures.push(`JSON path "${path84}": expected ${expectedStr}, got ${actualStr}`);
       }
     }
   }
@@ -252068,8 +252130,8 @@ function resolveUrl(url2, baseUrl) {
     return url2;
   }
   const base = baseUrl.replace(/\/+$/, "");
-  const path81 = url2.startsWith("/") ? url2 : "/" + url2;
-  return base + path81;
+  const path84 = url2.startsWith("/") ? url2 : "/" + url2;
+  return base + path84;
 }
 async function handleVerifyRuntimeBehavior(args) {
   const { requests, base_url, timeout = 1e4 } = args;
@@ -252530,12 +252592,12 @@ function ensureScreenshotsDir() {
     fs40.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
   }
 }
-function createSuccessResponse7(data) {
+function createSuccessResponse5(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse7(message, context) {
+function createErrorResponse5(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -252548,8 +252610,8 @@ function resolveUrl2(url2, baseUrl) {
   }
   if (baseUrl) {
     const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-    const path81 = url2.startsWith("/") ? url2 : `/${url2}`;
-    return `${base}${path81}`;
+    const path84 = url2.startsWith("/") ? url2 : `/${url2}`;
+    return `${base}${path84}`;
   }
   return url2;
 }
@@ -252989,11 +253051,11 @@ async function executeStep(page, step, baseUrl) {
 async function handleBrowserAutomation(args) {
   const totalStart = Date.now();
   if (!args.steps || !Array.isArray(args.steps) || args.steps.length === 0) {
-    return createErrorResponse7("Missing required argument: steps (must be a non-empty array)");
+    return createErrorResponse5("Missing required argument: steps (must be a non-empty array)");
   }
   const puppeteer = await getPuppeteer();
   if (!puppeteer) {
-    return createErrorResponse7(
+    return createErrorResponse5(
       "Puppeteer is not installed. Browser automation requires puppeteer as an optional dependency.",
       {
         installation: "Run: npm install puppeteer",
@@ -253050,9 +253112,9 @@ async function handleBrowserAutomation(args) {
       page_title: pageTitle,
       total_duration_ms: Date.now() - totalStart
     };
-    return createSuccessResponse7(result);
+    return createSuccessResponse5(result);
   } catch (err) {
-    return createErrorResponse7(
+    return createErrorResponse5(
       err instanceof Error ? err.message : String(err),
       {
         steps_completed: [],
@@ -254345,12 +254407,12 @@ async function executeCommand(command, cwd, timeout) {
     });
   });
 }
-function createSuccessResponse8(data) {
+function createSuccessResponse6(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse8(message, context) {
+function createErrorResponse6(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -254358,11 +254420,11 @@ function createErrorResponse8(message, context) {
 }
 async function handleRetryWithLearning(args) {
   if (!args.command || typeof args.command !== "string") {
-    return createErrorResponse8("Missing required argument: command");
+    return createErrorResponse6("Missing required argument: command");
   }
   const command = args.command.trim();
   if (!command) {
-    return createErrorResponse8("Command cannot be empty");
+    return createErrorResponse6("Command cannot be empty");
   }
   const maxRetries = Math.min(Math.max(args.max_retries ?? DEFAULT_MAX_RETRIES, 1), 10);
   const timeout = Math.min(Math.max(args.timeout ?? DEFAULT_TIMEOUT2, 1e3), 3e5);
@@ -254389,7 +254451,7 @@ async function handleRetryWithLearning(args) {
     };
     if (result.exitCode === 0) {
       attempts.push(attemptInfo);
-      return createSuccessResponse8({
+      return createSuccessResponse6({
         success: true,
         attempts,
         total_attempts: attempt,
@@ -254440,7 +254502,7 @@ async function handleRetryWithLearning(args) {
     }
   }
   const lastAttempt = attempts[attempts.length - 1];
-  return createSuccessResponse8({
+  return createSuccessResponse6({
     success: false,
     attempts,
     total_attempts: attempts.length,
@@ -255380,8 +255442,8 @@ function extractTimestamp(line) {
   for (const pattern of TIMESTAMP_PATTERNS) {
     const match = pattern.exec(line);
     if (match) {
-      const ts28 = parseTimestamp(match[1]);
-      if (ts28) return ts28;
+      const ts46 = parseTimestamp(match[1]);
+      if (ts46) return ts46;
     }
   }
   return void 0;
@@ -255472,8 +255534,8 @@ function groupMessages(entries) {
     if (existing) {
       existing.count++;
       if (entry.timestamp) {
-        const ts28 = entry.timestamp.toISOString();
-        if (ts28 > existing.last_seen) existing.last_seen = ts28;
+        const ts46 = entry.timestamp.toISOString();
+        if (ts46 > existing.last_seen) existing.last_seen = ts46;
       }
       existing.entries.push(entry);
     } else {
@@ -255631,7 +255693,8 @@ function tailFile2(filePath, lines) {
     const allLines = content.split("\n");
     return allLines.slice(-lines);
   } catch (err) {
-    throw new Error(`Failed to read file: ${err.message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read file: ${message}`);
   }
 }
 async function captureCommand(command, durationSeconds, cwd) {
@@ -255780,7 +255843,8 @@ async function handleLogAnalyzer(args) {
       sourceDescription = args.command;
     }
   } catch (err) {
-    return error2(err.message);
+    const message = err instanceof Error ? err.message : String(err);
+    return error2(message);
   }
   const nonEmptyLines = rawLines.filter((l) => l.trim());
   if (nonEmptyLines.length === 0) {
@@ -259398,12 +259462,12 @@ async function handleGenerateFixture(args) {
 
 // src/handlers/git/create-pull-request.ts
 var import_child_process14 = require("child_process");
-function createSuccessResponse9(data) {
+function createSuccessResponse7(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse9(message, context) {
+function createErrorResponse7(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -259675,26 +259739,26 @@ async function handleCreatePullRequest(args) {
     const cwd = PROJECT_ROOT;
     const ghCheck = checkGhCli();
     if (!ghCheck.installed || !ghCheck.authenticated) {
-      return createErrorResponse9(ghCheck.error || "GitHub CLI is not available");
+      return createErrorResponse7(ghCheck.error || "GitHub CLI is not available");
     }
     const baseBranch = args.base || detectDefaultBranch(cwd);
     const gitInfo = getGitInfo(cwd, baseBranch);
     if (!gitInfo) {
-      return createErrorResponse9("Failed to get git information. Make sure you are in a git repository.");
+      return createErrorResponse7("Failed to get git information. Make sure you are in a git repository.");
     }
     if (gitInfo.currentBranch === baseBranch) {
-      return createErrorResponse9(
+      return createErrorResponse7(
         `Cannot create PR from ${baseBranch} to ${baseBranch}. Switch to a feature branch first.`
       );
     }
     if (gitInfo.commitCount === 0) {
-      return createErrorResponse9(
+      return createErrorResponse7(
         `No commits found between ${baseBranch} and ${gitInfo.currentBranch}. Make sure you have commits to push.`
       );
     }
     const pushResult = ensurePushed(cwd);
     if (!pushResult.pushed) {
-      return createErrorResponse9(pushResult.error || "Failed to push branch to remote");
+      return createErrorResponse7(pushResult.error || "Failed to push branch to remote");
     }
     const title = args.title || generateTitle(gitInfo.commits, gitInfo.currentBranch);
     let body;
@@ -259715,7 +259779,7 @@ async function handleCreatePullRequest(args) {
       cwd
     });
     if (!prResult.success) {
-      return createErrorResponse9(prResult.error || "Failed to create pull request");
+      return createErrorResponse7(prResult.error || "Failed to create pull request");
     }
     const result = {
       success: true,
@@ -259732,23 +259796,27 @@ async function handleCreatePullRequest(args) {
       labels: args.labels ?? [],
       draft: args.draft ?? false
     };
-    return createSuccessResponse9(result);
+    return createSuccessResponse7(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : String(error3);
-    return createErrorResponse9(`Failed to create pull request: ${message}`);
+    return createErrorResponse7(`Failed to create pull request: ${message}`);
   }
 }
 
-// src/handlers/frontend/analyze-render-triggers.ts
+// src/handlers/frontend/render-triggers/index.ts
 var fs51 = __toESM(require("fs"), 1);
+var path72 = __toESM(require("path"), 1);
+var import_typescript21 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/render-triggers/utils.ts
 var path71 = __toESM(require("path"), 1);
 var import_typescript18 = __toESM(require_typescript(), 1);
-function createSuccessResponse10(data) {
+function createSuccessResponse8(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse10(message, context) {
+function createErrorResponse8(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -259791,14 +259859,17 @@ function isInsideMemoizationHook(node) {
   }
   return false;
 }
+
+// src/handlers/frontend/render-triggers/memoization-detector.ts
+var import_typescript19 = __toESM(require_typescript(), 1);
 function detectMemoization(sourceFile) {
   const memoInfo = /* @__PURE__ */ new Map();
   function visit(node) {
-    if (import_typescript18.default.isVariableStatement(node)) {
+    if (import_typescript19.default.isVariableStatement(node)) {
       for (const decl of node.declarationList.declarations) {
-        if (import_typescript18.default.isIdentifier(decl.name) && decl.initializer) {
+        if (import_typescript19.default.isIdentifier(decl.name) && decl.initializer) {
           const componentName = decl.name.getText(sourceFile);
-          if (import_typescript18.default.isCallExpression(decl.initializer)) {
+          if (import_typescript19.default.isCallExpression(decl.initializer)) {
             const callExpr = decl.initializer.expression.getText(sourceFile);
             if (callExpr === "memo" || callExpr === "React.memo") {
               memoInfo.set(componentName, {
@@ -259810,7 +259881,7 @@ function detectMemoization(sourceFile) {
         }
       }
     }
-    if (import_typescript18.default.isClassDeclaration(node) && node.name) {
+    if (import_typescript19.default.isClassDeclaration(node) && node.name) {
       const className = node.name.getText(sourceFile);
       if (node.heritageClauses) {
         for (const clause of node.heritageClauses) {
@@ -259825,7 +259896,7 @@ function detectMemoization(sourceFile) {
       }
       if (node.members) {
         for (const member of node.members) {
-          if (import_typescript18.default.isMethodDeclaration(member) && member.name) {
+          if (import_typescript19.default.isMethodDeclaration(member) && member.name) {
             const methodName = member.name.getText(sourceFile);
             if (methodName === "shouldComponentUpdate") {
               if (!memoInfo.has(className)) {
@@ -259839,7 +259910,7 @@ function detectMemoization(sourceFile) {
         }
       }
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript19.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return memoInfo;
@@ -259848,11 +259919,11 @@ function containsJsxReturn2(node) {
   let hasJsx = false;
   function visit(n) {
     if (hasJsx) return;
-    if (import_typescript18.default.isJsxElement(n) || import_typescript18.default.isJsxSelfClosingElement(n) || import_typescript18.default.isJsxFragment(n)) {
+    if (import_typescript19.default.isJsxElement(n) || import_typescript19.default.isJsxSelfClosingElement(n) || import_typescript19.default.isJsxFragment(n)) {
       hasJsx = true;
       return;
     }
-    import_typescript18.default.forEachChild(n, visit);
+    import_typescript19.default.forEachChild(n, visit);
   }
   visit(node);
   return hasJsx;
@@ -259860,7 +259931,7 @@ function containsJsxReturn2(node) {
 function findComponents(sourceFile, memoInfo) {
   const components = [];
   function visit(node) {
-    if (import_typescript18.default.isFunctionDeclaration(node) && node.name) {
+    if (import_typescript19.default.isFunctionDeclaration(node) && node.name) {
       const name = node.name.getText(sourceFile);
       if (/^[A-Z]/.test(name) && containsJsxReturn2(node)) {
         components.push({
@@ -259871,12 +259942,12 @@ function findComponents(sourceFile, memoInfo) {
         });
       }
     }
-    if (import_typescript18.default.isVariableStatement(node)) {
+    if (import_typescript19.default.isVariableStatement(node)) {
       for (const decl of node.declarationList.declarations) {
-        if (import_typescript18.default.isIdentifier(decl.name)) {
+        if (import_typescript19.default.isIdentifier(decl.name)) {
           const name = decl.name.getText(sourceFile);
           if (/^[A-Z]/.test(name) && decl.initializer) {
-            if (import_typescript18.default.isCallExpression(decl.initializer)) {
+            if (import_typescript19.default.isCallExpression(decl.initializer)) {
               const callText = decl.initializer.expression.getText(sourceFile);
               if ((callText === "memo" || callText === "React.memo") && decl.initializer.arguments.length > 0) {
                 const arg = decl.initializer.arguments[0];
@@ -259889,7 +259960,7 @@ function findComponents(sourceFile, memoInfo) {
                   });
                 }
               }
-            } else if (import_typescript18.default.isArrowFunction(decl.initializer) || import_typescript18.default.isFunctionExpression(decl.initializer)) {
+            } else if (import_typescript19.default.isArrowFunction(decl.initializer) || import_typescript19.default.isFunctionExpression(decl.initializer)) {
               if (containsJsxReturn2(decl.initializer)) {
                 components.push({
                   name,
@@ -259903,7 +259974,7 @@ function findComponents(sourceFile, memoInfo) {
         }
       }
     }
-    if (import_typescript18.default.isClassDeclaration(node) && node.name) {
+    if (import_typescript19.default.isClassDeclaration(node) && node.name) {
       const name = node.name.getText(sourceFile);
       if (/^[A-Z]/.test(name) && node.heritageClauses) {
         for (const clause of node.heritageClauses) {
@@ -259919,21 +259990,24 @@ function findComponents(sourceFile, memoInfo) {
         }
       }
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript19.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return components;
 }
+
+// src/handlers/frontend/render-triggers/trigger-analyzers.ts
+var import_typescript20 = __toESM(require_typescript(), 1);
 function findStateHooks(componentNode, sourceFile) {
   const triggers = [];
   function visit(node) {
-    if (import_typescript18.default.isCallExpression(node)) {
+    if (import_typescript20.default.isCallExpression(node)) {
       const callText = node.expression.getText(sourceFile);
       if (callText === "useState" || callText === "React.useState") {
         const parent = node.parent;
-        if (import_typescript18.default.isVariableDeclaration(parent) && import_typescript18.default.isArrayBindingPattern(parent.name)) {
+        if (import_typescript20.default.isVariableDeclaration(parent) && import_typescript20.default.isArrayBindingPattern(parent.name)) {
           const elements = parent.name.elements;
-          if (elements.length >= 1 && import_typescript18.default.isBindingElement(elements[0])) {
+          if (elements.length >= 1 && import_typescript20.default.isBindingElement(elements[0])) {
             const stateName = elements[0].name.getText(sourceFile);
             triggers.push({
               type: "state",
@@ -259946,9 +260020,9 @@ function findStateHooks(componentNode, sourceFile) {
         }
       } else if (callText === "useReducer" || callText === "React.useReducer") {
         const parent = node.parent;
-        if (import_typescript18.default.isVariableDeclaration(parent) && import_typescript18.default.isArrayBindingPattern(parent.name)) {
+        if (import_typescript20.default.isVariableDeclaration(parent) && import_typescript20.default.isArrayBindingPattern(parent.name)) {
           const elements = parent.name.elements;
-          if (elements.length >= 1 && import_typescript18.default.isBindingElement(elements[0])) {
+          if (elements.length >= 1 && import_typescript20.default.isBindingElement(elements[0])) {
             const stateName = elements[0].name.getText(sourceFile);
             triggers.push({
               type: "state",
@@ -259961,7 +260035,7 @@ function findStateHooks(componentNode, sourceFile) {
         }
       }
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript20.default.forEachChild(node, visit);
   }
   visit(componentNode);
   return triggers;
@@ -259970,16 +260044,16 @@ function findPropTriggers(componentNode, sourceFile, isMemoized) {
   const triggers = [];
   const props = [];
   let params;
-  if (import_typescript18.default.isFunctionDeclaration(componentNode)) {
+  if (import_typescript20.default.isFunctionDeclaration(componentNode)) {
     params = componentNode.parameters;
-  } else if (import_typescript18.default.isArrowFunction(componentNode) || import_typescript18.default.isFunctionExpression(componentNode)) {
+  } else if (import_typescript20.default.isArrowFunction(componentNode) || import_typescript20.default.isFunctionExpression(componentNode)) {
     params = componentNode.parameters;
   }
   if (params && params.length > 0) {
     const firstParam = params[0];
-    if (import_typescript18.default.isObjectBindingPattern(firstParam.name)) {
+    if (import_typescript20.default.isObjectBindingPattern(firstParam.name)) {
       for (const element of firstParam.name.elements) {
-        if (import_typescript18.default.isBindingElement(element) && import_typescript18.default.isIdentifier(element.name)) {
+        if (import_typescript20.default.isBindingElement(element) && import_typescript20.default.isIdentifier(element.name)) {
           props.push(element.name.getText(sourceFile));
         }
       }
@@ -260000,7 +260074,7 @@ function findPropTriggers(componentNode, sourceFile, isMemoized) {
 function findForceUpdateTriggers(componentNode, sourceFile) {
   const triggers = [];
   function visit(node) {
-    if (import_typescript18.default.isCallExpression(node)) {
+    if (import_typescript20.default.isCallExpression(node)) {
       const callText = node.expression.getText(sourceFile);
       if (callText === "this.forceUpdate" || callText.endsWith(".forceUpdate")) {
         triggers.push({
@@ -260012,7 +260086,7 @@ function findForceUpdateTriggers(componentNode, sourceFile) {
         });
       }
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript20.default.forEachChild(node, visit);
   }
   visit(componentNode);
   return triggers;
@@ -260021,12 +260095,12 @@ function findInlineDefinitions(componentNode, sourceFile) {
   const issues = [];
   function visitJsxAttribute(node) {
     const initializer3 = node.initializer;
-    if (!initializer3 || !import_typescript18.default.isJsxExpression(initializer3)) return;
+    if (!initializer3 || !import_typescript20.default.isJsxExpression(initializer3)) return;
     const expr = initializer3.expression;
     if (!expr) return;
     if (isInsideMemoizationHook(expr)) return;
     const attrName = node.name.getText(sourceFile);
-    if (import_typescript18.default.isObjectLiteralExpression(expr)) {
+    if (import_typescript20.default.isObjectLiteralExpression(expr)) {
       issues.push({
         type: "object",
         code_snippet: getCodeSnippet2(expr, sourceFile),
@@ -260035,7 +260109,7 @@ function findInlineDefinitions(componentNode, sourceFile) {
         fix: "Extract to useMemo or constant outside component"
       });
     }
-    if (import_typescript18.default.isArrowFunction(expr) || import_typescript18.default.isFunctionExpression(expr)) {
+    if (import_typescript20.default.isArrowFunction(expr) || import_typescript20.default.isFunctionExpression(expr)) {
       issues.push({
         type: "function",
         code_snippet: getCodeSnippet2(expr, sourceFile),
@@ -260044,7 +260118,7 @@ function findInlineDefinitions(componentNode, sourceFile) {
         fix: "Use useCallback with proper dependencies"
       });
     }
-    if (import_typescript18.default.isArrayLiteralExpression(expr)) {
+    if (import_typescript20.default.isArrayLiteralExpression(expr)) {
       issues.push({
         type: "array",
         code_snippet: getCodeSnippet2(expr, sourceFile),
@@ -260053,7 +260127,7 @@ function findInlineDefinitions(componentNode, sourceFile) {
         fix: "Extract to useMemo or constant outside component"
       });
     }
-    if (import_typescript18.default.isJsxElement(expr) || import_typescript18.default.isJsxSelfClosingElement(expr)) {
+    if (import_typescript20.default.isJsxElement(expr) || import_typescript20.default.isJsxSelfClosingElement(expr)) {
       issues.push({
         type: "jsx",
         code_snippet: getCodeSnippet2(expr, sourceFile),
@@ -260064,10 +260138,10 @@ function findInlineDefinitions(componentNode, sourceFile) {
     }
   }
   function visit(node) {
-    if (import_typescript18.default.isJsxAttribute(node)) {
+    if (import_typescript20.default.isJsxAttribute(node)) {
       visitJsxAttribute(node);
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript20.default.forEachChild(node, visit);
   }
   visit(componentNode);
   return issues;
@@ -260076,29 +260150,29 @@ function findExpensiveComputations(componentNode, sourceFile) {
   const computations = [];
   const memoizedVars = /* @__PURE__ */ new Set();
   function findMemoized(node) {
-    if (import_typescript18.default.isVariableDeclaration(node) && node.initializer && import_typescript18.default.isCallExpression(node.initializer)) {
+    if (import_typescript20.default.isVariableDeclaration(node) && node.initializer && import_typescript20.default.isCallExpression(node.initializer)) {
       const callText = node.initializer.expression.getText(sourceFile);
       if (callText === "useMemo" || callText === "React.useMemo") {
-        if (import_typescript18.default.isIdentifier(node.name)) {
+        if (import_typescript20.default.isIdentifier(node.name)) {
           memoizedVars.add(node.name.getText(sourceFile));
         }
       }
     }
-    import_typescript18.default.forEachChild(node, findMemoized);
+    import_typescript20.default.forEachChild(node, findMemoized);
   }
   findMemoized(componentNode);
   function findExpensive(node) {
-    if (import_typescript18.default.isCallExpression(node)) {
+    if (import_typescript20.default.isCallExpression(node)) {
       if (isInsideMemoizationHook(node)) {
-        import_typescript18.default.forEachChild(node, findExpensive);
+        import_typescript20.default.forEachChild(node, findExpensive);
         return;
       }
       const callText = node.expression.getText(sourceFile);
       if (["useMemo", "useCallback", "React.useMemo", "React.useCallback"].includes(callText)) {
-        import_typescript18.default.forEachChild(node, findExpensive);
+        import_typescript20.default.forEachChild(node, findExpensive);
         return;
       }
-      if (import_typescript18.default.isPropertyAccessExpression(node.expression)) {
+      if (import_typescript20.default.isPropertyAccessExpression(node.expression)) {
         const methodName = node.expression.name.getText(sourceFile);
         const expensiveMethods = ["map", "filter", "reduce", "sort", "flatMap", "find", "findIndex"];
         if (expensiveMethods.includes(methodName)) {
@@ -260111,7 +260185,7 @@ function findExpensiveComputations(componentNode, sourceFile) {
           });
         }
       }
-      if (import_typescript18.default.isPropertyAccessExpression(node.expression)) {
+      if (import_typescript20.default.isPropertyAccessExpression(node.expression)) {
         const text = node.expression.getText(sourceFile);
         if (text.match(/^Object\.(keys|values|entries)$/)) {
           computations.push({
@@ -260122,14 +260196,12 @@ function findExpensiveComputations(componentNode, sourceFile) {
           });
         }
       }
-      if (import_typescript18.default.isSpreadElement(node.parent)) {
-      }
     }
-    if (import_typescript18.default.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node)) {
-      const hasSpread = node.properties.some((p) => import_typescript18.default.isSpreadAssignment(p));
+    if (import_typescript20.default.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node)) {
+      const hasSpread = node.properties.some((p) => import_typescript20.default.isSpreadAssignment(p));
       if (hasSpread) {
         const parent = node.parent;
-        if (import_typescript18.default.isVariableDeclaration(parent) || import_typescript18.default.isReturnStatement(parent)) {
+        if (import_typescript20.default.isVariableDeclaration(parent) || import_typescript20.default.isReturnStatement(parent)) {
           computations.push({
             description: "Object spread creates new object reference",
             line: getLineNumber3(node, sourceFile),
@@ -260139,7 +260211,7 @@ function findExpensiveComputations(componentNode, sourceFile) {
         }
       }
     }
-    import_typescript18.default.forEachChild(node, findExpensive);
+    import_typescript20.default.forEachChild(node, findExpensive);
   }
   findExpensive(componentNode);
   return computations;
@@ -260147,7 +260219,7 @@ function findExpensiveComputations(componentNode, sourceFile) {
 function analyzeContextUsage(componentNode, sourceFile) {
   const subscriptions = [];
   function visit(node) {
-    if (import_typescript18.default.isCallExpression(node)) {
+    if (import_typescript20.default.isCallExpression(node)) {
       const callText = node.expression.getText(sourceFile);
       if (callText === "useContext" || callText === "React.useContext") {
         const args = node.arguments;
@@ -260157,8 +260229,8 @@ function analyzeContextUsage(componentNode, sourceFile) {
           let selector;
           let granularity = "entire_context";
           let issue2;
-          if (import_typescript18.default.isVariableDeclaration(parent) && import_typescript18.default.isObjectBindingPattern(parent.name)) {
-            const props = parent.name.elements.filter((e) => import_typescript18.default.isBindingElement(e) && import_typescript18.default.isIdentifier(e.name)).map((e) => e.name.getText(sourceFile));
+          if (import_typescript20.default.isVariableDeclaration(parent) && import_typescript20.default.isObjectBindingPattern(parent.name)) {
+            const props = parent.name.elements.filter((e) => import_typescript20.default.isBindingElement(e) && import_typescript20.default.isIdentifier(e.name)).map((e) => e.name.getText(sourceFile));
             if (props.length > 0) {
               selector = `{ ${props.join(", ")} }`;
               issue2 = `Destructuring ${props.length} properties, but component re-renders when ANY context value changes`;
@@ -260187,7 +260259,7 @@ function analyzeContextUsage(componentNode, sourceFile) {
         }
       }
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript20.default.forEachChild(node, visit);
   }
   visit(componentNode);
   return subscriptions;
@@ -260196,14 +260268,14 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
   const children = [];
   const inlineLines = new Set(inlineDefinitions.map((d) => d.line));
   function visit(node) {
-    if (import_typescript18.default.isJsxOpeningElement(node) || import_typescript18.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript20.default.isJsxOpeningElement(node) || import_typescript20.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       if (/^[A-Z]/.test(tagName)) {
         const unstableProps = [];
         const attributes = node.attributes;
-        if (attributes && import_typescript18.default.isJsxAttributes(attributes)) {
+        if (attributes && import_typescript20.default.isJsxAttributes(attributes)) {
           for (const attr of attributes.properties) {
-            if (import_typescript18.default.isJsxAttribute(attr) && attr.initializer && import_typescript18.default.isJsxExpression(attr.initializer)) {
+            if (import_typescript20.default.isJsxAttribute(attr) && attr.initializer && import_typescript20.default.isJsxExpression(attr.initializer)) {
               const expr = attr.initializer.expression;
               if (expr) {
                 const attrLine = getLineNumber3(expr, sourceFile);
@@ -260211,7 +260283,7 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
                 if (inlineLines.has(attrLine)) {
                   unstableProps.push(attrName);
                 }
-                if (import_typescript18.default.isArrowFunction(expr) || import_typescript18.default.isFunctionExpression(expr) || import_typescript18.default.isObjectLiteralExpression(expr) || import_typescript18.default.isArrayLiteralExpression(expr)) {
+                if (import_typescript20.default.isArrowFunction(expr) || import_typescript20.default.isFunctionExpression(expr) || import_typescript20.default.isObjectLiteralExpression(expr) || import_typescript20.default.isArrayLiteralExpression(expr)) {
                   if (!isInsideMemoizationHook(expr) && !unstableProps.includes(attrName)) {
                     unstableProps.push(attrName);
                   }
@@ -260229,7 +260301,7 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
         });
       }
     }
-    import_typescript18.default.forEachChild(node, visit);
+    import_typescript20.default.forEachChild(node, visit);
   }
   visit(componentNode);
   const uniqueChildren = /* @__PURE__ */ new Map();
@@ -260248,6 +260320,8 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
   }
   return Array.from(uniqueChildren.values());
 }
+
+// src/handlers/frontend/render-triggers/suggestion-generator.ts
 function generateSuggestions(isMemoized, inlineDefinitions, expensiveComputations, contextSubscriptions, childrenAnalysis) {
   const suggestions = [];
   if (!isMemoized && childrenAnalysis.length > 0) {
@@ -260320,37 +260394,39 @@ const ThemeContext = createContext(null);
   suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
   return suggestions;
 }
+
+// src/handlers/frontend/render-triggers/index.ts
 async function handleAnalyzeRenderTriggers(args) {
   const projectRoot = process.cwd();
   const includeChildren = args.include_children ?? false;
   if (!args.file) {
-    return createErrorResponse10("file argument is required");
+    return createErrorResponse8("file argument is required");
   }
-  const filePath = path71.isAbsolute(args.file) ? args.file : path71.resolve(projectRoot, args.file);
+  const filePath = path72.isAbsolute(args.file) ? args.file : path72.resolve(projectRoot, args.file);
   if (!fs51.existsSync(filePath)) {
-    return createErrorResponse10(`File not found: ${args.file}`, { provided_path: args.file });
+    return createErrorResponse8(`File not found: ${args.file}`, { provided_path: args.file });
   }
-  const ext = path71.extname(filePath).toLowerCase();
+  const ext = path72.extname(filePath).toLowerCase();
   if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-    return createErrorResponse10(
+    return createErrorResponse8(
       "File must be a React component file (.tsx, .jsx, .ts, or .js)",
       { provided_extension: ext }
     );
   }
   try {
     const content = fs51.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript18.default.createSourceFile(
+    const sourceFile = import_typescript21.default.createSourceFile(
       filePath,
       content,
-      import_typescript18.default.ScriptTarget.Latest,
+      import_typescript21.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" || ext === ".jsx" ? import_typescript18.default.ScriptKind.TSX : import_typescript18.default.ScriptKind.TS
+      ext === ".tsx" || ext === ".jsx" ? import_typescript21.default.ScriptKind.TSX : import_typescript21.default.ScriptKind.TS
     );
     const relativePath = makeRelativePath7(filePath, projectRoot);
     const memoInfo = detectMemoization(sourceFile);
     const components = findComponents(sourceFile, memoInfo);
     if (components.length === 0) {
-      return createSuccessResponse10({
+      return createSuccessResponse8({
         message: "No React components found in file",
         file: relativePath
       });
@@ -260395,28 +260471,35 @@ async function handleAnalyzeRenderTriggers(args) {
       children_analysis: childrenAnalysis,
       optimization_suggestions: optimizationSuggestions
     };
-    return createSuccessResponse10(result);
+    return createSuccessResponse8(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse10(message, { file: args.file });
+    return createErrorResponse8(message, { file: args.file });
   }
 }
 
-// src/handlers/frontend/analyze-stacking-context.ts
+// src/handlers/frontend/stacking-context/index.ts
 var fs52 = __toESM(require("fs"), 1);
-var path72 = __toESM(require("path"), 1);
-var import_typescript19 = __toESM(require_typescript(), 1);
-function createSuccessResponse11(data) {
+var path73 = __toESM(require("path"), 1);
+var import_typescript24 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/stacking-context/utils.ts
+function createSuccessResponse9(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse11(message, context) {
+function createErrorResponse9(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
   };
 }
+
+// src/handlers/frontend/stacking-context/jsx-analyzer.ts
+var import_typescript22 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/stacking-context/context-rules.ts
 var CONTEXT_CREATORS = {
   /**
    * Position with z-index: relative/absolute/fixed/sticky + z-*
@@ -260533,92 +260616,19 @@ function extractZIndex(classes) {
   }
   return "auto";
 }
-function detectPortals(content, sourceFile) {
-  const portals = [];
-  const reactPortalRegex = /createPortal\s*\(\s*[^,]+,\s*document\.getElementById\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-  let match;
-  while ((match = reactPortalRegex.exec(content)) !== null) {
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || "Unknown",
-      destination: match[1]
-    });
-  }
-  const reactPortalComponentRegex = /<Portal[^>]*container\s*=\s*\{[^}]*getElementById\s*\(\s*['"]([^'"]+)['"]/g;
-  while ((match = reactPortalComponentRegex.exec(content)) !== null) {
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || "Unknown",
-      destination: match[1]
-    });
-  }
-  const radixPortalRegex = /<(Portal|DialogPortal|PopoverPortal)[^>]*>/g;
-  while ((match = radixPortalRegex.exec(content)) !== null) {
-    const containerMatch = content.slice(match.index, match.index + 200).match(/container\s*=\s*\{[^}]*getElementById\s*\(\s*['"]([^'"]+)['"]/);
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || "Unknown",
-      destination: containerMatch ? containerMatch[1] : "document.body (default)"
-    });
-  }
-  const vueTeleportRegex = /<Teleport[^>]*to\s*=\s*['"]([^'"]+)['"]/g;
-  while ((match = vueTeleportRegex.exec(content)) !== null) {
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || "Unknown",
-      destination: match[1]
-    });
-  }
-  const sveltePortalRegex = /<Portal[^>]*target\s*=\s*['"]([^'"]+)['"]/g;
-  while ((match = sveltePortalRegex.exec(content)) !== null) {
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || "Unknown",
-      destination: match[1]
-    });
-  }
-  const nextPortalRegex = /next\/dynamic[^}]*Portal|@radix-ui\/react-portal|@headlessui\/react/g;
-  if (nextPortalRegex.test(content)) {
-    const modalRegex = /<(Modal|Dialog|Drawer|Sheet|Popover|Dropdown)[^>]*>/g;
-    while ((match = modalRegex.exec(content)) !== null) {
-      const existingPortal = portals.find(
-        (p) => p.component === findContainingComponent(match.index, sourceFile)
-      );
-      if (!existingPortal) {
-        portals.push({
-          component: findContainingComponent(match.index, sourceFile) || "Unknown",
-          destination: "document.body (inferred from modal/dialog pattern)"
-        });
-      }
-    }
-  }
-  return portals;
-}
-function findContainingComponent(position, sourceFile) {
-  let result = null;
-  function visit(node) {
-    if (node.getStart() <= position && node.getEnd() >= position) {
-      if (import_typescript19.default.isFunctionDeclaration(node) && node.name) {
-        result = node.name.getText(sourceFile);
-      } else if (import_typescript19.default.isVariableDeclaration(node) && import_typescript19.default.isIdentifier(node.name)) {
-        if (node.initializer && (import_typescript19.default.isArrowFunction(node.initializer) || import_typescript19.default.isFunctionExpression(node.initializer))) {
-          result = node.name.getText(sourceFile);
-        }
-      } else if (import_typescript19.default.isClassDeclaration(node) && node.name) {
-        result = node.name.getText(sourceFile);
-      }
-      import_typescript19.default.forEachChild(node, visit);
-    }
-  }
-  visit(sourceFile);
-  return result;
-}
+
+// src/handlers/frontend/stacking-context/jsx-analyzer.ts
 function extractClassesFromAttribute(attr, sourceFile) {
   if (!attr.initializer) return [];
-  if (import_typescript19.default.isStringLiteral(attr.initializer)) {
+  if (import_typescript22.default.isStringLiteral(attr.initializer)) {
     return attr.initializer.text.split(/\s+/).filter(Boolean);
   }
-  if (import_typescript19.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+  if (import_typescript22.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
     const expr = attr.initializer.expression;
-    if (import_typescript19.default.isStringLiteral(expr)) {
+    if (import_typescript22.default.isStringLiteral(expr)) {
       return expr.text.split(/\s+/).filter(Boolean);
     }
-    if (import_typescript19.default.isTemplateExpression(expr)) {
+    if (import_typescript22.default.isTemplateExpression(expr)) {
       const classes = [];
       if (expr.head.text) {
         classes.push(...expr.head.text.split(/\s+/).filter(Boolean));
@@ -260630,22 +260640,22 @@ function extractClassesFromAttribute(attr, sourceFile) {
       }
       return classes;
     }
-    if (import_typescript19.default.isCallExpression(expr)) {
+    if (import_typescript22.default.isCallExpression(expr)) {
       const classes = [];
       for (const arg of expr.arguments) {
-        if (import_typescript19.default.isStringLiteral(arg)) {
+        if (import_typescript22.default.isStringLiteral(arg)) {
           classes.push(...arg.text.split(/\s+/).filter(Boolean));
         }
-        if (import_typescript19.default.isObjectLiteralExpression(arg)) {
+        if (import_typescript22.default.isObjectLiteralExpression(arg)) {
           for (const prop of arg.properties) {
-            if (import_typescript19.default.isPropertyAssignment(prop)) {
-              if (import_typescript19.default.isStringLiteral(prop.name)) {
+            if (import_typescript22.default.isPropertyAssignment(prop)) {
+              if (import_typescript22.default.isStringLiteral(prop.name)) {
                 classes.push(...prop.name.text.split(/\s+/).filter(Boolean));
-              } else if (import_typescript19.default.isIdentifier(prop.name)) {
+              } else if (import_typescript22.default.isIdentifier(prop.name)) {
                 classes.push(prop.name.text);
               }
             }
-            if (import_typescript19.default.isShorthandPropertyAssignment(prop)) {
+            if (import_typescript22.default.isShorthandPropertyAssignment(prop)) {
               classes.push(prop.name.text);
             }
           }
@@ -260664,13 +260674,13 @@ function analyzeJsxFile(filePath, content, sourceFile) {
   const elements = [];
   const elementStack = [];
   function visit(node) {
-    if (import_typescript19.default.isJsxOpeningElement(node) || import_typescript19.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript22.default.isJsxOpeningElement(node) || import_typescript22.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       const line = getLineNumber4(node.getStart(), sourceFile);
       const isComponent = /^[A-Z]/.test(tagName);
       let classes = [];
       for (const attr of node.attributes.properties) {
-        if (import_typescript19.default.isJsxAttribute(attr)) {
+        if (import_typescript22.default.isJsxAttribute(attr)) {
           const attrName = attr.name.getText(sourceFile);
           if (attrName === "className" || attrName === "class") {
             classes = extractClassesFromAttribute(attr, sourceFile);
@@ -260692,18 +260702,20 @@ function analyzeJsxFile(filePath, content, sourceFile) {
       };
       const currentIndex = elements.length;
       elements.push(elementInfo);
-      if (import_typescript19.default.isJsxOpeningElement(node)) {
+      if (import_typescript22.default.isJsxOpeningElement(node)) {
         elementStack.push(currentIndex);
       }
     }
-    if (import_typescript19.default.isJsxClosingElement(node)) {
+    if (import_typescript22.default.isJsxClosingElement(node)) {
       elementStack.pop();
     }
-    import_typescript19.default.forEachChild(node, visit);
+    import_typescript22.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return elements;
 }
+
+// src/handlers/frontend/stacking-context/tree-builder.ts
 function buildStackingTree(elements) {
   const root = {
     element: "root",
@@ -260772,6 +260784,8 @@ function collectZIndexValues(elements) {
   }
   return zValues;
 }
+
+// src/handlers/frontend/stacking-context/issue-detector.ts
 function detectStackingIssues(elements, zIndexValues) {
   const issues = [];
   const highZElements = zIndexValues.filter((z2) => z2.z_index >= 50);
@@ -260855,20 +260869,100 @@ function detectStackingIssues(elements, zIndexValues) {
   }
   return issues;
 }
+
+// src/handlers/frontend/stacking-context/portal-detector.ts
+var import_typescript23 = __toESM(require_typescript(), 1);
+function findContainingComponent(position, sourceFile) {
+  let result = null;
+  function visit(node) {
+    if (node.getStart() <= position && node.getEnd() >= position) {
+      if (import_typescript23.default.isFunctionDeclaration(node) && node.name) {
+        result = node.name.getText(sourceFile);
+      } else if (import_typescript23.default.isVariableDeclaration(node) && import_typescript23.default.isIdentifier(node.name)) {
+        if (node.initializer && (import_typescript23.default.isArrowFunction(node.initializer) || import_typescript23.default.isFunctionExpression(node.initializer))) {
+          result = node.name.getText(sourceFile);
+        }
+      } else if (import_typescript23.default.isClassDeclaration(node) && node.name) {
+        result = node.name.getText(sourceFile);
+      }
+      import_typescript23.default.forEachChild(node, visit);
+    }
+  }
+  visit(sourceFile);
+  return result;
+}
+function detectPortals(content, sourceFile) {
+  const portals = [];
+  const reactPortalRegex = /createPortal\s*\(\s*[^,]+,\s*document\.getElementById\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  let match;
+  while ((match = reactPortalRegex.exec(content)) !== null) {
+    portals.push({
+      component: findContainingComponent(match.index, sourceFile) || "Unknown",
+      destination: match[1]
+    });
+  }
+  const reactPortalComponentRegex = /<Portal[^>]*container\s*=\s*\{[^}]*getElementById\s*\(\s*['"]([^'"]+)['"]/g;
+  while ((match = reactPortalComponentRegex.exec(content)) !== null) {
+    portals.push({
+      component: findContainingComponent(match.index, sourceFile) || "Unknown",
+      destination: match[1]
+    });
+  }
+  const radixPortalRegex = /<(Portal|DialogPortal|PopoverPortal)[^>]*>/g;
+  while ((match = radixPortalRegex.exec(content)) !== null) {
+    const containerMatch = content.slice(match.index, match.index + 200).match(/container\s*=\s*\{[^}]*getElementById\s*\(\s*['"]([^'"]+)['"]/);
+    portals.push({
+      component: findContainingComponent(match.index, sourceFile) || "Unknown",
+      destination: containerMatch ? containerMatch[1] : "document.body (default)"
+    });
+  }
+  const vueTeleportRegex = /<Teleport[^>]*to\s*=\s*['"]([^'"]+)['"]/g;
+  while ((match = vueTeleportRegex.exec(content)) !== null) {
+    portals.push({
+      component: findContainingComponent(match.index, sourceFile) || "Unknown",
+      destination: match[1]
+    });
+  }
+  const sveltePortalRegex = /<Portal[^>]*target\s*=\s*['"]([^'"]+)['"]/g;
+  while ((match = sveltePortalRegex.exec(content)) !== null) {
+    portals.push({
+      component: findContainingComponent(match.index, sourceFile) || "Unknown",
+      destination: match[1]
+    });
+  }
+  const nextPortalRegex = /next\/dynamic[^}]*Portal|@radix-ui\/react-portal|@headlessui\/react/g;
+  if (nextPortalRegex.test(content)) {
+    const modalRegex = /<(Modal|Dialog|Drawer|Sheet|Popover|Dropdown)[^>]*>/g;
+    while ((match = modalRegex.exec(content)) !== null) {
+      const existingPortal = portals.find(
+        (p) => p.component === findContainingComponent(match.index, sourceFile)
+      );
+      if (!existingPortal) {
+        portals.push({
+          component: findContainingComponent(match.index, sourceFile) || "Unknown",
+          destination: "document.body (inferred from modal/dialog pattern)"
+        });
+      }
+    }
+  }
+  return portals;
+}
+
+// src/handlers/frontend/stacking-context/index.ts
 async function handleAnalyzeStackingContext(args) {
   const projectRoot = process.cwd();
   const includePortals = args.include_portals ?? true;
   try {
-    const filePath = path72.isAbsolute(args.file) ? args.file : path72.resolve(projectRoot, args.file);
+    const filePath = path73.isAbsolute(args.file) ? args.file : path73.resolve(projectRoot, args.file);
     if (!fs52.existsSync(filePath)) {
-      return createErrorResponse11(`File not found: ${args.file}`, {
+      return createErrorResponse9(`File not found: ${args.file}`, {
         provided_path: args.file,
         resolved_path: filePath
       });
     }
-    const ext = path72.extname(filePath).toLowerCase();
+    const ext = path73.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".vue", ".svelte"].includes(ext)) {
-      return createErrorResponse11(
+      return createErrorResponse9(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
         { file: args.file }
       );
@@ -260881,17 +260975,17 @@ async function handleAnalyzeStackingContext(args) {
     } else if (ext === ".svelte") {
       templateContent = content.replace(/<script[^>]*>[\s\S]*?<\/script>/g, "").replace(/<style[^>]*>[\s\S]*?<\/style>/g, "");
     }
-    const sourceFile = import_typescript19.default.createSourceFile(
+    const sourceFile = import_typescript24.default.createSourceFile(
       filePath,
       content,
-      import_typescript19.default.ScriptTarget.Latest,
+      import_typescript24.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript19.default.ScriptKind.TSX : import_typescript19.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript24.default.ScriptKind.TSX : import_typescript24.default.ScriptKind.JSX
     );
     const elements = analyzeJsxFile(filePath, content, sourceFile);
     if (elements.length === 0) {
-      return createSuccessResponse11({
-        file: path72.relative(projectRoot, filePath),
+      return createSuccessResponse9({
+        file: path73.relative(projectRoot, filePath),
         stacking_tree: {
           element: "root",
           z_index: "auto",
@@ -260915,7 +261009,7 @@ async function handleAnalyzeStackingContext(args) {
     const zIndexValues = collectZIndexValues(elements);
     const potentialIssues = detectStackingIssues(elements, zIndexValues);
     const result = {
-      file: path72.relative(projectRoot, filePath),
+      file: path73.relative(projectRoot, filePath),
       stacking_tree: stackingTree,
       context_creators: contextCreators,
       z_index_values: zIndexValues,
@@ -260927,28 +261021,185 @@ async function handleAnalyzeStackingContext(args) {
         result.portals = portals;
       }
     }
-    return createSuccessResponse11(result);
+    return createSuccessResponse9(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse11(message, { file: args.file });
+    return createErrorResponse9(message, { file: args.file });
   }
 }
 
 // src/handlers/frontend/analyze-layout-hierarchy.ts
 var fs53 = __toESM(require("fs"), 1);
-var path73 = __toESM(require("path"), 1);
-var import_typescript20 = __toESM(require_typescript(), 1);
-function createSuccessResponse12(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+var path74 = __toESM(require("path"), 1);
+var import_typescript26 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/layout-hierarchy-analyzers.ts
+function detectIssues(node, context = { depth: 0 }) {
+  const issues = [];
+  if (node.sizing.height.strategy === "fixed" && node.overflow.y === "visible" && node.children.some((c) => c.sizing.height.strategy === "auto")) {
+    issues.push({
+      element: node.element,
+      issue: "Fixed height container with auto-height children may overflow without proper handling",
+      suggestion: "Add overflow-y-auto or overflow-hidden to prevent content from overflowing"
+    });
+  }
+  if (context.parentDisplay === "flex" && node.flex_props && node.flex_props.shrink === 1 && node.sizing.width.strategy === "auto") {
+    const hasFixedWidthSibling = false;
+    if (!hasFixedWidthSibling) {
+      if (node.flex_props.grow > 0 && node.flex_props.basis === "auto") {
+        issues.push({
+          element: node.element,
+          issue: "Flex item with grow but no explicit basis may collapse unexpectedly",
+          suggestion: "Consider adding flex-basis (e.g., basis-0 for equal distribution or a specific value)"
+        });
+      }
+    }
+  }
+  if ((node.display === "flex" || node.display === "inline-flex") && context.parentDisplay === "flex" && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && !node.flex_props?.basis) {
+    issues.push({
+      element: node.element,
+      issue: "Nested flex container without explicit sizing may have unpredictable dimensions",
+      suggestion: "Consider adding explicit width/height or flex-basis for more predictable layout behavior"
+    });
+  }
+  if ((node.display === "grid" || node.display === "inline-grid") && !node.grid_props?.template_columns) {
+    issues.push({
+      element: node.element,
+      issue: "Grid container without explicit column template - items will stack in single column",
+      suggestion: "Add grid-cols-N or grid-template-columns to define the grid structure"
+    });
+  }
+  if ((node.position === "absolute" || node.position === "fixed") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto") {
+    issues.push({
+      element: node.element,
+      issue: `${node.position} positioned element without explicit dimensions may have zero size`,
+      suggestion: "Add explicit width/height or use inset properties (inset-0, left/right, top/bottom)"
+    });
+  }
+  if (node.sizing.height.strategy === "percentage" && context.parentSizing?.height.strategy === "auto") {
+    issues.push({
+      element: node.element,
+      issue: "Percentage height on element with auto-height parent will have no effect",
+      suggestion: "Ensure parent has explicit height or use flex/grid for height distribution"
+    });
+  }
+  if ((node.overflow.x === "scroll" || node.overflow.y === "scroll" || node.overflow.x === "auto" || node.overflow.y === "auto") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && node.display !== "flex" && context.parentDisplay !== "flex") {
+    issues.push({
+      element: node.element,
+      issue: "Overflow scroll/auto without constrained dimensions may not scroll as expected",
+      suggestion: "Add explicit height/width or use flex layout to constrain the scrollable area"
+    });
+  }
+  const childContext = {
+    parentDisplay: node.display,
+    parentSizing: node.sizing,
+    parentOverflow: node.overflow,
+    parentPosition: node.position,
+    depth: context.depth + 1
   };
+  for (const child of node.children) {
+    issues.push(...detectIssues(child, childContext));
+  }
+  return issues;
 }
-function createErrorResponse12(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
+function generateConstraintNotes(node, notes = [], path84 = "") {
+  const currentPath = path84 ? `${path84} > ${node.element}` : node.element;
+  if (node.sizing.width.strategy === "fixed" && node.sizing.width.value) {
+    notes.push(`${currentPath}: Fixed width of ${node.sizing.width.value}`);
+  }
+  if (node.sizing.height.strategy === "fixed" && node.sizing.height.value) {
+    notes.push(`${currentPath}: Fixed height of ${node.sizing.height.value}`);
+  }
+  if (node.sizing.width.strategy === "percentage" && node.sizing.width.value) {
+    notes.push(`${currentPath}: Width constrained to ${node.sizing.width.value} of parent`);
+  }
+  if (node.sizing.height.strategy === "percentage" && node.sizing.height.value) {
+    notes.push(`${currentPath}: Height constrained to ${node.sizing.height.value} of parent`);
+  }
+  if (node.display === "flex" && node.flex_props) {
+    const flexDesc = [];
+    if (node.flex_props.direction !== "row") {
+      flexDesc.push(`direction: ${node.flex_props.direction}`);
+    }
+    if (node.flex_props.gap) {
+      flexDesc.push(`gap: ${node.flex_props.gap}`);
+    }
+    if (node.flex_props.justify && node.flex_props.justify !== "flex-start") {
+      flexDesc.push(`justify: ${node.flex_props.justify}`);
+    }
+    if (node.flex_props.align && node.flex_props.align !== "stretch") {
+      flexDesc.push(`align: ${node.flex_props.align}`);
+    }
+    if (flexDesc.length > 0) {
+      notes.push(`${currentPath}: Flex container (${flexDesc.join(", ")})`);
+    }
+  }
+  if (node.display === "grid" && node.grid_props) {
+    const gridDesc = [];
+    if (node.grid_props.template_columns) {
+      gridDesc.push(`columns: ${node.grid_props.template_columns}`);
+    }
+    if (node.grid_props.template_rows) {
+      gridDesc.push(`rows: ${node.grid_props.template_rows}`);
+    }
+    if (node.grid_props.gap) {
+      gridDesc.push(`gap: ${node.grid_props.gap}`);
+    }
+    if (gridDesc.length > 0) {
+      notes.push(`${currentPath}: Grid container (${gridDesc.join(", ")})`);
+    }
+  }
+  if (node.overflow.x !== "visible" || node.overflow.y !== "visible") {
+    const overflowDesc = node.overflow.x === node.overflow.y ? node.overflow.x : `x: ${node.overflow.x}, y: ${node.overflow.y}`;
+    notes.push(`${currentPath}: Overflow handling (${overflowDesc})`);
+  }
+  if (node.position !== "static") {
+    notes.push(`${currentPath}: Positioned (${node.position})`);
+  }
+  for (const child of node.children) {
+    generateConstraintNotes(child, notes, currentPath);
+  }
+  return notes;
 }
+function generateSummary2(tree, issues) {
+  const parts = [];
+  const displayCounts = {};
+  const positionCounts = {};
+  function countNodes(node) {
+    displayCounts[node.display] = (displayCounts[node.display] || 0) + 1;
+    if (node.position !== "static") {
+      positionCounts[node.position] = (positionCounts[node.position] || 0) + 1;
+    }
+    node.children.forEach(countNodes);
+  }
+  countNodes(tree);
+  parts.push(`Root element: ${tree.element}`);
+  const layoutTypes = [];
+  if (displayCounts.flex || displayCounts["inline-flex"]) {
+    layoutTypes.push(`${(displayCounts.flex || 0) + (displayCounts["inline-flex"] || 0)} flex containers`);
+  }
+  if (displayCounts.grid || displayCounts["inline-grid"]) {
+    layoutTypes.push(`${(displayCounts.grid || 0) + (displayCounts["inline-grid"] || 0)} grid containers`);
+  }
+  if (layoutTypes.length > 0) {
+    parts.push(`Layout structure: ${layoutTypes.join(", ")}`);
+  }
+  const positionTypes = Object.entries(positionCounts).map(([type2, count]) => `${count} ${type2}`).join(", ");
+  if (positionTypes) {
+    parts.push(`Positioned elements: ${positionTypes}`);
+  }
+  if (issues.length === 0) {
+    parts.push("No potential layout issues detected.");
+  } else {
+    parts.push(`${issues.length} potential issue${issues.length > 1 ? "s" : ""} detected.`);
+  }
+  return parts.join(". ");
+}
+
+// src/handlers/frontend/layout-hierarchy-core.ts
+var import_typescript25 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/layout-hierarchy-utils.ts
 var TAILWIND_SPACING = {
   "0": "0px",
   "px": "1px",
@@ -261401,16 +261652,18 @@ function parseTailwindClasses(classes) {
   }
   return props;
 }
+
+// src/handlers/frontend/layout-hierarchy-core.ts
 function extractClassName(node, sourceFile) {
   const classes = [];
   for (const attr of node.attributes.properties) {
-    if (import_typescript20.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "className") {
+    if (import_typescript25.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "className") {
       if (attr.initializer) {
-        if (import_typescript20.default.isStringLiteral(attr.initializer)) {
+        if (import_typescript25.default.isStringLiteral(attr.initializer)) {
           classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
-        } else if (import_typescript20.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+        } else if (import_typescript25.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
           const expr = attr.initializer.expression;
-          if (import_typescript20.default.isTemplateExpression(expr)) {
+          if (import_typescript25.default.isTemplateExpression(expr)) {
             const headText = expr.head.text;
             classes.push(...headText.split(/\s+/).filter(Boolean));
             for (const span of expr.templateSpans) {
@@ -261418,11 +261671,11 @@ function extractClassName(node, sourceFile) {
                 classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
               }
             }
-          } else if (import_typescript20.default.isNoSubstitutionTemplateLiteral(expr)) {
+          } else if (import_typescript25.default.isNoSubstitutionTemplateLiteral(expr)) {
             classes.push(...expr.text.split(/\s+/).filter(Boolean));
-          } else if (import_typescript20.default.isCallExpression(expr)) {
+          } else if (import_typescript25.default.isCallExpression(expr)) {
             for (const arg of expr.arguments) {
-              if (import_typescript20.default.isStringLiteral(arg)) {
+              if (import_typescript25.default.isStringLiteral(arg)) {
                 classes.push(...arg.text.split(/\s+/).filter(Boolean));
               }
             }
@@ -261430,8 +261683,8 @@ function extractClassName(node, sourceFile) {
         }
       }
     }
-    if (import_typescript20.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "class") {
-      if (attr.initializer && import_typescript20.default.isStringLiteral(attr.initializer)) {
+    if (import_typescript25.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "class") {
+      if (attr.initializer && import_typescript25.default.isStringLiteral(attr.initializer)) {
         classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
       }
     }
@@ -261440,8 +261693,8 @@ function extractClassName(node, sourceFile) {
 }
 function extractId(node, sourceFile) {
   for (const attr of node.attributes.properties) {
-    if (import_typescript20.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
-      if (attr.initializer && import_typescript20.default.isStringLiteral(attr.initializer)) {
+    if (import_typescript25.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
+      if (attr.initializer && import_typescript25.default.isStringLiteral(attr.initializer)) {
         return attr.initializer.text;
       }
     }
@@ -261519,7 +261772,7 @@ function matchesSelector(tagName, classes, id, selector) {
   return tagName.toLowerCase() === selector.toLowerCase();
 }
 function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
-  if (import_typescript20.default.isJsxElement(node)) {
+  if (import_typescript25.default.isJsxElement(node)) {
     const openingElement = node.openingElement;
     const tagName = openingElement.tagName.getText(sourceFile);
     const classes = extractClassName(openingElement, sourceFile);
@@ -261550,7 +261803,7 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     }
     return null;
   }
-  if (import_typescript20.default.isJsxSelfClosingElement(node)) {
+  if (import_typescript25.default.isJsxSelfClosingElement(node)) {
     const tagName = node.tagName.getText(sourceFile);
     const classes = extractClassName(node, sourceFile);
     const id = extractId(node, sourceFile);
@@ -261561,7 +261814,7 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     }
     return null;
   }
-  if (import_typescript20.default.isJsxFragment(node)) {
+  if (import_typescript25.default.isJsxFragment(node)) {
     const children = [];
     for (const child of node.children) {
       const childNode = parseJsxElement(child, sourceFile, selector, foundSelector);
@@ -261586,9 +261839,9 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     }
     return null;
   }
-  if (import_typescript20.default.isJsxExpression(node) && node.expression) {
+  if (import_typescript25.default.isJsxExpression(node) && node.expression) {
     let result = null;
-    import_typescript20.default.forEachChild(node.expression, (child) => {
+    import_typescript25.default.forEachChild(node.expression, (child) => {
       if (!result) {
         result = parseJsxElement(child, sourceFile, selector, foundSelector);
       }
@@ -261597,212 +261850,64 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
   }
   return null;
 }
-function detectIssues(node, context = { depth: 0 }) {
-  const issues = [];
-  if (node.sizing.height.strategy === "fixed" && node.overflow.y === "visible" && node.children.some((c) => c.sizing.height.strategy === "auto")) {
-    issues.push({
-      element: node.element,
-      issue: "Fixed height container with auto-height children may overflow without proper handling",
-      suggestion: "Add overflow-y-auto or overflow-hidden to prevent content from overflowing"
-    });
-  }
-  if (context.parentDisplay === "flex" && node.flex_props && node.flex_props.shrink === 1 && node.sizing.width.strategy === "auto") {
-    const hasFixedWidthSibling = false;
-    if (!hasFixedWidthSibling) {
-      if (node.flex_props.grow > 0 && node.flex_props.basis === "auto") {
-        issues.push({
-          element: node.element,
-          issue: "Flex item with grow but no explicit basis may collapse unexpectedly",
-          suggestion: "Consider adding flex-basis (e.g., basis-0 for equal distribution or a specific value)"
-        });
-      }
-    }
-  }
-  if ((node.display === "flex" || node.display === "inline-flex") && context.parentDisplay === "flex" && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && !node.flex_props?.basis) {
-    issues.push({
-      element: node.element,
-      issue: "Nested flex container without explicit sizing may have unpredictable dimensions",
-      suggestion: "Consider adding explicit width/height or flex-basis for more predictable layout behavior"
-    });
-  }
-  if ((node.display === "grid" || node.display === "inline-grid") && !node.grid_props?.template_columns) {
-    issues.push({
-      element: node.element,
-      issue: "Grid container without explicit column template - items will stack in single column",
-      suggestion: "Add grid-cols-N or grid-template-columns to define the grid structure"
-    });
-  }
-  if ((node.position === "absolute" || node.position === "fixed") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto") {
-    issues.push({
-      element: node.element,
-      issue: `${node.position} positioned element without explicit dimensions may have zero size`,
-      suggestion: "Add explicit width/height or use inset properties (inset-0, left/right, top/bottom)"
-    });
-  }
-  if (node.sizing.height.strategy === "percentage" && context.parentSizing?.height.strategy === "auto") {
-    issues.push({
-      element: node.element,
-      issue: "Percentage height on element with auto-height parent will have no effect",
-      suggestion: "Ensure parent has explicit height or use flex/grid for height distribution"
-    });
-  }
-  if ((node.overflow.x === "scroll" || node.overflow.y === "scroll" || node.overflow.x === "auto" || node.overflow.y === "auto") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && node.display !== "flex" && context.parentDisplay !== "flex") {
-    issues.push({
-      element: node.element,
-      issue: "Overflow scroll/auto without constrained dimensions may not scroll as expected",
-      suggestion: "Add explicit height/width or use flex layout to constrain the scrollable area"
-    });
-  }
-  const childContext = {
-    parentDisplay: node.display,
-    parentSizing: node.sizing,
-    parentOverflow: node.overflow,
-    parentPosition: node.position,
-    depth: context.depth + 1
-  };
-  for (const child of node.children) {
-    issues.push(...detectIssues(child, childContext));
-  }
-  return issues;
-}
-function generateConstraintNotes(node, notes = [], path81 = "") {
-  const currentPath = path81 ? `${path81} > ${node.element}` : node.element;
-  if (node.sizing.width.strategy === "fixed" && node.sizing.width.value) {
-    notes.push(`${currentPath}: Fixed width of ${node.sizing.width.value}`);
-  }
-  if (node.sizing.height.strategy === "fixed" && node.sizing.height.value) {
-    notes.push(`${currentPath}: Fixed height of ${node.sizing.height.value}`);
-  }
-  if (node.sizing.width.strategy === "percentage" && node.sizing.width.value) {
-    notes.push(`${currentPath}: Width constrained to ${node.sizing.width.value} of parent`);
-  }
-  if (node.sizing.height.strategy === "percentage" && node.sizing.height.value) {
-    notes.push(`${currentPath}: Height constrained to ${node.sizing.height.value} of parent`);
-  }
-  if (node.display === "flex" && node.flex_props) {
-    const flexDesc = [];
-    if (node.flex_props.direction !== "row") {
-      flexDesc.push(`direction: ${node.flex_props.direction}`);
-    }
-    if (node.flex_props.gap) {
-      flexDesc.push(`gap: ${node.flex_props.gap}`);
-    }
-    if (node.flex_props.justify && node.flex_props.justify !== "flex-start") {
-      flexDesc.push(`justify: ${node.flex_props.justify}`);
-    }
-    if (node.flex_props.align && node.flex_props.align !== "stretch") {
-      flexDesc.push(`align: ${node.flex_props.align}`);
-    }
-    if (flexDesc.length > 0) {
-      notes.push(`${currentPath}: Flex container (${flexDesc.join(", ")})`);
-    }
-  }
-  if (node.display === "grid" && node.grid_props) {
-    const gridDesc = [];
-    if (node.grid_props.template_columns) {
-      gridDesc.push(`columns: ${node.grid_props.template_columns}`);
-    }
-    if (node.grid_props.template_rows) {
-      gridDesc.push(`rows: ${node.grid_props.template_rows}`);
-    }
-    if (node.grid_props.gap) {
-      gridDesc.push(`gap: ${node.grid_props.gap}`);
-    }
-    if (gridDesc.length > 0) {
-      notes.push(`${currentPath}: Grid container (${gridDesc.join(", ")})`);
-    }
-  }
-  if (node.overflow.x !== "visible" || node.overflow.y !== "visible") {
-    const overflowDesc = node.overflow.x === node.overflow.y ? node.overflow.x : `x: ${node.overflow.x}, y: ${node.overflow.y}`;
-    notes.push(`${currentPath}: Overflow handling (${overflowDesc})`);
-  }
-  if (node.position !== "static") {
-    notes.push(`${currentPath}: Positioned (${node.position})`);
-  }
-  for (const child of node.children) {
-    generateConstraintNotes(child, notes, currentPath);
-  }
-  return notes;
-}
-function generateSummary2(tree, issues) {
-  const parts = [];
-  const displayCounts = {};
-  const positionCounts = {};
-  function countNodes(node) {
-    displayCounts[node.display] = (displayCounts[node.display] || 0) + 1;
-    if (node.position !== "static") {
-      positionCounts[node.position] = (positionCounts[node.position] || 0) + 1;
-    }
-    node.children.forEach(countNodes);
-  }
-  countNodes(tree);
-  parts.push(`Root element: ${tree.element}`);
-  const layoutTypes = [];
-  if (displayCounts.flex || displayCounts["inline-flex"]) {
-    layoutTypes.push(`${(displayCounts.flex || 0) + (displayCounts["inline-flex"] || 0)} flex containers`);
-  }
-  if (displayCounts.grid || displayCounts["inline-grid"]) {
-    layoutTypes.push(`${(displayCounts.grid || 0) + (displayCounts["inline-grid"] || 0)} grid containers`);
-  }
-  if (layoutTypes.length > 0) {
-    parts.push(`Layout structure: ${layoutTypes.join(", ")}`);
-  }
-  const positionTypes = Object.entries(positionCounts).map(([type2, count]) => `${count} ${type2}`).join(", ");
-  if (positionTypes) {
-    parts.push(`Positioned elements: ${positionTypes}`);
-  }
-  if (issues.length === 0) {
-    parts.push("No potential layout issues detected.");
-  } else {
-    parts.push(`${issues.length} potential issue${issues.length > 1 ? "s" : ""} detected.`);
-  }
-  return parts.join(". ");
-}
 function findRootJsx(sourceFile) {
   let rootJsx = null;
   function visit(node) {
     if (rootJsx) return;
-    if (import_typescript20.default.isReturnStatement(node) && node.expression) {
-      if (import_typescript20.default.isJsxElement(node.expression) || import_typescript20.default.isJsxSelfClosingElement(node.expression) || import_typescript20.default.isJsxFragment(node.expression)) {
+    if (import_typescript25.default.isReturnStatement(node) && node.expression) {
+      if (import_typescript25.default.isJsxElement(node.expression) || import_typescript25.default.isJsxSelfClosingElement(node.expression) || import_typescript25.default.isJsxFragment(node.expression)) {
         rootJsx = node.expression;
         return;
       }
-      if (import_typescript20.default.isParenthesizedExpression(node.expression)) {
+      if (import_typescript25.default.isParenthesizedExpression(node.expression)) {
         const inner = node.expression.expression;
-        if (import_typescript20.default.isJsxElement(inner) || import_typescript20.default.isJsxSelfClosingElement(inner) || import_typescript20.default.isJsxFragment(inner)) {
+        if (import_typescript25.default.isJsxElement(inner) || import_typescript25.default.isJsxSelfClosingElement(inner) || import_typescript25.default.isJsxFragment(inner)) {
           rootJsx = inner;
           return;
         }
       }
     }
-    if (import_typescript20.default.isArrowFunction(node) && node.body) {
-      if (import_typescript20.default.isJsxElement(node.body) || import_typescript20.default.isJsxSelfClosingElement(node.body) || import_typescript20.default.isJsxFragment(node.body)) {
+    if (import_typescript25.default.isArrowFunction(node) && node.body) {
+      if (import_typescript25.default.isJsxElement(node.body) || import_typescript25.default.isJsxSelfClosingElement(node.body) || import_typescript25.default.isJsxFragment(node.body)) {
         rootJsx = node.body;
         return;
       }
-      if (import_typescript20.default.isParenthesizedExpression(node.body)) {
+      if (import_typescript25.default.isParenthesizedExpression(node.body)) {
         const inner = node.body.expression;
-        if (import_typescript20.default.isJsxElement(inner) || import_typescript20.default.isJsxSelfClosingElement(inner) || import_typescript20.default.isJsxFragment(inner)) {
+        if (import_typescript25.default.isJsxElement(inner) || import_typescript25.default.isJsxSelfClosingElement(inner) || import_typescript25.default.isJsxFragment(inner)) {
           rootJsx = inner;
           return;
         }
       }
     }
-    import_typescript20.default.forEachChild(node, visit);
+    import_typescript25.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return rootJsx;
 }
+
+// src/handlers/frontend/analyze-layout-hierarchy.ts
+function createSuccessResponse10(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+  };
+}
+function createErrorResponse10(message, context) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true
+  };
+}
 async function handleAnalyzeLayoutHierarchy(args) {
   const projectRoot = process.cwd();
   try {
-    const filePath = path73.isAbsolute(args.file) ? args.file : path73.resolve(projectRoot, args.file);
+    const filePath = path74.isAbsolute(args.file) ? args.file : path74.resolve(projectRoot, args.file);
     if (!fs53.existsSync(filePath)) {
-      return createErrorResponse12(`File not found: ${args.file}`, { provided_path: args.file });
+      return createErrorResponse10(`File not found: ${args.file}`, { provided_path: args.file });
     }
-    const ext = path73.extname(filePath).toLowerCase();
+    const ext = path74.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".vue", ".svelte"].includes(ext)) {
-      return createErrorResponse12(
+      return createErrorResponse10(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
         { provided_path: args.file }
       );
@@ -261817,35 +261922,35 @@ async function handleAnalyzeLayoutHierarchy(args) {
     } else if (ext === ".svelte") {
       jsxContent = content.replace(/class=/g, "className=");
     }
-    const sourceFile = import_typescript20.default.createSourceFile(
+    const sourceFile = import_typescript26.default.createSourceFile(
       filePath,
       jsxContent,
-      import_typescript20.default.ScriptTarget.Latest,
+      import_typescript26.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript20.default.ScriptKind.TSX : import_typescript20.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript26.default.ScriptKind.TSX : import_typescript26.default.ScriptKind.JSX
     );
     const rootJsxNode = findRootJsx(sourceFile);
     if (!rootJsxNode) {
-      return createErrorResponse12("No JSX element found in file. Ensure the component returns JSX.", {
+      return createErrorResponse10("No JSX element found in file. Ensure the component returns JSX.", {
         file: args.file
       });
     }
     const layoutTree = parseJsxElement(rootJsxNode, sourceFile, args.selector);
     if (!layoutTree) {
       if (args.selector) {
-        return createErrorResponse12(`No element matching selector "${args.selector}" found in component.`, {
+        return createErrorResponse10(`No element matching selector "${args.selector}" found in component.`, {
           file: args.file,
           selector: args.selector
         });
       }
-      return createErrorResponse12("Failed to parse layout hierarchy from JSX.", {
+      return createErrorResponse10("Failed to parse layout hierarchy from JSX.", {
         file: args.file
       });
     }
     const potentialIssues = detectIssues(layoutTree);
     const constraintNotes = generateConstraintNotes(layoutTree);
     const summary = generateSummary2(layoutTree, potentialIssues);
-    const relativePath = path73.relative(projectRoot, filePath).replace(/\\/g, "/");
+    const relativePath = path74.relative(projectRoot, filePath).replace(/\\/g, "/");
     const result = {
       file: relativePath,
       root_element: layoutTree.element,
@@ -261854,17 +261959,19 @@ async function handleAnalyzeLayoutHierarchy(args) {
       potential_issues: potentialIssues,
       summary
     };
-    return createSuccessResponse12(result);
+    return createSuccessResponse10(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse12(message, { file: args.file });
+    return createErrorResponse10(message, { file: args.file });
   }
 }
 
-// src/handlers/frontend/analyze-responsive-breakpoints.ts
+// src/handlers/frontend/responsive-breakpoints/index.ts
 var fs54 = __toESM(require("fs"), 1);
-var path74 = __toESM(require("path"), 1);
-var import_typescript21 = __toESM(require_typescript(), 1);
+var path76 = __toESM(require("path"), 1);
+var import_typescript28 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/responsive-breakpoints/constants.ts
 var BREAKPOINTS = ["sm", "md", "lg", "xl", "2xl"];
 var BREAKPOINT_SIZES = {
   base: "0px",
@@ -262080,12 +262187,15 @@ var CLASS_PREFIX_TO_PROPERTY = [
   // Isolation
   [/^isolate/, "isolation"]
 ];
-function createSuccessResponse13(data) {
+
+// src/handlers/frontend/responsive-breakpoints/utils.ts
+var path75 = __toESM(require("path"), 1);
+function createSuccessResponse11(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse13(message, context) {
+function createErrorResponse11(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -262095,8 +262205,10 @@ function normalizeFilePath6(filePath) {
   return filePath.replace(/\\/g, "/");
 }
 function makeRelativePath8(absolutePath, projectRoot) {
-  return normalizeFilePath6(path74.relative(projectRoot, absolutePath));
+  return normalizeFilePath6(path75.relative(projectRoot, absolutePath));
 }
+
+// src/handlers/frontend/responsive-breakpoints/class-parser.ts
 function parseClassName(className) {
   const cleaned = className.replace(/\$\{[^}]+\}/g, " ").replace(/`/g, "").replace(/\s+/g, " ").trim();
   return cleaned.split(" ").filter((c) => c.length > 0);
@@ -262163,6 +262275,8 @@ function trackPropertyChanges(breakpointClasses) {
     (p) => p.base_value !== "" || p.transitions.length > 0
   );
 }
+
+// src/handlers/frontend/responsive-breakpoints/issue-detector.ts
 function detectIssues2(elements) {
   const warnings = [];
   for (const el of elements) {
@@ -262235,6 +262349,9 @@ function detectIssues2(elements) {
   }
   return warnings;
 }
+
+// src/handlers/frontend/responsive-breakpoints/jsx-extractor.ts
+var import_typescript27 = __toESM(require_typescript(), 1);
 function extractClassNames(sourceFile, elementFilter) {
   const results = [];
   let elementCounter = 0;
@@ -262246,30 +262363,30 @@ function extractClassNames(sourceFile, elementFilter) {
     return line + 1;
   }
   function extractStringValue(node) {
-    if (import_typescript21.default.isStringLiteral(node)) {
+    if (import_typescript27.default.isStringLiteral(node)) {
       return node.text;
     }
-    if (import_typescript21.default.isNoSubstitutionTemplateLiteral(node)) {
+    if (import_typescript27.default.isNoSubstitutionTemplateLiteral(node)) {
       return node.text;
     }
-    if (import_typescript21.default.isTemplateExpression(node)) {
+    if (import_typescript27.default.isTemplateExpression(node)) {
       let result = node.head.text;
       for (const span of node.templateSpans) {
         result += " " + span.literal.text;
       }
       return result;
     }
-    if (import_typescript21.default.isJsxExpression(node) && node.expression) {
+    if (import_typescript27.default.isJsxExpression(node) && node.expression) {
       return extractStringValue(node.expression);
     }
-    if (import_typescript21.default.isCallExpression(node)) {
+    if (import_typescript27.default.isCallExpression(node)) {
       let result = "";
       for (const arg of node.arguments) {
-        if (import_typescript21.default.isStringLiteral(arg) || import_typescript21.default.isNoSubstitutionTemplateLiteral(arg)) {
+        if (import_typescript27.default.isStringLiteral(arg) || import_typescript27.default.isNoSubstitutionTemplateLiteral(arg)) {
           result += " " + arg.text;
-        } else if (import_typescript21.default.isTemplateExpression(arg)) {
+        } else if (import_typescript27.default.isTemplateExpression(arg)) {
           result += " " + extractStringValue(arg);
-        } else if (import_typescript21.default.isArrayLiteralExpression(arg)) {
+        } else if (import_typescript27.default.isArrayLiteralExpression(arg)) {
           for (const element of arg.elements) {
             result += " " + extractStringValue(element);
           }
@@ -262277,27 +262394,27 @@ function extractClassNames(sourceFile, elementFilter) {
       }
       return result;
     }
-    if (import_typescript21.default.isConditionalExpression(node)) {
+    if (import_typescript27.default.isConditionalExpression(node)) {
       return extractStringValue(node.whenTrue) + " " + extractStringValue(node.whenFalse);
     }
-    if (import_typescript21.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript21.default.SyntaxKind.PlusToken) {
+    if (import_typescript27.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript27.default.SyntaxKind.PlusToken) {
       return extractStringValue(node.left) + " " + extractStringValue(node.right);
     }
-    if (import_typescript21.default.isParenthesizedExpression(node)) {
+    if (import_typescript27.default.isParenthesizedExpression(node)) {
       return extractStringValue(node.expression);
     }
     return "";
   }
   function processAttributes(attributes, elementName, line) {
     for (const attr of attributes.properties) {
-      if (import_typescript21.default.isJsxAttribute(attr) && attr.name) {
+      if (import_typescript27.default.isJsxAttribute(attr) && attr.name) {
         const attrName = attr.name.getText(sourceFile);
         if (attrName === "className" || attrName === "class") {
           let classValue = "";
           if (attr.initializer) {
-            if (import_typescript21.default.isStringLiteral(attr.initializer)) {
+            if (import_typescript27.default.isStringLiteral(attr.initializer)) {
               classValue = attr.initializer.text;
-            } else if (import_typescript21.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+            } else if (import_typescript27.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
               classValue = extractStringValue(attr.initializer.expression);
             }
           }
@@ -262317,33 +262434,35 @@ function extractClassNames(sourceFile, elementFilter) {
     }
   }
   function visit(node) {
-    if (import_typescript21.default.isJsxOpeningElement(node)) {
+    if (import_typescript27.default.isJsxOpeningElement(node)) {
       const elementName = getElementName(node);
       const line = getLineNumber8(node);
       processAttributes(node.attributes, elementName, line);
-    } else if (import_typescript21.default.isJsxSelfClosingElement(node)) {
+    } else if (import_typescript27.default.isJsxSelfClosingElement(node)) {
       const elementName = getElementName(node);
       const line = getLineNumber8(node);
       processAttributes(node.attributes, elementName, line);
     }
-    import_typescript21.default.forEachChild(node, visit);
+    import_typescript27.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return results;
 }
+
+// src/handlers/frontend/responsive-breakpoints/index.ts
 async function handleAnalyzeResponsiveBreakpoints(args) {
   const projectRoot = process.cwd();
   try {
-    const filePath = path74.isAbsolute(args.file) ? args.file : path74.resolve(projectRoot, args.file);
+    const filePath = path76.isAbsolute(args.file) ? args.file : path76.resolve(projectRoot, args.file);
     if (!fs54.existsSync(filePath)) {
-      return createErrorResponse13(`File not found: ${args.file}`, {
+      return createErrorResponse11(`File not found: ${args.file}`, {
         provided_path: args.file,
         resolved_path: filePath
       });
     }
-    const ext = path74.extname(filePath).toLowerCase();
+    const ext = path76.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".vue", ".svelte"].includes(ext)) {
-      return createErrorResponse13(
+      return createErrorResponse11(
         `Unsupported file type: ${ext}. Expected .tsx, .jsx, .vue, or .svelte`,
         { file: args.file }
       );
@@ -262371,16 +262490,16 @@ async function handleAnalyzeResponsiveBreakpoints(args) {
       }
       processableContent = `function Component() { return (<>${templateContent}</>) }`;
     }
-    const sourceFile = import_typescript21.default.createSourceFile(
+    const sourceFile = import_typescript28.default.createSourceFile(
       filePath,
       processableContent,
-      import_typescript21.default.ScriptTarget.Latest,
+      import_typescript28.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript21.default.ScriptKind.TSX : import_typescript21.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript28.default.ScriptKind.TSX : import_typescript28.default.ScriptKind.JSX
     );
     const classNameExtractions = extractClassNames(sourceFile, args.element);
     if (classNameExtractions.length === 0) {
-      return createSuccessResponse13({
+      return createSuccessResponse11({
         file: makeRelativePath8(filePath, projectRoot),
         breakpoints_used: [],
         breakpoint_coverage: {
@@ -262482,21 +262601,23 @@ async function handleAnalyzeResponsiveBreakpoints(args) {
         notes
       }
     };
-    return createSuccessResponse13(result);
+    return createSuccessResponse11(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse13(message, { file: args.file });
+    return createErrorResponse11(message, { file: args.file });
   }
 }
 
-// src/handlers/frontend/diagnose-overflow.ts
-var path75 = __toESM(require("path"), 1);
-function createSuccessResponse14(data) {
+// src/handlers/frontend/overflow-diagnosis/index.ts
+var path77 = __toESM(require("path"), 1);
+
+// src/handlers/frontend/overflow-diagnosis/utils.ts
+function createSuccessResponse12(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse14(message, context) {
+function createErrorResponse12(message, context) {
   return {
     content: [
       { type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }
@@ -262529,6 +262650,8 @@ function matchesHint(node, hint) {
   const hintLower = hint.toLowerCase();
   return node.element.toLowerCase().includes(hintLower) || node.classes.some((c) => c.toLowerCase().includes(hintLower));
 }
+
+// src/handlers/frontend/overflow-diagnosis/pattern-detector.ts
 function findOverflowPatterns(tree, hint) {
   const patterns = [];
   function traverse(node) {
@@ -262602,6 +262725,8 @@ function findOverflowPatterns(tree, hint) {
   patterns.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
   return patterns;
 }
+
+// src/handlers/frontend/overflow-diagnosis/constraint-builder.ts
 function describeConstraint(node) {
   const constraints = [];
   if (node.sizing.height.strategy === "fixed" && node.sizing.height.value) {
@@ -262629,18 +262754,18 @@ function describeConstraint(node) {
 function buildConstraintChain(tree, target) {
   const chain = [];
   const targetLower = target.toLowerCase();
-  function traverse(node, path81) {
+  function traverse(node, path84) {
     const elementLower = node.element.toLowerCase();
     const classMatch = node.classes.some((c) => c.toLowerCase().includes(targetLower));
     if (elementLower.includes(targetLower) || classMatch) {
-      for (let i = 0; i < path81.length; i++) {
-        const ancestor = path81[i];
+      for (let i = 0; i < path84.length; i++) {
+        const ancestor = path84[i];
         const entry = {
           element: ancestor.element,
           constrains: describeConstraint(ancestor)
         };
         if (i > 0) {
-          const parent = path81[i - 1];
+          const parent = path84[i - 1];
           if (parent.display === "flex" || parent.display === "inline-flex" || parent.display === "grid" || parent.display === "inline-grid") {
             entry.receives_from_parent = `${parent.display} layout constraints`;
           } else if (parent.sizing.height.strategy !== "auto") {
@@ -262652,12 +262777,12 @@ function buildConstraintChain(tree, target) {
       chain.push({
         element: node.element,
         constrains: describeConstraint(node),
-        receives_from_parent: path81.length > 0 ? "constraints from parent" : void 0
+        receives_from_parent: path84.length > 0 ? "constraints from parent" : void 0
       });
       return true;
     }
     for (const child of node.children) {
-      if (traverse(child, [...path81, node])) {
+      if (traverse(child, [...path84, node])) {
         return true;
       }
     }
@@ -262666,6 +262791,8 @@ function buildConstraintChain(tree, target) {
   traverse(tree, []);
   return chain;
 }
+
+// src/handlers/frontend/overflow-diagnosis/fix-generator.ts
 function generateFixes(pattern) {
   const fixes = [];
   switch (pattern.type) {
@@ -262884,6 +263011,8 @@ function collectRelatedElements(patterns) {
   }
   return Array.from(elements);
 }
+
+// src/handlers/frontend/overflow-diagnosis/index.ts
 async function handleDiagnoseOverflow(args) {
   const layoutResult = await handleAnalyzeLayoutHierarchy({
     file: args.file,
@@ -262891,13 +263020,13 @@ async function handleDiagnoseOverflow(args) {
   });
   const resultText = layoutResult.content[0]?.text;
   if (!resultText) {
-    return createErrorResponse14("Failed to analyze layout hierarchy");
+    return createErrorResponse12("Failed to analyze layout hierarchy");
   }
   let parsedResult;
   try {
     parsedResult = JSON.parse(resultText);
   } catch {
-    return createErrorResponse14("Failed to parse layout analysis result");
+    return createErrorResponse12("Failed to parse layout analysis result");
   }
   if ("error" in parsedResult) {
     return layoutResult;
@@ -262935,25 +263064,29 @@ async function handleDiagnoseOverflow(args) {
     // Limit to top 6 fixes
     recommendation
   };
-  const relativePath = path75.isAbsolute(args.file) ? path75.relative(PROJECT_ROOT, args.file).replace(/\\/g, "/") : args.file;
+  const relativePath = path77.isAbsolute(args.file) ? path77.relative(PROJECT_ROOT, args.file).replace(/\\/g, "/") : args.file;
   const result = {
     file: relativePath,
     diagnosis,
     related_elements: collectRelatedElements(patterns)
   };
-  return createSuccessResponse14(result);
+  return createSuccessResponse12(result);
 }
 
-// src/handlers/frontend/trace-component-state.ts
+// src/handlers/frontend/component-state/index.ts
 var fs55 = __toESM(require("fs"), 1);
-var path76 = __toESM(require("path"), 1);
-var import_typescript22 = __toESM(require_typescript(), 1);
-function createSuccessResponse15(data) {
+var path79 = __toESM(require("path"), 1);
+var import_typescript35 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/component-state/utils.ts
+var path78 = __toESM(require("path"), 1);
+var import_typescript29 = __toESM(require_typescript(), 1);
+function createSuccessResponse13(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-function createErrorResponse15(message, context) {
+function createErrorResponse13(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
@@ -262963,22 +263096,58 @@ function normalizeFilePath7(filePath) {
   return filePath.replace(/\\/g, "/");
 }
 function makeRelativePath9(absolutePath, projectRoot) {
-  return normalizeFilePath7(path76.relative(projectRoot, absolutePath));
+  return normalizeFilePath7(path78.relative(projectRoot, absolutePath));
 }
 function resolveFilePath4(filePath, projectRoot) {
-  return path76.isAbsolute(filePath) ? filePath : path76.resolve(projectRoot, filePath);
+  return path78.isAbsolute(filePath) ? filePath : path78.resolve(projectRoot, filePath);
+}
+function getTypeString2(node, sourceFile) {
+  if (!node) return "unknown";
+  if (import_typescript29.default.isTypeReferenceNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (import_typescript29.default.isTypeLiteralNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (import_typescript29.default.isUnionTypeNode(node) || import_typescript29.default.isIntersectionTypeNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (import_typescript29.default.isArrayTypeNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (node.kind === import_typescript29.default.SyntaxKind.StringKeyword) return "string";
+  if (node.kind === import_typescript29.default.SyntaxKind.NumberKeyword) return "number";
+  if (node.kind === import_typescript29.default.SyntaxKind.BooleanKeyword) return "boolean";
+  return node.getText(sourceFile);
+}
+function inferTypeFromValue(node, sourceFile) {
+  if (!node) return "unknown";
+  if (import_typescript29.default.isStringLiteral(node) || import_typescript29.default.isNoSubstitutionTemplateLiteral(node)) return "string";
+  if (import_typescript29.default.isNumericLiteral(node)) return "number";
+  if (node.kind === import_typescript29.default.SyntaxKind.TrueKeyword || node.kind === import_typescript29.default.SyntaxKind.FalseKeyword) return "boolean";
+  if (import_typescript29.default.isArrayLiteralExpression(node)) {
+    if (node.elements.length === 0) return "unknown[]";
+    const firstType = inferTypeFromValue(node.elements[0], sourceFile);
+    return `${firstType}[]`;
+  }
+  if (import_typescript29.default.isObjectLiteralExpression(node)) return "object";
+  if (node.kind === import_typescript29.default.SyntaxKind.NullKeyword) return "null";
+  if (node.kind === import_typescript29.default.SyntaxKind.UndefinedKeyword) return "undefined";
+  if (import_typescript29.default.isArrowFunction(node) || import_typescript29.default.isFunctionExpression(node)) return "function";
+  const text = node.getText(sourceFile);
+  return text.length > 50 ? text.slice(0, 47) + "..." : text;
 }
 function extractDestructuredNames(node, sourceFile) {
-  if (import_typescript22.default.isVariableDeclaration(node.parent)) {
+  if (import_typescript29.default.isVariableDeclaration(node.parent)) {
     const binding = node.parent.name;
-    if (import_typescript22.default.isArrayBindingPattern(binding) && binding.elements.length >= 1) {
+    if (import_typescript29.default.isArrayBindingPattern(binding) && binding.elements.length >= 1) {
       const first = binding.elements[0];
       const second = binding.elements.length >= 2 ? binding.elements[1] : void 0;
-      const firstName = import_typescript22.default.isBindingElement(first) && import_typescript22.default.isIdentifier(first.name) ? first.name.getText(sourceFile) : void 0;
-      const secondName = second && import_typescript22.default.isBindingElement(second) && import_typescript22.default.isIdentifier(second.name) ? second.name.getText(sourceFile) : void 0;
+      const firstName = import_typescript29.default.isBindingElement(first) && import_typescript29.default.isIdentifier(first.name) ? first.name.getText(sourceFile) : void 0;
+      const secondName = second && import_typescript29.default.isBindingElement(second) && import_typescript29.default.isIdentifier(second.name) ? second.name.getText(sourceFile) : void 0;
       return [firstName ?? "unknown", secondName];
     }
-    if (import_typescript22.default.isIdentifier(binding)) {
+    if (import_typescript29.default.isIdentifier(binding)) {
       return [binding.getText(sourceFile), void 0];
     }
   }
@@ -262986,7 +263155,7 @@ function extractDestructuredNames(node, sourceFile) {
 }
 function extractDependencyArray(node, sourceFile) {
   if (!node) return [];
-  if (import_typescript22.default.isArrayLiteralExpression(node)) {
+  if (import_typescript29.default.isArrayLiteralExpression(node)) {
     return node.elements.map((el) => el.getText(sourceFile));
   }
   return [];
@@ -262994,61 +263163,28 @@ function extractDependencyArray(node, sourceFile) {
 function hasCleanupReturn(node, sourceFile) {
   let hasCleanup = false;
   function visit(n) {
-    if (import_typescript22.default.isReturnStatement(n) && n.expression) {
-      if (import_typescript22.default.isArrowFunction(n.expression) || import_typescript22.default.isFunctionExpression(n.expression)) {
+    if (import_typescript29.default.isReturnStatement(n) && n.expression) {
+      if (import_typescript29.default.isArrowFunction(n.expression) || import_typescript29.default.isFunctionExpression(n.expression)) {
         hasCleanup = true;
       }
     }
     if (!hasCleanup) {
-      import_typescript22.default.forEachChild(n, visit);
+      import_typescript29.default.forEachChild(n, visit);
     }
   }
   visit(node);
   return hasCleanup;
 }
-function getTypeString2(node, sourceFile) {
-  if (!node) return "unknown";
-  if (import_typescript22.default.isTypeReferenceNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (import_typescript22.default.isTypeLiteralNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (import_typescript22.default.isUnionTypeNode(node) || import_typescript22.default.isIntersectionTypeNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (import_typescript22.default.isArrayTypeNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (node.kind === import_typescript22.default.SyntaxKind.StringKeyword) return "string";
-  if (node.kind === import_typescript22.default.SyntaxKind.NumberKeyword) return "number";
-  if (node.kind === import_typescript22.default.SyntaxKind.BooleanKeyword) return "boolean";
-  return node.getText(sourceFile);
-}
-function inferTypeFromValue(node, sourceFile) {
-  if (!node) return "unknown";
-  if (import_typescript22.default.isStringLiteral(node) || import_typescript22.default.isNoSubstitutionTemplateLiteral(node)) return "string";
-  if (import_typescript22.default.isNumericLiteral(node)) return "number";
-  if (node.kind === import_typescript22.default.SyntaxKind.TrueKeyword || node.kind === import_typescript22.default.SyntaxKind.FalseKeyword) return "boolean";
-  if (import_typescript22.default.isArrayLiteralExpression(node)) {
-    if (node.elements.length === 0) return "unknown[]";
-    const firstType = inferTypeFromValue(node.elements[0], sourceFile);
-    return `${firstType}[]`;
-  }
-  if (import_typescript22.default.isObjectLiteralExpression(node)) return "object";
-  if (node.kind === import_typescript22.default.SyntaxKind.NullKeyword) return "null";
-  if (node.kind === import_typescript22.default.SyntaxKind.UndefinedKeyword) return "undefined";
-  if (import_typescript22.default.isArrowFunction(node) || import_typescript22.default.isFunctionExpression(node)) return "function";
-  const text = node.getText(sourceFile);
-  return text.length > 50 ? text.slice(0, 47) + "..." : text;
-}
+
+// src/handlers/frontend/component-state/hook-analyzer.ts
+var import_typescript30 = __toESM(require_typescript(), 1);
 function extractHooks(componentNode, ctx) {
   const states = [];
   const effects = [];
   const contexts = [];
   const { sourceFile } = ctx;
   function visit(node) {
-    if (import_typescript22.default.isCallExpression(node)) {
+    if (import_typescript30.default.isCallExpression(node)) {
       const fnText = node.expression.getText(sourceFile);
       const fnName = fnText.replace(/^React\./, "");
       if (fnName === "useState") {
@@ -263174,23 +263310,26 @@ function extractHooks(componentNode, ctx) {
         });
       }
     }
-    import_typescript22.default.forEachChild(node, visit);
+    import_typescript30.default.forEachChild(node, visit);
   }
   visit(componentNode);
   return { states, effects, contexts };
 }
+
+// src/handlers/frontend/component-state/props-analyzer.ts
+var import_typescript31 = __toESM(require_typescript(), 1);
 function extractReceivedProps(componentNode, ctx) {
   const props = [];
   const { sourceFile } = ctx;
   let params;
-  if (import_typescript22.default.isFunctionDeclaration(componentNode)) {
+  if (import_typescript31.default.isFunctionDeclaration(componentNode)) {
     params = componentNode.parameters;
-  } else if (import_typescript22.default.isVariableStatement(componentNode)) {
+  } else if (import_typescript31.default.isVariableStatement(componentNode)) {
     for (const decl of componentNode.declarationList.declarations) {
       if (decl.initializer) {
-        if (import_typescript22.default.isArrowFunction(decl.initializer)) {
+        if (import_typescript31.default.isArrowFunction(decl.initializer)) {
           params = decl.initializer.parameters;
-        } else if (import_typescript22.default.isFunctionExpression(decl.initializer)) {
+        } else if (import_typescript31.default.isFunctionExpression(decl.initializer)) {
           params = decl.initializer.parameters;
         }
       }
@@ -263198,16 +263337,16 @@ function extractReceivedProps(componentNode, ctx) {
   }
   if (!params || params.length === 0) return props;
   const firstParam = params[0];
-  if (import_typescript22.default.isObjectBindingPattern(firstParam.name)) {
+  if (import_typescript31.default.isObjectBindingPattern(firstParam.name)) {
     for (const element of firstParam.name.elements) {
-      if (import_typescript22.default.isBindingElement(element) && import_typescript22.default.isIdentifier(element.name)) {
+      if (import_typescript31.default.isBindingElement(element) && import_typescript31.default.isIdentifier(element.name)) {
         const propName = element.name.getText(sourceFile);
         const hasDefault = element.initializer !== void 0;
         const defaultValue = element.initializer?.getText(sourceFile);
         let propType;
-        if (firstParam.type && import_typescript22.default.isTypeLiteralNode(firstParam.type)) {
+        if (firstParam.type && import_typescript31.default.isTypeLiteralNode(firstParam.type)) {
           for (const member of firstParam.type.members) {
-            if (import_typescript22.default.isPropertySignature(member) && member.name?.getText(sourceFile) === propName) {
+            if (import_typescript31.default.isPropertySignature(member) && member.name?.getText(sourceFile) === propName) {
               propType = member.type ? getTypeString2(member.type, sourceFile) : void 0;
             }
           }
@@ -263222,7 +263361,7 @@ function extractReceivedProps(componentNode, ctx) {
       }
     }
   }
-  if (firstParam.type && import_typescript22.default.isTypeReferenceNode(firstParam.type)) {
+  if (firstParam.type && import_typescript31.default.isTypeReferenceNode(firstParam.type)) {
     const typeName = firstParam.type.typeName.getText(sourceFile);
     extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx);
   }
@@ -263230,9 +263369,9 @@ function extractReceivedProps(componentNode, ctx) {
 }
 function extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx) {
   function visit(node) {
-    if (import_typescript22.default.isInterfaceDeclaration(node) && node.name.getText(sourceFile) === typeName) {
+    if (import_typescript31.default.isInterfaceDeclaration(node) && node.name.getText(sourceFile) === typeName) {
       for (const member of node.members) {
-        if (import_typescript22.default.isPropertySignature(member) && member.name) {
+        if (import_typescript31.default.isPropertySignature(member) && member.name) {
           const propName = member.name.getText(sourceFile);
           const isOptional = member.questionToken !== void 0;
           const propType = member.type ? getTypeString2(member.type, sourceFile) : void 0;
@@ -263247,10 +263386,10 @@ function extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx) {
         }
       }
     }
-    if (import_typescript22.default.isTypeAliasDeclaration(node) && node.name.getText(sourceFile) === typeName) {
-      if (import_typescript22.default.isTypeLiteralNode(node.type)) {
+    if (import_typescript31.default.isTypeAliasDeclaration(node) && node.name.getText(sourceFile) === typeName) {
+      if (import_typescript31.default.isTypeLiteralNode(node.type)) {
         for (const member of node.type.members) {
-          if (import_typescript22.default.isPropertySignature(member) && member.name) {
+          if (import_typescript31.default.isPropertySignature(member) && member.name) {
             const propName = member.name.getText(sourceFile);
             const isOptional = member.questionToken !== void 0;
             const propType = member.type ? getTypeString2(member.type, sourceFile) : void 0;
@@ -263266,9 +263405,42 @@ function extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx) {
         }
       }
     }
-    import_typescript22.default.forEachChild(node, visit);
+    import_typescript31.default.forEachChild(node, visit);
   }
   visit(sourceFile);
+}
+function findProvidedContexts(componentNode, ctx) {
+  const provided = [];
+  const { sourceFile } = ctx;
+  function visit(node) {
+    if (import_typescript31.default.isJsxOpeningElement(node) || import_typescript31.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      if (tagName.endsWith(".Provider")) {
+        const contextName = tagName.replace(".Provider", "");
+        for (const attr of node.attributes.properties) {
+          if (import_typescript31.default.isJsxAttribute(attr) && attr.name?.getText(sourceFile) === "value") {
+            const valueSource = attr.initializer?.getText(sourceFile) ?? "unknown";
+            provided.push({
+              context_name: contextName,
+              value_source: valueSource.replace(/^\{|\}$/g, "")
+            });
+          }
+        }
+      }
+    }
+    import_typescript31.default.forEachChild(node, visit);
+  }
+  visit(componentNode);
+  return provided;
+}
+
+// src/handlers/frontend/component-state/jsx-analyzer.ts
+var import_typescript32 = __toESM(require_typescript(), 1);
+function collectUsedIdentifiers(node, sourceFile, identifiers) {
+  if (import_typescript32.default.isIdentifier(node)) {
+    identifiers.add(node.getText(sourceFile));
+  }
+  import_typescript32.default.forEachChild(node, (child) => collectUsedIdentifiers(child, sourceFile, identifiers));
 }
 function analyzeJsx(componentNode, ctx) {
   const { sourceFile, stateVariables, propNames, contextValues, jsxUsedIdentifiers, jsxPassedProps, inlineCallbacks } = ctx;
@@ -263279,17 +263451,17 @@ function analyzeJsx(componentNode, ctx) {
     return "derived";
   }
   function visit(node) {
-    if (import_typescript22.default.isJsxOpeningElement(node) || import_typescript22.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript32.default.isJsxOpeningElement(node) || import_typescript32.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       if (/^[A-Z]/.test(tagName)) {
         for (const attr of node.attributes.properties) {
-          if (import_typescript22.default.isJsxAttribute(attr) && attr.name) {
+          if (import_typescript32.default.isJsxAttribute(attr) && attr.name) {
             const attrName = attr.name.getText(sourceFile);
             const initializer3 = attr.initializer;
-            if (initializer3 && import_typescript22.default.isJsxExpression(initializer3) && initializer3.expression) {
+            if (initializer3 && import_typescript32.default.isJsxExpression(initializer3) && initializer3.expression) {
               const expr = initializer3.expression;
               const exprText = expr.getText(sourceFile);
-              if (import_typescript22.default.isArrowFunction(expr) || import_typescript22.default.isFunctionExpression(expr)) {
+              if (import_typescript32.default.isArrowFunction(expr) || import_typescript32.default.isFunctionExpression(expr)) {
                 const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
                 inlineCallbacks.push({
                   component: tagName,
@@ -263298,11 +263470,11 @@ function analyzeJsx(componentNode, ctx) {
                 });
               }
               let source = "derived";
-              if (import_typescript22.default.isIdentifier(expr)) {
+              if (import_typescript32.default.isIdentifier(expr)) {
                 const name = expr.getText(sourceFile);
                 source = determineSource(name);
                 jsxUsedIdentifiers.add(name);
-              } else if (import_typescript22.default.isPropertyAccessExpression(expr)) {
+              } else if (import_typescript32.default.isPropertyAccessExpression(expr)) {
                 const objectName = expr.expression.getText(sourceFile);
                 source = determineSource(objectName);
                 jsxUsedIdentifiers.add(objectName);
@@ -263317,47 +263489,20 @@ function analyzeJsx(componentNode, ctx) {
         }
       }
     }
-    if (import_typescript22.default.isJsxExpression(node) && node.expression) {
+    if (import_typescript32.default.isJsxExpression(node) && node.expression) {
       collectUsedIdentifiers(node.expression, sourceFile, jsxUsedIdentifiers);
     }
-    import_typescript22.default.forEachChild(node, visit);
+    import_typescript32.default.forEachChild(node, visit);
   }
   visit(componentNode);
 }
-function collectUsedIdentifiers(node, sourceFile, identifiers) {
-  if (import_typescript22.default.isIdentifier(node)) {
-    identifiers.add(node.getText(sourceFile));
-  }
-  import_typescript22.default.forEachChild(node, (child) => collectUsedIdentifiers(child, sourceFile, identifiers));
-}
-function findProvidedContexts(componentNode, ctx) {
-  const provided = [];
-  const { sourceFile } = ctx;
-  function visit(node) {
-    if (import_typescript22.default.isJsxOpeningElement(node) || import_typescript22.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      if (tagName.endsWith(".Provider")) {
-        const contextName = tagName.replace(".Provider", "");
-        for (const attr of node.attributes.properties) {
-          if (import_typescript22.default.isJsxAttribute(attr) && attr.name?.getText(sourceFile) === "value") {
-            const valueSource = attr.initializer?.getText(sourceFile) ?? "unknown";
-            provided.push({
-              context_name: contextName,
-              value_source: valueSource.replace(/^\{|\}$/g, "")
-            });
-          }
-        }
-      }
-    }
-    import_typescript22.default.forEachChild(node, visit);
-  }
-  visit(componentNode);
-  return provided;
-}
-function detectIssues3(componentNode, ctx, receivedProps, passedDown, effects) {
+
+// src/handlers/frontend/component-state/issue-detector.ts
+var import_typescript33 = __toESM(require_typescript(), 1);
+function detectIssues3(componentNode, ctx, receivedProps, effects) {
   const issues = [];
-  const { sourceFile, inlineCallbacks } = ctx;
-  for (const passedProp of passedDown) {
+  const { sourceFile, inlineCallbacks, jsxPassedProps, stateVariables, propNames } = ctx;
+  for (const passedProp of jsxPassedProps) {
     if (passedProp.original_source === "prop") {
       const receivedProp = receivedProps.find((p) => p.name === passedProp.prop_name);
       if (receivedProp) {
@@ -263380,7 +263525,7 @@ function detectIssues3(componentNode, ctx, receivedProps, passedDown, effects) {
       suggestion: "Use useCallback to memoize the function, or extract to a stable reference"
     });
   }
-  for (const passedProp of passedDown) {
+  for (const passedProp of jsxPassedProps) {
     if (passedProp.original_source === "derived") {
       issues.push({
         type: "missing_memo",
@@ -263394,7 +263539,7 @@ function detectIssues3(componentNode, ctx, receivedProps, passedDown, effects) {
   for (const effect of effects) {
     if (effect.type === "useEffect" || effect.type === "useLayoutEffect") {
       if (effect.dependencies.length === 0) {
-        const hasStateOrPropDeps = ctx.stateVariables.size > 0 || ctx.propNames.size > 0;
+        const hasStateOrPropDeps = stateVariables.size > 0 || propNames.size > 0;
         if (hasStateOrPropDeps) {
           issues.push({
             type: "effect_deps",
@@ -263408,11 +263553,11 @@ function detectIssues3(componentNode, ctx, receivedProps, passedDown, effects) {
     }
   }
   function checkStateInRender(node) {
-    if (import_typescript22.default.isCallExpression(node)) {
+    if (import_typescript33.default.isCallExpression(node)) {
       const fnText = node.expression.getText(sourceFile);
       if (fnText === "useState" || fnText === "React.useState") {
         const initializer3 = node.arguments[0];
-        if (initializer3 && import_typescript22.default.isCallExpression(initializer3)) {
+        if (initializer3 && import_typescript33.default.isCallExpression(initializer3)) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
           issues.push({
             type: "state_in_render",
@@ -263424,24 +263569,41 @@ function detectIssues3(componentNode, ctx, receivedProps, passedDown, effects) {
         }
       }
     }
-    import_typescript22.default.forEachChild(node, checkStateInRender);
+    import_typescript33.default.forEachChild(node, checkStateInRender);
   }
   checkStateInRender(componentNode);
   return issues;
 }
+
+// src/handlers/frontend/component-state/component-detector.ts
+var import_typescript34 = __toESM(require_typescript(), 1);
+function containsJsxReturn3(node) {
+  let hasJsx = false;
+  function visit(n) {
+    if (import_typescript34.default.isJsxElement(n) || import_typescript34.default.isJsxSelfClosingElement(n) || import_typescript34.default.isJsxFragment(n)) {
+      hasJsx = true;
+      return;
+    }
+    if (!hasJsx) {
+      import_typescript34.default.forEachChild(n, visit);
+    }
+  }
+  visit(node);
+  return hasJsx;
+}
 function isReactComponent2(node, sourceFile) {
-  if (import_typescript22.default.isFunctionDeclaration(node) && node.name) {
+  if (import_typescript34.default.isFunctionDeclaration(node) && node.name) {
     const name = node.name.getText(sourceFile);
     if (/^[A-Z]/.test(name)) {
       return containsJsxReturn3(node);
     }
   }
-  if (import_typescript22.default.isVariableStatement(node)) {
+  if (import_typescript34.default.isVariableStatement(node)) {
     for (const decl of node.declarationList.declarations) {
-      if (import_typescript22.default.isIdentifier(decl.name)) {
+      if (import_typescript34.default.isIdentifier(decl.name)) {
         const name = decl.name.getText(sourceFile);
         if (/^[A-Z]/.test(name) && decl.initializer) {
-          if (import_typescript22.default.isArrowFunction(decl.initializer) || import_typescript22.default.isFunctionExpression(decl.initializer)) {
+          if (import_typescript34.default.isArrowFunction(decl.initializer) || import_typescript34.default.isFunctionExpression(decl.initializer)) {
             return containsJsxReturn3(decl.initializer);
           }
         }
@@ -263450,42 +263612,30 @@ function isReactComponent2(node, sourceFile) {
   }
   return false;
 }
-function containsJsxReturn3(node) {
-  let hasJsx = false;
-  function visit(n) {
-    if (import_typescript22.default.isJsxElement(n) || import_typescript22.default.isJsxSelfClosingElement(n) || import_typescript22.default.isJsxFragment(n)) {
-      hasJsx = true;
-      return;
-    }
-    if (!hasJsx) {
-      import_typescript22.default.forEachChild(n, visit);
-    }
-  }
-  visit(node);
-  return hasJsx;
-}
 function getComponentName2(node, sourceFile) {
-  if (import_typescript22.default.isFunctionDeclaration(node) && node.name) {
+  if (import_typescript34.default.isFunctionDeclaration(node) && node.name) {
     return node.name.getText(sourceFile);
   }
-  if (import_typescript22.default.isVariableStatement(node)) {
+  if (import_typescript34.default.isVariableStatement(node)) {
     for (const decl of node.declarationList.declarations) {
-      if (import_typescript22.default.isIdentifier(decl.name)) {
+      if (import_typescript34.default.isIdentifier(decl.name)) {
         return decl.name.getText(sourceFile);
       }
     }
   }
   return null;
 }
+
+// src/handlers/frontend/component-state/index.ts
 async function handleTraceComponentState(args) {
   const projectRoot = process.cwd();
   const filePath = resolveFilePath4(args.file, projectRoot);
   if (!fs55.existsSync(filePath)) {
-    return createErrorResponse15(`File not found: ${args.file}`, { provided_path: args.file });
+    return createErrorResponse13(`File not found: ${args.file}`, { provided_path: args.file });
   }
-  const ext = path76.extname(filePath).toLowerCase();
+  const ext = path79.extname(filePath).toLowerCase();
   if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-    return createErrorResponse15(`File must be a React component file (.tsx, .jsx, .ts, .js)`, { file: args.file });
+    return createErrorResponse13(`File must be a React component file (.tsx, .jsx, .ts, .js)`, { file: args.file });
   }
   try {
     let findComponent2 = function(node) {
@@ -263494,23 +263644,23 @@ async function handleTraceComponentState(args) {
         componentName = getComponentName2(node, sourceFile);
       }
       if (!componentNode) {
-        import_typescript22.default.forEachChild(node, findComponent2);
+        import_typescript35.default.forEachChild(node, findComponent2);
       }
     };
     var findComponent = findComponent2;
     const content = fs55.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript22.default.createSourceFile(
+    const sourceFile = import_typescript35.default.createSourceFile(
       filePath,
       content,
-      import_typescript22.default.ScriptTarget.Latest,
+      import_typescript35.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript22.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript22.default.ScriptKind.JSX : import_typescript22.default.ScriptKind.TS
+      ext === ".tsx" ? import_typescript35.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript35.default.ScriptKind.JSX : import_typescript35.default.ScriptKind.TS
     );
     let componentNode = null;
     let componentName = null;
     findComponent2(sourceFile);
     if (!componentNode || !componentName) {
-      return createErrorResponse15(`No React component found in file`, { file: args.file });
+      return createErrorResponse13(`No React component found in file`, { file: args.file });
     }
     const ctx = {
       sourceFile,
@@ -263539,7 +263689,7 @@ async function handleTraceComponentState(args) {
         }
       }
     }
-    const issues = detectIssues3(componentNode, ctx, receivedProps, ctx.jsxPassedProps, effects);
+    const issues = detectIssues3(componentNode, ctx, receivedProps, effects);
     const result = {
       component: componentName,
       file: makeRelativePath9(filePath, projectRoot),
@@ -263555,28 +263705,141 @@ async function handleTraceComponentState(args) {
       effects,
       issues
     };
-    return createSuccessResponse15(result);
+    return createSuccessResponse13(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse15(message, { file: args.file });
+    return createErrorResponse13(message, { file: args.file });
   }
 }
 
 // src/handlers/frontend/get-accessibility-tree.ts
 var fs56 = __toESM(require("fs"), 1);
-var path77 = __toESM(require("path"), 1);
-var import_typescript23 = __toESM(require_typescript(), 1);
-function createSuccessResponse16(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
+var path80 = __toESM(require("path"), 1);
+var import_typescript37 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/accessibility-tree-core.ts
+var import_typescript36 = __toESM(require_typescript(), 1);
+function getLineNumber5(pos, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
+  return line + 1;
 }
-function createErrorResponse16(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
+function extractAttributeValue(attr, sourceFile) {
+  if (!attr.initializer) {
+    return "true";
+  }
+  if (import_typescript36.default.isStringLiteral(attr.initializer)) {
+    return attr.initializer.text;
+  }
+  if (import_typescript36.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+    const expr = attr.initializer.expression;
+    if (import_typescript36.default.isStringLiteral(expr)) {
+      return expr.text;
+    }
+    if (expr.kind === import_typescript36.default.SyntaxKind.TrueKeyword) {
+      return "true";
+    }
+    if (expr.kind === import_typescript36.default.SyntaxKind.FalseKeyword) {
+      return "false";
+    }
+    if (import_typescript36.default.isNumericLiteral(expr)) {
+      return expr.text;
+    }
+    if (import_typescript36.default.isTemplateExpression(expr)) {
+      return expr.head.text + "[dynamic]";
+    }
+    if (import_typescript36.default.isIdentifier(expr)) {
+      return `[${expr.text}]`;
+    }
+    if (import_typescript36.default.isCallExpression(expr)) {
+      const parts = [];
+      for (const arg of expr.arguments) {
+        if (import_typescript36.default.isStringLiteral(arg)) {
+          parts.push(arg.text);
+        }
+      }
+      return parts.join(" ");
+    }
+    return "[expression]";
+  }
+  return "";
 }
+function extractTextContent(node, sourceFile) {
+  const textParts = [];
+  function visit(child) {
+    if (import_typescript36.default.isJsxText(child)) {
+      const text = child.text.trim();
+      if (text) {
+        textParts.push(text);
+      }
+    } else if (import_typescript36.default.isJsxExpression(child) && child.expression) {
+      if (import_typescript36.default.isStringLiteral(child.expression)) {
+        textParts.push(child.expression.text);
+      }
+    }
+    import_typescript36.default.forEachChild(child, visit);
+  }
+  import_typescript36.default.forEachChild(node, visit);
+  return textParts.join(" ").trim();
+}
+function analyzeJsxFile2(filePath, content, sourceFile, targetElement) {
+  const elements = [];
+  const elementStack = [];
+  function visit(node) {
+    if (import_typescript36.default.isJsxOpeningElement(node) || import_typescript36.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      const line = getLineNumber5(node.getStart(), sourceFile);
+      const isComponent = /^[A-Z]/.test(tagName);
+      if (targetElement && tagName !== targetElement) {
+        if (import_typescript36.default.isJsxOpeningElement(node)) {
+          elementStack.push(-1);
+        }
+        import_typescript36.default.forEachChild(node, visit);
+        return;
+      }
+      const attributes = /* @__PURE__ */ new Map();
+      for (const attr of node.attributes.properties) {
+        if (import_typescript36.default.isJsxAttribute(attr) && attr.name) {
+          const attrName = attr.name.getText(sourceFile);
+          const attrValue = extractAttributeValue(attr, sourceFile);
+          attributes.set(attrName, attrValue);
+        }
+        if (import_typescript36.default.isJsxSpreadAttribute(attr)) {
+          attributes.set("[spread]", "true");
+        }
+      }
+      let textContent = "";
+      if (import_typescript36.default.isJsxElement(node.parent)) {
+        textContent = extractTextContent(node.parent, sourceFile);
+      }
+      const elementInfo = {
+        tag: tagName,
+        line,
+        identifier: `${tagName}:${line}`,
+        attributes,
+        textContent,
+        isComponent,
+        parentIndex: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,
+        childIndices: []
+      };
+      const currentIndex = elements.length;
+      elements.push(elementInfo);
+      if (elementInfo.parentIndex !== null && elementInfo.parentIndex >= 0) {
+        elements[elementInfo.parentIndex].childIndices.push(currentIndex);
+      }
+      if (import_typescript36.default.isJsxOpeningElement(node)) {
+        elementStack.push(currentIndex);
+      }
+    }
+    if (import_typescript36.default.isJsxClosingElement(node)) {
+      elementStack.pop();
+    }
+    import_typescript36.default.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return elements;
+}
+
+// src/handlers/frontend/accessibility-tree-utils.ts
 var SEMANTIC_ROLES = {
   // Interactive elements
   "button": "button",
@@ -263668,20 +263931,6 @@ var INPUT_TYPE_ROLES = {
   "week": "textbox",
   "time": "textbox"
 };
-function getRole(tag, attrs) {
-  const explicitRole = attrs.get("role");
-  if (explicitRole) {
-    return explicitRole;
-  }
-  if (tag === "input") {
-    const type2 = attrs.get("type") || "text";
-    return INPUT_TYPE_ROLES[type2] || "textbox";
-  }
-  if (tag === "a" && !attrs.has("href")) {
-    return "generic";
-  }
-  return SEMANTIC_ROLES[tag] || "generic";
-}
 var NATIVELY_FOCUSABLE = /* @__PURE__ */ new Set([
   "a",
   "button",
@@ -263691,115 +263940,6 @@ var NATIVELY_FOCUSABLE = /* @__PURE__ */ new Set([
   "details",
   "summary"
 ]);
-function isFocusable(tag, attrs) {
-  if (attrs.has("disabled")) {
-    return false;
-  }
-  const tabindex = attrs.get("tabindex") || attrs.get("tabIndex");
-  if (tabindex === "-1") {
-    return false;
-  }
-  if (tabindex && parseInt(tabindex, 10) >= 0) {
-    return true;
-  }
-  if (NATIVELY_FOCUSABLE.has(tag)) {
-    if (tag === "a" && !attrs.has("href")) {
-      return false;
-    }
-    return true;
-  }
-  if (attrs.get("contenteditable") === "true") {
-    return true;
-  }
-  return false;
-}
-function getTabIndex(tag, attrs) {
-  const tabindex = attrs.get("tabindex") || attrs.get("tabIndex");
-  if (tabindex) {
-    return parseInt(tabindex, 10);
-  }
-  if (NATIVELY_FOCUSABLE.has(tag) && tag !== "a") {
-    return 0;
-  }
-  if (tag === "a" && attrs.has("href")) {
-    return 0;
-  }
-  return -1;
-}
-function isHidden(attrs) {
-  if (attrs.get("aria-hidden") === "true") {
-    return true;
-  }
-  if (attrs.has("hidden")) {
-    return true;
-  }
-  const className = attrs.get("className") || attrs.get("class") || "";
-  const hiddenPatterns = ["hidden", "invisible", "sr-only", "visually-hidden"];
-  if (hiddenPatterns.some((pattern) => className.includes(pattern))) {
-    return true;
-  }
-  return false;
-}
-function getAccessibleName(elem, elements) {
-  const attrs = elem.attributes;
-  const labelledBy = attrs.get("aria-labelledby");
-  if (labelledBy) {
-    return `[referenced: ${labelledBy}]`;
-  }
-  const ariaLabel = attrs.get("aria-label");
-  if (ariaLabel) {
-    return ariaLabel;
-  }
-  if (["input", "select", "textarea"].includes(elem.tag)) {
-    const id = attrs.get("id");
-    if (id) {
-      return `[label for: ${id}]`;
-    }
-  }
-  if (elem.tag === "img") {
-    const alt = attrs.get("alt");
-    if (alt !== void 0) {
-      return alt;
-    }
-    return "";
-  }
-  if (["button", "a", "h1", "h2", "h3", "h4", "h5", "h6"].includes(elem.tag)) {
-    if (elem.textContent) {
-      return elem.textContent.trim();
-    }
-  }
-  const title = attrs.get("title");
-  if (title) {
-    return title;
-  }
-  if (["input", "textarea"].includes(elem.tag)) {
-    const placeholder = attrs.get("placeholder");
-    if (placeholder) {
-      return `[placeholder: ${placeholder}]`;
-    }
-  }
-  if (elem.tag === "input") {
-    const type2 = attrs.get("type");
-    if (["button", "submit", "reset"].includes(type2 || "")) {
-      const value = attrs.get("value");
-      if (value) {
-        return value;
-      }
-    }
-  }
-  return "";
-}
-function getAccessibleDescription(attrs) {
-  const describedBy = attrs.get("aria-describedby");
-  if (describedBy) {
-    return `[referenced: ${describedBy}]`;
-  }
-  const title = attrs.get("title");
-  if (title) {
-    return title;
-  }
-  return void 0;
-}
 var ARIA_PATTERNS = {
   "dialog": {
     required: ["aria-labelledby", "aria-label"],
@@ -263872,6 +264012,150 @@ var ARIA_PATTERNS = {
     optional: ["aria-labelledby"]
   }
 };
+var EXPECTED_KEYBOARD_INTERACTIONS = {
+  "button": ["Enter", "Space"],
+  "link": ["Enter"],
+  "checkbox": ["Space"],
+  "radio": ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"],
+  "slider": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"],
+  "spinbutton": ["ArrowUp", "ArrowDown"],
+  "combobox": ["ArrowUp", "ArrowDown", "Enter", "Escape"],
+  "listbox": ["ArrowUp", "ArrowDown", "Home", "End", "Enter"],
+  "menu": ["ArrowUp", "ArrowDown", "Enter", "Escape"],
+  "menubar": ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", "Escape"],
+  "tablist": ["ArrowLeft", "ArrowRight", "Home", "End"],
+  "tab": ["Enter", "Space"],
+  "tree": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Home", "End"],
+  "dialog": ["Escape", "Tab"],
+  "alertdialog": ["Escape", "Tab"],
+  "grid": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"],
+  "switch": ["Space", "Enter"]
+};
+function getRole(tag, attrs) {
+  const explicitRole = attrs.get("role");
+  if (explicitRole) {
+    return explicitRole;
+  }
+  if (tag === "input") {
+    const type2 = attrs.get("type") || "text";
+    return INPUT_TYPE_ROLES[type2] || "textbox";
+  }
+  if (tag === "a" && !attrs.has("href")) {
+    return "generic";
+  }
+  return SEMANTIC_ROLES[tag] || "generic";
+}
+function isFocusable(tag, attrs) {
+  if (attrs.has("disabled")) {
+    return false;
+  }
+  const tabindex = attrs.get("tabindex") || attrs.get("tabIndex");
+  if (tabindex === "-1") {
+    return false;
+  }
+  if (tabindex && parseInt(tabindex, 10) >= 0) {
+    return true;
+  }
+  if (NATIVELY_FOCUSABLE.has(tag)) {
+    if (tag === "a" && !attrs.has("href")) {
+      return false;
+    }
+    return true;
+  }
+  if (attrs.get("contenteditable") === "true") {
+    return true;
+  }
+  return false;
+}
+function getTabIndex(tag, attrs) {
+  const tabindex = attrs.get("tabindex") || attrs.get("tabIndex");
+  if (tabindex) {
+    return parseInt(tabindex, 10);
+  }
+  if (NATIVELY_FOCUSABLE.has(tag) && tag !== "a") {
+    return 0;
+  }
+  if (tag === "a" && attrs.has("href")) {
+    return 0;
+  }
+  return -1;
+}
+function isHidden(attrs) {
+  if (attrs.get("aria-hidden") === "true") {
+    return true;
+  }
+  if (attrs.has("hidden")) {
+    return true;
+  }
+  const className = attrs.get("className") || attrs.get("class") || "";
+  const hiddenPatterns = ["hidden", "invisible", "sr-only", "visually-hidden"];
+  if (hiddenPatterns.some((pattern) => className.includes(pattern))) {
+    return true;
+  }
+  return false;
+}
+
+// src/handlers/frontend/accessibility-tree-analyzers.ts
+function getAccessibleName(elem, elements) {
+  const attrs = elem.attributes;
+  const labelledBy = attrs.get("aria-labelledby");
+  if (labelledBy) {
+    return `[referenced: ${labelledBy}]`;
+  }
+  const ariaLabel = attrs.get("aria-label");
+  if (ariaLabel) {
+    return ariaLabel;
+  }
+  if (["input", "select", "textarea"].includes(elem.tag)) {
+    const id = attrs.get("id");
+    if (id) {
+      return `[label for: ${id}]`;
+    }
+  }
+  if (elem.tag === "img") {
+    const alt = attrs.get("alt");
+    if (alt !== void 0) {
+      return alt;
+    }
+    return "";
+  }
+  if (["button", "a", "h1", "h2", "h3", "h4", "h5", "h6"].includes(elem.tag)) {
+    if (elem.textContent) {
+      return elem.textContent.trim();
+    }
+  }
+  const title = attrs.get("title");
+  if (title) {
+    return title;
+  }
+  if (["input", "textarea"].includes(elem.tag)) {
+    const placeholder = attrs.get("placeholder");
+    if (placeholder) {
+      return `[placeholder: ${placeholder}]`;
+    }
+  }
+  if (elem.tag === "input") {
+    const type2 = attrs.get("type");
+    if (["button", "submit", "reset"].includes(type2 || "")) {
+      const value = attrs.get("value");
+      if (value) {
+        return value;
+      }
+    }
+  }
+  return "";
+}
+function getAccessibleDescription(attrs) {
+  const describedBy = attrs.get("aria-describedby");
+  if (describedBy) {
+    return `[referenced: ${describedBy}]`;
+  }
+  const title = attrs.get("title");
+  if (title) {
+    return title;
+  }
+  return void 0;
+}
 function validateAriaPatterns(elements) {
   const patterns = [];
   for (const elem of elements) {
@@ -263994,7 +264278,9 @@ function detectA11yIssues(elements) {
     }
     if (className.includes("text-gray-") || className.includes("text-slate-")) {
       const lightColors = ["300", "400", "500"];
-      if (lightColors.some((c) => className.includes(`text-gray-${c}`) || className.includes(`text-slate-${c}`))) {
+      if (lightColors.some(
+        (c) => className.includes(`text-gray-${c}`) || className.includes(`text-slate-${c}`)
+      )) {
         issues.push({
           severity: "suggestion",
           element: elem.identifier,
@@ -264046,25 +264332,6 @@ function detectA11yIssues(elements) {
   }
   return issues;
 }
-var EXPECTED_KEYBOARD_INTERACTIONS = {
-  "button": ["Enter", "Space"],
-  "link": ["Enter"],
-  "checkbox": ["Space"],
-  "radio": ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"],
-  "slider": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"],
-  "spinbutton": ["ArrowUp", "ArrowDown"],
-  "combobox": ["ArrowUp", "ArrowDown", "Enter", "Escape"],
-  "listbox": ["ArrowUp", "ArrowDown", "Home", "End", "Enter"],
-  "menu": ["ArrowUp", "ArrowDown", "Enter", "Escape"],
-  "menubar": ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", "Escape"],
-  "tablist": ["ArrowLeft", "ArrowRight", "Home", "End"],
-  "tab": ["Enter", "Space"],
-  "tree": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Home", "End"],
-  "dialog": ["Escape", "Tab"],
-  "alertdialog": ["Escape", "Tab"],
-  "grid": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"],
-  "switch": ["Space", "Enter"]
-};
 function analyzeKeyboardInteractions(elements) {
   const expected = /* @__PURE__ */ new Set();
   const implemented = /* @__PURE__ */ new Set();
@@ -264099,125 +264366,6 @@ function analyzeKeyboardInteractions(elements) {
     implemented: [...implemented],
     missing
   };
-}
-function extractAttributeValue(attr, sourceFile) {
-  if (!attr.initializer) {
-    return "true";
-  }
-  if (import_typescript23.default.isStringLiteral(attr.initializer)) {
-    return attr.initializer.text;
-  }
-  if (import_typescript23.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-    const expr = attr.initializer.expression;
-    if (import_typescript23.default.isStringLiteral(expr)) {
-      return expr.text;
-    }
-    if (expr.kind === import_typescript23.default.SyntaxKind.TrueKeyword) {
-      return "true";
-    }
-    if (expr.kind === import_typescript23.default.SyntaxKind.FalseKeyword) {
-      return "false";
-    }
-    if (import_typescript23.default.isNumericLiteral(expr)) {
-      return expr.text;
-    }
-    if (import_typescript23.default.isTemplateExpression(expr)) {
-      return expr.head.text + "[dynamic]";
-    }
-    if (import_typescript23.default.isIdentifier(expr)) {
-      return `[${expr.text}]`;
-    }
-    if (import_typescript23.default.isCallExpression(expr)) {
-      const parts = [];
-      for (const arg of expr.arguments) {
-        if (import_typescript23.default.isStringLiteral(arg)) {
-          parts.push(arg.text);
-        }
-      }
-      return parts.join(" ");
-    }
-    return "[expression]";
-  }
-  return "";
-}
-function extractTextContent(node, sourceFile) {
-  const textParts = [];
-  function visit(child) {
-    if (import_typescript23.default.isJsxText(child)) {
-      const text = child.text.trim();
-      if (text) {
-        textParts.push(text);
-      }
-    } else if (import_typescript23.default.isJsxExpression(child) && child.expression) {
-      if (import_typescript23.default.isStringLiteral(child.expression)) {
-        textParts.push(child.expression.text);
-      }
-    }
-    import_typescript23.default.forEachChild(child, visit);
-  }
-  import_typescript23.default.forEachChild(node, visit);
-  return textParts.join(" ").trim();
-}
-function getLineNumber5(pos, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
-function analyzeJsxFile2(filePath, content, sourceFile, targetElement) {
-  const elements = [];
-  const elementStack = [];
-  function visit(node) {
-    if (import_typescript23.default.isJsxOpeningElement(node) || import_typescript23.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber5(node.getStart(), sourceFile);
-      const isComponent = /^[A-Z]/.test(tagName);
-      if (targetElement && tagName !== targetElement) {
-        if (import_typescript23.default.isJsxOpeningElement(node)) {
-          elementStack.push(-1);
-        }
-        import_typescript23.default.forEachChild(node, visit);
-        return;
-      }
-      const attributes = /* @__PURE__ */ new Map();
-      for (const attr of node.attributes.properties) {
-        if (import_typescript23.default.isJsxAttribute(attr) && attr.name) {
-          const attrName = attr.name.getText(sourceFile);
-          const attrValue = extractAttributeValue(attr, sourceFile);
-          attributes.set(attrName, attrValue);
-        }
-        if (import_typescript23.default.isJsxSpreadAttribute(attr)) {
-          attributes.set("[spread]", "true");
-        }
-      }
-      let textContent = "";
-      if (import_typescript23.default.isJsxElement(node.parent)) {
-        textContent = extractTextContent(node.parent, sourceFile);
-      }
-      const elementInfo = {
-        tag: tagName,
-        line,
-        identifier: `${tagName}:${line}`,
-        attributes,
-        textContent,
-        isComponent,
-        parentIndex: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,
-        childIndices: []
-      };
-      const currentIndex = elements.length;
-      elements.push(elementInfo);
-      if (elementInfo.parentIndex !== null && elementInfo.parentIndex >= 0) {
-        elements[elementInfo.parentIndex].childIndices.push(currentIndex);
-      }
-      if (import_typescript23.default.isJsxOpeningElement(node)) {
-        elementStack.push(currentIndex);
-      }
-    }
-    if (import_typescript23.default.isJsxClosingElement(node)) {
-      elementStack.pop();
-    }
-    import_typescript23.default.forEachChild(node, visit);
-  }
-  visit(sourceFile);
-  return elements;
 }
 function buildA11yTree(elements) {
   const root = {
@@ -264312,20 +264460,33 @@ function generateSummary3(elements, issues, focusOrder, ariaPatterns) {
   }
   return summary.trim();
 }
+
+// src/handlers/frontend/get-accessibility-tree.ts
+function createSuccessResponse14(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+  };
+}
+function createErrorResponse14(message, context) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true
+  };
+}
 async function handleGetAccessibilityTree(args) {
   const projectRoot = process.cwd();
   const checkPatterns = args.check_patterns ?? true;
   try {
-    const filePath = path77.isAbsolute(args.file) ? args.file : path77.resolve(projectRoot, args.file);
+    const filePath = path80.isAbsolute(args.file) ? args.file : path80.resolve(projectRoot, args.file);
     if (!fs56.existsSync(filePath)) {
-      return createErrorResponse16(`File not found: ${args.file}`, {
+      return createErrorResponse14(`File not found: ${args.file}`, {
         provided_path: args.file,
         resolved_path: filePath
       });
     }
-    const ext = path77.extname(filePath).toLowerCase();
+    const ext = path80.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".vue", ".svelte"].includes(ext)) {
-      return createErrorResponse16(
+      return createErrorResponse14(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
         { file: args.file }
       );
@@ -264338,17 +264499,17 @@ async function handleGetAccessibilityTree(args) {
     } else if (ext === ".svelte") {
       templateContent = content.replace(/<script[^>]*>[\s\S]*?<\/script>/g, "").replace(/<style[^>]*>[\s\S]*?<\/style>/g, "");
     }
-    const sourceFile = import_typescript23.default.createSourceFile(
+    const sourceFile = import_typescript37.default.createSourceFile(
       filePath,
       content,
-      import_typescript23.default.ScriptTarget.Latest,
+      import_typescript37.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript23.default.ScriptKind.TSX : import_typescript23.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript37.default.ScriptKind.TSX : import_typescript37.default.ScriptKind.JSX
     );
     const elements = analyzeJsxFile2(filePath, content, sourceFile, args.element);
     if (elements.length === 0) {
-      return createSuccessResponse16({
-        file: path77.relative(projectRoot, filePath),
+      return createSuccessResponse14({
+        file: path80.relative(projectRoot, filePath),
         a11y_tree: {
           role: "document",
           name: "Document",
@@ -264374,7 +264535,7 @@ async function handleGetAccessibilityTree(args) {
     const ariaPatterns = checkPatterns ? validateAriaPatterns(elements) : [];
     const summary = generateSummary3(elements, issues, focusOrder, ariaPatterns);
     const result = {
-      file: path77.relative(projectRoot, filePath),
+      file: path80.relative(projectRoot, filePath),
       a11y_tree: a11yTree,
       focus_order: focusOrder,
       issues,
@@ -264382,28 +264543,19 @@ async function handleGetAccessibilityTree(args) {
       aria_patterns: ariaPatterns,
       summary
     };
-    return createSuccessResponse16(result);
+    return createSuccessResponse14(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse16(message, { file: args.file });
+    return createErrorResponse14(message, { file: args.file });
   }
 }
 
 // src/handlers/frontend/get-sizing-strategy.ts
 var fs57 = __toESM(require("fs"), 1);
-var path78 = __toESM(require("path"), 1);
-var import_typescript24 = __toESM(require_typescript(), 1);
-function createSuccessResponse17(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-function createErrorResponse17(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
+var path81 = __toESM(require("path"), 1);
+var import_typescript39 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/sizing-strategy-utils.ts
 var TAILWIND_SPACING2 = {
   "0": "0px",
   "px": "1px",
@@ -264819,50 +264971,6 @@ function parseTailwindClasses2(classes) {
   }
   return props;
 }
-function extractClassName2(node, sourceFile) {
-  const classes = [];
-  for (const attr of node.attributes.properties) {
-    if (import_typescript24.default.isJsxAttribute(attr)) {
-      const attrName = attr.name.getText(sourceFile);
-      if (attrName === "className" || attrName === "class") {
-        if (attr.initializer) {
-          if (import_typescript24.default.isStringLiteral(attr.initializer)) {
-            classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
-          } else if (import_typescript24.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-            const expr = attr.initializer.expression;
-            if (import_typescript24.default.isTemplateExpression(expr)) {
-              classes.push(...expr.head.text.split(/\s+/).filter(Boolean));
-              for (const span of expr.templateSpans) {
-                if (span.literal.text) {
-                  classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
-                }
-              }
-            } else if (import_typescript24.default.isNoSubstitutionTemplateLiteral(expr)) {
-              classes.push(...expr.text.split(/\s+/).filter(Boolean));
-            } else if (import_typescript24.default.isCallExpression(expr)) {
-              for (const arg of expr.arguments) {
-                if (import_typescript24.default.isStringLiteral(arg)) {
-                  classes.push(...arg.text.split(/\s+/).filter(Boolean));
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return classes;
-}
-function extractId2(node, sourceFile) {
-  for (const attr of node.attributes.properties) {
-    if (import_typescript24.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
-      if (attr.initializer && import_typescript24.default.isStringLiteral(attr.initializer)) {
-        return attr.initializer.text;
-      }
-    }
-  }
-  return void 0;
-}
 function createElementIdentifier2(tagName, classes, id) {
   if (id) {
     return `${tagName}#${id}`;
@@ -264876,124 +264984,8 @@ function createElementIdentifier2(tagName, classes, id) {
   }
   return tagName;
 }
-function matchesSelector2(tagName, classes, id, selector) {
-  if (selector.startsWith("#")) {
-    return id === selector.slice(1);
-  }
-  if (selector.startsWith(".")) {
-    return classes.includes(selector.slice(1));
-  }
-  return tagName.toLowerCase() === selector.toLowerCase();
-}
-function buildElementNode(tagName, classes, id, parent) {
-  const parsed = parseTailwindClasses2(classes);
-  return {
-    tagName,
-    classes,
-    id,
-    parent,
-    children: [],
-    ...parsed
-  };
-}
-function parseJsxTree(node, sourceFile, parent) {
-  if (import_typescript24.default.isJsxElement(node)) {
-    const openingElement = node.openingElement;
-    const tagName = openingElement.tagName.getText(sourceFile);
-    const classes = extractClassName2(openingElement, sourceFile);
-    const id = extractId2(openingElement, sourceFile);
-    const elementNode = buildElementNode(tagName, classes, id, parent);
-    for (const child of node.children) {
-      const childNode = parseJsxTree(child, sourceFile, elementNode);
-      if (childNode) {
-        elementNode.children.push(childNode);
-      }
-    }
-    return elementNode;
-  }
-  if (import_typescript24.default.isJsxSelfClosingElement(node)) {
-    const tagName = node.tagName.getText(sourceFile);
-    const classes = extractClassName2(node, sourceFile);
-    const id = extractId2(node, sourceFile);
-    return buildElementNode(tagName, classes, id, parent);
-  }
-  if (import_typescript24.default.isJsxFragment(node)) {
-    const fragmentNode = {
-      tagName: "Fragment",
-      classes: [],
-      parent,
-      children: [],
-      display: "contents",
-      position: "static",
-      overflowX: "visible",
-      overflowY: "visible"
-    };
-    for (const child of node.children) {
-      const childNode = parseJsxTree(child, sourceFile, fragmentNode);
-      if (childNode) {
-        fragmentNode.children.push(childNode);
-      }
-    }
-    return fragmentNode.children.length > 0 ? fragmentNode : null;
-  }
-  if (import_typescript24.default.isJsxExpression(node) && node.expression) {
-    let result = null;
-    import_typescript24.default.forEachChild(node.expression, (child) => {
-      if (!result) {
-        result = parseJsxTree(child, sourceFile, parent);
-      }
-    });
-    return result;
-  }
-  return null;
-}
-function findElementBySelector(root, selector) {
-  if (matchesSelector2(root.tagName, root.classes, root.id, selector)) {
-    return root;
-  }
-  for (const child of root.children) {
-    const found = findElementBySelector(child, selector);
-    if (found) {
-      return found;
-    }
-  }
-  return null;
-}
-function findRootJsx2(sourceFile) {
-  let rootJsx = null;
-  function visit(node) {
-    if (rootJsx) return;
-    if (import_typescript24.default.isReturnStatement(node) && node.expression) {
-      if (import_typescript24.default.isJsxElement(node.expression) || import_typescript24.default.isJsxSelfClosingElement(node.expression) || import_typescript24.default.isJsxFragment(node.expression)) {
-        rootJsx = node.expression;
-        return;
-      }
-      if (import_typescript24.default.isParenthesizedExpression(node.expression)) {
-        const inner = node.expression.expression;
-        if (import_typescript24.default.isJsxElement(inner) || import_typescript24.default.isJsxSelfClosingElement(inner) || import_typescript24.default.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-    if (import_typescript24.default.isArrowFunction(node) && node.body) {
-      if (import_typescript24.default.isJsxElement(node.body) || import_typescript24.default.isJsxSelfClosingElement(node.body) || import_typescript24.default.isJsxFragment(node.body)) {
-        rootJsx = node.body;
-        return;
-      }
-      if (import_typescript24.default.isParenthesizedExpression(node.body)) {
-        const inner = node.body.expression;
-        if (import_typescript24.default.isJsxElement(inner) || import_typescript24.default.isJsxSelfClosingElement(inner) || import_typescript24.default.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-    import_typescript24.default.forEachChild(node, visit);
-  }
-  visit(sourceFile);
-  return rootJsx;
-}
+
+// src/handlers/frontend/sizing-strategy-analyzers.ts
 function getStrategyDescription(strategy, value) {
   switch (strategy) {
     case "fixed":
@@ -265262,94 +265254,366 @@ function generateSummary4(element, widthAnalysis, heightAnalysis, flexBehavior, 
   }
   return parts.join(" ");
 }
+
+// src/handlers/frontend/sizing-strategy-core.ts
+var import_typescript38 = __toESM(require_typescript(), 1);
+function extractClassName2(node, sourceFile) {
+  const classes = [];
+  for (const attr of node.attributes.properties) {
+    if (import_typescript38.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "className") {
+      if (attr.initializer) {
+        if (import_typescript38.default.isStringLiteral(attr.initializer)) {
+          classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
+        } else if (import_typescript38.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+          const expr = attr.initializer.expression;
+          if (import_typescript38.default.isTemplateExpression(expr)) {
+            const headText = expr.head.text;
+            classes.push(...headText.split(/\s+/).filter(Boolean));
+            for (const span of expr.templateSpans) {
+              if (span.literal.text) {
+                classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
+              }
+            }
+          } else if (import_typescript38.default.isNoSubstitutionTemplateLiteral(expr)) {
+            classes.push(...expr.text.split(/\s+/).filter(Boolean));
+          } else if (import_typescript38.default.isCallExpression(expr)) {
+            for (const arg of expr.arguments) {
+              if (import_typescript38.default.isStringLiteral(arg)) {
+                classes.push(...arg.text.split(/\s+/).filter(Boolean));
+              }
+            }
+          }
+        }
+      }
+    }
+    if (import_typescript38.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "class") {
+      if (attr.initializer && import_typescript38.default.isStringLiteral(attr.initializer)) {
+        classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
+      }
+    }
+  }
+  return classes;
+}
+function extractId2(node, sourceFile) {
+  for (const attr of node.attributes.properties) {
+    if (import_typescript38.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
+      if (attr.initializer && import_typescript38.default.isStringLiteral(attr.initializer)) {
+        return attr.initializer.text;
+      }
+    }
+  }
+  return void 0;
+}
+function buildElementNode(tagName, classes, id, parent) {
+  const props = parseTailwindClasses2(classes);
+  return {
+    tagName,
+    classes,
+    id,
+    parent,
+    children: [],
+    display: props.display || "block",
+    position: props.position || "static",
+    overflowX: props.overflowX || "visible",
+    overflowY: props.overflowY || "visible",
+    width: props.width,
+    height: props.height,
+    minWidth: props.minWidth,
+    maxWidth: props.maxWidth,
+    minHeight: props.minHeight,
+    maxHeight: props.maxHeight,
+    flexDirection: props.flexDirection,
+    flexGrow: props.flexGrow,
+    flexShrink: props.flexShrink,
+    flexBasis: props.flexBasis,
+    gridColumn: props.gridColumn,
+    gridRow: props.gridRow,
+    gridArea: props.gridArea,
+    gridTemplateColumns: props.gridTemplateColumns,
+    gridTemplateRows: props.gridTemplateRows
+  };
+}
+function matchesSelector2(tagName, classes, id, selector) {
+  if (selector.startsWith("#")) {
+    return id === selector.slice(1);
+  }
+  if (selector.startsWith(".")) {
+    return classes.includes(selector.slice(1));
+  }
+  return tagName.toLowerCase() === selector.toLowerCase();
+}
+function parseJsxTree(node, sourceFile, parent, selector) {
+  if (import_typescript38.default.isJsxElement(node)) {
+    const openingElement = node.openingElement;
+    const tagName = openingElement.tagName.getText(sourceFile);
+    const classes = extractClassName2(openingElement, sourceFile);
+    const id = extractId2(openingElement, sourceFile);
+    const elementNode = buildElementNode(tagName, classes, id, parent);
+    if (matchesSelector2(tagName, classes, id, selector)) {
+      for (const child of node.children) {
+        const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
+        if (childResult) {
+          elementNode.children.push(childResult);
+        }
+      }
+      return elementNode;
+    }
+    for (const child of node.children) {
+      const result2 = parseJsxTree(child, sourceFile, elementNode, selector);
+      if (result2) {
+        return result2;
+      }
+    }
+    return null;
+  }
+  if (import_typescript38.default.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const classes = extractClassName2(node, sourceFile);
+    const id = extractId2(node, sourceFile);
+    if (matchesSelector2(tagName, classes, id, selector)) {
+      return buildElementNode(tagName, classes, id, parent);
+    }
+    return null;
+  }
+  if (import_typescript38.default.isJsxFragment(node)) {
+    for (const child of node.children) {
+      const result2 = parseJsxTree(child, sourceFile, parent, selector);
+      if (result2) {
+        return result2;
+      }
+    }
+    return null;
+  }
+  if (import_typescript38.default.isJsxExpression(node) && node.expression) {
+    let result2 = null;
+    import_typescript38.default.forEachChild(node.expression, (child) => {
+      if (!result2) {
+        result2 = parseJsxTree(child, sourceFile, parent, selector);
+      }
+    });
+    return result2;
+  }
+  let result = null;
+  import_typescript38.default.forEachChild(node, (child) => {
+    if (!result) {
+      result = parseJsxTree(child, sourceFile, parent, selector);
+    }
+  });
+  return result;
+}
+function parseJsxTreeForChildren(node, sourceFile, parent) {
+  if (import_typescript38.default.isJsxElement(node)) {
+    const openingElement = node.openingElement;
+    const tagName = openingElement.tagName.getText(sourceFile);
+    const classes = extractClassName2(openingElement, sourceFile);
+    const id = extractId2(openingElement, sourceFile);
+    const elementNode = buildElementNode(tagName, classes, id, parent);
+    for (const child of node.children) {
+      const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
+      if (childResult) {
+        elementNode.children.push(childResult);
+      }
+    }
+    return elementNode;
+  }
+  if (import_typescript38.default.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const classes = extractClassName2(node, sourceFile);
+    const id = extractId2(node, sourceFile);
+    return buildElementNode(tagName, classes, id, parent);
+  }
+  if (import_typescript38.default.isJsxFragment(node)) {
+    const fragmentNode = buildElementNode("Fragment", [], void 0, parent);
+    fragmentNode.display = "contents";
+    for (const child of node.children) {
+      const childResult = parseJsxTreeForChildren(child, sourceFile, fragmentNode);
+      if (childResult) {
+        fragmentNode.children.push(childResult);
+      }
+    }
+    return fragmentNode.children.length > 0 ? fragmentNode : null;
+  }
+  return null;
+}
+function findRootJsx2(sourceFile) {
+  let rootJsx = null;
+  function visit(node) {
+    if (rootJsx) return;
+    if (import_typescript38.default.isReturnStatement(node) && node.expression) {
+      if (import_typescript38.default.isJsxElement(node.expression) || import_typescript38.default.isJsxSelfClosingElement(node.expression) || import_typescript38.default.isJsxFragment(node.expression)) {
+        rootJsx = node.expression;
+        return;
+      }
+      if (import_typescript38.default.isParenthesizedExpression(node.expression)) {
+        const inner = node.expression.expression;
+        if (import_typescript38.default.isJsxElement(inner) || import_typescript38.default.isJsxSelfClosingElement(inner) || import_typescript38.default.isJsxFragment(inner)) {
+          rootJsx = inner;
+          return;
+        }
+      }
+    }
+    if (import_typescript38.default.isArrowFunction(node) && node.body) {
+      if (import_typescript38.default.isJsxElement(node.body) || import_typescript38.default.isJsxSelfClosingElement(node.body) || import_typescript38.default.isJsxFragment(node.body)) {
+        rootJsx = node.body;
+        return;
+      }
+      if (import_typescript38.default.isParenthesizedExpression(node.body)) {
+        const inner = node.body.expression;
+        if (import_typescript38.default.isJsxElement(inner) || import_typescript38.default.isJsxSelfClosingElement(inner) || import_typescript38.default.isJsxFragment(inner)) {
+          rootJsx = inner;
+          return;
+        }
+      }
+    }
+    import_typescript38.default.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return rootJsx;
+}
+function findElementBySelector(rootJsx, sourceFile, selector) {
+  return parseJsxTree(rootJsx, sourceFile, void 0, selector);
+}
+function getAllElements(node, sourceFile, elements = []) {
+  if (import_typescript38.default.isJsxElement(node)) {
+    const openingElement = node.openingElement;
+    const tagName = openingElement.tagName.getText(sourceFile);
+    const classes = extractClassName2(openingElement, sourceFile);
+    const id = extractId2(openingElement, sourceFile);
+    const selector = id ? `#${id}` : classes.length > 0 ? `.${classes[0]}` : tagName;
+    elements.push({ selector, tag: tagName });
+    for (const child of node.children) {
+      getAllElements(child, sourceFile, elements);
+    }
+    return elements;
+  }
+  if (import_typescript38.default.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const classes = extractClassName2(node, sourceFile);
+    const id = extractId2(node, sourceFile);
+    const selector = id ? `#${id}` : classes.length > 0 ? `.${classes[0]}` : tagName;
+    elements.push({ selector, tag: tagName });
+    return elements;
+  }
+  if (import_typescript38.default.isJsxFragment(node)) {
+    for (const child of node.children) {
+      getAllElements(child, sourceFile, elements);
+    }
+    return elements;
+  }
+  if (import_typescript38.default.isJsxExpression(node) && node.expression) {
+    import_typescript38.default.forEachChild(node.expression, (child) => {
+      getAllElements(child, sourceFile, elements);
+    });
+    return elements;
+  }
+  import_typescript38.default.forEachChild(node, (child) => {
+    getAllElements(child, sourceFile, elements);
+  });
+  return elements;
+}
+
+// src/handlers/frontend/get-sizing-strategy.ts
+function createSuccessResponse15(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+  };
+}
+function createErrorResponse15(message, context) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true
+  };
+}
 async function handleGetSizingStrategy(args) {
   const projectRoot = process.cwd();
   try {
-    const filePath = path78.isAbsolute(args.file) ? args.file : path78.resolve(projectRoot, args.file);
+    const filePath = path81.isAbsolute(args.file) ? args.file : path81.resolve(projectRoot, args.file);
     if (!fs57.existsSync(filePath)) {
-      return createErrorResponse17(`File not found: ${args.file}`, { provided_path: args.file });
+      return createErrorResponse15(`File not found: ${args.file}`, { provided_path: args.file });
     }
-    const ext = path78.extname(filePath).toLowerCase();
+    const ext = path81.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".vue", ".svelte"].includes(ext)) {
-      return createErrorResponse17(
+      return createErrorResponse15(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
         { provided_path: args.file }
       );
     }
-    let content = fs57.readFileSync(filePath, "utf-8");
+    const content = fs57.readFileSync(filePath, "utf-8");
+    let jsxContent = content;
     if (ext === ".vue") {
       const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
       if (templateMatch) {
-        content = templateMatch[1].replace(/:class=/g, "className=").replace(/v-bind:class=/g, "className=").replace(/class=/g, "className=");
+        jsxContent = templateMatch[1].replace(/:class=/g, "className=").replace(/v-bind:class=/g, "className=").replace(/class=/g, "className=");
       }
     } else if (ext === ".svelte") {
-      content = content.replace(/class=/g, "className=");
+      jsxContent = content.replace(/class=/g, "className=");
     }
-    const sourceFile = import_typescript24.default.createSourceFile(
+    const sourceFile = import_typescript39.default.createSourceFile(
       filePath,
-      content,
-      import_typescript24.default.ScriptTarget.Latest,
+      jsxContent,
+      import_typescript39.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript24.default.ScriptKind.TSX : import_typescript24.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript39.default.ScriptKind.TSX : import_typescript39.default.ScriptKind.JSX
     );
     const rootJsxNode = findRootJsx2(sourceFile);
     if (!rootJsxNode) {
-      return createErrorResponse17("No JSX element found in file. Ensure the component returns JSX.", {
+      return createErrorResponse15("No JSX element found in file. Ensure the component returns JSX.", {
         file: args.file
       });
     }
-    const rootElement = parseJsxTree(rootJsxNode, sourceFile);
-    if (!rootElement) {
-      return createErrorResponse17("Failed to parse JSX tree.", { file: args.file });
+    const elementNode = findElementBySelector(rootJsxNode, sourceFile, args.element);
+    if (!elementNode) {
+      const availableElements = getAllElements(rootJsxNode, sourceFile);
+      const suggestions = availableElements.slice(0, 10).map((e) => e.selector);
+      return createErrorResponse15(
+        `Element "${args.element}" not found in component.`,
+        {
+          file: args.file,
+          selector: args.element,
+          available_selectors: suggestions,
+          hint: "Use #id, .className, or tagName as selector"
+        }
+      );
     }
-    const targetElement = findElementBySelector(rootElement, args.selector);
-    if (!targetElement) {
-      return createErrorResponse17(`No element matching selector "${args.selector}" found in component.`, {
-        file: args.file,
-        selector: args.selector
-      });
-    }
-    const widthAnalysis = analyzeWidthStrategy(targetElement);
-    const heightAnalysis = analyzeHeightStrategy(targetElement);
-    const flexBehavior = analyzeFlexBehavior(targetElement);
-    const gridBehavior = analyzeGridBehavior(targetElement);
-    const positionContext = getPositionContext(targetElement);
-    const ancestorChain = buildAncestorChain(targetElement);
-    const relativePath = path78.relative(projectRoot, filePath).replace(/\\/g, "/");
+    const widthAnalysis = analyzeWidthStrategy(elementNode);
+    const heightAnalysis = analyzeHeightStrategy(elementNode);
+    const flexBehavior = analyzeFlexBehavior(elementNode);
+    const gridBehavior = analyzeGridBehavior(elementNode);
+    const positionContext = getPositionContext(elementNode);
+    const ancestorChain = buildAncestorChain(elementNode);
+    const summary = generateSummary4(
+      elementNode,
+      widthAnalysis,
+      heightAnalysis,
+      flexBehavior,
+      gridBehavior
+    );
+    const relativePath = path81.relative(projectRoot, filePath).replace(/\\/g, "/");
     const result = {
       file: relativePath,
-      element: createElementIdentifier2(targetElement.tagName, targetElement.classes, targetElement.id),
-      sizing: {
-        width: widthAnalysis,
-        height: heightAnalysis,
-        min_max: {
-          min_width: targetElement.minWidth,
-          max_width: targetElement.maxWidth,
-          min_height: targetElement.minHeight,
-          max_height: targetElement.maxHeight
-        }
-      },
+      element: createElementIdentifier2(elementNode.tagName, elementNode.classes, elementNode.id),
+      classes: elementNode.classes,
+      width: widthAnalysis,
+      height: heightAnalysis,
       flex_behavior: flexBehavior,
       grid_behavior: gridBehavior,
-      overflow: {
-        x: targetElement.overflowX,
-        y: targetElement.overflowY
-      },
       position_context: positionContext,
       ancestor_chain: ancestorChain,
-      summary: generateSummary4(targetElement, widthAnalysis, heightAnalysis, flexBehavior, gridBehavior)
+      summary
     };
-    return createSuccessResponse17(result);
+    return createSuccessResponse15(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse17(message, { file: args.file, selector: args.selector });
+    return createErrorResponse15(message, { file: args.file });
   }
 }
 
 // src/handlers/frontend/analyze-tailwind-conflicts.ts
 var fs58 = __toESM(require("fs"), 1);
-var path79 = __toESM(require("path"), 1);
-var import_typescript25 = __toESM(require_typescript(), 1);
+var path82 = __toESM(require("path"), 1);
+var import_typescript41 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/tailwind-conflicts-utils.ts
 var CLASS_CATEGORIES = {
   // Spacing - Padding
   "padding": ["p-"],
@@ -265711,17 +265975,6 @@ var CONTRADICTIONS = [
   ["object-none", "object-scale-down"]
 ];
 var SIZE_SETS_BOTH = "size-";
-function createSuccessResponse18(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-function createErrorResponse18(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
 function stripPrefixes(cls) {
   const prefixPattern = /^(?:(?:sm|md|lg|xl|2xl|dark|light|hover|focus|active|disabled|group-hover|focus-within|focus-visible|first|last|odd|even|motion-safe|motion-reduce|print|portrait|landscape|placeholder|selection|marker|before|after|file|open|closed|data-\[.+?\]|aria-\[.+?\]):)*/;
   return cls.replace(prefixPattern, "");
@@ -265791,6 +266044,8 @@ function longhandOverridesShorthand(shorthandClass, longhandClass) {
   }
   return false;
 }
+
+// src/handlers/frontend/tailwind-conflicts-analyzers.ts
 function detectConflicts(element, line, classes, includeArbitrary) {
   const conflicts = [];
   const redundant = [];
@@ -265988,17 +266243,24 @@ function generateSuggestions2(element, classes, rawClassName) {
   }
   return suggestions;
 }
+
+// src/handlers/frontend/tailwind-conflicts-core.ts
+var import_typescript40 = __toESM(require_typescript(), 1);
+function getLineNumber6(pos, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
+  return line + 1;
+}
 function extractClassesFromAttribute2(attr, sourceFile) {
   if (!attr.initializer) return [];
-  if (import_typescript25.default.isStringLiteral(attr.initializer)) {
+  if (import_typescript40.default.isStringLiteral(attr.initializer)) {
     return attr.initializer.text.split(/\s+/).filter(Boolean);
   }
-  if (import_typescript25.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+  if (import_typescript40.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
     const expr = attr.initializer.expression;
-    if (import_typescript25.default.isStringLiteral(expr)) {
+    if (import_typescript40.default.isStringLiteral(expr)) {
       return expr.text.split(/\s+/).filter(Boolean);
     }
-    if (import_typescript25.default.isTemplateExpression(expr)) {
+    if (import_typescript40.default.isTemplateExpression(expr)) {
       const classes = [];
       if (expr.head.text) {
         classes.push(...expr.head.text.split(/\s+/).filter(Boolean));
@@ -266010,22 +266272,22 @@ function extractClassesFromAttribute2(attr, sourceFile) {
       }
       return classes;
     }
-    if (import_typescript25.default.isCallExpression(expr)) {
+    if (import_typescript40.default.isCallExpression(expr)) {
       const classes = [];
       for (const arg of expr.arguments) {
-        if (import_typescript25.default.isStringLiteral(arg)) {
+        if (import_typescript40.default.isStringLiteral(arg)) {
           classes.push(...arg.text.split(/\s+/).filter(Boolean));
         }
-        if (import_typescript25.default.isObjectLiteralExpression(arg)) {
+        if (import_typescript40.default.isObjectLiteralExpression(arg)) {
           for (const prop of arg.properties) {
-            if (import_typescript25.default.isPropertyAssignment(prop)) {
-              if (import_typescript25.default.isStringLiteral(prop.name)) {
+            if (import_typescript40.default.isPropertyAssignment(prop)) {
+              if (import_typescript40.default.isStringLiteral(prop.name)) {
                 classes.push(...prop.name.text.split(/\s+/).filter(Boolean));
-              } else if (import_typescript25.default.isIdentifier(prop.name)) {
+              } else if (import_typescript40.default.isIdentifier(prop.name)) {
                 classes.push(prop.name.text);
               }
             }
-            if (import_typescript25.default.isShorthandPropertyAssignment(prop)) {
+            if (import_typescript40.default.isShorthandPropertyAssignment(prop)) {
               classes.push(prop.name.text);
             }
           }
@@ -266038,30 +266300,26 @@ function extractClassesFromAttribute2(attr, sourceFile) {
 }
 function getRawClassName(attr, sourceFile) {
   if (!attr.initializer) return "";
-  if (import_typescript25.default.isStringLiteral(attr.initializer)) {
+  if (import_typescript40.default.isStringLiteral(attr.initializer)) {
     return attr.initializer.text;
   }
-  if (import_typescript25.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+  if (import_typescript40.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
     const expr = attr.initializer.expression;
-    if (import_typescript25.default.isStringLiteral(expr)) {
+    if (import_typescript40.default.isStringLiteral(expr)) {
       return expr.text;
     }
     return expr.getText(sourceFile);
   }
   return "";
 }
-function getLineNumber6(pos, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
 function analyzeJsxFile3(content, sourceFile) {
   const elements = [];
   function visit(node) {
-    if (import_typescript25.default.isJsxOpeningElement(node) || import_typescript25.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript40.default.isJsxOpeningElement(node) || import_typescript40.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       const line = getLineNumber6(node.getStart(), sourceFile);
       for (const attr of node.attributes.properties) {
-        if (import_typescript25.default.isJsxAttribute(attr)) {
+        if (import_typescript40.default.isJsxAttribute(attr)) {
           const attrName = attr.name.getText(sourceFile);
           if (attrName === "className" || attrName === "class") {
             const classes = extractClassesFromAttribute2(attr, sourceFile);
@@ -266078,25 +266336,38 @@ function analyzeJsxFile3(content, sourceFile) {
         }
       }
     }
-    import_typescript25.default.forEachChild(node, visit);
+    import_typescript40.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return elements;
+}
+
+// src/handlers/frontend/analyze-tailwind-conflicts.ts
+function createSuccessResponse16(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+  };
+}
+function createErrorResponse16(message, context) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true
+  };
 }
 async function handleAnalyzeTailwindConflicts(args) {
   const projectRoot = process.cwd();
   const includeArbitrary = args.include_arbitrary ?? true;
   try {
-    const filePath = path79.isAbsolute(args.file) ? args.file : path79.resolve(projectRoot, args.file);
+    const filePath = path82.isAbsolute(args.file) ? args.file : path82.resolve(projectRoot, args.file);
     if (!fs58.existsSync(filePath)) {
-      return createErrorResponse18(`File not found: ${args.file}`, {
+      return createErrorResponse16(`File not found: ${args.file}`, {
         provided_path: args.file,
         resolved_path: filePath
       });
     }
-    const ext = path79.extname(filePath).toLowerCase();
+    const ext = path82.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".vue", ".svelte"].includes(ext)) {
-      return createErrorResponse18(
+      return createErrorResponse16(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
         { file: args.file }
       );
@@ -266113,17 +266384,17 @@ async function handleAnalyzeTailwindConflicts(args) {
       templateContent = templateContent.replace(/<script[^>]*>[\s\S]*?<\/script>/g, "").replace(/<style[^>]*>[\s\S]*?<\/style>/g, "");
       processableContent = `function Component() { return (<>${templateContent}</>) }`;
     }
-    const sourceFile = import_typescript25.default.createSourceFile(
+    const sourceFile = import_typescript41.default.createSourceFile(
       filePath,
       processableContent,
-      import_typescript25.default.ScriptTarget.Latest,
+      import_typescript41.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" ? import_typescript25.default.ScriptKind.TSX : import_typescript25.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript41.default.ScriptKind.TSX : import_typescript41.default.ScriptKind.JSX
     );
     const elements = analyzeJsxFile3(processableContent, sourceFile);
     if (elements.length === 0) {
-      return createSuccessResponse18({
-        file: path79.relative(projectRoot, filePath),
+      return createSuccessResponse16({
+        file: path82.relative(projectRoot, filePath),
         elements_analyzed: 0,
         conflicts: [],
         redundant_classes: [],
@@ -266158,7 +266429,9 @@ async function handleAnalyzeTailwindConflicts(args) {
       if (allConflicts.length > 0) {
         const overrides = allConflicts.filter((c) => c.conflict_type === "override").length;
         const contradictions = allConflicts.filter((c) => c.conflict_type === "contradiction").length;
-        summaryParts.push(`Found ${allConflicts.length} conflicts (${overrides} overrides, ${contradictions} contradictions)`);
+        summaryParts.push(
+          `Found ${allConflicts.length} conflicts (${overrides} overrides, ${contradictions} contradictions)`
+        );
       }
       if (allRedundant.length > 0) {
         summaryParts.push(`Found ${allRedundant.length} redundant classes`);
@@ -266171,7 +266444,7 @@ async function handleAnalyzeTailwindConflicts(args) {
       summaryParts.push(`${allSuggestions.length} optimization suggestions available`);
     }
     const result = {
-      file: path79.relative(projectRoot, filePath).replace(/\\/g, "/"),
+      file: path82.relative(projectRoot, filePath).replace(/\\/g, "/"),
       elements_analyzed: elements.length,
       conflicts: allConflicts,
       redundant_classes: allRedundant,
@@ -266179,17 +266452,19 @@ async function handleAnalyzeTailwindConflicts(args) {
       suggestions: allSuggestions,
       summary: summaryParts.join(". ")
     };
-    return createSuccessResponse18(result);
+    return createSuccessResponse16(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse18(message, { file: args.file });
+    return createErrorResponse16(message, { file: args.file });
   }
 }
 
 // src/handlers/frontend/analyze-event-flow.ts
 var fs59 = __toESM(require("fs"), 1);
-var path80 = __toESM(require("path"), 1);
-var import_typescript26 = __toESM(require_typescript(), 1);
+var path83 = __toESM(require("path"), 1);
+var import_typescript44 = __toESM(require_typescript(), 1);
+
+// src/handlers/frontend/event-flow-utils.ts
 var EVENT_PROPS = {
   // Mouse events
   onClick: "click",
@@ -266302,250 +266577,43 @@ var NON_INTERACTIVE_ELEMENTS = /* @__PURE__ */ new Set([
   "th",
   "img"
 ]);
-function createSuccessResponse19(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-function createErrorResponse19(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
 function normalizeFilePath8(filePath) {
   return filePath.replace(/\\/g, "/");
 }
-function makeRelativePath10(absolutePath, projectRoot) {
-  return normalizeFilePath8(path80.relative(projectRoot, absolutePath));
-}
-function getLineNumber7(node, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1;
-}
-function getCodeSnippet3(node, sourceFile, maxLength = 60) {
-  const text = node.getText(sourceFile).replace(/\s+/g, " ").trim();
-  return text.length > maxLength ? text.substring(0, maxLength - 3) + "..." : text;
-}
-function containsStopPropagation(node, sourceFile) {
-  let found = false;
-  function visit(n) {
-    if (found) return;
-    if (import_typescript26.default.isCallExpression(n)) {
-      const callText = n.expression.getText(sourceFile);
-      if (callText.endsWith(".stopPropagation") || callText.endsWith(".stopImmediatePropagation") || callText === "stopPropagation") {
-        found = true;
-        return;
+
+// src/handlers/frontend/event-flow-analyzers.ts
+var import_typescript42 = __toESM(require_typescript(), 1);
+function findNestedClickables(tree) {
+  const result = [];
+  function visit(node, ancestorsWithHandlers) {
+    const hasClickHandler = node.handlers.some((h) => h.event === "click");
+    if (hasClickHandler) {
+      for (const ancestor of ancestorsWithHandlers) {
+        result.push({ parent: ancestor, child: node });
       }
     }
-    import_typescript26.default.forEachChild(n, visit);
+    const newAncestors = hasClickHandler ? [...ancestorsWithHandlers, node] : ancestorsWithHandlers;
+    for (const child of node.children) {
+      visit(child, newAncestors);
+    }
   }
-  visit(node);
-  return found;
+  for (const child of tree.children) {
+    visit(child, []);
+  }
+  return result;
 }
-function containsPreventDefault(node, sourceFile) {
-  let found = false;
-  function visit(n) {
-    if (found) return;
-    if (import_typescript26.default.isCallExpression(n)) {
-      const callText = n.expression.getText(sourceFile);
-      if (callText.endsWith(".preventDefault") || callText === "preventDefault") {
-        found = true;
-        return;
-      }
-    }
-    import_typescript26.default.forEachChild(n, visit);
+function areNested(nodeA, nodeB) {
+  let current = nodeB.parent;
+  while (current) {
+    if (current === nodeA) return true;
+    current = current.parent;
   }
-  visit(node);
-  return found;
-}
-function findDelegationTargets(node, sourceFile) {
-  const targets = [];
-  function visit(n) {
-    if (import_typescript26.default.isCallExpression(n)) {
-      const callText = n.expression.getText(sourceFile);
-      if (callText.match(/\.target\.closest$/)) {
-        const arg = n.arguments[0];
-        if (arg && import_typescript26.default.isStringLiteral(arg)) {
-          targets.push(arg.text);
-        }
-      }
-      if (callText.match(/\.target\.matches$/)) {
-        const arg = n.arguments[0];
-        if (arg && import_typescript26.default.isStringLiteral(arg)) {
-          targets.push(arg.text);
-        }
-      }
-    }
-    if (import_typescript26.default.isBinaryExpression(n) && n.operatorToken.kind === import_typescript26.default.SyntaxKind.EqualsEqualsEqualsToken) {
-      const leftText = n.left.getText(sourceFile);
-      if (leftText.match(/\.target\.tagName$/)) {
-        if (import_typescript26.default.isStringLiteral(n.right)) {
-          targets.push(n.right.text.toLowerCase());
-        }
-      }
-    }
-    if (import_typescript26.default.isPropertyAccessExpression(n)) {
-      const text = n.getText(sourceFile);
-      if (text.match(/\.target\.dataset\./)) {
-        targets.push(`[data-${n.name.getText(sourceFile)}]`);
-      }
-    }
-    import_typescript26.default.forEachChild(n, visit);
+  current = nodeA.parent;
+  while (current) {
+    if (current === nodeB) return true;
+    current = current.parent;
   }
-  visit(node);
-  return targets;
-}
-function resolveHandlerBody(handlerExpr, sourceFile) {
-  if (import_typescript26.default.isArrowFunction(handlerExpr) || import_typescript26.default.isFunctionExpression(handlerExpr)) {
-    return handlerExpr.body;
-  }
-  if (import_typescript26.default.isIdentifier(handlerExpr)) {
-    let findHandler2 = function(node) {
-      if (foundBody) return;
-      if (import_typescript26.default.isFunctionDeclaration(node) && node.name?.getText(sourceFile) === handlerName && node.body) {
-        foundBody = node.body;
-        return;
-      }
-      if (import_typescript26.default.isVariableStatement(node)) {
-        for (const decl of node.declarationList.declarations) {
-          if (import_typescript26.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === handlerName) {
-            if (decl.initializer) {
-              if (import_typescript26.default.isArrowFunction(decl.initializer) || import_typescript26.default.isFunctionExpression(decl.initializer)) {
-                foundBody = decl.initializer.body;
-                return;
-              }
-            }
-          }
-        }
-      }
-      import_typescript26.default.forEachChild(node, findHandler2);
-    };
-    var findHandler = findHandler2;
-    const handlerName = handlerExpr.getText(sourceFile);
-    let foundBody = null;
-    findHandler2(sourceFile);
-    return foundBody;
-  }
-  return null;
-}
-function extractEventHandlers(componentNode, sourceFile, eventFilter) {
-  const handlers = [];
-  const rootNode = {
-    element: "root",
-    parent: null,
-    children: [],
-    handlers: [],
-    line: 0,
-    depth: 0
-  };
-  let currentParent = rootNode;
-  function visit(node, depth) {
-    if (import_typescript26.default.isJsxOpeningElement(node) || import_typescript26.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber7(node, sourceFile);
-      const componentNode2 = {
-        element: tagName,
-        parent: currentParent,
-        children: [],
-        handlers: [],
-        line,
-        depth
-      };
-      currentParent.children.push(componentNode2);
-      for (const attr of node.attributes.properties) {
-        if (import_typescript26.default.isJsxAttribute(attr) && attr.name && attr.initializer) {
-          const attrName = attr.name.getText(sourceFile);
-          const eventType = EVENT_PROPS[attrName];
-          if (eventType) {
-            if (eventFilter && eventType !== eventFilter.toLowerCase()) {
-              continue;
-            }
-            let handlerName = attrName;
-            let stopsPropagation = false;
-            let preventsDefault = false;
-            if (import_typescript26.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-              const expr = attr.initializer.expression;
-              handlerName = getCodeSnippet3(expr, sourceFile);
-              const handlerBody = resolveHandlerBody(expr, sourceFile);
-              if (handlerBody) {
-                stopsPropagation = containsStopPropagation(handlerBody, sourceFile);
-                preventsDefault = containsPreventDefault(handlerBody, sourceFile);
-              } else {
-                stopsPropagation = containsStopPropagation(expr, sourceFile);
-                preventsDefault = containsPreventDefault(expr, sourceFile);
-              }
-            }
-            const handler = {
-              element: tagName,
-              event: eventType,
-              handler: handlerName,
-              line,
-              stops_propagation: stopsPropagation,
-              prevents_default: preventsDefault
-            };
-            handlers.push(handler);
-            componentNode2.handlers.push(handler);
-          }
-        }
-      }
-      if (import_typescript26.default.isJsxOpeningElement(node)) {
-        const prevParent = currentParent;
-        currentParent = componentNode2;
-        const parent = node.parent;
-        if (import_typescript26.default.isJsxElement(parent)) {
-          for (const child of parent.children) {
-            visit(child, depth + 1);
-          }
-        }
-        currentParent = prevParent;
-        return;
-      }
-    }
-    import_typescript26.default.forEachChild(node, (child) => visit(child, depth));
-  }
-  visit(componentNode, 0);
-  return { handlers, tree: rootNode };
-}
-function buildEventFlows(handlers, tree, eventFilter) {
-  const flows = {};
-  const handlersByEvent = /* @__PURE__ */ new Map();
-  for (const handler of handlers) {
-    const existing = handlersByEvent.get(handler.event) || [];
-    existing.push(handler);
-    handlersByEvent.set(handler.event, existing);
-  }
-  for (const [eventType, eventHandlers] of handlersByEvent) {
-    if (!BUBBLING_EVENTS.has(eventType)) continue;
-    const sortedByDepth = [...eventHandlers].sort((a, b) => {
-      const nodeA = findNodeByLine(tree, a.line);
-      const nodeB = findNodeByLine(tree, b.line);
-      return (nodeB?.depth ?? 0) - (nodeA?.depth ?? 0);
-    });
-    if (sortedByDepth.length === 0) continue;
-    const steps = [];
-    let stepNum = 1;
-    for (const handler of sortedByDepth) {
-      const node = findNodeByLine(tree, handler.line);
-      if (!node) continue;
-      steps.push({
-        step: stepNum,
-        element: handler.element,
-        handler: handler.handler,
-        stops_here: handler.stops_propagation
-      });
-      stepNum++;
-      if (handler.stops_propagation) break;
-    }
-    if (steps.length > 0) {
-      const scenarioName = `${eventType}_from_${steps[0].element}`;
-      flows[scenarioName] = {
-        scenario: `${eventType} event starting at ${steps[0].element}`,
-        steps
-      };
-    }
-  }
-  return flows;
+  return false;
 }
 function findNodeByLine(tree, line) {
   if (tree.line === line) return tree;
@@ -266561,13 +266629,6 @@ function detectIssues4(handlers, tree, sourceFile) {
   const keyboardHandlers = handlers.filter(
     (h) => ["keydown", "keyup", "keypress"].includes(h.event)
   );
-  const handlersByElement = /* @__PURE__ */ new Map();
-  for (const handler of clickHandlers) {
-    const key = `${handler.element}:${handler.line}`;
-    const existing = handlersByElement.get(key) || [];
-    existing.push(handler);
-    handlersByElement.set(key, existing);
-  }
   const nestedClickables = findNestedClickables(tree);
   if (nestedClickables.length > 0) {
     for (const { parent, child } of nestedClickables) {
@@ -266645,80 +266706,82 @@ function detectIssues4(handlers, tree, sourceFile) {
   }
   return issues;
 }
-function findNestedClickables(tree) {
-  const result = [];
-  function visit(node, ancestorsWithHandlers) {
-    const hasClickHandler = node.handlers.some((h) => h.event === "click");
-    if (hasClickHandler) {
-      for (const ancestor of ancestorsWithHandlers) {
-        result.push({ parent: ancestor, child: node });
-      }
+function buildEventFlows(handlers, tree, eventFilter) {
+  const flows = {};
+  const handlersByEvent = /* @__PURE__ */ new Map();
+  for (const handler of handlers) {
+    const existing = handlersByEvent.get(handler.event) || [];
+    existing.push(handler);
+    handlersByEvent.set(handler.event, existing);
+  }
+  for (const [eventType, eventHandlers] of handlersByEvent) {
+    if (!BUBBLING_EVENTS.has(eventType)) continue;
+    const sortedByDepth = [...eventHandlers].sort((a, b) => {
+      const nodeA = findNodeByLine(tree, a.line);
+      const nodeB = findNodeByLine(tree, b.line);
+      return (nodeB?.depth ?? 0) - (nodeA?.depth ?? 0);
+    });
+    if (sortedByDepth.length === 0) continue;
+    const steps = [];
+    let stepNum = 1;
+    for (const handler of sortedByDepth) {
+      const node = findNodeByLine(tree, handler.line);
+      if (!node) continue;
+      steps.push({
+        step: stepNum,
+        element: handler.element,
+        handler: handler.handler,
+        stops_here: handler.stops_propagation
+      });
+      stepNum++;
+      if (handler.stops_propagation) break;
     }
-    const newAncestors = hasClickHandler ? [...ancestorsWithHandlers, node] : ancestorsWithHandlers;
-    for (const child of node.children) {
-      visit(child, newAncestors);
+    if (steps.length > 0) {
+      const scenarioName = `${eventType}_from_${steps[0].element}`;
+      flows[scenarioName] = {
+        scenario: `${eventType} event starting at ${steps[0].element}`,
+        steps
+      };
     }
   }
-  for (const child of tree.children) {
-    visit(child, []);
-  }
-  return result;
+  return flows;
 }
-function areNested(nodeA, nodeB) {
-  let current = nodeB.parent;
-  while (current) {
-    if (current === nodeA) return true;
-    current = current.parent;
-  }
-  current = nodeA.parent;
-  while (current) {
-    if (current === nodeB) return true;
-    current = current.parent;
-  }
-  return false;
-}
-function detectDelegationPatterns(handlers, sourceFile) {
-  const patterns = [];
-  function findDelegation(handler) {
-    let foundPattern = null;
-    function visit(node) {
-      if (foundPattern) return;
-      if (import_typescript26.default.isJsxOpeningElement(node) || import_typescript26.default.isJsxSelfClosingElement(node)) {
-        const line = getLineNumber7(node, sourceFile);
-        if (line === handler.line) {
-          for (const attr of node.attributes.properties) {
-            if (import_typescript26.default.isJsxAttribute(attr) && attr.initializer && import_typescript26.default.isJsxExpression(attr.initializer)) {
-              const expr = attr.initializer.expression;
-              if (expr) {
-                const handlerBody = resolveHandlerBody(expr, sourceFile);
-                const nodeToCheck = handlerBody || expr;
-                const delegateTargets = findDelegationTargets(nodeToCheck, sourceFile);
-                if (delegateTargets.length > 0) {
-                  foundPattern = {
-                    container: handler.element,
-                    delegates_for: delegateTargets,
-                    event: handler.event
-                  };
-                }
-              }
-            }
-          }
+function findDelegationTargets(node, sourceFile) {
+  const targets = [];
+  function visit(n) {
+    if (import_typescript42.default.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+      if (callText.match(/\.target\.closest$/)) {
+        const arg = n.arguments[0];
+        if (arg && import_typescript42.default.isStringLiteral(arg)) {
+          targets.push(arg.text);
         }
       }
-      if (!foundPattern) {
-        import_typescript26.default.forEachChild(node, visit);
+      if (callText.match(/\.target\.matches$/)) {
+        const arg = n.arguments[0];
+        if (arg && import_typescript42.default.isStringLiteral(arg)) {
+          targets.push(arg.text);
+        }
       }
     }
-    visit(sourceFile);
-    return foundPattern;
-  }
-  for (const handler of handlers) {
-    const pattern = findDelegation(handler);
-    if (pattern) {
-      patterns.push(pattern);
+    if (import_typescript42.default.isBinaryExpression(n) && n.operatorToken.kind === import_typescript42.default.SyntaxKind.EqualsEqualsEqualsToken) {
+      const leftText = n.left.getText(sourceFile);
+      if (leftText.match(/\.target\.tagName$/)) {
+        if (import_typescript42.default.isStringLiteral(n.right)) {
+          targets.push(n.right.text.toLowerCase());
+        }
+      }
     }
+    if (import_typescript42.default.isPropertyAccessExpression(n)) {
+      const text = n.getText(sourceFile);
+      if (text.match(/\.target\.dataset\./)) {
+        targets.push(`[data-${n.name.getText(sourceFile)}]`);
+      }
+    }
+    import_typescript42.default.forEachChild(n, visit);
   }
-  return patterns;
+  visit(node);
+  return targets;
 }
 function generateSummary5(handlers, issues, delegationPatterns) {
   const parts = [];
@@ -266727,7 +266790,9 @@ function generateSummary5(handlers, issues, delegationPatterns) {
     eventCounts.set(handler.event, (eventCounts.get(handler.event) || 0) + 1);
   }
   const eventSummary = Array.from(eventCounts.entries()).map(([event, count]) => `${count} ${event}`).join(", ");
-  parts.push(`Found ${handlers.length} event handler${handlers.length !== 1 ? "s" : ""} (${eventSummary}).`);
+  parts.push(
+    `Found ${handlers.length} event handler${handlers.length !== 1 ? "s" : ""} (${eventSummary}).`
+  );
   const stopPropCount = handlers.filter((h) => h.stops_propagation).length;
   const preventDefaultCount = handlers.filter((h) => h.prevents_default).length;
   if (stopPropCount > 0 || preventDefaultCount > 0) {
@@ -266746,49 +266811,209 @@ function generateSummary5(handlers, issues, delegationPatterns) {
     );
     const a11yIssues = issues.filter((i) => i.issue === "missing_keyboard_alternative");
     if (criticalIssues.length > 0) {
-      parts.push(`${criticalIssues.length} potential event propagation issue${criticalIssues.length !== 1 ? "s" : ""} detected.`);
+      parts.push(
+        `${criticalIssues.length} potential event propagation issue${criticalIssues.length !== 1 ? "s" : ""} detected.`
+      );
     }
     if (a11yIssues.length > 0) {
-      parts.push(`${a11yIssues.length} accessibility concern${a11yIssues.length !== 1 ? "s" : ""} (missing keyboard alternatives).`);
+      parts.push(
+        `${a11yIssues.length} accessibility concern${a11yIssues.length !== 1 ? "s" : ""} (missing keyboard alternatives).`
+      );
     }
   } else {
     parts.push("No significant issues detected.");
   }
   if (delegationPatterns.length > 0) {
-    parts.push(`${delegationPatterns.length} event delegation pattern${delegationPatterns.length !== 1 ? "s" : ""} found.`);
+    parts.push(
+      `${delegationPatterns.length} event delegation pattern${delegationPatterns.length !== 1 ? "s" : ""} found.`
+    );
   }
   return parts.join(" ");
 }
-function findReactComponent(sourceFile) {
-  let componentNode = null;
-  function containsJsxReturn4(node) {
-    let hasJsx = false;
-    function visit2(n) {
-      if (hasJsx) return;
-      if (import_typescript26.default.isJsxElement(n) || import_typescript26.default.isJsxSelfClosingElement(n) || import_typescript26.default.isJsxFragment(n)) {
-        hasJsx = true;
+
+// src/handlers/frontend/event-flow-core.ts
+var import_typescript43 = __toESM(require_typescript(), 1);
+function getLineNumber7(node, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  return line + 1;
+}
+function getCodeSnippet3(node, sourceFile, maxLength = 60) {
+  const text = node.getText(sourceFile).replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? text.substring(0, maxLength - 3) + "..." : text;
+}
+function containsStopPropagation(node, sourceFile) {
+  let found = false;
+  function visit(n) {
+    if (found) return;
+    if (import_typescript43.default.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+      if (callText.endsWith(".stopPropagation") || callText.endsWith(".stopImmediatePropagation") || callText === "stopPropagation") {
+        found = true;
         return;
       }
-      import_typescript26.default.forEachChild(n, visit2);
     }
-    visit2(node);
-    return hasJsx;
+    import_typescript43.default.forEachChild(n, visit);
   }
+  visit(node);
+  return found;
+}
+function containsPreventDefault(node, sourceFile) {
+  let found = false;
+  function visit(n) {
+    if (found) return;
+    if (import_typescript43.default.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+      if (callText.endsWith(".preventDefault") || callText === "preventDefault") {
+        found = true;
+        return;
+      }
+    }
+    import_typescript43.default.forEachChild(n, visit);
+  }
+  visit(node);
+  return found;
+}
+function resolveHandlerBody(handlerExpr, sourceFile) {
+  if (import_typescript43.default.isArrowFunction(handlerExpr) || import_typescript43.default.isFunctionExpression(handlerExpr)) {
+    return handlerExpr.body;
+  }
+  if (import_typescript43.default.isIdentifier(handlerExpr)) {
+    let findHandler2 = function(node) {
+      if (foundBody) return;
+      if (import_typescript43.default.isFunctionDeclaration(node) && node.name?.getText(sourceFile) === handlerName && node.body) {
+        foundBody = node.body;
+        return;
+      }
+      if (import_typescript43.default.isVariableStatement(node)) {
+        for (const decl of node.declarationList.declarations) {
+          if (import_typescript43.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === handlerName) {
+            if (decl.initializer) {
+              if (import_typescript43.default.isArrowFunction(decl.initializer) || import_typescript43.default.isFunctionExpression(decl.initializer)) {
+                foundBody = decl.initializer.body;
+                return;
+              }
+            }
+          }
+        }
+      }
+      import_typescript43.default.forEachChild(node, findHandler2);
+    };
+    var findHandler = findHandler2;
+    const handlerName = handlerExpr.getText(sourceFile);
+    let foundBody = null;
+    findHandler2(sourceFile);
+    return foundBody;
+  }
+  return null;
+}
+function extractEventHandlers(componentNode, sourceFile, eventFilter) {
+  const handlers = [];
+  const rootNode = {
+    element: "root",
+    parent: null,
+    children: [],
+    handlers: [],
+    line: 0,
+    depth: 0
+  };
+  let currentParent = rootNode;
+  function visit(node, depth) {
+    if (import_typescript43.default.isJsxOpeningElement(node) || import_typescript43.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      const line = getLineNumber7(node, sourceFile);
+      const componentNode2 = {
+        element: tagName,
+        parent: currentParent,
+        children: [],
+        handlers: [],
+        line,
+        depth
+      };
+      currentParent.children.push(componentNode2);
+      for (const attr of node.attributes.properties) {
+        if (import_typescript43.default.isJsxAttribute(attr) && attr.name && attr.initializer) {
+          const attrName = attr.name.getText(sourceFile);
+          const eventType = EVENT_PROPS[attrName];
+          if (eventType) {
+            if (eventFilter && eventType !== eventFilter.toLowerCase()) {
+              continue;
+            }
+            let handlerName = attrName;
+            let stopsPropagation = false;
+            let preventsDefault = false;
+            if (import_typescript43.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+              const expr = attr.initializer.expression;
+              handlerName = getCodeSnippet3(expr, sourceFile);
+              const handlerBody = resolveHandlerBody(expr, sourceFile);
+              if (handlerBody) {
+                stopsPropagation = containsStopPropagation(handlerBody, sourceFile);
+                preventsDefault = containsPreventDefault(handlerBody, sourceFile);
+              } else {
+                stopsPropagation = containsStopPropagation(expr, sourceFile);
+                preventsDefault = containsPreventDefault(expr, sourceFile);
+              }
+            }
+            const handler = {
+              element: tagName,
+              event: eventType,
+              handler: handlerName,
+              line,
+              stops_propagation: stopsPropagation,
+              prevents_default: preventsDefault
+            };
+            handlers.push(handler);
+            componentNode2.handlers.push(handler);
+          }
+        }
+      }
+      if (import_typescript43.default.isJsxOpeningElement(node)) {
+        const prevParent = currentParent;
+        currentParent = componentNode2;
+        const parent = node.parent;
+        if (import_typescript43.default.isJsxElement(parent)) {
+          for (const child of parent.children) {
+            visit(child, depth + 1);
+          }
+        }
+        currentParent = prevParent;
+        return;
+      }
+    }
+    import_typescript43.default.forEachChild(node, (child) => visit(child, depth));
+  }
+  visit(componentNode, 0);
+  return { handlers, tree: rootNode };
+}
+function containsJsxReturn4(node) {
+  let hasJsx = false;
+  function visit(n) {
+    if (hasJsx) return;
+    if (import_typescript43.default.isJsxElement(n) || import_typescript43.default.isJsxSelfClosingElement(n) || import_typescript43.default.isJsxFragment(n)) {
+      hasJsx = true;
+      return;
+    }
+    import_typescript43.default.forEachChild(n, visit);
+  }
+  visit(node);
+  return hasJsx;
+}
+function findReactComponent(sourceFile) {
+  let componentNode = null;
   function visit(node) {
     if (componentNode) return;
-    if (import_typescript26.default.isFunctionDeclaration(node) && node.name) {
+    if (import_typescript43.default.isFunctionDeclaration(node) && node.name) {
       const name = node.name.getText(sourceFile);
       if (/^[A-Z]/.test(name) && containsJsxReturn4(node)) {
         componentNode = node;
         return;
       }
     }
-    if (import_typescript26.default.isVariableStatement(node)) {
+    if (import_typescript43.default.isVariableStatement(node)) {
       for (const decl of node.declarationList.declarations) {
-        if (import_typescript26.default.isIdentifier(decl.name) && decl.initializer) {
+        if (import_typescript43.default.isIdentifier(decl.name) && decl.initializer) {
           const name = decl.name.getText(sourceFile);
           if (/^[A-Z]/.test(name)) {
-            if (import_typescript26.default.isCallExpression(decl.initializer)) {
+            if (import_typescript43.default.isCallExpression(decl.initializer)) {
               const callText = decl.initializer.expression.getText(sourceFile);
               if ((callText === "memo" || callText === "React.memo") && decl.initializer.arguments.length > 0) {
                 const arg = decl.initializer.arguments[0];
@@ -266797,7 +267022,7 @@ function findReactComponent(sourceFile) {
                   return;
                 }
               }
-            } else if (import_typescript26.default.isArrowFunction(decl.initializer) || import_typescript26.default.isFunctionExpression(decl.initializer)) {
+            } else if (import_typescript43.default.isArrowFunction(decl.initializer) || import_typescript43.default.isFunctionExpression(decl.initializer)) {
               if (containsJsxReturn4(decl.initializer)) {
                 componentNode = decl.initializer;
                 return;
@@ -266807,40 +267032,99 @@ function findReactComponent(sourceFile) {
         }
       }
     }
-    import_typescript26.default.forEachChild(node, visit);
+    import_typescript43.default.forEachChild(node, visit);
   }
   visit(sourceFile);
   return componentNode;
 }
+function detectDelegationPatterns(handlers, sourceFile) {
+  const patterns = [];
+  function findDelegation(handler) {
+    let foundPattern = null;
+    function visit(node) {
+      if (foundPattern) return;
+      if (import_typescript43.default.isJsxOpeningElement(node) || import_typescript43.default.isJsxSelfClosingElement(node)) {
+        const line = getLineNumber7(node, sourceFile);
+        if (line === handler.line) {
+          for (const attr of node.attributes.properties) {
+            if (import_typescript43.default.isJsxAttribute(attr) && attr.initializer && import_typescript43.default.isJsxExpression(attr.initializer)) {
+              const expr = attr.initializer.expression;
+              if (expr) {
+                const handlerBody = resolveHandlerBody(expr, sourceFile);
+                const nodeToCheck = handlerBody || expr;
+                const delegateTargets = findDelegationTargets(nodeToCheck, sourceFile);
+                if (delegateTargets.length > 0) {
+                  foundPattern = {
+                    container: handler.element,
+                    delegates_for: delegateTargets,
+                    event: handler.event
+                  };
+                }
+              }
+            }
+          }
+        }
+      }
+      if (!foundPattern) {
+        import_typescript43.default.forEachChild(node, visit);
+      }
+    }
+    visit(sourceFile);
+    return foundPattern;
+  }
+  for (const handler of handlers) {
+    const pattern = findDelegation(handler);
+    if (pattern) {
+      patterns.push(pattern);
+    }
+  }
+  return patterns;
+}
+
+// src/handlers/frontend/analyze-event-flow.ts
+function createSuccessResponse17(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
+  };
+}
+function createErrorResponse17(message, context) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
+    isError: true
+  };
+}
+function makeRelativePath10(absolutePath, projectRoot) {
+  return normalizeFilePath8(path83.relative(projectRoot, absolutePath));
+}
 async function handleAnalyzeEventFlow(args) {
   const projectRoot = process.cwd();
   if (!args.file) {
-    return createErrorResponse19("file argument is required");
+    return createErrorResponse17("file argument is required");
   }
-  const filePath = path80.isAbsolute(args.file) ? args.file : path80.resolve(projectRoot, args.file);
+  const filePath = path83.isAbsolute(args.file) ? args.file : path83.resolve(projectRoot, args.file);
   if (!fs59.existsSync(filePath)) {
-    return createErrorResponse19(`File not found: ${args.file}`, { provided_path: args.file });
+    return createErrorResponse17(`File not found: ${args.file}`, { provided_path: args.file });
   }
-  const ext = path80.extname(filePath).toLowerCase();
+  const ext = path83.extname(filePath).toLowerCase();
   if (![".tsx", ".jsx", ".ts", ".js", ".vue", ".svelte"].includes(ext)) {
-    return createErrorResponse19(
+    return createErrorResponse17(
       "File must be a component file (.tsx, .jsx, .ts, .js, .vue, .svelte)",
       { provided_extension: ext }
     );
   }
   try {
     const content = fs59.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript26.default.createSourceFile(
+    const sourceFile = import_typescript44.default.createSourceFile(
       filePath,
       content,
-      import_typescript26.default.ScriptTarget.Latest,
+      import_typescript44.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" || ext === ".jsx" ? import_typescript26.default.ScriptKind.TSX : import_typescript26.default.ScriptKind.TS
+      ext === ".tsx" || ext === ".jsx" ? import_typescript44.default.ScriptKind.TSX : import_typescript44.default.ScriptKind.TS
     );
     const relativePath = makeRelativePath10(filePath, projectRoot);
     const componentNode = findReactComponent(sourceFile);
     if (!componentNode) {
-      return createSuccessResponse19({
+      return createSuccessResponse17({
         message: "No React component found in file",
         file: relativePath,
         handlers: [],
@@ -266850,14 +267134,10 @@ async function handleAnalyzeEventFlow(args) {
         summary: "No component found to analyze."
       });
     }
-    const { handlers, tree } = extractEventHandlers(
-      componentNode,
-      sourceFile,
-      args.event
-    );
+    const { handlers, tree } = extractEventHandlers(componentNode, sourceFile, args.event);
     if (handlers.length === 0) {
       const eventMsg = args.event ? ` for event type "${args.event}"` : "";
-      return createSuccessResponse19({
+      return createSuccessResponse17({
         file: relativePath,
         handlers: [],
         event_flows: {},
@@ -266878,145 +267158,368 @@ async function handleAnalyzeEventFlow(args) {
       delegation_patterns: delegationPatterns,
       summary
     };
-    return createSuccessResponse19(result);
+    return createSuccessResponse17(result);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : "Unknown error during analysis";
-    return createErrorResponse19(message, { file: args.file });
+    return createErrorResponse17(message, { file: args.file });
   }
 }
 
-// src/index.ts
-var TOOL_HANDLERS = {
-  // Search tools
+// src/handlers/registry.ts
+function noContext(handler) {
+  return (_ctx, args) => handler(args);
+}
+var searchHandlers = {
   search_skills: (ctx, args) => handleSearchSkills(ctx.skillsIndex, args),
   search_agents: (ctx, args) => handleSearchAgents(ctx.agentsIndex, args),
   search_tools: (ctx, args) => handleSearchTools(ctx.toolsIndex, args),
-  recommend_skills: (ctx, args) => handleRecommendSkills(ctx.skillsIndex, args),
-  // Content retrieval
-  get_skill_content: (_ctx, args) => handleGetSkillContent(args),
-  get_agent_content: (_ctx, args) => handleGetAgentContent(args),
+  recommend_skills: (ctx, args) => handleRecommendSkills(ctx.skillsIndex, args)
+};
+var contentHandlers = {
+  get_skill_content: noContext(handleGetSkillContent),
+  get_agent_content: noContext(handleGetAgentContent),
   skill_dependencies: (ctx, args) => handleSkillDependencies(
     ctx.skillsIndex,
     ctx.skillsRegistry,
     args
-  ),
-  // Context gathering
-  detect_stack: (_ctx, args) => handleDetectStack(args),
-  check_versions: (_ctx, args) => handleCheckVersions(args),
-  scan_patterns: (_ctx, args) => handleScanPatterns(args),
-  // Live data
-  fetch_docs: (_ctx, args) => handleFetchDocs(args),
-  generate_openapi: (_ctx, args) => handleGenerateOpenApi(args),
-  explain_codebase: (_ctx, args) => handleExplainCodebase(args),
-  get_schema: (_ctx, args) => handleGetSchema(args),
-  get_database_schema: (_ctx, args) => handleGetDatabaseSchema(args),
-  get_api_routes: (_ctx, args) => handleGetApiRoutes(args),
-  read_config: (_ctx, args) => handleReadConfig(args),
-  // Validation
-  validate_implementation: (_ctx, args) => handleValidateImplementation(args),
-  run_smoke_test: (_ctx, args) => handleRunSmokeTest(args),
-  check_types: (_ctx, args) => handleCheckTypes(args),
-  // Scaffolding
-  scaffold_project: (_ctx, args) => handleScaffoldProject(args),
-  list_templates: (_ctx, args) => handleListTemplates(args),
-  // Status and issues
+  )
+};
+var contextHandlers = {
+  detect_stack: noContext(handleDetectStack),
+  check_versions: noContext(handleCheckVersions),
+  scan_patterns: noContext(handleScanPatterns)
+};
+var docsHandlers = {
+  fetch_docs: noContext(handleFetchDocs),
+  generate_openapi: noContext(handleGenerateOpenApi),
+  explain_codebase: noContext(handleExplainCodebase)
+};
+var schemaHandlers = {
+  get_schema: noContext(handleGetSchema),
+  get_database_schema: noContext(handleGetDatabaseSchema),
+  get_api_routes: noContext(handleGetApiRoutes),
+  read_config: noContext(handleReadConfig)
+};
+var validationHandlers = {
+  validate_implementation: noContext(handleValidateImplementation),
+  run_smoke_test: noContext(handleRunSmokeTest),
+  check_types: noContext(handleCheckTypes)
+};
+var scaffoldingHandlers = {
+  scaffold_project: noContext(handleScaffoldProject),
+  list_templates: noContext(handleListTemplates)
+};
+var statusHandlers = {
   plugin_status: () => handlePluginStatus(),
-  project_issues: (_ctx, args) => handleProjectIssues(args),
+  project_issues: noContext(handleProjectIssues)
+};
+var lspHandlers = {
+  find_references: noContext(handleFindReferences),
+  go_to_definition: noContext(handleGoToDefinition),
+  get_implementations: noContext(handleGetImplementations),
+  rename_symbol: noContext(handleRenameSymbol),
+  get_code_actions: noContext(handleGetCodeActions),
+  apply_code_action: noContext(handleApplyCodeAction),
+  get_call_hierarchy: noContext(handleGetCallHierarchy),
+  get_type_hierarchy: noContext(handleGetTypeHierarchy),
+  get_document_symbols: noContext(handleGetDocumentSymbols),
+  get_symbol_info: noContext(handleGetSymbolInfo),
+  get_signature_help: noContext(handleGetSignatureHelp),
+  get_diagnostics: noContext(handleGetDiagnostics),
+  find_dead_code: noContext(handleFindDeadCode),
+  get_api_surface: noContext(handleGetApiSurface),
+  detect_breaking_changes: noContext(handleDetectBreakingChanges),
+  semantic_diff: noContext(handleSemanticDiff),
+  get_inlay_hints: noContext(handleGetInlayHints),
+  workspace_symbols: noContext(handleWorkspaceSymbols),
+  safe_delete_check: noContext(handleSafeDeleteCheck),
+  validate_edits_preview: noContext(handleValidateEditsPreview)
+};
+var depsHandlers = {
+  analyze_dependencies: noContext(handleAnalyzeDependencies),
+  find_circular_deps: noContext(handleFindCircularDeps)
+};
+var errorHandlers = {
+  parse_error_stack: noContext(handleParseErrorStack),
+  explain_type_error: noContext(handleExplainTypeError)
+};
+var testHandlers = {
+  find_tests_for_file: noContext(handleFindTestsForFile),
+  get_test_coverage: noContext(handleGetTestCoverage),
+  suggest_test_cases: noContext(handleSuggestTestCases)
+};
+var securityHandlers = {
+  scan_for_secrets: noContext(handleScanForSecrets),
+  check_permissions: noContext(handleCheckPermissions)
+};
+var projectHandlers = {
+  get_env_config: noContext(handleGetEnvConfig),
+  get_conventions: noContext(handleGetConventions)
+};
+var frameworkHandlers = {
+  get_react_component_tree: noContext(handleGetReactComponentTree),
+  get_prisma_operations: noContext(handleGetPrismaOperations)
+};
+var buildHandlers = {
+  analyze_bundle: noContext(handleAnalyzeBundle)
+};
+var processHandlers = {
+  start_dev_server: noContext(handleStartDevServer),
+  watch_for_errors: noContext(handleWatchForErrors),
+  health_monitor: noContext(handleHealthMonitor)
+};
+var runtimeHandlers = {
+  browser_automation: noContext(handleBrowserAutomation),
+  verify_runtime_behavior: noContext(handleVerifyRuntimeBehavior),
+  lighthouse_audit: noContext(handleLighthouseAudit),
+  visual_regression: noContext(handleVisualRegression)
+};
+var editHandlers = {
+  retry_with_learning: noContext(handleRetryWithLearning),
+  resolve_merge_conflict: noContext(handleResolveMergeConflict),
+  atomic_multi_edit: noContext(handleAtomicMultiEdit),
+  auto_rollback: noContext(handleAutoRollback),
+  validate_api_contract: noContext(handleValidateApiContract)
+};
+var analysisHandlers = {
+  profile_function: noContext(handleProfileFunction),
+  log_analyzer: noContext(handleLogAnalyzer),
+  generate_types: noContext(handleGenerateTypes),
+  identify_tech_debt: noContext(handleIdentifyTechDebt),
+  detect_memory_leaks: noContext(handleDetectMemoryLeaks)
+};
+var databaseHandlers = {
+  query_database: noContext(handleQueryDatabase)
+};
+var envHandlers = {
+  validate_env_complete: noContext(handleValidateEnvComplete)
+};
+var packageHandlers = {
+  upgrade_package: noContext(handleUpgradePackage)
+};
+var syncHandlers = {
+  sync_api_types: noContext(handleSyncApiTypes)
+};
+var fixtureHandlers = {
+  generate_fixture: noContext(handleGenerateFixture)
+};
+var gitHandlers = {
+  create_pull_request: noContext(handleCreatePullRequest)
+};
+var frontendHandlers = {
+  trace_component_state: noContext(handleTraceComponentState),
+  analyze_render_triggers: noContext(handleAnalyzeRenderTriggers),
+  analyze_responsive_breakpoints: noContext(handleAnalyzeResponsiveBreakpoints),
+  analyze_stacking_context: noContext(handleAnalyzeStackingContext),
+  analyze_layout_hierarchy: noContext(handleAnalyzeLayoutHierarchy),
+  diagnose_overflow: noContext(handleDiagnoseOverflow),
+  get_accessibility_tree: noContext(handleGetAccessibilityTree),
+  get_sizing_strategy: noContext(handleGetSizingStrategy),
+  analyze_event_flow: noContext(handleAnalyzeEventFlow),
+  analyze_tailwind_conflicts: noContext(handleAnalyzeTailwindConflicts)
+};
+var TOOL_HANDLERS = {
+  // Search tools (require Fuse.js indexes)
+  ...searchHandlers,
+  // Content retrieval
+  ...contentHandlers,
+  // Context gathering
+  ...contextHandlers,
+  // Documentation
+  ...docsHandlers,
+  // Schema parsing
+  ...schemaHandlers,
+  // Validation
+  ...validationHandlers,
+  // Scaffolding
+  ...scaffoldingHandlers,
+  // Status
+  ...statusHandlers,
   // LSP Tools
-  find_references: (_ctx, args) => handleFindReferences(args),
-  go_to_definition: (_ctx, args) => handleGoToDefinition(args),
-  get_implementations: (_ctx, args) => handleGetImplementations(args),
-  rename_symbol: (_ctx, args) => handleRenameSymbol(args),
-  get_code_actions: (_ctx, args) => handleGetCodeActions(args),
-  apply_code_action: (_ctx, args) => handleApplyCodeAction(args),
-  get_call_hierarchy: (_ctx, args) => handleGetCallHierarchy(args),
-  get_type_hierarchy: (_ctx, args) => handleGetTypeHierarchy(args),
-  get_document_symbols: (_ctx, args) => handleGetDocumentSymbols(args),
-  get_symbol_info: (_ctx, args) => handleGetSymbolInfo(args),
-  get_signature_help: (_ctx, args) => handleGetSignatureHelp(args),
-  get_diagnostics: (_ctx, args) => handleGetDiagnostics(args),
-  find_dead_code: (_ctx, args) => handleFindDeadCode(args),
-  get_api_surface: (_ctx, args) => handleGetApiSurface(args),
-  detect_breaking_changes: (_ctx, args) => handleDetectBreakingChanges(args),
-  semantic_diff: (_ctx, args) => handleSemanticDiff(args),
-  get_inlay_hints: (_ctx, args) => handleGetInlayHints(args),
-  workspace_symbols: (_ctx, args) => handleWorkspaceSymbols(args),
-  safe_delete_check: (_ctx, args) => handleSafeDeleteCheck(args),
-  validate_edits_preview: (_ctx, args) => handleValidateEditsPreview(args),
+  ...lspHandlers,
   // Dependency Analysis
-  analyze_dependencies: (_ctx, args) => handleAnalyzeDependencies(args),
-  find_circular_deps: (_ctx, args) => handleFindCircularDeps(args),
-  // Security
-  scan_for_secrets: (_ctx, args) => handleScanForSecrets(args),
-  check_permissions: (_ctx, args) => handleCheckPermissions(args),
-  // Build Tools
-  analyze_bundle: (_ctx, args) => handleAnalyzeBundle(args),
+  ...depsHandlers,
+  // Error Tools
+  ...errorHandlers,
   // Test Tools
-  find_tests_for_file: (_ctx, args) => handleFindTestsForFile(args),
-  get_test_coverage: (_ctx, args) => handleGetTestCoverage(args),
-  suggest_test_cases: (_ctx, args) => handleSuggestTestCases(args),
-  // Error Explanation
-  explain_type_error: (_ctx, args) => handleExplainTypeError(args),
-  // Error Stack Parsing
-  parse_error_stack: (_ctx, args) => handleParseErrorStack(args),
+  ...testHandlers,
+  // Security
+  ...securityHandlers,
   // Project Tools
-  get_env_config: (_ctx, args) => handleGetEnvConfig(args),
-  get_conventions: (_ctx, args) => handleGetConventions(args),
+  ...projectHandlers,
   // Framework Tools
-  get_react_component_tree: (_ctx, args) => handleGetReactComponentTree(args),
-  get_prisma_operations: (_ctx, args) => handleGetPrismaOperations(args),
+  ...frameworkHandlers,
+  // Build Tools
+  ...buildHandlers,
   // Process Management
-  start_dev_server: (_ctx, args) => handleStartDevServer(args),
-  watch_for_errors: (_ctx, args) => handleWatchForErrors(args),
-  health_monitor: (_ctx, args) => handleHealthMonitor(args),
+  ...processHandlers,
   // Runtime Tools
-  browser_automation: (_ctx, args) => handleBrowserAutomation(args),
-  verify_runtime_behavior: (_ctx, args) => handleVerifyRuntimeBehavior(args),
-  lighthouse_audit: (_ctx, args) => handleLighthouseAudit(args),
-  visual_regression: (_ctx, args) => handleVisualRegression(args),
+  ...runtimeHandlers,
   // Edit Tools
-  retry_with_learning: (_ctx, args) => handleRetryWithLearning(args),
-  resolve_merge_conflict: (_ctx, args) => handleResolveMergeConflict(args),
-  atomic_multi_edit: (_ctx, args) => handleAtomicMultiEdit(args),
-  auto_rollback: (_ctx, args) => handleAutoRollback(args),
-  // API Contract Validation
-  validate_api_contract: (_ctx, args) => handleValidateApiContract(args),
+  ...editHandlers,
   // Analysis Tools
-  profile_function: (_ctx, args) => handleProfileFunction(args),
-  log_analyzer: (_ctx, args) => handleLogAnalyzer(args),
-  generate_types: (_ctx, args) => handleGenerateTypes(args),
-  identify_tech_debt: (_ctx, args) => handleIdentifyTechDebt(args),
-  detect_memory_leaks: (_ctx, args) => handleDetectMemoryLeaks(args),
+  ...analysisHandlers,
   // Database Tools
-  query_database: (_ctx, args) => handleQueryDatabase(args),
+  ...databaseHandlers,
   // Environment Validation
-  validate_env_complete: (_ctx, args) => handleValidateEnvComplete(args),
+  ...envHandlers,
   // Package Management
-  upgrade_package: (_ctx, args) => handleUpgradePackage(args),
-  // Fixture Generation
-  generate_fixture: (_ctx, args) => handleGenerateFixture(args),
+  ...packageHandlers,
   // Sync Tools
-  sync_api_types: (_ctx, args) => handleSyncApiTypes(args),
+  ...syncHandlers,
+  // Fixture Generation
+  ...fixtureHandlers,
   // Git Tools
-  create_pull_request: (_ctx, args) => handleCreatePullRequest(args),
-  // Frontend Analysis Tools
-  trace_component_state: (_ctx, args) => handleTraceComponentState(args),
-  analyze_responsive_breakpoints: (_ctx, args) => handleAnalyzeResponsiveBreakpoints(args),
-  analyze_stacking_context: (_ctx, args) => handleAnalyzeStackingContext(args),
-  analyze_render_triggers: (_ctx, args) => handleAnalyzeRenderTriggers(args),
-  diagnose_overflow: (_ctx, args) => handleDiagnoseOverflow(args),
-  analyze_layout_hierarchy: (_ctx, args) => handleAnalyzeLayoutHierarchy(args),
-  get_accessibility_tree: (_ctx, args) => handleGetAccessibilityTree(args),
-  get_sizing_strategy: (_ctx, args) => handleGetSizingStrategy(args),
-  analyze_event_flow: (_ctx, args) => handleAnalyzeEventFlow(args),
-  analyze_tailwind_conflicts: (_ctx, args) => handleAnalyzeTailwindConflicts(args)
+  ...gitHandlers,
+  // Frontend Analysis
+  ...frontendHandlers
+};
+
+// src/index.ts
+var LazyRegistryLoader = class {
+  _skillsIndex = null;
+  _agentsIndex = null;
+  _toolsIndex = null;
+  _skillsRegistry = null;
+  _skillsLoading = null;
+  _agentsLoading = null;
+  _toolsLoading = null;
+  _skillsLoaded = false;
+  _agentsLoaded = false;
+  _toolsLoaded = false;
+  /**
+   * Get skills index, loading it lazily if not already loaded.
+   */
+  async getSkillsIndex() {
+    if (!this._skillsLoaded) {
+      if (!this._skillsLoading) {
+        this._skillsLoading = this.loadSkills();
+      }
+      await this._skillsLoading;
+    }
+    return this._skillsIndex;
+  }
+  /**
+   * Get skills registry, loading it lazily if not already loaded.
+   */
+  async getSkillsRegistry() {
+    if (!this._skillsLoaded) {
+      if (!this._skillsLoading) {
+        this._skillsLoading = this.loadSkills();
+      }
+      await this._skillsLoading;
+    }
+    return this._skillsRegistry;
+  }
+  /**
+   * Get agents index, loading it lazily if not already loaded.
+   */
+  async getAgentsIndex() {
+    if (!this._agentsLoaded) {
+      if (!this._agentsLoading) {
+        this._agentsLoading = this.loadAgents();
+      }
+      await this._agentsLoading;
+    }
+    return this._agentsIndex;
+  }
+  /**
+   * Get tools index, loading it lazily if not already loaded.
+   */
+  async getToolsIndex() {
+    if (!this._toolsLoaded) {
+      if (!this._toolsLoading) {
+        this._toolsLoading = this.loadTools();
+      }
+      await this._toolsLoading;
+    }
+    return this._toolsIndex;
+  }
+  /**
+   * Preload all registries in parallel.
+   * Call this to warm up the cache if you want eager loading behavior.
+   * Useful if you know registries will be needed soon.
+   */
+  async preloadAll() {
+    await Promise.all([
+      this.getSkillsIndex(),
+      this.getAgentsIndex(),
+      this.getToolsIndex()
+    ]);
+  }
+  /**
+   * Check if a specific registry is loaded.
+   */
+  isLoaded(registry2) {
+    switch (registry2) {
+      case "skills":
+        return this._skillsLoaded;
+      case "agents":
+        return this._agentsLoaded;
+      case "tools":
+        return this._toolsLoaded;
+    }
+  }
+  /**
+   * Get a synchronous snapshot of current state (for backward compatibility).
+   * Returns null for any registries that haven't been loaded yet.
+   */
+  getSnapshot() {
+    return {
+      skillsIndex: this._skillsIndex,
+      agentsIndex: this._agentsIndex,
+      toolsIndex: this._toolsIndex,
+      skillsRegistry: this._skillsRegistry
+    };
+  }
+  /**
+   * Get handler context with all registries loaded.
+   * This ensures all registries are available before returning.
+   */
+  async getHandlerContext() {
+    await Promise.all([
+      this.getSkillsIndex(),
+      this.getAgentsIndex(),
+      this.getToolsIndex()
+    ]);
+    return {
+      skillsIndex: this._skillsIndex,
+      agentsIndex: this._agentsIndex,
+      toolsIndex: this._toolsIndex,
+      skillsRegistry: this._skillsRegistry
+    };
+  }
+  async loadSkills() {
+    logInfo("Loading skills registry lazily");
+    this._skillsRegistry = await loadRegistry("skills/_registry.yaml");
+    this._skillsIndex = createIndex2(this._skillsRegistry);
+    this._skillsLoaded = true;
+    logInfo("Skills index loaded", {
+      entries: this._skillsRegistry?.search_index?.length || 0
+    });
+  }
+  async loadAgents() {
+    logInfo("Loading agents registry lazily");
+    const agentsRegistry = await loadRegistry("agents/_registry.yaml");
+    this._agentsIndex = createIndex2(agentsRegistry);
+    this._agentsLoaded = true;
+    logInfo("Agents index loaded", {
+      entries: agentsRegistry?.search_index?.length || 0
+    });
+  }
+  async loadTools() {
+    logInfo("Loading tools registry lazily");
+    const toolsRegistry = await loadRegistry("tools/_registry.yaml");
+    this._toolsIndex = createIndex2(toolsRegistry);
+    this._toolsLoaded = true;
+    logInfo("Tools index loaded", {
+      entries: toolsRegistry?.search_index?.length || 0
+    });
+  }
 };
 var GoodVibesServer = class {
   server;
-  skillsIndex = null;
-  agentsIndex = null;
-  toolsIndex = null;
-  skillsRegistry = null;
+  registryLoader;
   constructor() {
     this.server = new Server(
       {
@@ -267029,39 +267532,30 @@ var GoodVibesServer = class {
         }
       }
     );
+    this.registryLoader = new LazyRegistryLoader();
     this.setupHandlers();
   }
   /**
-   * Initialize search indexes
+   * Initialize search indexes (now optional - can be used for eager loading).
+   * By default, indexes are loaded lazily on first access.
+   *
+   * Set GOODVIBES_EAGER_LOAD=true to preload all registries at startup.
    */
   async initializeIndexes() {
-    logInfo("Initializing indexes from", PLUGIN_ROOT);
-    this.skillsRegistry = await loadRegistry("skills/_registry.yaml");
-    this.skillsIndex = createIndex2(this.skillsRegistry);
-    logInfo("Skills index loaded", {
-      entries: this.skillsRegistry?.search_index?.length || 0
-    });
-    const agentsRegistry = await loadRegistry("agents/_registry.yaml");
-    this.agentsIndex = createIndex2(agentsRegistry);
-    logInfo("Agents index loaded", {
-      entries: agentsRegistry?.search_index?.length || 0
-    });
-    const toolsRegistry = await loadRegistry("tools/_registry.yaml");
-    this.toolsIndex = createIndex2(toolsRegistry);
-    logInfo("Tools index loaded", {
-      entries: toolsRegistry?.search_index?.length || 0
-    });
+    const eagerLoad = process.env.GOODVIBES_EAGER_LOAD === "true";
+    if (eagerLoad) {
+      logInfo("Eager loading indexes from", PLUGIN_ROOT);
+      await this.registryLoader.preloadAll();
+    } else {
+      logInfo("Lazy loading enabled - indexes will be loaded on first access", { plugin_root: PLUGIN_ROOT });
+    }
   }
   /**
-   * Build handler context from current instance state
+   * Build handler context with lazy-loaded registries.
+   * Loads required registries on-demand.
    */
-  getHandlerContext() {
-    return {
-      skillsIndex: this.skillsIndex,
-      agentsIndex: this.agentsIndex,
-      toolsIndex: this.toolsIndex,
-      skillsRegistry: this.skillsRegistry
-    };
+  async getHandlerContext() {
+    return this.registryLoader.getHandlerContext();
   }
   /**
    * Setup request handlers
@@ -267077,10 +267571,8 @@ var GoodVibesServer = class {
         if (!handler) {
           throw new Error(`Unknown tool: ${name}`);
         }
-        const result = await handler(
-          this.getHandlerContext(),
-          args
-        );
+        const ctx = await this.getHandlerContext();
+        const result = await handler(ctx, args);
         return result;
       } catch (error3) {
         const message = error3 instanceof Error ? error3.message : "Unknown error";

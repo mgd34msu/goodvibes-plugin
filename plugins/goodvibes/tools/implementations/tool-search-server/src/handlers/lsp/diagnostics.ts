@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { languageServiceManager } from './language-service.js';
-import { PROJECT_ROOT } from '../../config.js';
+import { getProjectRoot } from '../../config.js';
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -231,7 +231,7 @@ function getFixesForDiagnostic(
           );
 
           edits.push({
-            file: makeRelativePath(change.fileName, PROJECT_ROOT),
+            file: makeRelativePath(change.fileName, getProjectRoot()),
             line: start.line,
             column: start.column,
             end_line: end.line,
@@ -292,7 +292,7 @@ function processDiagnostics(
     const fixes = getFixesForDiagnostic(service, filePath, diagnostic);
 
     results.push({
-      file: makeRelativePath(filePath, PROJECT_ROOT),
+      file: makeRelativePath(filePath, getProjectRoot()),
       line: start.line,
       column: start.column,
       end_line: end.line,
@@ -333,7 +333,7 @@ export async function handleGetDiagnostics(args: GetDiagnosticsArgs): Promise<To
 
     if (args.file) {
       // Single file mode
-      const filePath = resolveFilePath(args.file, PROJECT_ROOT);
+      const filePath = resolveFilePath(args.file, getProjectRoot());
 
       if (!fs.existsSync(filePath)) {
         return createErrorResponse(`File not found: ${args.file}`, {
@@ -358,7 +358,7 @@ export async function handleGetDiagnostics(args: GetDiagnosticsArgs): Promise<To
       allDiagnostics.push(...diagnostics);
     } else {
       // Project-wide mode: find all source files
-      const sourceFiles = findSourceFiles(PROJECT_ROOT);
+      const sourceFiles = findSourceFiles(getProjectRoot());
 
       if (sourceFiles.length === 0) {
         return createSuccessResponse({

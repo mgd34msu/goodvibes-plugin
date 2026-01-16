@@ -7,9 +7,12 @@
  * @module handlers/smoke-test
  */
 
-import { ToolResponse } from '../types.js';
 import { PROJECT_ROOT } from '../config.js';
 import { safeExec, detectPackageManager } from '../utils.js';
+import {
+  createSuccessResponse,
+  type ToolResponse,
+} from './response-utils.js';
 
 /**
  * Arguments for the run_smoke_test MCP tool
@@ -115,19 +118,14 @@ export async function handleRunSmokeTest(args: RunSmokeTestArgs): Promise<ToolRe
   const passed = tests.filter(t => t.passed).length;
   const failed = tests.filter(t => !t.passed).length;
 
-  return {
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        passed: failed === 0,
-        tests,
-        summary: {
-          total: tests.length,
-          passed,
-          failed,
-          duration_ms: tests.reduce((sum, t) => sum + t.duration_ms, 0),
-        },
-      }, null, 2),
-    }],
-  };
+  return createSuccessResponse({
+    passed: failed === 0,
+    tests,
+    summary: {
+      total: tests.length,
+      passed,
+      failed,
+      duration_ms: tests.reduce((sum, t) => sum + t.duration_ms, 0),
+    },
+  });
 }
