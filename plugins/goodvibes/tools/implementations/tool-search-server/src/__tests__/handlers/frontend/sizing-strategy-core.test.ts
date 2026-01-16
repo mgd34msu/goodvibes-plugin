@@ -606,13 +606,63 @@ describe('sizing-strategy-core', () => {
         const sourceFile = createSourceFile(code);
         const root = findRootJsx(sourceFile)!;
 
-        const node = parseJsxTree(root, sourceFile, undefined, '.target');
-        expect(node).not.toBeNull();
-        expect(node!.tagName).toBe('span');
-      });
-    });
-
-    describe('getAllElements edge cases', () => {
+              const node = parseJsxTree(root, sourceFile, undefined, '.target');
+              expect(node).not.toBeNull();
+              expect(node!.tagName).toBe('span');
+            });
+        
+                it('covers child returning null in parseJsxTree (line 219)', () => {
+                  const code = `const C = () => <div className="target">Text child</div>`;
+                  const sourceFile = createSourceFile(code);
+                  const root = findRootJsx(sourceFile)!;
+            
+                  const node = parseJsxTree(root, sourceFile, undefined, '.target');              expect(node).not.toBeNull();
+                    // Text child is skipped, so children length should be 0
+                    expect(node!.children.length).toBe(0);
+                  });
+              
+                  it('covers JSX expression returning null in search (line 265)', () => {
+                    const code = `const C = () => <div>{null}</div>`;
+                    const sourceFile = createSourceFile(code);
+                    const root = findRootJsx(sourceFile)!;
+              
+                    const node = parseJsxTree(root, sourceFile, undefined, '.target');
+                    expect(node).toBeNull();
+                  });
+              
+                  it('covers recursion into other nodes in parseJsxTree (lines 274-278)', () => {
+                    // Test recursion by passing a SourceFile containing a function containing JSX
+                    const code = `function App() { return <div className="target" />; }`;
+                    const sourceFile = createSourceFile(code);
+                    
+                    const node = parseJsxTree(sourceFile, sourceFile, undefined, '.target');
+                    expect(node).not.toBeNull();
+                    expect(node!.tagName).toBe('div');
+                  });
+                });
+              
+                describe('findRootJsx variants (lines 370-377)', () => {
+                  it('finds JSX in parenthesized return', () => {
+                    const code = `function App() { return ( <div /> ); }`;
+                    const sourceFile = createSourceFile(code);
+                    const root = findRootJsx(sourceFile);
+                    expect(root).not.toBeNull();
+                  });
+              
+                  it('finds JSX in arrow function implicit return', () => {
+                    const code = `const App = () => <div />;`;
+                    const sourceFile = createSourceFile(code);
+                    const root = findRootJsx(sourceFile);
+                    expect(root).not.toBeNull();
+                  });
+              
+                  it('finds JSX in arrow function with parenthesized body', () => {
+                    const code = `const App = () => ( <div /> );`;
+                    const sourceFile = createSourceFile(code);
+                    const root = findRootJsx(sourceFile);
+                    expect(root).not.toBeNull();
+                  });
+                });    describe('getAllElements edge cases', () => {
       it('handles JSX expression in getAllElements (lines 438-441)', () => {
         const code = `const C = () => <div>{condition && <span className="expr" />}</div>`;
         const sourceFile = createSourceFile(code);

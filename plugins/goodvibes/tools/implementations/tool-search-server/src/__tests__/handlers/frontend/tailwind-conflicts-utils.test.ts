@@ -503,9 +503,12 @@ describe('tailwind-conflicts-utils', () => {
         expect(getCategory('rounded-t-[5px]')).toBe('border-radius');
       });
 
-      it('should return null for arbitrary values with unknown prefix', () => {
-        expect(getCategory('unknown-pref-[10px]')).toBeNull();
-      });
-    });
-  });
-});
+          it('should return null for arbitrary values with unknown prefix', () => {
+            expect(getCategory('unknown-pref-[10px]')).toBeNull();
+          });
+      
+          it('should return null for completely unrecognized class (line 519)', () => {
+            expect(getCategory('not-a-tailwind-class')).toBeNull();
+          });
+        });
+      });});

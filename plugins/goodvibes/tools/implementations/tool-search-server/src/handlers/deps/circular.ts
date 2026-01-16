@@ -279,16 +279,27 @@ enum Color {
 }
 
 /**
+ * Options for the findCycles function.
+ * @internal Used for testing
+ */
+export interface FindCyclesOptions {
+  /** Custom extractCycle function for testing */
+  extractCycleFn?: typeof extractCycle;
+}
+
+/**
  * Finds all cycles in the import graph using depth-first search.
  *
  * Uses a three-color algorithm (WHITE, GRAY, BLACK) to detect back edges.
  * Deduplicates cycles using canonical signatures.
  *
  * @param graph - Import graph (file -> imported files)
+ * @param options - Optional configuration for testing
  * @returns Array of unique cycles found in the graph
  * @internal Exported for testing
  */
-export function findCycles(graph: Map<string, string[]>): Cycle[] {
+export function findCycles(graph: Map<string, string[]>, options?: FindCyclesOptions): Cycle[] {
+  const extractCycleFn = options?.extractCycleFn ?? extractCycle;
   const cycles: Cycle[] = [];
   const color = new Map<string, Color>();
   const parent = new Map<string, string>();
@@ -320,7 +331,7 @@ export function findCycles(graph: Map<string, string[]>): Cycle[] {
         dfs(neighbor, stack);
       } else if (neighborColor === Color.GRAY) {
         // Found a back edge - we have a cycle
-        const cycle = extractCycle(stack, neighbor);
+        const cycle = extractCycleFn(stack, neighbor);
         if (cycle) {
           // Create a canonical signature to avoid duplicate cycles
           const signature = createCycleSignature(cycle);
@@ -374,8 +385,9 @@ export function extractCycle(stack: string[], cycleStart: string): string[] | nu
  *
  * @param cycle - Array of file paths forming the cycle
  * @returns Canonical string signature for deduplication
+ * @internal Exported for testing
  */
-function createCycleSignature(cycle: string[]): string {
+export function createCycleSignature(cycle: string[]): string {
   if (cycle.length === 0) return '';
 
   // Find the minimum element

@@ -132,6 +132,16 @@ line3`;
       expect(classes).toContain('active');
     });
 
+    it('should extract from property assignment with identifier (line 74)', () => {
+      const code = `<div className={cn({ flex: isFlex })} />`;
+      const sourceFile = createSourceFile(code);
+      const attr = findFirstAttribute(sourceFile, 'className')!;
+
+      const classes = extractClassesFromAttribute(attr, sourceFile);
+
+      expect(classes).toContain('flex');
+    });
+
     it('should return empty for no initializer', () => {
       const code = `<input disabled />`;
       const sourceFile = createSourceFile(code);
@@ -178,6 +188,15 @@ line3`;
       const raw = getRawClassName(attr, sourceFile);
       expect(raw).toContain('cn');
       expect(raw).toContain('flex');
+    });
+
+    it('should return source text for very complex expression (line 110)', () => {
+      const code = `<div className={isActive ? "a" : "b"} />`;
+      const sourceFile = createSourceFile(code);
+      const attr = findFirstAttribute(sourceFile, 'className')!;
+
+      const raw = getRawClassName(attr, sourceFile);
+      expect(raw).toBe('isActive ? "a" : "b"');
     });
 
     it('should return empty for no initializer', () => {

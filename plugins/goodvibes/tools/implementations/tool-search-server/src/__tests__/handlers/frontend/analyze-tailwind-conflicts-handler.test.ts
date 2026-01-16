@@ -322,6 +322,7 @@ describe('handleAnalyzeTailwindConflicts', () => {
 
       const parsed = JSON.parse(response.content[0].text);
       expect(parsed.specificity_issues.length).toBeGreaterThan(0);
+      expect(parsed.summary).toContain('specificity issues');
     });
   });
 

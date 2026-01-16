@@ -1561,6 +1561,335 @@ describe('handleIdentifyTechDebt', () => {
   });
 
   // ===========================================================================
+  // Additional Branch Coverage Tests
+  // ===========================================================================
+
+  describe('additional branch coverage', () => {
+    describe('scoreTodos branches (lines 210-211)', () => {
+      it('should score 50 for weighted TODO count 16-30', async () => {
+        // Need weighted count between 15 and 30
+        // 10 high priority = 10 * 3 = 30, but need 16-30 weighted
+        // 6 high priority = 6 * 3 = 18 weighted -> score 50
+        vi.mocked(scanDirectory).mockImplementation((dir, baseDir, items) => {
+          for (let i = 0; i < 6; i++) {
+            items.push({ type: 'FIXME', text: `Critical ${i}`, file: 'a.ts', line: i, priority: 'high' });
+          }
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['todos'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        // 6 high priority = 6*3 = 18 weighted, score = 50 (for 15 < weighted <= 30)
+        expect(call.breakdown.todos?.score).toBe(50);
+      });
+
+      it('should score 70 for weighted TODO count 31-60', async () => {
+        // Need weighted count between 30 and 60
+        // 15 high priority = 15 * 3 = 45 weighted -> score 70
+        vi.mocked(scanDirectory).mockImplementation((dir, baseDir, items) => {
+          for (let i = 0; i < 15; i++) {
+            items.push({ type: 'FIXME', text: `Critical ${i}`, file: 'a.ts', line: i, priority: 'high' });
+          }
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['todos'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        // 15 high priority = 15*3 = 45 weighted, score = 70 (for 30 < weighted <= 60)
+        expect(call.breakdown.todos?.score).toBe(70);
+      });
+    });
+
+    describe('fallback defaults in helper functions (lines 244, 261, 278)', () => {
+      it('should use default severity, effort, and recommendation for unknown issue type via security findings', async () => {
+        // The security analysis constructs issue types as `security_${finding.severity}`
+        // By providing an unknown severity like 'critical' or 'unknown', we trigger the fallback
+        vi.mocked(handleScanForSecrets).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              findings: [
+                {
+                  file: 'secret.ts',
+                  line: 42,
+                  secret_type: 'unknown_secret',
+                  severity: 'unknown_severity', // This creates type 'security_unknown_severity' which is not in any map
+                  // recommendation is undefined so it will call getRecommendation
+                },
+              ],
+              by_severity: { high: 0, medium: 0, low: 0 },
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['security'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        const issue = call.prioritized_issues[0];
+
+        // All three fallbacks should be hit:
+        // - getIssueSeverity('security_unknown_severity') returns 'medium' (default)
+        // - estimateEffort('security_unknown_severity') returns 'medium' (default)
+        // - getRecommendation('security_unknown_severity') returns default message
+        expect(issue.severity).toBe('medium');
+        expect(issue.effort).toBe('medium');
+        expect(issue.recommendation).toBe('Review and address this technical debt.');
+      });
+    });
+
+    describe('undefined fallbacks in analysis functions', () => {
+      it('should handle undefined dead_exports array (line 321)', async () => {
+        vi.mocked(handleFindDeadCode).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              count: 5,
+              // dead_exports is undefined
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['dead_code'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        expect(call.breakdown.dead_code?.count).toBe(5);
+        expect(call.prioritized_issues.length).toBe(0);
+      });
+
+      it('should handle undefined cycles array (line 350)', async () => {
+        vi.mocked(handleFindCircularDeps).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              count: 3,
+              // cycles is undefined
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['circular_deps'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        expect(call.breakdown.circular_deps?.count).toBe(3);
+        expect(call.prioritized_issues.length).toBe(0);
+      });
+
+      it('should handle cycle with path length > 3 (line 356)', async () => {
+        vi.mocked(handleFindCircularDeps).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              count: 1,
+              cycles: [{
+                path: ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts'],
+                length: 5,
+              }],
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['circular_deps'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        const issue = call.prioritized_issues[0];
+        expect(issue.description).toContain('...');
+      });
+
+      it('should handle undefined findings array (line 379)', async () => {
+        vi.mocked(handleScanForSecrets).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              // findings is undefined
+              by_severity: { high: 1, medium: 0, low: 0 },
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['security'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        expect(call.breakdown.security_issues?.high).toBe(1);
+        expect(call.prioritized_issues.length).toBe(0);
+      });
+
+      it('should handle undefined by_severity object (line 380)', async () => {
+        vi.mocked(handleScanForSecrets).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              findings: [{ file: 'a.ts', line: 1, secret_type: 'api_key', severity: 'high' }],
+              // by_severity is undefined
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['security'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        // by_severity defaults to { high: 0, medium: 0, low: 0 }
+        expect(call.breakdown.security_issues?.high).toBe(0);
+        expect(call.prioritized_issues.length).toBe(1);
+      });
+
+      it('should handle undefined coverage object (line 418)', async () => {
+        vi.mocked(handleGetTestCoverage).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              // coverage is undefined
+              uncovered_functions: [],
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['coverage'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        // coverage defaults to { lines: 0 }, so uncovered_percent = 100
+        expect(call.breakdown.coverage_gaps?.uncovered_percent).toBe(100);
+      });
+
+      it('should handle undefined uncovered_functions array (line 423)', async () => {
+        vi.mocked(handleGetTestCoverage).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              coverage: { lines: 75 },
+              // uncovered_functions is undefined
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['coverage'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        expect(call.breakdown.coverage_gaps?.uncovered_percent).toBe(25);
+        expect(call.prioritized_issues.length).toBe(0);
+      });
+
+      it('should handle undefined errors array (line 452)', async () => {
+        vi.mocked(handleCheckTypes).mockResolvedValue({
+          isError: false,
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              // errors is undefined
+            }),
+          }],
+        });
+
+        const args: IdentifyTechDebtArgs = {
+          include: ['type_errors'],
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        expect(call.breakdown.type_errors?.count).toBe(0);
+        expect(call.prioritized_issues.length).toBe(0);
+      });
+    });
+
+    describe('error path with no path provided (line 584)', () => {
+      it('should return error with default path indicator when no path provided and PROJECT_ROOT does not exist', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        const args: IdentifyTechDebtArgs = {
+          // path is not provided
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        // When path is not provided and existsSync returns false,
+        // the error message uses args.path || '.' which is '.'
+        expect(createErrorResponse).toHaveBeenCalledWith(
+          expect.stringContaining('.')
+        );
+      });
+    });
+
+    describe('zero totalWeight edge case (lines 708-727)', () => {
+      it('should return score 0 when no categories are included', async () => {
+        const args: IdentifyTechDebtArgs = {
+          include: [], // Empty include array
+        };
+
+        await handleIdentifyTechDebt(args);
+
+        const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
+        // totalWeight = 0, so score = 0
+        expect(call.score).toBe(0);
+        expect(call.grade).toBe('A');
+      });
+    });
+
+    describe('top-level error handling (line 727)', () => {
+      it('should handle non-Error thrown values', async () => {
+        vi.mocked(fs.existsSync).mockImplementation(() => {
+          throw 'string error'; // Throw a string instead of Error
+        });
+
+        const args: IdentifyTechDebtArgs = {};
+
+        await handleIdentifyTechDebt(args);
+
+        expect(createErrorResponse).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to identify tech debt: string error')
+        );
+      });
+    });
+  });
+
+  // ===========================================================================
   // Weighted Score Calculation Tests
   // ===========================================================================
 

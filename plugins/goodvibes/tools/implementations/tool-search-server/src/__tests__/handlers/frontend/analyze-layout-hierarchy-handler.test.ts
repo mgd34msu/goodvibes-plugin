@@ -6,6 +6,15 @@ import * as os from 'os';
 
 import { handleAnalyzeLayoutHierarchy } from '../../../handlers/frontend/analyze-layout-hierarchy.js';
 
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    readFileSync: vi.fn(actual.readFileSync),
+    existsSync: vi.fn(actual.existsSync),
+  };
+});
+
 describe('handleAnalyzeLayoutHierarchy', () => {
   let tempDir: string;
 
@@ -115,5 +124,37 @@ export function App() {
 
     expect(result.isError).toBe(true);
     expect(data.error).toContain('File not found');
+  });
+
+  it('handles unexpected errors during analysis (line 186)', async () => {
+    const tsxFile = path.join(tempDir, 'error.tsx');
+    fs.writeFileSync(tsxFile, '<div />');
+
+    // Mock readFileSync to throw after existSync check
+    vi.mocked(fs.readFileSync).mockImplementationOnce(() => {
+      throw new Error('Unexpected read failure');
+    });
+
+    const result = await handleAnalyzeLayoutHierarchy({ file: tsxFile });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toBe('Unexpected read failure');
+  });
+
+  it('handles non-Error objects thrown in catch block (line 186)', async () => {
+    const tsxFile = path.join(tempDir, 'error-string.tsx');
+    fs.writeFileSync(tsxFile, '<div />');
+
+    // Mock readFileSync to throw a string instead of an Error object
+    vi.mocked(fs.readFileSync).mockImplementationOnce(() => {
+      throw 'Unknown string error';
+    });
+
+    const result = await handleAnalyzeLayoutHierarchy({ file: tsxFile });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toBe('Unknown error during analysis');
   });
 });

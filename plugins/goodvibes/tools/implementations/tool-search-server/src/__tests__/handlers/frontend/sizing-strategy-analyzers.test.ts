@@ -771,5 +771,55 @@ describe('sizing-strategy-analyzers', () => {
 
       expect(result).toContain('potential sizing issues');
     });
+
+    it('should generate grid determined summary (lines 453, 464)', () => {
+      const element = createElementNode({
+        parent: createElementNode({ display: 'grid' }),
+        gridColumn: 'span 2',
+        gridRow: '1 / 3',
+      });
+
+      const widthAnalysis = { specified: 'span 2', strategy: 'grid-controlled' };
+      const heightAnalysis = { specified: '1 / 3', strategy: 'grid-controlled' };
+
+      const summary = generateSummary(element, widthAnalysis, heightAnalysis);
+
+      expect(summary).toContain('Width is determined by grid column placement');
+      expect(summary).toContain('Height is determined by grid row placement');
+    });
+
+    it('should generate viewport height summary (line 466)', () => {
+      const element = createElementNode({
+        height: { strategy: 'viewport', value: '100vh', classes: ['h-screen'] },
+      });
+
+      const widthAnalysis = { specified: 'auto', strategy: 'auto' };
+      const heightAnalysis = { specified: 'h-screen', strategy: 'viewport' };
+
+      const summary = generateSummary(element, widthAnalysis, heightAnalysis);
+
+      expect(summary).toContain('Height is viewport-relative (100vh)');
+    });
+  });
+
+  describe('Extra Coverage Constraints', () => {
+    it('covers flex-basis constraint (line 196)', () => {
+      const element = createElementNode({
+        tagName: 'div',
+        flexBasis: '200px',
+        parent: createElementNode({ display: 'flex', flexDirection: 'column' }),
+      });
+
+      const analysis = analyzeHeightStrategy(element);
+      expect(analysis.constrained_by).toContain('flex-basis: 200px');
+    });
+
+    it('covers ancestor overflow-y hidden constraint (line 222)', () => {
+      const parent = createElementNode({ tagName: 'section', overflowY: 'hidden' });
+      const element = createElementNode({ tagName: 'div', parent });
+
+      const analysis = analyzeHeightStrategy(element);
+      expect(analysis.constrained_by?.some(c => c.includes('overflow-y: hidden'))).toBe(true);
+    });
   });
 });

@@ -1230,6 +1230,305 @@ src/utils.ts(20,10): error TS2339: Property 'foo' does not exist on type 'Bar'.`
     });
   });
 
+  describe('resolveFilePath branch coverage', () => {
+    test('handles relative file paths by resolving against PROJECT_ROOT', async () => {
+      // This test specifically targets line 177: the else branch where path.isAbsolute returns false
+      // and the path is resolved against PROJECT_ROOT
+
+      const relativeFilePath = 'src/test-relative.ts';
+
+      // Mock fileExists to return false for relative path (file doesn't exist)
+      mockFileExists.mockResolvedValue(false);
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: relativeFilePath, // Using relative path, not absolute
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // The edit should fail because file doesn't exist, but the relative path
+      // branch (line 177) is exercised
+      expect(result.isError).toBe(true);
+      expect(data.edits[0].success).toBe(false);
+      expect(data.edits[0].error).toContain('not found');
+    });
+  });
+
+  describe('runTypeCheck branch coverage', () => {
+    test('type check passes when tsc has output but no matching TS errors', async () => {
+      // This test targets lines 275-308: when tsc produces output but no errors match
+      // the regex pattern (e.g., warnings or informational messages)
+      const filePath = path.join(tempDir, 'typecheck-no-errors.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Mock tsc returning output that doesn't match the error regex pattern
+      // This exercises the branch where errors.length === 0 (line 275 is false)
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: 'Compilation complete. Watching for file changes.',
+        stderr: '',
+        error: null, // No error means tsc succeeded
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          type_check: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.validation?.type_check?.passed).toBe(true);
+    });
+
+    test('type check parses errors when regex matches in stderr', async () => {
+      // Test the case where errors come via stderr instead of stdout
+      const filePath = path.join(tempDir, 'typecheck-stderr.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '',
+        stderr: 'src/file.ts(5,10): error TS2345: Argument of type string is not assignable.',
+        error: 'type error',
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          type_check: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.type_check?.passed).toBe(false);
+      expect(data.validation?.type_check?.errors).toBeDefined();
+      expect(data.validation?.type_check?.errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('runLint branch coverage', () => {
+    test('ESLint uses stderr when stdout is empty (line 303 branch)', async () => {
+      // This test targets line 303: result.stdout || result.stderr || ''
+      // When stdout is empty but stderr has JSON output
+      const filePath = path.join(tempDir, 'lint-stderr.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '', // Empty stdout
+        stderr: JSON.stringify([
+          {
+            filePath: filePath,
+            messages: [
+              {
+                line: 1,
+                column: 7,
+                severity: 2,
+                ruleId: 'no-unused-vars',
+                message: 'x is unused',
+              },
+            ],
+          },
+        ]),
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(false);
+    });
+
+    test('ESLint handles fileResult with undefined messages (line 308 branch)', async () => {
+      // This test targets line 308: fileResult.messages || []
+      // When a fileResult has no messages property
+      const filePath = path.join(tempDir, 'lint-no-messages.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: JSON.stringify([
+          {
+            filePath: filePath,
+            // messages property is missing/undefined
+          },
+        ]),
+        stderr: '',
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should pass because no errors were found (messages was undefined/empty)
+      expect(data.success).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(true);
+    });
+
+    test('ESLint uses empty string when both stdout and stderr are empty (line 303 fallback)', async () => {
+      // This test targets line 303: the final || '' fallback
+      const filePath = path.join(tempDir, 'lint-empty-output.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      mockSafeExec.mockResolvedValueOnce({
+        stdout: '', // Empty
+        stderr: '', // Also empty
+        error: null,
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        validate: {
+          lint: true,
+        },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // JSON.parse('') will throw, so it falls through to catch block
+      // Since error is null, it returns { passed: true }
+      expect(data.success).toBe(true);
+      expect(data.validation?.lint?.passed).toBe(true);
+    });
+  });
+
+  describe('backupDir cleanup branch coverage', () => {
+    test('dry run cleans up backup directory (line 517)', async () => {
+      // This test ensures the backupDir cleanup branch at line 517 is exercised
+      // In dry_run mode, backupDir is created but should be cleaned up
+      const filePath = path.join(tempDir, 'dry-run-cleanup.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+        dry_run: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.applied).toBe(false);
+      // backup_paths should be undefined after cleanup
+      expect(data.backup_paths).toBeUndefined();
+    });
+
+    test('success path cleans up backup directory (line 611)', async () => {
+      // This test ensures the backupDir cleanup branch at line 611 is exercised
+      // On successful edit without validation, backupDir should be cleaned up
+      const filePath = path.join(tempDir, 'success-cleanup.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.success).toBe(true);
+      expect(data.applied).toBe(true);
+      // backup_paths should be undefined after cleanup
+      expect(data.backup_paths).toBeUndefined();
+    });
+
+  });
+
+  describe('applyEdit error branch coverage', () => {
+    test('applyEdit catches non-Error objects (line 242)', async () => {
+      // This test targets line 242: err instanceof Error ? err.message : 'Unknown error'
+      // We need to trigger a non-Error throw in applyEdit's try block
+      const filePath = path.join(tempDir, 'non-error-throw.ts');
+      fs.writeFileSync(filePath, 'const x = 1;');
+
+      // Track readFile calls to allow backup but fail in applyEdit
+      let readCount = 0;
+      vi.mocked(fsp.readFile).mockImplementation(async (pathLike: any, options?: any) => {
+        const p = String(pathLike);
+        readCount++;
+
+        // First read is for backup (backupFile function)
+        if (readCount === 1) {
+          return 'const x = 1;';
+        }
+        // Second read is in applyEdit - throw a non-Error to exercise line 242
+        if (readCount === 2 && p.includes('non-error-throw.ts')) {
+          throw 'string error not an Error instance'; // non-Error thrown
+        }
+        // Default: use actual implementation
+        const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+        return actual.readFile(pathLike, options);
+      });
+
+      const result = await handleAtomicMultiEdit({
+        edits: [
+          {
+            file: filePath,
+            old_text: 'const x = 1;',
+            new_text: 'const x = 2;',
+          },
+        ],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.edits[0].success).toBe(false);
+      expect(data.edits[0].error).toBe('Unknown error');
+    });
+  });
+
   describe('Additional Coverage', () => {
     test('applyEdit reads file directly when no backup exists (file created between phases)', async () => {
       const filePath = path.join(tempDir, 'late-created.ts');

@@ -672,5 +672,45 @@ describe('event-flow-analyzers', () => {
 
       expect(summary).toContain('2 event delegation patterns');
     });
+
+    it('should handle summary with no delegation patterns (line 425 branch)', () => {
+      const summary = generateSummary([createHandler()], [], []);
+      expect(summary).not.toContain('event delegation pattern');
+    });
+  });
+
+  describe('Extra Coverage Edge Cases', () => {
+    it('covers nested clickable matching (line 171)', () => {
+      const child = createNode({ element: 'button', line: 10, handlers: [createHandler({ line: 10 })] });
+      const parent = createNode({ element: 'div', line: 5, handlers: [createHandler({ line: 5 })], children: [child] });
+      child.parent = parent;
+      const root = createNode({ children: [parent] });
+
+      const handlers = [
+        createHandler({ element: 'div', line: 5 }),
+        createHandler({ element: 'button', line: 10, stops_propagation: false })
+      ];
+
+      const issues = detectIssues(handlers, root, createSourceFile('<div />'));
+      expect(issues.some(i => i.issue === 'nested_clickable_elements')).toBe(true);
+    });
+
+    it('covers delegation target matches and tagName (lines 331, 339)', () => {
+      const code = `
+        e.target.matches('.item');
+        e.target.tagName === 'LI';
+      `;
+      const sourceFile = createSourceFile(code);
+      const targets = findDelegationTargets(sourceFile, sourceFile);
+      expect(targets).toContain('.item');
+      expect(targets).toContain('li');
+    });
+
+    it('covers delegation target dataset (lines 351-352)', () => {
+      const code = `const id = e.target.dataset.id;`;
+      const sourceFile = createSourceFile(code);
+      const targets = findDelegationTargets(sourceFile, sourceFile);
+      expect(targets).toContain('[data-id]');
+    });
   });
 });

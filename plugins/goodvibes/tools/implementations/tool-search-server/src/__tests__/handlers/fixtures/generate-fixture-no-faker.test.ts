@@ -424,17 +424,19 @@ model TestBoolDefaults {
 
   describe('generateEdgeCaseValue unknown type (line 355)', () => {
     it('should handle all known types in edge_cases scenario', async () => {
+      vi.resetModules();
       vi.mock('fs');
       vi.mock('../../../config.js', () => ({
         PROJECT_ROOT: '/mock/project/root',
       }));
-      // Faker doesn't matter for edge_cases
+      vi.unmock('@faker-js/faker');
 
-      const { handleGenerateFixture, resetIdCounter } = await import(
+      const { handleGenerateFixture, resetIdCounter, resetFakerState } = await import(
         '../../../handlers/fixtures/generate-fixture.js'
       );
 
       resetIdCounter();
+      resetFakerState();
 
       vi.mocked(fs.promises.access).mockResolvedValue(undefined);
       vi.mocked(fs.promises.readFile).mockResolvedValue(`
@@ -842,41 +844,69 @@ model TestNowEmpty {
     });
   });
 
-  describe('outer catch block for general errors (lines 867-868)', () => {
-    it('should catch errors thrown during schema parsing', async () => {
+  describe('generateSimpleValue default case - unknown type (line 590)', () => {
+    it('should return null for unknown field types via direct call', async () => {
+      vi.resetModules();
       vi.mock('fs');
       vi.mock('../../../config.js', () => ({
         PROJECT_ROOT: '/mock/project/root',
       }));
+      vi.unmock('@faker-js/faker');
 
-      const { handleGenerateFixture } = await import(
+      const { generateSimpleValueForTest, resetIdCounter } = await import(
         '../../../handlers/fixtures/generate-fixture.js'
       );
 
-      vi.mocked(fs.promises.access).mockResolvedValue(undefined);
-      // Return a schema that could cause issues during parsing
-      // Note: Current parser is resilient, so this will likely succeed
-      vi.mocked(fs.promises.readFile).mockResolvedValue(`
-model Test {
-  id String @id
-}
-`);
+      resetIdCounter();
 
-      const result = await handleGenerateFixture({
-        model: 'Test',
-        schema_path: 'test.prisma',
-      });
-      const data = parseResponseData<{ success?: boolean; error?: string }>(result);
-
-      // This should succeed
-      expect(data.success).toBe(true);
+      // Call generateSimpleValue with an unknown type
+      const result = generateSimpleValueForTest('field', 'UnknownType');
+      expect(result).toBeNull();
     });
 
-    it('should handle errors with Error instance message extraction', async () => {
+    it('should generate all known types correctly', async () => {
+      vi.resetModules();
       vi.mock('fs');
       vi.mock('../../../config.js', () => ({
         PROJECT_ROOT: '/mock/project/root',
       }));
+      vi.unmock('@faker-js/faker');
+
+      const { generateSimpleValueForTest, resetIdCounter } = await import(
+        '../../../handlers/fixtures/generate-fixture.js'
+      );
+
+      resetIdCounter();
+
+      // Test all known types
+      expect(typeof generateSimpleValueForTest('name', 'String')).toBe('string');
+      expect(typeof generateSimpleValueForTest('count', 'Int')).toBe('number');
+      expect(typeof generateSimpleValueForTest('price', 'Float')).toBe('number');
+      expect(typeof generateSimpleValueForTest('price', 'Decimal')).toBe('number');
+      expect(typeof generateSimpleValueForTest('active', 'Boolean')).toBe('boolean');
+      expect(typeof generateSimpleValueForTest('date', 'DateTime')).toBe('string');
+      expect(typeof generateSimpleValueForTest('data', 'Json')).toBe('object');
+      expect(typeof generateSimpleValueForTest('num', 'BigInt')).toBe('string');
+      expect(typeof generateSimpleValueForTest('bin', 'Bytes')).toBe('string');
+    });
+  });
+
+  describe('outer catch block for general errors (lines 883-884)', () => {
+    // The outer catch block is defensive code that catches any errors not caught by inner try-catches.
+    // It's difficult to trigger because:
+    // 1. File read errors are caught by the inner try-catch
+    // 2. Parsing and generation are resilient and don't throw with valid inputs
+    // 3. Format functions work with any serializable data
+    //
+    // These tests verify normal operation and document that the catch block exists for safety.
+
+    it('should successfully process a valid schema without triggering outer catch', async () => {
+      vi.resetModules();
+      vi.mock('fs');
+      vi.mock('../../../config.js', () => ({
+        PROJECT_ROOT: '/mock/project/root',
+      }));
+      vi.unmock('@faker-js/faker');
 
       const { handleGenerateFixture } = await import(
         '../../../handlers/fixtures/generate-fixture.js'
@@ -899,11 +929,13 @@ model Test {
       expect(data.success).toBe(true);
     });
 
-    it('should handle string conversion for non-Error exceptions', async () => {
+    it('should handle TypeScript format output', async () => {
+      vi.resetModules();
       vi.mock('fs');
       vi.mock('../../../config.js', () => ({
         PROJECT_ROOT: '/mock/project/root',
       }));
+      vi.unmock('@faker-js/faker');
 
       const { handleGenerateFixture } = await import(
         '../../../handlers/fixtures/generate-fixture.js'
@@ -913,16 +945,48 @@ model Test {
       vi.mocked(fs.promises.readFile).mockResolvedValue(`
 model Test {
   id String @id
+  name String
 }
 `);
 
       const result = await handleGenerateFixture({
         model: 'Test',
-        scenario: 'minimal',
+        output_format: 'typescript',
       });
-      const data = parseResponseData<{ success: boolean }>(result);
+      const data = parseResponseData<{ success: boolean; code: string }>(result);
 
       expect(data.success).toBe(true);
+      expect(data.code).toContain('testFixtures');
+    });
+
+    it('should handle Prisma seed format output', async () => {
+      vi.resetModules();
+      vi.mock('fs');
+      vi.mock('../../../config.js', () => ({
+        PROJECT_ROOT: '/mock/project/root',
+      }));
+      vi.unmock('@faker-js/faker');
+
+      const { handleGenerateFixture } = await import(
+        '../../../handlers/fixtures/generate-fixture.js'
+      );
+
+      vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model Test {
+  id String @id
+  name String
+}
+`);
+
+      const result = await handleGenerateFixture({
+        model: 'Test',
+        output_format: 'prisma_seed',
+      });
+      const data = parseResponseData<{ success: boolean; code: string }>(result);
+
+      expect(data.success).toBe(true);
+      expect(data.code).toContain('prisma.test.create');
     });
   });
 });

@@ -307,14 +307,7 @@ export function isFocusable(tag: string, attrs: Map<string, string>): boolean {
   const tabindex = attrs.get('tabindex') ?? attrs.get('tabIndex');
   if (tabindex !== undefined) {
     const tabIndexNum = parseInt(tabindex, 10);
-    // tabindex=-1 means not in tab order (but still programmatically focusable)
-    if (tabIndexNum < 0) {
-      return false;
-    }
-    // tabindex >= 0 makes element focusable
-    if (tabIndexNum >= 0) {
-      return true;
-    }
+    return tabIndexNum >= 0;
   }
 
   // Check natively focusable elements

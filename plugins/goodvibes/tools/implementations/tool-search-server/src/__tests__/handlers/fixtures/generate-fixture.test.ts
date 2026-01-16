@@ -2575,4 +2575,192 @@ model TestSimpleFallback {
       expect(fixture.binary).toBeDefined();
     });
   });
+
+  describe('Additional coverage for 100%', () => {
+    describe('generateSimpleValue - direct testing', () => {
+      it('should return null for unknown types via generateSimpleValueForTest', async () => {
+        const { generateSimpleValueForTest, resetIdCounter } = await import(
+          '../../../handlers/fixtures/generate-fixture.js'
+        );
+        resetIdCounter();
+
+        // Test the default case (unknown type returns null)
+        expect(generateSimpleValueForTest('field', 'UnknownCustomType')).toBeNull();
+      });
+
+      it('should generate all known types correctly via generateSimpleValueForTest', async () => {
+        const { generateSimpleValueForTest, resetIdCounter } = await import(
+          '../../../handlers/fixtures/generate-fixture.js'
+        );
+        resetIdCounter();
+
+        // Test all known types
+        expect(typeof generateSimpleValueForTest('name', 'String')).toBe('string');
+        expect(typeof generateSimpleValueForTest('count', 'Int')).toBe('number');
+        expect(typeof generateSimpleValueForTest('price', 'Float')).toBe('number');
+        expect(typeof generateSimpleValueForTest('amount', 'Decimal')).toBe('number');
+        expect(typeof generateSimpleValueForTest('active', 'Boolean')).toBe('boolean');
+        expect(typeof generateSimpleValueForTest('date', 'DateTime')).toBe('string');
+        expect(typeof generateSimpleValueForTest('data', 'Json')).toBe('object');
+        expect(typeof generateSimpleValueForTest('num', 'BigInt')).toBe('string');
+        expect(typeof generateSimpleValueForTest('bin', 'Bytes')).toBe('string');
+      });
+    });
+
+    describe('Non-ID fields with defaults (line 622-658)', () => {
+      it('should skip non-ID fields with cuid() default in minimal scenario', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestCuidNonId {
+  id         Int    @id @default(autoincrement())
+  externalId String @default(cuid())
+  name       String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestCuidNonId',
+          scenario: 'minimal',
+        });
+        const data = parseResponseData<{ fixtures: Record<string, unknown>[] }>(result);
+
+        // externalId should be skipped due to cuid() default
+        expect(data.fixtures[0]).not.toHaveProperty('externalId');
+        expect(data.fixtures[0].name).toBeDefined();
+      });
+
+      it('should skip non-ID fields with uuid() default in empty scenario', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestUuidNonId {
+  id         Int    @id @default(autoincrement())
+  trackingId String @default(uuid())
+  value      String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestUuidNonId',
+          scenario: 'empty',
+        });
+        const data = parseResponseData<{ fixtures: Record<string, unknown>[] }>(result);
+
+        // trackingId should be skipped due to uuid() default
+        expect(data.fixtures[0]).not.toHaveProperty('trackingId');
+        expect(data.fixtures[0].value).toBe('');
+      });
+
+      it('should use now() default for non-ID DateTime fields in minimal scenario', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestNowNonId {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  name      String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestNowNonId',
+          scenario: 'minimal',
+        });
+        const data = parseResponseData<{ fixtures: Record<string, unknown>[] }>(result);
+
+        // createdAt and updatedAt should be set from now() default
+        expect(data.fixtures[0].createdAt).toBeDefined();
+        expect(typeof data.fixtures[0].createdAt).toBe('string');
+        const date = new Date(data.fixtures[0].createdAt as string);
+        expect(date.getTime()).not.toBeNaN();
+      });
+    });
+
+    describe('ID fields with non-standard defaults (line 658)', () => {
+      it('should skip ID fields with dbgenerated() default in minimal scenario', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestDbGenerated {
+  id    String @id @default(dbgenerated("gen_random_uuid()"))
+  name  String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestDbGenerated',
+          scenario: 'minimal',
+        });
+        const data = parseResponseData<{ fixtures: Record<string, unknown>[] }>(result);
+
+        // id should be skipped
+        expect(data.fixtures[0]).not.toHaveProperty('id');
+        expect(data.fixtures[0].name).toBeDefined();
+      });
+    });
+
+    // Note: The "Warning about faker not installed" (line 831) test is in generate-fixture-no-faker.test.ts
+    // because it requires unmocking faker which would affect other tests in this file.
+    // See that file for coverage of this line.
+
+    describe('Outer catch block (lines 883-884)', () => {
+      // The outer catch block catches any errors that aren't caught by inner try-catches.
+      // Since the code is well-structured and handles most errors internally,
+      // triggering this catch is difficult without modifying the source code.
+      // These tests document its existence and verify normal operation.
+
+      it('should handle successful schema processing without triggering outer catch', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestSuccess {
+  id   String @id
+  name String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestSuccess',
+          scenario: 'realistic',
+        });
+        const data = parseResponseData<{ success: boolean }>(result);
+
+        expect(data.success).toBe(true);
+        expect(result.isError).toBeUndefined();
+      });
+
+      it('should format TypeScript output without triggering outer catch', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestFormat {
+  id   String @id
+  name String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestFormat',
+          output_format: 'typescript',
+        });
+        const data = parseResponseData<{ code: string }>(result);
+
+        expect(data.code).toContain('testFormatFixtures');
+      });
+
+      it('should format Prisma seed output without triggering outer catch', async () => {
+        vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.readFile).mockResolvedValue(`
+model TestSeed {
+  id   String @id
+  name String
+}
+`);
+
+        const result = await handleGenerateFixture({
+          model: 'TestSeed',
+          output_format: 'prisma_seed',
+        });
+        const data = parseResponseData<{ code: string }>(result);
+
+        expect(data.code).toContain('prisma.testSeed.create');
+      });
+    });
+  });
 });

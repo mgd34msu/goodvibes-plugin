@@ -130,6 +130,22 @@ const z = 3;`;
       expect(extractAttributeValue(attr, sourceFile)).toBe('0');
     });
 
+    it('should extract negative numeric literal (line 92)', () => {
+      const code = `<input tabIndex={-1} />`;
+      const sourceFile = createSourceFile(code);
+      const attr = findFirstAttribute(sourceFile)!;
+
+      expect(extractAttributeValue(attr, sourceFile)).toBe('-1');
+    });
+
+    it('should handle non-numeric negative unary expression (line 92 branch)', () => {
+      const code = `<input tabIndex={-a} />`;
+      const sourceFile = createSourceFile(code);
+      const attr = findFirstAttribute(sourceFile)!;
+
+      expect(extractAttributeValue(attr, sourceFile)).toBe('[expression]');
+    });
+
     it('should handle template expression', () => {
       const code = '<div className={`static ${dynamic}`} />';
       const sourceFile = createSourceFile(code);

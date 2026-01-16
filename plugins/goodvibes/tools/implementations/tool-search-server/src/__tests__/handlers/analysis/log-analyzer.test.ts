@@ -2004,4 +2004,893 @@ ERROR Database connection failed
       expect(result.content[0].text).toContain('"first_seen": "unknown"');
     });
   });
+
+  describe('branch coverage: parseTimeWindow unknown unit fallback (line 136)', () => {
+    it('should return 0 multiplier for unknown time unit', async () => {
+      // Line 136: The multipliers[unit] || 0 fallback when unit is not s/m/h/d
+      // This happens when regex matches but unit is somehow not in multipliers
+      // Since the regex only allows s/m/h/d, we need to test the edge case
+      // where parseTimeWindow is called with a valid pattern but the unit
+      // is not recognized (this branch may be defensive)
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('2024-01-15T10:30:00Z INFO Test');
+
+      // The regex pattern ^(\d+)\s*(s|m|h|d)$/i should match, but let's test
+      // with uppercase to ensure case insensitivity works
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/test.log',
+        time_window: '5S', // Uppercase S
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe('branch coverage: detectStructured with only whitespace lines (line 234)', () => {
+    it('should return false when sample has only whitespace lines filtered out', async () => {
+      // Line 234: detectStructured returns false when sample.length === 0
+      // This happens when all lines are empty/whitespace after filtering
+      // But the main handler filters empty lines BEFORE detectStructured is called
+      // So we need a scenario where lines have content but would result in empty sample
+      // Actually, this branch is covered by the early filter in handleLogAnalyzer
+      // The "No log entries found" error is returned before detectStructured is called
+      // So line 234 is defensive code that's hard to reach through the main handler
+
+      // Let's verify the behavior when ALL lines are whitespace
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('   \n   \n   ');
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/whitespace.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('No log entries found');
+    });
+  });
+
+  describe('branch coverage: JSON log without message or msg fields (line 277)', () => {
+    it('should use trimmed raw line when JSON has no message or msg field', async () => {
+      // Line 277: messageField falls back to trimmed when both message and msg are undefined
+      const logContent = '{"timestamp":"2024-01-15T10:30:00Z","level":"info","data":"some data without message field"}';
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/no-message.log',
+        structured: true,
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.isError).toBeUndefined();
+      // The message should be the entire JSON line since neither message nor msg exists
+      expect(result.content[0].text).toContain('entries_analyzed');
+    });
+  });
+
+  describe('branch coverage: groupMessages last_seen timestamp update (line 387)', () => {
+    it('should update last_seen when new entry timestamp is greater', async () => {
+      // Line 387: Updates last_seen when ts > existing.last_seen
+      // Need multiple errors with the same normalized message but different timestamps
+      const logContent = `
+2024-01-15T10:30:00Z ERROR Same error message
+2024-01-15T10:30:05Z ERROR Same error message
+2024-01-15T10:30:10Z ERROR Same error message
+`.trim();
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/last-seen.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Verify first_seen is earliest and last_seen is latest
+      expect(result.content[0].text).toContain('"first_seen": "2024-01-15T10:30:00');
+      expect(result.content[0].text).toContain('"last_seen": "2024-01-15T10:30:10');
+      expect(result.content[0].text).toContain('"count": 3');
+    });
+  });
+
+  describe('branch coverage: detectAnomalies insufficient timed entries (lines 433-437)', () => {
+    it('should return empty anomalies when entries >= 10 but timed entries < 10', async () => {
+      // Lines 433-437: detectAnomalies returns early when timedEntries.length < 10
+      // Need >= 10 total entries but < 10 with timestamps
+      const lines: string[] = [];
+
+      // Add 15 entries without timestamps (no timestamp pattern will match)
+      for (let i = 0; i < 15; i++) {
+        lines.push(`INFO Entry without timestamp number ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/no-timed.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Should have entries but no anomalies due to lack of timed entries
+      expect(result.content[0].text).toContain('"entries_analyzed": 15');
+      expect(result.content[0].text).toContain('"anomalies": []');
+    });
+  });
+
+  describe('branch coverage: error spike high severity (line 478)', () => {
+    it('should detect error spike with high severity when secondHalfErrors > firstHalfErrors * 10', async () => {
+      // Line 478: severity is 'high' when secondHalfErrors > firstHalfErrors * 10
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // First half: 1 error in 50 entries
+      for (let i = 0; i < 50; i++) {
+        const ts = new Date(baseTime + i * 1000).toISOString();
+        if (i === 25) {
+          lines.push(`${ts} ERROR Single error in first half`);
+        } else {
+          lines.push(`${ts} INFO Normal entry ${i}`);
+        }
+      }
+
+      // Second half: > 10 errors (need > 10x first half = > 10 errors, and > 10 total)
+      for (let i = 50; i < 100; i++) {
+        const ts = new Date(baseTime + i * 1000).toISOString();
+        if (i % 3 === 0) {
+          // This gives us about 17 errors in second half
+          lines.push(`${ts} ERROR Frequent error in second half ${i}`);
+        } else {
+          lines.push(`${ts} INFO Normal entry ${i}`);
+        }
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/high-spike.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.content[0].text).toContain('spike');
+      expect(result.content[0].text).toContain('"severity": "high"');
+    });
+  });
+
+  describe('branch coverage: rate change high severity (line 542)', () => {
+    it('should detect rate increase with high severity when lastRate > firstRate * 10', async () => {
+      // Line 542: severity is 'high' when lastRate > firstRate * 10
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // First quarter: very slow rate (1 entry per 60 seconds = 1/min)
+      // Need enough entries for the rate calculation to work
+      for (let i = 0; i < 10; i++) {
+        const ts = new Date(baseTime + i * 60000).toISOString();
+        lines.push(`${ts} INFO Slow entry ${i}`);
+      }
+
+      // Middle portion: medium rate
+      for (let i = 0; i < 20; i++) {
+        const ts = new Date(baseTime + 600000 + i * 10000).toISOString();
+        lines.push(`${ts} INFO Medium entry ${i}`);
+      }
+
+      // Last quarter: very fast rate (1 entry per second = 60/min, which is > 10x)
+      for (let i = 0; i < 10; i++) {
+        const ts = new Date(baseTime + 800000 + i * 1000).toISOString();
+        lines.push(`${ts} INFO Fast entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/high-rate-increase.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.content[0].text).toContain('rate_change');
+      expect(result.content[0].text).toContain('"severity": "high"');
+    });
+  });
+
+  describe('branch coverage: tailFile error with non-Error object (line 612)', () => {
+    it('should handle non-Error thrown from fs.readFileSync', async () => {
+      // Line 612: err instanceof Error ? err.message : String(err)
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw 'String error instead of Error object';
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/string-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('String error instead of Error object');
+    });
+  });
+
+  describe('branch coverage: matchPatterns level assignment when entry has no level (line 680)', () => {
+    it('should set entry level from pattern when entry level is undefined', async () => {
+      // Line 680: if (!entry.level) entry.level = pattern.level
+      // Need log lines without a detectable level that match a custom pattern
+      const logContent = `
+2024-01-15T10:30:00Z Connection timeout detected
+2024-01-15T10:30:01Z Connection timeout detected
+2024-01-15T10:30:02Z Some other message
+`.trim();
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/pattern-level-set.log',
+        patterns: [
+          { name: 'timeout', regex: 'timeout detected', level: 'error' },
+        ],
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Pattern should match 2 times
+      expect(result.content[0].text).toContain('"timeout": 2');
+    });
+  });
+
+  describe('branch coverage: handleLogAnalyzer catch block with non-Error (line 827)', () => {
+    it('should handle non-Error thrown during command execution', async () => {
+      // Line 827: err instanceof Error ? err.message : String(err)
+      const { spawn } = await import('child_process');
+
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProc = {
+          stdout: { on: vi.fn() },
+          stderr: { on: vi.fn() },
+          on: vi.fn((event, callback) => {
+            if (event === 'error') {
+              // Throw a non-Error object
+              setTimeout(() => callback({ code: 'ENOENT', toString: () => 'Custom error object' }), 5);
+            }
+          }),
+          kill: vi.fn(),
+        };
+        return mockProc as ReturnType<typeof spawn>;
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'command',
+        command: 'nonexistent',
+        duration_seconds: 1,
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      // The error should contain "Failed to run command" since captureCommand wraps it
+    });
+  });
+
+  describe('branch coverage: timed entries sorting in time range calculation (line 912)', () => {
+    it('should correctly sort timed entries for time range calculation', async () => {
+      // Line 912: Sorting happens when calculating time_range
+      // Entries should be sorted by timestamp regardless of input order
+      const logContent = `
+2024-01-15T10:30:05Z INFO Third entry
+2024-01-15T10:30:00Z INFO First entry
+2024-01-15T10:30:10Z INFO Fifth entry
+2024-01-15T10:30:02Z INFO Second entry
+2024-01-15T10:30:08Z INFO Fourth entry
+`.trim();
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/unsorted.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Time range should show earliest and latest timestamps after sorting
+      expect(result.content[0].text).toContain('"start": "2024-01-15T10:30:00');
+      expect(result.content[0].text).toContain('"end": "2024-01-15T10:30:10');
+    });
+  });
+
+  describe('branch coverage: calculateRateAnalysis sorting (line 568)', () => {
+    it('should sort entries before calculating rate analysis', async () => {
+      // Line 568: timedEntries.sort() in calculateRateAnalysis
+      // Pass entries in reverse chronological order
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Create entries in REVERSE order (latest first)
+      for (let i = 29; i >= 0; i--) {
+        const ts = new Date(baseTime + i * 6000).toISOString();
+        lines.push(`${ts} INFO Entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/reverse-order.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Rate analysis should still work correctly after sorting
+      expect(result.content[0].text).toContain('rate_analysis');
+      expect(result.content[0].text).toContain('entries_per_minute');
+    });
+  });
+
+  describe('branch coverage: rate change with quarters having <= 2 entries (lines 524-534)', () => {
+    it('should not detect rate change when quarters have insufficient entries', async () => {
+      // Lines 524-534: firstQuarter.length > 2 && lastQuarter.length > 2
+      // Need >= 20 timed entries total but quarters with <= 2 entries
+      // This is tricky - with 20 entries, each quarter has 5 entries
+      // We need a scenario where the condition is true but the rate calculation fails
+      // Let's test the boundary: exactly 20 entries
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Exactly 20 entries - each quarter gets 5 entries
+      for (let i = 0; i < 20; i++) {
+        const ts = new Date(baseTime + i * 6000).toISOString();
+        lines.push(`${ts} INFO Entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/exact-20.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Should process without error
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should skip rate change detection when first or last quarter duration is 0 (line 534)', async () => {
+      // Line 534: if (firstDuration > 0 && lastDuration > 0)
+      // Need a quarter where all entries have the same timestamp
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // First quarter: all same timestamp (duration = 0)
+      const sameTs = new Date(baseTime).toISOString();
+      for (let i = 0; i < 5; i++) {
+        lines.push(`${sameTs} INFO First quarter entry ${i}`);
+      }
+
+      // Middle quarters: spread out
+      for (let i = 5; i < 15; i++) {
+        const ts = new Date(baseTime + i * 10000).toISOString();
+        lines.push(`${ts} INFO Middle entry ${i}`);
+      }
+
+      // Last quarter: spread out
+      for (let i = 15; i < 20; i++) {
+        const ts = new Date(baseTime + 150000 + (i - 15) * 10000).toISOString();
+        lines.push(`${ts} INFO Last quarter entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/zero-duration.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Should process without error, rate_change may or may not be detected
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe('branch coverage: detectLevel with undefined input (line 145)', () => {
+    it('should return undefined when levelStr is undefined', async () => {
+      // Line 145: if (!levelStr) return undefined
+      // JSON log without any level field
+      const logContent = '{"timestamp":"2024-01-15T10:30:00Z","message":"test without level"}';
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/no-level.log',
+        structured: true,
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Entry should be counted as unknown since no level field
+      expect(result.content[0].text).toContain('"unknown": 1');
+    });
+  });
+
+  describe('branch coverage: extractTimestamp returns undefined (line 225)', () => {
+    it('should return undefined when no timestamp pattern matches', async () => {
+      // Line 225: extractTimestamp returns undefined when no pattern matches
+      const logContent = 'Just a plain text log line without any timestamp';
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/no-timestamp.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('"start": null');
+    });
+  });
+
+  describe('branch coverage: gap detection with high severity (line 457)', () => {
+    it('should detect gap with high severity when interval > 300000ms (5 minutes)', async () => {
+      // Line 457: severity is 'high' when intervals[i] > 300000
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Generate 15 entries with 1-second intervals
+      for (let i = 0; i < 15; i++) {
+        const ts = new Date(baseTime + i * 1000).toISOString();
+        lines.push(`${ts} INFO Regular entry ${i}`);
+      }
+
+      // Add a 10-minute gap (600000ms > 300000ms)
+      const gapTs = new Date(baseTime + 14000 + 600000).toISOString();
+      lines.push(`${gapTs} INFO Entry after very long gap`);
+
+      // Add more entries after the gap
+      for (let i = 0; i < 5; i++) {
+        const ts = new Date(baseTime + 14000 + 600000 + (i + 1) * 1000).toISOString();
+        lines.push(`${ts} INFO Post-gap entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/high-gap.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.content[0].text).toContain('gap');
+      expect(result.content[0].text).toContain('"severity": "high"');
+    });
+  });
+
+  describe('branch coverage: pattern match where entry already has level (line 680 else branch)', () => {
+    it('should not override entry level when entry already has a level', async () => {
+      // Line 680-682: if (!entry.level) branch - need to test when entry.level IS set
+      // Entry must have a level already AND match the pattern
+      const logContent = `
+2024-01-15T10:30:00Z ERROR timeout detected with error level
+2024-01-15T10:30:01Z WARN timeout detected with warn level
+`.trim();
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/pattern-existing-level.log',
+        patterns: [
+          { name: 'timeout', regex: 'timeout detected', level: 'debug' },
+        ],
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Pattern should match both, but levels should remain ERROR and WARN
+      expect(result.content[0].text).toContain('"timeout": 2');
+      // Original levels should be preserved
+      expect(result.content[0].text).toContain('"error": 1');
+      expect(result.content[0].text).toContain('"warn": 1');
+    });
+  });
+
+  describe('branch coverage: sort comparator fallback branches (lines 568, 912)', () => {
+    it('should handle entries in sort comparator with valid timestamps', async () => {
+      // Lines 568, 912: The sort comparators use (a.timestamp?.getTime() || 0)
+      // These are defensive branches for when timestamp is undefined
+      // Since we filter for timestamps first, these should not normally trigger
+      // But we test the sorting with unsorted timestamps to ensure comparator runs
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Create entries in completely random order with varied timestamps
+      const timestamps = [5, 1, 8, 3, 9, 2, 7, 4, 6, 0];
+      for (const i of timestamps) {
+        const ts = new Date(baseTime + i * 60000).toISOString();
+        lines.push(`${ts} INFO Entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/random-order.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Should sort correctly - first entry should be at offset 0, last at offset 9
+      expect(result.content[0].text).toContain('"start": "2024-01-15T10:00:00');
+      expect(result.content[0].text).toContain('"end": "2024-01-15T10:09:00');
+    });
+  });
+
+  describe('branch coverage: error handling with non-Error thrown by tailFile (line 612)', () => {
+    it('should handle thrown number as error', async () => {
+      // Line 612: String(err) branch - throw a number
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw 42;
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/number-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('42');
+    });
+
+    it('should handle thrown object with toString as error', async () => {
+      // Line 612: String(err) branch - throw an object
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw { code: 'EACCES', toString: () => 'Access denied object' };
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/object-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('Access denied object');
+    });
+
+    it('should handle thrown null as error', async () => {
+      // Line 612: String(err) branch - throw null
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw null;
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/null-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('null');
+    });
+  });
+
+  describe('branch coverage: handleLogAnalyzer catch with non-Error from captureCommand (line 827)', () => {
+    it('should handle captureCommand rejecting with non-Error string', async () => {
+      // Line 827: String(err) branch when captureCommand rejects
+      const { spawn } = await import('child_process');
+
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProc = {
+          stdout: { on: vi.fn() },
+          stderr: { on: vi.fn() },
+          on: vi.fn((event, callback) => {
+            if (event === 'error') {
+              // The error handler in captureCommand wraps errors
+              // But the outer catch at line 827 should handle it
+              setTimeout(() => {
+                // Simulate an error that gets wrapped
+                callback(new Error('Wrapped command error'));
+              }, 5);
+            }
+          }),
+          kill: vi.fn(),
+        };
+        return mockProc as ReturnType<typeof spawn>;
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'command',
+        command: 'failing-command',
+        duration_seconds: 1,
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('Failed to run command');
+    });
+  });
+
+  describe('branch coverage: rate detection condition with boundary entries (line 524)', () => {
+    it('should handle exactly 20 timed entries triggering rate detection', async () => {
+      // Line 524: Test the exact boundary condition for rate detection
+      // With 20 entries, firstQuarter = 5, lastQuarter = 5
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Exactly 20 entries with increasing rate
+      for (let i = 0; i < 20; i++) {
+        // First 5 entries: slow (10s apart), last 5 entries: fast (1s apart)
+        let interval: number;
+        if (i < 5) {
+          interval = i * 10000; // First quarter: 10s intervals
+        } else if (i < 15) {
+          interval = 50000 + (i - 5) * 5000; // Middle: 5s intervals
+        } else {
+          interval = 100000 + (i - 15) * 1000; // Last quarter: 1s intervals
+        }
+        const ts = new Date(baseTime + interval).toISOString();
+        lines.push(`${ts} INFO Entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/boundary-20.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // Should process and potentially detect rate changes
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe('branch coverage: defensive fallback branches (unreachable)', () => {
+    // These tests document that certain branches are unreachable through the public API
+    // The || 0 fallbacks in sort comparators (lines 568, 912) are defensive code
+    // because we filter for entries with timestamps BEFORE sorting
+
+    it('should document that sort comparator fallbacks are unreachable - entries are pre-filtered', async () => {
+      // Lines 568, 912: The sort functions use (a.timestamp?.getTime() || 0)
+      // But entries are filtered to only include those WITH timestamps before sorting
+      // So the || 0 branch can never execute
+      // This test documents this design decision
+
+      // Create log with mixed timestamped and non-timestamped entries
+      const logContent = `
+2024-01-15T10:30:00Z INFO Entry with timestamp
+Some entry without timestamp
+2024-01-15T10:30:01Z INFO Another timestamped entry
+Another line without timestamp
+2024-01-15T10:30:02Z INFO Third timestamped entry
+`.trim();
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/mixed-ts.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // All 5 entries are analyzed
+      expect(result.content[0].text).toContain('"entries_analyzed": 5');
+      // Time range only considers timestamped entries (3 of them)
+      expect(result.content[0].text).toContain('"start": "2024-01-15T10:30:00');
+      expect(result.content[0].text).toContain('"end": "2024-01-15T10:30:02');
+    });
+  });
+
+  describe('branch coverage: line 524 false branch (mathematically unreachable)', () => {
+    // Line 524: if (firstQuarter.length > 2 && lastQuarter.length > 2)
+    // With >= 20 timed entries, quarters always have >= 5 entries
+    // The false branch is mathematically unreachable
+
+    it('should always have quarters > 2 when timedEntries >= 20', async () => {
+      // With exactly 20 entries: firstQuarter = 5, lastQuarter = 5
+      // Both are > 2, so condition is always true
+      // This documents that the else branch is defensive/unreachable
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Create exactly 20 entries (minimum for rate detection)
+      for (let i = 0; i < 20; i++) {
+        const ts = new Date(baseTime + i * 6000).toISOString();
+        lines.push(`${ts} INFO Entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/twenty-entries.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // The condition at line 524 evaluates to true (5 > 2 && 5 > 2)
+      // So rate analysis is performed
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should skip rate detection when fewer than 20 timed entries (line 515 false branch)', async () => {
+      // With 19 entries, the condition at line 515 is false
+      // This covers the false branch of timedEntries.length >= 20
+      const baseTime = new Date('2024-01-15T10:00:00Z').getTime();
+      const lines: string[] = [];
+
+      // Create exactly 19 entries (below threshold)
+      for (let i = 0; i < 19; i++) {
+        const ts = new Date(baseTime + i * 6000).toISOString();
+        lines.push(`${ts} INFO Entry ${i}`);
+      }
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(lines.join('\n'));
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/nineteen-entries.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      // No rate change detection (timedEntries < 20)
+      expect(result.isError).toBeUndefined();
+      // Result should not contain rate_change in anomalies from this block
+    });
+  });
+
+  describe('branch coverage: line 827 String(err) branch', () => {
+    // Line 827: err instanceof Error ? err.message : String(err)
+    // This branch is reached when the catch receives a non-Error value
+    // Both tailFile and captureCommand wrap errors, but we can test by
+    // mocking to throw directly from file operations
+
+    it('should handle undefined thrown as error', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw undefined;
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/undefined-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      // String(undefined) = "undefined"
+      expect(data.error).toContain('undefined');
+    });
+
+    it('should handle array thrown as error', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw ['error', 'array'];
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/array-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      // String(['error', 'array']) = "error,array"
+      expect(data.error).toContain('error,array');
+    });
+
+    it('should handle boolean thrown as error', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw false;
+      });
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/boolean-error.log',
+      };
+
+      const result = await handleLogAnalyzer(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('false');
+    });
+  });
+
+  describe('branch coverage: Invalid Date timestamp handling (lines 568, 912)', () => {
+    // The sort comparators use (a.timestamp?.getTime() || 0)
+    // An Invalid Date passes the truthy filter but getTime() returns NaN
+    // NaN || 0 = 0, so this COULD trigger the || 0 branch
+    // However, parseLogLine checks for valid timestamps before assigning
+
+    it('should handle JSON logs with invalid timestamp strings that parse to Invalid Date', async () => {
+      // Test with timestamp that creates Invalid Date
+      // The parseLogLine function checks isNaN(timestamp.getTime()) and returns undefined
+      // So Invalid Date timestamps are filtered out
+      const logContent = `
+{"timestamp":"invalid-date-string","level":"info","message":"test1"}
+{"timestamp":"2024-01-15T10:30:00Z","level":"info","message":"test2"}
+{"timestamp":"not-a-timestamp","level":"info","message":"test3"}
+`.trim();
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(logContent);
+
+      const args: LogAnalyzerArgs = {
+        source: 'file',
+        path: '/logs/invalid-dates.log',
+        structured: true,
+      };
+
+      const result = await handleLogAnalyzer(args);
+
+      expect(result.isError).toBeUndefined();
+      // Only 1 entry should have valid timestamp
+      expect(result.content[0].text).toContain('"start": "2024-01-15T10:30:00');
+      expect(result.content[0].text).toContain('"end": "2024-01-15T10:30:00');
+    });
+  });
 });

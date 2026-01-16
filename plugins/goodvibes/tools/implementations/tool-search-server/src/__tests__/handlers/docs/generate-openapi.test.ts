@@ -2167,3 +2167,534 @@ describe('YAML conversion error handling (lines 803-804)', () => {
     expect(writtenContent.startsWith('{')).toBe(true);
   });
 });
+
+// =============================================================================
+// Additional branch coverage tests
+// =============================================================================
+
+describe('extractPathParameters duplicate detection (line 214)', () => {
+  it('should not add duplicate params when route has both Next.js and Express style for same param', () => {
+    // Test a route that has the same parameter in both Next.js [id] and Express :id styles
+    // This tests the branch at line 214 where we check if param already exists
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        // Path with both [id] and :id - the Express pattern should be skipped as duplicate
+        text: JSON.stringify({
+          routes: [
+            { method: 'GET', path: '/api/users/[id]/:id', handler_file: 'route.ts' },
+          ],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      // Should only have one 'id' parameter, not two
+      const params = spec.paths['/api/users/{id}/{id}'].get.parameters;
+      const idParams = params.filter((p: { name: string }) => p.name === 'id');
+      expect(idParams.length).toBe(1);
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    handleGenerateOpenApi(args);
+  });
+});
+
+describe('generateOperationId with different param formats (line 243)', () => {
+  it('should handle Express-style :param in operation ID generation', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [
+            { method: 'GET', path: '/api/items/:itemId/details', handler_file: 'route.ts' },
+          ],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const operationId = spec.paths['/api/items/{itemId}/details'].get.operationId;
+      // Should contain ByItemId for the :itemId param
+      expect(operationId).toContain('ByItemId');
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    handleGenerateOpenApi(args);
+  });
+
+  it('should handle OpenAPI-style {param} in operation ID generation', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [
+            { method: 'GET', path: '/api/orders/{orderId}/status', handler_file: 'route.ts' },
+          ],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const operationId = spec.paths['/api/orders/{orderId}/status'].get.operationId;
+      // Should contain ByOrderId for the {orderId} param
+      expect(operationId).toContain('ByOrderId');
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    handleGenerateOpenApi(args);
+  });
+});
+
+describe('typeToJsonSchema special types (lines 280, 282)', () => {
+  it('should convert undefined type to string schema (line 280)', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'POST', path: '/api/undefined-type', handler_file: 'undefined-type.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (String(p).includes('undefined-type.ts')) {
+        return `
+          interface UndefinedTypeRequest {
+            value: undefined;
+          }
+        `;
+      }
+      return '{}';
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const schema = spec.paths['/api/undefined-type'].post.requestBody?.content['application/json'].schema;
+      expect(schema.properties.value.type).toBe('string');
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should convert void type to object schema (line 282)', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'POST', path: '/api/void-type', handler_file: 'void-type.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (String(p).includes('void-type.ts')) {
+        return `
+          interface VoidTypeRequest {
+            callback: void;
+          }
+        `;
+      }
+      return '{}';
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const schema = spec.paths['/api/void-type'].post.requestBody?.content['application/json'].schema;
+      expect(schema.properties.callback.type).toBe('object');
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('typeToJsonSchema nullable with single non-null part (line 312)', () => {
+  it('should set nullable true when union has single non-null type and null', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'POST', path: '/api/nullable-single', handler_file: 'nullable-single.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (String(p).includes('nullable-single.ts')) {
+        return `
+          interface NullableSingleRequest {
+            optionalValue: number | null;
+          }
+        `;
+      }
+      return '{}';
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const schema = spec.paths['/api/nullable-single'].post.requestBody?.content['application/json'].schema;
+      expect(schema.properties.optionalValue.type).toBe('number');
+      expect(schema.properties.optionalValue.nullable).toBe(true);
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('generateExample string formats (lines 363-366)', () => {
+  it('should generate date format example (line 363)', () => {
+    const schema = { type: 'string', format: 'date' };
+    const result = generateExample(schema);
+    expect(result).toBe('2024-01-15');
+  });
+
+  it('should generate email format example (line 364)', () => {
+    const schema = { type: 'string', format: 'email' };
+    const result = generateExample(schema);
+    expect(result).toBe('user@example.com');
+  });
+
+  it('should generate uri format example (line 365)', () => {
+    const schema = { type: 'string', format: 'uri' };
+    const result = generateExample(schema);
+    expect(result).toBe('https://example.com');
+  });
+
+  it('should generate uuid format example (line 366)', () => {
+    const schema = { type: 'string', format: 'uuid' };
+    const result = generateExample(schema);
+    expect(result).toBe('550e8400-e29b-41d4-a716-446655440000');
+  });
+});
+
+describe('parseInterfaceToSchema optional property (line 503)', () => {
+  it('should not add optional properties to required array', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'POST', path: '/api/optional-props', handler_file: 'optional-props.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (String(p).includes('optional-props.ts')) {
+        return `
+          interface OptionalPropsRequest {
+            required_field: string;
+            optional_field?: number;
+          }
+        `;
+      }
+      return '{}';
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const schema = spec.paths['/api/optional-props'].post.requestBody?.content['application/json'].schema;
+      // required_field should be in required, optional_field should not
+      expect(schema.required).toContain('required_field');
+      expect(schema.required).not.toContain('optional_field');
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('handleGenerateOpenApi non-Error throw (line 630)', () => {
+  it('should handle non-Error throw from api-routes response', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ error: 'Some error message' }),
+      }],
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Failed to get API routes');
+    expect(data.error).toContain('Some error message');
+  });
+
+  it('should handle thrown string from JSON.parse (unknown error path)', () => {
+    // Create a scenario where JSON.parse might throw a non-standard error
+    // This is defensive code - we test by mocking a response that causes parse issues
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{ type: 'text', text: undefined as unknown as string }],
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Failed to get API routes');
+  });
+});
+
+describe('requestBody with parsed requestSchema (line 741)', () => {
+  it('should add requestBody when requestSchema is parsed from handler file', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'POST', path: '/api/with-schema', handler_file: 'with-schema.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (String(p).includes('with-schema.ts')) {
+        return `
+          interface WithSchemaRequest {
+            name: string;
+            email: string;
+          }
+        `;
+      }
+      return '{}';
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const requestBody = spec.paths['/api/with-schema'].post.requestBody;
+      expect(requestBody).toBeDefined();
+      expect(requestBody.content['application/json'].schema.properties.name).toBeDefined();
+      expect(requestBody.content['application/json'].schema.properties.email).toBeDefined();
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('securitySchemes already exists (line 764)', () => {
+  it('should not overwrite existing securitySchemes when adding new auth route', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [
+            { method: 'GET', path: '/api/protected1', handler_file: 'route.ts', middleware: ['auth'] },
+            { method: 'GET', path: '/api/protected2', handler_file: 'route.ts', middleware: ['authenticate'] },
+          ],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      // Both routes should have security
+      expect(spec.paths['/api/protected1'].get.security).toBeDefined();
+      expect(spec.paths['/api/protected2'].get.security).toBeDefined();
+      // securitySchemes should exist and have bearerAuth
+      expect(spec.components.securitySchemes.bearerAuth).toBeDefined();
+      expect(spec.components.securitySchemes.bearerAuth.type).toBe('http');
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('writeFileSync non-Error throw (line 819)', () => {
+  it('should handle non-Error throw from writeFileSync', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'GET', path: '/api/test', handler_file: 'route.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockImplementation(() => {
+      throw 'String error instead of Error object';
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Failed to write OpenAPI spec');
+    expect(data.error).toContain('Unknown error');
+  });
+});
+
+describe('typeToJsonSchema edge case: single non-null part in union, non-nullable (line 312 false branch)', () => {
+  // The false branch of line 312 occurs when nonNullParts.length === 1 and isNullable is false.
+  // This is logically impossible given the code structure, but we test the nullable true path
+  // more thoroughly to ensure all code paths that CAN execute are covered.
+
+  it('should handle union with only undefined (makes single non-null impossible)', () => {
+    // Testing edge case: if union is "string | undefined", we get:
+    // - parts = ['string', 'undefined']
+    // - nonNullParts = ['string'] (filtered out 'undefined')
+    // - isNullable = true (2 > 1)
+    // - returns { type: 'string', nullable: true }
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'POST', path: '/api/single-union', handler_file: 'single-union.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (String(p).includes('single-union.ts')) {
+        return `
+          interface SingleUnionRequest {
+            value: string | undefined;
+          }
+        `;
+      }
+      return '{}';
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      const schema = spec.paths['/api/single-union'].post.requestBody?.content['application/json'].schema;
+      expect(schema.properties.value.type).toBe('string');
+      expect(schema.properties.value.nullable).toBe(true);
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('handleGenerateOpenApi catch block non-Error (line 630 Unknown error)', () => {
+  it('should trigger Unknown error path when non-Error is caught', () => {
+    // Mock handleGetApiRoutes to return something that will cause the catch block
+    // to receive a non-Error value. We use content with a getter that throws a string.
+    const mockContent = {
+      get text() {
+        throw 'Not an Error object';
+      }
+    };
+
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [mockContent as unknown as { type: 'text'; text: string }],
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Failed to get API routes');
+    expect(data.error).toContain('Unknown error');
+  });
+});
+
+describe('requestBody finalRequestSchema falsy path (line 741 false branch)', () => {
+  // The if (finalRequestSchema) on line 741 is inside if (requestSchema || defaultRequestSchema)
+  // This means finalRequestSchema is already guaranteed to be truthy since it's set to
+  // requestSchema || defaultRequestSchema, and we're inside a block that checks that.
+  // However, TypeScript narrowing might not catch this, so the check exists for safety.
+  // This branch is effectively unreachable, but we verify the existing behavior.
+
+  it('should verify GET method has no requestBody (defaultRequestSchema returns null)', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'GET', path: '/api/no-body', handler_file: 'no-body.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('export function GET() {}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      // GET should not have requestBody
+      expect(spec.paths['/api/no-body'].get.requestBody).toBeUndefined();
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should verify DELETE method has no requestBody', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'DELETE', path: '/api/delete-item', handler_file: 'delete.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('export function DELETE() {}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      expect(spec.paths['/api/delete-item'].delete.requestBody).toBeUndefined();
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should verify HEAD method has no requestBody', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'HEAD', path: '/api/head', handler_file: 'head.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('export function HEAD() {}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      expect(spec.paths['/api/head'].head.requestBody).toBeUndefined();
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should verify OPTIONS method has no requestBody', () => {
+    vi.mocked(handleGetApiRoutes).mockReturnValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          routes: [{ method: 'OPTIONS', path: '/api/options', handler_file: 'options.ts' }],
+        }),
+      }],
+    });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('export function OPTIONS() {}');
+    vi.mocked(fs.writeFileSync).mockImplementation((_, content) => {
+      const spec = JSON.parse(String(content));
+      expect(spec.paths['/api/options'].options.requestBody).toBeUndefined();
+    });
+
+    const args: GenerateOpenApiArgs = {};
+    const result = handleGenerateOpenApi(args);
+    expect(result.isError).toBeUndefined();
+  });
+});

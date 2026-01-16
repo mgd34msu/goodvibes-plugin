@@ -530,6 +530,29 @@ describe('layout-hierarchy-utils', () => {
         const result = parseTailwindClasses(['unknown-class', 'flex', 'another-unknown']);
         expect(result.display).toBe('flex');
       });
+
+      it('should parse special variants (lines 214, 223, 289, 323, 340, 356, 451, 518)', () => {
+        const result = parseTailwindClasses([
+          'min-w-0',
+          'min-w-[10px]',
+          'min-h-[20px]',
+          'max-h-[30px]',
+          'max-h-4',
+          'inline-block',
+          'gap-[5px]',
+          'grid-rows-[1fr_auto]'
+        ]);
+        expect(result.minWidth).toBe('10px');
+        // Re-parse individually to be sure
+        expect(parseTailwindClasses(['min-w-0']).minWidth).toBe('0px');
+        expect(parseTailwindClasses(['min-w-[10px]']).minWidth).toBe('10px');
+        expect(parseTailwindClasses(['min-h-[20px]']).minHeight).toBe('20px');
+        expect(parseTailwindClasses(['max-h-[30px]']).maxHeight).toBe('30px');
+        expect(parseTailwindClasses(['max-h-4']).maxHeight).toBe('1rem');
+        expect(parseTailwindClasses(['inline-block']).display).toBe('inline-block');
+        expect(parseTailwindClasses(['gap-[5px]']).gap).toBe('5px');
+        expect(parseTailwindClasses(['grid-rows-[1fr_auto]']).gridTemplateRows).toBe('1fr_auto');
+      });
     });
   });
 });

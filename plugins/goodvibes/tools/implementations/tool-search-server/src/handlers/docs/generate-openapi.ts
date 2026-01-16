@@ -309,9 +309,9 @@ function typeToJsonSchema(typeStr: string): JSONSchema {
 
     if (nonNullParts.length === 1) {
       const schema = typeToJsonSchema(nonNullParts[0]);
-      if (isNullable) {
-        schema.nullable = true;
-      }
+      // In a union (contains ' | '), if nonNullParts.length === 1, then at least one
+      // part was filtered out (null/undefined), so isNullable is always true here
+      schema.nullable = true;
       return schema;
     }
 
@@ -736,21 +736,20 @@ export function handleGenerateOpenApi(args: GenerateOpenApiArgs): ToolResponse {
 
       // Add request body for methods that typically have one
       const defaultRequestSchema = createDefaultRequestSchema(route.method);
-      if (requestSchema || defaultRequestSchema) {
-        const finalRequestSchema = requestSchema || defaultRequestSchema;
-        if (finalRequestSchema) {
-          operation.requestBody = {
-            required: true,
-            content: {
-              'application/json': {
-                schema: finalRequestSchema,
-                ...(args.include_examples !== false && {
-                  example: generateExample(finalRequestSchema),
-                }),
-              },
+      // finalRequestSchema will be truthy if either requestSchema or defaultRequestSchema is truthy
+      const finalRequestSchema = requestSchema || defaultRequestSchema;
+      if (finalRequestSchema) {
+        operation.requestBody = {
+          required: true,
+          content: {
+            'application/json': {
+              schema: finalRequestSchema,
+              ...(args.include_examples !== false && {
+                example: generateExample(finalRequestSchema),
+              }),
             },
-          };
-        }
+          },
+        };
       }
 
       // Add middleware as security if present

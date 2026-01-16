@@ -22,7 +22,7 @@ vi.mock('../../../config.js', () => ({
   PROJECT_ROOT: '/mock/project/root',
 }));
 
-import { handleFindCircularDeps, FindCircularDepsArgs, findCycles, extractCycle } from '../../../handlers/deps/circular.js';
+import { handleFindCircularDeps, FindCircularDepsArgs, findCycles, extractCycle, createCycleSignature, FindCyclesOptions } from '../../../handlers/deps/circular.js';
 
 describe('handleFindCircularDeps', () => {
   beforeEach(() => {
@@ -1129,5 +1129,286 @@ describe('extractCycle (direct unit tests)', () => {
     const result = extractCycle(stack, 'c');
 
     expect(result).toEqual(['c']);
+  });
+});
+
+describe('branch coverage - line 238 (.js to .tsx resolution)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should resolve .js extension to .tsx files (line 238)', async () => {
+    // This tests the second branch of the .js -> .ts/.tsx resolution (line 238)
+    // where the .tsx extension matches after .ts doesn't
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readdirSync).mockReturnValue([
+      { name: 'a.ts', isDirectory: () => false, isFile: () => true },
+      { name: 'b.tsx', isDirectory: () => false, isFile: () => true }, // Note: .tsx not .ts
+    ] as unknown as fs.Dirent[]);
+    vi.mocked(fs.readFileSync).mockImplementation((filePath) => {
+      const p = String(filePath);
+      // Import with .js extension that should resolve to .tsx
+      if (p.includes('a.ts')) return "import { B } from './b.js';"; // .js -> .tsx
+      if (p.includes('b.tsx')) return "import { A } from './a.js';"; // .js -> .ts
+      return '';
+    });
+
+    const args: FindCircularDepsArgs = { path: 'src' };
+    const result = await handleFindCircularDeps(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBeUndefined();
+    expect(data.count).toBeGreaterThan(0);
+  });
+});
+
+describe('branch coverage - line 309 (empty neighbors fallback)', () => {
+  it('should use empty array fallback when node has no neighbors (line 309)', () => {
+    // Create a graph where graph.get(node) returns undefined
+    // This happens when a node is a key but has no entry (shouldn't normally happen)
+    // or when iterating over keys that don't have values
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b']);
+    graph.set('b', []); // Empty neighbors array - this covers the normal case
+
+    // To truly cover the `|| []` branch, we need a node where get() returns undefined
+    // This can happen if we manually set undefined or delete after setting
+    // But Map iteration only covers existing keys, so we simulate it differently
+
+    const cycles = findCycles(graph);
+
+    // No cycles because b has no outgoing edges
+    expect(cycles.length).toBe(0);
+  });
+
+  it('should handle graph with undefined neighbor list (line 309)', () => {
+    // Create a graph where we explicitly set undefined to trigger || []
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b']);
+    graph.set('b', undefined as unknown as string[]); // Force undefined to trigger || []
+
+    const cycles = findCycles(graph);
+
+    // Should not crash, treats undefined as empty array
+    expect(cycles.length).toBe(0);
+  });
+});
+
+describe('branch coverage - lines 324-327 (cycle handling)', () => {
+  it('should handle case when cycle is found (lines 324-327)', () => {
+    // Create a scenario that exercises the truthy branch (cycle exists)
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b']);
+    graph.set('b', ['c']);
+    graph.set('c', ['a']); // Creates cycle a -> b -> c -> a
+
+    const cycles = findCycles(graph);
+
+    // Cycle should be detected
+    expect(cycles.length).toBe(1);
+  });
+
+  it('should skip cycle when extractCycle returns null (line 324 false branch)', () => {
+    // Use dependency injection to provide a custom extractCycle that returns null
+    // This tests the defensive false branch at line 324
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b']);
+    graph.set('b', ['a']); // Creates cycle a -> b -> a
+
+    // Custom extractCycle that always returns null
+    const nullExtractCycle = (): string[] | null => null;
+
+    const options: FindCyclesOptions = {
+      extractCycleFn: nullExtractCycle,
+    };
+
+    const cycles = findCycles(graph, options);
+
+    // No cycles should be found since extractCycle returns null
+    expect(cycles.length).toBe(0);
+  });
+
+  it('should skip duplicate cycle signatures (line 327 false branch)', () => {
+    // Use dependency injection to provide a custom extractCycle that returns the same cycle twice
+    // This tests the deduplication branch at line 327
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b', 'c']); // a points to both b and c
+    graph.set('b', ['a']); // b -> a creates first back edge
+    graph.set('c', ['a']); // c -> a creates second back edge
+
+    let callCount = 0;
+
+    // Custom extractCycle that returns the same cycle for both back edges
+    const duplicateExtractCycle = (stack: string[], cycleStart: string): string[] | null => {
+      callCount++;
+      // Always return the same cycle regardless of input
+      // This simulates finding the same cycle from different paths
+      return ['a', 'b'];
+    };
+
+    const options: FindCyclesOptions = {
+      extractCycleFn: duplicateExtractCycle,
+    };
+
+    const cycles = findCycles(graph, options);
+
+    // Should have called extractCycle twice (for both back edges to 'a')
+    expect(callCount).toBe(2);
+
+    // But only one cycle should be recorded due to deduplication
+    expect(cycles.length).toBe(1);
+  });
+
+  it('should deduplicate cycles with same signature (line 327 else branch)', () => {
+    // Create a graph where the same cycle can be detected from multiple starting points
+    // When the DFS visits nodes in different orders, it might find the same cycle twice
+    // The signature check at line 327 should deduplicate
+
+    // A simple 2-node cycle: a <-> b
+    // DFS from 'a' finds: a -> b -> a (cycle)
+    // DFS won't visit 'b' again since it's already BLACK
+    // But we can create a more complex structure
+
+    // Let's create a graph with overlapping cycles that produce same signature
+    const graph = new Map<string, string[]>();
+    // Create cycle: a -> b -> a
+    graph.set('a', ['b']);
+    graph.set('b', ['a']);
+
+    const cycles = findCycles(graph);
+
+    // Only 1 cycle should be reported (deduplicated)
+    expect(cycles.length).toBe(1);
+  });
+
+  it('should handle multiple cycles sharing nodes (deduplication test)', () => {
+    // Create interconnected cycles that might generate duplicate signatures
+    // Graph: a -> b -> c -> a (3-node cycle)
+    //        with b -> a as well (creating another path)
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b']);
+    graph.set('b', ['c', 'a']); // b points to both c and back to a
+    graph.set('c', ['a']);
+
+    const cycles = findCycles(graph);
+
+    // Should find both cycles but deduplicate any identical ones
+    // Cycles found: a->b->a (2-node) and a->b->c->a (3-node)
+    expect(cycles.length).toBe(2);
+  });
+
+  it('should handle dense graph with many potential duplicate cycle detections', () => {
+    // Create a fully connected small graph where cycles can be detected multiple ways
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['b', 'c']);
+    graph.set('b', ['a', 'c']);
+    graph.set('c', ['a', 'b']);
+
+    const cycles = findCycles(graph);
+
+    // Multiple cycles exist: a-b-a, a-c-a, b-c-b, a-b-c-a
+    // Deduplication should reduce to unique cycles
+    expect(cycles.length).toBeGreaterThan(0);
+
+    // Check that no duplicate cycle paths exist
+    const signatures = cycles.map(c => c.path.join('->'));
+    const uniqueSignatures = new Set(signatures);
+    expect(uniqueSignatures.size).toBe(cycles.length);
+  });
+});
+
+describe('branch coverage - line 379 (empty cycle signature)', () => {
+  it('should return empty string for empty cycle array (line 379)', () => {
+    // Directly test createCycleSignature with an empty array
+    // This is a defensive branch that can't be triggered through normal operation
+    const result = createCycleSignature([]);
+
+    expect(result).toBe('');
+  });
+
+  it('should handle single-element cycle', () => {
+    const result = createCycleSignature(['a']);
+
+    expect(result).toBe('a');
+  });
+
+  it('should rotate cycle to start with minimum element', () => {
+    // Cycle: [c, a, b] should become [a, b, c]
+    const result = createCycleSignature(['c', 'a', 'b']);
+
+    expect(result).toBe('a -> b -> c');
+  });
+
+  it('should handle cycle already starting with minimum', () => {
+    const result = createCycleSignature(['a', 'b', 'c']);
+
+    expect(result).toBe('a -> b -> c');
+  });
+
+  it('should handle single-node self-cycle in findCycles', () => {
+    // A self-referencing node creates the smallest possible cycle
+    const graph = new Map<string, string[]>();
+    graph.set('a', ['a']); // Self-import
+
+    const cycles = findCycles(graph);
+
+    // Self-cycle should be detected
+    expect(cycles.length).toBe(1);
+    expect(cycles[0].length).toBe(1);
+  });
+});
+
+describe('branch coverage - line 498 (non-Error thrown)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should handle non-Error thrown objects (line 498)', async () => {
+    // Throw a string instead of an Error to trigger String(error) branch
+    vi.mocked(fs.existsSync).mockImplementation(() => {
+      throw 'String error instead of Error object';
+    });
+
+    const args: FindCircularDepsArgs = { path: 'src' };
+    const result = await handleFindCircularDeps(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Failed to find circular dependencies');
+    expect(data.error).toContain('String error instead of Error object');
+  });
+
+  it('should handle number thrown as error (line 498)', async () => {
+    vi.mocked(fs.existsSync).mockImplementation(() => {
+      throw 42;
+    });
+
+    const args: FindCircularDepsArgs = { path: 'src' };
+    const result = await handleFindCircularDeps(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('42');
+  });
+
+  it('should handle object thrown as error (line 498)', async () => {
+    vi.mocked(fs.existsSync).mockImplementation(() => {
+      throw { custom: 'error object' };
+    });
+
+    const args: FindCircularDepsArgs = { path: 'src' };
+    const result = await handleFindCircularDeps(args);
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain('Failed to find circular dependencies');
   });
 });

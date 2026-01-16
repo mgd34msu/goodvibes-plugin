@@ -740,7 +740,7 @@ describe('handleAutoRollback', () => {
       const result = await handleAutoRollback({
         trigger: 'unknown_trigger' as any,
       });
-      
+
       const data = JSON.parse(result.content[0].text);
       expect(result.isError).toBe(true);
       expect(data.error).toContain('Unknown trigger type');
@@ -767,7 +767,7 @@ describe('handleAutoRollback', () => {
       });
 
       const data = JSON.parse(result.content[0].text);
-      
+
       expect(data.files_reverted).toContain('file1.ts');
       expect(data.files_reverted).not.toContain('file2.ts');
       expect(data.files_deleted).toContain('new.ts');
@@ -804,10 +804,405 @@ describe('handleAutoRollback', () => {
         stash_before_rollback: true,
         include_untracked: true
       });
-      
+
       const data = JSON.parse(result.content[0].text);
       expect(stashUntrackedCalled).toBe(true);
       expect(data.files_deleted).toContain('new.ts');
+    });
+  });
+
+  describe('branch coverage: runCommand error handling', () => {
+    test('line 96: uses exit code 1 when error.status is undefined', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          // Throw error without status property to trigger || 1 branch
+          const error = new Error('Command failed');
+          (error as any).stdout = 'some output';
+          (error as any).stderr = 'some error';
+          // Explicitly NOT setting status to trigger the || 1 fallback
+          throw error;
+        }
+        if (cmdStr.includes('git checkout')) {
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation_passed).toBe(false);
+      expect(data.validation_exit_code).toBe(1);
+    });
+
+    test('line 96: handles Buffer stdout/stderr in error', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Command failed');
+          // Use Buffer instead of string to exercise that branch
+          (error as any).stdout = Buffer.from('buffer stdout');
+          (error as any).stderr = Buffer.from('buffer stderr');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git checkout')) {
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.validation_passed).toBe(false);
+      expect(data.validation_output).toContain('buffer stdout');
+      expect(data.validation_output).toContain('buffer stderr');
+    });
+  });
+
+  describe('branch coverage: parseGitStatus empty lines', () => {
+    test('line 144: skips empty lines in git status output', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          // Include empty lines and whitespace-only lines
+          return ' M file1.ts\n\n   \n M file2.ts\n';
+        }
+        if (cmdStr.includes('tsc')) {
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Should parse only the two valid files, ignoring empty lines
+      expect(data.git_status_before).toContain('file1.ts');
+      expect(data.git_status_before).toContain('file2.ts');
+      expect(data.validation_passed).toBe(true);
+    });
+  });
+
+  describe('branch coverage: non-Error thrown in getValidationCommand', () => {
+    test('line 259: handles non-Error thrown during validation command generation', async () => {
+      // Mock detectPackageManager to throw a non-Error value
+      vi.mocked(detectPackageManager).mockRejectedValueOnce('string error');
+
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toBe('Unknown error');
+    });
+  });
+
+  describe('branch coverage: stash with only untracked files', () => {
+    test('line 301: stash_before_rollback when only filesToDelete has items', async () => {
+      let stashCalled = false;
+
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          // Only untracked files, no modified files
+          return '?? newfile.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash push -m')) {
+          stashCalled = true;
+          return 'Saved working directory';
+        }
+        if (cmdStr.includes('git stash list')) {
+          return 'stash@{0}: auto-rollback';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        stash_before_rollback: true,
+        include_untracked: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(stashCalled).toBe(true);
+      expect(data.rollback_performed).toBe(true);
+    });
+
+    test('line 301: stash skipped when no files to revert or delete', async () => {
+      let stashCalled = false;
+
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          // No files at all
+          return '';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash')) {
+          stashCalled = true;
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        stash_before_rollback: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(stashCalled).toBe(false);
+      expect(data.rollback_performed).toBe(false);
+    });
+  });
+
+  describe('branch coverage: stash untracked failure', () => {
+    test('line 322-335: stash untracked fails - files_deleted not updated', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts\n?? newfile.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash push -u -m')) {
+          // Fail the untracked stash
+          const error = new Error('Stash untracked failed');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash push -m')) {
+          return 'Saved working directory';
+        }
+        if (cmdStr.includes('git stash list')) {
+          return 'stash@{0}: auto-rollback';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        stash_before_rollback: true,
+        include_untracked: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.rollback_performed).toBe(true);
+      expect(data.files_reverted).toContain('file.ts');
+      // files_deleted should NOT contain newfile.ts since stash -u failed
+      expect(data.files_deleted).not.toContain('newfile.ts');
+    });
+  });
+
+  describe('branch coverage: git checkout failure', () => {
+    test('line 335: git checkout fails for a file - file not added to reverted list', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file1.ts\n M file2.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git checkout -- "file1.ts"')) {
+          // Fail for file1.ts
+          const error = new Error('Checkout failed');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git checkout -- "file2.ts"')) {
+          // Succeed for file2.ts
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.rollback_performed).toBe(true);
+      // file1.ts should NOT be in reverted list since checkout failed
+      expect(data.files_reverted).not.toContain('file1.ts');
+      // file2.ts should be in reverted list since checkout succeeded
+      expect(data.files_reverted).toContain('file2.ts');
+    });
+  });
+
+  describe('branch coverage: git clean failure', () => {
+    test('line 346-351: git clean fails - file not added to deleted list', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return '?? newfile1.ts\n?? newfile2.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git clean -fd "newfile1.ts"')) {
+          // Fail for newfile1.ts
+          const error = new Error('Clean failed');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git clean -fd "newfile2.ts"')) {
+          // Succeed for newfile2.ts
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        include_untracked: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.rollback_performed).toBe(true);
+      // newfile1.ts should NOT be in deleted list since clean failed
+      expect(data.files_deleted).not.toContain('newfile1.ts');
+      // newfile2.ts should be in deleted list since clean succeeded
+      expect(data.files_deleted).toContain('newfile2.ts');
+    });
+
+    test('line 350-351: rollback_performed set true only from files_deleted', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          // Only untracked files, no modified files
+          return '?? newfile.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git clean -fd')) {
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        include_untracked: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // No files were reverted (only deleted)
+      expect(data.files_reverted).toHaveLength(0);
+      // One file was deleted
+      expect(data.files_deleted).toContain('newfile.ts');
+      // rollback_performed should still be true because files were deleted
+      expect(data.rollback_performed).toBe(true);
+    });
+  });
+
+  describe('branch coverage: stash initial failure', () => {
+    test('line 309: initial stash push fails - no rollback performed via stash path', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash push -m')) {
+          // Fail the initial stash
+          const error = new Error('Stash failed');
+          (error as any).status = 1;
+          throw error;
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        stash_before_rollback: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Since stash failed, rollback_performed should be false
+      expect(data.rollback_performed).toBe(false);
+      expect(data.stash_ref).toBeUndefined();
+    });
+  });
+
+  describe('branch coverage: stash_ref fallback', () => {
+    test('line 312: uses stashMessage when git stash list returns empty', async () => {
+      mockedExecSync.mockImplementation((cmd: unknown) => {
+        const cmdStr = String(cmd);
+        if (cmdStr.includes('git status --porcelain')) {
+          return ' M file.ts';
+        }
+        if (cmdStr.includes('tsc')) {
+          const error = new Error('Type errors');
+          (error as any).status = 1;
+          throw error;
+        }
+        if (cmdStr.includes('git stash push -m')) {
+          return 'Saved working directory';
+        }
+        if (cmdStr.includes('git stash list -1')) {
+          // Return empty string to trigger the || stashMessage fallback
+          return '';
+        }
+        return '';
+      });
+
+      const result = await handleAutoRollback({
+        trigger: 'type_error',
+        stash_before_rollback: true,
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.rollback_performed).toBe(true);
+      // stash_ref should fall back to the generated stashMessage (auto-rollback-*)
+      expect(data.stash_ref).toMatch(/^auto-rollback-/);
     });
   });
 });

@@ -517,6 +517,80 @@ describe('accessibility-tree-analyzers', () => {
 
       expect(issues.some((i) => i.issue.includes('dialog missing required'))).toBe(true);
     });
+
+    it('should detect missing alertdialog label (line 412)', () => {
+      const elements = [
+        createElementInfo({
+          tag: 'div',
+          identifier: 'div:50',
+          attributes: new Map([['role', 'alertdialog']]),
+        }),
+      ];
+
+      const issues = detectA11yIssues(elements);
+
+      expect(issues.some((i) => i.issue.includes('alertdialog missing required'))).toBe(true);
+    });
+
+    it('should detect missing required attribute for standard role (line 419)', () => {
+      const elements = [
+        createElementInfo({
+          tag: 'div',
+          identifier: 'div:55',
+          attributes: new Map([['role', 'combobox']]),
+        }),
+      ];
+
+      const issues = detectA11yIssues(elements);
+
+      // Combobox requires aria-expanded and aria-controls
+      expect(issues.some((i) => i.issue.includes('combobox missing required aria-expanded'))).toBe(true);
+    });
+
+    it('should not flag click on interactive elements or components (branch coverage line 362)', () => {
+      const elements = [
+        createElementInfo({
+          tag: 'button',
+          attributes: new Map([['onClick', 'handleClick']]),
+        }),
+        createElementInfo({
+          tag: 'Custom',
+          attributes: new Map([['onClick', 'handleClick']]),
+          isComponent: true,
+        }),
+        createElementInfo({
+          tag: 'div',
+          attributes: new Map([['role', 'link'], ['onClick', 'handleClick']]),
+        }),
+      ];
+
+      const issues = detectA11yIssues(elements);
+      expect(issues.some((i) => i.issue.includes('Click handler on non-interactive'))).toBe(false);
+    });
+
+    it('should not flag dark gray text colors (branch coverage line 380)', () => {
+      const elements = [
+        createElementInfo({
+          tag: 'span',
+          attributes: new Map([['className', 'text-gray-900']]),
+        }),
+      ];
+
+      const issues = detectA11yIssues(elements);
+      expect(issues.some((i) => i.issue.includes('contrast'))).toBe(false);
+    });
+
+    it('should not flag non-expandable elements (branch coverage line 402)', () => {
+      const elements = [
+        createElementInfo({
+          tag: 'div',
+          attributes: new Map([['className', 'regular-box']]),
+        }),
+      ];
+
+      const issues = detectA11yIssues(elements);
+      expect(issues.some((i) => i.issue.includes('aria-expanded'))).toBe(false);
+    });
   });
 
   describe('analyzeKeyboardInteractions', () => {
@@ -695,6 +769,26 @@ describe('accessibility-tree-analyzers', () => {
       expect(tree.children[0].role).toBe('navigation');
       expect(tree.children[0].children.length).toBe(1);
       expect(tree.children[0].children[0].role).toBe('link');
+    });
+
+    it('should add child to root if parent is hidden (line 539)', () => {
+      const elements = [
+        createElementInfo({
+          tag: 'div',
+          attributes: new Map([['aria-hidden', 'true']]),
+          childIndices: [1],
+        }),
+        createElementInfo({
+          tag: 'button',
+          parentIndex: 0,
+        }),
+      ];
+
+      const tree = buildA11yTree(elements);
+
+      // Parent is hidden and skipped, so child should be at root
+      expect(tree.children.length).toBe(1);
+      expect(tree.children[0].role).toBe('button');
     });
   });
 

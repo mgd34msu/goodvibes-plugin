@@ -1312,6 +1312,51 @@ describe('SQLite Schema Functions', () => {
       expect(result.triggers).toHaveLength(1);
       expect(result.triggers[0].name).toBe('trg_audit');
     });
+
+    it('should handle triggers with null sql in getTableSchema (line 422 branch)', async () => {
+      const mockDb = createMockDatabase();
+      const masterData = { type: 'table', sql: 'CREATE TABLE test (id INTEGER)' };
+      const columnsData = [{ cid: 0, name: 'id', type: 'INTEGER', notnull: 0, dflt_value: null, pk: 0 }];
+      const indexListData: unknown[] = [];
+      const fkData: unknown[] = [];
+      // Trigger with null sql to exercise line 422: sql: r.sql || ''
+      const triggerData = [
+        { name: 'trg_null_sql', type: 'trigger', table_name: 'test', sql: null },
+      ];
+      const countData = { count: 0 };
+
+      mockDb.prepare = vi.fn().mockImplementation((sql: string) => {
+        if (sql.includes('sqlite_master') && sql.includes("type IN ('table', 'view')")) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(masterData) };
+        }
+        if (sql.includes('table_info')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(columnsData) };
+        }
+        if (sql.includes('index_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexListData) };
+        }
+        if (sql.includes('foreign_key_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(fkData) };
+        }
+        if (sql.includes("type = 'trigger'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(triggerData) };
+        }
+        if (sql.includes('COUNT(*)')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(countData) };
+        }
+        return createMockStatement();
+      });
+
+      withConnection.mockImplementation(async (options: unknown, callback: (db: unknown) => unknown) => {
+        return callback(mockDb);
+      });
+
+      const result = await getTableSchema({ filepath: ':memory:' }, 'test');
+
+      expect(result.triggers).toHaveLength(1);
+      expect(result.triggers[0].name).toBe('trg_null_sql');
+      expect(result.triggers[0].sql).toBe('');
+    });
   });
 
   describe('getDatabaseSchema', () => {
@@ -1674,6 +1719,117 @@ describe('SQLite Schema Functions', () => {
       const indexInfoQuery = preparedStatements.find(s => s.includes('index_info'));
       expect(indexInfoQuery).toBeDefined();
       expect(indexInfoQuery).toBe('PRAGMA index_info("idxwithquotes")');
+    });
+
+    it('should handle triggers with null sql in buildTableSchemaSync (line 594 branch)', async () => {
+      const mockDb = createMockDatabase();
+      const versionData = { version: '3.45.0' };
+      const tableRowsData = [
+        { name: 'test_table', type: 'table', sql: 'CREATE TABLE test_table (id INTEGER)' },
+      ];
+      const viewRowsData: unknown[] = [];
+      const columnsData = [{ cid: 0, name: 'id', type: 'INTEGER', notnull: 0, dflt_value: null, pk: 0 }];
+      const indexListData: unknown[] = [];
+      // Trigger with null sql to exercise line 594: sql: r.sql || ''
+      const triggerData = [
+        { name: 'trg_with_null_sql', type: 'trigger', table_name: 'test_table', sql: null },
+      ];
+      const countData = { count: 5 };
+
+      mockDb.pragma = vi.fn().mockReturnValue(10);
+
+      mockDb.prepare = vi.fn().mockImplementation((sql: string) => {
+        if (sql.includes('sqlite_version()')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(versionData) };
+        }
+        if (sql.includes("type = 'table'") && sql.includes('sqlite_master')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(tableRowsData) };
+        }
+        if (sql.includes("type = 'view'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(viewRowsData) };
+        }
+        if (sql.includes('table_info')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(columnsData) };
+        }
+        if (sql.includes('index_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexListData) };
+        }
+        if (sql.includes('foreign_key_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue([]) };
+        }
+        if (sql.includes("type = 'trigger'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(triggerData) };
+        }
+        if (sql.includes('COUNT(*)')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(countData) };
+        }
+        return createMockStatement();
+      });
+
+      withConnection.mockImplementation(async (options: unknown, callback: (db: unknown) => unknown) => {
+        return callback(mockDb);
+      });
+
+      const result = await getDatabaseSchema({ filepath: ':memory:' });
+
+      expect(result.tables).toHaveLength(1);
+      expect(result.tables[0].triggers).toHaveLength(1);
+      expect(result.tables[0].triggers[0].name).toBe('trg_with_null_sql');
+      expect(result.tables[0].triggers[0].sql).toBe('');
+    });
+
+    it('should handle null sql parameter in buildTableSchemaSync (line 622 branch)', async () => {
+      const mockDb = createMockDatabase();
+      const versionData = { version: '3.45.0' };
+      // Table with null sql to exercise line 622: sql: sql || ''
+      const tableRowsData = [
+        { name: 'null_sql_table', type: 'table', sql: null },
+      ];
+      const viewRowsData: unknown[] = [];
+      const columnsData = [{ cid: 0, name: 'id', type: 'INTEGER', notnull: 0, dflt_value: null, pk: 0 }];
+      const indexListData: unknown[] = [];
+      const triggerData: unknown[] = [];
+      const countData = { count: 0 };
+
+      mockDb.pragma = vi.fn().mockReturnValue(10);
+
+      mockDb.prepare = vi.fn().mockImplementation((sql: string) => {
+        if (sql.includes('sqlite_version()')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(versionData) };
+        }
+        if (sql.includes("type = 'table'") && sql.includes('sqlite_master')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(tableRowsData) };
+        }
+        if (sql.includes("type = 'view'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(viewRowsData) };
+        }
+        if (sql.includes('table_info')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(columnsData) };
+        }
+        if (sql.includes('index_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(indexListData) };
+        }
+        if (sql.includes('foreign_key_list')) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue([]) };
+        }
+        if (sql.includes("type = 'trigger'")) {
+          return { ...createMockStatement(), all: vi.fn().mockReturnValue(triggerData) };
+        }
+        if (sql.includes('COUNT(*)')) {
+          return { ...createMockStatement(), get: vi.fn().mockReturnValue(countData) };
+        }
+        return createMockStatement();
+      });
+
+      withConnection.mockImplementation(async (options: unknown, callback: (db: unknown) => unknown) => {
+        return callback(mockDb);
+      });
+
+      const result = await getDatabaseSchema({ filepath: ':memory:' });
+
+      expect(result.tables).toHaveLength(1);
+      expect(result.tables[0].name).toBe('null_sql_table');
+      expect(result.tables[0].sql).toBe('');
     });
   });
 });

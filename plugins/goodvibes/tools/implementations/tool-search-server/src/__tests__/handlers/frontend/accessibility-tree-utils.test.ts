@@ -259,6 +259,16 @@ describe('accessibility-tree-utils', () => {
       expect(isFocusable('span', new Map([['tabindex', '1']]))).toBe(true);
     });
 
+    it('should return true for explicit tabindex 0 (branch coverage line 315)', () => {
+      const attrs = new Map([['tabindex', '0']]);
+      expect(isFocusable('div', attrs)).toBe(true);
+    });
+
+    it('should return true for camelCase tabIndex (line 315 branch)', () => {
+      const attrs = new Map([['tabIndex', '0']]);
+      expect(isFocusable('div', attrs)).toBe(true);
+    });
+
     it('should handle tabIndex attribute (React style)', () => {
       expect(isFocusable('div', new Map([['tabIndex', '0']]))).toBe(true);
       expect(isFocusable('div', new Map([['tabIndex', '-1']]))).toBe(false);
