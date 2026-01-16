@@ -39,10 +39,12 @@ import { TOOL_VALIDATORS } from './tool-validators.js';
 import type { HookInput } from '../shared/index.js';
 
 /**
- * Handle Bash tool with git command detection
+ * Handles Bash tool invocations with git command detection.
+ * Routes git commits through quality gates, other git commands through
+ * git guards (branch protection, merge readiness), and allows other commands.
  *
- * @param input - The hook input containing tool information
- * @returns Promise that resolves when the bash tool is handled
+ * @param input - The hook input containing tool_input with command
+ * @returns Promise that resolves when validation is complete
  */
 async function handleBashTool(input: HookInput): Promise<void> {
   const command = extractBashCommand(input);

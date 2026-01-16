@@ -4,9 +4,23 @@
 
 import { ValidationIssue, ValidationContext } from './types.js';
 
-// HTTP status codes that are not magic numbers
-const VALID_STATUS_CODES = [200, 201, 204, 400, 401, 403, 404, 500];
+/**
+ * HTTP status codes exempt from magic number checks.
+ * These common status codes are considered self-documenting and acceptable inline.
+ */
+export const VALID_STATUS_CODES = [200, 201, 204, 400, 401, 403, 404, 500];
 
+/**
+ * Validates code against general best practices.
+ * Detects console.log statements, TODO/FIXME comments, and magic numbers.
+ * @param ctx - Validation context containing file content and metadata
+ * @returns Array of validation issues for best practice violations
+ * @example
+ * const issues = runBestPracticesChecks(ctx);
+ * // May return issues like:
+ * // { rule: 'best-practices/no-console', message: 'console.log found in code' }
+ * // { rule: 'best-practices/no-magic-numbers', message: 'Magic number 42 found' }
+ */
 export function runBestPracticesChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 

@@ -4,7 +4,13 @@
 
 import { ValidationIssue, ValidationContext } from './types.js';
 
-const SECRET_PATTERNS = [
+/**
+ * Patterns for detecting hardcoded secrets in source code.
+ * Each pattern includes a regex and human-readable name for error messages.
+ * @property pattern - Regex to match potential secrets (case-insensitive, global)
+ * @property name - Descriptive name for the secret type (used in error messages)
+ */
+export const SECRET_PATTERNS = [
   { pattern: /(?:password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/gi, name: 'password' },
   { pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*['"][^'"]+['"]/gi, name: 'API key' },
   { pattern: /(?:secret|token)\s*[:=]\s*['"][A-Za-z0-9+/=]{20,}['"]/gi, name: 'secret/token' },

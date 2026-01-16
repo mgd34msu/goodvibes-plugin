@@ -47,17 +47,38 @@ export interface ApiRoute {
   middleware?: string[];
 }
 
-/** Result of API route scanning */
+/**
+ * Result of API route scanning operation.
+ * @property framework - Detected or specified framework name
+ * @property routes - Array of discovered API routes
+ * @property count - Total number of routes found
+ */
 export interface ApiRoutesResult {
+  /** Framework that was used for parsing (nextjs, express, fastify, hono) */
   framework: string;
+  /** Array of discovered API route definitions */
   routes: ApiRoute[];
+  /** Total number of routes discovered */
   count: number;
 }
 
+/** Supported web framework types for route parsing */
 type Framework = 'nextjs' | 'express' | 'fastify' | 'hono';
 
 /**
- * Handle get_api_routes tool call
+ * Handles the get_api_routes MCP tool call.
+ *
+ * Scans the project for API route definitions based on the detected or specified framework.
+ * Supports Next.js (App Router and Pages Router), Express, Fastify, and Hono.
+ *
+ * @param args - Tool arguments containing optional path and framework
+ * @returns A ToolResponse with JSON containing framework, routes array, and count
+ *
+ * @example
+ * ```typescript
+ * const result = handleGetApiRoutes({ framework: 'nextjs' });
+ * // Returns all Next.js API routes with methods, paths, and handler locations
+ * ```
  */
 export function handleGetApiRoutes(args: GetApiRoutesArgs): ToolResponse {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
@@ -114,7 +135,10 @@ export function handleGetApiRoutes(args: GetApiRoutesArgs): ToolResponse {
 }
 
 /**
- * Detect framework from package.json and project structure
+ * Detects the web framework used in the project by examining package.json dependencies.
+ *
+ * @param projectPath - Absolute path to the project root
+ * @returns The detected framework type, or null if no supported framework is found
  */
 function detectFramework(projectPath: string): Framework | null {
   const packageJsonPath = path.join(projectPath, 'package.json');
@@ -157,7 +181,10 @@ function detectFramework(projectPath: string): Framework | null {
 }
 
 /**
- * Parse Next.js routes (App Router and Pages Router)
+ * Parses Next.js API routes from both App Router and Pages Router conventions.
+ *
+ * @param projectPath - Absolute path to the project root
+ * @returns Array of API routes found in app/api and pages/api directories
  */
 function parseNextJsRoutes(projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -190,7 +217,13 @@ function parseNextJsRoutes(projectPath: string): ApiRoute[] {
 }
 
 /**
- * Parse Next.js App Router routes
+ * Parses Next.js App Router API routes from route.ts files.
+ *
+ * Looks for exported HTTP method handlers (GET, POST, PUT, DELETE, etc.) in route files.
+ *
+ * @param apiDir - Path to the app/api directory
+ * @param projectPath - Project root for computing relative paths
+ * @returns Array of API routes with methods and handler locations
  */
 function parseNextJsAppRouter(apiDir: string, projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -234,7 +267,13 @@ function parseNextJsAppRouter(apiDir: string, projectPath: string): ApiRoute[] {
 }
 
 /**
- * Parse Next.js Pages Router routes
+ * Parses Next.js Pages Router API routes from pages/api files.
+ *
+ * Pages Router uses default export handlers that check req.method internally.
+ *
+ * @param apiDir - Path to the pages/api directory
+ * @param projectPath - Project root for computing relative paths
+ * @returns Array of API routes with detected HTTP methods
  */
 function parseNextJsPagesRouter(apiDir: string, projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -273,7 +312,12 @@ function parseNextJsPagesRouter(apiDir: string, projectPath: string): ApiRoute[]
 }
 
 /**
- * Detect which HTTP methods are handled in a Pages Router handler
+ * Detects which HTTP methods are handled in a Next.js Pages Router handler.
+ *
+ * Looks for req.method comparisons and switch case statements.
+ *
+ * @param content - Source file content to analyze
+ * @returns Array of HTTP method strings; defaults to ['GET'] if none detected
  */
 function detectPagesRouterMethods(content: string): string[] {
   const methods: string[] = [];
@@ -300,7 +344,10 @@ function detectPagesRouterMethods(content: string): string[] {
 }
 
 /**
- * Extract route path from Next.js App Router file path
+ * Extracts the URL route path from a Next.js App Router file path.
+ *
+ * @param filePath - Relative file path (e.g., 'app/api/users/[id]/route.ts')
+ * @returns URL path (e.g., '/api/users/[id]')
  */
 function extractNextJsRoutePath(filePath: string): string {
   // Remove app/ or src/app/ prefix and route.ts suffix
@@ -317,7 +364,10 @@ function extractNextJsRoutePath(filePath: string): string {
 }
 
 /**
- * Extract route path from Next.js Pages Router file path
+ * Extracts the URL route path from a Next.js Pages Router file path.
+ *
+ * @param filePath - Relative file path (e.g., 'pages/api/users/[id].ts')
+ * @returns URL path (e.g., '/api/users/[id]')
  */
 function extractNextJsPagesRoutePath(filePath: string): string {
   // Remove pages/ or src/pages/ prefix and file extension
@@ -337,7 +387,12 @@ function extractNextJsPagesRoutePath(filePath: string): string {
 }
 
 /**
- * Parse Express routes
+ * Parses Express.js route definitions from source files.
+ *
+ * Scans for app.get(), router.post(), etc. patterns in TypeScript/JavaScript files.
+ *
+ * @param projectPath - Absolute path to the project root
+ * @returns Array of discovered Express API routes
  */
 function parseExpressRoutes(projectPath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];
@@ -359,7 +414,11 @@ function parseExpressRoutes(projectPath: string): ApiRoute[] {
 }
 
 /**
- * Parse Express routes from a single file
+ * Parses Express route definitions from a single source file.
+ *
+ * @param content - Source file content
+ * @param filePath - Relative file path for error reporting
+ * @returns Array of routes found in the file
  */
 function parseExpressFileRoutes(content: string, filePath: string): ApiRoute[] {
   const routes: ApiRoute[] = [];

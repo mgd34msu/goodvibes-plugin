@@ -40,7 +40,10 @@ import type { ValidationResult } from './output-validation.js';
 import type { TestVerificationResult } from './test-verification.js';
 import type { HookResponse } from '../shared/index.js';
 
-// Extended hook input interface for SubagentStop
+/**
+ * Extended hook input interface for SubagentStop.
+ * Contains session, agent, transcript, and result information from the hook trigger.
+ */
 interface SubagentStopInput {
   session_id: string;
   transcript_path: string;
@@ -59,18 +62,36 @@ interface SubagentStopInput {
   success?: boolean;
 }
 
+/**
+ * Response structure for the SubagentStop hook.
+ * Extends HookResponse with validation, test, and telemetry output.
+ */
 interface SubagentStopResponse extends HookResponse {
+  /** Output data from hook processing */
   output?: {
+    /** Validation result from type checking */
     validation?: ValidationResult;
+    /** Test verification result */
     tests?: TestVerificationResult;
+    /** Whether telemetry was written */
     telemetryWritten?: boolean;
+    /** Agent identifier */
     agentId?: string;
+    /** Agent type */
     agentType?: string;
+    /** Duration of agent execution in milliseconds */
     durationMs?: number;
   };
 }
 
-/** Creates a hook response with optional system message and output data. */
+/**
+ * Creates a hook response with optional system message and output data.
+ *
+ * @param options - Optional configuration for the response
+ * @param options.systemMessage - System message to include
+ * @param options.output - Output data from processing
+ * @returns SubagentStopResponse object with continue: true
+ */
 function createResponse(options?: {
   systemMessage?: string;
   output?: SubagentStopResponse['output'];
@@ -90,7 +111,13 @@ function createResponse(options?: {
   return response;
 }
 
-/** Extracts normalized input fields from raw hook input. */
+/**
+ * Extracts normalized input fields from raw hook input.
+ * Handles field name variations (agent_id vs subagent_id, etc.).
+ *
+ * @param input - Raw hook input from Claude
+ * @returns Normalized fields with consistent naming
+ */
 function extractInputFields(input: SubagentStopInput): {
   agentId: string;
   agentType: string;
@@ -105,7 +132,15 @@ function extractInputFields(input: SubagentStopInput): {
   };
 }
 
-/** Validates agent output and runs tests on modified files. */
+/**
+ * Validates agent output and runs tests on modified files.
+ * Performs type checking and test verification for modified TypeScript files.
+ *
+ * @param cwd - Current working directory
+ * @param transcriptPath - Path to the agent transcript file
+ * @param state - Current hooks state
+ * @returns Object containing validation result, test result, and updated state
+ */
 async function validateAndTest(
   cwd: string,
   transcriptPath: string,
@@ -142,7 +177,14 @@ async function validateAndTest(
   return { validationResult, testResult, updatedState };
 }
 
-/** Updates analytics with subagent completion info. */
+/**
+ * Updates analytics with subagent completion info.
+ * Marks the matching subagent entry with completion timestamp and status.
+ *
+ * @param tracking - Tracking data from agent start
+ * @param status - Completion status ('completed' or 'failed')
+ * @returns Promise that resolves when analytics are updated
+ */
 async function updateAnalytics(
   tracking: NonNullable<Awaited<ReturnType<typeof getAgentTracking>>>,
   status: 'completed' | 'failed'

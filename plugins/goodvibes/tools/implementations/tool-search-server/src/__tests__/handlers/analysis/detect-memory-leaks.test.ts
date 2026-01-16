@@ -376,17 +376,22 @@ describe('handleDetectMemoryLeaks', () => {
       const args: DetectMemoryLeaksArgs = {
         target: 'pid',
         pid: 12345,
-        duration_seconds: 1000, // More than 10 minutes
-        snapshot_interval_ms: 100,
+        duration_seconds: 1000, // More than 10 minutes - should be capped to 600
+        snapshot_interval_ms: 1000, // Use 1 second intervals to reduce iterations
       };
 
       const promise = handleDetectMemoryLeaks(args);
-      // Advance time significantly
-      await vi.advanceTimersByTimeAsync(2000);
+      // Advance time past the 10 minute cap (600 seconds = 600,000 ms)
+      // Add buffer for the 1 second sleep in the initial command spawn wait
+      await vi.advanceTimersByTimeAsync(602000);
       await promise;
 
       // Should complete without error - duration is capped
       expect(successResponse).toHaveBeenCalled();
+
+      // Verify the actual duration is capped near 600 seconds
+      const result = vi.mocked(successResponse).mock.calls[0][0] as { duration_seconds: number };
+      expect(result.duration_seconds).toBeLessThanOrEqual(600);
     });
   });
 
@@ -421,15 +426,20 @@ describe('handleDetectMemoryLeaks', () => {
       const args: DetectMemoryLeaksArgs = {
         target: 'pid',
         pid: 12345,
-        duration_seconds: 1,
+        duration_seconds: 12, // Need at least 10 seconds to get 2+ snapshots at 5000ms default interval
         // snapshot_interval_ms not provided (defaults to 5000)
       };
 
       const promise = handleDetectMemoryLeaks(args);
-      await vi.advanceTimersByTimeAsync(2000);
+      // Advance time past the duration (12 seconds = 12000ms)
+      await vi.advanceTimersByTimeAsync(13000);
       await promise;
 
       expect(successResponse).toHaveBeenCalled();
+
+      // Verify snapshots were taken at approximately 5 second intervals
+      const result = vi.mocked(successResponse).mock.calls[0][0] as { snapshots: MemorySnapshot[] };
+      expect(result.snapshots.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should use default threshold of 10 MB', async () => {

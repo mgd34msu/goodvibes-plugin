@@ -1060,10 +1060,11 @@ describe('handleIdentifyTechDebt', () => {
     });
 
     it('should give grade B for score 20-39', async () => {
-      // Some dead code to push score up
+      // Dead code count 1-5 gives score 20 (via scoreDeadCode function)
+      // With only dead_code included (weight 10), final score = 20 * 10 / 10 = 20
       vi.mocked(handleFindDeadCode).mockResolvedValue({
         isError: false,
-        content: [{ type: 'text', text: JSON.stringify({ count: 20, dead_exports: [] }) }],
+        content: [{ type: 'text', text: JSON.stringify({ count: 3, dead_exports: [] }) }],
       });
 
       const args: IdentifyTechDebtArgs = {
@@ -1075,6 +1076,7 @@ describe('handleIdentifyTechDebt', () => {
       const call = vi.mocked(createSuccessResponse).mock.calls[0][0];
       expect(call.score).toBeGreaterThanOrEqual(20);
       expect(call.score).toBeLessThan(40);
+      expect(call.grade).toBe('B');
     });
 
     it('should give grade C for score 40-59', async () => {
@@ -1595,6 +1597,13 @@ describe('handleIdentifyTechDebt', () => {
     });
 
     it('should return 0 score when all categories have 0 issues', async () => {
+      // Need 100% coverage to get 0 score from coverage category
+      // (80% coverage with 80% threshold = score 50, contributing 10 points)
+      vi.mocked(handleGetTestCoverage).mockResolvedValue({
+        isError: false,
+        content: [{ type: 'text', text: JSON.stringify({ coverage: { lines: 100 }, uncovered_functions: [] }) }],
+      });
+
       const args: IdentifyTechDebtArgs = {};
 
       await handleIdentifyTechDebt(args);

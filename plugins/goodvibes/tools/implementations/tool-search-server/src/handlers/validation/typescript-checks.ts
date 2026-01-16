@@ -4,6 +4,18 @@
 
 import { ValidationIssue, ValidationContext } from './types.js';
 
+/**
+ * Runs TypeScript-specific validation checks on a file.
+ * Detects 'any' type usage, unexplained @ts-ignore comments, and excessive non-null assertions.
+ * Only runs on TypeScript files (.ts, .tsx).
+ * @param ctx - Validation context containing file content and metadata
+ * @returns Array of TypeScript-related validation issues (empty for non-TS files)
+ * @example
+ * const issues = runTypeScriptChecks(ctx);
+ * // May return issues like:
+ * // { rule: 'typescript/no-any', message: 'Avoid using "any" type' }
+ * // { rule: 'typescript/no-ts-ignore', message: '@ts-ignore should include an explanation' }
+ */
 export function runTypeScriptChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 

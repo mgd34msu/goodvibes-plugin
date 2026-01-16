@@ -29,25 +29,41 @@ import type { HookInput, HookResponse, CreateResponseOptions } from './hook-io.j
 
 /**
  * Hook handler function type.
- * Receives parsed input and returns a response.
+ *
+ * A function that receives parsed hook input and returns a response.
+ * This is the main business logic for any hook implementation.
+ *
+ * @typeParam TResponse - The response type (defaults to HookResponse)
+ * @param input - The parsed hook input from stdin
+ * @returns Promise resolving to the hook response
  */
 export type HookHandler<TResponse extends HookResponse = HookResponse> = (
   _input: HookInput
 ) => Promise<TResponse>;
 
 /**
- * Options for the hook runner.
+ * Configuration options for the hook runner.
  */
 export interface RunHookOptions {
   /**
    * Custom error response creator.
-   * Default creates a response with systemMessage containing the error.
+   *
+   * Called when an error occurs during hook execution. Returns a HookResponse
+   * to send back to Claude Code. Default creates a response with systemMessage
+   * containing the error.
+   *
+   * @param error - The error that occurred during execution
+   * @returns A HookResponse to send as the error response
    */
   onError?: (_error: unknown) => HookResponse;
 
   /**
    * Whether to catch uncaught promise rejections.
-   * Default: true
+   *
+   * When true (default), wraps execution in a .catch() handler to ensure
+   * all errors are properly handled and a response is always sent.
+   *
+   * @default true
    */
   catchUncaught?: boolean;
 }
@@ -162,12 +178,17 @@ export async function runHook<TResponse extends HookResponse = HookResponse>(
 }
 
 /**
- * Run a hook synchronously (no uncaught handler).
- * Use this when you need to await the hook completion.
+ * Runs a hook synchronously without the uncaught rejection handler.
  *
- * @param hookName - Name of the hook for logging
- * @param handler - The hook handler function
- * @param options - Optional configuration (catchUncaught is ignored)
+ * Use this variant when you need to await the hook completion and handle
+ * errors yourself. Unlike runHook, this function will throw if an error
+ * occurs after the try/catch block.
+ *
+ * @typeParam TResponse - The response type (defaults to HookResponse)
+ * @param hookName - Name of the hook for logging purposes
+ * @param handler - The hook handler function to execute
+ * @param options - Optional configuration (catchUncaught is always false)
+ * @returns Promise that resolves when the hook completes
  */
 export async function runHookSync<
   TResponse extends HookResponse = HookResponse,
@@ -179,6 +200,15 @@ export async function runHookSync<
   await runHook(hookName, handler, { ...options, catchUncaught: false });
 }
 
-/** Re-export of commonly used types and functions for hook development convenience */
+/**
+ * Re-exported types for hook development convenience.
+ * @see hook-io.ts for full type documentation
+ */
 export type { HookInput, HookResponse, CreateResponseOptions };
+
+/**
+ * Re-exported functions for hook development convenience.
+ * @see hook-io.ts for createResponse documentation
+ * @see logging.ts for debug and logError documentation
+ */
 export { createResponse, debug, logError };

@@ -4,6 +4,17 @@
 
 import { ValidationIssue, ValidationContext } from './types.js';
 
+/**
+ * Validates naming conventions in code.
+ * Checks for camelCase functions, PascalCase React components, and proper SCREAMING_CASE usage.
+ * @param ctx - Validation context containing file content and metadata
+ * @returns Array of validation issues for naming convention violations
+ * @example
+ * const issues = runNamingChecks(ctx);
+ * // May return issues like:
+ * // { rule: 'naming/camelCase', message: 'Function "MyFunc" uses PascalCase but file is not React' }
+ * // { rule: 'naming/screaming-case', message: 'SCREAMING_CASE "MY_FUNC" should be for constant values only' }
+ */
 export function runNamingChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 

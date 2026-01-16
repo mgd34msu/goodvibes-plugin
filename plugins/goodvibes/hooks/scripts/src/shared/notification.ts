@@ -17,7 +17,13 @@ import {
 
 import type { HookResponse } from './index.js';
 
-/** Creates a hook response with optional system message. */
+/**
+ * Creates a hook response with optional system message.
+ *
+ * @param systemMessage - Optional message to include in the response
+ * @returns A HookResponse object with continue=true
+ * @internal
+ */
 function createResponse(systemMessage?: string): HookResponse {
   return {
     continue: true,
@@ -25,7 +31,15 @@ function createResponse(systemMessage?: string): HookResponse {
   };
 }
 
-/** Main entry point for notification hook. Handles validation, test, and build error notifications. */
+/**
+ * Main entry point for notification hook.
+ *
+ * Handles notifications from Claude Code including validation failures,
+ * test failures, and build errors. Can be extended to send notifications
+ * to external services or log files.
+ *
+ * @internal
+ */
 async function runNotificationHook(): Promise<void> {
   try {
     debug('Notification hook starting');

@@ -81,6 +81,11 @@ export function buildOrchestratorContext(
 
 /**
  * Returns agent-specific chaining reminders based on what type of agent completed.
+ * Suggests next steps and follow-up agents based on the workflow.
+ *
+ * @param agentType - Type of agent that just completed
+ * @param success - Whether the agent completed successfully
+ * @returns Chaining reminder string, or null if no specific chain suggested
  */
 function getAgentChainingReminder(agentType: string, success: boolean): string | null {
   const normalizedType = agentType.toLowerCase();

@@ -1043,6 +1043,34 @@ Done!`;
         expect(data.recommendations).toBeDefined();
       });
 
+      it('should fallback when Claude returns malformed JSON that causes parse error', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.statSync).mockReturnValue(createMockStats(false, 100));
+        vi.mocked(fs.readdirSync).mockImplementation((p, opts) => {
+          const pathStr = String(p).replace(/\\/g, '/');
+          if (pathStr.includes('/mock/project/root') && !pathStr.includes('/mock/project/root/')) {
+            return [createDirent('app.ts', false)];
+          }
+          return [];
+        });
+        vi.mocked(fs.readFileSync).mockReturnValue('const x = 1;');
+
+        const mockChild = createMockChildProcess();
+        vi.mocked(childProcess.spawn).mockReturnValue(mockChild);
+
+        const promise = handleGetConventions({});
+        await new Promise<void>(resolve => process.nextTick(resolve));
+        // Send malformed JSON that looks like JSON but fails to parse (unclosed brace)
+        mockChild.stdout.emit('data', '{ "conventions": [ { invalid }');
+        mockChild.emit('close', 0);
+
+        const result = await promise;
+        const data = JSON.parse(result.content[0].text);
+
+        // Should use fallback result due to parse error
+        expect(data.recommendations).toBeDefined();
+      });
+
       it('should fallback when Claude spawn fails', async () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.statSync).mockReturnValue(createMockStats(false, 100));

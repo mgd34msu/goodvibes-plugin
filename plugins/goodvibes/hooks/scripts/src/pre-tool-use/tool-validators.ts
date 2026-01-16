@@ -142,7 +142,17 @@ export async function validateImplementation(_input: HookInput): Promise<void> {
   respond(allowTool('PreToolUse'));
 }
 
-/** Tool validators keyed by tool name */
+/**
+ * Registry of tool validators keyed by MCP tool name.
+ * Each validator checks prerequisites before the tool executes.
+ * Tools not in this registry are allowed by default.
+ *
+ * @example
+ * const validator = TOOL_VALIDATORS['detect_stack'];
+ * if (validator) {
+ *   await validator(input);  // Checks for package.json
+ * }
+ */
 export const TOOL_VALIDATORS: Record<
   string,
   (_input: HookInput) => Promise<void>

@@ -5,6 +5,17 @@
 import { ValidationIssue, ValidationContext } from './types.js';
 import { extractFunctionBody } from '../../utils.js';
 
+/**
+ * Runs error handling validation checks on a file.
+ * Detects async functions without try/catch, empty catch blocks, and improper error logging.
+ * @param ctx - Validation context containing file content and metadata
+ * @returns Array of validation issues related to error handling
+ * @example
+ * const issues = runErrorHandlingChecks(ctx);
+ * // May return issues like:
+ * // { rule: 'error-handling/async-try-catch', message: 'Async function without error handling' }
+ * // { rule: 'error-handling/empty-catch', message: 'Empty catch block swallows errors' }
+ */
 export function runErrorHandlingChecks(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 

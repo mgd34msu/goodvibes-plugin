@@ -185,7 +185,9 @@ describe('handleGetTestCoverage', () => {
 
       mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
         const pathStr = String(p).replace(/\\/g, '/');
-        return pathStr.includes('custom-coverage') && pathStr.includes('lcov.info');
+        // Return true for the directory itself OR for lcov.info inside it
+        return pathStr.endsWith('custom-coverage') ||
+               (pathStr.includes('custom-coverage') && pathStr.includes('lcov.info'));
       });
       mockFs.statSync.mockImplementation((p: fs.PathLike) => {
         const pathStr = String(p).replace(/\\/g, '/');
@@ -209,7 +211,9 @@ describe('handleGetTestCoverage', () => {
 
       mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
         const pathStr = String(p).replace(/\\/g, '/');
-        return pathStr.includes('alt-coverage') && pathStr.includes('lcov.info');
+        // Return true for the directory itself OR for lcov.info inside it
+        return pathStr.endsWith('alt-coverage') ||
+               (pathStr.includes('alt-coverage') && pathStr.includes('lcov.info'));
       });
       mockFs.statSync.mockImplementation((p: fs.PathLike) => {
         const pathStr = String(p).replace(/\\/g, '/');

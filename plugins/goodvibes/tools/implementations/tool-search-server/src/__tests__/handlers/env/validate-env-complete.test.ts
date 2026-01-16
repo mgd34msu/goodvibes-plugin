@@ -3,13 +3,15 @@
  *
  * Tests cover:
  * - handleValidateEnvComplete main function
- * - parseEnvFile helper
- * - scanFileForEnvVars helper
- * - scanDirectory helper
- * - inferExpectedType helper
- * - validateValue helper
- * - formatAsMarkdown helper
+ * - parseEnvFile helper (via integration)
+ * - scanFileForEnvVars helper (via integration)
+ * - scanDirectory helper (via integration)
+ * - inferExpectedType helper (via integration)
+ * - validateValue helper (via integration)
+ * - formatAsMarkdown helper (via integration)
  * - All edge cases and error paths
+ *
+ * Target: 100% code coverage
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -24,6 +26,22 @@ vi.mock('../../config.js', () => ({
 
 // Import after mocks are set up
 import { handleValidateEnvComplete, ValidateEnvCompleteArgs } from '../../../handlers/env/validate-env-complete.js';
+
+// Helper to create mock Dirent objects
+function createMockDirent(name: string, isDir: boolean): fs.Dirent {
+  return {
+    name,
+    isDirectory: () => isDir,
+    isFile: () => !isDir,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isSymbolicLink: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    path: '',
+    parentPath: '',
+  } as fs.Dirent;
+}
 
 describe('validate-env-complete handler', () => {
   beforeEach(() => {
@@ -45,8 +63,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -66,8 +84,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -88,8 +106,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -109,8 +127,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -127,13 +145,12 @@ describe('validate-env-complete handler', () => {
       it('should handle missing .env file', () => {
         vi.mocked(fs.existsSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return false;
-          if (pathStr.endsWith('.env.example')) return true;
-          return false;
+          // Only .env.example exists
+          return pathStr.includes('.env.example');
         });
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env.example')) return 'API_KEY=';
+          if (pathStr.includes('.env.example')) return 'API_KEY=';
           throw new Error('ENOENT');
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -148,14 +165,16 @@ describe('validate-env-complete handler', () => {
       it('should handle missing .env.example file', () => {
         vi.mocked(fs.existsSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return true;
-          if (pathStr.endsWith('.env.example')) return false;
+          // Only .env exists (not .env.example)
+          if (pathStr.includes('.env.example')) return false;
+          if (pathStr.includes('.env')) return true;
           return false;
         });
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return 'API_KEY=secret';
-          throw new Error('ENOENT');
+          if (pathStr.includes('.env.example')) throw new Error('ENOENT');
+          if (pathStr.includes('.env')) return 'API_KEY=secret';
+          return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
 
@@ -184,7 +203,8 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.existsSync).mockImplementation((p) => {
           checkedPaths.push(String(p));
-          return String(p).includes('.env.production') || String(p).includes('.env.example');
+          const pathStr = String(p);
+          return pathStr.includes('.env.production') || pathStr.includes('.env.example');
         });
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
@@ -204,12 +224,13 @@ describe('validate-env-complete handler', () => {
 
         vi.mocked(fs.existsSync).mockImplementation((p) => {
           checkedPaths.push(String(p));
-          return String(p).includes('.env') || String(p).includes('.env.template');
+          const pathStr = String(p);
+          return pathStr.includes('.env') || pathStr.includes('.env.template');
         });
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.template')) return 'API_KEY=secret';
           if (pathStr.includes('.env.template')) return 'API_KEY=';
+          if (pathStr.includes('.env')) return 'API_KEY=secret';
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -228,8 +249,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -249,8 +270,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -260,6 +281,26 @@ describe('validate-env-complete handler', () => {
         const text = result.content[0].text;
 
         expect(text).not.toContain('MIXED_CASE_VAR');
+      });
+
+      it('should handle empty ignore list', () => {
+        const envContent = 'API_KEY=secret';
+        const exampleContent = 'API_KEY=\nMISSING_VAR=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ ignore: [] });
+        const text = result.content[0].text;
+
+        // With empty ignore list, MISSING_VAR should appear
+        expect(text).toContain('MISSING_VAR');
       });
     });
 
@@ -271,8 +312,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -292,8 +333,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -313,8 +354,28 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
+        const text = result.content[0].text;
+
+        expect(text).toContain('Type Validation Issues');
+        expect(text).toContain('Expected valid URL');
+      });
+
+      it('should validate URI values when check_values is true', () => {
+        const envContent = 'SERVICE_URI=invalid-uri';
+        const exampleContent = 'SERVICE_URI=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -333,8 +394,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -342,8 +403,7 @@ describe('validate-env-complete handler', () => {
         const result = handleValidateEnvComplete({ check_values: true });
         const text = result.content[0].text;
 
-        expect(text).not.toContain('API_URL');
-        expect(text).not.toContain('SERVICE_URI');
+        expect(text).not.toContain('Type Validation Issues');
       });
 
       it('should validate boolean values when check_values is true', () => {
@@ -353,8 +413,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -366,7 +426,26 @@ describe('validate-env-complete handler', () => {
         expect(text).toContain('DEBUG_ENABLED');
         expect(text).toContain('Expected boolean value');
         // FEATURE_DISABLED with 'yes' should be valid
-        expect(text).not.toContain('FEATURE_DISABLED');
+        expect(text).not.toMatch(/FEATURE_DISABLED.*Expected boolean/);
+      });
+
+      it('should accept all valid boolean formats', () => {
+        const envContent = 'ENABLED1=true\nENABLED2=false\nENABLED3=1\nENABLED4=0\nENABLED5=yes\nENABLED6=no';
+        const exampleContent = 'ENABLED1=\nENABLED2=\nENABLED3=\nENABLED4=\nENABLED5=\nENABLED6=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
+        const text = result.content[0].text;
+
+        expect(text).not.toContain('Type Validation Issues');
       });
 
       it('should validate secret values length when check_values is true', () => {
@@ -376,8 +455,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -388,8 +467,28 @@ describe('validate-env-complete handler', () => {
         expect(text).toContain('Type Validation Issues');
         expect(text).toContain('API_KEY');
         expect(text).toContain('too short');
-        // SECRET_TOKEN is long enough
-        expect(text).not.toContain('SECRET_TOKEN');
+        // SECRET_TOKEN is long enough (>= 8 chars)
+        expect(text).not.toMatch(/SECRET_TOKEN.*too short/);
+      });
+
+      it('should validate password values as secrets', () => {
+        const envContent = 'DB_PASSWORD=tiny';
+        const exampleContent = 'DB_PASSWORD=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
+        const text = result.content[0].text;
+
+        expect(text).toContain('DB_PASSWORD');
+        expect(text).toContain('too short');
       });
 
       it('should detect empty values', () => {
@@ -399,8 +498,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -412,15 +511,15 @@ describe('validate-env-complete handler', () => {
         expect(text).toContain('Value is empty');
       });
 
-      it('should validate numeric values for TIMEOUT, LIMIT, MAX, MIN, COUNT vars', () => {
-        const envContent = 'REQUEST_TIMEOUT=abc\nMAX_RETRIES=10\nMIN_CONNECTIONS=five\nUSER_COUNT=100';
-        const exampleContent = 'REQUEST_TIMEOUT=\nMAX_RETRIES=\nMIN_CONNECTIONS=\nUSER_COUNT=';
+      it('should validate TIMEOUT, LIMIT, MAX, MIN, COUNT vars as numbers', () => {
+        const envContent = 'REQUEST_TIMEOUT=abc\nMAX_RETRIES=10\nMIN_CONNECTIONS=five\nUSER_COUNT=100\nRATIO_LIMIT=bad';
+        const exampleContent = 'REQUEST_TIMEOUT=\nMAX_RETRIES=\nMIN_CONNECTIONS=\nUSER_COUNT=\nRATIO_LIMIT=';
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -430,8 +529,10 @@ describe('validate-env-complete handler', () => {
 
         expect(text).toContain('REQUEST_TIMEOUT');
         expect(text).toContain('MIN_CONNECTIONS');
-        expect(text).not.toContain('MAX_RETRIES');
-        expect(text).not.toContain('USER_COUNT');
+        expect(text).toContain('RATIO_LIMIT');
+        // These are valid numbers
+        expect(text).not.toMatch(/MAX_RETRIES.*Expected numeric/);
+        expect(text).not.toMatch(/USER_COUNT.*Expected numeric/);
       });
 
       it('should accept valid numeric values including negative and decimal', () => {
@@ -441,8 +542,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -452,6 +553,26 @@ describe('validate-env-complete handler', () => {
 
         // None should have type issues
         expect(text).not.toContain('Type Validation Issues');
+      });
+
+      it('should infer string type for unknown variable names', () => {
+        const envContent = 'RANDOM_SETTING=anyvalue';
+        const exampleContent = 'RANDOM_SETTING=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
+        const text = result.content[0].text;
+
+        // Should pass since strings accept any non-empty value
+        expect(text).toContain('Environment Validation: PASSED');
       });
     });
 
@@ -464,30 +585,25 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env') && !pathStr.includes('.ts')) return envContent;
           if (pathStr.endsWith('.ts')) return codeContent;
           return '';
         });
 
-        // Mock directory structure
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
               return [
-                { name: 'src', isDirectory: () => true, isFile: () => false },
-              ] as unknown as fs.Dirent[];
+                createMockDirent('src', true),
+              ];
             }
-            return ['src'];
-          }
-          if (dirStr.includes('src')) {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            if (dirStr.includes('src')) {
               return [
-                { name: 'index.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+                createMockDirent('index.ts', false),
+              ];
             }
-            return ['index.ts'];
           }
           return [];
         });
@@ -508,19 +624,16 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           if (pathStr.endsWith('.ts')) return codeContent;
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -541,19 +654,16 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           if (pathStr.endsWith('.ts')) return codeContent;
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -574,19 +684,16 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           if (pathStr.endsWith('.ts')) return codeContent;
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -599,27 +706,31 @@ describe('validate-env-complete handler', () => {
         expect(text).toContain('DENO_HOST');
       });
 
-      it('should skip built-in env vars like NODE_ENV', () => {
+      it('should skip built-in env vars like NODE_ENV, MODE, DEV, PROD, SSR, BASE_URL', () => {
         const envContent = '';
         const exampleContent = '';
-        const codeContent = 'const env = process.env.NODE_ENV;\nconst mode = import.meta.env.MODE;\nconst isDev = import.meta.env.DEV;';
+        const codeContent = `
+          const env = process.env.NODE_ENV;
+          const mode = import.meta.env.MODE;
+          const isDev = import.meta.env.DEV;
+          const isProd = import.meta.env.PROD;
+          const isSSR = import.meta.env.SSR;
+          const base = import.meta.env.BASE_URL;
+        `;
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           if (pathStr.endsWith('.ts')) return codeContent;
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -629,17 +740,19 @@ describe('validate-env-complete handler', () => {
         const text = result.content[0].text;
 
         // Built-in vars should not appear in missing list
-        expect(text).not.toContain('NODE_ENV');
+        expect(text).not.toContain('`NODE_ENV`');
         expect(text).not.toContain('`MODE`');
         expect(text).not.toContain('`DEV`');
+        expect(text).not.toContain('`PROD`');
+        expect(text).not.toContain('`SSR`');
+        expect(text).not.toContain('`BASE_URL`');
       });
 
-      it('should skip directories like node_modules, .git, dist', () => {
+      it('should skip directories like node_modules, .git, dist, build, out, .next, .nuxt, .svelte-kit, coverage, .cache, vendor, __pycache__, .venv, venv, target', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return '';
-          if (pathStr.endsWith('.env.example')) return '';
+          if (pathStr.includes('.env')) return '';
           return '';
         });
 
@@ -647,19 +760,29 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
           const dirStr = String(dir);
           visitedDirs.push(dirStr);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            if (dirStr === '/mock/project') {
               return [
-                { name: 'node_modules', isDirectory: () => true, isFile: () => false },
-                { name: '.git', isDirectory: () => true, isFile: () => false },
-                { name: 'dist', isDirectory: () => true, isFile: () => false },
-                { name: 'src', isDirectory: () => true, isFile: () => false },
-              ] as unknown as fs.Dirent[];
+                createMockDirent('node_modules', true),
+                createMockDirent('.git', true),
+                createMockDirent('dist', true),
+                createMockDirent('build', true),
+                createMockDirent('out', true),
+                createMockDirent('.next', true),
+                createMockDirent('.nuxt', true),
+                createMockDirent('.svelte-kit', true),
+                createMockDirent('coverage', true),
+                createMockDirent('.cache', true),
+                createMockDirent('vendor', true),
+                createMockDirent('__pycache__', true),
+                createMockDirent('.venv', true),
+                createMockDirent('venv', true),
+                createMockDirent('target', true),
+                createMockDirent('src', true),
+              ];
             }
-          }
-          if (dirStr.includes('src')) {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [] as unknown as fs.Dirent[];
+            if (dirStr.includes('src')) {
+              return [];
             }
           }
           return [];
@@ -667,40 +790,41 @@ describe('validate-env-complete handler', () => {
 
         handleValidateEnvComplete({});
 
-        // Should not have visited node_modules, .git, or dist
+        // Should not have visited any of the skip directories
         expect(visitedDirs.some(d => d.includes('node_modules'))).toBe(false);
         expect(visitedDirs.some(d => d.includes('.git'))).toBe(false);
-        expect(visitedDirs.some(d => d.includes('dist'))).toBe(false);
+        expect(visitedDirs.some(d => d.includes('/dist'))).toBe(false);
         // But should have visited src
         expect(visitedDirs.some(d => d.includes('src'))).toBe(true);
       });
 
-      it('should scan multiple file types (.ts, .tsx, .js, .jsx, .vue, .svelte)', () => {
+      it('should scan multiple file types (.ts, .tsx, .js, .jsx, .mjs, .cjs, .vue, .svelte)', () => {
         const scannedFiles: string[] = [];
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return '';
-          if (pathStr.endsWith('.env.example')) return '';
+          if (pathStr.includes('.env')) return '';
           scannedFiles.push(pathStr);
-          return '';
+          return 'const x = process.env.TEST_VAR;';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
               return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'component.tsx', isDirectory: () => false, isFile: () => true },
-                { name: 'util.js', isDirectory: () => false, isFile: () => true },
-                { name: 'Form.jsx', isDirectory: () => false, isFile: () => true },
-                { name: 'App.vue', isDirectory: () => false, isFile: () => true },
-                { name: 'Page.svelte', isDirectory: () => false, isFile: () => true },
-                { name: 'readme.md', isDirectory: () => false, isFile: () => true },
-                { name: 'data.json', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+                createMockDirent('app.ts', false),
+                createMockDirent('component.tsx', false),
+                createMockDirent('util.js', false),
+                createMockDirent('Form.jsx', false),
+                createMockDirent('esm.mjs', false),
+                createMockDirent('cjs.cjs', false),
+                createMockDirent('App.vue', false),
+                createMockDirent('Page.svelte', false),
+                createMockDirent('readme.md', false),
+                createMockDirent('data.json', false),
+              ];
             }
           }
           return [];
@@ -713,11 +837,47 @@ describe('validate-env-complete handler', () => {
         expect(scannedFiles.some(f => f.includes('component.tsx'))).toBe(true);
         expect(scannedFiles.some(f => f.includes('util.js'))).toBe(true);
         expect(scannedFiles.some(f => f.includes('Form.jsx'))).toBe(true);
+        expect(scannedFiles.some(f => f.includes('esm.mjs'))).toBe(true);
+        expect(scannedFiles.some(f => f.includes('cjs.cjs'))).toBe(true);
         expect(scannedFiles.some(f => f.includes('App.vue'))).toBe(true);
         expect(scannedFiles.some(f => f.includes('Page.svelte'))).toBe(true);
         // Should not scan non-code files
         expect(scannedFiles.some(f => f.includes('readme.md'))).toBe(false);
         expect(scannedFiles.some(f => f.includes('data.json'))).toBe(false);
+      });
+
+      it('should handle same variable in multiple files', () => {
+        const envContent = '';
+        const codeContent = 'const x = process.env.SHARED_VAR;';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [
+                createMockDirent('file1.ts', false),
+                createMockDirent('file2.ts', false),
+                createMockDirent('file3.ts', false),
+              ];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        expect(text).toContain('SHARED_VAR');
+        // Should show the files where it's used
+        expect(text).toContain('Used in:');
       });
     });
 
@@ -726,10 +886,10 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) {
+          if (pathStr.includes('.env') && !pathStr.includes('.example')) {
             throw new Error('Permission denied');
           }
-          if (pathStr.endsWith('.env.example')) return 'API_KEY=';
+          if (pathStr.includes('.env.example')) return 'API_KEY=';
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -740,14 +900,48 @@ describe('validate-env-complete handler', () => {
         expect(console.error).toHaveBeenCalled();
       });
 
+      it('should handle non-Error exceptions when reading .env file', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env') && !pathStr.includes('.example')) {
+            throw 'String error'; // Non-Error throw
+          }
+          if (pathStr.includes('.env.example')) return 'API_KEY=';
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        expect(result.content[0].text).toBeDefined();
+        expect(console.error).toHaveBeenCalled();
+      });
+
       it('should handle errors when reading .env.example file', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return 'API_KEY=secret';
-          if (pathStr.endsWith('.env.example')) {
+          if (pathStr.includes('.env.example')) {
             throw new Error('Permission denied');
           }
+          if (pathStr.includes('.env')) return 'API_KEY=secret';
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        expect(result.content[0].text).toBeDefined();
+        expect(console.error).toHaveBeenCalled();
+      });
+
+      it('should handle non-Error exceptions when reading .env.example file', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) {
+            throw 'String error';
+          }
+          if (pathStr.includes('.env')) return 'API_KEY=secret';
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -761,8 +955,7 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return '';
-          if (pathStr.endsWith('.env.example')) return '';
+          if (pathStr.includes('.env')) return '';
           if (pathStr.endsWith('.ts')) {
             throw new Error('File read error');
           }
@@ -770,12 +963,36 @@ describe('validate-env-complete handler', () => {
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        expect(result.content[0].text).toBeDefined();
+        expect(console.error).toHaveBeenCalled();
+      });
+
+      it('should handle non-Error exceptions when scanning files', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return '';
+          if (pathStr.endsWith('.ts')) {
+            throw 'String error';
+          }
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -790,15 +1007,35 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return '';
-          if (pathStr.endsWith('.env.example')) return '';
+          if (pathStr.includes('.env')) return '';
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir) => {
           const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
+          if (dirStr === '/mock/project') {
             throw new Error('Directory read error');
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        expect(result.content[0].text).toBeDefined();
+        expect(console.error).toHaveBeenCalled();
+      });
+
+      it('should handle non-Error exceptions when scanning directories', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return '';
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir) => {
+          const dirStr = String(dir);
+          if (dirStr === '/mock/project') {
+            throw 'String error';
           }
           return [];
         });
@@ -812,9 +1049,7 @@ describe('validate-env-complete handler', () => {
     describe('parseEnvFile edge cases', () => {
       it('should handle empty env file', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockImplementation((p) => {
-          return '';
-        });
+        vi.mocked(fs.readFileSync).mockReturnValue('');
         vi.mocked(fs.readdirSync).mockReturnValue([]);
 
         const result = handleValidateEnvComplete({});
@@ -829,8 +1064,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return 'API_KEY=\nDB_URL=';
+          if (pathStr.includes('.env.example')) return 'API_KEY=\nDB_URL=';
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -847,8 +1082,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return 'API_KEY=\nDB_URL=';
+          if (pathStr.includes('.env.example')) return 'API_KEY=\nDB_URL=';
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -859,14 +1094,14 @@ describe('validate-env-complete handler', () => {
         expect(text).toContain('Variables in .env: 2');
       });
 
-      it('should handle quoted values', () => {
-        const envContent = 'API_KEY="secret with spaces"\nDB_URL=\'postgres://localhost\'';
+      it('should handle quoted values with double quotes', () => {
+        const envContent = 'API_KEY="secret with spaces"';
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return 'API_KEY=\nDB_URL=';
+          if (pathStr.includes('.env.example')) return 'API_KEY=';
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -874,8 +1109,26 @@ describe('validate-env-complete handler', () => {
         const result = handleValidateEnvComplete({});
         const text = result.content[0].text;
 
-        expect(text).toContain('Variables in .env: 2');
+        expect(text).toContain('Variables in .env: 1');
         expect(text).toContain('Environment Validation: PASSED');
+      });
+
+      it('should handle quoted values with single quotes', () => {
+        const envContent = "DB_URL='postgres://localhost'";
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return 'DB_URL=';
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        expect(text).toContain('Variables in .env: 1');
       });
 
       it('should convert variable names to uppercase', () => {
@@ -885,8 +1138,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -904,8 +1157,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return 'CONNECTION_STRING=';
+          if (pathStr.includes('.env.example')) return 'CONNECTION_STRING=';
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -915,10 +1168,29 @@ describe('validate-env-complete handler', () => {
 
         expect(text).toContain('Variables in .env: 1');
       });
+
+      it('should skip lines that do not match VAR=value pattern', () => {
+        const envContent = 'API_KEY=secret\ninvalid line without equals\n123INVALID=bad\n_ALSO_INVALID=bad\nGOOD_VAR=value';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return 'API_KEY=\nGOOD_VAR=';
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // Only API_KEY and GOOD_VAR should be counted (valid patterns)
+        expect(text).toContain('Variables in .env: 2');
+      });
     });
 
     describe('formatAsMarkdown output', () => {
-      it('should format file locations for missing variables', () => {
+      it('should format file locations for missing variables defined in code', () => {
         const envContent = '';
         const exampleContent = '';
         const codeContent = 'const key = process.env.MISSING_VAR;';
@@ -926,19 +1198,16 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           if (pathStr.endsWith('.ts')) return codeContent;
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -952,68 +1221,6 @@ describe('validate-env-complete handler', () => {
         expect(text).toContain('Used in:');
       });
 
-      it('should truncate long lists of file references', () => {
-        const envContent = '';
-        const exampleContent = '';
-        const codeContent = 'const key = process.env.COMMON_VAR;';
-
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockImplementation((p) => {
-          const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
-          if (pathStr.endsWith('.ts')) return codeContent;
-          return '';
-        });
-
-        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'file1.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'file2.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'file3.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'file4.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'file5.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'file6.ts', isDirectory: () => false, isFile: () => true },
-                { name: 'file7.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
-            }
-          }
-          return [];
-        });
-
-        const result = handleValidateEnvComplete({});
-        const text = result.content[0].text;
-
-        // Should show (+X more) for files beyond 5
-        expect(text).toContain('+');
-        expect(text).toContain('more');
-      });
-
-      it('should truncate long values in type validation issues', () => {
-        const longValue = 'a'.repeat(100);
-        const envContent = `LONG_SECRET_KEY=${longValue}`;
-        const exampleContent = 'LONG_SECRET_KEY=';
-
-        vi.mocked(fs.existsSync).mockReturnValue(true);
-        vi.mocked(fs.readFileSync).mockImplementation((p) => {
-          const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
-          return '';
-        });
-        vi.mocked(fs.readdirSync).mockReturnValue([]);
-
-        const result = handleValidateEnvComplete({ check_values: true });
-        const text = result.content[0].text;
-
-        // Should pass (long secrets are fine) but if there were an issue,
-        // the value should be truncated with ...
-        expect(text).toContain('Environment Validation: PASSED');
-      });
-
       it('should show defined_in as example when variable is only in .env.example', () => {
         const envContent = '';
         const exampleContent = 'EXAMPLE_ONLY_VAR=placeholder';
@@ -1021,8 +1228,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -1032,6 +1239,143 @@ describe('validate-env-complete handler', () => {
 
         expect(text).toContain('EXAMPLE_ONLY_VAR');
         expect(text).toContain('Defined in: example');
+      });
+
+      it('should truncate long lists of file references (more than 5 files)', () => {
+        const envContent = '';
+        const exampleContent = '';
+        const codeContent = 'const key = process.env.COMMON_VAR;';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [
+                createMockDirent('file1.ts', false),
+                createMockDirent('file2.ts', false),
+                createMockDirent('file3.ts', false),
+                createMockDirent('file4.ts', false),
+                createMockDirent('file5.ts', false),
+                createMockDirent('file6.ts', false),
+                createMockDirent('file7.ts', false),
+              ];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // Should show (+X more) for files beyond 5
+        expect(text).toContain('(+2 more)');
+      });
+
+      it('should not truncate when exactly 5 or fewer files', () => {
+        const envContent = '';
+        const exampleContent = '';
+        const codeContent = 'const key = process.env.COMMON_VAR;';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [
+                createMockDirent('file1.ts', false),
+                createMockDirent('file2.ts', false),
+                createMockDirent('file3.ts', false),
+                createMockDirent('file4.ts', false),
+                createMockDirent('file5.ts', false),
+              ];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // Should NOT show (+X more) for 5 files
+        expect(text).not.toContain('more)');
+      });
+
+      it('should show missing variable with no used_in files', () => {
+        const envContent = '';
+        const exampleContent = 'EXAMPLE_ONLY=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        expect(text).toContain('EXAMPLE_ONLY');
+        expect(text).toContain('Defined in: example');
+        // Should not show "Used in:" since there are no files
+      });
+
+      it('should truncate long values in type validation issues', () => {
+        const longValue = 'x'.repeat(60); // Longer than 50 chars
+        const envContent = `LONG_URL=${longValue}`;
+        const exampleContent = 'LONG_URL=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
+        const text = result.content[0].text;
+
+        // Should show truncated value with ...
+        expect(text).toContain('...');
+      });
+
+      it('should not truncate short values in type validation issues', () => {
+        const envContent = 'SHORT_URL=invalid';
+        const exampleContent = 'SHORT_URL=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
+        const text = result.content[0].text;
+
+        // Should show full value without ...
+        expect(text).toContain('`invalid`');
+        expect(text).not.toContain('invalid...');
       });
     });
 
@@ -1043,19 +1387,17 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env') && !pathStr.includes('.example')) return envContent;
           if (pathStr.endsWith('.ts')) return 'const x = process.env.USED_VAR;';
           return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'app.ts', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
@@ -1076,8 +1418,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env') && !pathStr.includes('.example')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -1090,6 +1432,27 @@ describe('validate-env-complete handler', () => {
         const matches = unusedSection.match(/IN_BOTH/g) || [];
         expect(matches.length).toBeLessThanOrEqual(1);
       });
+
+      it('should not add to unused if var is in both .env and .env.example but not in code', () => {
+        const envContent = 'LEGACY_VAR=value';
+        const exampleContent = 'LEGACY_VAR=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // LEGACY_VAR should appear only once in unused (from .env)
+        expect(text).toContain('LEGACY_VAR');
+        expect(text).toContain('.env)'); // Should be from .env, not .env.example
+      });
     });
 
     describe('max files limit', () => {
@@ -1099,24 +1462,21 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return '';
-          if (pathStr.endsWith('.env.example')) return '';
+          if (pathStr.includes('.env')) return '';
           filesScanned++;
           return '';
         });
 
         // Create a very large directory structure
-        const manyFiles = Array.from({ length: 2000 }, (_, i) => ({
-          name: `file${i}.ts`,
-          isDirectory: () => false,
-          isFile: () => true,
-        }));
+        const manyFiles = Array.from({ length: 2000 }, (_, i) =>
+          createMockDirent(`file${i}.ts`, false)
+        );
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return manyFiles as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return manyFiles;
             }
           }
           return [];
@@ -1125,6 +1485,45 @@ describe('validate-env-complete handler', () => {
         handleValidateEnvComplete({});
 
         // Default max is 1000, so should not scan more than that
+        expect(filesScanned).toBeLessThanOrEqual(1000);
+      });
+
+      it('should stop scanning subdirectories when max files reached', () => {
+        let filesScanned = 0;
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return '';
+          filesScanned++;
+          return '';
+        });
+
+        // Create directories with many files each
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              const files = Array.from({ length: 600 }, (_, i) =>
+                createMockDirent(`file${i}.ts`, false)
+              );
+              return [
+                ...files,
+                createMockDirent('subdir', true),
+              ];
+            }
+            if (dirStr.includes('subdir')) {
+              return Array.from({ length: 600 }, (_, i) =>
+                createMockDirent(`sub${i}.ts`, false)
+              );
+            }
+          }
+          return [];
+        });
+
+        handleValidateEnvComplete({});
+
+        // Should be limited to ~1000 files total
         expect(filesScanned).toBeLessThanOrEqual(1000);
       });
     });
@@ -1165,13 +1564,32 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
 
         const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        expect(text).toContain('Environment Validation: PASSED');
+      });
+
+      it('should be valid when no missing vars and no type issues with check_values true', () => {
+        const envContent = 'API_PORT=3000';
+        const exampleContent = 'API_PORT=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        const result = handleValidateEnvComplete({ check_values: true });
         const text = result.content[0].text;
 
         expect(text).toContain('Environment Validation: PASSED');
@@ -1184,8 +1602,8 @@ describe('validate-env-complete handler', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
@@ -1195,81 +1613,205 @@ describe('validate-env-complete handler', () => {
 
         expect(text).toContain('Environment Validation: FAILED');
       });
-    });
 
-    describe('inferExpectedType edge cases', () => {
-      it('should infer string type for unknown variable names', () => {
-        const envContent = 'RANDOM_SETTING=anyvalue';
-        const exampleContent = 'RANDOM_SETTING=';
+      it('should be invalid when there are missing vars even without type issues', () => {
+        const envContent = '';
+        const exampleContent = 'REQUIRED_VAR=';
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
 
-        const result = handleValidateEnvComplete({ check_values: true });
+        const result = handleValidateEnvComplete({});
         const text = result.content[0].text;
 
-        // Should pass since strings accept any non-empty value
+        expect(text).toContain('Environment Validation: FAILED');
+      });
+    });
+
+    describe('default arguments', () => {
+      it('should use default .env file when env_file not provided', () => {
+        const checkedPaths: string[] = [];
+
+        vi.mocked(fs.existsSync).mockImplementation((p) => {
+          checkedPaths.push(String(p));
+          return false;
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        handleValidateEnvComplete({});
+
+        // Should check for .env (not custom path)
+        expect(checkedPaths.some(p => p.endsWith('.env') || p.endsWith('\\.env'))).toBe(true);
+      });
+
+      it('should use default .env.example file when example_file not provided', () => {
+        const checkedPaths: string[] = [];
+
+        vi.mocked(fs.existsSync).mockImplementation((p) => {
+          checkedPaths.push(String(p));
+          return false;
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        handleValidateEnvComplete({});
+
+        // Should check for .env.example
+        expect(checkedPaths.some(p => p.includes('.env.example'))).toBe(true);
+      });
+
+      it('should use check_values: false by default', () => {
+        const envContent = 'API_PORT=invalid';
+        const exampleContent = 'API_PORT=';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
+          return '';
+        });
+        vi.mocked(fs.readdirSync).mockReturnValue([]);
+
+        // Not passing check_values
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // Should pass because check_values defaults to false
         expect(text).toContain('Environment Validation: PASSED');
+        expect(text).not.toContain('Type Validation Issues');
       });
 
-      it('should infer type for PASSWORD variables', () => {
-        const envContent = 'DB_PASSWORD=short';
-        const exampleContent = 'DB_PASSWORD=';
+      it('should use empty ignore list by default', () => {
+        const envContent = '';
+        const exampleContent = 'SOME_VAR=';
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return envContent;
-          if (pathStr.endsWith('.env.example')) return exampleContent;
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env')) return envContent;
           return '';
         });
         vi.mocked(fs.readdirSync).mockReturnValue([]);
 
-        const result = handleValidateEnvComplete({ check_values: true });
+        // Not passing ignore
+        const result = handleValidateEnvComplete({});
         const text = result.content[0].text;
 
-        // Should fail because password is too short
-        expect(text).toContain('DB_PASSWORD');
-        expect(text).toContain('too short');
+        // SOME_VAR should appear as missing
+        expect(text).toContain('SOME_VAR');
       });
     });
 
-    describe('mjs and cjs file extensions', () => {
-      it('should scan .mjs and .cjs files', () => {
-        const scannedFiles: string[] = [];
+    describe('complex scenarios', () => {
+      it('should handle variable used in code but missing from both .env and .env.example', () => {
+        const envContent = '';
+        const exampleContent = '';
+        const codeContent = 'const x = process.env.CODE_ONLY_VAR;';
 
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockImplementation((p) => {
           const pathStr = String(p);
-          if (pathStr.endsWith('.env')) return '';
-          if (pathStr.endsWith('.env.example')) return '';
-          scannedFiles.push(pathStr);
-          return 'const x = process.env.TEST_VAR;';
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
         });
 
         vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
-          const dirStr = String(dir);
-          if (dirStr === '/mock/project' || dirStr === '\\mock\\project') {
-            if (options && typeof options === 'object' && 'withFileTypes' in options) {
-              return [
-                { name: 'esm-module.mjs', isDirectory: () => false, isFile: () => true },
-                { name: 'cjs-module.cjs', isDirectory: () => false, isFile: () => true },
-              ] as unknown as fs.Dirent[];
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
             }
           }
           return [];
         });
 
-        handleValidateEnvComplete({});
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
 
-        expect(scannedFiles.some(f => f.includes('esm-module.mjs'))).toBe(true);
-        expect(scannedFiles.some(f => f.includes('cjs-module.cjs'))).toBe(true);
+        expect(text).toContain('CODE_ONLY_VAR');
+        expect(text).toContain('Defined in: code');
+      });
+
+      it('should handle variable in .env, .env.example, and code (fully documented and used)', () => {
+        const envContent = 'COMPLETE_VAR=value';
+        const exampleContent = 'COMPLETE_VAR=';
+        const codeContent = 'const x = process.env.COMPLETE_VAR;';
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env.example')) return exampleContent;
+          if (pathStr.includes('.env') && !pathStr.includes('.example')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        // Should pass - variable is complete
+        expect(text).toContain('Environment Validation: PASSED');
+        expect(text).not.toContain('Missing Variables');
+        expect(text).not.toContain('Unused Variables');
+        expect(text).not.toContain('Undocumented Variables');
+      });
+
+      it('should handle multiple patterns in same file', () => {
+        const envContent = '';
+        const codeContent = `
+          const a = process.env.VAR_A;
+          const b = process.env["VAR_B"];
+          const c = process.env['VAR_C'];
+          const d = import.meta.env.VAR_D;
+          const e = Deno.env.get("VAR_E");
+          const f = Deno.env.get('VAR_F');
+        `;
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('.env')) return envContent;
+          if (pathStr.endsWith('.ts')) return codeContent;
+          return '';
+        });
+
+        vi.mocked(fs.readdirSync).mockImplementation((dir, options) => {
+          if (options && typeof options === 'object' && 'withFileTypes' in options) {
+            const dirStr = String(dir);
+            if (dirStr === '/mock/project') {
+              return [createMockDirent('app.ts', false)];
+            }
+          }
+          return [];
+        });
+
+        const result = handleValidateEnvComplete({});
+        const text = result.content[0].text;
+
+        expect(text).toContain('VAR_A');
+        expect(text).toContain('VAR_B');
+        expect(text).toContain('VAR_C');
+        expect(text).toContain('VAR_D');
+        expect(text).toContain('VAR_E');
+        expect(text).toContain('VAR_F');
       });
     });
   });

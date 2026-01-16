@@ -4,6 +4,20 @@
 
 import { ValidationIssue, ValidationContext, SkillPatterns } from './types.js';
 
+/**
+ * Validates code against skill-specific patterns and conventions.
+ * Checks for required imports, must-include patterns, and forbidden patterns.
+ * @param ctx - Validation context containing file content and metadata
+ * @param skillPatterns - Pattern definitions from the skill's configuration
+ * @returns Array of validation issues for pattern violations
+ * @example
+ * const patterns: SkillPatterns = {
+ *   required_imports: ['zod'],
+ *   must_include: ['z.object'],
+ *   must_not_include: ['eval(']
+ * };
+ * const issues = runSkillPatternChecks(ctx, patterns);
+ */
 export function runSkillPatternChecks(
   ctx: ValidationContext,
   skillPatterns: SkillPatterns
