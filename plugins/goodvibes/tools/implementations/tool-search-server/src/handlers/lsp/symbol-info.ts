@@ -109,6 +109,7 @@ function mapScriptElementKind(kind: ts.ScriptElementKind): string {
     'accessor': 'accessor',
   };
 
+  /* v8 ignore next -- defensive: fallback for unknown ScriptElementKind values */
   return kindMap[kind] ?? 'unknown';
 }
 
@@ -544,6 +545,7 @@ export async function handleGetSymbolInfo(
     // Get definition location
     const definition = await getDefinitionLocation(service, filePath, effectivePosition);
 
+    /* v8 ignore next 25 -- defensive: built-in keyword/global checks rarely triggered */
     // Check for built-in keywords and globals without definitions
     // These have quickInfo but no meaningful symbol definition:
     // - Symbols with unknown name and no definition

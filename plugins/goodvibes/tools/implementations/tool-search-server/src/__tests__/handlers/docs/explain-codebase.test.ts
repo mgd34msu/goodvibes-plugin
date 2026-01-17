@@ -1496,6 +1496,12 @@ describe('explain-codebase handler', () => {
               { name: 'secret.ts', isDirectory: () => false, isFile: () => true },
             ] as unknown as fs.Dirent[]);
           }
+          if (pathStr.includes('src')) {
+            // Terminate recursion by returning only files
+            return Promise.resolve([
+              { name: 'index.ts', isDirectory: () => false, isFile: () => true },
+            ] as unknown as fs.Dirent[]);
+          }
           return Promise.resolve([
             { name: '.hidden', isDirectory: () => true, isFile: () => false },
             { name: 'src', isDirectory: () => true, isFile: () => false },
@@ -1826,14 +1832,7 @@ describe('explain-codebase handler', () => {
     describe('error handling non-Error object (line 1029)', () => {
       it('should handle non-Error thrown from spawnClaude', async () => {
         vi.mocked(childProcess.spawn).mockImplementation(() => {
-          const child = new EventEmitter() as EventEmitter & {
-            stdout: EventEmitter;
-            stderr: EventEmitter;
-            kill: Mock;
-          };
-          child.stdout = new EventEmitter();
-          child.stderr = new EventEmitter();
-          child.kill = vi.fn();
+          const child = createTrackedMockChild();
 
           setImmediate(() => {
             // Emit 'close' without proper error - triggers a string rejection
@@ -1858,14 +1857,7 @@ describe('explain-codebase handler', () => {
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         vi.mocked(childProcess.spawn).mockImplementation(() => {
-          const child = new EventEmitter() as EventEmitter & {
-            stdout: EventEmitter;
-            stderr: EventEmitter;
-            kill: Mock;
-          };
-          child.stdout = new EventEmitter();
-          child.stderr = new EventEmitter();
-          child.kill = vi.fn();
+          const child = createTrackedMockChild();
 
           setImmediate(() => {
             child.stdout.emit('data', Buffer.from('not json'));
@@ -2004,6 +1996,145 @@ describe('explain-codebase handler', () => {
         // Should have API layer but not database layer
         expect(data.architecture.diagram_ascii).toContain('API');
         expect(data.architecture.diagram_ascii).not.toContain('Database Layer');
+      });
+    });
+
+    describe('package.json without scripts (line 365)', () => {
+      it('should handle package.json without scripts property', async () => {
+        // Mock readFile to return package.json without scripts
+        vi.mocked(fsPromises.readFile).mockImplementation((p) => {
+          const pathStr = String(p);
+          if (pathStr.includes('package.json')) {
+            return Promise.resolve(JSON.stringify({
+              name: 'test-project',
+              version: '1.0.0',
+              // No scripts property
+            }));
+          }
+          return Promise.reject(new Error('ENOENT'));
+        });
+
+        vi.mocked(childProcess.spawn).mockImplementation(
+          createMockSpawn(JSON.stringify(sampleLLMResponse))
+        );
+
+        const result = await handleExplainCodebase({});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.entry_points).toBeDefined();
+      });
+    });
+
+    describe('empty project with no detected stack (line 785 hasApi false branch)', () => {
+      it('should handle project with no frontend and no API routes', async () => {
+        // Mock stack detection to return empty stack
+        vi.mocked(handleDetectStack).mockResolvedValue({
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              frontend: {},  // No ui_library
+              backend: {},   // No framework
+              build: {},
+            }),
+          }],
+        });
+
+        // Mock API routes to return no routes
+        vi.mocked(handleGetApiRoutes).mockResolvedValue({
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              routes: [],
+              framework: null,
+            }),
+          }],
+        });
+
+        // Make Claude fail to trigger fallback
+        vi.mocked(childProcess.spawn).mockImplementation(
+          createMockSpawn('', 1, 'Claude unavailable')
+        );
+
+        const result = await handleExplainCodebase({});
+        const data = JSON.parse(result.content[0].text);
+
+        // Should fall through to 'unknown' architecture type
+        expect(data.architecture.type).toBe('unknown');
+        expect(data.architecture.description).toContain('Unable to determine');
+      });
+    });
+
+    describe('branch coverage for lines 804, 991, 1029', () => {
+      it('should handle fallback when apiRoutes.routes is undefined (line 804)', async () => {
+        // Mock API routes to return undefined routes
+        vi.mocked(handleGetApiRoutes).mockResolvedValue({
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              // routes property is missing/undefined
+              framework: 'express',
+            }),
+          }],
+        });
+
+        // Make Claude fail to trigger fallback
+        vi.mocked(childProcess.spawn).mockImplementation(
+          createMockSpawn('', 1, 'Claude unavailable')
+        );
+
+        const result = await handleExplainCodebase({});
+        const data = JSON.parse(result.content[0].text);
+
+        // Should use fallback message when no routes
+        expect(data.main_features).toContain('See API routes for features');
+      });
+
+      it('should handle recommended_skills with trailing slash (line 991 || s branch)', async () => {
+        vi.mocked(handleDetectStack).mockResolvedValue({
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              frontend: { ui_library: 'react' },
+              backend: {},
+              build: {},
+              // 'trailing/' splits to ['trailing', ''], pop() returns '' (falsy), so || s gives 'trailing/'
+              recommended_skills: ['normal/path/skill', 'trailing/', ''],
+            }),
+          }],
+        });
+
+        vi.mocked(childProcess.spawn).mockImplementation(
+          createMockSpawn(JSON.stringify(sampleLLMResponse))
+        );
+
+        const result = await handleExplainCodebase({});
+        const data = JSON.parse(result.content[0].text);
+
+        // tech_stack should include the fallback values
+        expect(data.tech_stack).toBeDefined();
+      });
+
+      it('should log non-Error thrown value in catch block (line 1029 : err branch)', async () => {
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        // Mock spawn to throw a string (not an Error)
+        vi.mocked(childProcess.spawn).mockImplementation(() => {
+          throw 'string error thrown directly';
+        });
+
+        const result = await handleExplainCodebase({});
+        const data = JSON.parse(result.content[0].text);
+
+        // Should have used fallback
+        expect(data.summary).toBeDefined();
+
+        // Should have logged the raw string (not .message)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[explain-codebase]'),
+          'string error thrown directly'
+        );
+
+        consoleErrorSpy.mockRestore();
       });
     });
   });

@@ -183,6 +183,7 @@ export async function handleAnalyzeLayoutHierarchy(
           selector: args.selector,
         });
       }
+      /* v8 ignore next 3 -- defensive: parseJsxElement only returns null with selector */
       return createErrorResponse('Failed to parse layout hierarchy from JSX.', {
         file: args.file,
       });

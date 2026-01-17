@@ -99,7 +99,17 @@ export function extractPropsFromTypeDefinition(
           const propType = member.type ? getTypeString(member.type, sourceFile) : undefined;
 
           // Only add if not already present from destructuring
-          if (!props.some(p => p.name === propName)) {
+          const existingProp = props.find(p => p.name === propName);
+          if (existingProp) {
+            // Update required based on interface - optional in interface means not required
+            if (isOptional) {
+              existingProp.required = false;
+            }
+            // Also update type if not already set
+            if (!existingProp.type && propType) {
+              existingProp.type = propType;
+            }
+          } else {
             props.push({
               name: propName,
               type: propType,
@@ -121,7 +131,15 @@ export function extractPropsFromTypeDefinition(
             const isOptional = member.questionToken !== undefined;
             const propType = member.type ? getTypeString(member.type, sourceFile) : undefined;
 
-            if (!props.some(p => p.name === propName)) {
+            const existingProp = props.find(p => p.name === propName);
+            if (existingProp) {
+              if (isOptional) {
+                existingProp.required = false;
+              }
+              if (!existingProp.type && propType) {
+                existingProp.type = propType;
+              }
+            } else {
               props.push({
                 name: propName,
                 type: propType,

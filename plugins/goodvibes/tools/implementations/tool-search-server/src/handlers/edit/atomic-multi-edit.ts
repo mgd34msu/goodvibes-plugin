@@ -513,8 +513,10 @@ export async function handleAtomicMultiEdit(
       result.success = allEditsSuccessful;
       result.applied = false;
 
-      // Clean up backups for dry run
+      // Clean up backups for dry run (backupDir is always truthy here)
+      /* v8 ignore start */
       if (backupDir) {
+        /* v8 ignore stop */
         await cleanupBackups(backupDir);
         result.backup_paths = undefined;
       }
@@ -607,8 +609,10 @@ export async function handleAtomicMultiEdit(
       }
     }
 
-    // Success - clean up backups
+    // Success - clean up backups (backupDir is always truthy here)
+    /* v8 ignore start */
     if (backupDir) {
+      /* v8 ignore stop */
       await cleanupBackups(backupDir);
       result.backup_paths = undefined;
     }

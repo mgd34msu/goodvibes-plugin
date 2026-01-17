@@ -217,6 +217,62 @@ describe('component-state/utils', () => {
     it('should return unknown for undefined', () => {
       expect(inferTypeFromValue(undefined, createSourceFile(''))).toBe('unknown');
     });
+
+    it('should truncate long complex expressions', () => {
+      const code = `const x = someReallyLongVariableNameThatExceedsFiftyCharactersInLength;`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      const result = inferTypeFromValue(decl.initializer, sourceFile);
+      expect(result.length).toBeLessThanOrEqual(50);
+      expect(result.endsWith('...')).toBe(true);
+    });
+
+    it('should infer null type', () => {
+      const code = `const x = null;`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      expect(inferTypeFromValue(decl.initializer, sourceFile)).toBe('null');
+    });
+
+    it('should infer undefined type', () => {
+      const code = `const x = undefined;`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      expect(inferTypeFromValue(decl.initializer, sourceFile)).toBe('undefined');
+    });
+
+    it('should infer template literal as string', () => {
+      const code = 'const x = `hello`;';
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      expect(inferTypeFromValue(decl.initializer, sourceFile)).toBe('string');
+    });
+
+    it('should infer empty array type', () => {
+      const code = `const x = [];`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      expect(inferTypeFromValue(decl.initializer, sourceFile)).toBe('unknown[]');
+    });
+
+    it('should infer function expression type', () => {
+      const code = `const x = function() {};`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      expect(inferTypeFromValue(decl.initializer, sourceFile)).toBe('function');
+    });
   });
 
   describe('extractDestructuredNames', () => {
@@ -284,6 +340,16 @@ describe('component-state/utils', () => {
 
     it('should return empty array for undefined', () => {
       expect(extractDependencyArray(undefined, createSourceFile(''))).toEqual([]);
+    });
+
+    it('should return empty array for non-array literal', () => {
+      const code = `const x = someVar;`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const decl = stmt.declarationList.declarations[0];
+
+      const deps = extractDependencyArray(decl.initializer, sourceFile);
+      expect(deps).toEqual([]);
     });
   });
 
@@ -476,6 +542,57 @@ describe('component-state/hook-analyzer', () => {
 
       expect(contexts.some(c => c.hook === 'useAuth')).toBe(true);
     });
+
+    it('should extract useReducer with generic type', () => {
+      const code = `function App() {
+        const [state, dispatch] = useReducer<State, Action>(reducer, initialState);
+        return <div />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+
+      const { states } = extractHooks(func, ctx);
+
+      expect(states).toHaveLength(1);
+      expect(states[0].hook).toBe('useReducer');
+      expect(states[0].type).toBe('State');
+    });
+
+    it('should infer useRef type from initial value without generic', () => {
+      const code = `function App() {
+        const valueRef = useRef(42);
+        return <div />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+
+      const { states } = extractHooks(func, ctx);
+
+      expect(states).toHaveLength(1);
+      expect(states[0].hook).toBe('useRef');
+      expect(states[0].type).toBe('number');
+    });
+
+    it('should extract useLayoutEffect hooks', () => {
+      const code = `function App() {
+        useLayoutEffect(() => {
+          document.body.style.overflow = 'hidden';
+          return () => { document.body.style.overflow = ''; };
+        }, []);
+        return <div />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+
+      const { effects } = extractHooks(func, ctx);
+
+      expect(effects).toHaveLength(1);
+      expect(effects[0].type).toBe('useLayoutEffect');
+      expect(effects[0].has_cleanup).toBe(true);
+    });
   });
 });
 
@@ -524,6 +641,53 @@ describe('component-state/props-analyzer', () => {
 
       expect(props).toHaveLength(1);
       expect(props[0].name).toBe('title');
+    });
+
+    it('should handle function expression components', () => {
+      const code = `const App = function({ title }) { return <div>{title}</div>; };`;
+      const sourceFile = createSourceFile(code);
+      const stmt = sourceFile.statements[0] as ts.VariableStatement;
+      const ctx = createAnalysisContext(sourceFile);
+
+      const props = extractReceivedProps(stmt, ctx);
+
+      expect(props).toHaveLength(1);
+      expect(props[0].name).toBe('title');
+    });
+
+    it('should extract type from inline type literal', () => {
+      const code = `function App({ name, count }: { name: string; count: number }) {
+        return <div>{name}: {count}</div>;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+
+      const props = extractReceivedProps(func, ctx);
+
+      expect(props).toHaveLength(2);
+      expect(props.find(p => p.name === 'name')?.type).toBe('string');
+      expect(props.find(p => p.name === 'count')?.type).toBe('number');
+    });
+
+    it('should handle props type reference', () => {
+      const code = `
+interface AppProps {
+  title: string;
+  disabled?: boolean;
+}
+function App({ title, disabled }: AppProps) {
+  return <div>{title}</div>;
+}`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[1] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+
+      const props = extractReceivedProps(func, ctx);
+
+      expect(props).toHaveLength(2);
+      expect(props.find(p => p.name === 'title')?.required).toBe(true);
+      expect(props.find(p => p.name === 'disabled')?.required).toBe(false);
     });
   });
 
@@ -679,6 +843,68 @@ describe('component-state/jsx-analyzer', () => {
       analyzeJsx(func, ctx);
 
       expect(ctx.jsxPassedProps.filter(p => p.to_component === 'div')).toHaveLength(0);
+    });
+
+    it('should track state variables as source', () => {
+      const code = `function App() {
+        const [count, setCount] = useState(0);
+        return <Child value={count} />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+      ctx.stateVariables.set('count', {} as any);
+
+      analyzeJsx(func, ctx);
+
+      const passedProp = ctx.jsxPassedProps.find(p => p.prop_name === 'value');
+      expect(passedProp?.original_source).toBe('state');
+    });
+
+    it('should track context values as source', () => {
+      const code = `function App() {
+        const theme = useContext(ThemeContext);
+        return <Child theme={theme} />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+      ctx.contextValues.set('theme', {} as any);
+
+      analyzeJsx(func, ctx);
+
+      const passedProp = ctx.jsxPassedProps.find(p => p.prop_name === 'theme');
+      expect(passedProp?.original_source).toBe('context');
+    });
+
+    it('should track property access expressions', () => {
+      const code = `function App({ user }) {
+        return <Child name={user.name} />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+      ctx.propNames.add('user');
+
+      analyzeJsx(func, ctx);
+
+      const passedProp = ctx.jsxPassedProps.find(p => p.prop_name === 'name');
+      expect(passedProp?.original_source).toBe('prop');
+      expect(ctx.jsxUsedIdentifiers.has('user')).toBe(true);
+    });
+
+    it('should detect inline function expressions', () => {
+      const code = `function App() {
+        return <Button onClick={function() { console.log('clicked'); }} />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const func = sourceFile.statements[0] as ts.FunctionDeclaration;
+      const ctx = createAnalysisContext(sourceFile);
+
+      analyzeJsx(func, ctx);
+
+      expect(ctx.inlineCallbacks.length).toBeGreaterThan(0);
+      expect(ctx.inlineCallbacks[0].component).toBe('Button');
     });
   });
 });

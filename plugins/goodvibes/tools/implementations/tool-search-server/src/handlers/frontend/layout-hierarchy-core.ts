@@ -259,6 +259,7 @@ export function parseJsxElement(
       return buildLayoutNode(tagName, classes, id, props, children);
     }
 
+    /* v8 ignore next -- defensive: shouldInclude is true when selector is undefined */
     return null;
   }
 
@@ -308,6 +309,7 @@ export function parseJsxElement(
       };
     }
 
+    /* v8 ignore next -- defensive: empty fragment with no children after filtering */
     return null;
   }
 

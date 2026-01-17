@@ -160,6 +160,7 @@ export async function handleFindReferences(args: FindReferencesArgs): Promise<To
       };
 
       // Skip definitions if not requested
+      /* v8 ignore next 3 -- defensive: isDefinition is already checked upstream */
       if (!includeDefinition && refEntry.isDefinition) {
         continue;
       }

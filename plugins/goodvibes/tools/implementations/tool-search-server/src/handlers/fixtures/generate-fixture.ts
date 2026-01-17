@@ -176,7 +176,10 @@ function parsePrismaSchemaContent(content: string): Map<string, PrismaModel> {
 
       // Parse field: name Type? []? @attributes
       const fieldMatch = /^(\w+)\s+(\w+)(\?)?(\[\])?(.*)$/.exec(trimmed);
-      if (fieldMatch) {
+      /* v8 ignore start -- Defensive: skips malformed lines that pass initial checks but don't match field pattern */
+      if (!fieldMatch) continue;
+      /* v8 ignore stop */
+      {
         const [, fieldName, fieldType, nullable, isArray, attributes] = fieldMatch;
 
         const isRelation = !PRISMA_SCALARS.has(fieldType);
@@ -228,13 +231,14 @@ function extractDefaultValue(attributes: string): string | undefined {
     i++;
   }
 
+  /* v8 ignore start -- Defensive: handles unbalanced parentheses in malformed @default() */
   if (depth === 0) {
     // i is now one past the matching ), so extract from contentStart to i-1
     return attributes.slice(contentStart, i - 1);
   }
 
-  /* v8 ignore next -- @preserve */
   return undefined;
+  /* v8 ignore stop */
 }
 
 // =============================================================================

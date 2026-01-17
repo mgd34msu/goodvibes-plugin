@@ -397,6 +397,127 @@ describe('stacking-context/jsx-analyzer', () => {
         expect(classes).toEqual([]);
       }
     });
+
+    it('should extract classes from template literal with span text', () => {
+      const code = '<div className={`${dynamic} flex items-center`} />';
+      const sourceFile = createSourceFile(code);
+      let attr: ts.JsxAttribute | undefined;
+
+      function visit(node: ts.Node): void {
+        if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === 'className') {
+          attr = node;
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(sourceFile);
+
+      if (attr) {
+        const classes = extractClassesFromAttribute(attr, sourceFile);
+        expect(classes).toContain('flex');
+        expect(classes).toContain('items-center');
+      }
+    });
+
+    it('should handle template literal with empty head', () => {
+      // Template starts with expression: `${prefix}suffix`
+      const code = '<div className={`${prefix}class1 class2`} />';
+      const sourceFile = createSourceFile(code);
+      let attr: ts.JsxAttribute | undefined;
+
+      function visit(node: ts.Node): void {
+        if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === 'className') {
+          attr = node;
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(sourceFile);
+
+      if (attr) {
+        const classes = extractClassesFromAttribute(attr, sourceFile);
+        // Should extract 'class1' and 'class2' from the span literal text
+        expect(classes).toContain('class1');
+        expect(classes).toContain('class2');
+      }
+    });
+
+    it('should extract classes from cn with identifier property name', () => {
+      const code = `<div className={cn({ relative: isRelative })} />`;
+      const sourceFile = createSourceFile(code);
+      let attr: ts.JsxAttribute | undefined;
+
+      function visit(node: ts.Node): void {
+        if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === 'className') {
+          attr = node;
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(sourceFile);
+
+      if (attr) {
+        const classes = extractClassesFromAttribute(attr, sourceFile);
+        expect(classes).toContain('relative');
+      }
+    });
+
+    it('should extract classes from cn with shorthand property', () => {
+      const code = `<div className={cn({ hidden })} />`;
+      const sourceFile = createSourceFile(code);
+      let attr: ts.JsxAttribute | undefined;
+
+      function visit(node: ts.Node): void {
+        if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === 'className') {
+          attr = node;
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(sourceFile);
+
+      if (attr) {
+        const classes = extractClassesFromAttribute(attr, sourceFile);
+        expect(classes).toContain('hidden');
+      }
+    });
+
+    it('should return empty array for non-extractable expression', () => {
+      // A ternary expression that is not a call, string, or template
+      const code = `<div className={isActive ? "active" : undefined} />`;
+      const sourceFile = createSourceFile(code);
+      let attr: ts.JsxAttribute | undefined;
+
+      function visit(node: ts.Node): void {
+        if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === 'className') {
+          attr = node;
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(sourceFile);
+
+      if (attr) {
+        const classes = extractClassesFromAttribute(attr, sourceFile);
+        // The ternary expression is not handled, so returns empty array
+        expect(classes).toEqual([]);
+      }
+    });
+
+    it('should return empty array for binary expression', () => {
+      // Binary expression (variable) that is not a call, string, or template
+      const code = `<div className={someVar} />`;
+      const sourceFile = createSourceFile(code);
+      let attr: ts.JsxAttribute | undefined;
+
+      function visit(node: ts.Node): void {
+        if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === 'className') {
+          attr = node;
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(sourceFile);
+
+      if (attr) {
+        const classes = extractClassesFromAttribute(attr, sourceFile);
+        expect(classes).toEqual([]);
+      }
+    });
   });
 
   describe('getLineNumber', () => {
@@ -458,6 +579,20 @@ describe('stacking-context/jsx-analyzer', () => {
 
       expect(modal?.is_component).toBe(true);
       expect(div?.is_component).toBe(false);
+    });
+
+    it('should handle spread attributes without crashing', () => {
+      const code = `function App() {
+        const props = { className: 'flex' };
+        return <div {...props} className="relative z-10" />;
+      }`;
+      const sourceFile = createSourceFile(code);
+      const elements = analyzeJsxFile('test.tsx', code, sourceFile);
+
+      // Should still extract className from the explicit attribute
+      const divElement = elements.find(e => e.element.startsWith('div'));
+      expect(divElement?.classes).toContain('relative');
+      expect(divElement?.classes).toContain('z-10');
     });
   });
 });

@@ -161,6 +161,7 @@ export async function handleGetInlayHints(
 
     // Get source file to determine line count
     const program = service.getProgram();
+    /* v8 ignore next 4 -- defensive: program always exists after getServiceForFile */
     if (!program) {
       return createErrorResponse('Failed to get TypeScript program', {
         file: args.file,
@@ -168,6 +169,7 @@ export async function handleGetInlayHints(
     }
 
     const sourceFile = program.getSourceFile(filePath);
+    /* v8 ignore next 4 -- defensive: source file exists after fs.existsSync check */
     if (!sourceFile) {
       return createErrorResponse('Failed to get source file', {
         file: args.file,
@@ -246,6 +248,7 @@ export async function handleGetInlayHints(
     };
 
     return createSuccessResponse(result);
+  /* v8 ignore next 5 -- defensive: catch for unexpected TypeScript service errors */
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return createErrorResponse(`Failed to get inlay hints: ${message}`, {

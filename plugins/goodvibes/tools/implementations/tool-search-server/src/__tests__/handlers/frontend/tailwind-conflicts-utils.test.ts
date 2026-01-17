@@ -503,12 +503,53 @@ describe('tailwind-conflicts-utils', () => {
         expect(getCategory('rounded-t-[5px]')).toBe('border-radius');
       });
 
-          it('should return null for arbitrary values with unknown prefix', () => {
-            expect(getCategory('unknown-pref-[10px]')).toBeNull();
-          });
-      
-          it('should return null for completely unrecognized class (line 519)', () => {
-            expect(getCategory('not-a-tailwind-class')).toBeNull();
-          });
-        });
-      });});
+      it('should return null for arbitrary values with unknown prefix', () => {
+        expect(getCategory('unknown-pref-[10px]')).toBeNull();
+      });
+
+      it('should return null for completely unrecognized class (line 519)', () => {
+        expect(getCategory('not-a-tailwind-class')).toBeNull();
+      });
+    });
+
+    describe('getCategory !important modifier (line 492)', () => {
+      it('should handle !important modifier prefix', () => {
+        expect(getCategory('!w-full')).toBe('width');
+        expect(getCategory('!flex')).toBe('display');
+        expect(getCategory('!p-4')).toBe('padding');
+      });
+
+      it('should handle !important with responsive prefix', () => {
+        expect(getCategory('sm:!w-full')).toBe('width');
+        expect(getCategory('hover:!flex')).toBe('display');
+      });
+    });
+
+    describe('getCategory arbitrary value startsWith match (line 519)', () => {
+      it('should match arbitrary value via startsWith for longer utility prefixes', () => {
+        // border-t-[2px] - utilityPrefix is 'border-t-', which startsWith 'border-' from border-width category
+        expect(getCategory('border-t-[2px]')).toBe('border-width');
+      });
+
+      it('should match arbitrary padding x/y via startsWith', () => {
+        // px-[20px] - utilityPrefix is 'px-', which matches 'px-' in 'padding-x' category
+        expect(getCategory('px-[20px]')).toBe('padding-x');
+      });
+
+      it('should match text color arbitrary via startsWith (hits utilityPrefix.startsWith branch)', () => {
+        // text-red-[#ff0000] - regex captures 'text-red', so utilityPrefix = 'text-red-'
+        // 'text-color' category has prefix 'text-'
+        // 'text-' !== 'text-red-' (exact match fails)
+        // 'text-red-'.startsWith('text-') === true (startsWith match succeeds)
+        expect(getCategory('text-red-[#ff0000]')).toBe('text-color');
+      });
+
+      it('should match bg color arbitrary via startsWith', () => {
+        // bg-blue-[#0000ff] - utilityPrefix = 'bg-blue-'
+        // 'bg-color' category has prefix 'bg-'
+        // 'bg-' !== 'bg-blue-' but 'bg-blue-'.startsWith('bg-') === true
+        expect(getCategory('bg-blue-[#0000ff]')).toBe('bg-color');
+      });
+    });
+  });
+});

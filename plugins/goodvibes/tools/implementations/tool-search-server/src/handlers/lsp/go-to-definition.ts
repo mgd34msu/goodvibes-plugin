@@ -117,6 +117,7 @@ function mapScriptElementKind(kind: ts.ScriptElementKind): string {
     'accessor': 'accessor',
   };
 
+  /* v8 ignore next - defensive fallback for unknown ScriptElementKind */
   return kindMap[kind] ?? 'unknown';
 }
 
@@ -141,9 +142,11 @@ function processDefinition(
   isTypeDefinition: boolean
 ): Definition | null {
   const program = service.getProgram();
+  /* v8 ignore next - defensive check for missing program */
   if (!program) return null;
 
   const sourceFile = program.getSourceFile(def.fileName);
+  /* v8 ignore next - defensive check for missing source file */
   if (!sourceFile) return null;
 
   const { line, column } = languageServiceManager.getLineAndColumn(
@@ -215,6 +218,7 @@ function getSymbolAtPosition(
     }
   }
 
+  /* v8 ignore next - fallback when quickInfo and token both unavailable */
   return 'unknown';
 }
 

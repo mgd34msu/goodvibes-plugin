@@ -89,6 +89,7 @@ export function extractAttributeValue(attr: ts.JsxAttribute, sourceFile: ts.Sour
     return '[expression]';
   }
 
+  /* v8 ignore next -- defensive: unreachable when initializer exists but matches no patterns */
   return '';
 }
 

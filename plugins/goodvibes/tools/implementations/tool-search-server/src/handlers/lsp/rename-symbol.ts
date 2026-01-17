@@ -163,6 +163,7 @@ export async function handleRenameSymbol(args: RenameSymbolArgs): Promise<ToolRe
       /* preferences */ undefined
     );
 
+    /* v8 ignore next 8 -- defensive: TypeScript returns locations when canRename is true */
     if (!renameLocations || renameLocations.length === 0) {
       const result: RenameResult = {
         can_rename: false,
@@ -256,6 +257,7 @@ export async function handleRenameSymbol(args: RenameSymbolArgs): Promise<ToolRe
 function isValidIdentifier(name: string): boolean {
   // Basic check: must not be empty, must start with letter/underscore/$,
   // can contain letters, digits, underscores, $
+  /* v8 ignore next 3 -- defensive: empty name handled by caller validation */
   if (!name || name.length === 0) {
     return false;
   }

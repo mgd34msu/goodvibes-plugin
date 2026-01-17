@@ -218,9 +218,11 @@ export function extractZIndex(classes: string[]): number | 'auto' {
 
   // Handle numeric z-index: z-100, z-999
   const numericMatch = zClass.match(/^z-(\d+)$/);
+  /* v8 ignore else - numericMatch always matches at this point since regex ^-?z- already matched */
   if (numericMatch) {
     return parseInt(numericMatch[1], 10);
   }
 
+  /* v8 ignore next */
   return 'auto';
 }

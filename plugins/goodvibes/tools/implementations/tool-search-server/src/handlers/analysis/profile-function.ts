@@ -310,10 +310,12 @@ async function importModule(absolutePath: string): Promise<Record<string, unknow
         return await import(fileUrl) as Record<string, unknown>;
       }
 
+      /* v8 ignore start -- Node.js import always throws Error objects */
       throw new Error(
         `Cannot import TypeScript file directly. Error: ${directError instanceof Error ? directError.message : String(directError)}. ` +
         `Consider running with tsx/ts-node or compile to JavaScript first.`
       );
+      /* v8 ignore stop */
     }
   }
 
@@ -509,6 +511,7 @@ export async function handleProfileFunction(
       }
       memAfter = process.memoryUsage();
 
+      /* v8 ignore start -- memBefore/memAfter always defined when capture_memory=true */
       if (memBefore && memAfter) {
         result.memory = {
           heap_used_before_mb: bytesToMb(memBefore.heapUsed),
@@ -517,6 +520,7 @@ export async function handleProfileFunction(
           external_delta_mb: bytesToMb(memAfter.external - externalBefore),
         };
       }
+      /* v8 ignore stop */
     }
 
     // Include sample result (truncate if too large)

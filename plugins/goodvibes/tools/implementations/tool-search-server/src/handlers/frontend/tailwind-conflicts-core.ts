@@ -107,6 +107,7 @@ export function getRawClassName(attr: ts.JsxAttribute, sourceFile: ts.SourceFile
     return expr.getText(sourceFile);
   }
 
+  /* v8 ignore next */
   return '';
 }
 

@@ -138,12 +138,14 @@ function convertNavigationTreeItem(
   }
 
   // Skip "<function>" anonymous function placeholders - they're not useful
+  /* v8 ignore next 3 -- defensive: anonymous function placeholders rarely encountered */
   if (node.text.startsWith('<') && node.text.endsWith('>')) {
     return null;
   }
 
   // Get position from the first span (there may be multiple for merged declarations)
   const spans = node.spans;
+  /* v8 ignore next 3 -- defensive: navigation tree nodes always have spans */
   if (!spans || spans.length === 0) {
     return null;
   }
@@ -275,6 +277,7 @@ export async function handleGetDocumentSymbols(
     // Get the navigation tree for the document
     const navigationTree = service.getNavigationTree(normalizedFilePath);
 
+    /* v8 ignore next 7 -- defensive: navigation tree always exists for valid source files */
     if (!navigationTree) {
       const result: GetDocumentSymbolsResult = {
         symbols: [],

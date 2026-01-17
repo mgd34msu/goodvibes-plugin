@@ -74,6 +74,29 @@ export function MyComponent() {
       expect(data.error).toContain('not found');
     });
 
+    it('should handle absolute file path', async () => {
+      const content = `
+import React from 'react';
+
+export function AbsoluteComponent() {
+  return <div>Absolute</div>;
+}
+`;
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(content);
+
+      const args: GetReactComponentTreeArgs = {
+        file: '/absolute/path/to/Component.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.components.some((c: { name: string }) => c.name === 'AbsoluteComponent')).toBe(true);
+    });
+
     it('should scan directory when no specific file provided', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue([
@@ -972,6 +995,27 @@ export function FragmentComponent() {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.components.some((c: { name: string }) => c.name === 'FragmentComponent')).toBe(true);
+    });
+
+    it('should detect components that return only a JSX fragment with text', async () => {
+      // Line 136: Test fragment-only return to cover isJsxFragment branch
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+import React from 'react';
+
+export function TextOnlyFragment() {
+  return <>Just text, no elements</>;
+}
+`);
+
+      const args: GetReactComponentTreeArgs = {
+        file: 'src/TextFragment.tsx',
+      };
+
+      const result = await handleGetReactComponentTree(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.components.some((c: { name: string }) => c.name === 'TextOnlyFragment')).toBe(true);
     });
   });
 

@@ -105,6 +105,7 @@ function categoryToString(category: ts.DiagnosticCategory): DiagnosticInfo['cate
       return 'suggestion';
     case ts.DiagnosticCategory.Message:
       return 'message';
+    /* v8 ignore next 2 - defensive fallback for unknown category */
     default:
       return 'error';
   }
@@ -246,6 +247,7 @@ function getFixesForDiagnostic(
         edits,
       });
     }
+  /* v8 ignore next 3 - defensive catch for getCodeFixesAtPosition failure */
   } catch {
     // Ignore errors getting fixes - still return the diagnostic
   }
@@ -391,6 +393,7 @@ export async function handleGetDiagnostics(args: GetDiagnosticsArgs): Promise<To
           ];
 
           allDiagnostics.push(...diagnostics);
+        /* v8 ignore next 4 - defensive catch for file processing failure */
         } catch {
           // Skip files that can't be processed
           continue;

@@ -987,5 +987,110 @@ describe('handleGetPrismaOperations', () => {
       expect(data.n1_patterns.length).toBeGreaterThan(0);
       expect(data.n1_patterns[0].severity).toBe('medium');
     });
+
+    it('should detect multiple queries in the same loop (line 394 branch coverage)', async () => {
+      // This test covers the case when loopOperations.has(loopInfo.loopLine) is true
+      // by having multiple queries inside the same loop
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'multi-query-loop.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export async function processAll(ids: string[]) {
+          for (const id of ids) {
+            const user = await prisma.user.findUnique({ where: { id } });
+            const profile = await prisma.profile.findFirst({ where: { userId: id } });
+            console.log(user, profile);
+          }
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = {
+        path: 'src',
+        include_n1_detection: true,
+      };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      // Should detect 2 N+1 patterns (both queries in the same loop)
+      expect(data.n1_patterns.length).toBe(2);
+    });
+  });
+
+  describe('default path handling', () => {
+    it('should use default src path when path is not provided (line 524 branch)', async () => {
+      // This test covers the args.path || 'src' branch when path is undefined
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'test.ts', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        export const getUser = () => prisma.user.findUnique({ where: { id: '1' } });
+      `);
+
+      // Call without path argument to trigger default
+      const args: GetPrismaOperationsArgs = {};
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.operations).toBeDefined();
+    });
+  });
+
+  describe('TSX file handling', () => {
+    it('should parse .tsx files correctly (line 361 TSX branch)', async () => {
+      // This test covers the TSX ScriptKind branch
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'component.tsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        import React from 'react';
+
+        export function UserList() {
+          const users = prisma.user.findMany();
+          return <div>{users.map(u => <span key={u.id}>{u.name}</span>)}</div>;
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.operations.some((o: { operation: string }) => o.operation === 'findMany')).toBe(true);
+    });
+
+    it('should parse .jsx files correctly (line 361 JSX branch)', async () => {
+      // This test also covers the TSX/JSX ScriptKind branch
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        { name: 'component.jsx', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.readFileSync).mockReturnValue(`
+        import { prisma } from './db';
+        import React from 'react';
+
+        export function PostList() {
+          const posts = prisma.post.findMany();
+          return <ul>{posts.map(p => <li key={p.id}>{p.title}</li>)}</ul>;
+        }
+      `);
+
+      const args: GetPrismaOperationsArgs = { path: 'src' };
+
+      const result = await handleGetPrismaOperations(args);
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeUndefined();
+      expect(data.operations.some((o: { operation: string }) => o.operation === 'findMany')).toBe(true);
+    });
   });
 });

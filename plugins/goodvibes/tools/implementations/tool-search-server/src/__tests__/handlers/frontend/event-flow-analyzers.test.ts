@@ -712,5 +712,44 @@ describe('event-flow-analyzers', () => {
       const targets = findDelegationTargets(sourceFile, sourceFile);
       expect(targets).toContain('[data-id]');
     });
+
+    it('covers tagName comparison with non-string literal (line 352 branch)', () => {
+      // When tagName is compared with a variable instead of string literal
+      const code = `e.target.tagName === someVariable`;
+      const sourceFile = createSourceFile(code);
+      const targets = findDelegationTargets(sourceFile, sourceFile);
+      // Should not add any target since right side is not a string literal
+      expect(targets.filter(t => t === 'somevariable')).toHaveLength(0);
+    });
+
+    it('covers singular form of critical issue (line 425 branch)', () => {
+      const issues = [
+        { issue: 'nested_clickable_elements', elements: ['button', 'div'], explanation: '', fix: '' },
+      ];
+
+      const summary = generateSummary([], issues, []);
+
+      expect(summary).toContain('1 potential event propagation issue detected');
+    });
+
+    it('covers singular form of accessibility concern (line 430 branch)', () => {
+      const issues = [
+        { issue: 'missing_keyboard_alternative', elements: ['div'], explanation: '', fix: '' },
+      ];
+
+      const summary = generateSummary([], issues, []);
+
+      expect(summary).toContain('1 accessibility concern');
+    });
+
+    it('covers singular form of delegation pattern (line 440 branch)', () => {
+      const delegationPatterns = [
+        { container: 'ul', delegates_for: ['li'], event: 'click' },
+      ];
+
+      const summary = generateSummary([], [], delegationPatterns);
+
+      expect(summary).toContain('1 event delegation pattern found');
+    });
   });
 });
