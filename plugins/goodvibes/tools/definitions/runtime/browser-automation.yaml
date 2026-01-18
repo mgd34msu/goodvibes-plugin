@@ -1,0 +1,78 @@
+name: browser_automation
+version: "1.0.0"
+description: |
+  Automate browser interactions using Puppeteer.
+  Execute sequences of actions (navigate, click, type, scroll, screenshot)
+  and assertions (element exists, text contains, attribute matches).
+  Returns step-by-step results with screenshots.
+  Requires puppeteer to be installed.
+
+category: runtime
+tags:
+  - puppeteer
+  - browser
+  - automation
+  - e2e
+  - testing
+  - screenshots
+
+mcp:
+  server: goodvibes-tools
+  method: browser_automation
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    steps:
+      type: array
+      items:
+        type: object
+        properties:
+          action:
+            type: string
+            enum: [navigate, click, type, scroll, screenshot, wait, select, hover]
+          selector:
+            type: string
+          value:
+            type: string
+          timeout:
+            type: integer
+      description: Sequence of browser actions to perform
+    assertions:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: [exists, not_exists, text_contains, text_equals, attribute_equals, visible, enabled]
+          selector:
+            type: string
+          expected:
+            type: string
+          attribute:
+            type: string
+      description: Assertions to verify after steps complete
+    viewport:
+      type: object
+      properties:
+        width:
+          type: integer
+        height:
+          type: integer
+      description: "Browser viewport size (default: 1280x720)"
+    headless:
+      type: boolean
+      description: Run in headless mode
+      default: true
+    base_url:
+      type: string
+      description: Base URL for relative navigation
+  required:
+    - steps
+
+handler:
+  type: native
+  module: runtime
+  function: handleBrowserAutomation

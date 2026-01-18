@@ -1,0 +1,65 @@
+name: atomic_multi_edit
+version: "1.0.0"
+description: |
+  Apply multiple file edits atomically with rollback on failure.
+  Creates backup, applies all edits, runs validation (build/test),
+  and rolls back everything if validation fails.
+  Ensures codebase stays in a valid state.
+
+category: git
+tags:
+  - atomic
+  - editing
+  - rollback
+  - validation
+  - safety
+  - refactoring
+
+mcp:
+  server: goodvibes-tools
+  method: atomic_multi_edit
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    edits:
+      type: array
+      items:
+        type: object
+        properties:
+          file:
+            type: string
+          operation:
+            type: string
+            enum: [replace, insert, delete, create]
+          old_content:
+            type: string
+          new_content:
+            type: string
+          line:
+            type: integer
+      description: List of edit operations to apply
+    validation:
+      type: object
+      properties:
+        run_build:
+          type: boolean
+        run_tests:
+          type: boolean
+        run_typecheck:
+          type: boolean
+        custom_command:
+          type: string
+      description: Validation to run after edits
+    dry_run:
+      type: boolean
+      description: Preview changes without applying
+      default: false
+  required:
+    - edits
+
+handler:
+  type: native
+  module: git
+  function: handleAtomicMultiEdit

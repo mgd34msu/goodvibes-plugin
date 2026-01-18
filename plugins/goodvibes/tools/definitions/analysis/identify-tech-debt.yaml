@@ -1,0 +1,53 @@
+name: identify_tech_debt
+version: "1.0.0"
+description: |
+  Identify and grade technical debt in the codebase.
+  Scans for TODO/FIXME/HACK comments, complex functions (high cyclomatic complexity),
+  long files, missing tests, outdated dependencies, and code smells.
+  Returns prioritized debt items with effort estimates.
+
+category: analysis
+tags:
+  - tech-debt
+  - code-quality
+  - complexity
+  - maintainability
+  - code-smells
+
+mcp:
+  server: goodvibes-tools
+  method: identify_tech_debt
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Path to scan (default: project root)"
+    categories:
+      type: array
+      items:
+        type: string
+        enum: [comments, complexity, coverage, dependencies, duplication, security]
+      description: "Categories to check (default: all)"
+    threshold:
+      type: object
+      properties:
+        complexity:
+          type: integer
+        file_lines:
+          type: integer
+        function_lines:
+          type: integer
+      description: Thresholds for flagging issues
+    exclude:
+      type: array
+      items:
+        type: string
+      description: Glob patterns to exclude
+
+handler:
+  type: native
+  module: analysis
+  function: handleIdentifyTechDebt

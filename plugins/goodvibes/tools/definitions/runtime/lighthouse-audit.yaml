@@ -1,0 +1,51 @@
+name: lighthouse_audit
+version: "1.0.0"
+description: |
+  Run Lighthouse audits on a URL.
+  Returns scores for performance, accessibility, best practices, SEO, and PWA.
+  Includes detailed metrics and improvement suggestions.
+  Requires lighthouse and chrome-launcher packages.
+
+category: runtime
+tags:
+  - lighthouse
+  - performance
+  - accessibility
+  - seo
+  - pwa
+  - auditing
+  - metrics
+
+mcp:
+  server: goodvibes-tools
+  method: lighthouse_audit
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    url:
+      type: string
+      description: URL to audit
+    categories:
+      type: array
+      items:
+        type: string
+        enum: [performance, accessibility, best-practices, seo, pwa]
+      description: "Categories to audit (default: all)"
+    device:
+      type: string
+      enum: [mobile, desktop]
+      description: Device to emulate
+      default: mobile
+    throttling:
+      type: boolean
+      description: Apply network/CPU throttling
+      default: true
+  required:
+    - url
+
+handler:
+  type: native
+  module: runtime
+  function: handleLighthouseAudit

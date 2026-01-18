@@ -1,0 +1,54 @@
+name: generate_types
+version: "1.0.0"
+description: |
+  Generate TypeScript types from various sources: JSON data, API responses,
+  database schemas, or runtime values. Infers types from sample data and
+  generates .d.ts or interface definitions.
+
+category: types
+tags:
+  - typescript
+  - types
+  - code-generation
+  - inference
+  - json
+
+mcp:
+  server: goodvibes-tools
+  method: generate_types
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    source:
+      type: string
+      enum: [json, api, database, runtime]
+      description: Source to generate types from
+    input:
+      type: string
+      description: Input path, URL, or JSON string depending on source
+    output:
+      type: string
+      description: Output file path for generated types
+    name:
+      type: string
+      description: Root type/interface name
+    options:
+      type: object
+      properties:
+        optional_by_default:
+          type: boolean
+        use_type:
+          type: boolean
+        export:
+          type: boolean
+      description: Generation options
+  required:
+    - source
+    - input
+
+handler:
+  type: native
+  module: types
+  function: handleGenerateTypes

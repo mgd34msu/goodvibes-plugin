@@ -1,0 +1,41 @@
+name: analyze_responsive_breakpoints
+version: "1.0.0"
+description: |
+  Analyze responsive Tailwind classes across breakpoints.
+  Detects mobile-first patterns, tracks property changes across breakpoints
+  (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags
+  potential responsive design issues like desktop-first patterns or missing
+  base styles.
+
+category: frontend
+tags:
+  - tailwind
+  - responsive
+  - breakpoints
+  - css
+  - mobile-first
+  - react
+  - vue
+  - svelte
+
+mcp:
+  server: goodvibes-tools
+  method: analyze_responsive_breakpoints
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path to analyze (supports .tsx, .jsx, .vue, .svelte)
+    element:
+      type: string
+      description: "Optional: specific element to analyze (e.g., \"div\" or \"Button#3\"). If not provided, analyzes all elements."
+  required:
+    - file
+
+handler:
+  type: native
+  module: frontend
+  function: handleAnalyzeResponsiveBreakpoints

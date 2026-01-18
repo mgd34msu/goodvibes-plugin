@@ -1,0 +1,46 @@
+name: health_monitor
+version: "1.0.0"
+description: |
+  Monitor a URL endpoint for health status.
+  Makes periodic HTTP requests to check if a service is responding.
+  Returns health status, response times, and any errors.
+  Useful for verifying dev servers are running after changes.
+
+category: process
+tags:
+  - health-check
+  - monitoring
+  - http
+  - dev-server
+  - verification
+
+mcp:
+  server: goodvibes-tools
+  method: health_monitor
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    url:
+      type: string
+      description: "URL to monitor (e.g., http://localhost:3000)"
+    interval_ms:
+      type: integer
+      description: Time between health checks in ms
+      default: 5000
+    duration_ms:
+      type: integer
+      description: Total monitoring duration in ms
+      default: 30000
+    expected_status:
+      type: integer
+      description: Expected HTTP status code
+      default: 200
+  required:
+    - url
+
+handler:
+  type: native
+  module: process
+  function: handleHealthMonitor

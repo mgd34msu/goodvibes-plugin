@@ -1,0 +1,44 @@
+name: analyze_tailwind_conflicts
+version: "1.0.0"
+description: |
+  Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components.
+  Identifies three types of issues: (1) Override conflicts where later classes override
+  earlier ones (e.g., "p-2 p-4"), (2) Redundant classes from shorthand/longhand
+  combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden),
+  (3) Contradiction conflicts with mutually exclusive classes (e.g., "hidden flex").
+  Also detects size-X conflicts with explicit w-/h- classes, z-index without position,
+  and provides optimization suggestions like using size-X instead of w-X h-X when equal.
+
+category: frontend
+tags:
+  - tailwind
+  - css
+  - linting
+  - optimization
+  - conflicts
+  - react
+  - vue
+  - svelte
+
+mcp:
+  server: goodvibes-tools
+  method: analyze_tailwind_conflicts
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.
+    include_arbitrary:
+      type: boolean
+      description: Check arbitrary values like [100px] for conflicts
+      default: true
+  required:
+    - file
+
+handler:
+  type: native
+  module: frontend
+  function: handleAnalyzeTailwindConflicts

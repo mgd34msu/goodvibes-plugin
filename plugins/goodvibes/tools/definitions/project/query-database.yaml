@@ -1,0 +1,63 @@
+name: query_database
+version: "1.0.0"
+description: |
+  Execute SQL queries against PostgreSQL, MySQL, or SQLite databases.
+  Supports readonly mode (default) to prevent accidental writes, auto-LIMIT
+  for SELECT queries, EXPLAIN output, and both JSON and table output formats.
+  For SQLite: supports parameterized queries (?), in-memory databases (:memory:),
+  connection pooling, and returns affected row count for write operations.
+  Database drivers (pg, mysql2, better-sqlite3) are optional - install only
+  the ones you need.
+
+category: project
+tags:
+  - database
+  - sql
+  - postgresql
+  - mysql
+  - sqlite
+  - queries
+
+mcp:
+  server: goodvibes-tools
+  method: query_database
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: SQL query to execute. For parameterized queries, use ? placeholders.
+    database_url:
+      type: string
+      description: "Database connection URL. Formats: postgresql://user:pass@host:port/db, mysql://user:pass@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3."
+    params:
+      type: array
+      items:
+        type: [string, number, boolean, "null"]
+      description: Parameters for parameterized queries (replaces ? placeholders in order). Prevents SQL injection.
+    readonly:
+      type: boolean
+      description: If true (default), reject INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/TRUNCATE queries
+      default: true
+    limit:
+      type: integer
+      description: "Auto-add LIMIT to SELECT queries if not present (default: 100, set to 0 to disable)"
+      default: 100
+    format:
+      type: string
+      enum: [json, table]
+      description: "Output format: json (structured result object) or table (ASCII table)"
+      default: json
+    explain:
+      type: boolean
+      description: Prepend EXPLAIN to query and include execution plan in output
+      default: false
+  required:
+    - query
+
+handler:
+  type: native
+  module: project
+  function: handleQueryDatabase

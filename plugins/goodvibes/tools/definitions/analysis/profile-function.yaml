@@ -1,0 +1,48 @@
+name: profile_function
+version: "1.0.0"
+description: |
+  Profile a JavaScript/TypeScript function for performance.
+  Measures execution time, memory usage, and call frequency.
+  Returns timing statistics (min, max, avg, p95) and memory deltas.
+
+category: analysis
+tags:
+  - profiling
+  - performance
+  - timing
+  - memory
+  - benchmarking
+
+mcp:
+  server: goodvibes-tools
+  method: profile_function
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: File containing the function
+    function_name:
+      type: string
+      description: Name of the function to profile
+    iterations:
+      type: integer
+      description: Number of iterations to run
+      default: 100
+    args:
+      type: array
+      description: Arguments to pass to the function
+    warmup:
+      type: integer
+      description: Warmup iterations before measuring
+      default: 10
+  required:
+    - file
+    - function_name
+
+handler:
+  type: native
+  module: analysis
+  function: handleProfileFunction

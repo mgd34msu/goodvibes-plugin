@@ -1,0 +1,57 @@
+name: detect_memory_leaks
+version: "1.0.0"
+description: |
+  Monitor process memory usage over time to detect potential memory leaks.
+  Takes periodic snapshots, performs trend analysis with linear regression,
+  and identifies consistent memory growth patterns.
+  Supports monitoring existing processes by PID or spawning a new command.
+
+category: process
+tags:
+  - memory
+  - memory-leaks
+  - performance
+  - monitoring
+  - debugging
+  - profiling
+
+mcp:
+  server: goodvibes-tools
+  method: detect_memory_leaks
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    target:
+      type: string
+      enum: [pid, command]
+      description: "Target type: \"pid\" to monitor existing process, \"command\" to spawn and monitor new process"
+    pid:
+      type: integer
+      description: Process ID to monitor (required when target is "pid")
+    command:
+      type: string
+      description: "Command to spawn and monitor (e.g., \"npm run dev\") - required when target is \"command\""
+    duration_seconds:
+      type: integer
+      description: "How long to monitor in seconds (default: 30, max: 600)"
+      default: 30
+    snapshot_interval_ms:
+      type: integer
+      description: Time between memory measurements in milliseconds
+      default: 5000
+    threshold_mb:
+      type: integer
+      description: Minimum memory growth in MB to flag as potential leak
+      default: 10
+    cwd:
+      type: string
+      description: "Working directory for command execution (default: project root)"
+  required:
+    - target
+
+handler:
+  type: native
+  module: process
+  function: handleDetectMemoryLeaks

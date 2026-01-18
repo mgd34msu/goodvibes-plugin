@@ -1,0 +1,52 @@
+name: retry_with_learning
+version: "1.0.0"
+description: |
+  Retry a failed operation with progressive fix strategies.
+  Analyzes error patterns, applies fixes, and retries.
+  Tracks attempt history to avoid repeating failed approaches.
+  Useful for self-healing code changes.
+
+category: git
+tags:
+  - retry
+  - automation
+  - error-recovery
+  - self-healing
+  - learning
+
+mcp:
+  server: goodvibes-tools
+  method: retry_with_learning
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    operation:
+      type: string
+      description: Description of the operation to retry
+    command:
+      type: string
+      description: Command to execute and retry
+    max_attempts:
+      type: integer
+      description: Maximum retry attempts
+      default: 3
+    fix_strategies:
+      type: array
+      items:
+        type: string
+      description: "Fix strategies to try: \"install_deps\", \"fix_imports\", \"fix_types\", \"rollback\""
+    error_pattern:
+      type: string
+      description: Regex pattern to extract error details
+    cwd:
+      type: string
+      description: Working directory
+  required:
+    - command
+
+handler:
+  type: native
+  module: git
+  function: handleRetryWithLearning

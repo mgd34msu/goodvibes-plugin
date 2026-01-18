@@ -1,0 +1,61 @@
+name: generate_fixture
+version: "1.0.0"
+description: |
+  Generate test fixtures from Prisma/TypeScript schemas with smart data generation.
+  Supports optional @faker-js/faker integration for realistic data.
+  Can generate multiple output formats including JSON, TypeScript constants,
+  and Prisma seed scripts.
+
+category: types
+tags:
+  - fixtures
+  - testing
+  - prisma
+  - faker
+  - mock-data
+  - code-generation
+
+mcp:
+  server: goodvibes-tools
+  method: generate_fixture
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    model:
+      type: string
+      description: Prisma model name or TypeScript type name to generate fixtures for
+    schema_path:
+      type: string
+      description: "Path to schema file (default: auto-detect prisma/schema.prisma)"
+    count:
+      type: integer
+      description: "Number of fixtures to generate (default: 1, max: 100)"
+      default: 1
+    overrides:
+      type: object
+      additionalProperties: true
+      description: Specific values to use for fields, overriding generated values
+    with_relations:
+      type: array
+      items:
+        type: string
+      description: Include related models in fixtures (specify relation field names)
+    scenario:
+      type: string
+      enum: [empty, minimal, realistic, edge_cases]
+      description: "Data style: empty (minimal required), minimal (required + few optional), realistic (all fields with realistic data), edge_cases (boundary values, special chars)"
+      default: realistic
+    output_format:
+      type: string
+      enum: [json, typescript, prisma_seed]
+      description: "Output format: json (raw array), typescript (typed const), prisma_seed (seed script)"
+      default: json
+  required:
+    - model
+
+handler:
+  type: native
+  module: types
+  function: handleGenerateFixture

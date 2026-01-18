@@ -1,0 +1,59 @@
+name: watch_for_errors
+version: "1.0.0"
+description: |
+  Monitor logs or process output for errors.
+  Can tail log files or run commands and capture errors.
+  Detects common error patterns (TypeError, ReferenceError, SyntaxError,
+  ENOENT, etc.), extracts stack traces, deduplicates similar errors,
+  and classifies error types. Returns structured error information
+  with counts and recommendations.
+
+category: process
+tags:
+  - error-monitoring
+  - logs
+  - debugging
+  - stack-traces
+  - error-detection
+
+mcp:
+  server: goodvibes-tools
+  method: watch_for_errors
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    source:
+      type: string
+      enum: [file, command]
+      description: "Source type: \"file\" to tail a log file, \"command\" to run and watch a command"
+    file_path:
+      type: string
+      description: Log file path to tail (when source is "file")
+    command:
+      type: string
+      description: Command to run and watch (when source is "command")
+    patterns:
+      type: array
+      items:
+        type: string
+      description: Custom regex patterns to match errors (in addition to defaults)
+    duration:
+      type: integer
+      description: How long to watch in ms
+      default: 5000
+    tail_lines:
+      type: integer
+      description: For file source, how many lines to read
+      default: 100
+    cwd:
+      type: string
+      description: Working directory for command source
+  required:
+    - source
+
+handler:
+  type: native
+  module: process
+  function: handleWatchForErrors

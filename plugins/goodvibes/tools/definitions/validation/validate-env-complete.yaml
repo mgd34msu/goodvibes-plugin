@@ -1,0 +1,47 @@
+name: validate_env_complete
+version: "1.0.0"
+description: |
+  Validate environment variables are complete and documented.
+  Compares .env against .env.example and code usage to identify
+  missing, unused, and undocumented variables. Optionally validates
+  value formats based on naming conventions (ports should be numbers,
+  URLs should be valid, etc.).
+
+category: validation
+tags:
+  - environment
+  - env
+  - validation
+  - configuration
+  - dotenv
+
+mcp:
+  server: goodvibes-tools
+  method: validate_env_complete
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    env_file:
+      type: string
+      description: Path to the .env file
+      default: ".env"
+    example_file:
+      type: string
+      description: Path to the .env.example file
+      default: ".env.example"
+    ignore:
+      type: array
+      items:
+        type: string
+      description: Variable names to ignore during validation
+    check_values:
+      type: boolean
+      description: Validate value formats based on variable naming (e.g., PORT should be numeric)
+      default: false
+
+handler:
+  type: native
+  module: validation
+  function: handleValidateEnvComplete

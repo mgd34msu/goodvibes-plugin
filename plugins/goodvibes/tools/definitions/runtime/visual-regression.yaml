@@ -1,0 +1,62 @@
+name: visual_regression
+version: "1.0.0"
+description: |
+  Visual regression testing by comparing screenshots.
+  Takes a screenshot of a URL or element and compares against a baseline
+  image using pixel-by-pixel comparison. Returns match status, diff
+  percentage, and diff image path.
+  Requires puppeteer, pixelmatch, and pngjs packages.
+
+category: runtime
+tags:
+  - visual-regression
+  - screenshots
+  - testing
+  - puppeteer
+  - comparison
+  - ui-testing
+
+mcp:
+  server: goodvibes-tools
+  method: visual_regression
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    url:
+      type: string
+      description: URL to screenshot
+    selector:
+      type: string
+      description: CSS selector for element screenshot (optional, full page if omitted)
+    baseline_path:
+      type: string
+      description: Path to baseline image for comparison
+    threshold:
+      type: number
+      description: "Acceptable diff ratio 0-1 (default: 0.01 = 1%)"
+      default: 0.01
+    viewport:
+      type: object
+      properties:
+        width:
+          type: integer
+        height:
+          type: integer
+      description: Viewport size for screenshot
+    wait_for:
+      type: string
+      description: CSS selector to wait for before screenshot
+    update_baseline:
+      type: boolean
+      description: Save current as new baseline instead of comparing
+      default: false
+  required:
+    - url
+    - baseline_path
+
+handler:
+  type: native
+  module: runtime
+  function: handleVisualRegression

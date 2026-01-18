@@ -1,0 +1,32 @@
+name: get_agent_content
+version: "1.0.0"
+description: |
+  Load full content of an agent by path.
+  Retrieves the complete agent definition including capabilities,
+  expertise areas, and configuration from the agent registry.
+
+category: discovery
+tags:
+  - agents
+  - registry
+  - content
+  - retrieval
+
+mcp:
+  server: goodvibes-tools
+  method: get_agent_content
+  defer_loading: false
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Agent path from registry
+  required:
+    - path
+
+handler:
+  type: native
+  module: discovery
+  function: handleGetAgentContent

@@ -1,0 +1,45 @@
+name: verify_runtime_behavior
+version: "1.0.0"
+description: |
+  Verify runtime behavior by executing code and checking results.
+  Runs JavaScript/TypeScript code in a Node.js environment and verifies
+  the output matches expectations. Useful for testing functions, API
+  responses, and data transformations.
+
+category: runtime
+tags:
+  - testing
+  - verification
+  - runtime
+  - nodejs
+  - execution
+
+mcp:
+  server: goodvibes-tools
+  method: verify_runtime_behavior
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    code:
+      type: string
+      description: JavaScript/TypeScript code to execute
+    file:
+      type: string
+      description: File path to execute (alternative to inline code)
+    expected:
+      type: object
+      description: Expected result to verify against
+    timeout:
+      type: integer
+      description: Execution timeout in ms
+      default: 10000
+    setup:
+      type: string
+      description: Setup code to run before main code
+
+handler:
+  type: native
+  module: runtime
+  function: handleVerifyRuntimeBehavior

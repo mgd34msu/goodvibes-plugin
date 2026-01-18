@@ -1,0 +1,54 @@
+name: generate_openapi
+version: "1.0.0"
+description: |
+  Generate OpenAPI 3.0.3 specification from detected API routes.
+  Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
+  Extracts path parameters, attempts to parse request/response types from
+  handlers, and generates examples.
+
+category: project
+tags:
+  - openapi
+  - api
+  - documentation
+  - code-generation
+  - swagger
+
+mcp:
+  server: goodvibes-tools
+  method: generate_openapi
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    output_path:
+      type: string
+      description: Output file path
+      default: "openapi.json"
+    title:
+      type: string
+      description: API title (default from package.json name)
+    version:
+      type: string
+      description: API version (default from package.json version)
+    description:
+      type: string
+      description: API description
+    server_url:
+      type: string
+      description: "Base server URL (e.g., \"https://api.example.com\")"
+    include_examples:
+      type: boolean
+      description: Generate examples from types
+      default: true
+    format:
+      type: string
+      enum: [json, yaml]
+      description: Output format
+      default: json
+
+handler:
+  type: native
+  module: project
+  function: handleGenerateOpenapi

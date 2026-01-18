@@ -216,14 +216,70 @@ function scanSkills(): RegistryEntry[] {
 }
 
 /**
- * Scan tools directory (recursively) and also read from tool-schemas.ts
+ * Parse TypeScript schema files to extract tool definitions.
+ * Handles multi-line descriptions properly.
  */
-function scanTools(): RegistryEntry[] {
-  const toolsDir = path.join(PLUGIN_ROOT, 'tools', 'definitions');
-  const entries: RegistryEntry[] = [];
-  const seenNames = new Set<string>();
+function parseTypeScriptSchemas(): Map<string, { name: string; description: string }> {
+  const schemasDir = path.join(PLUGIN_ROOT, 'tools', 'implementations', 'tool-search-server', 'src', 'schemas');
+  const tools = new Map<string, { name: string; description: string }>();
 
-  // First, scan YAML definitions
+  if (!fs.existsSync(schemasDir)) {
+    console.warn(`Schema directory not found: ${schemasDir}`);
+    return tools;
+  }
+
+  const schemaFiles = fs.readdirSync(schemasDir).filter(f => f.endsWith('-schemas.ts'));
+
+  for (const file of schemaFiles) {
+    const filePath = path.join(schemasDir, file);
+    const content = fs.readFileSync(filePath, 'utf-8');
+
+    // Parse tool definitions from the schema file
+    // The structure is: { name: 'tool_name', description: '...', inputSchema: {...} }
+    // We need to handle multi-line descriptions with template literals or string concatenation
+
+    // Strategy: Find each tool object and extract name + description
+    // Tool objects start with { and have name: and description: properties
+
+    // Use a more robust approach: find all object literals that have name and description
+    const toolObjectRegex = /\{\s*name:\s*['"`]([^'"`]+)['"`]\s*,\s*description:\s*(['"`])([\s\S]*?)\2\s*,/g;
+    let match;
+
+    while ((match = toolObjectRegex.exec(content)) !== null) {
+      const name = match[1];
+      // The description may contain escaped quotes, handle them
+      const description = match[3]
+        .replace(/\\'/g, "'")
+        .replace(/\\"/g, '"')
+        .replace(/\\n/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      tools.set(name, { name, description });
+    }
+
+    // Also try template literals for multi-line descriptions
+    // Pattern: { name: 'tool_name', description: `...`, inputSchema: {...} }
+    const templateRegex = /\{\s*name:\s*['"]([^'"]+)['"]\s*,\s*description:\s*`([^`]*)`\s*,/g;
+    while ((match = templateRegex.exec(content)) !== null) {
+      const name = match[1];
+      const description = match[2].replace(/\s+/g, ' ').trim();
+      if (!tools.has(name)) {
+        tools.set(name, { name, description });
+      }
+    }
+  }
+
+  return tools;
+}
+
+/**
+ * Scan YAML definitions and build a map of tool metadata (for enrichment).
+ */
+function scanYamlDefinitions(): Map<string, { path: string; description: string; deferLoading: boolean }> {
+  const toolsDir = path.join(PLUGIN_ROOT, 'tools', 'definitions');
+  const yamlTools = new Map<string, { path: string; description: string; deferLoading: boolean }>();
+
   function scanDir(dir: string, relativePath: string = 'definitions') {
     if (!fs.existsSync(dir)) return;
 
@@ -235,20 +291,16 @@ function scanTools(): RegistryEntry[] {
       const stat = fs.statSync(fullPath);
 
       if (stat.isDirectory()) {
-        // Recurse into subdirectories
         scanDir(fullPath, `${relativePath}/${item}`);
       } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
         const content = fs.readFileSync(fullPath, 'utf-8');
 
         try {
           const tool = yaml.load(content) as ToolDefinition;
-          seenNames.add(tool.name);
-          entries.push({
-            name: tool.name,
+          yamlTools.set(tool.name, {
             path: `${relativePath}/${item}`,
             description: tool.description || '',
-            triggers: extractKeywords(tool.description || '', tool.name),
-            tags: tool.mcp?.defer_loading ? ['deferred'] : ['core']
+            deferLoading: tool.mcp?.defer_loading || false
           });
         } catch (e) {
           console.error(`Error parsing ${item}:`, e);
@@ -258,31 +310,58 @@ function scanTools(): RegistryEntry[] {
   }
 
   scanDir(toolsDir);
+  return yamlTools;
+}
 
-  // Then, scan tool-schemas.ts for any tools not in YAML definitions
-  const schemasPath = path.join(PLUGIN_ROOT, 'tools', 'implementations', 'tool-search-server', 'src', 'tool-schemas.ts');
-  if (fs.existsSync(schemasPath)) {
-    const schemasContent = fs.readFileSync(schemasPath, 'utf-8');
+/**
+ * Scan tools - TypeScript schemas are PRIMARY, YAML definitions provide enrichment.
+ *
+ * Tagging:
+ * - 'core': Tools with YAML definitions (rich metadata)
+ * - 'mcp': Tools with only TypeScript schemas (basic metadata)
+ * - 'deferred': Tools marked as defer_loading in YAML
+ */
+function scanTools(): RegistryEntry[] {
+  const entries: RegistryEntry[] = [];
 
-    // Extract tool definitions using regex
-    const toolRegex = /\{\s*name:\s*['"]([^'"]+)['"]\s*,\s*description:\s*['"]([^'"]+)['"]/g;
-    let match;
+  // PRIMARY: Parse all TypeScript schema files
+  const tsTools = parseTypeScriptSchemas();
+  console.log(`  Found ${tsTools.size} tools from TypeScript schemas`);
 
-    while ((match = toolRegex.exec(schemasContent)) !== null) {
-      const name = match[1];
-      const description = match[2];
+  // SECONDARY: Get YAML definitions for enrichment
+  const yamlTools = scanYamlDefinitions();
+  console.log(`  Found ${yamlTools.size} YAML definitions for enrichment`);
 
-      if (!seenNames.has(name)) {
-        seenNames.add(name);
-        entries.push({
-          name,
-          path: `mcp-server/${name}`,
-          description,
-          triggers: extractKeywords(description, name),
-          tags: ['mcp']
-        });
+  // Build entries: TypeScript is source of truth for what tools exist
+  for (const [name, tsTool] of tsTools) {
+    const yamlMeta = yamlTools.get(name);
+
+    // Use TypeScript description as primary, but can fallback to YAML if richer
+    let description = tsTool.description;
+
+    // Determine path and tags based on YAML presence
+    let toolPath: string;
+    let tags: string[];
+
+    if (yamlMeta) {
+      toolPath = yamlMeta.path;
+      tags = yamlMeta.deferLoading ? ['deferred'] : ['core'];
+      // If YAML description is significantly longer, it might be richer
+      if (yamlMeta.description.length > description.length * 1.5) {
+        description = yamlMeta.description;
       }
+    } else {
+      toolPath = `mcp-server/${name}`;
+      tags = ['mcp'];
     }
+
+    entries.push({
+      name,
+      path: toolPath,
+      description,
+      triggers: extractKeywords(description, name),
+      tags
+    });
   }
 
   return entries;
@@ -337,14 +416,18 @@ function main() {
     }))
   };
 
-  // Separate core and deferred tools
+  // Separate tools by category
   const core = tools.filter(t => t.tags?.includes('core'));
   const deferred = tools.filter(t => t.tags?.includes('deferred'));
+  const mcp = tools.filter(t => t.tags?.includes('mcp'));
+
+  console.log(`  Tool breakdown: ${core.length} core, ${deferred.length} deferred, ${mcp.length} mcp-only`);
 
   const toolsOutput = {
     ...toolsRegistry,
     core_tools: core.map(t => ({ name: t.name, path: t.path, description: t.description })),
-    deferred_tools: deferred.map(t => ({ name: t.name, path: t.path, description: t.description }))
+    deferred_tools: deferred.map(t => ({ name: t.name, path: t.path, description: t.description })),
+    mcp_tools: mcp.map(t => ({ name: t.name, path: t.path, description: t.description }))
   };
 
   const toolsPath = path.join(PLUGIN_ROOT, 'tools', '_registry.yaml');

@@ -1,0 +1,43 @@
+name: analyze_event_flow
+version: "1.0.0"
+description: |
+  Analyze event handling and propagation in React/Vue/Svelte components.
+  Detects all event handlers (onClick, onChange, onSubmit, etc.), simulates
+  event bubbling from leaf to root, identifies issues like nested clickable
+  elements that may double-fire, click handlers on non-interactive elements
+  without keyboard alternatives, and form submits without preventDefault.
+  Also detects event delegation patterns (e.target.closest, e.target.matches checks).
+  Essential for debugging "why is my click firing twice" and accessibility audits.
+
+category: frontend
+tags:
+  - events
+  - event-handling
+  - bubbling
+  - debugging
+  - accessibility
+  - react
+  - vue
+  - svelte
+
+mcp:
+  server: goodvibes-tools
+  method: analyze_event_flow
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.
+    event:
+      type: string
+      description: "Optional: Filter to specific event type (e.g., \"click\", \"change\", \"submit\"). If omitted, analyzes all events."
+  required:
+    - file
+
+handler:
+  type: native
+  module: frontend
+  function: handleAnalyzeEventFlow

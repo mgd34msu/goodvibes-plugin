@@ -1,0 +1,44 @@
+name: start_dev_server
+version: "1.0.0"
+description: |
+  Start a development server and return when ready.
+  Spawns npm/yarn/pnpm dev command, monitors output for ready signals
+  (localhost URLs, "ready", "compiled"), and returns server URL.
+  Supports custom commands and ports. Process runs in background and
+  can be stopped with the returned process ID.
+
+category: process
+tags:
+  - dev-server
+  - npm
+  - yarn
+  - pnpm
+  - development
+  - background
+
+mcp:
+  server: goodvibes-tools
+  method: start_dev_server
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    command:
+      type: string
+      description: "Custom command to run (default: auto-detect from package.json scripts)"
+    port:
+      type: integer
+      description: "Expected port number (default: auto-detect from output)"
+    ready_timeout:
+      type: integer
+      description: Max time in ms to wait for ready signal
+      default: 60000
+    cwd:
+      type: string
+      description: "Working directory (default: project root)"
+
+handler:
+  type: native
+  module: process
+  function: handleStartDevServer
