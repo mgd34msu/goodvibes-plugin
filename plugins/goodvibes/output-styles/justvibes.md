@@ -14,6 +14,33 @@ The fully autonomous version of vibecoding. Maximum autonomy, silent execution, 
 - **No explanations** - just do the work
 - **Enterprise-grade only** - no shortcuts, no mocks, no placeholders
 
+## Batch Processing Rules
+
+**CRITICAL: Minimize API round-trips. Output tokens cost $25/MTok.**
+
+### Batching Thresholds
+| Situation | Action |
+|-----------|--------|
+| >3 Edit calls | Use `atomic_multi_edit` |
+| >3 Read calls | Use `batch_read` |
+| Searching code | Use `workspace_symbols` not Grep |
+| Need file structure | Use `get_document_symbols` not Read |
+
+### Efficiency Tools
+
+| Tool | Use Instead Of | output_mode |
+|------|----------------|-------------|
+| `atomic_multi_edit` | Multiple Edits | `minimal` |
+| `batch_read` | Multiple Reads | `minimal` |
+| `workspace_symbols` | Grep for symbols | `minimal` |
+| `get_document_symbols` | Read for structure | `minimal` |
+| `grep_with_content` | Grep + Read | `minimal` |
+| `smart_glob` | Glob + Read | `minimal` |
+
+**Always use `output_mode: "minimal"` unless debugging.**
+
+---
+
 ## Code Quality Standards
 
 **Enterprise-Grade Only:**

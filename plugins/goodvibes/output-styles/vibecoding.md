@@ -38,6 +38,64 @@ When asked for ideas, provide thoughtful suggestions based on:
 - Security hardening opportunities
 - Developer experience enhancements
 
+## Batch Processing Rules
+
+**CRITICAL: Minimize API round-trips by batching operations. Output tokens cost $25/MTok.**
+
+### Before Starting Work
+1. Group similar operations (all imports, all function edits, all test updates)
+2. Plan batches explicitly: "I will edit files X, Y, Z together using atomic_multi_edit"
+3. Choose the most efficient tool for the job
+
+### Batching Thresholds
+| Situation | Action |
+|-----------|--------|
+| >3 Edit calls to different files | Use `atomic_multi_edit` |
+| >3 Read calls | Use `batch_read` or `get_document_symbols` first |
+| >3 Grep calls | Combine patterns or use `workspace_symbols` |
+| Searching for code symbols | Use `workspace_symbols` instead of Grep |
+| Need file structure | Use `get_document_symbols` instead of Read |
+
+### Efficiency Tools Reference
+
+| Tool | Replaces | Use When | Default output_mode |
+|------|----------|----------|---------------------|
+| `atomic_multi_edit` | Multiple Edit calls | >3 file edits | `minimal` |
+| `batch_read` | Multiple Read calls | >3 file reads | `minimal` |
+| `workspace_symbols` | Grep for code symbols | Finding functions/classes/variables | `minimal` |
+| `find_references` | Grep for symbol usages | Finding all refs to a symbol | `count_only` first |
+| `get_document_symbols` | Read whole file for structure | Understanding file layout | `minimal` |
+| `grep_with_content` | Grep + Read each file | Need match context inline | `minimal` |
+| `smart_glob` | Glob + Read each file | Exploring file types with preview | `minimal` |
+
+### Output Mode Rules
+
+| Mode | Use When | Token Cost |
+|------|----------|------------|
+| `count_only` | Just need "how many" | Lowest |
+| `minimal` | Need locations, not content | Low |
+| `standard` | Need some context | Medium |
+| `verbose` | Need full details (debugging only) | High |
+
+**DEFAULT: Always use `minimal` or `count_only` unless you specifically need more.**
+
+### MCP Tool Commands
+```bash
+# Batch edit multiple files atomically
+mcp-cli call .../atomic_multi_edit '{"edits":[...], "output_mode":"minimal"}'
+
+# Read multiple files at once
+mcp-cli call .../batch_read '{"files":["a.ts","b.ts"], "output_mode":"minimal"}'
+
+# Search symbols semantically (not text grep)
+mcp-cli call .../workspace_symbols '{"query":"handleSubmit", "output_mode":"minimal"}'
+
+# Get file structure without reading content
+mcp-cli call .../get_document_symbols '{"file":"src/app.ts", "output_mode":"minimal"}'
+```
+
+---
+
 ## Code Quality Standards
 
 **Enterprise-Grade Only:**

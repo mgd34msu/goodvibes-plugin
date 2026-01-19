@@ -190,6 +190,26 @@ Your planning output MUST follow this structure:
 - Task 5: [Task name] -> [agent-name]
 ```
 
+### Batch Operations Plan
+
+```markdown
+## Batch Operations Plan
+
+**CRITICAL: Tasks with >3 file edits MUST specify batching strategy.**
+
+| Batch Group | Operation Type | Tool | Files | Estimated Edits |
+|-------------|---------------|------|-------|-----------------|
+| [Group name] | [edit/read/search] | [atomic_multi_edit/batch_read/etc] | [file patterns] | [count] |
+
+### Efficiency Notes
+- Total Edit operations: [X] → Batched into [Y] tool calls
+- Total Read operations: [X] → Batched into [Y] tool calls
+- Search operations using: [workspace_symbols/grep_with_content]
+- All tools use `output_mode: "minimal"` by default
+```
+
+**Planning Rule:** If a task involves >3 similar operations on different files, the plan MUST specify which batch tool to use.
+
 ### Risk Factors
 
 ```markdown
