@@ -1,5 +1,4 @@
 ---
-name: codebase-review
 description: |
   Full codebase review with parallel goodvibes agent remediation.
   Analyzes 10 quality dimensions, generates master report, creates
@@ -11,6 +10,11 @@ allowed_tools: []
 # Codebase Review & Parallel Remediation
 
 Comprehensive codebase analysis with automated parallel remediation using goodvibes agents.
+## Usage
+
+```
+/goodvibes:codebase-review
+```
 
 ## MCP Tool Checklist (MANDATORY)
 
