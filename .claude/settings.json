@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/session-start.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/session-start.js\"",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/session-start.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/session-start.js\"",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/session-end.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/session-end.js\"",
             "timeout": 10
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/subagent-start.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/subagent-start.js\"",
             "timeout": 10
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/subagent-stop.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/subagent-stop.js\"",
             "timeout": 10
           }
         ]
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/pre-compact.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/pre-compact.js\"",
             "timeout": 5
           }
         ]
@@ -76,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/stop.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/stop.js\"",
             "timeout": 10
           }
         ]
@@ -88,7 +88,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/notification.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/notification.js\"",
             "timeout": 5
           }
         ]
@@ -100,7 +100,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\buzzkill\\.claude\\plugins\\cache\\goodvibes-market\\goodvibes\\1.0.0/hooks/scripts/dist/user-prompt-submit.js\"",
+            "command": "node \"C:\\Users\\buzzkill\\Documents\\vibeplug\\plugins\\goodvibes/hooks/scripts/dist/user-prompt-submit.js\"",
             "timeout": 5
           }
         ]
