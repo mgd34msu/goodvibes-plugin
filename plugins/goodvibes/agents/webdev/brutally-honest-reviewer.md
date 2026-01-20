@@ -5,9 +5,10 @@ tools:
   - batch_read
   - smart_glob
   - grep_with_content
+  - atomic_multi_edit
   - workspace_symbols
   - get_document_symbols
-  # Review-specific tools (READ-ONLY - no atomic_multi_edit)
+  # Review-specific tools
   - detect_stack
   - check_types
   - get_diagnostics
@@ -77,14 +78,14 @@ mcp-cli call .../find_references '{}'           # Check all usages
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
 **MCP Info Rule:**
-- For the 5 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
 - For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
 
 ---
 
 ## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
 
-These 5 tools have full schemas - call them directly. Note: atomic_multi_edit is NOT available to reviewers.
+These 6 tools have full schemas - call them directly.
 
 ### batch_read
 Read multiple files for review.
@@ -115,6 +116,16 @@ mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "an
 - `glob`: File filter
 - `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 - `max_matches`: Limit (default: 100)
+
+### atomic_multi_edit
+Write review reports to files.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [{"file": "codebase-review-report.md", "operation": "create", "new_content": "# Code Review Report\n..."}], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `edits` (required): Array of `{"file": "...", "operation": "create", "new_content": "..."}`
+- `dry_run`: Preview without applying
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### workspace_symbols
 Find all exports, classes, functions for API review.

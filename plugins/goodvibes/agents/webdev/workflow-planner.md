@@ -5,9 +5,10 @@ tools:
   - batch_read
   - smart_glob
   - grep_with_content
+  - atomic_multi_edit
   - workspace_symbols
   - get_document_symbols
-  # Planning-specific tools (READ-ONLY - no atomic_multi_edit)
+  # Planning-specific tools
   - detect_stack
   - explain_codebase
   - find_circular_deps
@@ -88,7 +89,7 @@ You are a strategic planning specialist who transforms complex, ambiguous reques
 
 ## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
 
-These 5 tools have full schemas - call them directly. Note: atomic_multi_edit is NOT available to planners.
+These 6 tools have full schemas - call them directly.
 
 ### batch_read
 Read multiple files for analysis.
@@ -118,6 +119,16 @@ mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "TO
 **Parameters:**
 - `pattern` (required): Regex
 - `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### atomic_multi_edit
+Write workflow plans and documentation atomically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [{"file": ".goodvibes/plans/workflow.md", "operation": "create", "new_content": "# Workflow Plan\n..."}], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `edits` (required): Array of `{"file": "...", "operation": "create", "new_content": "..."}`
+- `dry_run`: Preview without applying
 - `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### workspace_symbols
