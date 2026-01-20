@@ -851,6 +851,9 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
   contextParts.push(
     "IMPORTANT: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands. Only use commands outside of MCP tools or skills when there is absolutely no other way to accomplish a specific part of the task. Even if the entire task cannot be completed with skills/MCP tools, use them for every part where they apply."
   );
+  contextParts.push(
+    'BATCH PROCESSING: For efficiency, use batch operations when possible:\n  - Use `atomic_multi_edit` MCP tool for 3+ file edits (instead of individual Edit calls)\n  - Use `batch_read` MCP tool for 3+ file reads (instead of individual Read calls)\n  - Use `workspace_symbols` MCP tool for searching code symbols (instead of multiple Grep calls)\n  - Default to `output_mode: "minimal"` on MCP tool calls to reduce context size'
+  );
   if (agentType.includes("backend")) {
     contextParts.push(
       "Remember: Write-local only. All changes must be in the project root."

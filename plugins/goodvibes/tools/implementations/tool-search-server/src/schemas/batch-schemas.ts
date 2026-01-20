@@ -5,19 +5,47 @@
 export const BATCH_SCHEMAS = [
   {
     name: 'batch_read',
-    description: 'Read multiple files in a single call with configurable output verbosity. More efficient than multiple individual read calls. Returns file contents, line counts, and sizes based on output mode.',
+    description: 'Read multiple files in a single call with per-file precision reading. Each file can specify exact line ranges (offset/limit) for efficient partial reads. Returns file contents, total line counts, sizes, and range metadata.',
     inputSchema: {
       type: 'object',
       properties: {
         files: {
           type: 'array',
-          items: { type: 'string' },
-          description: 'Array of file paths (relative to project root or absolute)',
+          items: {
+            oneOf: [
+              {
+                type: 'string',
+                description: 'Simple file path - reads entire file (or first 50 lines in standard mode)',
+              },
+              {
+                type: 'object',
+                description: 'Detailed file read request with optional line range',
+                properties: {
+                  path: {
+                    type: 'string',
+                    description: 'File path (relative to project root or absolute)',
+                  },
+                  offset: {
+                    type: 'integer',
+                    minimum: 1,
+                    description: 'Start line (1-based). Omit to start from line 1',
+                  },
+                  limit: {
+                    type: 'integer',
+                    minimum: 1,
+                    description: 'Maximum lines to read. Omit to read to end',
+                  },
+                },
+                required: ['path'],
+              },
+            ],
+          },
+          description: 'Mixed array: simple paths (strings) OR detailed specs with offset/limit (objects). Examples: ["file.ts"] or [{"path": "file.ts", "offset": 100, "limit": 50}]',
         },
         output_mode: {
           type: 'string',
           enum: ['minimal', 'standard', 'verbose'],
-          description: 'Output verbosity: minimal (line counts + sizes only), standard (first 50 lines of each file, default), verbose (full file contents)',
+          description: 'Output verbosity: minimal (metadata only, no content), standard (first 50 lines default, respects explicit ranges), verbose (full file or exact range specified)',
           default: 'standard',
         },
       },

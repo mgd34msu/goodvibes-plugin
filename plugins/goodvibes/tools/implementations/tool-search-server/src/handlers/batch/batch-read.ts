@@ -2,6 +2,7 @@
  * Batch Read Handler
  *
  * Reads multiple files in a single call with configurable output verbosity.
+ * Supports per-file precision reading with offset/limit for exact line ranges.
  * Useful for efficiently reading multiple files without multiple tool calls.
  *
  * @module handlers/batch/batch-read
@@ -20,31 +21,63 @@ import { fileExists } from '../../utils.js';
 export type OutputMode = 'minimal' | 'standard' | 'verbose';
 
 /**
+ * Request for a single file with optional range specification.
+ * Enables precision reading of exact line ranges.
+ */
+export interface FileReadRequest {
+  /** File path (relative to project root or absolute) */
+  path: string;
+  /** Start line (1-based). Omit to start from line 1 */
+  offset?: number;
+  /** Maximum lines to read. Omit to read to end */
+  limit?: number;
+}
+
+/**
  * Arguments for the batch_read tool.
  */
 export interface BatchReadArgs {
-  /** Array of file paths (relative to project root or absolute) */
-  files: string[];
+  /** Mixed array: simple paths OR detailed specs with offset/limit */
+  files: (string | FileReadRequest)[];
   /** Output verbosity (default: standard) */
   output_mode?: OutputMode;
 }
 
 /**
+ * Range metadata for the returned content.
+ * Tells the agent exactly what was returned.
+ */
+export interface FileReadRange {
+  /** Actual start line (1-based) */
+  start: number;
+  /** Actual end line (inclusive) */
+  end: number;
+  /** Number of lines returned */
+  lines_returned: number;
+  /** Content exists before start */
+  has_more_before: boolean;
+  /** Content exists after end */
+  has_more_after: boolean;
+}
+
+/**
  * Result for a single file read.
  */
-interface FileReadResult {
+export interface FileReadResult {
   /** File path (relative to project root) */
   file: string;
   /** Whether the file exists */
   exists: boolean;
-  /** Line count (if file exists) */
-  line_count?: number;
+  /** Total lines in file (always returned if file exists) */
+  total_lines?: number;
   /** File size in bytes (if file exists) */
   size?: number;
   /** Content (based on output_mode) */
   content?: string;
   /** Error message if read failed */
   error?: string;
+  /** Range metadata - tells agent exactly what was returned */
+  range?: FileReadRange;
 }
 
 /**
@@ -98,11 +131,24 @@ function makeRelativePath(absolutePath: string): string {
 }
 
 /**
- * Read a single file with the given output mode
+ * Options for reading a file with precision
+ */
+interface ReadFileOptions {
+  /** Start line (1-based). Defaults to 1 */
+  offset?: number;
+  /** Maximum lines to read. Omit to read to end */
+  limit?: number;
+  /** Whether explicit offset/limit was provided (affects standard mode behavior) */
+  hasExplicitRange: boolean;
+}
+
+/**
+ * Read a single file with the given output mode and optional line range
  */
 async function readFile(
   filePath: string,
-  outputMode: OutputMode
+  outputMode: OutputMode,
+  options: ReadFileOptions = { hasExplicitRange: false }
 ): Promise<FileReadResult> {
   const absolutePath = resolveFilePath(filePath);
   const relativePath = makeRelativePath(absolutePath);
@@ -133,40 +179,87 @@ async function readFile(
     // Read file content
     const content = await fs.readFile(absolutePath, 'utf-8');
     const lines = content.split('\n');
-    const lineCount = lines.length;
+    const totalLines = lines.length;
 
-    // Format result based on output mode
+    // Determine the line range to return
+    let startLine: number; // 1-based
+    let endLine: number;   // 1-based, inclusive
+    let slicedLines: string[];
+
     if (outputMode === 'minimal') {
-      return {
+      // Minimal mode: no content, but still provide range metadata if explicit range was given
+      const result: FileReadResult = {
         file: relativePath,
         exists: true,
-        line_count: lineCount,
+        total_lines: totalLines,
         size: stats.size,
       };
+
+      // Add range metadata even in minimal mode if explicit range was requested
+      if (options.hasExplicitRange) {
+        startLine = Math.max(1, options.offset ?? 1);
+        const startIndex = startLine - 1;
+        const endIndex = options.limit
+          ? Math.min(startIndex + options.limit, totalLines)
+          : totalLines;
+        endLine = endIndex;
+
+        result.range = {
+          start: startLine,
+          end: endLine,
+          lines_returned: 0, // No content in minimal mode
+          has_more_before: startLine > 1,
+          has_more_after: endLine < totalLines,
+        };
+      }
+
+      return result;
     }
 
-    if (outputMode === 'standard') {
-      // Return first N lines
-      const truncatedContent = lines.slice(0, STANDARD_LINE_LIMIT).join('\n');
-      const truncated = lineCount > STANDARD_LINE_LIMIT;
-      return {
-        file: relativePath,
-        exists: true,
-        line_count: lineCount,
-        size: stats.size,
-        content: truncated
-          ? `${truncatedContent}\n... (${lineCount - STANDARD_LINE_LIMIT} more lines)`
-          : truncatedContent,
-      };
+    // Determine range based on options and output mode
+    if (options.hasExplicitRange) {
+      // User specified explicit offset/limit - use exactly that
+      startLine = Math.max(1, options.offset ?? 1);
+      const startIndex = startLine - 1;
+
+      if (options.limit !== undefined) {
+        // Both offset and limit specified
+        const endIndex = Math.min(startIndex + options.limit, totalLines);
+        slicedLines = lines.slice(startIndex, endIndex);
+        endLine = startIndex + slicedLines.length;
+      } else {
+        // Only offset specified - read to end
+        slicedLines = lines.slice(startIndex);
+        endLine = totalLines;
+      }
+    } else if (outputMode === 'standard') {
+      // Standard mode without explicit range: default to first 50 lines
+      startLine = 1;
+      slicedLines = lines.slice(0, STANDARD_LINE_LIMIT);
+      endLine = Math.min(STANDARD_LINE_LIMIT, totalLines);
+    } else {
+      // Verbose mode without explicit range: return full file
+      startLine = 1;
+      slicedLines = lines;
+      endLine = totalLines;
     }
 
-    // Verbose mode - return full content
+    // Build range metadata
+    const range: FileReadRange = {
+      start: startLine,
+      end: endLine,
+      lines_returned: slicedLines.length,
+      has_more_before: startLine > 1,
+      has_more_after: endLine < totalLines,
+    };
+
     return {
       file: relativePath,
       exists: true,
-      line_count: lineCount,
+      total_lines: totalLines,
       size: stats.size,
-      content,
+      content: slicedLines.join('\n'),
+      range,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -183,18 +276,60 @@ async function readFile(
 // =============================================================================
 
 /**
+ * Normalize a file entry to extract path and options.
+ * Handles both string paths and FileReadRequest objects.
+ */
+function normalizeFileEntry(entry: string | FileReadRequest): {
+  path: string;
+  options: ReadFileOptions;
+} {
+  if (typeof entry === 'string') {
+    return {
+      path: entry,
+      options: { hasExplicitRange: false },
+    };
+  }
+
+  // It's a FileReadRequest object
+  const hasExplicitRange =
+    entry.offset !== undefined || entry.limit !== undefined;
+
+  return {
+    path: entry.path,
+    options: {
+      offset: entry.offset,
+      limit: entry.limit,
+      hasExplicitRange,
+    },
+  };
+}
+
+/**
  * Handle batch_read MCP tool call.
  *
  * Reads multiple files in a single call with configurable output verbosity.
+ * Supports per-file precision reading with offset/limit for exact line ranges.
  *
  * @param args - The tool arguments
  * @returns MCP tool response with file contents
  *
  * @example
  * ```typescript
+ * // Simple usage with string paths
  * const result = await handleBatchRead({
  *   files: ['src/index.ts', 'src/utils.ts'],
  *   output_mode: 'standard'
+ * });
+ *
+ * // Precision reading with per-file ranges
+ * const result = await handleBatchRead({
+ *   files: [
+ *     { path: 'src/auth.ts', offset: 150, limit: 30 },  // Lines 150-179
+ *     { path: 'src/db.ts', offset: 1, limit: 50 },      // First 50 lines
+ *     { path: 'src/utils.ts' },                          // Whole file
+ *     'config.json'                                      // Simple path
+ *   ],
+ *   output_mode: 'verbose'
  * });
  * ```
  */
@@ -216,16 +351,19 @@ export async function handleBatchRead(
 
   const outputMode = args.output_mode ?? 'standard';
 
-  // Read all files in parallel
+  // Normalize entries and read all files in parallel
   const fileResults = await Promise.all(
-    args.files.map(file => readFile(file, outputMode))
+    args.files.map(entry => {
+      const { path: filePath, options } = normalizeFileEntry(entry);
+      return readFile(filePath, outputMode, options);
+    })
   );
 
   // Calculate summary stats
   const successCount = fileResults.filter(r => r.exists && !r.error).length;
   const errorCount = fileResults.filter(r => !r.exists || r.error).length;
   const totalLines = fileResults.reduce(
-    (sum, r) => sum + (r.line_count ?? 0),
+    (sum, r) => sum + (r.total_lines ?? 0),
     0
   );
 
@@ -233,13 +371,8 @@ export async function handleBatchRead(
     files: fileResults,
     success_count: successCount,
     error_count: errorCount,
-    total_lines: outputMode !== 'minimal' ? totalLines : undefined,
+    total_lines: totalLines,
   };
-
-  // Include total_lines for minimal mode too
-  if (outputMode === 'minimal') {
-    result.total_lines = totalLines;
-  }
 
   return {
     content: [

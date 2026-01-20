@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-19T00:03:00.115Z'
-total: 91
+generated: '2026-01-20T00:48:58.822Z'
+total: 94
 categories: {}
 search_index:
   - name: profile_function
@@ -91,6 +91,94 @@ search_index:
       Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
       cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
       debt items with effort estimates.
+  - name: batch_read
+    keywords:
+      - batch
+      - read
+      - multiple
+      - files
+      - single
+      - call
+      - per
+      - file
+      - precision
+      - reading
+      - each
+      - can
+      - specify
+      - exact
+      - line
+      - ranges
+      - offset
+      - limit
+      - efficient
+      - partial
+      - reads
+      - returns
+      - contents
+      - total
+      - counts
+      - sizes
+      - range
+      - metadata
+    path: mcp-server/batch_read
+    description: >-
+      Read multiple files in a single call with per-file precision reading. Each file can specify exact line ranges
+      (offset/limit) for efficient partial reads. Returns file contents, total line counts, sizes, and range metadata.
+  - name: smart_glob
+    keywords:
+      - smart
+      - glob
+      - intelligent
+      - filtering
+      - output
+      - control
+      - supports
+      - multiple
+      - patterns
+      - exclusions
+      - various
+      - modes
+      - automatically
+      - ignores
+      - node_modules
+      - git
+      - other
+      - common
+      - directories
+    path: mcp-server/smart_glob
+    description: >-
+      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, and various output
+      modes. Automatically ignores node_modules, .git, and other common directories.
+  - name: grep_with_content
+    keywords:
+      - grep
+      - with
+      - content
+      - search
+      - regex
+      - pattern
+      - across
+      - files
+      - configurable
+      - context
+      - output
+      - more
+      - powerful
+      - than
+      - basic
+      - supports
+      - various
+      - modes
+      - file
+      - filtering
+      - lines
+      - around
+      - matches
+    path: mcp-server/grep_with_content
+    description: >-
+      Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports
+      various output modes, file filtering, and context lines around matches.
   - name: analyze_bundle
     keywords:
       - analyze
@@ -3430,4 +3518,19 @@ deferred_tools:
       Validate environment variables are complete and documented. Compares .env against .env.example and code usage to
       identify missing, unused, and undocumented variables. Optionally validates value formats based on naming
       conventions (ports should be numbers, URLs should be valid, etc.).
-mcp_tools: []
+mcp_tools:
+  - name: batch_read
+    path: mcp-server/batch_read
+    description: >-
+      Read multiple files in a single call with per-file precision reading. Each file can specify exact line ranges
+      (offset/limit) for efficient partial reads. Returns file contents, total line counts, sizes, and range metadata.
+  - name: smart_glob
+    path: mcp-server/smart_glob
+    description: >-
+      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, and various output
+      modes. Automatically ignores node_modules, .git, and other common directories.
+  - name: grep_with_content
+    path: mcp-server/grep_with_content
+    description: >-
+      Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports
+      various output modes, file filtering, and context lines around matches.

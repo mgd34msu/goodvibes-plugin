@@ -236042,19 +236042,47 @@ var ANALYSIS_SCHEMAS = [
 var BATCH_SCHEMAS = [
   {
     name: "batch_read",
-    description: "Read multiple files in a single call with configurable output verbosity. More efficient than multiple individual read calls. Returns file contents, line counts, and sizes based on output mode.",
+    description: "Read multiple files in a single call with per-file precision reading. Each file can specify exact line ranges (offset/limit) for efficient partial reads. Returns file contents, total line counts, sizes, and range metadata.",
     inputSchema: {
       type: "object",
       properties: {
         files: {
           type: "array",
-          items: { type: "string" },
-          description: "Array of file paths (relative to project root or absolute)"
+          items: {
+            oneOf: [
+              {
+                type: "string",
+                description: "Simple file path - reads entire file (or first 50 lines in standard mode)"
+              },
+              {
+                type: "object",
+                description: "Detailed file read request with optional line range",
+                properties: {
+                  path: {
+                    type: "string",
+                    description: "File path (relative to project root or absolute)"
+                  },
+                  offset: {
+                    type: "integer",
+                    minimum: 1,
+                    description: "Start line (1-based). Omit to start from line 1"
+                  },
+                  limit: {
+                    type: "integer",
+                    minimum: 1,
+                    description: "Maximum lines to read. Omit to read to end"
+                  }
+                },
+                required: ["path"]
+              }
+            ]
+          },
+          description: 'Mixed array: simple paths (strings) OR detailed specs with offset/limit (objects). Examples: ["file.ts"] or [{"path": "file.ts", "offset": 100, "limit": 50}]'
         },
         output_mode: {
           type: "string",
           enum: ["minimal", "standard", "verbose"],
-          description: "Output verbosity: minimal (line counts + sizes only), standard (first 50 lines of each file, default), verbose (full file contents)",
+          description: "Output verbosity: minimal (metadata only, no content), standard (first 50 lines default, respects explicit ranges), verbose (full file or exact range specified)",
           default: "standard"
         }
       },
@@ -267830,7 +267858,7 @@ function resolveFilePath5(filePath) {
 function makeRelativePath11(absolutePath) {
   return path84.relative(PROJECT_ROOT, absolutePath).replace(/\\/g, "/");
 }
-async function readFile14(filePath, outputMode) {
+async function readFile14(filePath, outputMode, options = { hasExplicitRange: false }) {
   const absolutePath = resolveFilePath5(filePath);
   const relativePath = makeRelativePath11(absolutePath);
   if (!await fileExists(absolutePath)) {
@@ -267852,33 +267880,67 @@ async function readFile14(filePath, outputMode) {
     }
     const content = await fs60.readFile(absolutePath, "utf-8");
     const lines = content.split("\n");
-    const lineCount = lines.length;
+    const totalLines = lines.length;
+    let startLine;
+    let endLine;
+    let slicedLines;
     if (outputMode === "minimal") {
-      return {
+      const result = {
         file: relativePath,
         exists: true,
-        line_count: lineCount,
+        total_lines: totalLines,
         size: stats.size
       };
+      if (options.hasExplicitRange) {
+        startLine = Math.max(1, options.offset ?? 1);
+        const startIndex = startLine - 1;
+        const endIndex = options.limit ? Math.min(startIndex + options.limit, totalLines) : totalLines;
+        endLine = endIndex;
+        result.range = {
+          start: startLine,
+          end: endLine,
+          lines_returned: 0,
+          // No content in minimal mode
+          has_more_before: startLine > 1,
+          has_more_after: endLine < totalLines
+        };
+      }
+      return result;
     }
-    if (outputMode === "standard") {
-      const truncatedContent = lines.slice(0, STANDARD_LINE_LIMIT).join("\n");
-      const truncated = lineCount > STANDARD_LINE_LIMIT;
-      return {
-        file: relativePath,
-        exists: true,
-        line_count: lineCount,
-        size: stats.size,
-        content: truncated ? `${truncatedContent}
-... (${lineCount - STANDARD_LINE_LIMIT} more lines)` : truncatedContent
-      };
+    if (options.hasExplicitRange) {
+      startLine = Math.max(1, options.offset ?? 1);
+      const startIndex = startLine - 1;
+      if (options.limit !== void 0) {
+        const endIndex = Math.min(startIndex + options.limit, totalLines);
+        slicedLines = lines.slice(startIndex, endIndex);
+        endLine = startIndex + slicedLines.length;
+      } else {
+        slicedLines = lines.slice(startIndex);
+        endLine = totalLines;
+      }
+    } else if (outputMode === "standard") {
+      startLine = 1;
+      slicedLines = lines.slice(0, STANDARD_LINE_LIMIT);
+      endLine = Math.min(STANDARD_LINE_LIMIT, totalLines);
+    } else {
+      startLine = 1;
+      slicedLines = lines;
+      endLine = totalLines;
     }
+    const range = {
+      start: startLine,
+      end: endLine,
+      lines_returned: slicedLines.length,
+      has_more_before: startLine > 1,
+      has_more_after: endLine < totalLines
+    };
     return {
       file: relativePath,
       exists: true,
-      line_count: lineCount,
+      total_lines: totalLines,
       size: stats.size,
-      content
+      content: slicedLines.join("\n"),
+      range
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -267888,6 +267950,23 @@ async function readFile14(filePath, outputMode) {
       error: message
     };
   }
+}
+function normalizeFileEntry(entry) {
+  if (typeof entry === "string") {
+    return {
+      path: entry,
+      options: { hasExplicitRange: false }
+    };
+  }
+  const hasExplicitRange = entry.offset !== void 0 || entry.limit !== void 0;
+  return {
+    path: entry.path,
+    options: {
+      offset: entry.offset,
+      limit: entry.limit,
+      hasExplicitRange
+    }
+  };
 }
 async function handleBatchRead(args) {
   if (!args.files || args.files.length === 0) {
@@ -267903,23 +267982,23 @@ async function handleBatchRead(args) {
   }
   const outputMode = args.output_mode ?? "standard";
   const fileResults = await Promise.all(
-    args.files.map((file2) => readFile14(file2, outputMode))
+    args.files.map((entry) => {
+      const { path: filePath, options } = normalizeFileEntry(entry);
+      return readFile14(filePath, outputMode, options);
+    })
   );
   const successCount = fileResults.filter((r) => r.exists && !r.error).length;
   const errorCount = fileResults.filter((r) => !r.exists || r.error).length;
   const totalLines = fileResults.reduce(
-    (sum, r) => sum + (r.line_count ?? 0),
+    (sum, r) => sum + (r.total_lines ?? 0),
     0
   );
   const result = {
     files: fileResults,
     success_count: successCount,
     error_count: errorCount,
-    total_lines: outputMode !== "minimal" ? totalLines : void 0
+    total_lines: totalLines
   };
-  if (outputMode === "minimal") {
-    result.total_lines = totalLines;
-  }
   return {
     content: [
       {

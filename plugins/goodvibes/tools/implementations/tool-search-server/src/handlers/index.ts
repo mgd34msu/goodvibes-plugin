@@ -314,6 +314,9 @@ export {
 } from './batch/index.js';
 export type {
   BatchReadArgs,
+  FileReadRequest,
+  FileReadRange,
+  FileReadResult,
   SmartGlobArgs,
   GrepWithContentArgs,
 } from './batch/index.js';
