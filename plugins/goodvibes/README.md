@@ -1,154 +1,198 @@
-# GoodVibes Plugin for Claude Code
+# GoodVibes v2.0 Plugin for Claude Code
 
-A comprehensive automation plugin that enhances Claude Code with intelligent context injection, persistent memory, smart error recovery, and automated quality gates.
+A token-efficient Claude Code plugin providing batch-first tools, specialist agents, and a comprehensive skills library for enhanced development workflows.
 
-## Features
+## What's New in v2.0
 
-### 1. Smart Context Injection (SessionStart)
-Automatically injects project context at session start:
-- **Stack Detection**: Identifies frameworks, languages, and tools (Next.js, Vite, TypeScript, etc.)
-- **Git Context**: Current branch, uncommitted changes, recent commits
-- **Environment Status**: Missing env vars, .env file presence
-- **Project Health**: node_modules status, lockfile issues, TypeScript config
-- **TODO Scanner**: Finds TODOs/FIXMEs in codebase
-- **Recent Activity**: Hotspots, recently modified files
-- **Port Checker**: Active dev servers on common ports
+- **Batch-First Architecture**: All file operations designed to minimize round-trips
+- **Output Mode Control**: Four verbosity levels (`count_only`, `minimal`, `standard`, `verbose`) to optimize token usage
+- **Precision Tools**: 10 core tools with smart defaults and validation
+- **Specialist Agents**: 9 focused agents with strict capability boundaries
+- **Hook System**: Automatic context injection at session start, compaction, and subagent lifecycle
 
-### 2. Persistent Memory System
-Cross-session memory stored in `.goodvibes/memory/`:
-- `decisions.md` - Architectural decisions and rationale
-- `patterns.md` - Code patterns and conventions discovered
-- `failures.md` - Past failures and solutions
-- `preferences.md` - User preferences learned
+## Core Tools
 
-### 3. PostToolUseFailure Smart Recovery
-3-phase error recovery with escalating research:
-- **Phase 1**: Fix attempts with existing knowledge
-- **Phase 2**: Search official documentation
-- **Phase 3**: Search community solutions (Stack Overflow, GitHub)
+### Precision Engine (Batch-First)
 
-### 4. Pre-Commit Quality Gates
-Automatic quality checks before commits:
-- TypeScript type checking
-- ESLint with auto-fix
-- Prettier formatting
-- Test runner
+These tools replace native Read/Edit/Glob/Grep for efficient operations:
 
-### 5. Subagent Telemetry
-Comprehensive tracking of subagent activity:
-- Start/stop timestamps and duration
-- Task descriptions and outcomes
-- Keyword extraction from transcripts
-- Monthly JSONL telemetry logs
+| Tool | Purpose | Key Feature |
+|------|---------|-------------|
+| `batch_read` | Read multiple files | Partial reads with offset/limit |
+| `smart_glob` | Find files by pattern | Smart exclusions, limit control |
+| `grep_with_content` | Search with context | Regex + glob filtering |
+| `atomic_multi_edit` | Multi-file edits | All-or-nothing with validation |
+| `workspace_symbols` | Find symbols | Function/class/type search |
+| `get_document_symbols` | Analyze file structure | Symbol hierarchy extraction |
 
-### 6. Auto-Checkpoint Commits
-Automatic checkpoint commits based on:
-- File modification count thresholds
-- Time intervals
-- Agent completion events
+### Output Modes
 
-### 7. Output Styles
-Two specialized output modes:
-- **Vibecoding**: Autonomous orchestration with rapid agent delegation
-- **JustVibes**: Silent execution mode for maximum autonomy
+Control token usage with `output_mode` parameter:
 
-### 8. Crash Recovery
-Detects unclean session terminations and provides recovery context.
+```
+count_only  -> {"files": 42}                    # Just counts
+minimal     -> {"files": ["a.ts", "b.ts"]}     # Paths only
+standard    -> {"files": [...], "summary": {}}  # Paths + metadata
+verbose     -> {"files": [...], "content": {}}  # Full content
+```
 
-## Installation
-
-The plugin is installed as part of the vibeplug ecosystem:
+### Usage Examples
 
 ```bash
-# Plugin is located at:
+# Read multiple files efficiently
+mcp-cli call goodvibes-tools/batch_read '{
+  "files": ["src/index.ts", {"path": "src/large.ts", "offset": 100, "limit": 50}],
+  "output_mode": "minimal"
+}'
+
+# Find TypeScript files, exclude tests
+mcp-cli call goodvibes-tools/smart_glob '{
+  "patterns": ["src/**/*.ts"],
+  "exclude": ["**/*.test.ts", "**/*.d.ts"],
+  "output_mode": "minimal",
+  "limit": 100
+}'
+
+# Search for patterns with context
+mcp-cli call goodvibes-tools/grep_with_content '{
+  "pattern": "TODO|FIXME",
+  "glob": "**/*.ts",
+  "output_mode": "standard",
+  "max_matches": 50
+}'
+
+# Atomic multi-file edit with validation
+mcp-cli call goodvibes-tools/atomic_multi_edit '{
+  "edits": [
+    {"file": "src/a.ts", "old_text": "foo", "new_text": "bar"},
+    {"file": "src/b.ts", "old_text": "foo", "new_text": "bar"}
+  ],
+  "validation": {"run_typecheck": true},
+  "output_mode": "minimal"
+}'
+```
+
+## Specialist Agents
+
+9 agents with focused expertise and strict boundaries:
+
+| Agent | Focus | Will NOT Do |
+|-------|-------|-------------|
+| `backend-engineer` | APIs, databases, auth | Frontend UI |
+| `frontend-architect` | React, styling, UX | Backend APIs |
+| `fullstack-integrator` | API contracts, state | Deep specialization |
+| `code-architect` | Refactoring, patterns | Feature implementation |
+| `brutally-honest-reviewer` | Code review, quality | Writing new code |
+| `test-engineer` | Testing strategies | Production code |
+| `devops-deployer` | CI/CD, infrastructure | Application logic |
+| `content-platform` | CMS, content modeling | Non-content features |
+| `workflow-planner` | Task breakdown | Direct implementation |
+
+## Skills Library
+
+173 skills organized by category:
+
+```
+skills/
+├── common/           # Cross-cutting concerns
+│   ├── development/  # Refactoring, project understanding
+│   ├── quality/      # Code quality patterns
+│   ├── review/       # Code review patterns
+│   ├── tooling/      # Build tools, configs
+│   └── workflow/     # Process patterns
+├── webdev/           # Web development skills
+├── create/           # Project creation skills
+└── goodvibes-codebase-review/  # Full codebase audit
+```
+
+### Accessing Skills
+
+```bash
+# Find skills for your task
+mcp-cli call goodvibes-tools/recommend_skills '{"task": "implement OAuth"}'
+
+# Get skill content
+mcp-cli call goodvibes-tools/get_skill_content '{"skill_id": "auth-oauth"}'
+
+# Check skill dependencies
+mcp-cli call goodvibes-tools/skill_dependencies '{"skill_id": "react-hooks"}'
+```
+
+## Mode System
+
+Two output styles for different workflows:
+
+### vibecoding (default)
+- Detailed explanations and reasoning
+- Step-by-step guidance
+- Educational context
+- Best for: learning, complex refactoring, debugging
+
+### justvibes
+- Minimal output, code-focused
+- 50-70% token reduction
+- Best for: routine tasks, experienced developers, batch operations
+
+Switch modes mid-session: "Switch to justvibes" or "Switch to vibecoding"
+
+## Hook System
+
+Automatic context injection at key workflow moments:
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `session-start` | New conversation | Project detection, tool loading |
+| `session-end` | Conversation close | Cleanup, summary |
+| `pre-compact` | Before memory compaction | Preserve critical context |
+| `subagent-start` | Agent spawn | Inject agent-specific context |
+| `subagent-stop` | Agent complete | Result aggregation |
+
+## Directory Structure
+
+```
 plugins/goodvibes/
+├── agents/           # 9 specialist agent definitions
+├── skills/           # 173 skill modules
+├── tools/            # MCP server implementations
+│   └── implementations/
+│       ├── precision-engine/   # Batch-first precision tools
+│       └── tool-search-server/ # Skills and analysis tools
+├── hooks/            # Workflow hook scripts
+├── output-styles/    # vibecoding and justvibes definitions
+└── .mcp.json         # MCP server configuration
 ```
 
-## Configuration
+## Token Efficiency Tips
 
-Configure via `.goodvibes/settings.json`:
+1. **Default to `minimal` output_mode** unless you need content
+2. **Use offset/limit** for large files instead of reading everything
+3. **Batch operations** - one call with 10 files beats 10 calls with 1 file
+4. **Use `count_only`** when you just need to know if something exists
+5. **Switch to `justvibes`** for routine tasks
 
-```json
-{
-  "autoCheckpoint": {
-    "enabled": true,
-    "fileThreshold": 5,
-    "timeThresholdMinutes": 30
-  },
-  "qualityGates": {
-    "typeCheck": true,
-    "lint": true,
-    "format": true,
-    "test": false
-  },
-  "contextInjection": {
-    "stackDetection": true,
-    "gitContext": true,
-    "todoScanner": true,
-    "healthCheck": true
-  }
-}
-```
+## Best Practices
 
-## Hooks
+### MCP Tool Checklist
 
-| Hook | Purpose |
-|------|---------|
-| `session-start` | Context injection, crash recovery |
-| `session-end` | Session cleanup |
-| `pre-tool-use` | Quality gates, git guards |
-| `post-tool-use` | File tracking, checkpoints, dev server monitoring |
-| `post-tool-use-failure` | 3-phase error recovery |
-| `subagent-start` | Telemetry capture |
-| `subagent-stop` | Output validation, test verification |
-| `pre-compact` | State preservation before context compaction |
-
-## Development
-
-### Build
-
+Before any task:
 ```bash
-cd plugins/goodvibes/hooks/scripts
-npm install
-npm run build
+mcp-cli call goodvibes-tools/detect_stack '{}'           # Understand project
+mcp-cli call goodvibes-tools/recommend_skills '{...}'    # Find relevant skills
+mcp-cli call goodvibes-tools/scan_patterns '{}'          # Follow existing patterns
 ```
 
-### Test
-
+Before edits:
 ```bash
-npm test
+mcp-cli call goodvibes-tools/find_tests_for_file '{...}' # Find related tests
+mcp-cli call goodvibes-tools/validate_edits_preview '{}' # Check for errors
 ```
 
-3,956 tests with 100% coverage across 126 test files covering:
-- State management
-- Automation modules (fix-loop, git-operations, build/test runners)
-- Context modules (stack-detector, git-context, health-checker, etc.)
-- Memory system
-- Hook utilities
-
-### Directory Structure
-
-```
-plugins/goodvibes/
-├── agents/           # Specialized subagent definitions
-├── hooks/
-│   ├── hooks.yaml    # Hook configuration
-│   └── scripts/      # TypeScript hook implementations
-│       ├── src/
-│       │   ├── automation/     # Build, test, git automation
-│       │   ├── context/        # Context gathering modules
-│       │   ├── memory/         # Persistent memory system
-│       │   ├── post-tool-use/  # File tracking, checkpoints
-│       │   ├── pre-tool-use/   # Quality gates
-│       │   ├── session-start/  # Context injection
-│       │   ├── subagent-*/     # Telemetry and validation
-│       │   └── types/          # TypeScript definitions
-│       └── dist/               # Compiled JavaScript
-├── output-styles/    # Vibecoding and JustVibes modes
-├── skills/           # Domain-specific skills
-└── tools/            # MCP tool definitions
+After edits:
+```bash
+mcp-cli call goodvibes-tools/check_types '{}'            # Verify TypeScript
+mcp-cli call goodvibes-tools/get_diagnostics '{...}'     # Check for issues
 ```
 
 ## License
 
-Part of the goodvibes ecosystem.
+MIT
