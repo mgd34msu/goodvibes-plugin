@@ -1,0 +1,504 @@
+import { randomUUID } from "crypto";
+
+/**
+ * Specification for spawning an agent.
+ */
+export interface AgentSpec {
+  /** Agent type (backend-engineer, frontend-architect, etc.) */
+  type: string;
+  /** Task description */
+  task: string;
+  /** Token budget allocation */
+  budget: number;
+  /** Priority (higher = more urgent) */
+  priority?: number;
+  /** Dependencies - agent IDs that must complete first */
+  depends_on?: string[];
+  /** Parent agent ID if nested */
+  parent_id?: string;
+  /** Callback when agent completes */
+  on_complete?: AgentCallback;
+  /** Callback when agent fails */
+  on_fail?: AgentCallback;
+}
+
+/**
+ * Runtime state of an agent in the pool.
+ */
+export interface PoolAgent {
+  /** Unique agent identifier */
+  id: string;
+  /** Original specification */
+  spec: AgentSpec;
+  /** Current status */
+  status: "queued" | "waiting" | "running" | "completed" | "failed";
+  /** ISO timestamp when added to pool */
+  queued_at: string;
+  /** ISO timestamp when started running */
+  started_at?: string;
+  /** ISO timestamp when completed/failed */
+  ended_at?: string;
+  /** Budget tracking */
+  budget: AgentBudgetState;
+  /** Result summary if completed */
+  result?: string;
+  /** Error message if failed */
+  error?: string;
+  /** Output from the agent */
+  output?: unknown;
+}
+
+/**
+ * Budget state for an agent.
+ */
+export interface AgentBudgetState {
+  /** Maximum tokens allocated */
+  allocated: number;
+  /** Tokens used so far */
+  spent: number;
+  /** Remaining tokens */
+  remaining: number;
+  /** Whether budget is exhausted */
+  exhausted: boolean;
+  /** Percentage used */
+  usage_percent: number;
+}
+
+/**
+ * Configuration for the agent pool.
+ */
+export interface AgentPoolConfig {
+  /** Maximum concurrent agents */
+  max_concurrent: number;
+  /** Default budget per agent */
+  default_budget: number;
+  /** Total budget for all agents */
+  total_budget: number;
+  /** Whether to auto-start queued agents */
+  auto_start: boolean;
+  /** Budget warning threshold (0-1) */
+  budget_warning_threshold: number;
+}
+
+/**
+ * Statistics for the agent pool.
+ */
+export interface AgentPoolStats {
+  /** Total agents spawned */
+  total_spawned: number;
+  /** Currently active (running) */
+  active: number;
+  /** Currently queued */
+  queued: number;
+  /** Waiting on dependencies */
+  waiting: number;
+  /** Successfully completed */
+  completed: number;
+  /** Failed */
+  failed: number;
+  /** Total budget allocated */
+  total_budget_allocated: number;
+  /** Total budget spent */
+  total_budget_spent: number;
+  /** Budget remaining */
+  budget_remaining: number;
+}
+
+/**
+ * Callback function type for agent events.
+ */
+export type AgentCallback = (agent: PoolAgent) => void | Promise<void>;
+
+/** Default configuration */
+const DEFAULT_CONFIG: AgentPoolConfig = {
+  max_concurrent: 6,
+  default_budget: 50000,
+  total_budget: 500000,
+  auto_start: true,
+  budget_warning_threshold: 0.8,
+};
+
+/**
+ * Manages a pool of agents with budget tracking and dependency management.
+ */
+export class AgentPool {
+  private config: AgentPoolConfig;
+  private agents: Map<string, PoolAgent>;
+  private queue: string[]; // Agent IDs in queue order
+  private totalSpent: number = 0;
+
+  // Event callbacks
+  private onAgentStart: AgentCallback | null = null;
+  private onAgentComplete: AgentCallback | null = null;
+  private onAgentFail: AgentCallback | null = null;
+  private onBudgetWarning: AgentCallback | null = null;
+  private onBudgetExhausted: AgentCallback | null = null;
+
+  /**
+   * Creates a new AgentPool instance.
+   */
+  constructor(config: Partial<AgentPoolConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.agents = new Map();
+    this.queue = [];
+  }
+
+  /**
+   * Spawns a new agent and adds it to the pool.
+   * @returns The agent ID
+   */
+  spawn(spec: AgentSpec): string {
+    const id = randomUUID();
+    const budget = spec.budget || this.config.default_budget;
+
+    const agent: PoolAgent = {
+      id,
+      spec: { ...spec, budget },
+      status: "queued",
+      queued_at: new Date().toISOString(),
+      budget: {
+        allocated: budget,
+        spent: 0,
+        remaining: budget,
+        exhausted: false,
+        usage_percent: 0,
+      },
+    };
+
+    this.agents.set(id, agent);
+    this.queue.push(id);
+
+    // Check dependencies
+    if (spec.depends_on && spec.depends_on.length > 0) {
+      const pendingDeps = spec.depends_on.filter((depId) => {
+        const dep = this.agents.get(depId);
+        return dep && dep.status !== "completed";
+      });
+
+      if (pendingDeps.length > 0) {
+        agent.status = "waiting";
+      }
+    }
+
+    // Try to start if auto_start and not waiting
+    if (this.config.auto_start && agent.status === "queued") {
+      this.tryStartNext();
+    }
+
+    return id;
+  }
+
+  /**
+   * Tries to start the next queued agent if capacity allows.
+   */
+  private tryStartNext(): void {
+    const activeCount = this.getActiveCount();
+
+    if (activeCount >= this.config.max_concurrent) {
+      return;
+    }
+
+    // Find next agent that can start
+    for (const agentId of this.queue) {
+      const agent = this.agents.get(agentId);
+      if (!agent) continue;
+
+      if (agent.status === "queued" && this.canStart(agent)) {
+        this.startAgent(agentId);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Checks if an agent can start (dependencies met).
+   */
+  private canStart(agent: PoolAgent): boolean {
+    if (!agent.spec.depends_on || agent.spec.depends_on.length === 0) {
+      return true;
+    }
+
+    return agent.spec.depends_on.every((depId) => {
+      const dep = this.agents.get(depId);
+      return dep && dep.status === "completed";
+    });
+  }
+
+  /**
+   * Starts an agent.
+   */
+  private startAgent(agentId: string): void {
+    const agent = this.agents.get(agentId);
+    if (!agent) return;
+
+    agent.status = "running";
+    agent.started_at = new Date().toISOString();
+
+    // Remove from queue
+    this.queue = this.queue.filter((id) => id !== agentId);
+
+    // Trigger callback
+    if (this.onAgentStart) {
+      this.onAgentStart(agent);
+    }
+  }
+
+  /**
+   * Gets an agent by ID.
+   */
+  getAgent(id: string): PoolAgent | undefined {
+    const agent = this.agents.get(id);
+    return agent ? { ...agent } : undefined;
+  }
+
+  /**
+   * Updates an agent's token usage.
+   */
+  updateBudget(agentId: string, tokensUsed: number): void {
+    const agent = this.agents.get(agentId);
+    if (!agent) return;
+
+    agent.budget.spent = tokensUsed;
+    agent.budget.remaining = agent.budget.allocated - tokensUsed;
+    agent.budget.usage_percent = (tokensUsed / agent.budget.allocated) * 100;
+    agent.budget.exhausted = agent.budget.remaining <= 0;
+
+    // Check for budget warning
+    if (
+      agent.budget.usage_percent >= this.config.budget_warning_threshold * 100 &&
+      this.onBudgetWarning
+    ) {
+      this.onBudgetWarning(agent);
+    }
+
+    // Check for budget exhausted
+    if (agent.budget.exhausted && this.onBudgetExhausted) {
+      this.onBudgetExhausted(agent);
+    }
+  }
+
+  /**
+   * Marks an agent as completed.
+   */
+  complete(agentId: string, result?: string, tokensSpent?: number): void {
+    const agent = this.agents.get(agentId);
+    if (!agent) return;
+
+    agent.status = "completed";
+    agent.ended_at = new Date().toISOString();
+    agent.result = result;
+
+    if (tokensSpent !== undefined) {
+      this.updateBudget(agentId, tokensSpent);
+      this.totalSpent += tokensSpent;
+    }
+
+    // Trigger spec callback
+    if (agent.spec.on_complete) {
+      agent.spec.on_complete(agent);
+    }
+
+    // Trigger pool callback
+    if (this.onAgentComplete) {
+      this.onAgentComplete(agent);
+    }
+
+    // Check for waiting agents that can now start
+    this.processWaitingAgents();
+
+    // Try to start next queued agent
+    if (this.config.auto_start) {
+      this.tryStartNext();
+    }
+  }
+
+  /**
+   * Marks an agent as failed.
+   */
+  fail(agentId: string, error: string, tokensSpent?: number): void {
+    const agent = this.agents.get(agentId);
+    if (!agent) return;
+
+    agent.status = "failed";
+    agent.ended_at = new Date().toISOString();
+    agent.error = error;
+
+    if (tokensSpent !== undefined) {
+      this.updateBudget(agentId, tokensSpent);
+      this.totalSpent += tokensSpent;
+    }
+
+    // Trigger spec callback
+    if (agent.spec.on_fail) {
+      agent.spec.on_fail(agent);
+    }
+
+    // Trigger pool callback
+    if (this.onAgentFail) {
+      this.onAgentFail(agent);
+    }
+
+    // Try to start next queued agent
+    if (this.config.auto_start) {
+      this.tryStartNext();
+    }
+  }
+
+  /**
+   * Processes waiting agents to see if they can start.
+   */
+  private processWaitingAgents(): void {
+    for (const [id, agent] of this.agents.entries()) {
+      if (agent.status === "waiting" && this.canStart(agent)) {
+        agent.status = "queued";
+        if (this.config.auto_start) {
+          this.tryStartNext();
+        }
+      }
+    }
+  }
+
+  /**
+   * Gets the count of active (running) agents.
+   */
+  getActiveCount(): number {
+    return Array.from(this.agents.values()).filter((a) => a.status === "running").length;
+  }
+
+  /**
+   * Gets all active agents.
+   */
+  getActiveAgents(): PoolAgent[] {
+    return Array.from(this.agents.values())
+      .filter((a) => a.status === "running")
+      .map((a) => ({ ...a }));
+  }
+
+  /**
+   * Gets all queued agents.
+   */
+  getQueuedAgents(): PoolAgent[] {
+    return Array.from(this.agents.values())
+      .filter((a) => a.status === "queued")
+      .map((a) => ({ ...a }));
+  }
+
+  /**
+   * Gets all waiting agents.
+   */
+  getWaitingAgents(): PoolAgent[] {
+    return Array.from(this.agents.values())
+      .filter((a) => a.status === "waiting")
+      .map((a) => ({ ...a }));
+  }
+
+  /**
+   * Gets pool statistics.
+   */
+  getStats(): AgentPoolStats {
+    const agents = Array.from(this.agents.values());
+
+    const totalAllocated = agents.reduce((sum, a) => sum + a.budget.allocated, 0);
+    const totalSpent = agents.reduce((sum, a) => sum + a.budget.spent, 0);
+
+    return {
+      total_spawned: agents.length,
+      active: agents.filter((a) => a.status === "running").length,
+      queued: agents.filter((a) => a.status === "queued").length,
+      waiting: agents.filter((a) => a.status === "waiting").length,
+      completed: agents.filter((a) => a.status === "completed").length,
+      failed: agents.filter((a) => a.status === "failed").length,
+      total_budget_allocated: totalAllocated,
+      total_budget_spent: totalSpent,
+      budget_remaining: this.config.total_budget - totalSpent,
+    };
+  }
+
+  /**
+   * Gets agents by status.
+   */
+  getAgentsByStatus(status: PoolAgent["status"]): PoolAgent[] {
+    return Array.from(this.agents.values())
+      .filter((a) => a.status === status)
+      .map((a) => ({ ...a }));
+  }
+
+  /**
+   * Checks if total budget allows spawning another agent.
+   */
+  hasBudget(requestedBudget?: number): boolean {
+    const budget = requestedBudget || this.config.default_budget;
+    const stats = this.getStats();
+    return stats.budget_remaining >= budget;
+  }
+
+  /**
+   * Gets remaining total budget.
+   */
+  getRemainingBudget(): number {
+    return this.config.total_budget - this.totalSpent;
+  }
+
+  /**
+   * Sets the callback for agent start events.
+   */
+  onStart(callback: AgentCallback): void {
+    this.onAgentStart = callback;
+  }
+
+  /**
+   * Sets the callback for agent complete events.
+   */
+  onComplete(callback: AgentCallback): void {
+    this.onAgentComplete = callback;
+  }
+
+  /**
+   * Sets the callback for agent fail events.
+   */
+  onFail(callback: AgentCallback): void {
+    this.onAgentFail = callback;
+  }
+
+  /**
+   * Sets the callback for budget warning events.
+   */
+  onWarning(callback: AgentCallback): void {
+    this.onBudgetWarning = callback;
+  }
+
+  /**
+   * Sets the callback for budget exhausted events.
+   */
+  onExhausted(callback: AgentCallback): void {
+    this.onBudgetExhausted = callback;
+  }
+
+  /**
+   * Gets the current configuration.
+   */
+  getConfig(): AgentPoolConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Updates the configuration.
+   */
+  updateConfig(config: Partial<AgentPoolConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Clears completed and failed agents from the pool.
+   */
+  prune(): number {
+    let pruned = 0;
+    for (const [id, agent] of this.agents.entries()) {
+      if (agent.status === "completed" || agent.status === "failed") {
+        this.agents.delete(id);
+        pruned++;
+      }
+    }
+    return pruned;
+  }
+}
