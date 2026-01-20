@@ -1,0 +1,231 @@
+name: grep_with_content
+version: "1.0.0"
+description: |
+  Search for patterns across files with configurable context and precision.
+  Supports per-query context control and line range filtering.
+  Use this instead of multiple Grep calls followed by Read calls.
+
+  Features:
+  - Regex pattern search across codebase
+  - Configurable context lines (before/after each match)
+  - Line range filtering (search only specific regions)
+  - Glob pattern filtering for target files
+  - Output modes: count_only, minimal, standard, verbose
+
+category: batch
+tags:
+  - grep
+  - search
+  - regex
+  - patterns
+  - content
+  - efficiency
+
+mcp:
+  server: goodvibes-tools
+  method: grep_with_content
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    pattern:
+      type: string
+      description: Regex pattern to search for
+    paths:
+      type: array
+      items:
+        type: string
+      description: Specific paths to search in (optional)
+    glob:
+      type: string
+      description: Glob pattern to filter files (e.g., "**/*.ts")
+    output_mode:
+      type: string
+      description: Output verbosity (default standard)
+      enum: [count_only, minimal, standard, verbose]
+      default: standard
+    max_matches:
+      type: integer
+      description: Maximum number of matches to return (default 100, max 500)
+      default: 100
+      maximum: 500
+    case_insensitive:
+      type: boolean
+      description: Case insensitive search (default false)
+      default: false
+    context_before:
+      type: integer
+      description: Lines of context before each match (overrides output_mode default)
+      minimum: 0
+    context_after:
+      type: integer
+      description: Lines of context after each match (defaults to context_before if not specified)
+      minimum: 0
+    line_range:
+      type: object
+      description: Restrict search to specific line range within each file
+      properties:
+        start:
+          type: integer
+          description: Only search from this line (1-based)
+          minimum: 1
+        end:
+          type: integer
+          description: Only search up to this line
+          minimum: 1
+  required:
+    - pattern
+
+outputSchema:
+  type: object
+  properties:
+    matches:
+      type: array
+      description: Search results (format depends on output_mode)
+      items:
+        oneOf:
+          - type: string
+            description: "file:line format (minimal mode)"
+          - type: object
+            description: Full match info (standard/verbose mode)
+            properties:
+              file:
+                type: string
+                description: File path
+              line:
+                type: integer
+                description: Line number (1-based)
+              column:
+                type: integer
+                description: Column number (1-based)
+              content:
+                type: string
+                description: Matching line content
+              before:
+                type: array
+                items:
+                  type: string
+                description: Context lines before match
+              after:
+                type: array
+                items:
+                  type: string
+                description: Context lines after match
+    match_count:
+      type: integer
+      description: Total number of matches
+    file_count:
+      type: integer
+      description: Number of files with matches
+    truncated:
+      type: boolean
+      description: Whether results were truncated
+    pattern:
+      type: string
+      description: The search pattern used
+    searched_range:
+      type: object
+      description: Line range that was searched (if line_range was specified)
+      properties:
+        start:
+          type: integer
+        end:
+          type: integer
+    context:
+      type: object
+      description: Context lines used
+      properties:
+        before:
+          type: integer
+        after:
+          type: integer
+
+handler:
+  type: native
+  module: batch
+  function: handleGrepWithContent
+
+examples:
+  - description: "Search with no context (just matching lines)"
+    input:
+      pattern: "export function"
+      glob: "**/*.ts"
+      context_before: 0
+      context_after: 0
+    output:
+      matches:
+        - file: "src/utils.ts"
+          line: 15
+          column: 1
+          content: "export function formatDate(date: Date): string {"
+      match_count: 1
+      file_count: 1
+      truncated: false
+      pattern: "export function"
+      context:
+        before: 0
+        after: 0
+
+  - description: "Search TODOs with asymmetric context (see what comes after)"
+    input:
+      pattern: "TODO:"
+      context_before: 0
+      context_after: 5
+    output:
+      matches:
+        - file: "src/api.ts"
+          line: 42
+          column: 5
+          content: "// TODO: implement caching"
+          before: []
+          after:
+            - "const response = await fetch(url);"
+            - "return response.json();"
+      match_count: 1
+      file_count: 1
+      truncated: false
+      pattern: "TODO:"
+      context:
+        before: 0
+        after: 5
+
+  - description: "Search specific line range in a file"
+    input:
+      pattern: "handleSubmit"
+      paths:
+        - "src/form.ts"
+      line_range:
+        start: 100
+        end: 200
+    output:
+      matches:
+        - file: "src/form.ts"
+          line: 150
+          column: 10
+          content: "  async function handleSubmit(data: FormData) {"
+          before:
+            - ""
+          after:
+            - "    try {"
+      match_count: 1
+      file_count: 1
+      truncated: false
+      pattern: "handleSubmit"
+      searched_range:
+        start: 100
+        end: 200
+      context:
+        before: 1
+        after: 1
+
+  - description: "Quick count of matches"
+    input:
+      pattern: "console\\.log"
+      glob: "**/*.ts"
+      output_mode: count_only
+    output:
+      match_count: 47
+      file_count: 12
+      truncated: false
+      pattern: "console\\.log"

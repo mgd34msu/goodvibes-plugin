@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-01-20T03:27:13.307Z'
+generated: '2026-01-20T03:32:41.257Z'
 total: 94
 categories: {}
 search_index:
@@ -98,91 +98,176 @@ search_index:
       - multiple
       - files
       - single
-      - call
+      - operation
       - per
       - file
       - precision
-      - reading
-      - each
-      - can
-      - specify
-      - exact
-      - line
-      - ranges
+      - control
+      - supports
       - offset
       - limit
-      - efficient
-      - partial
+      - each
+      - individually
+      - enabling
+      - surgical
       - reads
-      - returns
-      - contents
-      - total
-      - counts
-      - sizes
+      - that
+      - minimize
+      - token
+      - usage
+      - this
+      - instead
+      - calls
+      - features
+      - specific
+      - line
+      - ranges
+      - mixed
+      - input
+      - simple
+      - paths
+      - detailed
+      - filereadrequest
+      - objects
       - range
       - metadata
-    path: mcp-server/batch_read
-    description: >-
-      Read multiple files in a single call with per-file precision reading. Each file can specify exact line ranges
-      (offset/limit) for efficient partial reads. Returns file contents, total line counts, sizes, and range metadata.
+      - results
+      - has_more_before
+      - after
+      - output
+      - modes
+      - minimal
+      - counts
+      - standard
+      - first
+      - lines
+      - verbose
+      - full
+    path: definitions/batch/batch-read.yaml
+    description: |
+      Read multiple files in a single operation with per-file precision control.
+      Supports offset/limit for each file individually, enabling surgical reads
+      that minimize token usage. Use this instead of multiple Read calls.
+
+      Features:
+      - Per-file offset/limit (read specific line ranges)
+      - Mixed input: simple paths or detailed FileReadRequest objects
+      - Range metadata in results (has_more_before/after)
+      - Output modes: minimal (line counts), standard (first 50 lines), verbose (full)
   - name: smart_glob
     keywords:
       - smart
       - glob
+      - find
+      - files
+      - matching
+      - patterns
       - intelligent
       - filtering
-      - output
-      - control
+      - optional
+      - preview
       - supports
       - multiple
-      - patterns
       - exclusions
-      - various
+      - configurable
+      - output
       - modes
-      - optional
-      - content
-      - preview
-      - automatically
+      - this
+      - instead
+      - calls
+      - features
+      - one
+      - call
+      - exclusion
+      - file
+      - offset
+      - limit
+      - like
+      - batch_read
+      - precision
+      - auto
       - ignores
-      - node_modules
-      - git
-      - other
       - common
       - directories
-    path: mcp-server/smart_glob
-    description: >-
-      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, various output modes,
-      and optional content preview. Automatically ignores node_modules, .git, and other common directories.
+      - node_modules
+      - git
+      - dist
+      - etc
+      - count_only
+      - minimal
+      - paths
+      - only
+      - standard
+      - metadata
+    path: definitions/batch/smart-glob.yaml
+    description: |
+      Find files matching glob patterns with intelligent filtering and optional preview.
+      Supports multiple patterns, exclusions, and configurable output modes.
+      Use this instead of multiple Glob calls.
+
+      Features:
+      - Multiple glob patterns in one call
+      - Exclusion patterns
+      - File preview with offset/limit (like batch_read precision)
+      - Auto-ignores common directories (node_modules, .git, dist, etc.)
+      - Output modes: count_only, minimal (paths only), standard (with metadata)
   - name: grep_with_content
     keywords:
       - grep
       - with
       - content
       - search
-      - regex
-      - pattern
+      - patterns
       - across
       - files
       - configurable
       - context
-      - output
-      - more
-      - powerful
-      - than
-      - basic
+      - precision
       - supports
-      - various
-      - modes
-      - file
-      - filtering
-      - asymmetric
-      - lines
+      - per
+      - query
+      - control
       - line
       - range
-    path: mcp-server/grep_with_content
-    description: >-
-      Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports
-      various output modes, file filtering, asymmetric context lines, and line range filtering.
+      - filtering
+      - this
+      - instead
+      - multiple
+      - calls
+      - followed
+      - read
+      - features
+      - regex
+      - pattern
+      - codebase
+      - lines
+      - before
+      - after
+      - each
+      - match
+      - only
+      - specific
+      - regions
+      - glob
+      - target
+      - output
+      - modes
+      - count_only
+      - minimal
+      - standard
+      - verbose
+    path: definitions/batch/grep-with-content.yaml
+    description: |
+      Search for patterns across files with configurable context and precision.
+      Supports per-query context control and line range filtering.
+      Use this instead of multiple Grep calls followed by Read calls.
+
+      Features:
+      - Regex pattern search across codebase
+      - Configurable context lines (before/after each match)
+      - Line range filtering (search only specific regions)
+      - Glob pattern filtering for target files
+      - Output modes: count_only, minimal, standard, verbose
   - name: analyze_bundle
     keywords:
       - analyze
@@ -3045,6 +3130,44 @@ deferred_tools:
       Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
       cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
       debt items with effort estimates.
+  - name: batch_read
+    path: definitions/batch/batch-read.yaml
+    description: |
+      Read multiple files in a single operation with per-file precision control.
+      Supports offset/limit for each file individually, enabling surgical reads
+      that minimize token usage. Use this instead of multiple Read calls.
+
+      Features:
+      - Per-file offset/limit (read specific line ranges)
+      - Mixed input: simple paths or detailed FileReadRequest objects
+      - Range metadata in results (has_more_before/after)
+      - Output modes: minimal (line counts), standard (first 50 lines), verbose (full)
+  - name: smart_glob
+    path: definitions/batch/smart-glob.yaml
+    description: |
+      Find files matching glob patterns with intelligent filtering and optional preview.
+      Supports multiple patterns, exclusions, and configurable output modes.
+      Use this instead of multiple Glob calls.
+
+      Features:
+      - Multiple glob patterns in one call
+      - Exclusion patterns
+      - File preview with offset/limit (like batch_read precision)
+      - Auto-ignores common directories (node_modules, .git, dist, etc.)
+      - Output modes: count_only, minimal (paths only), standard (with metadata)
+  - name: grep_with_content
+    path: definitions/batch/grep-with-content.yaml
+    description: |
+      Search for patterns across files with configurable context and precision.
+      Supports per-query context control and line range filtering.
+      Use this instead of multiple Grep calls followed by Read calls.
+
+      Features:
+      - Regex pattern search across codebase
+      - Configurable context lines (before/after each match)
+      - Line range filtering (search only specific regions)
+      - Glob pattern filtering for target files
+      - Output modes: count_only, minimal, standard, verbose
   - name: analyze_bundle
     path: definitions/build/analyze-bundle.yaml
     description: >-
@@ -3541,19 +3664,4 @@ deferred_tools:
       Validate environment variables are complete and documented. Compares .env against .env.example and code usage to
       identify missing, unused, and undocumented variables. Optionally validates value formats based on naming
       conventions (ports should be numbers, URLs should be valid, etc.).
-mcp_tools:
-  - name: batch_read
-    path: mcp-server/batch_read
-    description: >-
-      Read multiple files in a single call with per-file precision reading. Each file can specify exact line ranges
-      (offset/limit) for efficient partial reads. Returns file contents, total line counts, sizes, and range metadata.
-  - name: smart_glob
-    path: mcp-server/smart_glob
-    description: >-
-      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, various output modes,
-      and optional content preview. Automatically ignores node_modules, .git, and other common directories.
-  - name: grep_with_content
-    path: mcp-server/grep_with_content
-    description: >-
-      Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports
-      various output modes, file filtering, asymmetric context lines, and line range filtering.
+mcp_tools: []
