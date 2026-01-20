@@ -74,8 +74,6 @@ export { getMemorySummary } from './search.js';
 export { searchMemory } from './search.js';
 /** Formats project memory into a human-readable context string. */
 export { formatMemoryContext } from './search.js';
-/** Gets the current date in ISO format (YYYY-MM-DD). */
-export { getCurrentDate } from './search.js';
 // Re-export security patterns for backward compatibility
 /** Security-critical .gitignore patterns to prevent accidental secret commits. */
 export { SECURITY_GITIGNORE_PATTERNS } from '../shared/security-patterns.js';

@@ -85,14 +85,3 @@ export declare function searchMemory(cwd: string, keywords: string[]): Promise<{
  * // Returns: "Previous Decisions:\n- Decision 1 (rationale)..."
  */
 export declare function formatMemoryContext(memory: ProjectMemory): string;
-/**
- * Gets the current date in ISO format (YYYY-MM-DD).
- * Used for timestamping memory entries.
- *
- * @returns Current date string in YYYY-MM-DD format
- *
- * @example
- * const date = getCurrentDate();
- * // Returns: "2024-01-15"
- */
-export declare function getCurrentDate(): string;

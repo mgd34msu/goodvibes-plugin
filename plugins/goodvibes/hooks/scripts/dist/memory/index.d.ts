@@ -70,8 +70,6 @@ export { getMemorySummary } from './search.js';
 export { searchMemory } from './search.js';
 /** Formats project memory into a human-readable context string. */
 export { formatMemoryContext } from './search.js';
-/** Gets the current date in ISO format (YYYY-MM-DD). */
-export { getCurrentDate } from './search.js';
 import type { ProjectMemory } from '../types/memory.js';
 /** Aggregated project memory containing all memory types */
 export type { ProjectMemory };
