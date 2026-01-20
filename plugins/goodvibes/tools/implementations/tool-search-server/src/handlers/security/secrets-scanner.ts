@@ -12,6 +12,7 @@ import * as path from 'path';
 import { ToolResponse } from '../../types.js';
 import { PROJECT_ROOT } from '../../config.js';
 import { safeExec, fileExists } from '../../utils.js';
+import { logWarn } from '../../logging.js';
 
 /**
  * Severity levels for detected secrets
@@ -417,7 +418,7 @@ async function getFilesRecursively(
   } catch (error: unknown) {
     // Directory may not exist or be inaccessible - log for debugging
     const message = error instanceof Error ? error.message : String(error);
-    console.warn(`[secrets-scanner] Could not read directory ${dirPath}: ${message}`);
+    logWarn(`[secrets-scanner] Could not read directory ${dirPath}`, message);
   }
 
   return files;
@@ -511,7 +512,7 @@ async function scanFile(
   } catch (error: unknown) {
     // File may be binary or inaccessible - log for debugging
     const message = error instanceof Error ? error.message : String(error);
-    console.warn(`[secrets-scanner] Could not read file ${filePath}: ${message}`);
+    logWarn(`[secrets-scanner] Could not read file ${filePath}`, message);
   }
 
   return { findings, stoppedEarly: false };

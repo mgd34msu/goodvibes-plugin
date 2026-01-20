@@ -30,7 +30,7 @@ vi.mock('../../../utils.js', () => ({
   fileExists: mockFileExists,
 }));
 
-import { handleValidateApiContract } from '../../../handlers/edit/validate-api-contract.js';
+import { handleValidateApiContract } from '../../../handlers/edit/validate-api-contract/index.js';
 
 // Test the YAML unavailable paths using a separate module import with mocked js-yaml
 // These tests MUST run in isolation because they mock the js-yaml module
@@ -76,7 +76,7 @@ describe('handleValidateApiContract with js-yaml unavailable', () => {
     });
 
     // Re-import the module to get the version with mocked js-yaml
-    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract/index.js');
 
     const yamlSpec = `
 openapi: 3.0.0
@@ -111,7 +111,7 @@ paths:
     });
 
     // Re-import the module to get the version with mocked js-yaml
-    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract/index.js');
 
     // Write invalid JSON with unknown extension
     const specPath = path.join(tempDir, 'spec.txt');
@@ -3874,7 +3874,7 @@ describe('handleValidateApiContract - fs mocking for error branches', () => {
     });
 
     // Re-import the module with mocked fs
-    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract/index.js');
 
     const specPath = path.join(tempDir, 'spec.json');
     // Create the file so fileExists passes
@@ -3907,7 +3907,7 @@ describe('handleValidateApiContract - fs mocking for error branches', () => {
       };
     });
 
-    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract/index.js');
 
     const specPath = path.join(tempDir, 'spec.json');
     fs.writeFileSync(specPath, JSON.stringify({
@@ -3964,7 +3964,7 @@ describe('handleValidateApiContract - fs mocking for error branches', () => {
       };
     });
 
-    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract.js');
+    const { handleValidateApiContract: handleWithMock } = await import('../../../handlers/edit/validate-api-contract/index.js');
 
     const specPath = path.join(tempDir, 'spec.json');
     fs.writeFileSync(specPath, JSON.stringify({

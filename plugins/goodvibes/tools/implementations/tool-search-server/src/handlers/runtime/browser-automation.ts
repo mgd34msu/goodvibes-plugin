@@ -139,8 +139,6 @@ interface ToolResponse {
  * These match the puppeteer API surface we use.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /** Puppeteer module type (simplified) */
 interface PuppeteerModule {
   launch: (options: PuppeteerLaunchOptions) => Promise<Browser>;
@@ -152,7 +150,7 @@ interface Browser {
   close: () => Promise<void>;
 }
 
-/** Page instance type - using 'any' for evaluate since puppeteer types are complex */
+/** Page instance type - represents Puppeteer's Page API */
 interface Page {
   setViewport: (viewport: Viewport) => Promise<void>;
   goto: (url: string, options?: { timeout?: number; waitUntil?: string }) => Promise<unknown>;
@@ -161,15 +159,22 @@ interface Page {
   waitForSelector: (selector: string, options?: { timeout?: number; visible?: boolean; hidden?: boolean }) => Promise<unknown>;
   screenshot: (options?: { path?: string; fullPage?: boolean }) => Promise<Buffer>;
   select: (selector: string, ...values: string[]) => Promise<string[]>;
-  evaluate: <T>(fn: (...args: any[]) => T, ...args: any[]) => Promise<T>;
+  /**
+   * Execute function in browser context.
+   * Function and args are serialized/deserialized across the browser boundary.
+   * Arguments must be JSON-serializable (primitives, arrays, plain objects).
+   */
+  evaluate: <T, Args extends unknown[]>(
+    fn: (...args: Args) => T,
+    ...args: Args
+  ) => Promise<T>;
   url: () => string;
   title: () => Promise<string>;
   $: (selector: string) => Promise<unknown | null>;
   $$: (selector: string) => Promise<unknown[]>;
-  on: (event: string, handler: (...args: any[]) => void) => void;
+  /** Register event handler. Handler receives event-specific arguments. */
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
 }
-
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /** Console message type from puppeteer (simplified) */
 interface ConsoleMessage {

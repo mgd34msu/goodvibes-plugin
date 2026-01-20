@@ -55,6 +55,21 @@ export interface SqliteColumnInfo {
 }
 
 /**
+ * SQLite database constructor interface (better-sqlite3 compatible)
+ */
+interface SqliteDatabaseConstructor {
+  new (filepath: string, options?: { readonly?: boolean; timeout?: number }): SqliteDatabase;
+}
+
+/**
+ * Dynamic import result for better-sqlite3 module
+ * Handles both ESM (with default export) and CommonJS module formats
+ */
+interface BetterSqlite3Module {
+  default?: SqliteDatabaseConstructor;
+}
+
+/**
  * Connection options
  */
 export interface SqliteConnectionOptions {
@@ -183,12 +198,13 @@ class SqliteConnectionPool {
       : options.filepath;
 
     // Create the database connection
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Database = (sqliteModule as any).default || sqliteModule;
-    const db = new Database(filepath, {
+    // Handle both ESM (module.default) and CommonJS (module as constructor) formats
+    const moduleWithDefault = sqliteModule as BetterSqlite3Module;
+    const Database: SqliteDatabaseConstructor = moduleWithDefault.default ?? (sqliteModule as SqliteDatabaseConstructor);
+    const db: SqliteDatabase = new Database(filepath, {
       readonly: options.readonly ?? true,
       timeout: options.timeout ?? 5000,
-    }) as SqliteDatabase;
+    });
 
     // Configure pragmas for better performance and safety
     try {
@@ -216,11 +232,13 @@ class SqliteConnectionPool {
 
   /**
    * Load the SQLite driver dynamically
+   *
+   * Returns either the module with a default export (ESM) or the constructor directly (CommonJS)
    */
-  private async loadDriver(): Promise<unknown> {
+  private async loadDriver(): Promise<BetterSqlite3Module | SqliteDatabaseConstructor> {
     try {
       // Use indirect eval to avoid TypeScript module resolution
-      const importFn = new Function('name', 'return import(name)');
+      const importFn = new Function('name', 'return import(name)') as (name: string) => Promise<BetterSqlite3Module | SqliteDatabaseConstructor>;
       return await importFn('better-sqlite3');
     } catch {
       throw new Error(

@@ -29,7 +29,7 @@ export function createErrorResponse(message: string, context?: Record<string, un
 // Path Helpers
 // =============================================================================
 
-export function normalizeFilePath(filePath: string): string {
+function normalizeFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
 }
 

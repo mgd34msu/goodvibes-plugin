@@ -21,7 +21,6 @@ import ts from 'typescript';
 import {
   createSuccessResponse,
   createErrorResponse,
-  normalizeFilePath,
   makeRelativePath,
   resolveFilePath,
   getTypeString,
@@ -102,12 +101,6 @@ describe('component-state/utils', () => {
       const parsed = JSON.parse(response.content[0].text);
       expect(parsed.error).toBe('Error message');
       expect(parsed.file).toBe('test.tsx');
-    });
-  });
-
-  describe('normalizeFilePath', () => {
-    it('should normalize backslashes', () => {
-      expect(normalizeFilePath('src\\components\\App.tsx')).toBe('src/components/App.tsx');
     });
   });
 

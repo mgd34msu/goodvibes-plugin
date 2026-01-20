@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { getProjectRoot } from '../../config.js';
+import { logWarn } from '../../logging.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -231,7 +232,7 @@ async function extractTypeInfo(filePath: string): Promise<FileTypeInfo> {
     }
   } catch (error) {
     // Silently handle errors for individual files
-    console.warn(`Failed to extract type info from ${filePath}:`, error);
+    logWarn(`Failed to extract type info from ${filePath}`, error);
   }
 
   return { file: filePath, symbols };
@@ -402,7 +403,7 @@ If there are no relevant API changes, return empty arrays and severity "none".`;
     claudeProcess.on('close', (code) => {
       if (code !== 0) {
         // If Claude CLI fails, return a fallback analysis
-        console.warn(`Claude CLI exited with code ${code}: ${stderr}`);
+        logWarn(`Claude CLI exited with code ${code}`, stderr);
         resolve({
           breaking_changes: [],
           non_breaking_changes: changedFiles.map(f => ({
@@ -426,8 +427,8 @@ If there are no relevant API changes, return empty arrays and severity "none".`;
         const result = JSON.parse(jsonMatch[0]) as DetectBreakingChangesResult;
         resolve(result);
       } catch (parseError) {
-        console.warn('Failed to parse LLM response:', parseError);
-        console.warn('Raw response:', stdout);
+        logWarn('Failed to parse LLM response', parseError);
+        logWarn('Raw response', stdout);
         resolve({
           breaking_changes: [],
           non_breaking_changes: [],
@@ -437,7 +438,7 @@ If there are no relevant API changes, return empty arrays and severity "none".`;
     });
 
     claudeProcess.on('error', (error) => {
-      console.warn('Failed to spawn Claude CLI:', error);
+      logWarn('Failed to spawn Claude CLI', error);
       resolve({
         breaking_changes: [],
         non_breaking_changes: [],

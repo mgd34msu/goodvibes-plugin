@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Coverage
+coverage/
+
+# Cache files
+.eslintcache
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# Environment files
+.env*
+
+# Lock files (formatting not needed)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Generated files
+*.generated.*
+*.min.js
+*.min.css
+
+# Template files (these are project scaffolds, not source code)
+plugins/goodvibes/templates/

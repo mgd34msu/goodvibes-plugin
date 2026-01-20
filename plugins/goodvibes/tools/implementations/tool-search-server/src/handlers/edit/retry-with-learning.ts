@@ -11,6 +11,7 @@ import { spawn, ChildProcess, SpawnOptions } from 'child_process';
 import * as crypto from 'crypto';
 
 import { PROJECT_ROOT } from '../../config.js';
+import { logError, logWarn } from '../../logging.js';
 
 // =============================================================================
 // Types
@@ -227,13 +228,13 @@ Respond ONLY with the JSON object, no markdown code blocks or other text.`;
     });
 
     proc.on('error', (err) => {
-      console.error('Claude CLI error:', err.message);
+      logError('Claude CLI error', err);
       resolve(null);
     });
 
     proc.on('close', (code) => {
       if (code !== 0) {
-        console.error('Claude CLI exited with code:', code, 'stderr:', stderr_data);
+        logError(`Claude CLI exited with code: ${code}`, stderr_data);
         resolve(null);
         return;
       }
@@ -242,7 +243,7 @@ Respond ONLY with the JSON object, no markdown code blocks or other text.`;
         // Try to extract JSON from the response
         const jsonMatch = stdout_data.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-          console.error('No JSON found in Claude response');
+          logError('No JSON found in Claude response');
           resolve(null);
           return;
         }
@@ -255,14 +256,14 @@ Respond ONLY with the JSON object, no markdown code blocks or other text.`;
           typeof parsed.suggested_fix !== 'string' ||
           typeof parsed.should_retry !== 'boolean'
         ) {
-          console.error('Invalid LLM response structure');
+          logError('Invalid LLM response structure');
           resolve(null);
           return;
         }
 
         resolve(parsed);
       } catch (err) {
-        console.error('Failed to parse Claude response:', err);
+        logError('Failed to parse Claude response', err);
         resolve(null);
       }
     });
@@ -420,7 +421,7 @@ export async function handleRetryWithLearning(
   // Check if Claude CLI is available (only needed for non-analyze_only)
   const claudeAvailable = await isClaudeCliAvailable();
   if (!claudeAvailable && fixStrategy !== 'analyze_only') {
-    console.warn('Claude CLI not available. Error analysis will be limited.');
+    logWarn('Claude CLI not available. Error analysis will be limited.');
   }
 
   const attempts: AttemptInfo[] = [];

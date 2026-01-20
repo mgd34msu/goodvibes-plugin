@@ -26,7 +26,7 @@ export interface BuildResult {
 }
 
 /** Build commands mapped by framework type. */
-export const BUILD_COMMANDS: Record<string, string> = {
+const BUILD_COMMANDS: Record<string, string> = {
   next: 'npm run build',
   vite: 'npm run build',
   typescript: 'npx tsc --noEmit',
@@ -34,7 +34,7 @@ export const BUILD_COMMANDS: Record<string, string> = {
 };
 
 /** TypeScript type check command (same for all frameworks). */
-export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
+const TYPECHECK_COMMAND = 'npx tsc --noEmit';
 
 /**
  * Detects the appropriate build command based on project config files.
@@ -47,7 +47,7 @@ export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
  * const cmd = await detectBuildCommand('/my-next-app');
  * // Returns 'npm run build' if next.config.js exists
  */
-export async function detectBuildCommand(cwd: string): Promise<string> {
+async function detectBuildCommand(cwd: string): Promise<string> {
   // Check for Next.js config files
   const [hasNextJs, hasNextMjs, hasNextTs] = await Promise.all([
     fileExists(path.join(cwd, 'next.config.js')),
@@ -83,7 +83,7 @@ export async function detectBuildCommand(cwd: string): Promise<string> {
  *   debug('Build failed:', result.errors);
  * }
  */
-export async function runBuild(cwd: string): Promise<BuildResult> {
+async function runBuild(cwd: string): Promise<BuildResult> {
   const command = await detectBuildCommand(cwd);
 
   try {

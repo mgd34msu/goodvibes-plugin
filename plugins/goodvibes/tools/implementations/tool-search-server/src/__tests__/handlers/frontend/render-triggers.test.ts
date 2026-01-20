@@ -19,13 +19,11 @@ import ts from 'typescript';
 import {
   createSuccessResponse,
   createErrorResponse,
-  normalizeFilePath,
   makeRelativePath,
   getLineNumber,
   getCodeSnippet,
   isInsideJsxAttribute,
   isInsideMemoizationHook,
-  isTopLevelConstant,
 } from '../../../handlers/frontend/render-triggers/utils.js';
 
 import {
@@ -98,16 +96,6 @@ describe('render-triggers/utils', () => {
       const parsed = JSON.parse(response.content[0].text);
       expect(parsed.error).toBe('File not found');
       expect(parsed.file).toBe('test.tsx');
-    });
-  });
-
-  describe('normalizeFilePath', () => {
-    it('should normalize backslashes to forward slashes', () => {
-      expect(normalizeFilePath('src\\components\\Button.tsx')).toBe('src/components/Button.tsx');
-    });
-
-    it('should leave forward slashes unchanged', () => {
-      expect(normalizeFilePath('src/components/Button.tsx')).toBe('src/components/Button.tsx');
     });
   });
 
@@ -240,51 +228,6 @@ describe('render-triggers/utils', () => {
       visit(sourceFile);
 
       expect(foundOutsideMemoHook).toBe(true);
-    });
-  });
-
-  describe('isTopLevelConstant', () => {
-    it('should return true for top-level constants', () => {
-      const code = `const CONFIG = { x: 1 };
-function App() { return <div />; }`;
-      const sourceFile = createSourceFile(code);
-
-      let topLevelFound = false;
-      function visit(node: ts.Node): void {
-        if (ts.isObjectLiteralExpression(node) && isTopLevelConstant(node, sourceFile)) {
-          topLevelFound = true;
-        }
-        ts.forEachChild(node, visit);
-      }
-      visit(sourceFile);
-
-      expect(topLevelFound).toBe(true);
-    });
-
-    it('should return false for objects inside functions at top level', () => {
-      // Note: isTopLevelConstant returns true for objects inside top-level functions
-      // because it checks if the function itself is at source file level
-      const code = `const App = () => {
-        const obj = { x: 1 };
-        return <div />;
-      };`;
-      const sourceFile = createSourceFile(code);
-
-      // Objects inside arrow functions that are assigned to top-level const
-      // will also return true because the arrow function's parent is the variable declaration
-      // which is at the source file level
-      let foundObject = false;
-      function visit(node: ts.Node): void {
-        if (ts.isObjectLiteralExpression(node)) {
-          // This demonstrates the actual behavior - objects inside top-level arrow functions
-          // may return true because the arrow function is considered "at top level"
-          foundObject = true;
-        }
-        ts.forEachChild(node, visit);
-      }
-      visit(sourceFile);
-
-      expect(foundObject).toBe(true);
     });
   });
 });

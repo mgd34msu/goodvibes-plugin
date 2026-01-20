@@ -7,6 +7,7 @@ import * as path from 'path';
 
 import { HealthWarning } from './types.js';
 import { LOCKFILES } from './constants.js';
+import { logError } from '../../logging.js';
 
 /**
  * Checks overall project health and configuration.
@@ -73,7 +74,7 @@ export function checkHealth(cwd: string): { warnings: HealthWarning[]; suggestio
         });
       }
     } catch (err: unknown) {
-      console.error(`[issues] Failed to parse tsconfig.json:`, err instanceof Error ? err.message : err);
+      logError(`[issues] Failed to parse tsconfig.json`, err);
     }
   }
 
@@ -92,7 +93,7 @@ export function checkHealth(cwd: string): { warnings: HealthWarning[]; suggestio
         suggestions.push('Add a `test` script for automated testing');
       }
     } catch (err: unknown) {
-      console.error(`[issues] Failed to parse package.json:`, err instanceof Error ? err.message : err);
+      logError(`[issues] Failed to parse package.json`, err);
     }
   }
 

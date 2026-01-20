@@ -21,7 +21,7 @@ export {
   type QueryDatabaseResult,
   type ColumnInfo,
   type DatabaseType,
-} from './query-database.js';
+} from './query-database/index.js';
 
 // SQLite-specific exports
 export {

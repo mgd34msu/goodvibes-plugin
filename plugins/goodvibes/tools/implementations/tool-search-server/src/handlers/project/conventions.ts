@@ -14,6 +14,7 @@ import { spawn } from 'child_process';
 
 import { success, error } from '../../utils.js';
 import { PROJECT_ROOT } from '../../config.js';
+import { logError } from '../../logging.js';
 
 /**
  * Arguments for the get_conventions MCP tool
@@ -679,7 +680,7 @@ export async function handleGetConventions(args: GetConventionsArgs) {
     return success(result);
   } catch (err) {
     // Fallback to static analysis if Claude is unavailable
-    console.error('[conventions] LLM analysis failed, using fallback:', err instanceof Error ? err.message : err);
+    logError('[conventions] LLM analysis failed, using fallback', err);
 
     const fallbackResult = createFallbackResult(samples, configFiles, directoryLayout);
     return success(fallbackResult);

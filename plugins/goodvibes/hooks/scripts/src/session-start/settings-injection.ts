@@ -234,6 +234,35 @@ export async function loadPluginHooks(pluginRoot: string): Promise<PluginHooksJs
 }
 
 /**
+ * Normalizes a file path for comparison by converting all separators to forward slashes
+ * and converting to lowercase on Windows.
+ *
+ * @param filePath - The path to normalize
+ * @returns The normalized path
+ */
+export function normalizePath(filePath: string): string {
+  // Convert backslashes to forward slashes
+  let normalized = filePath.replace(/\\/g, '/');
+  // On Windows, paths are case-insensitive
+  if (process.platform === 'win32') {
+    normalized = normalized.toLowerCase();
+  }
+  return normalized;
+}
+
+/**
+ * Extracts the script filename from a hook command.
+ * E.g., 'node "C:/path/to/subagent-start.js"' -> 'subagent-start.js'
+ *
+ * @param command - The hook command string
+ * @returns The script filename or null if not found
+ */
+export function extractScriptName(command: string): string | null {
+  const match = command.match(/([^/\\]+\.js)["']?\s*$/);
+  return match ? match[1] : null;
+}
+
+/**
  * Replaces ${CLAUDE_PLUGIN_ROOT} placeholder with actual plugin root path.
  *
  * @param command - The command string with placeholder
@@ -245,21 +274,53 @@ export function resolveCommand(command: string, pluginRoot: string): string {
 }
 
 /**
+ * Checks if a hook command points to a GoodVibes plugin script.
+ * Matches commands containing 'goodvibes' in the path and ending with a .js file.
+ *
+ * @param command - The hook command to check
+ * @returns True if this is a GoodVibes hook command
+ */
+export function isGoodVibesCommand(command: string): boolean {
+  const normalized = normalizePath(command);
+  return normalized.includes('goodvibes') && normalized.includes('/hooks/scripts/dist/');
+}
+
+/**
  * Checks if a specific hook command is already present in the matchers array.
+ * Uses normalized path comparison to handle different path separators.
  *
  * @param matchers - Array of existing hook matchers
  * @param command - The command to check for
  * @returns True if the command is already present
  */
 export function isHookCommandPresent(matchers: HookMatcher[], command: string): boolean {
+  const normalizedCommand = normalizePath(command);
   return matchers.some(m =>
-    m.hooks?.some(h => h.command === command)
+    m.hooks?.some(h => normalizePath(h.command) === normalizedCommand)
   );
 }
 
 /**
- * Merges ALL hooks from hooks.json into existing settings without overwriting user hooks.
- * Iterates through all hook types defined in hooks.json and adds them if not present.
+ * Removes all GoodVibes hooks from a matchers array.
+ * This cleans up stale hooks from different plugin installations.
+ *
+ * @param matchers - Array of hook matchers to clean
+ * @returns Cleaned array with only non-GoodVibes hooks
+ */
+export function removeGoodVibesHooks(matchers: HookMatcher[]): HookMatcher[] {
+  return matchers.filter(m => {
+    // Keep matchers that have no hooks or have non-GoodVibes hooks
+    if (!m.hooks || m.hooks.length === 0) return true;
+    // Remove if ALL hooks are GoodVibes hooks
+    const hasNonGoodVibesHook = m.hooks.some(h => !isGoodVibesCommand(h.command));
+    return hasNonGoodVibesHook;
+  });
+}
+
+/**
+ * Merges ALL hooks from hooks.json into existing settings.
+ * REPLACES all existing GoodVibes hooks with fresh ones from the current plugin root.
+ * Preserves any non-GoodVibes hooks the user may have added.
  *
  * @param settings - The existing settings object
  * @param pluginHooks - The parsed hooks.json content
@@ -275,10 +336,14 @@ export function mergeAllHooks(
   let hooksAdded = false;
 
   for (const [hookType, matchers] of Object.entries(pluginHooks.hooks)) {
-    settings.hooks[hookType] ??= [];
+    // First, remove ALL existing GoodVibes hooks for this type
+    // This cleans up stale hooks from different plugin installations/paths
+    const existingHooks = settings.hooks[hookType] ?? [];
+    const userHooks = removeGoodVibesHooks(existingHooks);
 
+    // Build fresh hooks from hooks.json
+    const freshHooks: HookMatcher[] = [];
     for (const matcher of matchers) {
-      // Resolve commands with actual plugin root
       const resolvedMatcher: HookMatcher = {
         matcher: matcher.matcher,
         hooks: matcher.hooks.map(h => ({
@@ -286,14 +351,16 @@ export function mergeAllHooks(
           command: resolveCommand(h.command, pluginRoot),
         })),
       };
+      freshHooks.push(resolvedMatcher);
+    }
 
-      // Check if this exact hook command is already present
-      const command = resolvedMatcher.hooks[0]?.command;
-      if (command && !isHookCommandPresent(settings.hooks[hookType]!, command)) {
-        settings.hooks[hookType]!.push(resolvedMatcher);
-        hooksAdded = true;
-        debug(`Added ${hookType} hook: ${matcher.matcher}`);
-      }
+    // Combine: fresh GoodVibes hooks first, then any user hooks
+    settings.hooks[hookType] = [...freshHooks, ...userHooks];
+
+    // Track if we actually changed anything
+    if (freshHooks.length > 0) {
+      hooksAdded = true;
+      debug(`Set ${hookType} hooks: ${freshHooks.length} GoodVibes + ${userHooks.length} user hooks`);
     }
   }
 
@@ -301,8 +368,9 @@ export function mergeAllHooks(
 }
 
 /**
- * Merges GoodVibes hooks into existing settings without overwriting user hooks.
- * Injects both SubagentStart and SubagentStop hooks.
+ * Merges GoodVibes hooks into existing settings.
+ * REPLACES all existing GoodVibes SubagentStart/SubagentStop hooks with fresh ones.
+ * Preserves any non-GoodVibes hooks the user may have added.
  *
  * @deprecated Use mergeAllHooks instead for full hooks.json support
  * @param settings - The existing settings object
@@ -323,33 +391,17 @@ export function mergeHooks(
   settings.hooks.SubagentStart ??= [];
   settings.hooks.SubagentStop ??= [];
 
-  let hooksAdded = false;
+  // Remove all existing GoodVibes hooks first, keep user hooks
+  const userStartHooks = removeGoodVibesHooks(settings.hooks.SubagentStart);
+  const userStopHooks = removeGoodVibesHooks(settings.hooks.SubagentStop);
 
-  // Check and add SubagentStart hook
-  if (!isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
-    settings.hooks.SubagentStart = [
-      subagentStartHook,
-      ...settings.hooks.SubagentStart,
-    ];
-    debug('Added GoodVibes SubagentStart hook');
-    hooksAdded = true;
-  } else {
-    debug('GoodVibes SubagentStart hook already present');
-  }
+  // Replace with fresh hooks
+  settings.hooks.SubagentStart = [subagentStartHook, ...userStartHooks];
+  settings.hooks.SubagentStop = [subagentStopHook, ...userStopHooks];
 
-  // Check and add SubagentStop hook
-  if (!isSubagentStopHookPresent(settings.hooks.SubagentStop, pluginRoot)) {
-    settings.hooks.SubagentStop = [
-      subagentStopHook,
-      ...settings.hooks.SubagentStop,
-    ];
-    debug('Added GoodVibes SubagentStop hook');
-    hooksAdded = true;
-  } else {
-    debug('GoodVibes SubagentStop hook already present');
-  }
+  debug('Replaced GoodVibes SubagentStart/SubagentStop hooks');
 
-  return { settings, hooksAdded };
+  return { settings, hooksAdded: true };
 }
 
 /**

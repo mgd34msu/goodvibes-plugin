@@ -27,8 +27,7 @@ import { RegistryEntry } from './types.js';
  */
 /* istanbul ignore next -- @preserve v8 coverage can't track import.meta.url execution */
 const getEsmDir = (): string => {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore - import.meta only available in ESM
+  // @ts-expect-error - import.meta.url is only available in ESM context; this code runs in both ESM and CJS bundles
   return dirname(fileURLToPath(import.meta.url));
 };
 

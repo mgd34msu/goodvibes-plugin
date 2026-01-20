@@ -30,7 +30,7 @@ const execAsync = promisify(exec);
  * // OR
  * // => null (if command failed)
  */
-export async function execGit(
+async function execGit(
   command: string,
   cwd: string
 ): Promise<string | null> {
@@ -58,7 +58,7 @@ export async function execGit(
  * // => true (if .git directory exists)
  * // => false (if not a git repository)
  */
-export async function isGitRepo(cwd: string): Promise<boolean> {
+async function isGitRepo(cwd: string): Promise<boolean> {
   return fileExists(path.join(cwd, '.git'));
 }
 
@@ -74,7 +74,7 @@ export async function isGitRepo(cwd: string): Promise<boolean> {
  * // => 'main' (most repos)
  * // => 'master' (older repos)
  */
-export async function detectMainBranch(cwd: string): Promise<string> {
+async function detectMainBranch(cwd: string): Promise<string> {
   const main = await execGit('git rev-parse --verify main', cwd);
   if (main) {
     return 'main';

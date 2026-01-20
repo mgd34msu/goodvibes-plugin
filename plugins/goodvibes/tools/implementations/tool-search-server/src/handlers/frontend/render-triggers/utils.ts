@@ -29,7 +29,7 @@ export function createErrorResponse(message: string, context?: Record<string, un
 // Path Helpers
 // =============================================================================
 
-export function normalizeFilePath(filePath: string): string {
+function normalizeFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
 }
 
@@ -89,22 +89,3 @@ export function isInsideMemoizationHook(node: ts.Node): boolean {
   return false;
 }
 
-/**
- * Check if a node is a constant outside the component
- */
-export function isTopLevelConstant(node: ts.Node, sourceFile: ts.SourceFile): boolean {
-  let current: ts.Node | undefined = node.parent;
-  while (current) {
-    // If we hit a function/arrow function that's not at the top level, we're inside a component
-    if ((ts.isFunctionDeclaration(current) || ts.isArrowFunction(current) ||
-         ts.isFunctionExpression(current)) && current.parent !== sourceFile) {
-      return false;
-    }
-    // If parent is source file, we're at the top level
-    if (current.parent === sourceFile) {
-      return true;
-    }
-    current = current.parent;
-  }
-  return false;
-}

@@ -7,6 +7,7 @@ import * as path from 'path';
 
 import { EnvironmentIssue } from './types.js';
 import { SENSITIVE_PATTERNS, ENV_FILES, ENV_EXAMPLE_FILES } from './constants.js';
+import { logError } from '../../logging.js';
 
 /**
  * Checks environment configuration for potential issues.
@@ -43,7 +44,7 @@ export function checkEnvironment(cwd: string): EnvironmentIssue[] {
           if (match) definedVars.push(match[1]);
         }
       } catch (err: unknown) {
-        console.error(`[issues] Failed to read ${envFile}:`, err instanceof Error ? err.message : err);
+        logError(`[issues] Failed to read ${envFile}`, err);
       }
     }
   }
@@ -62,7 +63,7 @@ export function checkEnvironment(cwd: string): EnvironmentIssue[] {
           if (match) exampleVars.push(match[1]);
         }
       } catch (err: unknown) {
-        console.error(`[issues] Failed to read ${exampleFile}:`, err instanceof Error ? err.message : err);
+        logError(`[issues] Failed to read ${exampleFile}`, err);
       }
       break;
     }
@@ -114,7 +115,7 @@ export function checkEnvironment(cwd: string): EnvironmentIssue[] {
         }
       }
     } catch (err: unknown) {
-      console.error(`[issues] Failed to read .gitignore:`, err instanceof Error ? err.message : err);
+      logError(`[issues] Failed to read .gitignore`, err);
     }
   }
 

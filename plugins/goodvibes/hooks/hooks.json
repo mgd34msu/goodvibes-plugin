@@ -1,5 +1,5 @@
 {
-  "description": "GoodVibes plugin hooks for session management, tool validation, and analytics",
+  "description": "GoodVibes plugin hooks - minimal set for core functionality",
   "hooks": {
     "SessionStart": [
       {
@@ -23,233 +23,13 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__detect_stack",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__get_schema",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__run_smoke_test",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__check_types",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__validate_implementation",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use-failure.js\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__detect_stack",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__recommend_skills",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__search_*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__validate_implementation",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__run_smoke_test",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__check_types",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use.js\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "mcp__plugin_goodvibes_goodvibes-tools__*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/permission-request.js\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
+    "SessionEnd": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/user-prompt-submit.js\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/stop.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/session-end.js\"",
             "timeout": 10
           }
         ]
@@ -281,17 +61,7 @@
     ],
     "PreCompact": [
       {
-        "matcher": "auto",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-compact.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "manual",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -301,13 +71,13 @@
         ]
       }
     ],
-    "SessionEnd": [
+    "Stop": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/session-end.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/stop.js\"",
             "timeout": 10
           }
         ]
@@ -320,6 +90,18 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/notification.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/user-prompt-submit.js\"",
             "timeout": 5
           }
         ]

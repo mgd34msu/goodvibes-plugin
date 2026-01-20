@@ -16,6 +16,7 @@ import * as path from 'path';
 
 import { success } from '../../utils.js';
 import { PROJECT_ROOT } from '../../config.js';
+import { logError } from '../../logging.js';
 
 /**
  * Arguments for the validate_env_complete MCP tool
@@ -181,7 +182,7 @@ function scanFileForEnvVars(
       }
     }
   } catch (err) {
-    console.error(`[validate-env-complete] Failed to scan ${filePath}:`, err instanceof Error ? err.message : err);
+    logError(`[validate-env-complete] Failed to scan ${filePath}`, err);
   }
 
   return varMap;
@@ -234,7 +235,7 @@ function scanDirectory(
       }
     }
   } catch (err) {
-    console.error(`[validate-env-complete] Failed to read directory ${dir}:`, err instanceof Error ? err.message : err);
+    logError(`[validate-env-complete] Failed to read directory ${dir}`, err);
   }
 
   return filesScanned;
@@ -417,7 +418,7 @@ export function handleValidateEnvComplete(args: ValidateEnvCompleteArgs) {
       const content = fs.readFileSync(envFilePath, 'utf-8');
       envVars = parseEnvFile(content);
     } catch (err) {
-      console.error(`[validate-env-complete] Failed to parse ${envFile}:`, err instanceof Error ? err.message : err);
+      logError(`[validate-env-complete] Failed to parse ${envFile}`, err);
     }
   }
 
@@ -426,7 +427,7 @@ export function handleValidateEnvComplete(args: ValidateEnvCompleteArgs) {
       const content = fs.readFileSync(exampleFilePath, 'utf-8');
       exampleVars = parseEnvFile(content);
     } catch (err) {
-      console.error(`[validate-env-complete] Failed to parse ${exampleFile}:`, err instanceof Error ? err.message : err);
+      logError(`[validate-env-complete] Failed to parse ${exampleFile}`, err);
     }
   }
 

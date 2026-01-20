@@ -108,6 +108,34 @@ interface LighthouseAuditResult {
 }
 
 /**
+ * Chrome instance from chrome-launcher.
+ * Represents a launched Chrome browser instance.
+ */
+interface ChromeInstance {
+  /** Port Chrome is listening on for DevTools protocol */
+  port: number;
+  /** Process ID of Chrome */
+  pid: number;
+  /** Kill the Chrome process */
+  kill: () => Promise<unknown>;
+}
+
+/**
+ * Chrome launcher module interface.
+ * Simplified type for the chrome-launcher optional dependency.
+ */
+interface ChromeLauncherModule {
+  /** Launch a new Chrome instance */
+  launch: (options?: {
+    chromeFlags?: string[];
+    chromePath?: string;
+    port?: number;
+    handleSIGINT?: boolean;
+    userDataDir?: string;
+  }) => Promise<ChromeInstance>;
+}
+
+/**
  * Lighthouse report structure (subset of actual report)
  */
 interface LighthouseReport {
@@ -152,7 +180,7 @@ async function checkLighthouseAvailable(): Promise<{
 }> {
   // Try programmatic import first
   try {
-    // @ts-ignore - lighthouse is an optional dependency
+    // @ts-expect-error - lighthouse is an optional peer dependency that may not be installed
     await import('lighthouse');
     return { available: true, method: 'programmatic' };
   } catch {
@@ -272,15 +300,14 @@ async function runLighthouseProgrammatic(
   args: LighthouseAuditArgs
 ): Promise<LighthouseReport> {
   // Dynamic import lighthouse
-  // @ts-ignore - lighthouse is an optional dependency
+  // @ts-expect-error - lighthouse is an optional peer dependency that may not be installed
   const lighthouseModule = await import('lighthouse');
   const lighthouse = lighthouseModule.default;
 
   // Dynamic import chrome-launcher if available
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let chromeLauncher: any;
+  let chromeLauncher: ChromeLauncherModule;
   try {
-    // @ts-ignore - chrome-launcher is an optional dependency
+    // @ts-expect-error - chrome-launcher is an optional peer dependency that may not be installed
     chromeLauncher = await import('chrome-launcher');
   } catch {
     throw new Error(

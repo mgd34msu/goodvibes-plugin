@@ -13,6 +13,7 @@ import * as path from 'path';
 
 import { success } from '../../utils.js';
 import { PROJECT_ROOT } from '../../config.js';
+import { logError } from '../../logging.js';
 
 /**
  * Arguments for the get_env_config MCP tool
@@ -145,7 +146,7 @@ function parseEnvFile(filePath: string): Set<string> {
       }
     }
   } catch (err) {
-    console.error(`[env-config] Failed to parse ${filePath}:`, err instanceof Error ? err.message : err);
+    logError(`[env-config] Failed to parse ${filePath}`, err);
   }
 
   return vars;
@@ -213,7 +214,7 @@ function scanFileForEnvVars(
       }
     }
   } catch (err) {
-    console.error(`[env-config] Failed to scan ${filePath}:`, err instanceof Error ? err.message : err);
+    logError(`[env-config] Failed to scan ${filePath}`, err);
   }
 
   return varMap;
@@ -264,7 +265,7 @@ function scanDirectory(
       }
     }
   } catch (err) {
-    console.error(`[env-config] Failed to read directory ${dir}:`, err instanceof Error ? err.message : err);
+    logError(`[env-config] Failed to read directory ${dir}`, err);
   }
 
   return filesScanned;

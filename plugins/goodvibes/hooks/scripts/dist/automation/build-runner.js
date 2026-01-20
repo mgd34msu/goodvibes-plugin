@@ -10,14 +10,14 @@ import { promisify } from 'util';
 import { extractErrorOutput, fileExists } from '../shared/index.js';
 const execAsync = promisify(exec);
 /** Build commands mapped by framework type. */
-export const BUILD_COMMANDS = {
+const BUILD_COMMANDS = {
     next: 'npm run build',
     vite: 'npm run build',
     typescript: 'npx tsc --noEmit',
     default: 'npm run build',
 };
 /** TypeScript type check command (same for all frameworks). */
-export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
+const TYPECHECK_COMMAND = 'npx tsc --noEmit';
 /**
  * Detects the appropriate build command based on project config files.
  * Checks for Next.js, Vite, or falls back to default npm build.
@@ -29,7 +29,7 @@ export const TYPECHECK_COMMAND = 'npx tsc --noEmit';
  * const cmd = await detectBuildCommand('/my-next-app');
  * // Returns 'npm run build' if next.config.js exists
  */
-export async function detectBuildCommand(cwd) {
+async function detectBuildCommand(cwd) {
     // Check for Next.js config files
     const [hasNextJs, hasNextMjs, hasNextTs] = await Promise.all([
         fileExists(path.join(cwd, 'next.config.js')),
@@ -62,7 +62,7 @@ export async function detectBuildCommand(cwd) {
  *   debug('Build failed:', result.errors);
  * }
  */
-export async function runBuild(cwd) {
+async function runBuild(cwd) {
     const command = await detectBuildCommand(cwd);
     try {
         await execAsync(command, { cwd, timeout: 120000 });

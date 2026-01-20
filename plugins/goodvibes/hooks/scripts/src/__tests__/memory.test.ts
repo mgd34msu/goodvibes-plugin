@@ -18,7 +18,6 @@ import {
   hasMemory,
   getMemorySummary,
   searchMemory,
-  getCurrentDate,
   getGoodVibesDir,
   getMemoryDir,
   getMemoryFilePath,
@@ -429,13 +428,6 @@ describe('memory', () => {
       expect(results.patterns).toHaveLength(0);
       expect(results.failures).toHaveLength(0);
       expect(results.preferences).toHaveLength(0);
-    });
-  });
-
-  describe('getCurrentDate', () => {
-    it('should return date in YYYY-MM-DD format', () => {
-      const date = getCurrentDate();
-      expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
 

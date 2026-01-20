@@ -207,16 +207,3 @@ export function formatMemoryContext(memory: ProjectMemory): string {
   return parts.join('\n');
 }
 
-/**
- * Gets the current date in ISO format (YYYY-MM-DD).
- * Used for timestamping memory entries.
- *
- * @returns Current date string in YYYY-MM-DD format
- *
- * @example
- * const date = getCurrentDate();
- * // Returns: "2024-01-15"
- */
-export function getCurrentDate(): string {
-  return new Date().toISOString().split('T')[0] ?? '';
-}

@@ -46,7 +46,6 @@ import {
   getMemorySummary,
   searchMemory,
   formatMemoryContext,
-  getCurrentDate,
 } from '../../memory/search.js';
 
 import type { ProjectMemory } from '../../types/memory.js';
@@ -1083,48 +1082,4 @@ describe('memory/search', () => {
     });
   });
 
-  describe('getCurrentDate', () => {
-    it('should return date in YYYY-MM-DD format', () => {
-      const result = getCurrentDate();
-
-      // Should match ISO date format
-      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    });
-
-    it('should return current date', () => {
-      const expected = new Date().toISOString().split('T')[0];
-      const result = getCurrentDate();
-
-      expect(result).toBe(expected);
-    });
-
-    it('should return string without time component', () => {
-      const result = getCurrentDate();
-
-      expect(result).not.toContain('T');
-      expect(result).not.toContain(':');
-    });
-
-    it('should return empty string when split returns array with undefined first element', () => {
-      // Mock String.prototype.split to test the nullish coalescing fallback
-      const originalSplit = String.prototype.split;
-      String.prototype.split = function (separator: string | RegExp): string[] {
-        if (separator === 'T') {
-          // Return array with undefined at index 0 to trigger ?? fallback
-          const arr: (string | undefined)[] = [];
-          arr[0] = undefined;
-          return arr as string[];
-        }
-        return originalSplit.call(this, separator);
-      };
-
-      try {
-        const result = getCurrentDate();
-        // The ?? '' fallback should trigger when split()[0] is undefined
-        expect(result).toBe('');
-      } finally {
-        String.prototype.split = originalSplit;
-      }
-    });
-  });
 });

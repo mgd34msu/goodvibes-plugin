@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "VibePlug - Claude Code Plugin Framework",
+  "type": "module",
   "workspaces": [
     "plugins/goodvibes",
     "plugins/goodvibes/tools/implementations/tool-search-server",
@@ -13,9 +14,18 @@
     "build:server": "npm run build --workspace=plugins/goodvibes/tools/implementations/tool-search-server",
     "build:hooks": "npm run build --workspace=plugins/goodvibes/hooks/scripts",
     "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:workspaces": "npm run lint --workspaces --if-present",
     "postinstall": "echo 'Run npm run build to build all workspaces'"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0",
+    "typescript-eslint": "^8.53.1"
   }
 }

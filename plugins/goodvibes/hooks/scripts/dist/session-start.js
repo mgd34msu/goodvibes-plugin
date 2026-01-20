@@ -4593,18 +4593,6 @@ function createSubagentStopHook(pluginRoot) {
     ]
   };
 }
-function isGoodVibesHookPresent(hooks, pluginRoot) {
-  const expectedCommand = createSubagentStartCommand(pluginRoot);
-  return hooks.some(
-    (matcher) => matcher.hooks?.some((hook) => hook.command === expectedCommand)
-  );
-}
-function isSubagentStopHookPresent(hooks, pluginRoot) {
-  const expectedCommand = createSubagentStopCommand(pluginRoot);
-  return hooks.some(
-    (matcher) => matcher.hooks?.some((hook) => hook.command === expectedCommand)
-  );
-}
 function safeParseJson(content) {
   try {
     const parsed = JSON.parse(content);
@@ -4629,19 +4617,34 @@ async function loadPluginHooks(pluginRoot) {
     return null;
   }
 }
+function normalizePath(filePath) {
+  let normalized = filePath.replace(/\\/g, "/");
+  if (process.platform === "win32") {
+    normalized = normalized.toLowerCase();
+  }
+  return normalized;
+}
 function resolveCommand(command, pluginRoot) {
   return command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, pluginRoot);
 }
-function isHookCommandPresent(matchers, command) {
-  return matchers.some(
-    (m) => m.hooks?.some((h) => h.command === command)
-  );
+function isGoodVibesCommand(command) {
+  const normalized = normalizePath(command);
+  return normalized.includes("goodvibes") && normalized.includes("/hooks/scripts/dist/");
+}
+function removeGoodVibesHooks(matchers) {
+  return matchers.filter((m) => {
+    if (!m.hooks || m.hooks.length === 0) return true;
+    const hasNonGoodVibesHook = m.hooks.some((h) => !isGoodVibesCommand(h.command));
+    return hasNonGoodVibesHook;
+  });
 }
 function mergeAllHooks(settings, pluginHooks, pluginRoot) {
   settings.hooks ??= {};
   let hooksAdded = false;
   for (const [hookType, matchers] of Object.entries(pluginHooks.hooks)) {
-    settings.hooks[hookType] ??= [];
+    const existingHooks = settings.hooks[hookType] ?? [];
+    const userHooks = removeGoodVibesHooks(existingHooks);
+    const freshHooks = [];
     for (const matcher of matchers) {
       const resolvedMatcher = {
         matcher: matcher.matcher,
@@ -4650,12 +4653,12 @@ function mergeAllHooks(settings, pluginHooks, pluginRoot) {
           command: resolveCommand(h.command, pluginRoot)
         }))
       };
-      const command = resolvedMatcher.hooks[0]?.command;
-      if (command && !isHookCommandPresent(settings.hooks[hookType], command)) {
-        settings.hooks[hookType].push(resolvedMatcher);
-        hooksAdded = true;
-        debug(`Added ${hookType} hook: ${matcher.matcher}`);
-      }
+      freshHooks.push(resolvedMatcher);
+    }
+    settings.hooks[hookType] = [...freshHooks, ...userHooks];
+    if (freshHooks.length > 0) {
+      hooksAdded = true;
+      debug(`Set ${hookType} hooks: ${freshHooks.length} GoodVibes + ${userHooks.length} user hooks`);
     }
   }
   return { settings, hooksAdded };
@@ -4666,28 +4669,12 @@ function mergeHooks(settings, pluginRoot) {
   settings.hooks ??= {};
   settings.hooks.SubagentStart ??= [];
   settings.hooks.SubagentStop ??= [];
-  let hooksAdded = false;
-  if (!isGoodVibesHookPresent(settings.hooks.SubagentStart, pluginRoot)) {
-    settings.hooks.SubagentStart = [
-      subagentStartHook,
-      ...settings.hooks.SubagentStart
-    ];
-    debug("Added GoodVibes SubagentStart hook");
-    hooksAdded = true;
-  } else {
-    debug("GoodVibes SubagentStart hook already present");
-  }
-  if (!isSubagentStopHookPresent(settings.hooks.SubagentStop, pluginRoot)) {
-    settings.hooks.SubagentStop = [
-      subagentStopHook,
-      ...settings.hooks.SubagentStop
-    ];
-    debug("Added GoodVibes SubagentStop hook");
-    hooksAdded = true;
-  } else {
-    debug("GoodVibes SubagentStop hook already present");
-  }
-  return { settings, hooksAdded };
+  const userStartHooks = removeGoodVibesHooks(settings.hooks.SubagentStart);
+  const userStopHooks = removeGoodVibesHooks(settings.hooks.SubagentStop);
+  settings.hooks.SubagentStart = [subagentStartHook, ...userStartHooks];
+  settings.hooks.SubagentStop = [subagentStopHook, ...userStopHooks];
+  debug("Replaced GoodVibes SubagentStart/SubagentStop hooks");
+  return { settings, hooksAdded: true };
 }
 function createDefaultSettings(pluginRoot) {
   return {

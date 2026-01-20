@@ -11,6 +11,7 @@ import * as path from 'path';
 import ts from 'typescript';
 
 import { getProjectRoot } from '../../config.js';
+import { logWarn } from '../../logging.js';
 
 // =============================================================================
 // Types
@@ -327,7 +328,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
     const result = ts.readConfigFile(configPath, ts.sys.readFile);
 
     if (result.error) {
-      console.warn(`Error reading tsconfig at ${configPath}:`, result.error.messageText);
+      logWarn(`Error reading tsconfig at ${configPath}`, result.error.messageText);
       return { ...DEFAULT_COMPILER_OPTIONS };
     }
 
@@ -340,7 +341,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
     );
 
     if (parsed.errors.length > 0) {
-      console.warn(`Errors parsing tsconfig at ${configPath}:`, parsed.errors);
+      logWarn(`Errors parsing tsconfig at ${configPath}`, parsed.errors);
     }
 
     // Merge with defaults for any missing options
@@ -475,7 +476,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
       }
     } catch (err) {
       // File may not exist yet, that's OK for some use cases
-      console.warn(`Could not read file ${filePath}:`, err);
+      logWarn(`Could not read file ${filePath}`, err);
     }
   }
 }

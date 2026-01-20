@@ -41,7 +41,6 @@ import {
   getMemorySummary,
   searchMemory,
   formatMemoryContext,
-  getCurrentDate,
   // Types
   type ProjectMemory,
   // Type aliases for backward compatibility
@@ -211,11 +210,6 @@ describe('memory/index', () => {
     it('should export formatMemoryContext', () => {
       expect(formatMemoryContext).toBeDefined();
       expect(typeof formatMemoryContext).toBe('function');
-    });
-
-    it('should export getCurrentDate', () => {
-      expect(getCurrentDate).toBeDefined();
-      expect(typeof getCurrentDate).toBe('function');
     });
   });
 
@@ -454,7 +448,6 @@ describe('memory/index', () => {
         getMemorySummary,
         searchMemory,
         formatMemoryContext,
-        getCurrentDate,
       ];
       searchFunctions.forEach((fn) => {
         expect(fn).toBeDefined();

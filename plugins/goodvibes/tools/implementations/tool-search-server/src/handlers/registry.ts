@@ -117,7 +117,11 @@ import {
   handleGrepWithContent,
 } from "./batch/index.js";
 
-// Import argument types for type-safe casting
+// =============================================================================
+// ARGUMENT TYPES - Imported directly from source modules to avoid circular deps
+// =============================================================================
+
+// Core types from main types module
 import type {
   SearchSkillsArgs,
   SearchArgs,
@@ -126,12 +130,21 @@ import type {
   DetectStackArgs,
   ScanPatternsArgs,
 } from "../types.js";
-import type { SkillDependenciesArgs, CheckVersionsArgs } from "./index.js";
-import type { FetchDocsArgs, GenerateOpenApiArgs, ExplainCodebaseArgs } from "./index.js";
-import type { GetSchemaArgs, GetDatabaseSchemaArgs, GetApiRoutesArgs } from "./index.js";
-import type { ReadConfigArgs, ValidateImplementationArgs, CheckTypesArgs } from "./index.js";
-import type { RunSmokeTestArgs, ScaffoldProjectArgs, ListTemplatesArgs } from "./index.js";
-import type { ProjectIssuesArgs } from "./index.js";
+
+// Handler-specific arg types - imported directly from source modules
+import type { SkillDependenciesArgs } from "./dependencies.js";
+import type { CheckVersionsArgs } from "./npm.js";
+import type { FetchDocsArgs } from "./docs.js";
+import type { GenerateOpenApiArgs, ExplainCodebaseArgs } from "./docs/index.js";
+import type { GetSchemaArgs, GetDatabaseSchemaArgs } from "./schema.js";
+import type { GetApiRoutesArgs } from "./schema/index.js";
+import type { ReadConfigArgs } from "./config.js";
+import type { ValidateImplementationArgs, CheckTypesArgs } from "./validation.js";
+import type { RunSmokeTestArgs } from "./smoke-test.js";
+import type { ScaffoldProjectArgs, ListTemplatesArgs } from "./scaffolding.js";
+import type { ProjectIssuesArgs } from "./issues.js";
+
+// LSP arg types - imported from lsp/index.js which re-exports from individual modules
 import type {
   FindReferencesArgs,
   GoToDefinitionArgs,
@@ -153,41 +166,77 @@ import type {
   SafeDeleteCheckArgs,
   GetInlayHintsArgs,
   ValidateEditsPreviewArgs,
-} from "./index.js";
-import type { AnalyzeDependenciesArgs, FindCircularDepsArgs } from "./index.js";
-import type { ParseErrorStackArgs, ExplainTypeErrorArgs } from "./index.js";
-import type { FindTestsForFileArgs, GetTestCoverageArgs, SuggestTestCasesArgs } from "./index.js";
-import type { ScanForSecretsArgs, CheckPermissionsArgs } from "./index.js";
-import type { GetEnvConfigArgs, GetConventionsArgs } from "./index.js";
-import type { GetReactComponentTreeArgs, GetPrismaOperationsArgs } from "./index.js";
-import type { AnalyzeBundleArgs } from "./index.js";
-import type { StartDevServerArgs, WatchForErrorsArgs, HealthMonitorArgs } from "./index.js";
+} from "./lsp/index.js";
+
+// Dependency analysis arg types
+import type { AnalyzeDependenciesArgs, FindCircularDepsArgs } from "./deps/index.js";
+
+// Error handling arg types
+import type { ParseErrorStackArgs, ExplainTypeErrorArgs } from "./errors/index.js";
+
+// Test tool arg types
+import type { FindTestsForFileArgs, GetTestCoverageArgs, SuggestTestCasesArgs } from "./test/index.js";
+
+// Security arg types
+import type { ScanForSecretsArgs, CheckPermissionsArgs } from "./security/index.js";
+
+// Project arg types
+import type { GetEnvConfigArgs, GetConventionsArgs } from "./project/index.js";
+
+// Framework arg types
+import type { GetReactComponentTreeArgs, GetPrismaOperationsArgs } from "./framework/index.js";
+
+// Build arg types
+import type { AnalyzeBundleArgs } from "./build/index.js";
+
+// Process arg types
+import type { StartDevServerArgs, WatchForErrorsArgs, HealthMonitorArgs } from "./process/index.js";
+
+// Runtime arg types
 import type {
   BrowserAutomationArgs,
   VerifyRuntimeBehaviorArgs,
   LighthouseAuditArgs,
   VisualRegressionArgs,
-} from "./index.js";
+} from "./runtime/index.js";
+
+// Edit tool arg types
 import type {
   RetryWithLearningArgs,
   ResolveMergeConflictArgs,
   AtomicMultiEditArgs,
   AutoRollbackArgs,
   ValidateApiContractArgs,
-} from "./index.js";
+} from "./edit/index.js";
+
+// Analysis arg types
 import type {
   ProfileFunctionArgs,
   LogAnalyzerArgs,
   GenerateTypesArgs,
   IdentifyTechDebtArgs,
   DetectMemoryLeaksArgs,
-} from "./index.js";
-import type { QueryDatabaseArgs } from "./index.js";
-import type { ValidateEnvCompleteArgs } from "./index.js";
-import type { UpgradePackageArgs } from "./index.js";
-import type { SyncApiTypesArgs } from "./index.js";
-import type { GenerateFixtureArgs } from "./index.js";
-import type { CreatePullRequestArgs } from "./index.js";
+} from "./analysis/index.js";
+
+// Database arg types
+import type { QueryDatabaseArgs } from "./database/index.js";
+
+// Environment arg types
+import type { ValidateEnvCompleteArgs } from "./env/index.js";
+
+// Package arg types
+import type { UpgradePackageArgs } from "./package/index.js";
+
+// Sync arg types
+import type { SyncApiTypesArgs } from "./sync/index.js";
+
+// Fixture arg types
+import type { GenerateFixtureArgs } from "./fixtures/index.js";
+
+// Git arg types
+import type { CreatePullRequestArgs } from "./git/index.js";
+
+// Frontend arg types
 import type {
   TraceComponentStateArgs,
   AnalyzeRenderTriggersArgs,
@@ -199,12 +248,14 @@ import type {
   GetSizingStrategyArgs,
   AnalyzeEventFlowArgs,
   AnalyzeTailwindConflictsArgs,
-} from "./index.js";
+} from "./frontend/index.js";
+
+// Batch tool arg types
 import type {
   BatchReadArgs,
   SmartGlobArgs,
   GrepWithContentArgs,
-} from "./index.js";
+} from "./batch/index.js";
 
 /**
  * Helper to create a context-independent handler.

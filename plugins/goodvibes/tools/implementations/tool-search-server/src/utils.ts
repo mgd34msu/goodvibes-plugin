@@ -13,6 +13,7 @@ import * as http from 'http';
 
 import { Registry, RegistryEntry, SearchResult } from './types.js';
 import { PLUGIN_ROOT, FUSE_OPTIONS } from './config.js';
+import { logError } from './logging.js';
 
 const execAsync = promisify(exec);
 
@@ -46,13 +47,13 @@ export async function loadRegistry(registryPath: string): Promise<Registry | nul
   try {
     const fullPath = path.join(PLUGIN_ROOT, registryPath);
     if (!(await fileExists(fullPath))) {
-      console.error(`Registry not found: ${fullPath}`);
+      logError(`Registry not found: ${fullPath}`);
       return null;
     }
     const content = await fsPromises.readFile(fullPath, 'utf-8');
     return yaml.load(content) as Registry;
   } catch (error: unknown) {
-    console.error(`Error loading registry ${registryPath}:`, error);
+    logError(`Error loading registry ${registryPath}`, error);
     return null;
   }
 }

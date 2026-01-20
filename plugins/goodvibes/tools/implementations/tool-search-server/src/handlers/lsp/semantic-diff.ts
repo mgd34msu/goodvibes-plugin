@@ -14,6 +14,7 @@ import * as path from 'path';
 import ts from 'typescript';
 
 import { PROJECT_ROOT } from '../../config.js';
+import { logWarn } from '../../logging.js';
 import { languageServiceManager } from './language-service.js';
 import {
   createSuccessResponse,
@@ -226,7 +227,7 @@ async function findReferencingFiles(filePath: string): Promise<string[]> {
       }
     }
   } catch (error) {
-    console.warn(`Failed to find references for ${filePath}:`, error);
+    logWarn(`Failed to find references for ${filePath}`, error);
   }
 
   return Array.from(referencingFiles);
@@ -320,7 +321,7 @@ function extractExportedSymbols(content: string, fileName: string): SymbolWithRe
 
     visit(sourceFile);
   } catch (error) {
-    console.warn(`Failed to extract symbols from ${fileName}:`, error);
+    logWarn(`Failed to extract symbols from ${fileName}`, error);
   }
 
   return symbols;
@@ -456,7 +457,7 @@ Focus on what matters to developers consuming this code. Be specific about behav
 
     claudeProcess.on('close', (code) => {
       if (code !== 0) {
-        console.warn(`Claude CLI exited with code ${code}: ${stderr}`);
+        logWarn(`Claude CLI exited with code ${code}`, stderr);
         // Provide fallback analysis
         resolve({
           changes: changedFiles.map(f => ({
@@ -481,8 +482,8 @@ Focus on what matters to developers consuming this code. Be specific about behav
         const result = JSON.parse(jsonMatch[0]) as SemanticDiffResult;
         resolve(result);
       } catch (parseError) {
-        console.warn('Failed to parse LLM response:', parseError);
-        console.warn('Raw response:', stdout);
+        logWarn('Failed to parse LLM response', parseError);
+        logWarn('Raw response', stdout);
         resolve({
           changes: [],
           overall_summary: 'Failed to analyze changes. Please review manually.',
@@ -491,7 +492,7 @@ Focus on what matters to developers consuming this code. Be specific about behav
     });
 
     claudeProcess.on('error', (error) => {
-      console.warn('Failed to spawn Claude CLI:', error);
+      logWarn('Failed to spawn Claude CLI', error);
       resolve({
         changes: [],
         overall_summary: 'Claude CLI not available. Please install Claude CLI to use this feature.',

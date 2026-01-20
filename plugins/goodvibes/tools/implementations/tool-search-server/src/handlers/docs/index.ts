@@ -7,8 +7,8 @@
  * @module handlers/docs
  */
 
-export { handleExplainCodebase } from './explain-codebase.js';
-export type { ExplainCodebaseArgs } from './explain-codebase.js';
+export { handleExplainCodebase } from './explain-codebase/index.js';
+export type { ExplainCodebaseArgs } from './explain-codebase/index.js';
 
 // OpenAPI generation
 export { handleGenerateOpenApi } from './generate-openapi.js';

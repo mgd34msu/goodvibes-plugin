@@ -42,6 +42,23 @@ export function logError(message: string, error?: unknown): void {
 }
 
 /**
+ * Log a warning message to stderr.
+ * Used for recoverable issues and deprecation notices.
+ *
+ * @param message - The warning message
+ * @param data - Optional data to include
+ */
+export function logWarn(message: string, data?: unknown): void {
+  const timestamp = new Date().toISOString();
+  if (data !== undefined) {
+    const dataMessage = data instanceof Error ? data.message : String(data);
+    console.error(`[GoodVibes ${timestamp}] WARN: ${message}:`, dataMessage);
+  } else {
+    console.error(`[GoodVibes ${timestamp}] WARN: ${message}`);
+  }
+}
+
+/**
  * Log a debug message to stderr.
  * Used for detailed diagnostic information.
  *

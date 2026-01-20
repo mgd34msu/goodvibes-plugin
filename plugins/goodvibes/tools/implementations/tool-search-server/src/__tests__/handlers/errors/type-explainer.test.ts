@@ -60,13 +60,12 @@ describe('handleExplainTypeError', () => {
   });
 
   test('returns error for invalid error_code (not a number)', async () => {
-    // @ts-ignore - testing runtime validation
-    const args = {
+    // @ts-expect-error - intentionally passing string instead of number to test runtime validation
+    const args: Parameters<typeof handleExplainTypeError>[0] = {
       error_code: "2322",
       error_message: "Error"
     };
 
-    // @ts-ignore
     const result = await handleExplainTypeError(args);
 
     expect(result).toHaveProperty('isError', true);
@@ -74,12 +73,11 @@ describe('handleExplainTypeError', () => {
   });
 
   test('returns error for missing error_message', async () => {
-    // @ts-ignore - testing runtime validation
-    const args = {
+    // @ts-expect-error - intentionally omitting required error_message to test runtime validation
+    const args: Parameters<typeof handleExplainTypeError>[0] = {
       error_code: 2322
     };
 
-    // @ts-ignore
     const result = await handleExplainTypeError(args);
 
     expect(result).toHaveProperty('isError', true);

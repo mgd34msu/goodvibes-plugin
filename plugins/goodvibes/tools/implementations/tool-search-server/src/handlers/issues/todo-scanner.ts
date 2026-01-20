@@ -17,6 +17,7 @@ import {
   TEST_FILE_PATTERNS,
   TODO_PATTERN,
 } from './constants.js';
+import { logError } from '../../logging.js';
 
 /**
  * Checks if a filename matches common test file patterns.
@@ -121,7 +122,7 @@ export function scanFile(filePath: string, relativePath: string): TodoItem[] {
     return items;
   } catch (err: unknown) {
     // Log but continue - file may be unreadable or deleted during scan
-    console.error(`[issues] Failed to scan file ${filePath}:`, err instanceof Error ? err.message : err);
+    logError(`[issues] Failed to scan file ${filePath}`, err);
     return [];
   }
 }
@@ -173,6 +174,6 @@ export function scanDirectory(dir: string, baseDir: string, items: TodoItem[], m
     }
   } catch (err: unknown) {
     // Log but continue - directory may be inaccessible
-    console.error(`[issues] Failed to read directory ${dir}:`, err instanceof Error ? err.message : err);
+    logError(`[issues] Failed to read directory ${dir}`, err);
   }
 }

@@ -38,5 +38,5 @@ export type {
   FixStrategy,
 } from './retry-with-learning.js';
 // API Contract Validation
-export { handleValidateApiContract } from './validate-api-contract.js';
-export type { ValidateApiContractArgs } from './validate-api-contract.js';
+export { handleValidateApiContract } from './validate-api-contract/index.js';
+export type { ValidateApiContractArgs } from './validate-api-contract/index.js';
