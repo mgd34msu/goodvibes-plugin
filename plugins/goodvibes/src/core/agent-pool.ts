@@ -31,7 +31,7 @@ export interface PoolAgent {
   /** Original specification */
   spec: AgentSpec;
   /** Current status */
-  status: "queued" | "waiting" | "running" | "completed" | "failed";
+  status: "queued" | "waiting" | "running" | "paused" | "completed" | "failed";
   /** ISO timestamp when added to pool */
   queued_at: string;
   /** ISO timestamp when started running */
@@ -62,6 +62,22 @@ export interface AgentBudgetState {
   exhausted: boolean;
   /** Percentage used */
   usage_percent: number;
+  /** Input tokens used */
+  input_tokens: number;
+  /** Output tokens used */
+  output_tokens: number;
+  /** Estimated cost in USD */
+  cost_usd: number;
+}
+
+/**
+ * Token pricing configuration (per 1M tokens).
+ */
+export interface TokenPricing {
+  /** Cost per 1M input tokens in USD */
+  input_per_million: number;
+  /** Cost per 1M output tokens in USD */
+  output_per_million: number;
 }
 
 /**
@@ -78,6 +94,10 @@ export interface AgentPoolConfig {
   auto_start: boolean;
   /** Budget warning threshold (0-1) */
   budget_warning_threshold: number;
+  /** Token pricing for cost calculation */
+  pricing: TokenPricing;
+  /** Whether to auto-pause on budget exhaustion */
+  auto_pause_on_exhaustion: boolean;
 }
 
 /**
@@ -92,6 +112,8 @@ export interface AgentPoolStats {
   queued: number;
   /** Waiting on dependencies */
   waiting: number;
+  /** Currently paused (budget exhausted) */
+  paused: number;
   /** Successfully completed */
   completed: number;
   /** Failed */
@@ -102,6 +124,12 @@ export interface AgentPoolStats {
   total_budget_spent: number;
   /** Budget remaining */
   budget_remaining: number;
+  /** Total input tokens used */
+  total_input_tokens: number;
+  /** Total output tokens used */
+  total_output_tokens: number;
+  /** Total cost in USD */
+  total_cost_usd: number;
 }
 
 /**
@@ -116,6 +144,12 @@ const DEFAULT_CONFIG: AgentPoolConfig = {
   total_budget: 500000,
   auto_start: true,
   budget_warning_threshold: 0.8,
+  pricing: {
+    // Claude Sonnet 3.5 pricing as default
+    input_per_million: 3.0,
+    output_per_million: 15.0,
+  },
+  auto_pause_on_exhaustion: true,
 };
 
 /**
@@ -162,6 +196,9 @@ export class AgentPool {
         remaining: budget,
         exhausted: false,
         usage_percent: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cost_usd: 0,
       },
     };
 
@@ -252,15 +289,42 @@ export class AgentPool {
   }
 
   /**
-   * Updates an agent's token usage.
+   * Calculates cost from token counts.
+   */
+  private calculateCost(inputTokens: number, outputTokens: number): number {
+    const inputCost = (inputTokens / 1_000_000) * this.config.pricing.input_per_million;
+    const outputCost = (outputTokens / 1_000_000) * this.config.pricing.output_per_million;
+    return Math.round((inputCost + outputCost) * 10000) / 10000; // Round to 4 decimal places
+  }
+
+  /**
+   * Updates an agent's token usage (simple version - total tokens only).
    */
   updateBudget(agentId: string, tokensUsed: number): void {
+    // Assume 20% input, 80% output as default split if not specified
+    const inputTokens = Math.floor(tokensUsed * 0.2);
+    const outputTokens = tokensUsed - inputTokens;
+    this.updateBudgetDetailed(agentId, inputTokens, outputTokens);
+  }
+
+  /**
+   * Updates an agent's token usage with detailed input/output breakdown.
+   */
+  updateBudgetDetailed(agentId: string, inputTokens: number, outputTokens: number): void {
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
-    agent.budget.spent = tokensUsed;
-    agent.budget.remaining = agent.budget.allocated - tokensUsed;
-    agent.budget.usage_percent = (tokensUsed / agent.budget.allocated) * 100;
+    const totalTokens = inputTokens + outputTokens;
+    const cost = this.calculateCost(inputTokens, outputTokens);
+
+    agent.budget.input_tokens = inputTokens;
+    agent.budget.output_tokens = outputTokens;
+    agent.budget.spent = totalTokens;
+    agent.budget.remaining = agent.budget.allocated - totalTokens;
+    agent.budget.usage_percent = (totalTokens / agent.budget.allocated) * 100;
+    agent.budget.cost_usd = cost;
+
+    const wasExhausted = agent.budget.exhausted;
     agent.budget.exhausted = agent.budget.remaining <= 0;
 
     // Check for budget warning
@@ -271,10 +335,73 @@ export class AgentPool {
       this.onBudgetWarning(agent);
     }
 
-    // Check for budget exhausted
-    if (agent.budget.exhausted && this.onBudgetExhausted) {
-      this.onBudgetExhausted(agent);
+    // Check for budget exhausted (only trigger once)
+    if (agent.budget.exhausted && !wasExhausted) {
+      if (this.onBudgetExhausted) {
+        this.onBudgetExhausted(agent);
+      }
+
+      // Auto-pause if configured
+      if (this.config.auto_pause_on_exhaustion && agent.status === "running") {
+        this.pause(agentId);
+      }
     }
+  }
+
+  /**
+   * Pauses a running agent (typically due to budget exhaustion).
+   */
+  pause(agentId: string): boolean {
+    const agent = this.agents.get(agentId);
+    if (!agent || agent.status !== "running") return false;
+
+    agent.status = "paused";
+    return true;
+  }
+
+  /**
+   * Resumes a paused agent.
+   */
+  resume(agentId: string): boolean {
+    const agent = this.agents.get(agentId);
+    if (!agent || agent.status !== "paused") return false;
+
+    // Only resume if budget allows
+    if (agent.budget.exhausted) {
+      return false;
+    }
+
+    agent.status = "running";
+    return true;
+  }
+
+  /**
+   * Adds additional budget to an agent (top-up).
+   */
+  topUp(agentId: string, additionalTokens: number): boolean {
+    const agent = this.agents.get(agentId);
+    if (!agent) return false;
+
+    agent.budget.allocated += additionalTokens;
+    agent.budget.remaining += additionalTokens;
+    agent.budget.usage_percent = (agent.budget.spent / agent.budget.allocated) * 100;
+    agent.budget.exhausted = agent.budget.remaining <= 0;
+
+    // Auto-resume if was paused due to exhaustion and now has budget
+    if (agent.status === "paused" && !agent.budget.exhausted) {
+      agent.status = "running";
+    }
+
+    return true;
+  }
+
+  /**
+   * Gets all paused agents.
+   */
+  getPausedAgents(): PoolAgent[] {
+    return Array.from(this.agents.values())
+      .filter((a) => a.status === "paused")
+      .map((a) => ({ ...a }));
   }
 
   /**
@@ -400,17 +527,24 @@ export class AgentPool {
 
     const totalAllocated = agents.reduce((sum, a) => sum + a.budget.allocated, 0);
     const totalSpent = agents.reduce((sum, a) => sum + a.budget.spent, 0);
+    const totalInputTokens = agents.reduce((sum, a) => sum + a.budget.input_tokens, 0);
+    const totalOutputTokens = agents.reduce((sum, a) => sum + a.budget.output_tokens, 0);
+    const totalCost = agents.reduce((sum, a) => sum + a.budget.cost_usd, 0);
 
     return {
       total_spawned: agents.length,
       active: agents.filter((a) => a.status === "running").length,
       queued: agents.filter((a) => a.status === "queued").length,
       waiting: agents.filter((a) => a.status === "waiting").length,
+      paused: agents.filter((a) => a.status === "paused").length,
       completed: agents.filter((a) => a.status === "completed").length,
       failed: agents.filter((a) => a.status === "failed").length,
       total_budget_allocated: totalAllocated,
       total_budget_spent: totalSpent,
       budget_remaining: this.config.total_budget - totalSpent,
+      total_input_tokens: totalInputTokens,
+      total_output_tokens: totalOutputTokens,
+      total_cost_usd: Math.round(totalCost * 10000) / 10000,
     };
   }
 

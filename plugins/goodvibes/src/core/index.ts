@@ -44,6 +44,7 @@ export type {
   AgentSpec,
   PoolAgent,
   AgentBudgetState,
+  TokenPricing,
   AgentPoolConfig,
   AgentPoolStats,
   AgentCallback,
