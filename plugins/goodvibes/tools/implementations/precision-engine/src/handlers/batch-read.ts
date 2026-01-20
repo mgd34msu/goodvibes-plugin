@@ -7,7 +7,7 @@ import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult, FileReadResult } from '../types.js';
 import { successResult, errorResult, parseOutputMode } from '../utils/index.js';
-import { toCallToolResult, ToolHandler } from './index.js';
+import { toCallToolResult, ToolHandler } from '../utils/index.js';
 
 interface FileSpec {
   path: string;

@@ -9,7 +9,7 @@ import { promisify } from 'util';
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult, EditSpec, EditResult } from '../types.js';
 import { successResult, errorResult, parseOutputMode } from '../utils/index.js';
-import { toCallToolResult, ToolHandler } from './index.js';
+import { toCallToolResult, ToolHandler } from '../utils/index.js';
 
 const execAsync = promisify(exec);
 

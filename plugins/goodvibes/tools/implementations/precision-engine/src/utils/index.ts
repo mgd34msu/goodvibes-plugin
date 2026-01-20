@@ -2,7 +2,28 @@
  * Utility functions for precision-engine.
  */
 
+import { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import { OutputMode, PrecisionResult } from '../types.js';
+
+/**
+ * Handler function type.
+ */
+export type ToolHandler = (args: unknown) => Promise<CallToolResult>;
+
+/**
+ * Convert a PrecisionResult to MCP CallToolResult format.
+ */
+export function toCallToolResult<T>(result: PrecisionResult<T>): CallToolResult {
+  const content: TextContent = {
+    type: 'text',
+    text: JSON.stringify(result, null, 2),
+  };
+
+  return {
+    content: [content],
+    isError: !result.success,
+  };
+}
 import { TOKEN_MULTIPLIERS } from '../config.js';
 import { estimateTokens } from '../logging.js';
 

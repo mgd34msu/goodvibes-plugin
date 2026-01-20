@@ -247,6 +247,158 @@ export const getDocumentSymbolsSchema: Tool = {
 };
 
 /**
+ * precision_write - Create/write files with encoding support.
+ */
+export const precisionWriteSchema: Tool = {
+  name: 'precision_write',
+  description:
+    'Create or write files with encoding support and multiple overwrite modes. ' +
+    'Supports batch writes, automatic parent directory creation, and dry_run mode.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      files: {
+        type: 'array',
+        description: 'Array of files to write',
+        items: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'Path to the file to write' },
+            content: { type: 'string', description: 'Content to write to the file' },
+            encoding: { type: 'string', description: 'File encoding (default: utf-8)' },
+            mode: {
+              type: 'string',
+              enum: ['fail_if_exists', 'overwrite', 'backup'],
+              description: 'Behavior when file exists (default: fail_if_exists)',
+            },
+          },
+          required: ['path', 'content'],
+        },
+      },
+      dry_run: { type: 'boolean', default: false, description: 'Preview changes without writing' },
+      output_mode: outputModeSchema,
+    },
+    required: ['files'],
+  },
+};
+
+/**
+ * precision_exec - Execute shell commands.
+ */
+export const precisionExecSchema: Tool = {
+  name: 'precision_exec',
+  description:
+    'Execute shell commands with batch support, timeout, and expectations checking. ' +
+    'Captures stdout, stderr, and exit code.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      commands: {
+        type: 'array',
+        description: 'Array of commands to execute',
+        items: {
+          type: 'object',
+          properties: {
+            cmd: { type: 'string', description: 'Command to execute' },
+            args: { type: 'array', items: { type: 'string' }, description: 'Command arguments' },
+            cwd: { type: 'string', description: 'Working directory' },
+            timeout: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 60000)' },
+            env: { type: 'object', description: 'Additional environment variables' },
+            expect: {
+              type: 'object',
+              properties: {
+                exit_code: { type: 'integer', description: 'Expected exit code' },
+                stdout_contains: { type: 'string', description: 'String that stdout should contain' },
+                stderr_contains: { type: 'string', description: 'String that stderr should contain' },
+              },
+              description: 'Expectations to verify',
+            },
+          },
+          required: ['cmd'],
+        },
+      },
+      parallel: { type: 'boolean', default: false, description: 'Execute commands in parallel' },
+      stop_on_error: { type: 'boolean', default: true, description: 'Stop on first error (sequential only)' },
+      output_mode: outputModeSchema,
+    },
+    required: ['commands'],
+  },
+};
+
+/**
+ * precision_fetch - Fetch URLs with extraction modes.
+ */
+export const precisionFetchSchema: Tool = {
+  name: 'precision_fetch',
+  description:
+    'Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), ' +
+    'custom headers, method override, and timeout.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      urls: {
+        type: 'array',
+        description: 'Array of URL requests to fetch',
+        items: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'URL to fetch' },
+            method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method (default: GET)' },
+            headers: { type: 'object', description: 'Custom headers to send' },
+            body: { type: 'string', description: 'Request body (for POST/PUT)' },
+            timeout: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 30000)' },
+            extract: { type: 'string', enum: ['raw', 'text', 'json'], description: 'Extraction mode (default: text)' },
+          },
+          required: ['url'],
+        },
+      },
+      parallel: { type: 'boolean', default: true, description: 'Fetch URLs in parallel' },
+      output_mode: outputModeSchema,
+    },
+    required: ['urls'],
+  },
+};
+
+/**
+ * discover - Lightweight parallel query execution.
+ */
+export const discoverSchema: Tool = {
+  name: 'discover',
+  description:
+    'Execute multiple grep, glob, or symbol queries in parallel. ' +
+    'Returns results keyed by query ID for efficient batch discovery.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      queries: {
+        type: 'array',
+        description: 'Array of queries to execute',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Unique ID for this query' },
+            type: { type: 'string', enum: ['grep', 'glob', 'symbols'], description: 'Query type' },
+            pattern: { type: 'string', description: 'Regex pattern (for grep)' },
+            glob: { type: 'string', description: 'File filter (for grep)' },
+            patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns (for glob)' },
+            query: { type: 'string', description: 'Symbol name (for symbols)' },
+            kinds: { type: 'array', items: { type: 'string' }, description: 'Symbol kinds (for symbols)' },
+          },
+          required: ['id', 'type'],
+        },
+      },
+      output_mode: {
+        type: 'string',
+        enum: ['count_only', 'files_only', 'locations'],
+        default: 'files_only',
+        description: 'Output mode: count_only, files_only (default), or locations',
+      },
+    },
+    required: ['queries'],
+  },
+};
+
+/**
  * All tool schemas.
  */
 export const allSchemas: Tool[] = [
@@ -256,4 +408,8 @@ export const allSchemas: Tool[] = [
   atomicMultiEditSchema,
   workspaceSymbolsSchema,
   getDocumentSymbolsSchema,
+  precisionWriteSchema,
+  precisionExecSchema,
+  precisionFetchSchema,
+  discoverSchema,
 ];

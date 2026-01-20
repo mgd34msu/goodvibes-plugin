@@ -2,62 +2,36 @@
  * Handler registry for precision-engine.
  */
 
-import { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
-import { logger, startTimer } from '../logging.js';
-import { parseOutputMode } from '../utils/index.js';
-import { PrecisionResult } from '../types.js';
+import { ToolHandler } from '../utils/index.js';
 
-/**
- * Handler function type.
- */
-export type ToolHandler = (args: unknown) => Promise<CallToolResult>;
+// Import real handler implementations
+import { handleBatchRead } from './batch-read.js';
+import { handleSmartGlob } from './smart-glob.js';
+import { handleGrepWithContent } from './grep-with-content.js';
+import { handleAtomicMultiEdit } from './atomic-multi-edit.js';
+import { handleWorkspaceSymbols } from './workspace-symbols.js';
+import { handleGetDocumentSymbols } from './document-symbols.js';
+import { handlePrecisionWrite } from './precision-write.js';
+import { handlePrecisionExec } from './precision-exec.js';
+import { handlePrecisionFetch } from './precision-fetch.js';
+import { handleDiscover } from './discover.js';
 
-/**
- * Convert a PrecisionResult to MCP CallToolResult format.
- */
-export function toCallToolResult<T>(result: PrecisionResult<T>): CallToolResult {
-  const content: TextContent = {
-    type: 'text',
-    text: JSON.stringify(result, null, 2),
-  };
+// Re-export handlers for direct access
+export {
+  handleBatchRead,
+  handleSmartGlob,
+  handleGrepWithContent,
+  handleAtomicMultiEdit,
+  handleWorkspaceSymbols,
+  handleGetDocumentSymbols,
+  handlePrecisionWrite,
+  handlePrecisionExec,
+  handlePrecisionFetch,
+  handleDiscover,
+};
 
-  return {
-    content: [content],
-    isError: !result.success,
-  };
-}
-
-/**
- * Create a "not implemented" placeholder handler.
- */
-function notImplementedHandler(toolName: string): ToolHandler {
-  return async (args: unknown): Promise<CallToolResult> => {
-    const outputMode = parseOutputMode(args);
-    const getElapsed = startTimer();
-
-    logger.warn(`Tool not implemented: ${toolName}`, args);
-
-    const result: PrecisionResult<null> = {
-      success: false,
-      error: `Tool '${toolName}' is not yet implemented.`,
-      meta: {
-        output_mode: outputMode,
-        token_estimate: 50,
-        execution_ms: getElapsed(),
-      },
-    };
-
-    return toCallToolResult(result);
-  };
-}
-
-// Placeholder handlers - will be replaced with real implementations
-export const handleBatchRead: ToolHandler = notImplementedHandler('batch_read');
-export const handleSmartGlob: ToolHandler = notImplementedHandler('smart_glob');
-export const handleGrepWithContent: ToolHandler = notImplementedHandler('grep_with_content');
-export const handleAtomicMultiEdit: ToolHandler = notImplementedHandler('atomic_multi_edit');
-export const handleWorkspaceSymbols: ToolHandler = notImplementedHandler('workspace_symbols');
-export const handleGetDocumentSymbols: ToolHandler = notImplementedHandler('get_document_symbols');
+// Re-export ToolHandler type
+export type { ToolHandler };
 
 /**
  * Handler registry.
@@ -69,6 +43,10 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['atomic_multi_edit', handleAtomicMultiEdit],
   ['workspace_symbols', handleWorkspaceSymbols],
   ['get_document_symbols', handleGetDocumentSymbols],
+  ['precision_write', handlePrecisionWrite],
+  ['precision_exec', handlePrecisionExec],
+  ['precision_fetch', handlePrecisionFetch],
+  ['discover', handleDiscover],
 ]);
 
 /**
