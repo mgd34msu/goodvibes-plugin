@@ -80,3 +80,14 @@ export type {
   ModeConfig,
   PreservedState,
 } from "./mode-system.js";
+
+// Context Injector
+export { ContextInjector } from "./context-injector.js";
+export type {
+  TaskType,
+  ContextSource,
+  ContextItem,
+  AssembledContext,
+  DetectionResult,
+  ContextInjectorConfig,
+} from "./context-injector.js";
