@@ -1,5 +1,23 @@
 ---
 name: brutally-honest-reviewer
+tools:
+  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
+  - batch_read
+  - smart_glob
+  - grep_with_content
+  - workspace_symbols
+  - get_document_symbols
+  # Review-specific tools (READ-ONLY - no atomic_multi_edit)
+  - detect_stack
+  - check_types
+  - get_diagnostics
+  - find_dead_code
+  - find_circular_deps
+  - identify_tech_debt
+  - scan_for_secrets
+  - find_references
+  - analyze_dependencies
+  - get_test_coverage
 description: >-
   Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate,
   critique, feedback, score, rate, check my code, how does this look, is this good, technical debt,
@@ -58,81 +76,66 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
-
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+**MCP Info Rule:**
+- For the 5 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
 
 ---
 
-## Tool Usage (MANDATORY)
+## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
 
-**Native tools Read, Edit, Glob, Grep are BLOCKED for subagents.**
+These 5 tools have full schemas - call them directly. Note: atomic_multi_edit is NOT available to reviewers.
 
-You MUST use these MCP tools instead:
-
-### Reading Files -> `batch_read`
+### batch_read
+Read multiple files for review.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{
-  "files": [
-    "path/to/file1.ts",
-    {"path": "path/to/file2.ts", "offset": 50, "limit": 30}
-  ],
-  "output_mode": "minimal"
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["src/api/routes.ts", "src/api/handlers.ts"], "output_mode": "standard"}'
 ```
-- Always batch multiple file reads into ONE call
-- Use `offset`/`limit` for precision (don't read entire files unless needed)
-- Default to `output_mode: "minimal"` unless you need full content
+**Parameters:**
+- `files` (required): Array of paths OR objects with offset/limit
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
 
-### Editing Files -> `atomic_multi_edit`
+### smart_glob
+Find files to review.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
-  "edits": [
-    {"file": "path/to/file.ts", "old_text": "original text", "new_text": "new text"}
-  ],
-  "output_mode": "minimal"
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/*.ts"], "exclude": ["**/*.test.ts", "**/__tests__/**"], "output_mode": "minimal"}'
 ```
-- Batch ALL edits into ONE call
-- Plan your edits before executing
-- Use `dry_run: true` to preview changes if unsure
+**Parameters:**
+- `patterns` (required): Glob patterns
+- `exclude`: Exclusion patterns
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
 
-### Finding Files -> `smart_glob`
+### grep_with_content
+Search for code patterns/anti-patterns.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{
-  "patterns": ["**/*.ts"],
-  "exclude": ["**/*.test.ts", "**/node_modules/**"],
-  "output_mode": "minimal",
-  "limit": 50
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "any|@ts-ignore|TODO|FIXME|console\\.log", "glob": "**/*.ts", "output_mode": "standard"}'
 ```
+**Parameters:**
+- `pattern` (required): Regex for code smells
+- `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `max_matches`: Limit (default: 100)
 
-### Searching Code -> `grep_with_content`
+### workspace_symbols
+Find all exports, classes, functions for API review.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{
-  "pattern": "functionName",
-  "glob": "**/*.ts",
-  "output_mode": "minimal",
-  "max_matches": 50
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "", "kinds": ["function", "class", "interface"], "output_mode": "standard"}'
 ```
+**Parameters:**
+- `query` (required): Symbol name (empty for all)
+- `kinds`: `["function", "class", "interface", "type"]`
+- `exclude_patterns`: `["**/*.test.ts"]`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
-### Searching Symbols -> `workspace_symbols`
+### get_document_symbols
+Get file structure for complexity analysis.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{
-  "query": "handleSubmit",
-  "kinds": ["function", "method"],
-  "output_mode": "minimal"
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/handlers/complex.ts"], "output_mode": "verbose"}'
 ```
-
-## Workflow
-
-1. **Plan first** - Identify all files you need to read/edit
-2. **Batch reads** - Read all needed files in ONE batch_read call
-3. **Plan edits** - Prepare all edits before executing
-4. **Batch edits** - Apply all edits in ONE atomic_multi_edit call
-5. **Verify** - Use batch_read to verify changes if needed
+**Parameters:**
+- `files`: Array of paths
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `max_depth`: Nesting depth for complexity analysis
 
 ---
 

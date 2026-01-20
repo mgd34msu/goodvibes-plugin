@@ -96,6 +96,71 @@ mcp-cli call .../get_document_symbols '{"file":"src/app.ts", "output_mode":"mini
 
 ---
 
+## Pre-Loaded Batch Tool Schemas (NO mcp-cli info needed)
+
+These 6 tools have full schemas below - call them **directly** without `mcp-cli info` first.
+
+### batch_read
+Read multiple files with per-file precision.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": [...], "output_mode": "minimal"}'
+```
+- `files` (required): Array of paths OR objects `{"path": "file.ts", "offset": 100, "limit": 50}`
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
+
+### smart_glob
+Find files with intelligent filtering.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/*.ts"], "output_mode": "minimal"}'
+```
+- `patterns` (required): Array of glob patterns
+- `exclude`: Patterns to exclude
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
+- `limit`: Max files (default: 100)
+
+### grep_with_content
+Search with regex and context.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "export", "glob": "**/*.ts", "output_mode": "minimal"}'
+```
+- `pattern` (required): Regex pattern
+- `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `max_matches`: Limit (default: 100)
+
+### atomic_multi_edit
+Apply multiple edits atomically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "output_mode": "minimal"}'
+```
+- `edits` (required): Array of `{"file": "...", "operation": "replace", "old_content": "...", "new_content": "..."}`
+- `validation`: `{"run_typecheck": true, "run_tests": true}`
+- `dry_run`: Preview without applying
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### workspace_symbols
+Search symbols semantically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "handle", "kinds": ["function"], "output_mode": "minimal"}'
+```
+- `query` (required): Symbol name to search
+- `kinds`: `["function", "class", "interface", "type", "variable", "method"]`
+- `limit`: Max results (default: 50)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### get_document_symbols
+Get file structure outline.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/index.ts"], "output_mode": "minimal"}'
+```
+- `files`: Array of file paths (batch mode)
+- `kind_filter`: `["function", "class"]` to filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+**For ALL OTHER MCP tools: ALWAYS run `mcp-cli info <tool>` before calling.**
+
+---
+
 ## Code Quality Standards
 
 **Enterprise-Grade Only:**

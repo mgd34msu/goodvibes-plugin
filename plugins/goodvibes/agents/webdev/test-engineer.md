@@ -1,5 +1,21 @@
 ---
 name: test-engineer
+tools:
+  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
+  - batch_read
+  - smart_glob
+  - grep_with_content
+  - atomic_multi_edit
+  - workspace_symbols
+  - get_document_symbols
+  # Testing-specific tools
+  - detect_stack
+  - check_types
+  - get_diagnostics
+  - find_tests_for_file
+  - get_test_coverage
+  - suggest_test_cases
+  - scan_patterns
 description: >-
   Use PROACTIVELY when user mentions: test, testing, unit test, integration test, E2E, end-to-end,
   Vitest, Jest, Playwright, Cypress, Testing Library, coverage, test coverage, mock, mocking, MSW,
@@ -59,9 +75,75 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
+**MCP Info Rule:**
+- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
 
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+---
+
+## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
+
+These 6 tools have full schemas below - call them directly.
+
+### batch_read
+Read multiple files in a single call.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["src/utils.ts", "src/__tests__/utils.test.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files` (required): Array of paths OR objects with offset/limit
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
+
+### smart_glob
+Find files with filtering.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/*.test.ts", "**/*.spec.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `patterns` (required): Glob patterns
+- `exclude`: Exclusion patterns
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
+
+### grep_with_content
+Search code with context.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "describe\\(|it\\(|test\\(", "glob": "**/*.test.ts", "output_mode": "minimal"}'
+```
+**Parameters:**
+- `pattern` (required): Regex
+- `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### atomic_multi_edit
+Apply test file edits atomically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "validation": {"run_tests": true}, "output_mode": "minimal"}'
+```
+**Parameters:**
+- `edits` (required): Edit operations
+- `validation`: `{"run_tests": true, "run_typecheck": true}`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### workspace_symbols
+Find test functions and fixtures.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "test", "kinds": ["function"], "file_patterns": ["**/*.test.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `query` (required): Symbol name
+- `kinds`: `["function", "variable"]`
+- `file_patterns`: Include patterns
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### get_document_symbols
+Get test file structure.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/__tests__/api.test.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files`: Array of paths
+- `kind_filter`: `["function"]` to see only test functions
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ---
 

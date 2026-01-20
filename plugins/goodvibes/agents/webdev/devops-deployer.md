@@ -1,5 +1,20 @@
 ---
 name: devops-deployer
+tools:
+  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
+  - batch_read
+  - smart_glob
+  - grep_with_content
+  - atomic_multi_edit
+  - workspace_symbols
+  - get_document_symbols
+  # DevOps-specific tools
+  - detect_stack
+  - check_types
+  - validate_env_complete
+  - get_env_config
+  - analyze_bundle
+  - scan_for_secrets
 description: >-
   Use PROACTIVELY when user mentions: deploy, deployment, hosting, Vercel, Netlify, Cloudflare, AWS,
   Railway, Fly.io, Render, Docker, container, CI/CD, pipeline, GitHub Actions, build, bundle, Vite,
@@ -59,81 +74,75 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
-
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+**MCP Info Rule:**
+- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
 
 ---
 
-## Tool Usage (MANDATORY)
+## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
 
-**Native tools Read, Edit, Glob, Grep are BLOCKED for subagents.**
+These 6 tools have full schemas - call them directly.
 
-You MUST use these MCP tools instead:
-
-### Reading Files -> `batch_read`
+### batch_read
+Read config files in batch.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{
-  "files": [
-    "path/to/file1.ts",
-    {"path": "path/to/file2.ts", "offset": 50, "limit": 30}
-  ],
-  "output_mode": "minimal"
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["package.json", "tsconfig.json", "vercel.json", ".env.example"], "output_mode": "standard"}'
 ```
-- Always batch multiple file reads into ONE call
-- Use `offset`/`limit` for precision (don't read entire files unless needed)
-- Default to `output_mode: "minimal"` unless you need full content
+**Parameters:**
+- `files` (required): Array of config file paths
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
 
-### Editing Files -> `atomic_multi_edit`
+### smart_glob
+Find deployment configs.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
-  "edits": [
-    {"file": "path/to/file.ts", "old_text": "original text", "new_text": "new text"}
-  ],
-  "output_mode": "minimal"
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/Dockerfile*", "**/*.yaml", "**/*.yml", "**/vercel.json"], "output_mode": "minimal"}'
 ```
-- Batch ALL edits into ONE call
-- Plan your edits before executing
-- Use `dry_run: true` to preview changes if unsure
+**Parameters:**
+- `patterns` (required): Glob patterns
+- `exclude`: Exclusions like `["node_modules/**"]`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
 
-### Finding Files -> `smart_glob`
+### grep_with_content
+Find env var usage.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{
-  "patterns": ["**/*.ts"],
-  "exclude": ["**/*.test.ts", "**/node_modules/**"],
-  "output_mode": "minimal",
-  "limit": 50
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "process\\.env\\.|import\\.meta\\.env", "glob": "**/*.ts", "output_mode": "minimal"}'
 ```
+**Parameters:**
+- `pattern` (required): Regex
+- `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
-### Searching Code -> `grep_with_content`
+### atomic_multi_edit
+Update deployment configs atomically.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{
-  "pattern": "functionName",
-  "glob": "**/*.ts",
-  "output_mode": "minimal",
-  "max_matches": 50
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "validation": {"run_build": true}, "output_mode": "minimal"}'
 ```
+**Parameters:**
+- `edits` (required): Config edits
+- `validation`: `{"run_build": true}`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
-### Searching Symbols -> `workspace_symbols`
+### workspace_symbols
+Find exports for bundle analysis.
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{
-  "query": "handleSubmit",
-  "kinds": ["function", "method"],
-  "output_mode": "minimal"
-}'
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "", "kinds": ["function", "class"], "file_patterns": ["src/**"], "output_mode": "minimal"}'
 ```
+**Parameters:**
+- `query` (required): Symbol name
+- `kinds`: Symbol types
+- `file_patterns`: Include patterns
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
-## Workflow
-
-1. **Plan first** - Identify all files you need to read/edit
-2. **Batch reads** - Read all needed files in ONE batch_read call
-3. **Plan edits** - Prepare all edits before executing
-4. **Batch edits** - Apply all edits in ONE atomic_multi_edit call
-5. **Verify** - Use batch_read to verify changes if needed
+### get_document_symbols
+Analyze entry points.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/index.ts", "src/main.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files`: Entry point paths
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `kind_filter`: `["function", "variable"]`
 
 ---
 

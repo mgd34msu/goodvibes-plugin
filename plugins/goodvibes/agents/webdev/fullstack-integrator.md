@@ -1,5 +1,22 @@
 ---
 name: fullstack-integrator
+tools:
+  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
+  - batch_read
+  - smart_glob
+  - grep_with_content
+  - atomic_multi_edit
+  - workspace_symbols
+  - get_document_symbols
+  # Fullstack-specific tools
+  - detect_stack
+  - check_types
+  - get_diagnostics
+  - trace_component_state
+  - analyze_render_triggers
+  - scan_patterns
+  - find_tests_for_file
+  - get_api_routes
 description: >-
   Use PROACTIVELY when user mentions: state, state management, Zustand, Redux, Jotai, TanStack
   Query, React Query, SWR, cache, caching, fetch, data fetching, mutation, optimistic, loading
@@ -60,9 +77,75 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
+**MCP Info Rule:**
+- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
 
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+---
+
+## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
+
+These 6 tools have full schemas below - call them directly.
+
+### batch_read
+Read multiple files in a single call with per-file precision.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": [...], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files` (required): Array of paths OR objects `{"path": "file.ts", "offset": 100, "limit": 50}`
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
+
+### smart_glob
+Find files with intelligent filtering.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/*.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `patterns` (required): Array of glob patterns
+- `exclude`: Patterns to exclude
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
+
+### grep_with_content
+Search with regex and configurable context.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "useState", "glob": "**/*.tsx", "output_mode": "minimal"}'
+```
+**Parameters:**
+- `pattern` (required): Regex pattern
+- `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `max_matches`: Limit (default: 100)
+
+### atomic_multi_edit
+Apply multiple edits atomically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `edits` (required): Array of edit operations
+- `validation`: `{"run_typecheck": true}`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### workspace_symbols
+Search symbols semantically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "use", "kinds": ["function"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `query` (required): Symbol name
+- `kinds`: `["function", "class", "interface", "type"]`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### get_document_symbols
+Get file structure outline.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/hooks/useAuth.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files`: Array of paths
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `kind_filter`: `["function", "class"]`
 
 ---
 

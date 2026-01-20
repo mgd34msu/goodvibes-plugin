@@ -1,5 +1,19 @@
 ---
 name: content-platform
+tools:
+  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
+  - batch_read
+  - smart_glob
+  - grep_with_content
+  - atomic_multi_edit
+  - workspace_symbols
+  - get_document_symbols
+  # Content platform-specific tools
+  - detect_stack
+  - check_types
+  - get_diagnostics
+  - get_api_routes
+  - scan_patterns
 description: >-
   Use PROACTIVELY when user mentions: CMS, content management, Sanity, Contentful, Strapi, Payload,
   headless CMS, blog, posts, articles, content, MDX, markdown, rich text, editor, email, send email,
@@ -60,7 +74,75 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
+**MCP Info Rule:**
+- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
+
+---
+
+## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
+
+These 6 tools have full schemas - call them directly.
+
+### batch_read
+Read multiple content/config files.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["sanity.config.ts", "schemas/post.ts", "schemas/author.ts"], "output_mode": "standard"}'
+```
+**Parameters:**
+- `files` (required): Array of paths
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
+
+### smart_glob
+Find content schemas and configs.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/schemas/**/*.ts", "**/*.schema.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `patterns` (required): Glob patterns
+- `exclude`: Exclusions
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
+
+### grep_with_content
+Find content type usage.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "defineType|defineField", "glob": "**/*.ts", "output_mode": "minimal"}'
+```
+**Parameters:**
+- `pattern` (required): Regex
+- `glob`: File filter
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### atomic_multi_edit
+Update content schemas atomically.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "validation": {"run_typecheck": true}, "output_mode": "minimal"}'
+```
+**Parameters:**
+- `edits` (required): Schema edits
+- `validation`: `{"run_typecheck": true}`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### workspace_symbols
+Find content type definitions.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "Schema", "kinds": ["type", "interface"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `query` (required): Symbol name
+- `kinds`: `["type", "interface", "variable"]`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### get_document_symbols
+Analyze schema file structure.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["schemas/index.ts"], "output_mode": "standard"}'
+```
+**Parameters:**
+- `files`: Schema file paths
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+---
 
 Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
 

@@ -1,5 +1,25 @@
 ---
 name: frontend-architect
+tools:
+  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
+  - batch_read
+  - smart_glob
+  - grep_with_content
+  - atomic_multi_edit
+  - workspace_symbols
+  - get_document_symbols
+  # Frontend-specific tools
+  - detect_stack
+  - check_types
+  - get_diagnostics
+  - get_react_component_tree
+  - analyze_stacking_context
+  - analyze_responsive_breakpoints
+  - analyze_tailwind_conflicts
+  - get_accessibility_tree
+  - analyze_layout_hierarchy
+  - scan_patterns
+  - find_tests_for_file
 description: >-
   Use PROACTIVELY when user mentions: UI, component, React, Vue, Svelte, SolidJS, Next.js, Nuxt,
   Remix, Astro, SvelteKit, frontend, front-end, client-side, page, layout, navigation, nav, header,
@@ -60,9 +80,80 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
+**MCP Info Rule:**
+- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
+- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
 
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+---
+
+## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
+
+These 6 tools have full schemas below - call them directly.
+
+### batch_read
+Read multiple files in a single call with per-file precision.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": [...], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files` (required): Array of paths OR objects `{"path": "file.ts", "offset": 100, "limit": 50}`
+- `output_mode`: `"minimal"` | `"standard"` | `"verbose"` (default: standard)
+
+### smart_glob
+Find files with intelligent filtering.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/*.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `patterns` (required): Array of glob patterns
+- `exclude`: Array of patterns to exclude
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
+- `limit`: Max files (default: 100)
+- `preview`: `{"enabled": true, "lines": 10}` for content preview
+
+### grep_with_content
+Search with regex and configurable context.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "export function", "glob": "**/*.ts", "output_mode": "minimal"}'
+```
+**Parameters:**
+- `pattern` (required): Regex pattern
+- `glob`: File filter pattern
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `max_matches`: Limit results (default: 100)
+- `context_before` / `context_after`: Lines of context
+
+### atomic_multi_edit
+Apply multiple edits atomically with rollback.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `edits` (required): Array of `{"file": "...", "operation": "replace", "old_content": "...", "new_content": "..."}`
+- `validation`: `{"run_typecheck": true}`
+- `dry_run`: Preview without applying
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### workspace_symbols
+Search symbols semantically across workspace.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "handle", "kinds": ["function"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `query` (required): Symbol name to search
+- `kinds`: Array like `["function", "class", "interface"]`
+- `limit`: Max results (default: 50)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### get_document_symbols
+Get structural outline of files.
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/index.ts"], "output_mode": "minimal"}'
+```
+**Parameters:**
+- `files`: Array of file paths
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+- `kind_filter`: Array like `["function", "class"]`
 
 ---
 
