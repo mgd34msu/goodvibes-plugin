@@ -60,3 +60,23 @@ export type {
   MemoryConfig,
   MemorySearchOptions,
 } from "./memory.js";
+
+// Telemetry System
+export { Telemetry } from "./telemetry.js";
+export type {
+  Span,
+  SpanEvent,
+  MetricCounter,
+  MetricHistogram,
+  PerformanceMetrics,
+  TelemetryConfig,
+} from "./telemetry.js";
+
+// Mode System
+export { ModeSystem } from "./mode-system.js";
+export type {
+  OperatingMode,
+  ModeBehavior,
+  ModeConfig,
+  PreservedState,
+} from "./mode-system.js";
