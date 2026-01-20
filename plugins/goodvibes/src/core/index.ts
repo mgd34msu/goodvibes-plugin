@@ -48,3 +48,14 @@ export type {
   AgentPoolStats,
   AgentCallback,
 } from "./agent-pool.js";
+
+// Memory System
+export { Memory } from "./memory.js";
+export type {
+  Decision,
+  Pattern,
+  Failure,
+  AttemptedFix,
+  MemoryConfig,
+  MemorySearchOptions,
+} from "./memory.js";
