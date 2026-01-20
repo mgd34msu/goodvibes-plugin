@@ -127,6 +127,7 @@ function toDocumentSymbols(parsed: ParsedSymbol[]): DocumentSymbol[] {
     name: p.name,
     kind: p.kind,
     line: p.line,
+    column: 0, // Column tracking not implemented in regex parsing
     endLine: p.endLine,
     signature: p.signature,
     children: p.children.length > 0 ? toDocumentSymbols(p.children) : undefined,
