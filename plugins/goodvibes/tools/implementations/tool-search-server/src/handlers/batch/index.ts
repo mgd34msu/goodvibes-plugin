@@ -21,8 +21,17 @@ export type {
 
 // Smart Glob
 export { handleSmartGlob } from './smart-glob.js';
-export type { SmartGlobArgs, OutputMode as SmartGlobOutputMode } from './smart-glob.js';
+export type {
+  SmartGlobArgs,
+  OutputMode as SmartGlobOutputMode,
+  PreviewConfig,
+  FilePreview,
+} from './smart-glob.js';
 
 // Grep With Content
 export { handleGrepWithContent } from './grep-with-content.js';
-export type { GrepWithContentArgs, OutputMode as GrepWithContentOutputMode } from './grep-with-content.js';
+export type {
+  GrepWithContentArgs,
+  OutputMode as GrepWithContentOutputMode,
+  LineRange,
+} from './grep-with-content.js';

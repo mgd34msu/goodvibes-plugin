@@ -109,6 +109,7 @@ export type {
   GetSymbolInfoArgs,
   GetSignatureHelpArgs,
   GetDocumentSymbolsArgs,
+  LineRange,
   GetDiagnosticsArgs,
   FindDeadCodeArgs,
   GetApiSurfaceArgs,
@@ -318,6 +319,8 @@ export type {
   FileReadRange,
   FileReadResult,
   SmartGlobArgs,
+  PreviewConfig,
+  FilePreview,
   GrepWithContentArgs,
 } from './batch/index.js';
 

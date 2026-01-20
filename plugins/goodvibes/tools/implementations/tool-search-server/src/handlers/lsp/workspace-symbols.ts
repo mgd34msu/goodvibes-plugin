@@ -28,6 +28,9 @@ import {
 /** Output mode for controlling response verbosity */
 export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
 
+/** Valid symbol kind values */
+export type SymbolKind = 'all' | 'class' | 'interface' | 'function' | 'variable' | 'type' | 'enum' | 'method' | 'property' | 'module';
+
 /**
  * Arguments for the workspace_symbols tool.
  */
@@ -35,13 +38,19 @@ export interface WorkspaceSymbolsArgs {
   /** Symbol name or partial name to search for */
   query: string;
   /** Filter by symbol kind (default: all) */
-  kind?: 'all' | 'class' | 'interface' | 'function' | 'variable' | 'type' | 'enum' | 'method' | 'property' | 'module';
+  kind?: SymbolKind;
   /** Maximum number of results (default: 50, max: 200) */
   limit?: number;
   /** How to match the query (default: substring) */
   match_type?: 'exact' | 'prefix' | 'substring';
   /** Output verbosity (default: standard) */
   output_mode?: OutputMode;
+  /** Search multiple kinds at once (overrides singular 'kind' if both provided) */
+  kinds?: SymbolKind[];
+  /** Glob patterns to filter files (e.g., src/utils/**, src/helpers/**) */
+  file_patterns?: string[];
+  /** Glob patterns to exclude files (e.g., **\/*.test.ts, **\/*.spec.ts) */
+  exclude_patterns?: string[];
 }
 
 /**
@@ -76,6 +85,8 @@ interface WorkspaceSymbolsResult {
   count: number;
   /** Whether results were truncated due to limit */
   truncated: boolean;
+  /** Number of unique files searched (when file filtering is applied) */
+  files_searched?: number;
 }
 
 // =============================================================================
@@ -159,6 +170,139 @@ function getMatchKind(name: string, query: string): 'exact' | 'prefix' | 'substr
   return 'substring';
 }
 
+/**
+ * Get combined kind filter for multiple kinds.
+ * Returns all ScriptElementKind values that match any of the specified kinds.
+ */
+function getMultiKindFilter(kinds: SymbolKind[]): ts.ScriptElementKind[] | null {
+  // If 'all' is in the list, return null (no filtering)
+  if (kinds.includes('all')) return null;
+
+  const combined: ts.ScriptElementKind[] = [];
+  for (const kind of kinds) {
+    const filter = getKindFilter(kind);
+    if (filter) {
+      combined.push(...filter);
+    }
+  }
+
+  // Return null if no valid kinds, deduplicate the combined array
+  return combined.length > 0 ? [...new Set(combined)] : null;
+}
+
+// =============================================================================
+// Glob Pattern Matching
+// =============================================================================
+
+/**
+ * Escape special regex characters in a string.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Convert a glob pattern to a regex.
+ * Supports:
+ * - * matches any characters except /
+ * - ** matches any characters including /
+ * - ? matches single character
+ * - [abc] character class
+ * - {a,b} alternation
+ */
+function globToRegex(pattern: string): RegExp {
+  let regex = '';
+  let i = 0;
+
+  while (i < pattern.length) {
+    const char = pattern[i];
+
+    if (char === '*') {
+      if (pattern[i + 1] === '*') {
+        // ** matches any path
+        if (pattern[i + 2] === '/') {
+          regex += '(?:.*/)?';
+          i += 3;
+        } else {
+          regex += '.*';
+          i += 2;
+        }
+      } else {
+        // * matches any characters except /
+        regex += '[^/]*';
+        i++;
+      }
+    } else if (char === '?') {
+      regex += '[^/]';
+      i++;
+    } else if (char === '[') {
+      // Character class
+      const endBracket = pattern.indexOf(']', i);
+      if (endBracket === -1) {
+        regex += '\\[';
+        i++;
+      } else {
+        regex += pattern.slice(i, endBracket + 1);
+        i = endBracket + 1;
+      }
+    } else if (char === '{') {
+      // Alternation
+      const endBrace = pattern.indexOf('}', i);
+      if (endBrace === -1) {
+        regex += '\\{';
+        i++;
+      } else {
+        const options = pattern.slice(i + 1, endBrace).split(',');
+        regex += '(?:' + options.map(o => escapeRegex(o)).join('|') + ')';
+        i = endBrace + 1;
+      }
+    } else if ('.+^$|\\()'.includes(char)) {
+      // Escape regex special characters
+      regex += '\\' + char;
+      i++;
+    } else {
+      regex += char;
+      i++;
+    }
+  }
+
+  return new RegExp('^' + regex + '$');
+}
+
+/**
+ * Check if a file path matches any of the include patterns.
+ * If no include patterns are provided, returns true (include all).
+ */
+function matchesIncludePatterns(relativePath: string, includePatterns: RegExp[]): boolean {
+  if (includePatterns.length === 0) return true;
+  return includePatterns.some(pattern => pattern.test(relativePath));
+}
+
+/**
+ * Check if a file path matches any of the exclude patterns.
+ */
+function matchesExcludePatterns(relativePath: string, excludePatterns: RegExp[]): boolean {
+  if (excludePatterns.length === 0) return false;
+  return excludePatterns.some(pattern => pattern.test(relativePath));
+}
+
+/**
+ * Filter a file path based on include and exclude patterns.
+ * Returns true if the file should be included in results.
+ */
+function shouldIncludeFile(
+  relativePath: string,
+  includePatterns: RegExp[],
+  excludePatterns: RegExp[]
+): boolean {
+  // First check exclusions (exclusions take precedence)
+  if (matchesExcludePatterns(relativePath, excludePatterns)) {
+    return false;
+  }
+  // Then check inclusions
+  return matchesIncludePatterns(relativePath, includePatterns);
+}
+
 // =============================================================================
 // File Discovery
 // =============================================================================
@@ -231,10 +375,23 @@ export async function handleWorkspaceSymbols(
     }
 
     const query = args.query.trim();
-    const kindFilter = args.kind ?? 'all';
     const matchType = args.match_type ?? 'substring';
     const limit = Math.min(Math.max(1, args.limit ?? DEFAULT_LIMIT), MAX_LIMIT);
     const outputMode = args.output_mode ?? 'standard';
+
+    // Determine kind filter: 'kinds' array takes precedence over singular 'kind'
+    let kindFilterValues: ts.ScriptElementKind[] | null = null;
+    if (args.kinds && args.kinds.length > 0) {
+      kindFilterValues = getMultiKindFilter(args.kinds);
+    } else {
+      const kindFilter = args.kind ?? 'all';
+      kindFilterValues = getKindFilter(kindFilter);
+    }
+
+    // Prepare file pattern filters
+    const includePatterns = (args.file_patterns ?? []).map(globToRegex);
+    const excludePatterns = (args.exclude_patterns ?? []).map(globToRegex);
+    const hasFileFilters = includePatterns.length > 0 || excludePatterns.length > 0;
 
     // Find a source file to initialize the language service
     // We need at least one file to get the service started
@@ -249,9 +406,11 @@ export async function handleWorkspaceSymbols(
 
     // Use getNavigateToItems to search for symbols
     // This searches across all files known to the language service
+    // Request more results when filtering to ensure we get enough after filtering
+    const requestLimit = hasFileFilters ? MAX_LIMIT * 4 : MAX_LIMIT * 2;
     const navigateToItems = service.getNavigateToItems(
       query,
-      MAX_LIMIT * 2, // Request more to account for filtering
+      requestLimit,
       undefined, // Search all files
       false // Don't exclude declaration files
     );
@@ -262,15 +421,17 @@ export async function handleWorkspaceSymbols(
         query,
         count: 0,
         truncated: false,
+        ...(hasFileFilters ? { files_searched: 0 } : {}),
       };
       return createSuccessResponse(result);
     }
 
-    // Get kind filter
-    const kindFilterValues = getKindFilter(kindFilter);
+    // Track unique files for files_searched count
+    const filesSearched = new Set<string>();
 
     // Convert and filter results
     const symbols: WorkspaceSymbol[] = [];
+    let totalMatchingBeforeLimit = 0;
 
     for (const item of navigateToItems) {
       // Apply kind filter
@@ -288,6 +449,23 @@ export async function handleWorkspaceSymbols(
         continue;
       }
 
+      // Apply file pattern filtering
+      const relativePath = makeRelativePath(item.fileName, PROJECT_ROOT);
+      if (hasFileFilters && !shouldIncludeFile(relativePath, includePatterns, excludePatterns)) {
+        continue;
+      }
+
+      // Track file for files_searched count
+      filesSearched.add(relativePath);
+
+      // Count total matching (for truncation calculation)
+      totalMatchingBeforeLimit++;
+
+      // Stop collecting if we have enough results (but continue counting for truncation)
+      if (symbols.length >= limit) {
+        continue;
+      }
+
       // Get line and column from text span
       const sourceFile = program.getSourceFile(item.fileName);
       let line = 1;
@@ -302,17 +480,12 @@ export async function handleWorkspaceSymbols(
       symbols.push({
         name: item.name,
         kind: getSymbolKind(item.kind),
-        file: makeRelativePath(item.fileName, PROJECT_ROOT),
+        file: relativePath,
         line,
         column,
         container_name: item.containerName ?? '',
         match_kind: itemMatchKind,
       });
-
-      // Stop if we have enough results
-      if (symbols.length >= limit) {
-        break;
-      }
     }
 
     // Sort results: exact matches first, then prefix, then substring
@@ -326,7 +499,8 @@ export async function handleWorkspaceSymbols(
       return a.name.localeCompare(b.name);
     });
 
-    const truncated = navigateToItems.length > limit;
+    const truncated = totalMatchingBeforeLimit > limit;
+    const filesSearchedCount = filesSearched.size;
 
     // Format output based on output_mode
     if (outputMode === 'count_only') {
@@ -334,6 +508,7 @@ export async function handleWorkspaceSymbols(
         query,
         count: symbols.length,
         truncated,
+        ...(hasFileFilters ? { files_searched: filesSearchedCount } : {}),
       });
     }
 
@@ -343,6 +518,7 @@ export async function handleWorkspaceSymbols(
         query,
         count: symbols.length,
         truncated,
+        ...(hasFileFilters ? { files_searched: filesSearchedCount } : {}),
       });
     }
 
@@ -353,6 +529,7 @@ export async function handleWorkspaceSymbols(
         query,
         count: symbols.length,
         truncated,
+        ...(hasFileFilters ? { files_searched: filesSearchedCount } : {}),
       };
       return createSuccessResponse(result);
     }
@@ -371,6 +548,7 @@ export async function handleWorkspaceSymbols(
       query,
       count: symbols.length,
       truncated,
+      ...(hasFileFilters ? { files_searched: filesSearchedCount } : {}),
     };
 
     return createSuccessResponse(result);

@@ -66,32 +66,93 @@ Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete
 
 ---
 
-## Batch Processing (MANDATORY)
+## Tool Usage (MANDATORY)
+
+**Native tools Read, Edit, Glob, Grep are BLOCKED for subagents.**
+
+You MUST use these MCP tools instead:
+
+### Reading Files -> `batch_read`
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{
+  "files": [
+    "path/to/file1.tsx",
+    {"path": "path/to/file2.tsx", "offset": 50, "limit": 30}
+  ],
+  "output_mode": "minimal"
+}'
+```
+- Always batch multiple file reads into ONE call
+- Use `offset`/`limit` for precision (don't read entire files unless needed)
+- Default to `output_mode: "minimal"` unless you need full content
+
+### Editing Files -> `atomic_multi_edit`
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
+  "edits": [
+    {"file": "path/to/file.tsx", "old_text": "original text", "new_text": "new text"}
+  ],
+  "output_mode": "minimal"
+}'
+```
+- Batch ALL edits into ONE call
+- Plan your edits before executing
+- Use `dry_run: true` to preview changes if unsure
+
+### Finding Files -> `smart_glob`
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{
+  "patterns": ["**/*.tsx", "**/*.css"],
+  "exclude": ["**/*.test.tsx", "**/node_modules/**"],
+  "output_mode": "minimal",
+  "limit": 50
+}'
+```
+
+### Searching Code -> `grep_with_content`
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{
+  "pattern": "className",
+  "glob": "**/*.tsx",
+  "output_mode": "minimal",
+  "max_matches": 50
+}'
+```
+
+### Searching Symbols -> `workspace_symbols`
+```bash
+mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{
+  "query": "Button",
+  "kinds": ["function", "class"],
+  "output_mode": "minimal"
+}'
+```
+
+---
+
+## Batch Processing Workflow (MANDATORY)
 
 **Before executing multiple similar operations, STOP and batch.**
 
 | Instead of | Do this | Saves |
 |------------|---------|-------|
-| Edit, Edit, Edit (3+ files) | `atomic_multi_edit` with all edits | ~90% tokens |
-| Read, Read, Read (exploring) | `batch_read` or `get_document_symbols` first | ~80% tokens |
-| Grep, Grep, Grep (searching) | `workspace_symbols` for code symbols | ~85% tokens |
+| Read, Read, Read | ONE `batch_read` call | ~80% tokens |
+| Edit, Edit, Edit | ONE `atomic_multi_edit` call | ~90% tokens |
+| Glob, Glob, Glob | ONE `smart_glob` with multiple patterns | ~85% tokens |
+| Grep, Grep, Grep | `workspace_symbols` for code symbols | ~85% tokens |
+
+**Workflow:**
+1. **Plan first** - Identify all files you need to read/edit
+2. **Batch reads** - Read all needed files in ONE `batch_read` call
+3. **Plan edits** - Prepare all edits before executing
+4. **Batch edits** - Apply all edits in ONE `atomic_multi_edit` call
+5. **Verify** - Use `batch_read` to verify changes if needed
 
 **Self-check before each tool call:**
 > "Can I combine this with other pending operations?"
-> "Am I using the most efficient tool for this task?"
+> "Am I using the most efficient MCP tool for this task?"
 
 **Always use `output_mode: "minimal"` for MCP tools unless debugging.**
-
-```bash
-# Batch multiple file edits
-mcp-cli call .../atomic_multi_edit '{"edits":[...], "output_mode":"minimal"}'
-
-# Read multiple files at once
-mcp-cli call .../batch_read '{"files":["a.ts","b.ts"], "output_mode":"minimal"}'
-
-# Search symbols semantically
-mcp-cli call .../workspace_symbols '{"query":"Button", "output_mode":"minimal"}'
-```
 
 ---
 

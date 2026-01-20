@@ -72,7 +72,7 @@ export type { GetSignatureHelpArgs } from './signature-help.js';
 
 // Document Symbols
 export { handleGetDocumentSymbols } from './document-symbols.js';
-export type { GetDocumentSymbolsArgs } from './document-symbols.js';
+export type { GetDocumentSymbolsArgs, LineRange } from './document-symbols.js';
 
 // Diagnostics
 export { handleGetDiagnostics } from './diagnostics.js';

@@ -131,7 +131,7 @@ class Calculator {
 }
 `);
 
-      const result = await handleGetDocumentSymbols({ file });
+      const result = await handleGetDocumentSymbols({ file, output_mode: 'verbose' });
       const data = JSON.parse(result.content[0].text);
 
       const calc = data.symbols.find((s: { name: string }) => s.name === 'Calculator');
@@ -152,7 +152,7 @@ class Person {
 }
 `);
 
-      const result = await handleGetDocumentSymbols({ file });
+      const result = await handleGetDocumentSymbols({ file, output_mode: 'verbose' });
       const data = JSON.parse(result.content[0].text);
 
       const person = data.symbols.find((s: { name: string }) => s.name === 'Person');
@@ -169,7 +169,7 @@ class Foo {
 }
 `);
 
-      const result = await handleGetDocumentSymbols({ file });
+      const result = await handleGetDocumentSymbols({ file, output_mode: 'verbose' });
       const data = JSON.parse(result.content[0].text);
 
       const foo = data.symbols.find((s: { name: string }) => s.name === 'Foo');
@@ -223,7 +223,7 @@ interface Config {
 }
 `);
 
-      const result = await handleGetDocumentSymbols({ file });
+      const result = await handleGetDocumentSymbols({ file, output_mode: 'verbose' });
       const data = JSON.parse(result.content[0].text);
 
       const config = data.symbols.find((s: { name: string }) => s.name === 'Config');
@@ -305,7 +305,7 @@ enum Direction {
 }
 `);
 
-      const result = await handleGetDocumentSymbols({ file });
+      const result = await handleGetDocumentSymbols({ file, output_mode: 'verbose' });
       const data = JSON.parse(result.content[0].text);
 
       const direction = data.symbols.find((s: { name: string }) => s.name === 'Direction');
@@ -720,7 +720,8 @@ const handler = function() { return 1; };
         const data = JSON.parse(result.content[0].text);
 
         expect(result.isError).toBe(true);
-        expect(data.error).toContain('Failed to get document symbols');
+        // The error is caught in processFile and returned directly
+        expect(data.error).toContain('Service initialization failed');
       } finally {
         languageServiceManager.getServiceForFile = originalGetServiceForFile;
       }
@@ -929,6 +930,588 @@ const myArrow = () => {};
       expect(allKinds).toContain('type');
       expect(allKinds).toContain('enum');
       expect(allKinds).toContain('function');
+    });
+  });
+
+  // ==========================================================================
+  // NEW FEATURES: Filtering, Batch Mode, Depth Control
+  // ==========================================================================
+
+  describe('kind_filter parameter', () => {
+    test('filters to only return functions', async () => {
+      const file = path.join(tempDir, 'mixed.ts');
+      fs.writeFileSync(file, `
+function add(a: number, b: number) { return a + b; }
+class Calculator {}
+interface Config {}
+function multiply(a: number, b: number) { return a * b; }
+const PI = 3.14;
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['function'],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(2);
+      expect(data.symbols.every((s: { kind: string }) => s.kind === 'function')).toBe(true);
+    });
+
+    test('filters with case-insensitive matching', async () => {
+      const file = path.join(tempDir, 'case-test.ts');
+      fs.writeFileSync(file, `
+class MyClass {}
+interface MyInterface {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['CLASS', 'Interface'],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(2);
+    });
+
+    test('filters with multiple kinds', async () => {
+      const file = path.join(tempDir, 'multi-kind.ts');
+      fs.writeFileSync(file, `
+function foo() {}
+class Bar {}
+interface Baz {}
+type Qux = string;
+enum Status { Active }
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['function', 'interface', 'type'],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(3);
+      const kinds = data.symbols.map((s: { kind: string }) => s.kind);
+      expect(kinds).toContain('function');
+      expect(kinds).toContain('interface');
+      expect(kinds).toContain('type');
+    });
+
+    test('returns empty array when no symbols match filter', async () => {
+      const file = path.join(tempDir, 'no-match.ts');
+      fs.writeFileSync(file, `
+const x = 1;
+let y = 2;
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['class', 'interface'],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols).toEqual([]);
+      expect(data.count).toBe(0);
+    });
+
+    test('handles kind aliases (func -> function)', async () => {
+      const file = path.join(tempDir, 'alias.ts');
+      fs.writeFileSync(file, `
+function myFunc() {}
+class MyClass {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['func', 'fn'],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(1);
+      expect(data.symbols[0].kind).toBe('function');
+    });
+  });
+
+  describe('line_range parameter', () => {
+    test('filters symbols by start line', async () => {
+      const file = path.join(tempDir, 'line-range.ts');
+      fs.writeFileSync(file, `function first() {}
+
+function second() {}
+
+function third() {}
+
+function fourth() {}
+`);
+
+      // Get baseline to check actual line numbers
+      const baseline = await handleGetDocumentSymbols({ file });
+      const baselineData = JSON.parse(baseline.content[0].text);
+
+      // Find line of "third" function
+      const thirdSymbol = baselineData.symbols.find((s: { name: string }) => s.name === 'third');
+      expect(thirdSymbol).toBeDefined();
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        line_range: { start: thirdSymbol.line },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(2); // third and fourth
+      expect(data.symbols.some((s: { name: string }) => s.name === 'third')).toBe(true);
+      expect(data.symbols.some((s: { name: string }) => s.name === 'fourth')).toBe(true);
+    });
+
+    test('filters symbols by end line', async () => {
+      const file = path.join(tempDir, 'line-range-end.ts');
+      fs.writeFileSync(file, `function first() {}
+function second() {}
+function third() {}
+function fourth() {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        line_range: { end: 2 },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(2); // first and second
+    });
+
+    test('filters symbols by both start and end', async () => {
+      const file = path.join(tempDir, 'line-range-both.ts');
+      fs.writeFileSync(file, `function first() {}
+function second() {}
+function third() {}
+function fourth() {}
+function fifth() {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        line_range: { start: 2, end: 4 },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(3); // second, third, fourth
+    });
+
+    test('returns empty when line range matches no symbols', async () => {
+      const file = path.join(tempDir, 'no-line-match.ts');
+      fs.writeFileSync(file, `function first() {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        line_range: { start: 100, end: 200 },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols).toEqual([]);
+    });
+  });
+
+  describe('max_depth parameter', () => {
+    test('limits to top-level only with max_depth: 1', async () => {
+      const file = path.join(tempDir, 'depth-test.ts');
+      fs.writeFileSync(file, `
+class Calculator {
+  add(a: number, b: number) { return a + b; }
+  subtract(a: number, b: number) { return a - b; }
+}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        max_depth: 1,
+        output_mode: 'verbose',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(1);
+      expect(data.symbols[0].name).toBe('Calculator');
+      expect(data.symbols[0].children).toEqual([]);
+    });
+
+    test('allows one level of nesting with max_depth: 2', async () => {
+      const file = path.join(tempDir, 'depth-2.ts');
+      fs.writeFileSync(file, `
+namespace Outer {
+  export class Inner {
+    method() {}
+  }
+}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        max_depth: 2,
+        output_mode: 'verbose',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      const outer = data.symbols.find((s: { name: string }) => s.name === 'Outer');
+      expect(outer).toBeDefined();
+      expect(outer.children.length).toBeGreaterThan(0);
+      // Children should have empty children arrays due to depth limit
+      for (const child of outer.children) {
+        expect(child.children).toEqual([]);
+      }
+    });
+
+    test('preserves full tree without max_depth', async () => {
+      const file = path.join(tempDir, 'full-depth.ts');
+      fs.writeFileSync(file, `
+class Parent {
+  child() {
+    // Method has no children symbols
+  }
+}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        output_mode: 'verbose',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      const parent = data.symbols.find((s: { name: string }) => s.name === 'Parent');
+      expect(parent).toBeDefined();
+      expect(parent.children.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('batch mode (files parameter)', () => {
+    test('processes multiple files', async () => {
+      const file1 = path.join(tempDir, 'batch1.ts');
+      const file2 = path.join(tempDir, 'batch2.ts');
+      fs.writeFileSync(file1, 'function foo() {}');
+      fs.writeFileSync(file2, 'function bar() {}');
+
+      const result = await handleGetDocumentSymbols({
+        files: [file1, file2],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.total_files).toBe(2);
+      expect(data.total_symbols).toBe(2);
+      expect(data.results.length).toBe(2);
+    });
+
+    test('combines file and files parameters', async () => {
+      const file1 = path.join(tempDir, 'combo1.ts');
+      const file2 = path.join(tempDir, 'combo2.ts');
+      const file3 = path.join(tempDir, 'combo3.ts');
+      fs.writeFileSync(file1, 'const a = 1;');
+      fs.writeFileSync(file2, 'const b = 2;');
+      fs.writeFileSync(file3, 'const c = 3;');
+
+      const result = await handleGetDocumentSymbols({
+        file: file1,
+        files: [file2, file3],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.total_files).toBe(3);
+    });
+
+    test('handles errors in individual files without failing entire batch', async () => {
+      const file1 = path.join(tempDir, 'good.ts');
+      const file2 = path.join(tempDir, 'nonexistent.ts');
+      fs.writeFileSync(file1, 'function good() {}');
+
+      const result = await handleGetDocumentSymbols({
+        files: [file1, file2],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.total_files).toBe(2);
+
+      const goodResult = data.results.find((r: { file: string }) => r.file.includes('good'));
+      const badResult = data.results.find((r: { file: string }) => r.file.includes('nonexistent'));
+
+      expect(goodResult.count).toBe(1);
+      expect(badResult.error).toBeDefined();
+    });
+
+    test('applies filters to all files in batch', async () => {
+      const file1 = path.join(tempDir, 'filter1.ts');
+      const file2 = path.join(tempDir, 'filter2.ts');
+      fs.writeFileSync(file1, `
+function foo() {}
+class Bar {}
+`);
+      fs.writeFileSync(file2, `
+function baz() {}
+interface Qux {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        files: [file1, file2],
+        kind_filter: ['function'],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.total_symbols).toBe(2);
+
+      for (const fileResult of data.results) {
+        for (const symbol of fileResult.symbols) {
+          expect(symbol.kind).toBe('function');
+        }
+      }
+    });
+
+    test('batch mode with count_only output', async () => {
+      const file1 = path.join(tempDir, 'count1.ts');
+      const file2 = path.join(tempDir, 'count2.ts');
+      fs.writeFileSync(file1, 'function a() {} function b() {}');
+      fs.writeFileSync(file2, 'class C {} interface I {}');
+
+      const result = await handleGetDocumentSymbols({
+        files: [file1, file2],
+        output_mode: 'count_only',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.total_files).toBe(2);
+
+      for (const fileResult of data.results) {
+        expect(fileResult.count).toBeDefined();
+        expect(fileResult.symbols).toBeUndefined();
+      }
+    });
+
+    test('batch mode with minimal output', async () => {
+      const file1 = path.join(tempDir, 'min1.ts');
+      const file2 = path.join(tempDir, 'min2.ts');
+      fs.writeFileSync(file1, 'function test() {}');
+      fs.writeFileSync(file2, 'class Example {}');
+
+      const result = await handleGetDocumentSymbols({
+        files: [file1, file2],
+        output_mode: 'minimal',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      // Batch mode returns batch format with multiple files
+      expect(result.isError).toBeFalsy();
+      expect(data.total_files).toBe(2);
+
+      const symbols = data.results[0].symbols;
+      expect(symbols[0]).toHaveProperty('name');
+      expect(symbols[0]).toHaveProperty('kind');
+      expect(symbols[0]).not.toHaveProperty('line');
+    });
+  });
+
+  describe('combined filters', () => {
+    test('applies kind_filter and line_range together', async () => {
+      const file = path.join(tempDir, 'combined.ts');
+      fs.writeFileSync(file, `function first() {}
+class MyClass {}
+function second() {}
+interface MyInterface {}
+function third() {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['function'],
+        line_range: { start: 2 },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Should only return functions starting from line 2
+      expect(data.symbols.every((s: { kind: string }) => s.kind === 'function')).toBe(true);
+      expect(data.symbols.every((s: { line: number }) => s.line >= 2)).toBe(true);
+    });
+
+    test('applies kind_filter and max_depth together', async () => {
+      const file = path.join(tempDir, 'kind-depth.ts');
+      fs.writeFileSync(file, `
+class Parent {
+  childMethod() {}
+}
+function standalone() {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['class', 'function'],
+        max_depth: 1,
+        output_mode: 'verbose',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // Parent class should have no children due to depth limit
+      const parent = data.symbols.find((s: { name: string }) => s.name === 'Parent');
+      if (parent) {
+        expect(parent.children).toEqual([]);
+      }
+    });
+
+    test('applies all filters together', async () => {
+      const file = path.join(tempDir, 'all-filters.ts');
+      fs.writeFileSync(file, `
+function a() {}
+class B {
+  method() {}
+}
+function c() {}
+class D {
+  anotherMethod() {}
+}
+function e() {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: ['function', 'class'],
+        line_range: { start: 3, end: 7 },
+        max_depth: 1,
+        output_mode: 'verbose',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      // All symbols should be function or class
+      for (const s of data.symbols) {
+        expect(['function', 'class']).toContain(s.kind);
+        expect(s.line).toBeGreaterThanOrEqual(3);
+        expect(s.line).toBeLessThanOrEqual(7);
+        // Classes should have no children due to max_depth
+        if (s.kind === 'class') {
+          expect(s.children).toEqual([]);
+        }
+      }
+    });
+  });
+
+  describe('output_mode with new features', () => {
+    test('verbose mode preserves filtered children', async () => {
+      const file = path.join(tempDir, 'verbose-filter.ts');
+      fs.writeFileSync(file, `
+class MyClass {
+  method() {}
+  property: string;
+}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        output_mode: 'verbose',
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      const myClass = data.symbols.find((s: { name: string }) => s.name === 'MyClass');
+      expect(myClass).toBeDefined();
+      expect(myClass.children.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('edge cases for new features', () => {
+    test('empty kind_filter array returns all symbols', async () => {
+      const file = path.join(tempDir, 'empty-filter.ts');
+      fs.writeFileSync(file, `
+function foo() {}
+class Bar {}
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        kind_filter: [],
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.length).toBe(2);
+    });
+
+    test('line_range with only start specified', async () => {
+      const file = path.join(tempDir, 'start-only.ts');
+      fs.writeFileSync(file, `const a = 1;
+const b = 2;
+const c = 3;
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        line_range: { start: 2 },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.every((s: { line: number }) => s.line >= 2)).toBe(true);
+    });
+
+    test('line_range with only end specified', async () => {
+      const file = path.join(tempDir, 'end-only.ts');
+      fs.writeFileSync(file, `const a = 1;
+const b = 2;
+const c = 3;
+`);
+
+      const result = await handleGetDocumentSymbols({
+        file,
+        line_range: { end: 2 },
+      });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBeFalsy();
+      expect(data.symbols.every((s: { line: number }) => s.line <= 2)).toBe(true);
+    });
+
+    test('returns error when neither file nor files provided', async () => {
+      const result = await handleGetDocumentSymbols({});
+      const data = JSON.parse(result.content[0].text);
+
+      expect(result.isError).toBe(true);
+      expect(data.error).toContain('file or files');
+    });
+
+    test('single file in files array uses single-file mode response', async () => {
+      const file = path.join(tempDir, 'single-in-array.ts');
+      fs.writeFileSync(file, 'const x = 1;');
+
+      // Note: With a single file in the array, we actually return batch format
+      // but let's verify it still works
+      const resultSingle = await handleGetDocumentSymbols({ file });
+      const resultArray = await handleGetDocumentSymbols({ files: [file] });
+
+      const dataSingle = JSON.parse(resultSingle.content[0].text);
+      const dataArray = JSON.parse(resultArray.content[0].text);
+
+      // Single file mode returns { file, symbols, count }
+      expect(dataSingle).toHaveProperty('file');
+      expect(dataSingle).toHaveProperty('symbols');
+
+      // But since files array has only one item, it doesn't trigger batch mode
+      // Actually per the implementation, isBatchMode = fileList.length > 1
+      // So single item in files array should NOT trigger batch mode
+      expect(dataArray).toHaveProperty('file');
+      expect(dataArray).toHaveProperty('symbols');
     });
   });
 });

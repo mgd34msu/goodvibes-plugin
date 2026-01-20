@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../pre-tool-use/git-handlers.js');
 vi.mock('../../pre-tool-use/git-guards.js');
 vi.mock('../../pre-tool-use/quality-gates.js');
+vi.mock('../../pre-tool-use/subagent-blockers.js');
 vi.mock('../../pre-tool-use/tool-validators.js');
 vi.mock('../../shared/index.js');
 
@@ -20,6 +21,10 @@ import {
 } from '../../pre-tool-use/git-handlers.js';
 import { runPreToolUseHook } from '../../pre-tool-use/hook.js';
 import { isCommitCommand } from '../../pre-tool-use/quality-gates.js';
+import {
+  handleSubagentToolBlocking,
+  isBlockedNativeTool,
+} from '../../pre-tool-use/subagent-blockers.js';
 import { TOOL_VALIDATORS } from '../../pre-tool-use/tool-validators.js';
 import {
   respond,
@@ -36,6 +41,8 @@ const mockedHandleGitCommit = vi.mocked(handleGitCommit);
 const mockedHandleGitCommand = vi.mocked(handleGitCommand);
 const mockedIsGitCommand = vi.mocked(isGitCommand);
 const mockedIsCommitCommand = vi.mocked(isCommitCommand);
+const mockedHandleSubagentToolBlocking = vi.mocked(handleSubagentToolBlocking);
+const mockedIsBlockedNativeTool = vi.mocked(isBlockedNativeTool);
 const mockedRespond = vi.mocked(respond);
 const mockedReadHookInput = vi.mocked(readHookInput);
 const mockedAllowTool = vi.mocked(allowTool);
@@ -66,6 +73,10 @@ describe('pre-tool-use hook', () => {
         permissionDecision: 'allow',
       },
     });
+
+    // Default: subagent blockers don't block
+    mockedIsBlockedNativeTool.mockReturnValue(false);
+    mockedHandleSubagentToolBlocking.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -73,6 +84,124 @@ describe('pre-tool-use hook', () => {
   });
 
   describe('runPreToolUseHook', () => {
+    describe('subagent tool blocking', () => {
+      it('should block Read tool for subagent', async () => {
+        const subagentInput = {
+          ...mockInput,
+          tool_name: 'Read',
+          is_subagent: true,
+        };
+        mockedReadHookInput.mockResolvedValue(subagentInput);
+        mockedIsBlockedNativeTool.mockReturnValue(true);
+        mockedHandleSubagentToolBlocking.mockReturnValue(true);
+
+        await runPreToolUseHook();
+
+        expect(mockedIsBlockedNativeTool).toHaveBeenCalledWith('Read');
+        expect(mockedHandleSubagentToolBlocking).toHaveBeenCalledWith(
+          expect.objectContaining({
+            tool_name: 'Read',
+            is_subagent: true,
+          })
+        );
+        // Should not proceed to other handlers when blocked
+        expect(mockedExtractBashCommand).not.toHaveBeenCalled();
+      });
+
+      it('should block Edit tool for subagent', async () => {
+        const subagentInput = {
+          ...mockInput,
+          tool_name: 'Edit',
+          is_subagent: true,
+        };
+        mockedReadHookInput.mockResolvedValue(subagentInput);
+        mockedIsBlockedNativeTool.mockReturnValue(true);
+        mockedHandleSubagentToolBlocking.mockReturnValue(true);
+
+        await runPreToolUseHook();
+
+        expect(mockedHandleSubagentToolBlocking).toHaveBeenCalled();
+      });
+
+      it('should allow Read tool for main agent (non-subagent)', async () => {
+        const mainAgentInput = {
+          ...mockInput,
+          tool_name: 'Read',
+          is_subagent: false,
+        };
+        mockedReadHookInput.mockResolvedValue(mainAgentInput);
+        mockedIsBlockedNativeTool.mockReturnValue(true);
+
+        await runPreToolUseHook();
+
+        // Should not call handleSubagentToolBlocking when is_subagent is false
+        expect(mockedHandleSubagentToolBlocking).not.toHaveBeenCalled();
+        // Should allow the tool for main agent
+        expect(mockedRespond).toHaveBeenCalledWith(
+          expect.objectContaining({ continue: true })
+        );
+        expect(mockedDebug).toHaveBeenCalledWith(
+          expect.stringContaining("Allowing native tool 'Read'")
+        );
+      });
+
+      it('should allow Read tool when is_subagent is undefined', async () => {
+        const mainAgentInput = {
+          ...mockInput,
+          tool_name: 'Read',
+        };
+        mockedReadHookInput.mockResolvedValue(mainAgentInput);
+        mockedIsBlockedNativeTool.mockReturnValue(true);
+
+        await runPreToolUseHook();
+
+        expect(mockedHandleSubagentToolBlocking).not.toHaveBeenCalled();
+        expect(mockedRespond).toHaveBeenCalledWith(
+          expect.objectContaining({ continue: true })
+        );
+      });
+
+      it('should allow Bash tool for subagent (not blocked)', async () => {
+        const subagentInput = {
+          ...mockInput,
+          tool_name: 'Bash',
+          is_subagent: true,
+        };
+        mockedReadHookInput.mockResolvedValue(subagentInput);
+        mockedIsBlockedNativeTool.mockReturnValue(false);
+        mockedExtractBashCommand.mockReturnValue('npm test');
+        mockedIsCommitCommand.mockReturnValue(false);
+        mockedIsGitCommand.mockReturnValue(false);
+
+        await runPreToolUseHook();
+
+        // Should not check for blocking (Bash is not a blocked tool)
+        expect(mockedHandleSubagentToolBlocking).not.toHaveBeenCalled();
+        // Should proceed to Bash handling
+        expect(mockedExtractBashCommand).toHaveBeenCalled();
+      });
+
+      it('should log is_subagent in debug output', async () => {
+        const subagentInput = {
+          ...mockInput,
+          is_subagent: true,
+        };
+        mockedReadHookInput.mockResolvedValue(subagentInput);
+        mockedExtractBashCommand.mockReturnValue('npm test');
+        mockedIsCommitCommand.mockReturnValue(false);
+        mockedIsGitCommand.mockReturnValue(false);
+
+        await runPreToolUseHook();
+
+        expect(mockedDebug).toHaveBeenCalledWith(
+          'PreToolUse hook received input',
+          expect.objectContaining({
+            is_subagent: true,
+          })
+        );
+      });
+    });
+
     describe('Bash tool handling', () => {
       it('should handle Bash tool with git commit command', async () => {
         mockedExtractBashCommand.mockReturnValue('git commit -m "test"');
@@ -270,7 +399,7 @@ describe('pre-tool-use hook', () => {
     });
 
     describe('integration scenarios', () => {
-      it('should log tool name and cwd on start', async () => {
+      it('should log tool name, cwd, and is_subagent on start', async () => {
         await runPreToolUseHook();
 
         expect(mockedDebug).toHaveBeenCalledWith(
@@ -278,6 +407,7 @@ describe('pre-tool-use hook', () => {
           {
             tool_name: 'Bash',
             cwd: '/test/project',
+            is_subagent: undefined,
           }
         );
       });

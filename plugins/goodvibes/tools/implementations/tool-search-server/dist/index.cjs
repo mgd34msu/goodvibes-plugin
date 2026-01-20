@@ -234414,19 +234414,41 @@ var LSP_SCHEMAS = [
   },
   {
     name: "get_document_symbols",
-    description: "Get the structural outline of a document (classes, functions, interfaces, etc.). Returns a hierarchical tree of symbols with their positions and kinds. Useful for understanding document structure and navigation.",
+    description: "Get the structural outline of documents (classes, functions, interfaces, etc.). Returns a hierarchical tree of symbols with positions and kinds. Supports single file (backward compatible) or batch mode (multiple files). Filter by symbol kind, line range, or limit tree depth.",
     inputSchema: {
       type: "object",
       properties: {
-        file: { type: "string", description: "File path (relative to project root or absolute)" },
+        file: { type: "string", description: "Single file path (relative to project root or absolute). For batch mode, use files array instead." },
+        files: {
+          type: "array",
+          items: { type: "string" },
+          description: "Multiple files to process in batch mode. If both file and files are provided, they are combined."
+        },
         output_mode: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           description: "Output verbosity: count_only (just counts), minimal (names only), standard (names + kinds + positions, default), verbose (full tree with children)",
           default: "standard"
+        },
+        kind_filter: {
+          type: "array",
+          items: { type: "string" },
+          description: "Only return symbols of these kinds (case-insensitive). Examples: function, class, interface, type, enum, variable, constant, method, property, namespace, module"
+        },
+        line_range: {
+          type: "object",
+          properties: {
+            start: { type: "integer", description: "Only symbols starting at/after this line (1-based)" },
+            end: { type: "integer", description: "Only symbols ending at/before this line (1-based)" }
+          },
+          description: "Filter symbols by their line position. Both start and end are optional."
+        },
+        max_depth: {
+          type: "integer",
+          minimum: 1,
+          description: "Maximum depth of symbol tree. 1 = top-level only, 2 = one level of nesting, etc. Omit for unlimited depth."
         }
-      },
-      required: ["file"]
+      }
     }
   },
   {
@@ -234507,7 +234529,7 @@ var LSP_SCHEMAS = [
   },
   {
     name: "workspace_symbols",
-    description: "Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container information.",
+    description: "Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container information. Supports multi-kind search and file pattern filtering.",
     inputSchema: {
       type: "object",
       properties: {
@@ -234515,8 +234537,16 @@ var LSP_SCHEMAS = [
         kind: {
           type: "string",
           enum: ["all", "class", "interface", "function", "variable", "type", "enum", "method", "property", "module"],
-          description: "Filter by symbol kind (default: all)",
+          description: 'Filter by symbol kind (default: all). Ignored if "kinds" array is provided.',
           default: "all"
+        },
+        kinds: {
+          type: "array",
+          items: {
+            type: "string",
+            enum: ["all", "class", "interface", "function", "variable", "type", "enum", "method", "property", "module"]
+          },
+          description: 'Search multiple kinds at once (e.g., ["function", "method"]). Takes precedence over singular "kind" parameter.'
         },
         limit: { type: "integer", description: "Maximum number of results (default: 50, max: 200)", default: 50 },
         match_type: {
@@ -234530,6 +234560,16 @@ var LSP_SCHEMAS = [
           enum: ["count_only", "minimal", "standard", "verbose"],
           description: "Output verbosity: count_only (just count), minimal (name + file only), standard (+ kind + position, default), verbose (+ container + match_kind)",
           default: "standard"
+        },
+        file_patterns: {
+          type: "array",
+          items: { type: "string" },
+          description: 'Glob patterns to filter files (e.g., ["src/utils/**", "src/helpers/**"]). Only symbols from matching files are returned.'
+        },
+        exclude_patterns: {
+          type: "array",
+          items: { type: "string" },
+          description: 'Glob patterns to exclude files (e.g., ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**"]). Exclusions take precedence over inclusions.'
         }
       },
       required: ["query"]
@@ -236091,7 +236131,7 @@ var BATCH_SCHEMAS = [
   },
   {
     name: "smart_glob",
-    description: "Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, and various output modes. Automatically ignores node_modules, .git, and other common directories.",
+    description: "Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, various output modes, and optional content preview. Automatically ignores node_modules, .git, and other common directories.",
     inputSchema: {
       type: "object",
       properties: {
@@ -236108,13 +236148,36 @@ var BATCH_SCHEMAS = [
         output_mode: {
           type: "string",
           enum: ["count_only", "minimal", "standard"],
-          description: 'Output verbosity: count_only (just "X files match"), minimal (file paths only), standard (paths + sizes + mod times, default)',
+          description: 'Output verbosity: count_only (just "X files match"), minimal (file paths only), standard (paths + sizes + mod times + optional preview, default)',
           default: "standard"
         },
         limit: {
           type: "integer",
           description: "Maximum number of files to return (default: 100, max: 1000)",
           default: 100
+        },
+        preview: {
+          type: "object",
+          description: 'Content preview configuration (only works with output_mode: "standard"). Enables inline content preview within results.',
+          properties: {
+            enabled: {
+              type: "boolean",
+              description: "Whether to enable content preview"
+            },
+            lines: {
+              type: "integer",
+              minimum: 1,
+              description: "Number of lines to preview (default: 10)",
+              default: 10
+            },
+            offset: {
+              type: "integer",
+              minimum: 1,
+              description: "Start line (1-based, default: 1)",
+              default: 1
+            }
+          },
+          required: ["enabled"]
         }
       },
       required: ["patterns"]
@@ -236122,7 +236185,7 @@ var BATCH_SCHEMAS = [
   },
   {
     name: "grep_with_content",
-    description: "Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports various output modes, file filtering, and context lines around matches.",
+    description: "Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports various output modes, file filtering, asymmetric context lines, and line range filtering.",
     inputSchema: {
       type: "object",
       properties: {
@@ -236154,6 +236217,32 @@ var BATCH_SCHEMAS = [
           type: "boolean",
           description: "Case insensitive search (default: false)",
           default: false
+        },
+        context_before: {
+          type: "integer",
+          minimum: 0,
+          description: "Lines of context before match. Overrides output_mode defaults. If only context_before is specified, context_after defaults to same value."
+        },
+        context_after: {
+          type: "integer",
+          minimum: 0,
+          description: "Lines of context after match. Overrides output_mode defaults. Can differ from context_before for asymmetric context."
+        },
+        line_range: {
+          type: "object",
+          description: "Restrict search to a specific line range. Lines outside this range are not searched.",
+          properties: {
+            start: {
+              type: "integer",
+              minimum: 1,
+              description: "Only search from this line (1-based). Omit to start from line 1."
+            },
+            end: {
+              type: "integer",
+              minimum: 1,
+              description: "Only search up to this line (1-based, inclusive). Omit to search to end of file."
+            }
+          }
         }
       },
       required: ["pattern"]
@@ -244488,42 +244577,128 @@ function extractSymbols(tree, sourceFile) {
   }
   return symbols;
 }
-async function handleGetDocumentSymbols(args) {
-  try {
-    if (!args.file) {
-      return createErrorResponse("Missing required argument: file");
+function normalizeKind(kind) {
+  const normalized = kind.toLowerCase().trim();
+  const aliases = {
+    func: "function",
+    fn: "function",
+    const: "constant",
+    var: "variable",
+    iface: "interface",
+    mod: "module",
+    ns: "namespace"
+  };
+  return aliases[normalized] ?? normalized;
+}
+function filterByKind(symbols, kindFilter) {
+  const normalizedFilter = new Set(kindFilter.map(normalizeKind));
+  function filterSymbol(symbol2) {
+    const filteredChildren = symbol2.children.map(filterSymbol).filter((s) => s !== null);
+    const matchesFilter = normalizedFilter.has(symbol2.kind.toLowerCase());
+    if (matchesFilter) {
+      return { ...symbol2, children: filteredChildren };
     }
-    const filePath = path34.isAbsolute(args.file) ? args.file : path34.resolve(getProjectRoot(), args.file);
-    const normalizedFilePath = filePath.replace(/\\/g, "/");
+    return null;
+  }
+  return symbols.map(filterSymbol).filter((s) => s !== null);
+}
+function filterByLineRange(symbols, lineRange) {
+  return symbols.filter((symbol2) => {
+    if (lineRange.start !== void 0 && symbol2.line < lineRange.start) {
+      return false;
+    }
+    if (lineRange.end !== void 0 && symbol2.line > lineRange.end) {
+      return false;
+    }
+    return true;
+  }).map((symbol2) => ({
+    ...symbol2,
+    // Also filter children by the same range
+    children: filterByLineRange(symbol2.children, lineRange)
+  }));
+}
+function truncateToDepth(symbols, maxDepth, currentDepth = 1) {
+  if (currentDepth >= maxDepth) {
+    return symbols.map((s) => ({ ...s, children: [] }));
+  }
+  return symbols.map((s) => ({
+    ...s,
+    children: truncateToDepth(s.children, maxDepth, currentDepth + 1)
+  }));
+}
+function applyFilters(symbols, args) {
+  let result = symbols;
+  if (args.kind_filter && args.kind_filter.length > 0) {
+    result = filterByKind(result, args.kind_filter);
+  }
+  if (args.line_range && (args.line_range.start !== void 0 || args.line_range.end !== void 0)) {
+    result = filterByLineRange(result, args.line_range);
+  }
+  if (args.max_depth !== void 0 && args.max_depth > 0) {
+    result = truncateToDepth(result, args.max_depth);
+  }
+  return result;
+}
+async function processFile(filePath, args) {
+  const projectRoot = getProjectRoot();
+  const absolutePath = path34.isAbsolute(filePath) ? filePath : path34.resolve(projectRoot, filePath);
+  const normalizedFilePath = absolutePath.replace(/\\/g, "/");
+  const relativeFile = makeRelativePath(normalizedFilePath, projectRoot);
+  try {
     const { service, program } = await languageServiceManager.getServiceForFile(
       normalizedFilePath
     );
     const sourceFile = program.getSourceFile(normalizedFilePath);
     if (!sourceFile) {
-      return createErrorResponse(`Source file not found: ${args.file}`);
+      return {
+        file: relativeFile,
+        symbols: [],
+        count: 0,
+        error: `Source file not found: ${filePath}`
+      };
     }
     const navigationTree = service.getNavigationTree(normalizedFilePath);
     if (!navigationTree) {
-      const result2 = {
+      return {
+        file: relativeFile,
         symbols: [],
-        file: makeRelativePath(normalizedFilePath, getProjectRoot()),
         count: 0
       };
-      return createSuccessResponse(result2);
     }
-    const symbols = extractSymbols(navigationTree, sourceFile);
+    let symbols = extractSymbols(navigationTree, sourceFile);
+    symbols = applyFilters(symbols, args);
+    return {
+      file: relativeFile,
+      symbols,
+      count: symbols.length
+    };
+  } catch (error3) {
+    const message = error3 instanceof Error ? error3.message : String(error3);
+    return {
+      file: relativeFile,
+      symbols: [],
+      count: 0,
+      error: message
+    };
+  }
+}
+async function handleGetDocumentSymbols(args) {
+  try {
+    const fileList = [];
+    if (args.file) {
+      fileList.push(args.file);
+    }
+    if (args.files && args.files.length > 0) {
+      fileList.push(...args.files);
+    }
+    if (fileList.length === 0) {
+      return createErrorResponse("Missing required argument: file or files");
+    }
     const outputMode = args.output_mode ?? "standard";
-    const relativeFile = makeRelativePath(normalizedFilePath, getProjectRoot());
+    const isBatchMode = fileList.length > 1;
     const countAllSymbols = (syms) => {
       return syms.reduce((total, s) => total + 1 + countAllSymbols(s.children), 0);
     };
-    if (outputMode === "count_only") {
-      return createSuccessResponse({
-        file: relativeFile,
-        count: symbols.length,
-        total_including_nested: countAllSymbols(symbols)
-      });
-    }
     const stripChildren = (sym) => ({
       name: sym.name,
       kind: sym.kind,
@@ -244533,27 +244708,66 @@ async function handleGetDocumentSymbols(args) {
       end_column: sym.end_column,
       children: []
     });
-    if (outputMode === "minimal") {
+    const formatSymbols = (symbols) => {
+      if (outputMode === "minimal") {
+        return symbols.map((s) => ({ name: s.name, kind: s.kind }));
+      }
+      if (outputMode === "verbose") {
+        return symbols;
+      }
+      return symbols.map(stripChildren);
+    };
+    if (isBatchMode) {
+      const results = await Promise.all(
+        fileList.map((file2) => processFile(file2, args))
+      );
+      const formattedResults = results.map((r) => {
+        if (r.error) {
+          return {
+            file: r.file,
+            symbols: [],
+            count: 0,
+            error: r.error
+          };
+        }
+        if (outputMode === "count_only") {
+          return {
+            file: r.file,
+            count: r.count,
+            total_including_nested: countAllSymbols(r.symbols)
+          };
+        }
+        return {
+          file: r.file,
+          symbols: formatSymbols(r.symbols),
+          count: r.count
+        };
+      });
+      const totalSymbols = results.reduce((sum, r) => sum + r.count, 0);
+      const batchResult = {
+        results: formattedResults,
+        total_files: fileList.length,
+        total_symbols: totalSymbols
+      };
+      return createSuccessResponse(batchResult);
+    }
+    const result = await processFile(fileList[0], args);
+    if (result.error) {
+      return createErrorResponse(result.error);
+    }
+    if (outputMode === "count_only") {
       return createSuccessResponse({
-        symbols: symbols.map((s) => ({ name: s.name, kind: s.kind })),
-        file: relativeFile,
-        count: symbols.length
+        file: result.file,
+        count: result.count,
+        total_including_nested: countAllSymbols(result.symbols)
       });
     }
-    if (outputMode === "verbose") {
-      const result2 = {
-        symbols,
-        file: relativeFile,
-        count: symbols.length
-      };
-      return createSuccessResponse(result2);
-    }
-    const result = {
-      symbols: symbols.map(stripChildren),
-      file: relativeFile,
-      count: symbols.length
+    const formattedResult = {
+      symbols: formatSymbols(result.symbols),
+      file: result.file,
+      count: result.count
     };
-    return createSuccessResponse(result);
+    return createSuccessResponse(formattedResult);
   } catch (error3) {
     const message = error3 instanceof Error ? error3.message : String(error3);
     return createErrorResponse(`Failed to get document symbols: ${message}`);
@@ -246302,6 +246516,84 @@ function getMatchKind(name, query) {
   if (lowerName.startsWith(lowerQuery)) return "prefix";
   return "substring";
 }
+function getMultiKindFilter(kinds) {
+  if (kinds.includes("all")) return null;
+  const combined = [];
+  for (const kind of kinds) {
+    const filter = getKindFilter(kind);
+    if (filter) {
+      combined.push(...filter);
+    }
+  }
+  return combined.length > 0 ? [...new Set(combined)] : null;
+}
+function escapeRegex2(str2) {
+  return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function globToRegex(pattern) {
+  let regex = "";
+  let i = 0;
+  while (i < pattern.length) {
+    const char = pattern[i];
+    if (char === "*") {
+      if (pattern[i + 1] === "*") {
+        if (pattern[i + 2] === "/") {
+          regex += "(?:.*/)?";
+          i += 3;
+        } else {
+          regex += ".*";
+          i += 2;
+        }
+      } else {
+        regex += "[^/]*";
+        i++;
+      }
+    } else if (char === "?") {
+      regex += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const endBracket = pattern.indexOf("]", i);
+      if (endBracket === -1) {
+        regex += "\\[";
+        i++;
+      } else {
+        regex += pattern.slice(i, endBracket + 1);
+        i = endBracket + 1;
+      }
+    } else if (char === "{") {
+      const endBrace = pattern.indexOf("}", i);
+      if (endBrace === -1) {
+        regex += "\\{";
+        i++;
+      } else {
+        const options = pattern.slice(i + 1, endBrace).split(",");
+        regex += "(?:" + options.map((o) => escapeRegex2(o)).join("|") + ")";
+        i = endBrace + 1;
+      }
+    } else if (".+^$|\\()".includes(char)) {
+      regex += "\\" + char;
+      i++;
+    } else {
+      regex += char;
+      i++;
+    }
+  }
+  return new RegExp("^" + regex + "$");
+}
+function matchesIncludePatterns(relativePath, includePatterns) {
+  if (includePatterns.length === 0) return true;
+  return includePatterns.some((pattern) => pattern.test(relativePath));
+}
+function matchesExcludePatterns(relativePath, excludePatterns) {
+  if (excludePatterns.length === 0) return false;
+  return excludePatterns.some((pattern) => pattern.test(relativePath));
+}
+function shouldIncludeFile(relativePath, includePatterns, excludePatterns) {
+  if (matchesExcludePatterns(relativePath, excludePatterns)) {
+    return false;
+  }
+  return matchesIncludePatterns(relativePath, includePatterns);
+}
 function findSourceFiles4(projectRoot) {
   const files = [];
   const extensions = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
@@ -246334,19 +246626,28 @@ async function handleWorkspaceSymbols(args) {
       return createErrorResponse("Missing required argument: query");
     }
     const query = args.query.trim();
-    const kindFilter = args.kind ?? "all";
     const matchType = args.match_type ?? "substring";
     const limit = Math.min(Math.max(1, args.limit ?? DEFAULT_LIMIT), MAX_LIMIT);
     const outputMode = args.output_mode ?? "standard";
+    let kindFilterValues = null;
+    if (args.kinds && args.kinds.length > 0) {
+      kindFilterValues = getMultiKindFilter(args.kinds);
+    } else {
+      const kindFilter = args.kind ?? "all";
+      kindFilterValues = getKindFilter(kindFilter);
+    }
+    const includePatterns = (args.file_patterns ?? []).map(globToRegex);
+    const excludePatterns = (args.exclude_patterns ?? []).map(globToRegex);
+    const hasFileFilters = includePatterns.length > 0 || excludePatterns.length > 0;
     const sourceFiles = findSourceFiles4(PROJECT_ROOT);
     if (sourceFiles.length === 0) {
       return createErrorResponse("No TypeScript/JavaScript source files found in project");
     }
     const { service, program } = await languageServiceManager.getServiceForFile(sourceFiles[0]);
+    const requestLimit = hasFileFilters ? MAX_LIMIT * 4 : MAX_LIMIT * 2;
     const navigateToItems = service.getNavigateToItems(
       query,
-      MAX_LIMIT * 2,
-      // Request more to account for filtering
+      requestLimit,
       void 0,
       // Search all files
       false
@@ -246357,12 +246658,14 @@ async function handleWorkspaceSymbols(args) {
         symbols: [],
         query,
         count: 0,
-        truncated: false
+        truncated: false,
+        ...hasFileFilters ? { files_searched: 0 } : {}
       };
       return createSuccessResponse(result2);
     }
-    const kindFilterValues = getKindFilter(kindFilter);
+    const filesSearched = /* @__PURE__ */ new Set();
     const symbols = [];
+    let totalMatchingBeforeLimit = 0;
     for (const item of navigateToItems) {
       if (kindFilterValues && !kindFilterValues.includes(item.kind)) {
         continue;
@@ -246372,6 +246675,15 @@ async function handleWorkspaceSymbols(args) {
         continue;
       }
       if (matchType === "prefix" && itemMatchKind === "substring") {
+        continue;
+      }
+      const relativePath = makeRelativePath(item.fileName, PROJECT_ROOT);
+      if (hasFileFilters && !shouldIncludeFile(relativePath, includePatterns, excludePatterns)) {
+        continue;
+      }
+      filesSearched.add(relativePath);
+      totalMatchingBeforeLimit++;
+      if (symbols.length >= limit) {
         continue;
       }
       const sourceFile = program.getSourceFile(item.fileName);
@@ -246385,15 +246697,12 @@ async function handleWorkspaceSymbols(args) {
       symbols.push({
         name: item.name,
         kind: getSymbolKind2(item.kind),
-        file: makeRelativePath(item.fileName, PROJECT_ROOT),
+        file: relativePath,
         line,
         column,
         container_name: item.containerName ?? "",
         match_kind: itemMatchKind
       });
-      if (symbols.length >= limit) {
-        break;
-      }
     }
     symbols.sort((a, b) => {
       const matchOrder = { exact: 0, prefix: 1, substring: 2 };
@@ -246402,12 +246711,14 @@ async function handleWorkspaceSymbols(args) {
       if (aOrder !== bOrder) return aOrder - bOrder;
       return a.name.localeCompare(b.name);
     });
-    const truncated = navigateToItems.length > limit;
+    const truncated = totalMatchingBeforeLimit > limit;
+    const filesSearchedCount = filesSearched.size;
     if (outputMode === "count_only") {
       return createSuccessResponse({
         query,
         count: symbols.length,
-        truncated
+        truncated,
+        ...hasFileFilters ? { files_searched: filesSearchedCount } : {}
       });
     }
     if (outputMode === "minimal") {
@@ -246415,7 +246726,8 @@ async function handleWorkspaceSymbols(args) {
         symbols: symbols.map((s) => ({ name: s.name, file: s.file })),
         query,
         count: symbols.length,
-        truncated
+        truncated,
+        ...hasFileFilters ? { files_searched: filesSearchedCount } : {}
       });
     }
     if (outputMode === "verbose") {
@@ -246423,7 +246735,8 @@ async function handleWorkspaceSymbols(args) {
         symbols,
         query,
         count: symbols.length,
-        truncated
+        truncated,
+        ...hasFileFilters ? { files_searched: filesSearchedCount } : {}
       };
       return createSuccessResponse(result2);
     }
@@ -246441,7 +246754,8 @@ async function handleWorkspaceSymbols(args) {
       })),
       query,
       count: symbols.length,
-      truncated
+      truncated,
+      ...hasFileFilters ? { files_searched: filesSearchedCount } : {}
     };
     return createSuccessResponse(result);
   } catch (error3) {
@@ -268014,6 +268328,8 @@ var fs61 = __toESM(require("fs"), 1);
 var path85 = __toESM(require("path"), 1);
 var DEFAULT_LIMIT2 = 100;
 var MAX_LIMIT2 = 1e3;
+var DEFAULT_PREVIEW_LINES = 10;
+var MAX_PREVIEW_FILE_SIZE = 1 * 1024 * 1024;
 var ALWAYS_IGNORE = [
   "node_modules",
   ".git",
@@ -268030,7 +268346,7 @@ var ALWAYS_IGNORE = [
   "vendor"
   // Go
 ];
-function globToRegex(pattern) {
+function globToRegex2(pattern) {
   let regex = "";
   let i = 0;
   while (i < pattern.length) {
@@ -268067,7 +268383,7 @@ function globToRegex(pattern) {
         i++;
       } else {
         const options = pattern.slice(i + 1, endBrace).split(",");
-        regex += "(?:" + options.map((o) => escapeRegex2(o)).join("|") + ")";
+        regex += "(?:" + options.map((o) => escapeRegex3(o)).join("|") + ")";
         i = endBrace + 1;
       }
     } else if (".+^$|\\()".includes(char)) {
@@ -268080,7 +268396,7 @@ function globToRegex(pattern) {
   }
   return new RegExp("^" + regex + "$");
 }
-function escapeRegex2(str2) {
+function escapeRegex3(str2) {
   return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function matchesAnyPattern(relativePath, patterns) {
@@ -268116,15 +268432,36 @@ function findFiles3(dir, patterns, excludePatterns, results, limit, rootDir) {
     }
   }
 }
-function getFileInfo(relativePath) {
+function getFileInfo(relativePath, previewConfig) {
   const absolutePath = path85.resolve(PROJECT_ROOT, relativePath);
   try {
     const stats = fs61.statSync(absolutePath);
-    return {
+    const fileInfo = {
       path: relativePath,
       size: stats.size,
       modified: stats.mtime.toISOString()
     };
+    if (previewConfig?.enabled && stats.size <= MAX_PREVIEW_FILE_SIZE) {
+      try {
+        const content = fs61.readFileSync(absolutePath, "utf-8");
+        const lines = content.split("\n");
+        const totalLines = lines.length;
+        const offset = Math.max(1, previewConfig.offset ?? 1);
+        const previewLines = previewConfig.lines ?? DEFAULT_PREVIEW_LINES;
+        const startIndex = offset - 1;
+        const endIndex = Math.min(startIndex + previewLines, totalLines);
+        const slicedLines = lines.slice(startIndex, endIndex);
+        fileInfo.preview = {
+          content: slicedLines.join("\n"),
+          lines_shown: slicedLines.length,
+          total_lines: totalLines,
+          offset,
+          has_more: endIndex < totalLines || offset > 1
+        };
+      } catch {
+      }
+    }
+    return fileInfo;
   } catch {
     return null;
   }
@@ -268143,8 +268480,8 @@ async function handleSmartGlob(args) {
   }
   const outputMode = args.output_mode ?? "standard";
   const limit = Math.min(Math.max(1, args.limit ?? DEFAULT_LIMIT2), MAX_LIMIT2);
-  const patterns = args.patterns.map(globToRegex);
-  const excludePatterns = (args.exclude ?? []).map(globToRegex);
+  const patterns = args.patterns.map(globToRegex2);
+  const excludePatterns = (args.exclude ?? []).map(globToRegex2);
   const matchingFiles = [];
   findFiles3(PROJECT_ROOT, patterns, excludePatterns, matchingFiles, limit + 1, PROJECT_ROOT);
   const truncated = matchingFiles.length > limit;
@@ -268182,7 +268519,8 @@ async function handleSmartGlob(args) {
       ]
     };
   }
-  const fileInfos = files.map(getFileInfo).filter((info) => info !== null);
+  const previewConfig = args.preview;
+  const fileInfos = files.map((f) => getFileInfo(f, previewConfig)).filter((info) => info !== null);
   const result = {
     files: fileInfos,
     count: fileInfos.length,
@@ -268317,8 +268655,9 @@ function findSearchableFiles(dir, globPattern, specificPaths) {
   walk(dir);
   return files;
 }
-function searchFile(filePath, pattern, contextLines) {
+function searchFile(filePath, pattern, options) {
   const results = [];
+  const { contextBefore, contextAfter, lineRange } = options;
   let content;
   try {
     content = fs62.readFileSync(filePath, "utf-8");
@@ -268327,7 +268666,9 @@ function searchFile(filePath, pattern, contextLines) {
   }
   const lines = content.split("\n");
   const relativePath = path86.relative(PROJECT_ROOT, filePath).replace(/\\/g, "/");
-  for (let i = 0; i < lines.length; i++) {
+  const searchStart = lineRange?.start ? Math.max(0, lineRange.start - 1) : 0;
+  const searchEnd = lineRange?.end ? Math.min(lines.length - 1, lineRange.end - 1) : lines.length - 1;
+  for (let i = searchStart; i <= searchEnd; i++) {
     const line = lines[i];
     const match = pattern.exec(line);
     if (match) {
@@ -268339,11 +268680,15 @@ function searchFile(filePath, pattern, contextLines) {
         // 1-based
         content: line
       };
-      if (contextLines > 0) {
-        const beforeStart = Math.max(0, i - contextLines);
-        const afterEnd = Math.min(lines.length - 1, i + contextLines);
-        result.before = lines.slice(beforeStart, i);
-        result.after = lines.slice(i + 1, afterEnd + 1);
+      if (contextBefore > 0 || contextAfter > 0) {
+        const beforeStart = Math.max(0, i - contextBefore);
+        const afterEnd = Math.min(lines.length - 1, i + contextAfter);
+        if (contextBefore > 0) {
+          result.before = lines.slice(beforeStart, i);
+        }
+        if (contextAfter > 0) {
+          result.after = lines.slice(i + 1, afterEnd + 1);
+        }
       }
       results.push(result);
       pattern.lastIndex = 0;
@@ -268389,10 +268734,17 @@ async function handleGrepWithContent(args) {
   const files = findSearchableFiles(PROJECT_ROOT, globPattern, args.paths);
   const allMatches = [];
   const filesWithMatches = /* @__PURE__ */ new Set();
-  const contextLines = outputMode === "verbose" ? VERBOSE_CONTEXT : outputMode === "standard" ? STANDARD_CONTEXT : 0;
+  const defaultContextLines = outputMode === "verbose" ? VERBOSE_CONTEXT : outputMode === "standard" ? STANDARD_CONTEXT : 0;
+  const contextBefore = args.context_before !== void 0 ? Math.max(0, args.context_before) : defaultContextLines;
+  const contextAfter = args.context_after !== void 0 ? Math.max(0, args.context_after) : args.context_before !== void 0 ? contextBefore : defaultContextLines;
+  const searchOptions = {
+    contextBefore,
+    contextAfter,
+    lineRange: args.line_range
+  };
   for (const file2 of files) {
     if (allMatches.length >= maxMatches) break;
-    const fileMatches = searchFile(file2, searchPattern, contextLines);
+    const fileMatches = searchFile(file2, searchPattern, searchOptions);
     for (const match of fileMatches) {
       if (allMatches.length >= maxMatches) break;
       allMatches.push(match);
@@ -268400,13 +268752,20 @@ async function handleGrepWithContent(args) {
     }
   }
   const truncated = allMatches.length >= maxMatches;
+  const baseResult = {
+    match_count: allMatches.length,
+    file_count: filesWithMatches.size,
+    truncated,
+    pattern: args.pattern,
+    // Include searched_range only if line_range was specified
+    ...args.line_range && { searched_range: args.line_range },
+    // Include context info for standard/verbose modes or when explicitly specified
+    ...(outputMode === "standard" || outputMode === "verbose" || args.context_before !== void 0 || args.context_after !== void 0) && {
+      context: { before: contextBefore, after: contextAfter }
+    }
+  };
   if (outputMode === "count_only") {
-    const result2 = {
-      match_count: allMatches.length,
-      file_count: filesWithMatches.size,
-      truncated,
-      pattern: args.pattern
-    };
+    const result2 = baseResult;
     return {
       content: [
         {
@@ -268419,11 +268778,8 @@ async function handleGrepWithContent(args) {
   if (outputMode === "minimal") {
     const matches = allMatches.map((m) => `${m.file}:${m.line}`);
     const result2 = {
-      matches,
-      match_count: allMatches.length,
-      file_count: filesWithMatches.size,
-      truncated,
-      pattern: args.pattern
+      ...baseResult,
+      matches
     };
     return {
       content: [
@@ -268435,11 +268791,8 @@ async function handleGrepWithContent(args) {
     };
   }
   const result = {
-    matches: allMatches,
-    match_count: allMatches.length,
-    file_count: filesWithMatches.size,
-    truncated,
-    pattern: args.pattern
+    ...baseResult,
+    matches: allMatches
   };
   return {
     content: [

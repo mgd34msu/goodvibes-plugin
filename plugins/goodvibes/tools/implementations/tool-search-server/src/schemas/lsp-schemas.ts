@@ -150,19 +150,41 @@ export const LSP_SCHEMAS = [
   },
   {
     name: 'get_document_symbols',
-    description: 'Get the structural outline of a document (classes, functions, interfaces, etc.). Returns a hierarchical tree of symbols with their positions and kinds. Useful for understanding document structure and navigation.',
+    description: 'Get the structural outline of documents (classes, functions, interfaces, etc.). Returns a hierarchical tree of symbols with positions and kinds. Supports single file (backward compatible) or batch mode (multiple files). Filter by symbol kind, line range, or limit tree depth.',
     inputSchema: {
       type: 'object',
       properties: {
-        file: { type: 'string', description: 'File path (relative to project root or absolute)' },
+        file: { type: 'string', description: 'Single file path (relative to project root or absolute). For batch mode, use files array instead.' },
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Multiple files to process in batch mode. If both file and files are provided, they are combined.',
+        },
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
           description: 'Output verbosity: count_only (just counts), minimal (names only), standard (names + kinds + positions, default), verbose (full tree with children)',
           default: 'standard',
         },
+        kind_filter: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Only return symbols of these kinds (case-insensitive). Examples: function, class, interface, type, enum, variable, constant, method, property, namespace, module',
+        },
+        line_range: {
+          type: 'object',
+          properties: {
+            start: { type: 'integer', description: 'Only symbols starting at/after this line (1-based)' },
+            end: { type: 'integer', description: 'Only symbols ending at/before this line (1-based)' },
+          },
+          description: 'Filter symbols by their line position. Both start and end are optional.',
+        },
+        max_depth: {
+          type: 'integer',
+          minimum: 1,
+          description: 'Maximum depth of symbol tree. 1 = top-level only, 2 = one level of nesting, etc. Omit for unlimited depth.',
+        },
       },
-      required: ['file'],
     },
   },
   {
@@ -243,7 +265,7 @@ export const LSP_SCHEMAS = [
   },
   {
     name: 'workspace_symbols',
-    description: 'Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container information.',
+    description: 'Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container information. Supports multi-kind search and file pattern filtering.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -251,8 +273,16 @@ export const LSP_SCHEMAS = [
         kind: {
           type: 'string',
           enum: ['all', 'class', 'interface', 'function', 'variable', 'type', 'enum', 'method', 'property', 'module'],
-          description: 'Filter by symbol kind (default: all)',
+          description: 'Filter by symbol kind (default: all). Ignored if "kinds" array is provided.',
           default: 'all',
+        },
+        kinds: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['all', 'class', 'interface', 'function', 'variable', 'type', 'enum', 'method', 'property', 'module'],
+          },
+          description: 'Search multiple kinds at once (e.g., ["function", "method"]). Takes precedence over singular "kind" parameter.',
         },
         limit: { type: 'integer', description: 'Maximum number of results (default: 50, max: 200)', default: 50 },
         match_type: {
@@ -266,6 +296,16 @@ export const LSP_SCHEMAS = [
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
           description: 'Output verbosity: count_only (just count), minimal (name + file only), standard (+ kind + position, default), verbose (+ container + match_kind)',
           default: 'standard',
+        },
+        file_patterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Glob patterns to filter files (e.g., ["src/utils/**", "src/helpers/**"]). Only symbols from matching files are returned.',
+        },
+        exclude_patterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Glob patterns to exclude files (e.g., ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**"]). Exclusions take precedence over inclusions.',
         },
       },
       required: ['query'],

@@ -19,6 +19,16 @@ import { PROJECT_ROOT } from '../../config.js';
 export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
 
 /**
+ * Line range specification for filtering search scope.
+ */
+export interface LineRange {
+  /** Only search from this line (1-based) */
+  start?: number;
+  /** Only search up to this line (1-based, inclusive) */
+  end?: number;
+}
+
+/**
  * Arguments for the grep_with_content tool.
  */
 export interface GrepWithContentArgs {
@@ -34,6 +44,12 @@ export interface GrepWithContentArgs {
   max_matches?: number;
   /** Case insensitive search (default: false) */
   case_insensitive?: boolean;
+  /** Lines of context before match (default: based on output_mode) */
+  context_before?: number;
+  /** Lines of context after match (default: same as context_before if not specified) */
+  context_after?: number;
+  /** Line range to restrict search scope (only search within this range) */
+  line_range?: LineRange;
 }
 
 /**
@@ -68,6 +84,10 @@ interface GrepResult {
   truncated: boolean;
   /** The search pattern used */
   pattern: string;
+  /** Line range that was searched (only present if line_range was specified) */
+  searched_range?: LineRange;
+  /** Context lines used (before, after) */
+  context?: { before: number; after: number };
 }
 
 /** MCP tool response format */
@@ -218,14 +238,32 @@ function findSearchableFiles(
 // =============================================================================
 
 /**
+ * Search options for a single file.
+ */
+interface SearchOptions {
+  /** Lines of context before the match */
+  contextBefore: number;
+  /** Lines of context after the match */
+  contextAfter: number;
+  /** Line range to restrict search (1-based, inclusive) */
+  lineRange?: LineRange;
+}
+
+/**
  * Search a single file for pattern matches.
+ *
+ * @param filePath - Absolute path to the file
+ * @param pattern - Regex pattern to search for
+ * @param options - Search options including context and line range
+ * @returns Array of match results
  */
 function searchFile(
   filePath: string,
   pattern: RegExp,
-  contextLines: number
+  options: SearchOptions
 ): MatchResult[] {
   const results: MatchResult[] = [];
+  const { contextBefore, contextAfter, lineRange } = options;
 
   let content: string;
   try {
@@ -237,7 +275,12 @@ function searchFile(
   const lines = content.split('\n');
   const relativePath = path.relative(PROJECT_ROOT, filePath).replace(/\\/g, '/');
 
-  for (let i = 0; i < lines.length; i++) {
+  // Determine search bounds (convert 1-based to 0-based)
+  const searchStart = lineRange?.start ? Math.max(0, lineRange.start - 1) : 0;
+  const searchEnd = lineRange?.end ? Math.min(lines.length - 1, lineRange.end - 1) : lines.length - 1;
+
+  // Search only within the specified line range
+  for (let i = searchStart; i <= searchEnd; i++) {
     const line = lines[i];
     const match = pattern.exec(line);
 
@@ -249,13 +292,18 @@ function searchFile(
         content: line,
       };
 
-      // Add context lines if requested
-      if (contextLines > 0) {
-        const beforeStart = Math.max(0, i - contextLines);
-        const afterEnd = Math.min(lines.length - 1, i + contextLines);
+      // Add context lines if requested (asymmetric support)
+      if (contextBefore > 0 || contextAfter > 0) {
+        // Context can extend beyond the search range
+        const beforeStart = Math.max(0, i - contextBefore);
+        const afterEnd = Math.min(lines.length - 1, i + contextAfter);
 
-        result.before = lines.slice(beforeStart, i);
-        result.after = lines.slice(i + 1, afterEnd + 1);
+        if (contextBefore > 0) {
+          result.before = lines.slice(beforeStart, i);
+        }
+        if (contextAfter > 0) {
+          result.after = lines.slice(i + 1, afterEnd + 1);
+        }
       }
 
       results.push(result);
@@ -341,16 +389,38 @@ export async function handleGrepWithContent(
   const allMatches: MatchResult[] = [];
   const filesWithMatches = new Set<string>();
 
-  // Determine context lines based on output mode
-  const contextLines =
+  // Determine context lines based on output mode and explicit parameters
+  // Priority: explicit context_before/context_after > output_mode defaults
+  const defaultContextLines =
     outputMode === 'verbose' ? VERBOSE_CONTEXT :
     outputMode === 'standard' ? STANDARD_CONTEXT :
     0;
 
+  // If context_before is explicitly specified, use it; otherwise use mode default
+  const contextBefore = args.context_before !== undefined
+    ? Math.max(0, args.context_before)
+    : defaultContextLines;
+
+  // If context_after is explicitly specified, use it
+  // Otherwise, if context_before is specified, default to same value
+  // Otherwise, use mode default
+  const contextAfter = args.context_after !== undefined
+    ? Math.max(0, args.context_after)
+    : args.context_before !== undefined
+      ? contextBefore
+      : defaultContextLines;
+
+  // Build search options
+  const searchOptions: SearchOptions = {
+    contextBefore,
+    contextAfter,
+    lineRange: args.line_range,
+  };
+
   for (const file of files) {
     if (allMatches.length >= maxMatches) break;
 
-    const fileMatches = searchFile(file, searchPattern, contextLines);
+    const fileMatches = searchFile(file, searchPattern, searchOptions);
 
     for (const match of fileMatches) {
       if (allMatches.length >= maxMatches) break;
@@ -361,14 +431,24 @@ export async function handleGrepWithContent(
 
   const truncated = allMatches.length >= maxMatches;
 
+  // Build common result metadata
+  const baseResult: Omit<GrepResult, 'matches'> = {
+    match_count: allMatches.length,
+    file_count: filesWithMatches.size,
+    truncated,
+    pattern: args.pattern,
+    // Include searched_range only if line_range was specified
+    ...(args.line_range && { searched_range: args.line_range }),
+    // Include context info for standard/verbose modes or when explicitly specified
+    ...((outputMode === 'standard' || outputMode === 'verbose' ||
+         args.context_before !== undefined || args.context_after !== undefined) && {
+      context: { before: contextBefore, after: contextAfter },
+    }),
+  };
+
   // Format result based on output mode
   if (outputMode === 'count_only') {
-    const result: GrepResult = {
-      match_count: allMatches.length,
-      file_count: filesWithMatches.size,
-      truncated,
-      pattern: args.pattern,
-    };
+    const result: GrepResult = baseResult;
     return {
       content: [
         {
@@ -383,11 +463,8 @@ export async function handleGrepWithContent(
     // Just file:line pairs
     const matches = allMatches.map(m => `${m.file}:${m.line}`);
     const result: GrepResult = {
+      ...baseResult,
       matches,
-      match_count: allMatches.length,
-      file_count: filesWithMatches.size,
-      truncated,
-      pattern: args.pattern,
     };
     return {
       content: [
@@ -402,11 +479,8 @@ export async function handleGrepWithContent(
   // Standard and verbose modes include full match objects
   // (verbose has more context lines, which is already handled above)
   const result: GrepResult = {
+    ...baseResult,
     matches: allMatches,
-    match_count: allMatches.length,
-    file_count: filesWithMatches.size,
-    truncated,
-    pattern: args.pattern,
   };
 
   return {

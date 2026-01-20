@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-01-20T00:48:58.822Z'
+generated: '2026-01-20T01:51:40.938Z'
 total: 94
 categories: {}
 search_index:
@@ -139,6 +139,9 @@ search_index:
       - exclusions
       - various
       - modes
+      - optional
+      - content
+      - preview
       - automatically
       - ignores
       - node_modules
@@ -148,8 +151,8 @@ search_index:
       - directories
     path: mcp-server/smart_glob
     description: >-
-      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, and various output
-      modes. Automatically ignores node_modules, .git, and other common directories.
+      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, various output modes,
+      and optional content preview. Automatically ignores node_modules, .git, and other common directories.
   - name: grep_with_content
     keywords:
       - grep
@@ -172,13 +175,14 @@ search_index:
       - modes
       - file
       - filtering
+      - asymmetric
       - lines
-      - around
-      - matches
+      - line
+      - range
     path: mcp-server/grep_with_content
     description: >-
       Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports
-      various output modes, file filtering, and context lines around matches.
+      various output modes, file filtering, asymmetric context lines, and line range filtering.
   - name: analyze_bundle
     keywords:
       - analyze
@@ -1581,6 +1585,7 @@ search_index:
       - symbols
       - structural
       - outline
+      - documents
       - classes
       - functions
       - interfaces
@@ -1588,17 +1593,29 @@ search_index:
       - returns
       - hierarchical
       - tree
-      - their
       - positions
       - kinds
-      - useful
-      - understanding
-      - structure
-      - navigation
+      - supports
+      - single
+      - file
+      - backward
+      - compatible
+      - batch
+      - mode
+      - multiple
+      - files
+      - filter
+      - symbol
+      - kind
+      - line
+      - range
+      - limit
+      - depth
     path: definitions/lsp/get-document-symbols.yaml
     description: >-
-      Get the structural outline of a document (classes, functions, interfaces, etc.). Returns a hierarchical tree of
-      symbols with their positions and kinds. Useful for understanding document structure and navigation.
+      Get the structural outline of documents (classes, functions, interfaces, etc.). Returns a hierarchical tree of
+      symbols with positions and kinds. Supports single file (backward compatible) or batch mode (multiple files).
+      Filter by symbol kind, line range, or limit tree depth.
   - name: get_signature_help
     keywords:
       - get
@@ -1803,11 +1820,16 @@ search_index:
       - location
       - container
       - information
+      - supports
+      - multi
+      - file
+      - pattern
+      - filtering
     path: definitions/lsp/workspace-symbols.yaml
     description: >-
       Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes
       between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container
-      information.
+      information. Supports multi-kind search and file pattern filtering.
   - name: detect_breaking_changes
     keywords:
       - detect
@@ -3281,8 +3303,9 @@ deferred_tools:
   - name: get_document_symbols
     path: definitions/lsp/get-document-symbols.yaml
     description: >-
-      Get the structural outline of a document (classes, functions, interfaces, etc.). Returns a hierarchical tree of
-      symbols with their positions and kinds. Useful for understanding document structure and navigation.
+      Get the structural outline of documents (classes, functions, interfaces, etc.). Returns a hierarchical tree of
+      symbols with positions and kinds. Supports single file (backward compatible) or batch mode (multiple files).
+      Filter by symbol kind, line range, or limit tree depth.
   - name: get_signature_help
     path: definitions/lsp/get-signature-help.yaml
     description: >-
@@ -3321,7 +3344,7 @@ deferred_tools:
     description: >-
       Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes
       between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container
-      information.
+      information. Supports multi-kind search and file pattern filtering.
   - name: detect_breaking_changes
     path: definitions/lsp/detect-breaking-changes.yaml
     description: >-
@@ -3527,10 +3550,10 @@ mcp_tools:
   - name: smart_glob
     path: mcp-server/smart_glob
     description: >-
-      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, and various output
-      modes. Automatically ignores node_modules, .git, and other common directories.
+      Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, various output modes,
+      and optional content preview. Automatically ignores node_modules, .git, and other common directories.
   - name: grep_with_content
     path: mcp-server/grep_with_content
     description: >-
       Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports
-      various output modes, file filtering, and context lines around matches.
+      various output modes, file filtering, asymmetric context lines, and line range filtering.

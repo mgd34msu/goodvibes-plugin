@@ -54,7 +54,7 @@ export const BATCH_SCHEMAS = [
   },
   {
     name: 'smart_glob',
-    description: 'Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, and various output modes. Automatically ignores node_modules, .git, and other common directories.',
+    description: 'Glob with intelligent filtering and output control. Supports multiple patterns, exclusions, various output modes, and optional content preview. Automatically ignores node_modules, .git, and other common directories.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -71,7 +71,7 @@ export const BATCH_SCHEMAS = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard'],
-          description: 'Output verbosity: count_only (just "X files match"), minimal (file paths only), standard (paths + sizes + mod times, default)',
+          description: 'Output verbosity: count_only (just "X files match"), minimal (file paths only), standard (paths + sizes + mod times + optional preview, default)',
           default: 'standard',
         },
         limit: {
@@ -79,13 +79,36 @@ export const BATCH_SCHEMAS = [
           description: 'Maximum number of files to return (default: 100, max: 1000)',
           default: 100,
         },
+        preview: {
+          type: 'object',
+          description: 'Content preview configuration (only works with output_mode: "standard"). Enables inline content preview within results.',
+          properties: {
+            enabled: {
+              type: 'boolean',
+              description: 'Whether to enable content preview',
+            },
+            lines: {
+              type: 'integer',
+              minimum: 1,
+              description: 'Number of lines to preview (default: 10)',
+              default: 10,
+            },
+            offset: {
+              type: 'integer',
+              minimum: 1,
+              description: 'Start line (1-based, default: 1)',
+              default: 1,
+            },
+          },
+          required: ['enabled'],
+        },
       },
       required: ['patterns'],
     },
   },
   {
     name: 'grep_with_content',
-    description: 'Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports various output modes, file filtering, and context lines around matches.',
+    description: 'Search for a regex pattern across files with configurable context output. More powerful than basic grep - supports various output modes, file filtering, asymmetric context lines, and line range filtering.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -117,6 +140,32 @@ export const BATCH_SCHEMAS = [
           type: 'boolean',
           description: 'Case insensitive search (default: false)',
           default: false,
+        },
+        context_before: {
+          type: 'integer',
+          minimum: 0,
+          description: 'Lines of context before match. Overrides output_mode defaults. If only context_before is specified, context_after defaults to same value.',
+        },
+        context_after: {
+          type: 'integer',
+          minimum: 0,
+          description: 'Lines of context after match. Overrides output_mode defaults. Can differ from context_before for asymmetric context.',
+        },
+        line_range: {
+          type: 'object',
+          description: 'Restrict search to a specific line range. Lines outside this range are not searched.',
+          properties: {
+            start: {
+              type: 'integer',
+              minimum: 1,
+              description: 'Only search from this line (1-based). Omit to start from line 1.',
+            },
+            end: {
+              type: 'integer',
+              minimum: 1,
+              description: 'Only search up to this line (1-based, inclusive). Omit to search to end of file.',
+            },
+          },
         },
       },
       required: ['pattern'],

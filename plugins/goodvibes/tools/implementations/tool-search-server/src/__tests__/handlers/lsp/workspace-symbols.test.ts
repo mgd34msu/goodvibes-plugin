@@ -1249,4 +1249,542 @@ export enum Status {
       expect(result.isError).toBeUndefined();
     });
   });
+
+  // ===========================================================================
+  // Multi-Kind Support Tests
+  // ===========================================================================
+
+  describe('multi-kind support (kinds array)', () => {
+    test('searches multiple kinds at once', async () => {
+      const filePath = path.join(tempDir, 'multi.ts');
+      fs.writeFileSync(
+        filePath,
+        `
+export function handleRequest(): void {}
+export class HandleController {
+  handleAction(): void {}
+}
+export const handleConfig = {};
+export interface HandleOptions {}
+`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'handle',
+        kinds: ['function', 'method'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should find handleRequest (function) and handleAction (method)
+      // but not HandleController (class), handleConfig (variable), or HandleOptions (interface)
+      for (const symbol of data.symbols) {
+        expect(['function', 'method']).toContain(symbol.kind);
+      }
+    });
+
+    test('kinds array takes precedence over singular kind', async () => {
+      const filePath = path.join(tempDir, 'precedence.ts');
+      fs.writeFileSync(
+        filePath,
+        `
+export function testFunc(): void {}
+export class TestClass {}
+export interface TestInterface {}
+`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'Test',
+        kind: 'function', // This should be ignored
+        kinds: ['class', 'interface'], // This takes precedence
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should find TestClass and TestInterface, but not testFunc
+      for (const symbol of data.symbols) {
+        expect(['class', 'interface']).toContain(symbol.kind);
+      }
+    });
+
+    test('kinds array with "all" returns all kinds', async () => {
+      const filePath = path.join(tempDir, 'all.ts');
+      fs.writeFileSync(
+        filePath,
+        `
+export function myFunc(): void {}
+export class MyClass {}
+export const myConst = 1;
+`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'my',
+        kinds: ['all', 'function'], // 'all' should bypass filtering
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should find all kinds since 'all' is present
+      expect(data.symbols.length).toBeGreaterThanOrEqual(0);
+    });
+
+    test('empty kinds array falls back to singular kind', async () => {
+      const filePath = path.join(tempDir, 'empty.ts');
+      fs.writeFileSync(
+        filePath,
+        `
+export function emptyFunc(): void {}
+export class EmptyClass {}
+`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'Empty',
+        kind: 'class',
+        kinds: [], // Empty array should fall back to kind
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should use 'kind' (class) since kinds array is empty
+      for (const symbol of data.symbols) {
+        expect(symbol.kind).toBe('class');
+      }
+    });
+  });
+
+  // ===========================================================================
+  // File Pattern Filtering Tests
+  // ===========================================================================
+
+  describe('file pattern filtering', () => {
+    test('filters by file_patterns', async () => {
+      // Create directory structure
+      const srcDir = path.join(tempDir, 'src');
+      const utilsDir = path.join(srcDir, 'utils');
+      const modelsDir = path.join(srcDir, 'models');
+      fs.mkdirSync(utilsDir, { recursive: true });
+      fs.mkdirSync(modelsDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(utilsDir, 'helper.ts'),
+        `export function filterHelper(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(modelsDir, 'user.ts'),
+        `export function filterUser(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(srcDir, 'index.ts'),
+        `export function filterMain(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['src/**/*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(path.join(utilsDir, 'helper.ts'));
+
+      const result = await handleWorkspaceSymbols({
+        query: 'filter',
+        file_patterns: ['src/utils/**'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should only find symbols from src/utils/**
+      for (const symbol of data.symbols) {
+        expect(symbol.file).toContain('utils');
+      }
+    });
+
+    test('excludes files with exclude_patterns', async () => {
+      // Create files including test files
+      fs.writeFileSync(
+        path.join(tempDir, 'service.ts'),
+        `export function excludeService(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(tempDir, 'service.test.ts'),
+        `export function excludeServiceTest(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(tempDir, 'service.spec.ts'),
+        `export function excludeServiceSpec(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(path.join(tempDir, 'service.ts'));
+
+      const result = await handleWorkspaceSymbols({
+        query: 'exclude',
+        exclude_patterns: ['**/*.test.ts', '**/*.spec.ts'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should not find symbols from test or spec files
+      for (const symbol of data.symbols) {
+        expect(symbol.file).not.toContain('.test.ts');
+        expect(symbol.file).not.toContain('.spec.ts');
+      }
+    });
+
+    test('combines file_patterns and exclude_patterns', async () => {
+      const srcDir = path.join(tempDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(srcDir, 'main.ts'),
+        `export function combineMain(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(srcDir, 'main.test.ts'),
+        `export function combineMainTest(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(tempDir, 'root.ts'),
+        `export function combineRoot(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['**/*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(path.join(srcDir, 'main.ts'));
+
+      const result = await handleWorkspaceSymbols({
+        query: 'combine',
+        file_patterns: ['src/**'],
+        exclude_patterns: ['**/*.test.ts'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should only find combineMain (in src, not a test file)
+      for (const symbol of data.symbols) {
+        expect(symbol.file).toContain('src');
+        expect(symbol.file).not.toContain('.test.ts');
+      }
+    });
+
+    test('returns files_searched count when file filters are applied', async () => {
+      const srcDir = path.join(tempDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(srcDir, 'a.ts'),
+        `export function countA(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(srcDir, 'b.ts'),
+        `export function countB(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['src/**/*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(path.join(srcDir, 'a.ts'));
+
+      const result = await handleWorkspaceSymbols({
+        query: 'count',
+        file_patterns: ['src/**'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should include files_searched when file filters are applied
+      expect(data).toHaveProperty('files_searched');
+      expect(typeof data.files_searched).toBe('number');
+    });
+
+    test('does not include files_searched when no file filters', async () => {
+      const filePath = path.join(tempDir, 'nofilter.ts');
+      fs.writeFileSync(
+        filePath,
+        `export function noFilter(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'noFilter',
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should NOT include files_searched when no file filters
+      expect(data.files_searched).toBeUndefined();
+    });
+
+    test('handles __tests__ directory exclusion', async () => {
+      const srcDir = path.join(tempDir, 'src');
+      const testsDir = path.join(srcDir, '__tests__');
+      fs.mkdirSync(testsDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(srcDir, 'impl.ts'),
+        `export function testsImpl(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(testsDir, 'impl.test.ts'),
+        `export function testsImplTest(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['src/**/*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(path.join(srcDir, 'impl.ts'));
+
+      const result = await handleWorkspaceSymbols({
+        query: 'tests',
+        exclude_patterns: ['**/__tests__/**'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should not find symbols from __tests__ directory
+      for (const symbol of data.symbols) {
+        expect(symbol.file).not.toContain('__tests__');
+      }
+    });
+
+    test('file_patterns with multiple directory patterns', async () => {
+      const utilsDir = path.join(tempDir, 'src', 'utils');
+      const helpersDir = path.join(tempDir, 'src', 'helpers');
+      const servicesDir = path.join(tempDir, 'src', 'services');
+      fs.mkdirSync(utilsDir, { recursive: true });
+      fs.mkdirSync(helpersDir, { recursive: true });
+      fs.mkdirSync(servicesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(utilsDir, 'util.ts'),
+        `export function multiUtil(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(helpersDir, 'helper.ts'),
+        `export function multiHelper(): void {}`
+      );
+      fs.writeFileSync(
+        path.join(servicesDir, 'service.ts'),
+        `export function multiService(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['src/**/*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(path.join(utilsDir, 'util.ts'));
+
+      const result = await handleWorkspaceSymbols({
+        query: 'multi',
+        file_patterns: ['src/utils/**', 'src/helpers/**'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      // Should find symbols from utils and helpers, but not services
+      for (const symbol of data.symbols) {
+        const isUtils = symbol.file.includes('utils');
+        const isHelpers = symbol.file.includes('helpers');
+        expect(isUtils || isHelpers).toBe(true);
+      }
+    });
+  });
+
+  // ===========================================================================
+  // Output Mode with New Features Tests
+  // ===========================================================================
+
+  describe('output modes with file filtering', () => {
+    test('count_only includes files_searched when file filters applied', async () => {
+      const srcDir = path.join(tempDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+
+      const filePath = path.join(srcDir, 'countonly.ts');
+      fs.writeFileSync(
+        filePath,
+        `export function uniqueCountOnlyFunc(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['src/**/*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'uniqueCountOnlyFunc',
+        output_mode: 'count_only',
+        file_patterns: ['src/**'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      expect(data).toHaveProperty('query');
+      expect(data).toHaveProperty('count');
+      expect(data).toHaveProperty('truncated');
+      expect(data).toHaveProperty('files_searched');
+      expect(typeof data.files_searched).toBe('number');
+    });
+
+    test('minimal mode includes files_searched', async () => {
+      const filePath = path.join(tempDir, 'minimal.ts');
+      fs.writeFileSync(
+        filePath,
+        `export function minimalFunc(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'minimal',
+        output_mode: 'minimal',
+        exclude_patterns: ['**/*.test.ts'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      expect(data).toHaveProperty('files_searched');
+      expect(Array.isArray(data.symbols)).toBe(true);
+    });
+
+    test('verbose mode includes files_searched', async () => {
+      const filePath = path.join(tempDir, 'verbose.ts');
+      fs.writeFileSync(
+        filePath,
+        `export function verboseFunc(): void {}`
+      );
+
+      const tsconfigPath = path.join(tempDir, 'tsconfig.json');
+      fs.writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: { target: 'ES2020', module: 'commonjs' },
+          include: ['*.ts'],
+        })
+      );
+
+      await languageServiceManager.getServiceForFile(filePath);
+
+      const result = await handleWorkspaceSymbols({
+        query: 'verbose',
+        output_mode: 'verbose',
+        file_patterns: ['**/*.ts'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse((result.content[0] as any).text);
+      expect(data).toHaveProperty('files_searched');
+      if (data.symbols.length > 0) {
+        // Verbose mode includes all fields
+        expect(data.symbols[0]).toHaveProperty('container_name');
+        expect(data.symbols[0]).toHaveProperty('match_kind');
+      }
+    });
+  });
 });

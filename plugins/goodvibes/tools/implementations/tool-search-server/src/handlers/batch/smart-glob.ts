@@ -19,6 +19,36 @@ import { PROJECT_ROOT } from '../../config.js';
 export type OutputMode = 'count_only' | 'minimal' | 'standard';
 
 /**
+ * Preview configuration for file content.
+ * Enables inline content preview within smart_glob results.
+ */
+export interface PreviewConfig {
+  /** Whether to enable content preview */
+  enabled: boolean;
+  /** Number of lines to preview (default: 10) */
+  lines?: number;
+  /** Start line (1-based, default: 1) */
+  offset?: number;
+}
+
+/**
+ * Preview metadata included in file info.
+ * Provides content excerpt and range information.
+ */
+export interface FilePreview {
+  /** The preview content */
+  content: string;
+  /** Number of lines included in preview */
+  lines_shown: number;
+  /** Total lines in the file */
+  total_lines: number;
+  /** Start line of preview (1-based) */
+  offset: number;
+  /** Whether more content exists beyond preview */
+  has_more: boolean;
+}
+
+/**
  * Arguments for the smart_glob tool.
  */
 export interface SmartGlobArgs {
@@ -30,6 +60,8 @@ export interface SmartGlobArgs {
   output_mode?: OutputMode;
   /** Maximum number of files to return (default: 100) */
   limit?: number;
+  /** Content preview configuration (only works with output_mode: 'standard') */
+  preview?: PreviewConfig;
 }
 
 /**
@@ -42,6 +74,8 @@ interface FileInfo {
   size: number;
   /** Last modified time (ISO string) */
   modified: string;
+  /** Content preview (when preview.enabled is true) */
+  preview?: FilePreview;
 }
 
 /**
@@ -75,6 +109,12 @@ const DEFAULT_LIMIT = 100;
 
 /** Maximum allowed limit */
 const MAX_LIMIT = 1000;
+
+/** Default number of preview lines */
+const DEFAULT_PREVIEW_LINES = 10;
+
+/** Maximum file size for preview (1MB) - skip preview for huge files */
+const MAX_PREVIEW_FILE_SIZE = 1 * 1024 * 1024;
 
 /** Directories to always ignore */
 const ALWAYS_IGNORE = [
@@ -233,16 +273,56 @@ function findFiles(
 
 /**
  * Get file info (size and modification time).
+ * Optionally includes content preview when previewConfig is provided.
+ *
+ * @param relativePath - File path relative to PROJECT_ROOT
+ * @param previewConfig - Optional preview configuration
+ * @returns FileInfo object or null if file cannot be read
  */
-function getFileInfo(relativePath: string): FileInfo | null {
+function getFileInfo(
+  relativePath: string,
+  previewConfig?: PreviewConfig
+): FileInfo | null {
   const absolutePath = path.resolve(PROJECT_ROOT, relativePath);
   try {
     const stats = fs.statSync(absolutePath);
-    return {
+    const fileInfo: FileInfo = {
       path: relativePath,
       size: stats.size,
       modified: stats.mtime.toISOString(),
     };
+
+    // Add preview if enabled and file is not too large
+    if (previewConfig?.enabled && stats.size <= MAX_PREVIEW_FILE_SIZE) {
+      try {
+        const content = fs.readFileSync(absolutePath, 'utf-8');
+        const lines = content.split('\n');
+        const totalLines = lines.length;
+
+        // Calculate preview range (1-based offset)
+        const offset = Math.max(1, previewConfig.offset ?? 1);
+        const previewLines = previewConfig.lines ?? DEFAULT_PREVIEW_LINES;
+
+        // Convert to 0-based index for slicing
+        const startIndex = offset - 1;
+        const endIndex = Math.min(startIndex + previewLines, totalLines);
+
+        // Slice the lines
+        const slicedLines = lines.slice(startIndex, endIndex);
+
+        fileInfo.preview = {
+          content: slicedLines.join('\n'),
+          lines_shown: slicedLines.length,
+          total_lines: totalLines,
+          offset: offset,
+          has_more: endIndex < totalLines || offset > 1,
+        };
+      } catch {
+        // If preview fails, still return file info without preview
+      }
+    }
+
+    return fileInfo;
   } catch {
     return null;
   }
@@ -336,9 +416,11 @@ export async function handleSmartGlob(
     };
   }
 
-  // Standard mode - include file info
+  // Standard mode - include file info (with optional preview)
+  // Preview only works in standard mode
+  const previewConfig = args.preview;
   const fileInfos = files
-    .map(getFileInfo)
+    .map(f => getFileInfo(f, previewConfig))
     .filter((info): info is FileInfo => info !== null);
 
   const result: SmartGlobResult = {
