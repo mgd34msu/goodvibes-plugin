@@ -7,6 +7,14 @@
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"
       }
+    },
+    "precision-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/precision-engine/dist/index.cjs"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
     }
   }
 }
