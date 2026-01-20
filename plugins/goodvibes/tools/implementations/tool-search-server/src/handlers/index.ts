@@ -306,6 +306,18 @@ export type {
   AnalyzeTailwindConflictsArgs,
 } from './frontend/index.js';
 
+// Batch Tools
+export {
+  handleBatchRead,
+  handleSmartGlob,
+  handleGrepWithContent,
+} from './batch/index.js';
+export type {
+  BatchReadArgs,
+  SmartGlobArgs,
+  GrepWithContentArgs,
+} from './batch/index.js';
+
 // =============================================================================
 // REGISTRY AND TYPES
 // Centralized tool handler registry and shared type definitions

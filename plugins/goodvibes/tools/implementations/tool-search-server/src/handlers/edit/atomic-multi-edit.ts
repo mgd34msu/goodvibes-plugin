@@ -38,6 +38,9 @@ export interface ValidationOptions {
   custom?: string;
 }
 
+/** Output mode for controlling response verbosity */
+export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
+
 /** Arguments for atomic_multi_edit tool */
 export interface AtomicMultiEditArgs {
   /** List of edits to apply */
@@ -46,6 +49,8 @@ export interface AtomicMultiEditArgs {
   validate?: ValidationOptions;
   /** Preview only, don't apply */
   dry_run?: boolean;
+  /** Output verbosity (default: standard) */
+  output_mode?: OutputMode;
 }
 
 /** Result for a single edit */
@@ -416,6 +421,59 @@ async function runValidation(
 }
 
 // =============================================================================
+// Output Formatting
+// =============================================================================
+
+/**
+ * Format the result based on output_mode
+ */
+function formatResult(
+  result: AtomicMultiEditResult,
+  message: string,
+  outputMode: OutputMode
+): Record<string, unknown> {
+  if (outputMode === 'count_only') {
+    const successCount = result.edits.filter(e => e.success).length;
+    const failCount = result.edits.filter(e => !e.success).length;
+    return {
+      success: result.success,
+      applied: result.applied,
+      edits_succeeded: successCount,
+      edits_failed: failCount,
+      rollback_performed: result.rollback_performed,
+      message,
+    };
+  }
+
+  if (outputMode === 'minimal') {
+    return {
+      success: result.success,
+      applied: result.applied,
+      edits: result.edits.map(e => e.file),
+      rollback_performed: result.rollback_performed,
+      message,
+    };
+  }
+
+  if (outputMode === 'verbose') {
+    return {
+      ...result,
+      message,
+    };
+  }
+
+  // Standard mode: file names with success status, but no validation output details
+  return {
+    success: result.success,
+    applied: result.applied,
+    edits: result.edits.map(e => ({ file: e.file, success: e.success, error: e.error })),
+    rollback_performed: result.rollback_performed,
+    validation_passed: result.validation?.passed,
+    message,
+  };
+}
+
+// =============================================================================
 // Main Handler
 // =============================================================================
 
@@ -436,6 +494,8 @@ export async function handleAtomicMultiEdit(
     edits: [],
     rollback_performed: false,
   };
+
+  const outputMode = args.output_mode ?? 'standard';
 
   // Validate input
   if (!args.edits || args.edits.length === 0) {
@@ -526,10 +586,7 @@ export async function handleAtomicMultiEdit(
           {
             type: 'text',
             text: JSON.stringify(
-              {
-                ...result,
-                message: 'Dry run completed - no changes applied',
-              },
+              formatResult(result, 'Dry run completed - no changes applied', outputMode),
               null,
               2
             ),
@@ -561,10 +618,7 @@ export async function handleAtomicMultiEdit(
           {
             type: 'text',
             text: JSON.stringify(
-              {
-                ...result,
-                message: 'Edits failed - all changes rolled back',
-              },
+              formatResult(result, 'Edits failed - all changes rolled back', outputMode),
               null,
               2
             ),
@@ -595,10 +649,7 @@ export async function handleAtomicMultiEdit(
             {
               type: 'text',
               text: JSON.stringify(
-                {
-                  ...result,
-                  message: 'Validation failed - all changes rolled back',
-                },
+                formatResult(result, 'Validation failed - all changes rolled back', outputMode),
                 null,
                 2
               ),
@@ -624,10 +675,7 @@ export async function handleAtomicMultiEdit(
         {
           type: 'text',
           text: JSON.stringify(
-            {
-              ...result,
-              message: 'All edits applied successfully',
-            },
+            formatResult(result, 'All edits applied successfully', outputMode),
             null,
             2
           ),
@@ -648,17 +696,16 @@ export async function handleAtomicMultiEdit(
     }
 
     const message = err instanceof Error ? err.message : 'Unknown error';
+    const errorResult = { ...result, error: message };
 
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify(
-            {
-              ...result,
-              error: message,
-              message: 'Unexpected error - changes rolled back',
-            },
+            outputMode === 'verbose'
+              ? { ...errorResult, message: 'Unexpected error - changes rolled back' }
+              : formatResult(result, `Unexpected error - changes rolled back: ${message}`, outputMode),
             null,
             2
           ),

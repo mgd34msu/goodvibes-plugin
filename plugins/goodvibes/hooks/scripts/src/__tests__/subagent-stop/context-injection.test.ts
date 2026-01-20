@@ -103,6 +103,41 @@ describe('subagent-stop/context-injection', () => {
       });
     });
 
+    describe('efficiency review reminder', () => {
+      it('should include efficiency review section', () => {
+        const result = buildOrchestratorContext(cwd, 'backend-engineer', agentId, true);
+
+        expect(result.systemMessage).toContain('EFFICIENCY REVIEW');
+      });
+
+      it('should mention atomic_multi_edit for batch edits', () => {
+        const result = buildOrchestratorContext(cwd, 'backend-engineer', agentId, true);
+
+        expect(result.systemMessage).toContain('atomic_multi_edit');
+        expect(result.systemMessage).toContain('>3 individual Edit calls');
+      });
+
+      it('should mention batch_read for batch reads', () => {
+        const result = buildOrchestratorContext(cwd, 'backend-engineer', agentId, true);
+
+        expect(result.systemMessage).toContain('batch_read');
+        expect(result.systemMessage).toContain('>3 individual Read calls');
+      });
+
+      it('should mention output_mode minimal', () => {
+        const result = buildOrchestratorContext(cwd, 'backend-engineer', agentId, true);
+
+        expect(result.systemMessage).toContain('output_mode');
+        expect(result.systemMessage).toContain('minimal');
+      });
+
+      it('should mention workspace_symbols for code searches', () => {
+        const result = buildOrchestratorContext(cwd, 'backend-engineer', agentId, true);
+
+        expect(result.systemMessage).toContain('workspace_symbols');
+      });
+    });
+
     describe('agent chaining reminders', () => {
       describe('on failure', () => {
         it('should suggest investigating issues when agent fails', () => {

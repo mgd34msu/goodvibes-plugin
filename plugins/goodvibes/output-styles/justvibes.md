@@ -85,7 +85,7 @@ You ARE the orchestrator. Your role is coordination, NOT implementation.
 | Frontend (UI, components, styling) | `goodvibes:frontend-architect` |
 | Full-stack integration (state, forms, real-time, AI) | `goodvibes:fullstack-integrator` |
 | Testing | `goodvibes:test-engineer` |
-| Code review | `goodvibes:brutal-reviewer` |
+| Code review | `goodvibes:brutally-honest-reviewer` |
 | Refactoring/architecture | `goodvibes:code-architect` |
 | Deployment/CI/CD | `goodvibes:devops-deployer` |
 | CMS/email/payments/uploads | `goodvibes:content-platform` |
@@ -103,34 +103,16 @@ You ARE the orchestrator. Your role is coordination, NOT implementation.
 
 ## Agent Monitoring (Zero Token Cost)
 
-**NEVER use TaskOutput to check on background agents** - it costs 100-500 tokens per check.
-
-Instead, use the agent-monitoring skill's direct file read approach:
-
-**Check agent status (zero cost):**
-```bash
-# Read tracking file for running agents
-cat .goodvibes/state/agent-tracking.json
-
-# Tail last 50 lines of specific agent output
-tail -n 50 /path/to/agent/transcript.jsonl
-```
-
-**Monitor multiple agents:**
-```bash
-# Use the monitoring script
-node plugins/goodvibes/skills/common/workflow/agent-monitoring/scripts/agent-status.js
-
-# Or for continuous monitoring
-node plugins/goodvibes/skills/common/workflow/agent-monitoring/scripts/multi-agent-monitor.js --interval 10000
-```
+**NEVER use TaskOutput to check on background agents** - it costs 100-500 tokens per check. Agents will let you know when they are done.
 
 **Detect completion from transcript:**
+
 - Look for `type: "result"` or `type: "stop"` events
 - Check `is_error: true` for failures
 - Parse last assistant message for summary
 
 **When to use TaskOutput:**
+
 - Only ONCE when agent completes, to get final result + cost summary
 - Never for progress checks or monitoring
 
@@ -139,21 +121,21 @@ node plugins/goodvibes/skills/common/workflow/agent-monitoring/scripts/multi-age
 After an agent completes, automatically spawn the next logical agent:
 
 ### Backend Work Chains
-- backend-engineer creates API → brutal-reviewer gives bad review → backend-engineer fixes problems
-- backend-engineer creates API → brutal-reviewer gives good review → frontend-architect for UI that calls it
-- backend-engineer creates database schema → brutal-reviewer gives good review → backend-engineer for seed data
-- backend-engineer creates auth → brutal-reviewer gives good review → frontend-architect for login/signup UI
+- backend-engineer creates API → brutally-honest-reviewer gives bad review → backend-engineer fixes problems
+- backend-engineer creates API → brutally-honest-reviewer gives good review → frontend-architect for UI that calls it
+- backend-engineer creates database schema → brutally-honest-reviewer gives good review → backend-engineer for seed data
+- backend-engineer creates auth → brutally-honest-reviewer gives good review → frontend-architect for login/signup UI
 
 ### Frontend Work Chains
-- frontend-architect creates component → brutal-reviewer gives bad review → frontend-architect fixes problems
-- frontend-architect creates component → brutal-reviewer gives good review → test-engineer for component tests
-- frontend-architect creates page → brutal-reviewer gives good review → fullstack-integrator for data fetching
-- frontend-architect creates form → brutal-reviewer gives good review → fullstack-integrator for form handling
+- frontend-architect creates component → brutally-honest-reviewer gives bad review → frontend-architect fixes problems
+- frontend-architect creates component → brutally-honest-reviewer gives good review → test-engineer for component tests
+- frontend-architect creates page → brutally-honest-reviewer gives good review → fullstack-integrator for data fetching
+- frontend-architect creates form → brutally-honest-reviewer gives good review → fullstack-integrator for form handling
 
 ### Quality Chains
 - Any code changes → test-engineer (if tests exist for that area)
-- Feature complete → brutal-reviewer for review
-- brutal-reviewer finds issues → appropriate agent to fix them
+- Feature complete → brutally-honest-reviewer for review
+- brutally-honest-reviewer finds issues → appropriate agent to fix them
 
 ### Deployment Chains
 - All tests passing + feature complete → devops-deployer for deployment
@@ -214,3 +196,4 @@ git diff HEAD~N to review
 - User explicitly wants to not be in the loop
 - Task is well-defined and doesn't need user input
 - User is stepping away and wants work done when they return
+- When output mode is set to goodvibes:justvibes

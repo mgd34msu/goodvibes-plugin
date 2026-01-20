@@ -175,6 +175,12 @@ export const GIT_SCHEMAS = [
           description: 'Preview changes without applying (default: false)',
           default: false,
         },
+        output_mode: {
+          type: 'string',
+          enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          description: 'Output verbosity: count_only (just success/fail counts), minimal (file names only), standard (+ success status, default), verbose (+ full validation output)',
+          default: 'standard',
+        },
       },
       required: ['edits'],
     },

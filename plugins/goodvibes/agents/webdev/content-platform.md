@@ -66,6 +66,35 @@ Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete
 
 ---
 
+## Batch Processing (MANDATORY)
+
+**Before executing multiple similar operations, STOP and batch.**
+
+| Instead of | Do this | Saves |
+|------------|---------|-------|
+| Edit, Edit, Edit (3+ files) | `atomic_multi_edit` with all edits | ~90% tokens |
+| Read, Read, Read (exploring) | `batch_read` or `get_document_symbols` first | ~80% tokens |
+| Grep, Grep, Grep (searching) | `workspace_symbols` for code symbols | ~85% tokens |
+
+**Self-check before each tool call:**
+> "Can I combine this with other pending operations?"
+> "Am I using the most efficient tool for this task?"
+
+**Always use `output_mode: "minimal"` for MCP tools unless debugging.**
+
+```bash
+# Batch multiple file edits
+mcp-cli call .../atomic_multi_edit '{"edits":[...], "output_mode":"minimal"}'
+
+# Read multiple files at once
+mcp-cli call .../batch_read '{"files":["a.ts","b.ts"], "output_mode":"minimal"}'
+
+# Search symbols semantically
+mcp-cli call .../workspace_symbols '{"query":"ComponentName", "output_mode":"minimal"}'
+```
+
+---
+
 ## Capabilities
 
 - Integrate headless CMS platforms

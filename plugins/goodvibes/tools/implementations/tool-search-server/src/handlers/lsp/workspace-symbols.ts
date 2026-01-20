@@ -25,6 +25,9 @@ import {
 // Types
 // =============================================================================
 
+/** Output mode for controlling response verbosity */
+export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
+
 /**
  * Arguments for the workspace_symbols tool.
  */
@@ -37,6 +40,8 @@ export interface WorkspaceSymbolsArgs {
   limit?: number;
   /** How to match the query (default: substring) */
   match_type?: 'exact' | 'prefix' | 'substring';
+  /** Output verbosity (default: standard) */
+  output_mode?: OutputMode;
 }
 
 /**
@@ -229,6 +234,7 @@ export async function handleWorkspaceSymbols(
     const kindFilter = args.kind ?? 'all';
     const matchType = args.match_type ?? 'substring';
     const limit = Math.min(Math.max(1, args.limit ?? DEFAULT_LIMIT), MAX_LIMIT);
+    const outputMode = args.output_mode ?? 'standard';
 
     // Find a source file to initialize the language service
     // We need at least one file to get the service started
@@ -320,11 +326,51 @@ export async function handleWorkspaceSymbols(
       return a.name.localeCompare(b.name);
     });
 
+    const truncated = navigateToItems.length > limit;
+
+    // Format output based on output_mode
+    if (outputMode === 'count_only') {
+      return createSuccessResponse({
+        query,
+        count: symbols.length,
+        truncated,
+      });
+    }
+
+    if (outputMode === 'minimal') {
+      return createSuccessResponse({
+        symbols: symbols.map(s => ({ name: s.name, file: s.file })),
+        query,
+        count: symbols.length,
+        truncated,
+      });
+    }
+
+    if (outputMode === 'verbose') {
+      // Verbose mode includes everything
+      const result: WorkspaceSymbolsResult = {
+        symbols,
+        query,
+        count: symbols.length,
+        truncated,
+      };
+      return createSuccessResponse(result);
+    }
+
+    // Standard mode: name, kind, file, line, column (omit container_name and match_kind)
     const result: WorkspaceSymbolsResult = {
-      symbols,
+      symbols: symbols.map(s => ({
+        name: s.name,
+        kind: s.kind,
+        file: s.file,
+        line: s.line,
+        column: s.column,
+        container_name: '', // Omit in standard mode
+        match_kind: '', // Omit in standard mode
+      })),
       query,
       count: symbols.length,
-      truncated: navigateToItems.length > limit,
+      truncated,
     };
 
     return createSuccessResponse(result);

@@ -224,6 +224,99 @@ describe('context-injection', () => {
       });
     });
 
+    describe('batch processing reminder', () => {
+      it('should include batch processing section', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'generic-agent',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('BATCH PROCESSING');
+      });
+
+      it('should mention atomic_multi_edit for batch file edits', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'backend-engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('atomic_multi_edit');
+        expect(result.additionalContext).toContain('3+ file edits');
+      });
+
+      it('should mention batch_read for batch file reads', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'backend-engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('batch_read');
+        expect(result.additionalContext).toContain('3+ file reads');
+      });
+
+      it('should mention workspace_symbols for code searches', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'backend-engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('workspace_symbols');
+        expect(result.additionalContext).toContain('searching code symbols');
+      });
+
+      it('should mention output_mode minimal', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'backend-engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('output_mode');
+        expect(result.additionalContext).toContain('minimal');
+      });
+
+      it('should include batch processing reminder for all agent types', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const agentTypes = [
+          'backend-engineer',
+          'frontend-architect',
+          'test-engineer',
+          'custom-agent',
+        ];
+
+        for (const agentType of agentTypes) {
+          const result = await buildSubagentContext(
+            '/test/project',
+            agentType,
+            'session-123'
+          );
+
+          expect(result.additionalContext).toContain('BATCH PROCESSING');
+        }
+      });
+    });
+
     describe('backend agent type', () => {
       it('should add backend reminder when agentType includes "backend"', async () => {
         const { buildSubagentContext } =
@@ -511,11 +604,13 @@ describe('context-injection', () => {
         );
 
         const lines = result.additionalContext.split('\n');
-        expect(lines.length).toBeGreaterThanOrEqual(4);
+        expect(lines.length).toBeGreaterThanOrEqual(5);
         expect(lines[0]).toContain('[GoodVibes] Project:');
         expect(lines[1]).toContain('Mode:');
         expect(lines[2]).toContain('IMPORTANT:');
-        expect(lines[3]).toContain('Remember:');
+        expect(lines[3]).toContain('BATCH PROCESSING:');
+        // Agent-specific reminder (e.g., "Remember: Write-local only") comes after batch processing section
+        expect(result.additionalContext).toContain('Remember:');
       });
 
       it('should handle session ID parameter (unused but accepted)', async () => {

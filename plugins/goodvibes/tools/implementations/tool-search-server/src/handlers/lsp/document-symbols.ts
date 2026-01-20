@@ -24,12 +24,17 @@ import {
 // Types
 // =============================================================================
 
+/** Output mode for controlling response verbosity */
+export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
+
 /**
  * Arguments for the get_document_symbols tool.
  */
 export interface GetDocumentSymbolsArgs {
   /** File path relative to project root or absolute */
   file: string;
+  /** Output verbosity (default: standard) */
+  output_mode?: OutputMode;
 }
 
 /**
@@ -289,10 +294,56 @@ export async function handleGetDocumentSymbols(
 
     // Extract symbols from the navigation tree
     const symbols = extractSymbols(navigationTree, sourceFile);
+    const outputMode = args.output_mode ?? 'standard';
+    const relativeFile = makeRelativePath(normalizedFilePath, getProjectRoot());
 
+    // Helper to count all symbols including nested children
+    const countAllSymbols = (syms: DocumentSymbol[]): number => {
+      return syms.reduce((total, s) => total + 1 + countAllSymbols(s.children), 0);
+    };
+
+    // Format output based on output_mode
+    if (outputMode === 'count_only') {
+      return createSuccessResponse({
+        file: relativeFile,
+        count: symbols.length,
+        total_including_nested: countAllSymbols(symbols),
+      });
+    }
+
+    // Helper to strip children for non-verbose modes
+    const stripChildren = (sym: DocumentSymbol): Omit<DocumentSymbol, 'children'> & { children: never[] } => ({
+      name: sym.name,
+      kind: sym.kind,
+      line: sym.line,
+      column: sym.column,
+      end_line: sym.end_line,
+      end_column: sym.end_column,
+      children: [] as never[],
+    });
+
+    if (outputMode === 'minimal') {
+      return createSuccessResponse({
+        symbols: symbols.map(s => ({ name: s.name, kind: s.kind })),
+        file: relativeFile,
+        count: symbols.length,
+      });
+    }
+
+    if (outputMode === 'verbose') {
+      // Verbose mode includes full tree with all nested children
+      const result: GetDocumentSymbolsResult = {
+        symbols,
+        file: relativeFile,
+        count: symbols.length,
+      };
+      return createSuccessResponse(result);
+    }
+
+    // Standard mode: symbols with positions but no nested children
     const result: GetDocumentSymbolsResult = {
-      symbols,
-      file: makeRelativePath(normalizedFilePath, getProjectRoot()),
+      symbols: symbols.map(stripChildren),
+      file: relativeFile,
       count: symbols.length,
     };
 

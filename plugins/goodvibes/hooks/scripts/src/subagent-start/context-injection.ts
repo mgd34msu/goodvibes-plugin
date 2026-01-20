@@ -59,6 +59,15 @@ export async function buildSubagentContext(
       'with skills/MCP tools, use them for every part where they apply.'
   );
 
+  // Batch processing reminder for efficiency
+  contextParts.push(
+    'BATCH PROCESSING: For efficiency, use batch operations when possible:\n' +
+      '  - Use `atomic_multi_edit` MCP tool for 3+ file edits (instead of individual Edit calls)\n' +
+      '  - Use `batch_read` MCP tool for 3+ file reads (instead of individual Read calls)\n' +
+      '  - Use `workspace_symbols` MCP tool for searching code symbols (instead of multiple Grep calls)\n' +
+      '  - Default to `output_mode: "minimal"` on MCP tool calls to reduce context size'
+  );
+
   // Add agent-specific reminders based on type
   if (agentType.includes('backend')) {
     contextParts.push(

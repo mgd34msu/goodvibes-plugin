@@ -81,7 +81,8 @@ export type ToolCategory =
   | "errors"
   | "project"
   | "framework"
-  | "docs";
+  | "docs"
+  | "batch";
 
 /**
  * Metadata for a registered tool handler.

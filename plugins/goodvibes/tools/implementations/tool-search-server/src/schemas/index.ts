@@ -41,6 +41,7 @@ import { GIT_SCHEMAS } from './git-schemas.js';
 import { PROJECT_SCHEMAS } from './project-schemas.js';
 import { TEST_SCHEMAS } from './test-schemas.js';
 import { ANALYSIS_SCHEMAS } from './analysis-schemas.js';
+import { BATCH_SCHEMAS } from './batch-schemas.js';
 
 // =============================================================================
 // Schema Types
@@ -66,7 +67,8 @@ export type SchemaDomain =
   | 'git'
   | 'project'
   | 'test'
-  | 'analysis';
+  | 'analysis'
+  | 'batch';
 
 /**
  * Tool schema interface
@@ -107,6 +109,7 @@ const DOMAIN_SCHEMAS: Record<SchemaDomain, readonly ToolSchema[]> = {
   project: PROJECT_SCHEMAS,
   test: TEST_SCHEMAS,
   analysis: ANALYSIS_SCHEMAS,
+  batch: BATCH_SCHEMAS,
 };
 
 // =============================================================================
@@ -243,6 +246,7 @@ export const TOOL_SCHEMAS: readonly ToolSchema[] = [
   ...PROJECT_SCHEMAS,
   ...TEST_SCHEMAS,
   ...ANALYSIS_SCHEMAS,
+  ...BATCH_SCHEMAS,
 ];
 
 // Re-export individual schema groups for selective imports
@@ -264,4 +268,5 @@ export {
   PROJECT_SCHEMAS,
   TEST_SCHEMAS,
   ANALYSIS_SCHEMAS,
+  BATCH_SCHEMAS,
 };

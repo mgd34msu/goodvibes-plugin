@@ -74,6 +74,15 @@ export function buildOrchestratorContext(
       'before spawning agents to provide better context.'
   );
 
+  // Efficiency report reminder
+  contextParts.push(
+    'EFFICIENCY REVIEW: After agent completion, consider these efficiency improvements:\n' +
+      '  - If >3 individual Edit calls were made: suggest using `atomic_multi_edit` MCP tool next time\n' +
+      '  - If >3 individual Read calls were made: suggest using `batch_read` MCP tool next time\n' +
+      '  - Verify MCP tool calls used `output_mode: "minimal"` when verbose output was not needed\n' +
+      '  - Use `workspace_symbols` for code symbol searches instead of multiple Grep calls'
+  );
+
   return {
     systemMessage: contextParts.join('\n\n'),
   };

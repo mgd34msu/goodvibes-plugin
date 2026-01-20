@@ -155,6 +155,12 @@ export const LSP_SCHEMAS = [
       type: 'object',
       properties: {
         file: { type: 'string', description: 'File path (relative to project root or absolute)' },
+        output_mode: {
+          type: 'string',
+          enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          description: 'Output verbosity: count_only (just counts), minimal (names only), standard (names + kinds + positions, default), verbose (full tree with children)',
+          default: 'standard',
+        },
       },
       required: ['file'],
     },
@@ -254,6 +260,12 @@ export const LSP_SCHEMAS = [
           enum: ['exact', 'prefix', 'substring'],
           description: 'How to match the query (default: substring)',
           default: 'substring',
+        },
+        output_mode: {
+          type: 'string',
+          enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          description: 'Output verbosity: count_only (just count), minimal (name + file only), standard (+ kind + position, default), verbose (+ container + match_kind)',
+          default: 'standard',
         },
       },
       required: ['query'],

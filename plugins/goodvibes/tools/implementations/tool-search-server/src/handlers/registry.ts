@@ -111,6 +111,11 @@ import {
   handleAnalyzeEventFlow,
   handleAnalyzeTailwindConflicts,
 } from "./frontend/index.js";
+import {
+  handleBatchRead,
+  handleSmartGlob,
+  handleGrepWithContent,
+} from "./batch/index.js";
 
 // Import argument types for type-safe casting
 import type {
@@ -194,6 +199,11 @@ import type {
   GetSizingStrategyArgs,
   AnalyzeEventFlowArgs,
   AnalyzeTailwindConflictsArgs,
+} from "./index.js";
+import type {
+  BatchReadArgs,
+  SmartGlobArgs,
+  GrepWithContentArgs,
 } from "./index.js";
 
 /**
@@ -496,6 +506,16 @@ const frontendHandlers: ToolHandlerRegistry = {
 };
 
 // =============================================================================
+// BATCH HANDLERS
+// Bulk operations for multiple files
+// =============================================================================
+const batchHandlers: ToolHandlerRegistry = {
+  batch_read: noContext(handleBatchRead),
+  smart_glob: noContext(handleSmartGlob),
+  grep_with_content: noContext(handleGrepWithContent),
+};
+
+// =============================================================================
 // COMBINED REGISTRY
 // Merge all category handlers into a single registry for lookup
 // =============================================================================
@@ -568,6 +588,8 @@ export const TOOL_HANDLERS: ToolHandlerRegistry = {
   ...gitHandlers,
   // Frontend Analysis
   ...frontendHandlers,
+  // Batch Tools
+  ...batchHandlers,
 };
 
 /**
