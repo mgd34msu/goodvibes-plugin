@@ -10,9 +10,14 @@
  * - isGoodVibesHookPresent() hook detection
  * - isSubagentStopHookPresent() hook detection
  * - safeParseJson() error handling
- * - mergeHooks() hook merging for both SubagentStart and SubagentStop
- * - createDefaultSettings() default creation with both hooks
- * - injectSettings() full integration
+ * - loadPluginHooks() hooks.json loading
+ * - resolveCommand() placeholder replacement
+ * - isHookCommandPresent() generic hook detection
+ * - mergeAllHooks() comprehensive hook merging from hooks.json
+ * - mergeHooks() hook merging for both SubagentStart and SubagentStop (legacy)
+ * - createDefaultSettings() default creation with both hooks (legacy)
+ * - createDefaultSettingsFromHooksJson() settings creation from hooks.json
+ * - injectSettings() full integration with hooks.json support
  * - 100% line and branch coverage
  */
 
@@ -385,6 +390,336 @@ describe('settings-injection', () => {
     });
   });
 
+  describe('loadPluginHooks', () => {
+    it('should load and parse valid hooks.json', async () => {
+      const { loadPluginHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const validHooksJson = {
+        description: 'Test hooks',
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Read',
+              hooks: [{ type: 'command', command: 'node script.js', timeout: 5 }],
+            },
+          ],
+        },
+      };
+      mockReadFile.mockResolvedValueOnce(JSON.stringify(validHooksJson));
+
+      const result = await loadPluginHooks(testPluginRoot);
+
+      expect(result).toEqual(validHooksJson);
+      expect(mockReadFile).toHaveBeenCalledWith(
+        path.join(testPluginRoot, 'hooks', 'hooks.json'),
+        'utf-8'
+      );
+    });
+
+    it('should return null for invalid JSON', async () => {
+      const { loadPluginHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      mockReadFile.mockResolvedValueOnce('invalid json {{{');
+
+      const result = await loadPluginHooks(testPluginRoot);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if file does not exist', async () => {
+      const { loadPluginHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      mockReadFile.mockRejectedValueOnce(new Error('ENOENT'));
+
+      const result = await loadPluginHooks(testPluginRoot);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if JSON does not have hooks property', async () => {
+      const { loadPluginHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      mockReadFile.mockResolvedValueOnce(JSON.stringify({ description: 'No hooks' }));
+
+      const result = await loadPluginHooks(testPluginRoot);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('resolveCommand', () => {
+    it('should replace ${CLAUDE_PLUGIN_ROOT} with actual path', async () => {
+      const { resolveCommand } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const command = 'node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/test.js"';
+      const result = resolveCommand(command, testPluginRoot);
+
+      expect(result).toBe(`node "${testPluginRoot}/hooks/scripts/dist/test.js"`);
+    });
+
+    it('should replace multiple occurrences', async () => {
+      const { resolveCommand } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const command = '${CLAUDE_PLUGIN_ROOT}/a ${CLAUDE_PLUGIN_ROOT}/b';
+      const result = resolveCommand(command, testPluginRoot);
+
+      expect(result).toBe(`${testPluginRoot}/a ${testPluginRoot}/b`);
+    });
+
+    it('should return unchanged command if no placeholder', async () => {
+      const { resolveCommand } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const command = 'node "/static/path/script.js"';
+      const result = resolveCommand(command, testPluginRoot);
+
+      expect(result).toBe(command);
+    });
+  });
+
+  describe('isHookCommandPresent', () => {
+    it('should return true when command is present', async () => {
+      const { isHookCommandPresent } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const matchers = [
+        {
+          matcher: '*',
+          hooks: [{ type: 'command', command: 'node test.js' }],
+        },
+      ];
+
+      const result = isHookCommandPresent(matchers, 'node test.js');
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when command is not present', async () => {
+      const { isHookCommandPresent } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const matchers = [
+        {
+          matcher: '*',
+          hooks: [{ type: 'command', command: 'node other.js' }],
+        },
+      ];
+
+      const result = isHookCommandPresent(matchers, 'node test.js');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false for empty matchers array', async () => {
+      const { isHookCommandPresent } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const result = isHookCommandPresent([], 'node test.js');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when hooks property is missing', async () => {
+      const { isHookCommandPresent } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const matchers = [{ matcher: '*' }] as unknown as Array<{
+        matcher: string;
+        hooks: Array<{ type: string; command: string }>;
+      }>;
+
+      const result = isHookCommandPresent(matchers, 'node test.js');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('mergeAllHooks', () => {
+    const samplePluginHooks = {
+      description: 'Test hooks',
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Read',
+            hooks: [{ type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/pre.js"', timeout: 5 }],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: '*',
+            hooks: [{ type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/post.js"', timeout: 10 }],
+          },
+        ],
+      },
+    };
+
+    it('should add all hooks from hooks.json to empty settings', async () => {
+      const { mergeAllHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const settings = {};
+      const { settings: result, hooksAdded } = mergeAllHooks(
+        settings,
+        samplePluginHooks,
+        testPluginRoot
+      );
+
+      expect(hooksAdded).toBe(true);
+      expect(result.hooks).toBeDefined();
+      expect(result.hooks?.PreToolUse).toHaveLength(1);
+      expect(result.hooks?.PostToolUse).toHaveLength(1);
+    });
+
+    it('should resolve ${CLAUDE_PLUGIN_ROOT} in commands', async () => {
+      const { mergeAllHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const settings = {};
+      const { settings: result } = mergeAllHooks(
+        settings,
+        samplePluginHooks,
+        testPluginRoot
+      );
+
+      const preToolCommand = result.hooks?.PreToolUse?.[0]?.hooks[0]?.command;
+      expect(preToolCommand).toBe(`node "${testPluginRoot}/pre.js"`);
+    });
+
+    it('should not add hooks if already present', async () => {
+      const { mergeAllHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const existingHook = {
+        matcher: 'Read',
+        hooks: [{ type: 'command', command: `node "${testPluginRoot}/pre.js"` }],
+      };
+      const settings = { hooks: { PreToolUse: [existingHook] } };
+
+      const { settings: result, hooksAdded } = mergeAllHooks(
+        settings,
+        { hooks: { PreToolUse: samplePluginHooks.hooks.PreToolUse } },
+        testPluginRoot
+      );
+
+      // PreToolUse hook already present, but PostToolUse should be noted as not added
+      // since we only passed PreToolUse in this test
+      expect(hooksAdded).toBe(false);
+      expect(result.hooks?.PreToolUse).toHaveLength(1);
+    });
+
+    it('should preserve existing user hooks', async () => {
+      const { mergeAllHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const userHook = {
+        matcher: 'CustomMatcher',
+        hooks: [{ type: 'command', command: 'user-command' }],
+      };
+      const settings = { hooks: { PreToolUse: [userHook] } };
+
+      const { settings: result, hooksAdded } = mergeAllHooks(
+        settings,
+        samplePluginHooks,
+        testPluginRoot
+      );
+
+      expect(hooksAdded).toBe(true);
+      // User hook should be preserved, new hook appended
+      expect(result.hooks?.PreToolUse).toHaveLength(2);
+      expect(result.hooks?.PreToolUse?.[0]).toEqual(userHook);
+    });
+
+    it('should handle multiple hook types', async () => {
+      const { mergeAllHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const multiHookJson = {
+        hooks: {
+          SessionStart: [
+            { matcher: 'startup', hooks: [{ type: 'command', command: 'cmd1' }] },
+          ],
+          PreToolUse: [
+            { matcher: 'Read', hooks: [{ type: 'command', command: 'cmd2' }] },
+          ],
+          SubagentStart: [
+            { matcher: '*', hooks: [{ type: 'command', command: 'cmd3' }] },
+          ],
+        },
+      };
+
+      const settings = {};
+      const { settings: result, hooksAdded } = mergeAllHooks(
+        settings,
+        multiHookJson,
+        testPluginRoot
+      );
+
+      expect(hooksAdded).toBe(true);
+      expect(result.hooks?.SessionStart).toHaveLength(1);
+      expect(result.hooks?.PreToolUse).toHaveLength(1);
+      expect(result.hooks?.SubagentStart).toHaveLength(1);
+    });
+
+    it('should log added hooks', async () => {
+      const { mergeAllHooks } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const settings = {};
+      mergeAllHooks(settings, samplePluginHooks, testPluginRoot);
+
+      expect(mockDebug).toHaveBeenCalledWith('Added PreToolUse hook: Read');
+      expect(mockDebug).toHaveBeenCalledWith('Added PostToolUse hook: *');
+    });
+  });
+
+  describe('createDefaultSettingsFromHooksJson', () => {
+    it('should create settings with all hooks from hooks.json', async () => {
+      const { createDefaultSettingsFromHooksJson } = await import(
+        '../../session-start/settings-injection.js'
+      );
+
+      const pluginHooks = {
+        hooks: {
+          PreToolUse: [
+            { matcher: 'Read', hooks: [{ type: 'command', command: 'cmd1' }] },
+          ],
+          SubagentStart: [
+            { matcher: '*', hooks: [{ type: 'command', command: 'cmd2' }] },
+          ],
+        },
+      };
+
+      const result = createDefaultSettingsFromHooksJson(pluginHooks, testPluginRoot);
+
+      expect(result.hooks).toBeDefined();
+      expect(result.hooks?.PreToolUse).toHaveLength(1);
+      expect(result.hooks?.SubagentStart).toHaveLength(1);
+    });
+  });
+
   describe('mergeHooks', () => {
     it('should add both hooks to empty settings', async () => {
       const { mergeHooks } = await import(
@@ -641,16 +976,19 @@ describe('settings-injection', () => {
       });
 
       it('should preserve user hooks when adding ours', async () => {
-        mockFileExists.mockResolvedValue(true);
+        // First read: hooks.json fails (fallback to legacy), second read: settings.json
         const userHook = {
           matcher: 'user-matcher',
           hooks: [{ type: 'command', command: 'user-command' }],
         };
-        mockReadFile.mockResolvedValue(
-          JSON.stringify({
-            hooks: { SubagentStart: [userHook] },
-          })
-        );
+        mockReadFile
+          .mockRejectedValueOnce(new Error('ENOENT')) // hooks.json fails
+          .mockResolvedValueOnce(
+            JSON.stringify({
+              hooks: { SubagentStart: [userHook] },
+            })
+          );
+        mockFileExists.mockResolvedValue(true);
 
         const { injectSettings } = await import(
           '../../session-start/settings-injection.js'
@@ -690,12 +1028,21 @@ describe('settings-injection', () => {
 
     describe('error handling', () => {
       it('should handle read errors gracefully', async () => {
-        mockFileExists.mockResolvedValue(true);
-        mockReadFile.mockRejectedValue(new Error('Read permission denied'));
-
         const { injectSettings } = await import(
           '../../session-start/settings-injection.js'
         );
+
+        // First read: hooks.json fails (fallback to legacy)
+        // Second read: settings.json fails with permission error
+        let readCallCount = 0;
+        mockReadFile.mockImplementation(async () => {
+          readCallCount++;
+          if (readCallCount === 1) {
+            throw new Error('ENOENT');
+          }
+          throw new Error('Read permission denied');
+        });
+        mockFileExists.mockResolvedValue(true);
 
         const result = await injectSettings(testCwd, testPluginRoot);
 
@@ -708,14 +1055,20 @@ describe('settings-injection', () => {
       });
 
       it('should handle write errors gracefully', async () => {
-        mockFileExists
-          .mockResolvedValueOnce(false) // settings doesn't exist
-          .mockResolvedValueOnce(false); // .claude dir doesn't exist
-        mockWriteFile.mockRejectedValue(new Error('Write permission denied'));
-
         const { injectSettings } = await import(
           '../../session-start/settings-injection.js'
         );
+
+        // First read: hooks.json fails (fallback to legacy)
+        mockReadFile.mockImplementation(async () => {
+          throw new Error('ENOENT');
+        });
+        mockFileExists
+          .mockResolvedValueOnce(false) // settings doesn't exist
+          .mockResolvedValueOnce(false); // .claude dir doesn't exist
+        mockWriteFile.mockImplementation(async () => {
+          throw new Error('Write permission denied');
+        });
 
         const result = await injectSettings(testCwd, testPluginRoot);
 
@@ -724,12 +1077,18 @@ describe('settings-injection', () => {
       });
 
       it('should handle mkdir errors gracefully', async () => {
-        mockFileExists.mockResolvedValue(false);
-        mockMkdir.mockRejectedValue(new Error('Cannot create directory'));
-
         const { injectSettings } = await import(
           '../../session-start/settings-injection.js'
         );
+
+        // First read: hooks.json fails (fallback to legacy)
+        mockReadFile.mockImplementation(async () => {
+          throw new Error('ENOENT');
+        });
+        mockFileExists.mockResolvedValue(false);
+        mockMkdir.mockImplementation(async () => {
+          throw new Error('Cannot create directory');
+        });
 
         const result = await injectSettings(testCwd, testPluginRoot);
 
@@ -738,12 +1097,21 @@ describe('settings-injection', () => {
       });
 
       it('should handle non-Error exceptions', async () => {
-        mockFileExists.mockResolvedValue(true);
-        mockReadFile.mockRejectedValue('string error');
-
         const { injectSettings } = await import(
           '../../session-start/settings-injection.js'
         );
+
+        // First read: hooks.json fails (fallback to legacy)
+        // Second read: settings.json throws string error
+        let readCallCount = 0;
+        mockReadFile.mockImplementation(async () => {
+          readCallCount++;
+          if (readCallCount === 1) {
+            throw new Error('ENOENT');
+          }
+          throw 'string error';
+        });
+        mockFileExists.mockResolvedValue(true);
 
         const result = await injectSettings(testCwd, testPluginRoot);
 
@@ -824,6 +1192,209 @@ describe('settings-injection', () => {
         expect(writtenContent).toContain('\n  ');
         // Verify it's valid JSON
         expect(() => JSON.parse(writtenContent) as unknown).not.toThrow();
+      });
+    });
+
+    describe('hooks.json integration', () => {
+      const sampleHooksJson = {
+        description: 'Test hooks',
+        hooks: {
+          SessionStart: [
+            {
+              matcher: 'startup',
+              hooks: [{ type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/session-start.js"', timeout: 10 }],
+            },
+          ],
+          PreToolUse: [
+            {
+              matcher: 'Read',
+              hooks: [{ type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js"', timeout: 5 }],
+            },
+          ],
+          SubagentStart: [
+            {
+              matcher: '*',
+              hooks: [{ type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/subagent-start.js"', timeout: 10 }],
+            },
+          ],
+        },
+      };
+
+      it('should load all hooks from hooks.json when creating new settings', async () => {
+        // First read is for hooks.json, then fileExists checks
+        mockReadFile.mockResolvedValueOnce(JSON.stringify(sampleHooksJson));
+        mockFileExists.mockResolvedValue(false);
+
+        const { injectSettings } = await import(
+          '../../session-start/settings-injection.js'
+        );
+
+        const result = await injectSettings(testCwd, testPluginRoot);
+
+        expect(result.success).toBe(true);
+        expect(result.created).toBe(true);
+        expect(result.hooksAdded).toBe(true);
+
+        const writtenContent = mockWriteFile.mock.calls[0]?.[1] ?? '';
+        const parsed = JSON.parse(writtenContent) as { hooks: Record<string, unknown[]> };
+
+        // Should have all hook types from hooks.json
+        expect(parsed.hooks.SessionStart).toHaveLength(1);
+        expect(parsed.hooks.PreToolUse).toHaveLength(1);
+        expect(parsed.hooks.SubagentStart).toHaveLength(1);
+      });
+
+      it('should resolve ${CLAUDE_PLUGIN_ROOT} placeholders', async () => {
+        mockReadFile.mockResolvedValueOnce(JSON.stringify(sampleHooksJson));
+        mockFileExists.mockResolvedValue(false);
+
+        const { injectSettings } = await import(
+          '../../session-start/settings-injection.js'
+        );
+
+        await injectSettings(testCwd, testPluginRoot);
+
+        const writtenContent = mockWriteFile.mock.calls[0]?.[1] ?? '';
+        const parsed = JSON.parse(writtenContent) as {
+          hooks: {
+            PreToolUse: Array<{ hooks: Array<{ command: string }> }>;
+          };
+        };
+
+        const command = parsed.hooks.PreToolUse[0].hooks[0].command;
+        expect(command).toContain(testPluginRoot);
+        expect(command).not.toContain('${CLAUDE_PLUGIN_ROOT}');
+      });
+
+      it('should merge hooks.json hooks with existing settings', async () => {
+        // First read: hooks.json, second read: existing settings.json
+        mockReadFile
+          .mockResolvedValueOnce(JSON.stringify(sampleHooksJson))
+          .mockResolvedValueOnce(JSON.stringify({ existing: 'data', hooks: {} }));
+        mockFileExists.mockResolvedValue(true);
+
+        const { injectSettings } = await import(
+          '../../session-start/settings-injection.js'
+        );
+
+        const result = await injectSettings(testCwd, testPluginRoot);
+
+        expect(result.success).toBe(true);
+        expect(result.hooksAdded).toBe(true);
+
+        const writtenContent = mockWriteFile.mock.calls[0]?.[1] ?? '';
+        const parsed = JSON.parse(writtenContent) as {
+          existing: string;
+          hooks: Record<string, unknown[]>;
+        };
+
+        expect(parsed.existing).toBe('data');
+        expect(parsed.hooks.SessionStart).toHaveLength(1);
+        expect(parsed.hooks.PreToolUse).toHaveLength(1);
+      });
+
+      it('should fall back to legacy behavior when hooks.json fails to load', async () => {
+        // hooks.json read fails, should fall back to legacy
+        mockReadFile.mockRejectedValueOnce(new Error('ENOENT'));
+        mockFileExists.mockResolvedValue(false);
+
+        const { injectSettings } = await import(
+          '../../session-start/settings-injection.js'
+        );
+
+        const result = await injectSettings(testCwd, testPluginRoot);
+
+        expect(result.success).toBe(true);
+        expect(result.created).toBe(true);
+        expect(mockDebug).toHaveBeenCalledWith(
+          expect.stringContaining('falling back to legacy')
+        );
+
+        const writtenContent = mockWriteFile.mock.calls[0]?.[1] ?? '';
+        const parsed = JSON.parse(writtenContent) as {
+          hooks: { SubagentStart: unknown[]; SubagentStop: unknown[] };
+        };
+
+        // Legacy behavior should only create SubagentStart and SubagentStop
+        expect(parsed.hooks.SubagentStart).toHaveLength(1);
+        expect(parsed.hooks.SubagentStop).toHaveLength(1);
+      });
+
+      it('should not add hooks if all are already present', async () => {
+        // Create hooks that match what would be resolved from hooks.json
+        const existingHooks = {
+          hooks: {
+            SessionStart: [
+              {
+                matcher: 'startup',
+                hooks: [{ type: 'command', command: `node "${testPluginRoot}/hooks/scripts/dist/session-start.js"` }],
+              },
+            ],
+            PreToolUse: [
+              {
+                matcher: 'Read',
+                hooks: [{ type: 'command', command: `node "${testPluginRoot}/hooks/scripts/dist/pre-tool-use.js"` }],
+              },
+            ],
+            SubagentStart: [
+              {
+                matcher: '*',
+                hooks: [{ type: 'command', command: `node "${testPluginRoot}/hooks/scripts/dist/subagent-start.js"` }],
+              },
+            ],
+          },
+        };
+
+        mockReadFile
+          .mockResolvedValueOnce(JSON.stringify(sampleHooksJson))
+          .mockResolvedValueOnce(JSON.stringify(existingHooks));
+        mockFileExists.mockResolvedValue(true);
+
+        const { injectSettings } = await import(
+          '../../session-start/settings-injection.js'
+        );
+
+        const result = await injectSettings(testCwd, testPluginRoot);
+
+        expect(result.success).toBe(true);
+        expect(result.hooksAdded).toBe(false);
+        expect(mockWriteFile).not.toHaveBeenCalled();
+      });
+
+      it('should preserve user-defined hooks when adding from hooks.json', async () => {
+        const userHook = {
+          matcher: 'CustomMatcher',
+          hooks: [{ type: 'command', command: 'user-custom-command' }],
+        };
+        const existingSettings = {
+          hooks: {
+            PreToolUse: [userHook],
+          },
+        };
+
+        mockReadFile
+          .mockResolvedValueOnce(JSON.stringify(sampleHooksJson))
+          .mockResolvedValueOnce(JSON.stringify(existingSettings));
+        mockFileExists.mockResolvedValue(true);
+
+        const { injectSettings } = await import(
+          '../../session-start/settings-injection.js'
+        );
+
+        const result = await injectSettings(testCwd, testPluginRoot);
+
+        expect(result.success).toBe(true);
+        expect(result.hooksAdded).toBe(true);
+
+        const writtenContent = mockWriteFile.mock.calls[0]?.[1] ?? '';
+        const parsed = JSON.parse(writtenContent) as {
+          hooks: { PreToolUse: Array<{ matcher: string }> };
+        };
+
+        // User hook should be preserved (first), new hook appended
+        expect(parsed.hooks.PreToolUse).toHaveLength(2);
+        expect(parsed.hooks.PreToolUse[0].matcher).toBe('CustomMatcher');
+        expect(parsed.hooks.PreToolUse[1].matcher).toBe('Read');
       });
     });
   });

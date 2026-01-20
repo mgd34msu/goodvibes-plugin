@@ -4616,6 +4616,50 @@ function safeParseJson(content) {
     return null;
   }
 }
+async function loadPluginHooks(pluginRoot) {
+  const hooksJsonPath = path17.join(pluginRoot, "hooks", "hooks.json");
+  try {
+    const content = await fs13.readFile(hooksJsonPath, "utf-8");
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "object" && parsed !== null && "hooks" in parsed) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+function resolveCommand(command, pluginRoot) {
+  return command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, pluginRoot);
+}
+function isHookCommandPresent(matchers, command) {
+  return matchers.some(
+    (m) => m.hooks?.some((h) => h.command === command)
+  );
+}
+function mergeAllHooks(settings, pluginHooks, pluginRoot) {
+  settings.hooks ??= {};
+  let hooksAdded = false;
+  for (const [hookType, matchers] of Object.entries(pluginHooks.hooks)) {
+    settings.hooks[hookType] ??= [];
+    for (const matcher of matchers) {
+      const resolvedMatcher = {
+        matcher: matcher.matcher,
+        hooks: matcher.hooks.map((h) => ({
+          ...h,
+          command: resolveCommand(h.command, pluginRoot)
+        }))
+      };
+      const command = resolvedMatcher.hooks[0]?.command;
+      if (command && !isHookCommandPresent(settings.hooks[hookType], command)) {
+        settings.hooks[hookType].push(resolvedMatcher);
+        hooksAdded = true;
+        debug(`Added ${hookType} hook: ${matcher.matcher}`);
+      }
+    }
+  }
+  return { settings, hooksAdded };
+}
 function mergeHooks(settings, pluginRoot) {
   const subagentStartHook = createGoodVibesHook(pluginRoot);
   const subagentStopHook = createSubagentStopHook(pluginRoot);
@@ -4653,10 +4697,54 @@ function createDefaultSettings(pluginRoot) {
     }
   };
 }
+function createDefaultSettingsFromHooksJson(pluginHooks, pluginRoot) {
+  const settings = {};
+  const { settings: mergedSettings } = mergeAllHooks(settings, pluginHooks, pluginRoot);
+  return mergedSettings;
+}
 async function injectSettings(cwd, pluginRootOverride) {
   const pluginRoot = pluginRootOverride ?? getPluginRoot();
   const claudeDir = path17.join(cwd, ".claude");
   const settingsPath = path17.join(claudeDir, "settings.json");
+  try {
+    const pluginHooks = await loadPluginHooks(pluginRoot);
+    if (!pluginHooks) {
+      debug("Could not load hooks.json, falling back to legacy SubagentStart/SubagentStop only");
+      return injectSettingsLegacy(cwd, pluginRoot, claudeDir, settingsPath);
+    }
+    const settingsExist = await fileExists(settingsPath);
+    if (!settingsExist) {
+      const claudeDirExists = await fileExists(claudeDir);
+      if (!claudeDirExists) {
+        await fs13.mkdir(claudeDir, { recursive: true });
+        debug(`Created .claude directory at ${claudeDir}`);
+      }
+      const settings2 = createDefaultSettingsFromHooksJson(pluginHooks, pluginRoot);
+      await fs13.writeFile(settingsPath, JSON.stringify(settings2, null, 2));
+      debug(`Created settings.json at ${settingsPath}`);
+      return { success: true, created: true, hooksAdded: true };
+    }
+    const content = await fs13.readFile(settingsPath, "utf-8");
+    const settings = safeParseJson(content);
+    if (settings === null) {
+      const errorMsg = "Invalid JSON in settings.json, skipping hook injection";
+      logError("Settings injection", new Error(errorMsg));
+      return { success: false, created: false, hooksAdded: false, error: errorMsg };
+    }
+    const { settings: mergedSettings, hooksAdded } = mergeAllHooks(settings, pluginHooks, pluginRoot);
+    if (!hooksAdded) {
+      return { success: true, created: false, hooksAdded: false };
+    }
+    await fs13.writeFile(settingsPath, JSON.stringify(mergedSettings, null, 2));
+    debug(`Updated settings.json at ${settingsPath}`);
+    return { success: true, created: false, hooksAdded: true };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logError("Settings injection", error);
+    return { success: false, created: false, hooksAdded: false, error: errorMsg };
+  }
+}
+async function injectSettingsLegacy(cwd, pluginRoot, claudeDir, settingsPath) {
   try {
     const settingsExist = await fileExists(settingsPath);
     if (!settingsExist) {
