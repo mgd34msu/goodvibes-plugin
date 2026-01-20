@@ -8,9 +8,11 @@
  * - Creates cache directory
  * - Initializes analytics
  * - Gathers and injects project context (Smart Context Injection)
- * - Injects GoodVibes hooks into project's .claude/settings.json
  * - Updates session state (increment session count, record start time)
  * - Saves state for future sessions
+ *
+ * NOTE: Hook registration is handled by plugin.json -> hooks/hooks.json
+ * Do NOT inject hooks into .claude/settings.json - it causes duplicate firing.
  */
 
 // Session-start specific modules
@@ -44,7 +46,7 @@ import {
   type RecoveryInfo,
 } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
-import { injectSettings } from './settings-injection.js';
+// NOTE: injectSettings removed - hook registration handled by plugin.json -> hooks/hooks.json
 
 import type { HooksState } from '../types/state.js';
 
@@ -122,27 +124,6 @@ async function savePluginState(
   }
 }
 
-/** Injects GoodVibes hooks into project's .claude/settings.json */
-async function injectProjectSettings(projectDir: string): Promise<void> {
-  try {
-    const result = await injectSettings(projectDir);
-    if (result.success) {
-      if (result.created) {
-        debug('Created .claude/settings.json with GoodVibes hooks');
-      } else if (result.hooksAdded) {
-        debug('Added GoodVibes hooks to existing .claude/settings.json');
-      } else {
-        debug('GoodVibes hooks already present in .claude/settings.json');
-      }
-    } else if (result.error) {
-      debug(`Settings injection skipped: ${result.error}`);
-    }
-  } catch (error) {
-    logError('Settings injection', error);
-    // Continue even if settings injection fails - it's not critical
-  }
-}
-
 /** Initializes analytics for the session */
 function initializeAnalytics(
   sessionId: string,
@@ -194,8 +175,7 @@ async function runSessionStartHook(): Promise<void> {
     await ensureCacheDir();
     debug('Cache directory ensured');
 
-    // Inject GoodVibes hooks into project's .claude/settings.json
-    await injectProjectSettings(projectDir);
+    // NOTE: Hook injection removed - plugin.json -> hooks/hooks.json handles registration
 
     // Validate registries
     const { valid, missing } = await validateRegistries();
@@ -267,4 +247,4 @@ export {
   createFailedContextResult,
 } from './context-builder.js';
 export { gatherAndFormatContext } from './context-injection.js';
-export { injectSettings } from './settings-injection.js';
+// NOTE: injectSettings export removed - no longer used at runtime

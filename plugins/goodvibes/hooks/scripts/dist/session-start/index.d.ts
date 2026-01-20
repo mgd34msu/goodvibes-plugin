@@ -8,12 +8,13 @@
  * - Creates cache directory
  * - Initializes analytics
  * - Gathers and injects project context (Smart Context Injection)
- * - Injects GoodVibes hooks into project's .claude/settings.json
  * - Updates session state (increment session count, record start time)
  * - Saves state for future sessions
+ *
+ * NOTE: Hook registration is handled by plugin.json -> hooks/hooks.json
+ * Do NOT inject hooks into .claude/settings.json - it causes duplicate firing.
  */
 export { formatRecoveryContext, checkCrashRecovery } from './crash-recovery.js';
 export { buildSystemMessage } from './response-formatter.js';
 export { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
 export { gatherAndFormatContext } from './context-injection.js';
-export { injectSettings } from './settings-injection.js';
