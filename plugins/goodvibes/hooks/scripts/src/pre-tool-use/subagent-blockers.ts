@@ -108,8 +108,9 @@ export const TOOL_REPLACEMENTS: Record<string, ToolReplacement> = {
 
 /**
  * List of native tools that should be blocked for subagents.
+ * DISABLED: Allowing all native tools for subagents to fix tool execution issues.
  */
-export const BLOCKED_NATIVE_TOOLS = Object.keys(TOOL_REPLACEMENTS);
+export const BLOCKED_NATIVE_TOOLS: string[] = [];
 
 /**
  * Formats a blocking message with the replacement tool and usage.

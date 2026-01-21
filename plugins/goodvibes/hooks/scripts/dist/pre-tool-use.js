@@ -325,62 +325,6 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
   ])
 );
 
-// src/pre-tool-use/subagent-blockers.ts
-var TOOL_REPLACEMENTS = {
-  Read: {
-    replacement: "batch_read",
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{
-  "files": [
-    "path/to/file1.ts",
-    {"path": "path/to/file2.ts", "offset": 50, "limit": 30}
-  ],
-  "output_mode": "minimal"
-}'`,
-    capabilities: "Supports: per-file offset/limit, output_mode (minimal/standard/verbose)"
-  },
-  Edit: {
-    replacement: "atomic_multi_edit",
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
-  "edits": [
-    {"file": "path/to/file.ts", "operation": "replace", "old_content": "original", "new_content": "replacement"}
-  ],
-  "output_mode": "minimal"
-}'`,
-    capabilities: "Supports: multiple file edits atomically, validation, dry_run"
-  },
-  Write: {
-    replacement: "atomic_multi_edit",
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
-  "edits": [
-    {"file": "path/to/file.ts", "operation": "create", "new_content": "file content here"}
-  ],
-  "output_mode": "minimal"
-}'`,
-    capabilities: "Supports: create/replace operations, multiple files, validation"
-  },
-  Glob: {
-    replacement: "smart_glob",
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{
-  "patterns": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/*.test.ts"],
-  "output_mode": "minimal",
-  "limit": 50
-}'`,
-    capabilities: "Supports: multiple patterns, exclusions, auto-ignores node_modules/.git"
-  },
-  Grep: {
-    replacement: "grep_with_content",
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{
-  "pattern": "searchPattern",
-  "glob": "**/*.ts",
-  "output_mode": "minimal",
-  "max_matches": 50
-}'`,
-    capabilities: "Supports: regex patterns, file filtering, context lines, case insensitive"
-  }
-};
-var BLOCKED_NATIVE_TOOLS = Object.keys(TOOL_REPLACEMENTS);
-
 // src/pre-tool-use/quality-gates.ts
 import { exec as exec2 } from "child_process";
 import { promisify as promisify2 } from "util";

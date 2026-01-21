@@ -94,6 +94,18 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/subagent-stop.js\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
