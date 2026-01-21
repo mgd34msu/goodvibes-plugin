@@ -4,7 +4,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["**/__tests__/**/*.test.ts"],
+    // Only include core module tests - hooks and tools have their own vitest configs
+    include: ["src/core/__tests__/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
   },
 });
