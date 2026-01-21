@@ -177,7 +177,7 @@ function parseDecisions(content: string): Decision[] {
       const whatMatch = section.match(/^(.+?)\n/);
       const whyMatch = section.match(/### Why\n([\s\S]*?)(?=\n###|$)/);
 
-      if (idMatch && whatMatch) {
+      if (idMatch?.[1] && whatMatch?.[1]) {
         decisions.push({
           id: idMatch[1],
           timestamp: dateMatch?.[1] || new Date().toISOString(),
@@ -212,7 +212,7 @@ function parsePatterns(content: string): Pattern[] {
       const descMatch = section.match(/### Description\n([\s\S]*?)(?=\n###|$)/);
       const whenMatch = section.match(/### When to Use\n([\s\S]*?)(?=\n###|$)/);
 
-      if (idMatch && nameMatch) {
+      if (idMatch?.[1] && nameMatch?.[1]) {
         patterns.push({
           id: idMatch[1],
           timestamp: dateMatch?.[1] || new Date().toISOString(),
@@ -247,7 +247,7 @@ function parseFailures(content: string): Failure[] {
       const messageMatch = section.match(/### Error Message\n([\s\S]*?)(?=\n###|$)/);
       const resolutionMatch = section.match(/### Resolution\n([\s\S]*?)(?=\n###|$)/);
 
-      if (idMatch && typeMatch) {
+      if (idMatch?.[1] && typeMatch?.[1]) {
         failures.push({
           id: idMatch[1],
           timestamp: dateMatch?.[1] || new Date().toISOString(),

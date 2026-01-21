@@ -84,7 +84,13 @@ export const handleBatchRead: ToolHandler = async (args: unknown) => {
         data = results;
         break;
       default: // standard
-        data = results.map(r => ({ path: r.path, exists: r.exists, content: r.content, line_count: r.line_count }));
+        data = results.map(r => ({
+          path: r.path,
+          exists: r.exists,
+          content: r.content,
+          line_count: r.line_count,
+          ...(r.error && { error: r.error }),
+        }));
     }
 
     return toCallToolResult(successResult(data, outputMode, getElapsed()));

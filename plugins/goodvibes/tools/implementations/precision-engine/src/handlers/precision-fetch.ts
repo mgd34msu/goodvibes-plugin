@@ -27,6 +27,13 @@ const cache = new Map<string, CacheEntry>();
 const DEFAULT_CACHE_TTL = 900; // 15 minutes in seconds
 const DEFAULT_TIMEOUT = 30000;
 
+/**
+ * Clear the fetch cache. Useful for testing.
+ */
+export function clearFetchCache(): void {
+  cache.clear();
+}
+
 function getCacheKey(url: string, method: string = 'GET'): string {
   return `${method}:${url}`;
 }

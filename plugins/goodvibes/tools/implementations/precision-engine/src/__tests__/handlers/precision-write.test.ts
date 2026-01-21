@@ -256,19 +256,19 @@ describe('precision_write handler', () => {
     });
 
     it('should stop on failure in partial mode', async () => {
-      await createTestFile('existing.ts', 'original');
-
+      // Use a path that will cause an actual write failure (directory doesn't exist and create_dirs=false)
       const result = await handlePrecisionWrite({
         files: [
-          { path: 'existing.ts', content: 'new content' }, // Will fail
+          { path: 'nonexistent-dir/will-fail.ts', content: 'content' }, // Will fail - directory doesn't exist
           { path: 'new.ts', content: 'content' },
         ],
-        overwrite: false,
+        create_dirs: false, // This causes the first write to fail
         transaction: { mode: 'partial' },
       });
 
       const parsed = expectSuccess(result);
-      // Second file should not be created
+      expect(parsed.data.files[0].status).toBe('failed');
+      // Second file should not be created because first failed
       const exists = await fileExists('new.ts');
       expect(exists).toBe(false);
     });

@@ -16,8 +16,8 @@ import type {
   BatchExecutionContext,
   BatchExecutionOptions,
   DEFAULT_EXECUTION_OPTIONS,
-  PHASE_ORDER,
 } from '../interfaces/tools/batch-tool.js';
+import { PHASE_ORDER } from '../interfaces/tools/batch-tool.js';
 import type { Batch, BatchConfig, OutputConfig } from '../interfaces/batch.js';
 import type { BatchResult, PhaseResult, OperationResult, ValidationResult } from '../interfaces/result.js';
 import type { OperationBase } from '../interfaces/operation.js';
@@ -224,7 +224,7 @@ function collectAffectedFiles(operations: BatchToolInput['operations']): string[
           }
         }
       }
-      if ('file' in op && op.file) {
+      if ('file' in op && typeof op.file === 'string') {
         files.add(op.file);
       }
     }
@@ -477,7 +477,7 @@ function describeOperation(op: OperationBase): string {
  */
 function extractTargets(op: OperationBase): string[] {
   const targets: string[] = [];
-  const anyOp = op as Record<string, unknown>;
+  const anyOp = op as unknown as Record<string, unknown>;
 
   if (anyOp.files && Array.isArray(anyOp.files)) {
     for (const f of anyOp.files) {
@@ -512,7 +512,7 @@ function estimateOperationTokens(op: OperationBase): number {
   // Base estimate
   let tokens = 100;
 
-  const anyOp = op as Record<string, unknown>;
+  const anyOp = op as unknown as Record<string, unknown>;
 
   // Adjust based on operation type
   switch (op.type) {
@@ -818,9 +818,11 @@ function evaluateCondition(expression: string, context: BatchExecutionContext): 
   if (resultMatch) {
     const [, opId, field, expectedValue] = resultMatch;
     const result = context.phase_results[context.current_phase];
-    if (result && typeof result === 'object' && opId in (result as Record<string, unknown>)) {
+    if (result && typeof result === 'object' && opId && opId in (result as Record<string, unknown>)) {
       const opResult = (result as Record<string, Record<string, unknown>>)[opId];
-      return opResult[field] === expectedValue;
+      if (opResult && field) {
+        return opResult[field] === expectedValue;
+      }
     }
   }
 
@@ -844,7 +846,9 @@ function evaluateExpectation(
     const match = expression.match(/data\.(\w+)\s*==\s*'(\w+)'/);
     if (match) {
       const [, field, expectedValue] = match;
-      return (data as Record<string, unknown>)[field] === expectedValue;
+      if (field) {
+        return (data as Record<string, unknown>)[field] === expectedValue;
+      }
     }
   }
 
@@ -978,7 +982,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
     }
 
     // Execute phases in order
-    const phaseResults: BatchResult['phases'] = {};
+    const phaseResults: Partial<Record<BatchPhase, PhaseResult>> = {};
     let totalOperations = 0;
     let succeededOperations = 0;
     let failedOperations = 0;
@@ -1083,7 +1087,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
         duration_ms: getElapsed(),
         tokens_used: totalTokens,
       },
-      phases: phaseResults,
+      phases: phaseResults as BatchResult['phases'],
       validation: {
         before: beforeValidation,
         after: afterValidation,

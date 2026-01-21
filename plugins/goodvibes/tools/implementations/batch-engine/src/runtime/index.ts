@@ -3,6 +3,20 @@
  * @see SPEC-v2 Sections 7-9
  */
 
+// Import for internal use
+import {
+  getStateManager,
+  resetGlobalStateManager,
+} from './state.js';
+import {
+  getMemoryManager,
+  resetGlobalMemoryManager,
+} from './memory.js';
+import {
+  getTelemetryCollector,
+  resetGlobalTelemetryCollector,
+} from './telemetry.js';
+
 // State Manager
 export {
   StateManagerImpl,

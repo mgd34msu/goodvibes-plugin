@@ -1416,7 +1416,7 @@ export function mergeExecutionResults(
   }
 
   const merged: HookExecutionResult = {
-    event: results[0].event,
+    event: results[0]!.event,
     total_hooks: 0,
     executed: 0,
     succeeded: 0,

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { handlePrecisionFetch } from '../../handlers/precision-fetch.js';
+import { handlePrecisionFetch, clearFetchCache } from '../../handlers/precision-fetch.js';
 import { expectSuccess, expectError } from '../test-utils.js';
 
 // Mock fetch globally
@@ -13,6 +13,8 @@ describe('precision_fetch handler', () => {
   beforeEach(() => {
     // @ts-ignore - Mocking global fetch
     globalThis.fetch = mockFetch;
+    // Clear cache before each test to prevent cross-test pollution
+    clearFetchCache();
   });
 
   afterEach(() => {

@@ -25,14 +25,17 @@ interface ParsedSymbol {
 }
 
 const SYMBOL_PATTERNS: Array<{ kind: SymbolKind; pattern: RegExp; nameGroup: number }> = [
-  { kind: 'function', pattern: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/gm, nameGroup: 1 },
-  { kind: 'class', pattern: /^(?:export\s+)?class\s+(\w+)/gm, nameGroup: 1 },
-  { kind: 'interface', pattern: /^(?:export\s+)?interface\s+(\w+)/gm, nameGroup: 1 },
-  { kind: 'type', pattern: /^(?:export\s+)?type\s+(\w+)/gm, nameGroup: 1 },
-  { kind: 'enum', pattern: /^(?:export\s+)?enum\s+(\w+)/gm, nameGroup: 1 },
-  { kind: 'variable', pattern: /^(?:export\s+)?const\s+(\w+)/gm, nameGroup: 1 },
-  { kind: 'method', pattern: /^\s+(?:async\s+)?(\w+)\s*\([^)]*\)\s*[:{]/gm, nameGroup: 1 },
-  { kind: 'property', pattern: /^\s+(?:readonly\s+)?(\w+)\s*[?!]?\s*:/gm, nameGroup: 1 },
+  // Top-level declarations allow optional leading whitespace
+  { kind: 'function', pattern: /^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)/gm, nameGroup: 1 },
+  { kind: 'class', pattern: /^\s*(?:export\s+)?class\s+(\w+)/gm, nameGroup: 1 },
+  { kind: 'interface', pattern: /^\s*(?:export\s+)?interface\s+(\w+)/gm, nameGroup: 1 },
+  { kind: 'type', pattern: /^\s*(?:export\s+)?type\s+(\w+)/gm, nameGroup: 1 },
+  { kind: 'enum', pattern: /^\s*(?:export\s+)?enum\s+(\w+)/gm, nameGroup: 1 },
+  { kind: 'variable', pattern: /^\s*(?:export\s+)?const\s+(\w+)/gm, nameGroup: 1 },
+  // Method pattern: handles public/private/protected, static, async modifiers (requires leading whitespace)
+  { kind: 'method', pattern: /^\s+(?:(?:public|private|protected)\s+)?(?:static\s+)?(?:async\s+)?(\w+)\s*\([^)]*\)\s*[:{]/gm, nameGroup: 1 },
+  // Property pattern: handles access modifiers and readonly (requires leading whitespace)
+  { kind: 'property', pattern: /^\s+(?:(?:public|private|protected)\s+)?(?:static\s+)?(?:readonly\s+)?(\w+)\s*[?!]?\s*:/gm, nameGroup: 1 },
 ];
 
 function findBlockEnd(content: string, startIndex: number): number {

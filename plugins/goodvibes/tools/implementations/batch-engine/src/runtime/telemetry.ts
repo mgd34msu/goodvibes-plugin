@@ -143,8 +143,10 @@ function calculateTrend(
     return { direction: 'stable', change_percent: 0, period: '7d' };
   }
 
-  const oldValue = recent[0][metric];
-  const newValue = recent[recent.length - 1][metric];
+  const firstPoint = recent[0]!;
+  const lastPoint = recent[recent.length - 1]!;
+  const oldValue = firstPoint[metric];
+  const newValue = lastPoint[metric];
 
   if (oldValue === 0) {
     return { direction: newValue > 0 ? 'up' : 'stable', change_percent: 0, period: '7d' };

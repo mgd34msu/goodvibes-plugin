@@ -158,7 +158,8 @@ async function executeRollback(
       const state = runtime.state.getState();
       const checkpoints = state.checkpoints.checkpoints;
       if (checkpoints.length > 0) {
-        checkpointId = checkpoints[checkpoints.length - 1].id;
+        const lastCheckpoint = checkpoints[checkpoints.length - 1];
+        checkpointId = lastCheckpoint?.id;
       }
     }
 

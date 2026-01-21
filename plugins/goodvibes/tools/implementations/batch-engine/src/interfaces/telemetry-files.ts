@@ -157,5 +157,5 @@ export function isValidHistoryDate(date: string): boolean {
  * @returns Today's date string
  */
 export function getTodayDateString(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0] ?? new Date().toISOString().slice(0, 10);
 }

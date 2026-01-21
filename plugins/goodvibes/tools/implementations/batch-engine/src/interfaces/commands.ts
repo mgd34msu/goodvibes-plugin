@@ -707,16 +707,19 @@ export const defaultCommandParser: CommandParser = {
 
     for (let i = argStartIndex; i < parts.length; i++) {
       const part = parts[i];
+      if (!part) continue;
 
       if (part.startsWith('--')) {
         // Long flag or option
         const withoutDashes = part.slice(2);
         if (withoutDashes.includes('=')) {
           const [key, value] = withoutDashes.split('=', 2);
-          options[key] = value;
-        } else if (i + 1 < parts.length && !parts[i + 1].startsWith('-')) {
+          if (key && value !== undefined) {
+            options[key] = value;
+          }
+        } else if (i + 1 < parts.length && parts[i + 1] && !parts[i + 1]!.startsWith('-')) {
           // Check if next part is a value
-          options[withoutDashes] = parts[++i];
+          options[withoutDashes] = parts[++i]!;
         } else {
           flags[withoutDashes] = true;
         }
