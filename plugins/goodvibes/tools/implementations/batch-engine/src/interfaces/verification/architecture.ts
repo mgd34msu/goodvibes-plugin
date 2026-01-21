@@ -298,9 +298,9 @@ export interface ArchitectureVerificationSummary {
 }
 
 /**
- * Overall verification report status
+ * Overall architecture verification report status
  */
-export type VerificationStatus = 'passed' | 'partial' | 'failed';
+export type ArchitectureVerificationStatus = 'passed' | 'partial' | 'failed';
 
 /**
  * Complete architecture verification report
@@ -319,7 +319,7 @@ export interface ArchitectureVerificationReport {
   connections: ConnectionVerification;
 
   /** Overall verification status */
-  status: VerificationStatus;
+  status: ArchitectureVerificationStatus;
 
   /** Summary of verification results */
   summary: ArchitectureVerificationSummary;
@@ -415,11 +415,11 @@ export const ARCHITECTURE_CHECKLIST = {
   ],
 } as const;
 
-/** Type for checklist category keys */
-export type ChecklistCategory = keyof typeof ARCHITECTURE_CHECKLIST;
+/** Type for architecture checklist category keys */
+export type ArchitectureArchitectureChecklistCategory = keyof typeof ARCHITECTURE_CHECKLIST;
 
 /** Get checklist items for a category */
-export type ChecklistItemsOf<C extends ChecklistCategory> =
+export type ArchitectureChecklistItemsOf<C extends ArchitectureArchitectureChecklistCategory> =
   (typeof ARCHITECTURE_CHECKLIST)[C][number];
 
 // ============================================================================
@@ -443,9 +443,9 @@ export interface ChecklistItemStatus {
 /**
  * Status of a checklist category
  */
-export interface ChecklistCategoryStatus {
+export interface ArchitectureChecklistCategoryStatus {
   /** Category name */
-  category: ChecklistCategory;
+  category: ArchitectureChecklistCategory;
 
   /** Status of each item in the category */
   items: ChecklistItemStatus[];
@@ -465,7 +465,7 @@ export interface ChecklistCategoryStatus {
  */
 export interface ChecklistVerificationResult {
   /** Status of each category */
-  categories: ChecklistCategoryStatus[];
+  categories: ArchitectureChecklistCategoryStatus[];
 
   /** Overall verified count */
   total_verified: number;
