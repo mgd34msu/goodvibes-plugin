@@ -1,53 +1,132 @@
-version: "1.0.0"
-generated: "2026-01-02T00:00:00Z"
+version: 1.0.0
+generated: '2026-01-21T19:38:20.753Z'
 total: 3
-
 categories:
+  full:
+    description: Full-featured starters with auth, database, and more
+    templates:
+      - next-saas
   minimal:
     description: Bare-bones starters with essential setup
     templates:
       - next-app
       - vite-react
-
-  full:
-    description: Full-featured starters with auth, database, and more
-    templates:
-      - next-saas
-
 templates:
-  - name: next-app
-    path: minimal/next-app
-    description: Next.js 15 with TypeScript, Tailwind, and ESLint
-    category: minimal
-    stack: [next, react, typescript, tailwind]
-    complexity: simple
-
-  - name: vite-react
-    path: minimal/vite-react
-    description: Vite + React 19 with TypeScript and Tailwind
-    category: minimal
-    stack: [vite, react, typescript, tailwind]
-    complexity: simple
-
   - name: next-saas
     path: full/next-saas
-    description: Full-stack SaaS with NextAuth, Prisma, Stripe, and Tailwind
+    description: Full-stack SaaS starter with NextAuth, Prisma, Stripe, and Tailwind
     category: full
-    stack: [next, react, typescript, tailwind, nextauth, prisma, stripe]
+    stack:
+      - next
+      - react
+      - typescript
+      - tailwind
+      - nextauth
+      - prisma
+      - stripe
     complexity: complex
-
-search_index:
   - name: next-app
-    keywords: [next, nextjs, react, typescript, minimal, starter, app]
     path: minimal/next-app
-    description: Next.js 15 with TypeScript, Tailwind, and ESLint
-
+    description: Next.js 15 with TypeScript, Tailwind CSS, and ESLint
+    category: minimal
+    stack:
+      - next
+      - react
+      - typescript
+      - tailwind
+      - eslint
+    complexity: simple
   - name: vite-react
-    keywords: [vite, react, typescript, minimal, fast, spa]
     path: minimal/vite-react
-    description: Vite + React 19 with TypeScript and Tailwind
-
+    description: Vite + React 19 with TypeScript and Tailwind CSS
+    category: minimal
+    stack:
+      - vite
+      - react
+      - typescript
+      - tailwind
+    complexity: simple
+search_index:
   - name: next-saas
-    keywords: [next, saas, auth, database, prisma, stripe, payments, full]
+    keywords:
+      - next
+      - saas
+      - react
+      - typescript
+      - tailwind
+      - nextauth
+      - prisma
+      - stripe
+      - next.js
+      - app
+      - router
+      - nextauth.js
+      - with
+      - multiple
+      - providers
+      - orm
+      - migrations
+      - subscriptions
+      - webhooks
+      - css
+      - dark
+      - mode
+      - hook
+      - form
+      - zod
+      - validation
+      - protected
+      - routes
+      - middleware
+      - user
+      - dashboard
+      - admin
+      - panel
+      - structure
+      - api
+      - rate
+      - limiting
+      - email
+      - templates
     path: full/next-saas
-    description: Full-stack SaaS with NextAuth, Prisma, Stripe, and Tailwind
+    description: Full-stack SaaS starter with NextAuth, Prisma, Stripe, and Tailwind
+  - name: next-app
+    keywords:
+      - next
+      - app
+      - react
+      - typescript
+      - tailwind
+      - eslint
+      - router
+      - server
+      - components
+      - strict
+      - mode
+      - css
+      - with
+      - dark
+      - prettier
+      - path
+      - aliases
+      - (@/*)
+    path: minimal/next-app
+    description: Next.js 15 with TypeScript, Tailwind CSS, and ESLint
+  - name: vite-react
+    keywords:
+      - vite
+      - react
+      - typescript
+      - tailwind
+      - with
+      - hmr
+      - strict
+      - mode
+      - css
+      - path
+      - aliases
+      - (@/*)
+      - eslint
+      - prettier
+    path: minimal/vite-react
+    description: Vite + React 19 with TypeScript and Tailwind CSS

@@ -397,6 +397,99 @@ function scanTools(): (RegistryEntry & { server: string })[] {
 }
 
 /**
+ * Template definition interface
+ */
+interface TemplateDefinition {
+  name: string;
+  version?: string;
+  description: string;
+  stack?: Record<string, string>;
+  features?: string[];
+}
+
+/**
+ * Scan templates directory
+ */
+function scanTemplates(): Array<{
+  name: string;
+  path: string;
+  description: string;
+  category: string;
+  stack: string[];
+  keywords: string[];
+}> {
+  const templatesDir = path.join(PLUGIN_ROOT, 'templates');
+  const entries: Array<{
+    name: string;
+    path: string;
+    description: string;
+    category: string;
+    stack: string[];
+    keywords: string[];
+  }> = [];
+
+  function scanDir(dir: string, category: string = '') {
+    if (!fs.existsSync(dir)) return;
+
+    const items = fs.readdirSync(dir);
+
+    // Check if this is a template directory (has template.yaml)
+    if (items.includes('template.yaml')) {
+      const templatePath = path.join(dir, 'template.yaml');
+      const content = fs.readFileSync(templatePath, 'utf-8');
+
+      try {
+        const template = yaml.load(content) as TemplateDefinition;
+        const name = template.name || path.basename(dir);
+        const description = template.description || '';
+
+        // Extract stack values as array
+        const stack = template.stack ? Object.values(template.stack) : [];
+
+        // Build keywords from name, description, stack, and features
+        const keywords = new Set<string>();
+        name.split(/[-_]/).forEach(w => keywords.add(w.toLowerCase()));
+        stack.forEach(s => keywords.add(s.toLowerCase()));
+        if (template.features) {
+          template.features.forEach(f => {
+            f.toLowerCase().split(/\s+/).forEach(w => {
+              if (w.length > 2) keywords.add(w);
+            });
+          });
+        }
+
+        entries.push({
+          name,
+          path: category ? `${category}/${path.basename(dir)}` : path.basename(dir),
+          description,
+          category: category || 'general',
+          stack,
+          keywords: Array.from(keywords)
+        });
+      } catch (e) {
+        console.error(`Error parsing template.yaml in ${dir}:`, e);
+      }
+      return; // Don't recurse into template subdirectories
+    }
+
+    // Recurse into subdirectories
+    for (const item of items) {
+      if (item.startsWith('_') || item.startsWith('.')) continue;
+
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        scanDir(fullPath, category || item);
+      }
+    }
+  }
+
+  scanDir(templatesDir);
+  return entries;
+}
+
+/**
  * Write registry file
  */
 function writeRegistry(name: string, entries: RegistryEntry[]) {
@@ -470,6 +563,52 @@ function main() {
   const toolsPath = path.join(PLUGIN_ROOT, 'tools', '_registry.yaml');
   fs.writeFileSync(toolsPath, yaml.dump(toolsRegistry, { lineWidth: 120 }));
   console.log(`\nWritten ${toolsPath} (${tools.length} entries)`);
+
+  // Scan and write templates registry
+  console.log('\nScanning templates...');
+  const templates = scanTemplates();
+
+  // Group templates by category
+  const byCategory: Record<string, typeof templates> = {};
+  for (const t of templates) {
+    if (!byCategory[t.category]) byCategory[t.category] = [];
+    byCategory[t.category].push(t);
+  }
+
+  const templatesRegistry = {
+    version: '1.0.0',
+    generated: new Date().toISOString(),
+    total: templates.length,
+    categories: Object.fromEntries(
+      Object.entries(byCategory).map(([cat, temps]) => [
+        cat,
+        {
+          description: cat === 'minimal' ? 'Bare-bones starters with essential setup' :
+                       cat === 'full' ? 'Full-featured starters with auth, database, and more' :
+                       `${cat} templates`,
+          templates: temps.map(t => t.name)
+        }
+      ])
+    ),
+    templates: templates.map(t => ({
+      name: t.name,
+      path: t.path,
+      description: t.description,
+      category: t.category,
+      stack: t.stack,
+      complexity: t.category === 'minimal' ? 'simple' : 'complex'
+    })),
+    search_index: templates.map(t => ({
+      name: t.name,
+      keywords: t.keywords,
+      path: t.path,
+      description: t.description
+    }))
+  };
+
+  const templatesPath = path.join(PLUGIN_ROOT, 'templates', '_registry.yaml');
+  fs.writeFileSync(templatesPath, yaml.dump(templatesRegistry, { lineWidth: 120 }));
+  console.log(`Written ${templatesPath} (${templates.length} entries)`);
 
   console.log('\nDone!');
 }
