@@ -1,8 +1,902 @@
-version: 1.0.0
-generated: '2026-01-21T19:14:35.293Z'
-total: 40
-categories: {}
+version: 2.0.0
+generated: '2026-01-21T19:19:49.690Z'
+total: 73
+servers:
+  - name: precision-engine
+    count: 9
+    tools:
+      - name: precision_write
+        path: precision-engine/precision_write
+        description: >-
+          Create or write files with encoding support and multiple overwrite modes. ' + 'Supports batch writes,
+          automatic parent directory creation, and dry_run mode.
+      - name: precision_exec
+        path: precision-engine/precision_exec
+        description: >-
+          Execute shell commands with batch support, timeout, and expectations checking. ' + 'Captures stdout, stderr,
+          and exit code.
+      - name: precision_fetch
+        path: precision-engine/precision_fetch
+        description: >-
+          Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), ' + 'custom headers,
+          method override, and timeout.
+      - name: discover
+        path: precision-engine/discover
+        description: >-
+          Execute multiple grep, glob, or symbol queries in parallel. ' + 'Returns results keyed by query ID for
+          efficient batch discovery.
+      - name: precision_grep
+        path: precision-engine/precision_grep
+        description: >-
+          Search for patterns with batch queries and precise output control. ' + 'Supports count_only, files_only,
+          locations, matches, and context modes.
+      - name: precision_read
+        path: precision-engine/precision_read
+        description: >-
+          Token-efficient file reading with extraction modes. ' + 'Read full content, outlines, symbols, or specific
+          line ranges. ' + 'Supports per-file range overrides and symbol filtering.
+      - name: precision_glob
+        path: precision-engine/precision_glob
+        description: >-
+          Token-efficient file finding with filters and optional preview. ' + 'Supports size/date filters, content
+          matching, sorting, and gitignore.
+      - name: precision_symbols
+        path: precision-engine/precision_symbols
+        description: >-
+          Token-efficient symbol search across workspace or specific files. ' + 'Supports workspace-wide symbol search
+          and per-file symbol extraction.
+      - name: precision_edit
+        path: precision-engine/precision_edit
+        description: >-
+          Token-efficient file editing with atomic transactions, ' + 'conflict detection, and validation. Supports
+          exact, fuzzy, regex, and AST matching modes.
+  - name: batch-engine
+    count: 6
+    tools:
+      - name: batch
+        path: batch-engine/batch
+        description: >-
+          Execute a batch of operations with transaction support, validation, and recovery. The heart of SPEC-v2
+          orchestration.
+      - name: batch_status
+        path: batch-engine/batch_status
+        description: Check the status of a batch execution, including progress, results, and agent status.
+      - name: batch_list
+        path: batch-engine/batch_list
+        description: List all batches, optionally filtered by status or time range.
+      - name: batch_recover
+        path: batch-engine/batch_recover
+        description: 'Recovery operations: rollback, restore, retry, cleanup, or fix failed operations.'
+      - name: batch_checkpoints
+        path: batch-engine/batch_checkpoints
+        description: List available checkpoints for recovery.
+      - name: batch_state
+        path: batch-engine/batch_state
+        description: 'Manage persistent state and memory: get, set, query, export, import, or clear.'
+  - name: registry-engine
+    count: 7
+    tools:
+      - name: search_skills
+        path: registry-engine/search-skills.yaml
+        description: |
+          Search the skill registry for relevant skills based on keywords,
+          technology, or task description. Use when needing domain-specific
+          guidance that matches available skills.
+      - name: search_agents
+        path: registry-engine/search-agents.yaml
+        description: |
+          Search for specialized agents by expertise area or task type.
+          Use when needing to find an agent with specific domain knowledge.
+      - name: search_tools
+        path: registry-engine/search-tools.yaml
+        description: |
+          Search for available tools by functionality or use case.
+          Use when discovering what tools are available for a task.
+      - name: recommend_skills
+        path: registry-engine/recommend-skills.yaml
+        description: |
+          Analyze task description and project context to recommend relevant skills.
+          Combines natural language understanding with stack detection.
+          Primary entry point for skill discovery.
+      - name: get_skill_content
+        path: registry-engine/get-skill-content.yaml
+        description: |
+          Load the full content of a skill by its path.
+          Use after searching to get detailed skill instructions.
+      - name: get_agent_content
+        path: registry-engine/get-agent-content.yaml
+        description: |
+          Load full content of an agent by path.
+          Retrieves the complete agent definition including capabilities,
+          expertise areas, and configuration from the agent registry.
+      - name: skill_dependencies
+        path: registry-engine/skill-dependencies.yaml
+        description: |
+          Show which skills work together and their dependencies.
+          Identifies prerequisite skills, complementary skills, and conflicts.
+          Helps build complete skill sets for complex tasks.
+  - name: analysis-engine
+    count: 19
+    tools:
+      - name: identify_tech_debt
+        path: analysis-engine/identify-tech-debt.yaml
+        description: >-
+          Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
+          cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
+          debt items with effort estimates.
+      - name: detect_stack
+        path: analysis-engine/detect-stack.yaml
+        description: |
+          Analyze project to identify the technology stack. Scans package.json,
+          config files, and directory structure to determine frameworks, libraries,
+          and tools in use. Essential for selecting appropriate skills.
+      - name: check_versions
+        path: analysis-engine/check-versions.yaml
+        description: |
+          Get installed package versions and compare against skill assumptions.
+          Identifies version mismatches that could cause skill advice to fail.
+          Checks both direct dependencies and peer dependencies.
+      - name: scan_patterns
+        path: analysis-engine/scan-patterns.yaml
+        description: |
+          Identify existing code patterns and conventions in the project.
+          Helps apply skills consistently with established patterns.
+          Detects naming conventions, file structure, and architectural patterns.
+      - name: read_config
+        path: analysis-engine/read-config.yaml
+        description: |
+          Parse and return existing configuration files.
+          Understands various config formats (JSON, YAML, JS, TS).
+          Skills can build upon existing configuration.
+      - name: get_conventions
+        path: analysis-engine/get-conventions.yaml
+        description: >-
+          LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the
+          codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling.
+          Uses Claude to synthesize findings into actionable convention guidelines.
+      - name: parse_error_stack
+        path: analysis-engine/parse-error-stack.yaml
+        description: |
+          Parse error stack traces and provide structured analysis.
+          Extracts file paths, line numbers, and function names from stack traces.
+          Maps frames to project files and identifies the root cause frame.
+          Useful for debugging runtime errors and understanding error origins.
+      - name: explain_type_error
+        path: analysis-engine/explain-type-error.yaml
+        description: >-
+          Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message,
+          returns detailed explanation, common causes, and actionable fix suggestions.
+      - name: find_dead_code
+        path: analysis-engine/find-dead-code.yaml
+        description: >-
+          Find unused exports and functions in a file or directory. Uses TypeScript Language Service to identify exports
+          that have no external references. Useful for identifying dead code that can be safely removed.
+      - name: get_api_surface
+        path: analysis-engine/get-api-surface.yaml
+        description: >-
+          Analyze the public vs internal API surface of a module or package. Identifies exports from entry points
+          (index.ts, package.json main) as public API, and other exports as internal. Includes type information for each
+          export.
+      - name: safe_delete_check
+        path: analysis-engine/safe-delete-check.yaml
+        description: >-
+          Confirm a symbol has zero external usages before deleting. Provides a cleaner interface than find_references
+          with a clear yes/no answer. Handles edge cases like self-references and same-declaration references.
+      - name: detect_breaking_changes
+        path: analysis-engine/detect-breaking-changes.yaml
+        description: >-
+          LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and
+          uses Claude to identify: function signature changes, interface/type property changes, exported symbol
+          removals, and visibility changes. Returns breaking and non-breaking changes with migration guidance.
+      - name: semantic_diff
+        path: analysis-engine/semantic-diff.yaml
+        description: >-
+          LLM-powered type-aware diff with semantic impact explanation. Goes beyond text-based diff to understand what
+          semantically changed, impact on type safety and API contracts, which callers might be affected, and risk level
+          of each change. Uses Claude for deep analysis.
+      - name: scan_for_secrets
+        path: analysis-engine/scan-for-secrets.yaml
+        description: >-
+          Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns
+          including API keys, tokens, passwords, private keys, and database connection strings. Supports configurable
+          depth limit and early exit for presence-only checks.
+      - name: check_permissions
+        path: analysis-engine/check-permissions.yaml
+        description: |
+          Analyze file, network, and system access patterns in code.
+          Scans for potentially sensitive API usage including:
+          - Filesystem access (fs, path operations)
+          - Network requests (http, https, fetch, axios)
+          - Process spawning (child_process, exec, spawn)
+          - Cryptographic operations (crypto)
+          Categorizes findings by risk level and provides recommendations.
+      - name: validate_implementation
+        path: analysis-engine/validate-implementation.yaml
+        description: |
+          Check that generated code matches skill patterns and best practices.
+          Validates structure, naming, error handling, and security.
+          Run after skill application to ensure quality.
+      - name: validate_edits_preview
+        path: analysis-engine/validate-edits-preview.yaml
+        description: >-
+          Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and
+          runs TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files -
+          purely a validation/preview operation. Useful for fail-fast validation before writing code.
+      - name: validate_api_contract
+        path: analysis-engine/validate-api-contract.yaml
+        description: >-
+          Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status
+          codes and body schemas match the spec. Reports violations with JSON paths.
+      - name: env_audit
+        path: analysis-engine/env_audit
+        description: >-
+          Comprehensive environment variable audit. Scans source files for process.env.*, import.meta.env.*, Deno.env.*
+          usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
+          validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).
+  - name: project-engine
+    count: 21
+    tools:
+      - name: find_circular_deps
+        path: analysis-engine/find-circular-deps.yaml
+        description: >-
+          Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and
+          uses DFS to detect cycles. Returns all cycles found with the full file paths involved.
+      - name: analyze_bundle
+        path: project-engine/analyze-bundle.yaml
+        description: >-
+          Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
+          directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies,
+          and optimization recommendations.
+      - name: analyze_dependencies
+        path: project-engine/analyze-dependencies.yaml
+        description: >-
+          Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
+          package.json against actual imports in source files.
+      - name: resolve_merge_conflict
+        path: project-engine/resolve-merge-conflict.yaml
+        description: >-
+          Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
+          recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
+      - name: scaffold_project
+        path: project-engine/scaffold-project.yaml
+        description: |
+          Create a new project from a template. Copies template files,
+          applies variable substitutions, and runs post-create commands.
+          Lists recommended skills based on the template stack.
+      - name: list_templates
+        path: project-engine/list-templates.yaml
+        description: |
+          List available project templates with their descriptions,
+          tech stacks, and complexity levels. Filter by category.
+      - name: plugin_status
+        path: project-engine/plugin-status.yaml
+        description: |
+          Check GoodVibes plugin health status.
+          Verifies manifest, registries, hooks config, and script files.
+          Returns issues and overall health status.
+      - name: project_issues
+        path: project-engine/project-issues.yaml
+        description: |
+          Get detailed project issues: high-priority TODOs with file:line,
+          health warnings, environment issues.
+          Scans the codebase for actionable issues and returns them
+          in a structured format with locations and severity levels.
+      - name: generate_openapi
+        path: project-engine/generate-openapi.yaml
+        description: >-
+          Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
+          Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers,
+          and generates examples.
+      - name: get_database_schema
+        path: project-engine/get-database-schema.yaml
+        description: >-
+          Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files.
+          Returns unified schema with tables, columns, indexes, and relations.
+      - name: get_api_routes
+        path: project-engine/get-api-routes.yaml
+        description: >-
+          Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and
+          Hono. Returns HTTP method, path, handler location, and middleware information.
+      - name: get_prisma_operations
+        path: project-engine/get-prisma-operations.yaml
+        description: >-
+          Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for
+          prisma.model.operation() calls, identifies which models are used most, and detects queries inside loops that
+          may cause performance issues.
+      - name: query_database
+        path: project-engine/query-database.yaml
+        description: >-
+          Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to
+          prevent accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output
+          formats. For SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling,
+          and returns affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are
+          optional - install only the ones you need.
+      - name: upgrade_package
+        path: project-engine/upgrade-package.yaml
+        description: >-
+          Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
+          checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for
+          safe preview before making changes.
+      - name: explain_codebase
+        path: project-engine/explain-codebase.yaml
+        description: >-
+          Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection,
+          API routes, conventions, and directory structure to produce a comprehensive overview including architecture
+          diagrams, key files, entry points, and potential concerns.
+      - name: find_tests_for_file
+        path: project-engine/find-tests-for-file.yaml
+        description: >-
+          Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find
+          related tests. Returns a ranked list of test files with confidence scores.
+      - name: get_test_coverage
+        path: project-engine/get-test-coverage.yaml
+        description: >-
+          Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info,
+          coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns
+          uncovered lines and functions for targeted test writing.
+      - name: suggest_test_cases
+        path: project-engine/suggest-test-cases.yaml
+        description: >-
+          Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases,
+          error conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new
+          test cases with rationale.
+      - name: generate_types
+        path: project-engine/generate-types.yaml
+        description: >-
+          Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
+          Infers types from sample data and generates .d.ts or interface definitions.
+      - name: generate_fixture
+        path: project-engine/generate-fixture.yaml
+        description: >-
+          Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
+          @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON,
+          TypeScript constants, and Prisma seed scripts.
+      - name: sync_api_types
+        path: project-engine/sync-api-types.yaml
+        description: >-
+          Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
+          handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints
+          that don't exist.
+  - name: frontend-engine
+    count: 11
+    tools:
+      - name: get_react_component_tree
+        path: frontend-engine/get-react-component-tree.yaml
+        description: >-
+          Parse JSX/TSX files and build a component hierarchy tree. Uses static AST analysis to find component
+          definitions and usages, extract props, and build parent-child relationships. Useful for understanding React
+          component architecture.
+      - name: analyze_stacking_context
+        path: frontend-engine/analyze-stacking-context.yaml
+        description: >-
+          Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
+          stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical
+          stacking tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging
+          "why isn't my z-index working" issues.
+      - name: analyze_responsive_breakpoints
+        path: frontend-engine/analyze-responsive-breakpoints.yaml
+        description: >-
+          Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
+          across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
+          design issues like desktop-first patterns or missing base styles.
+      - name: trace_component_state
+        path: frontend-engine/trace-component-state.yaml
+        description: >-
+          Trace React state and props through component trees. Analyzes useState, useReducer, useRef, useContext, and
+          effect hooks. Detects prop drilling, callback instability, missing memoization, and other common React
+          anti-patterns. Returns detailed state flow analysis including which state is used in JSX and passed to
+          children.
+      - name: analyze_render_triggers
+        path: frontend-engine/analyze-render-triggers.yaml
+        description: >-
+          Analyze what causes a React component to re-render. Identifies memoization status (React.memo, PureComponent,
+          shouldComponentUpdate), inline definitions creating unstable references (objects, arrays, functions, JSX),
+          expensive computations not wrapped in useMemo, context subscriptions and their granularity, and provides
+          prioritized optimization suggestions.
+      - name: analyze_layout_hierarchy
+        path: frontend-engine/analyze-layout-hierarchy.yaml
+        description: >-
+          Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree
+          with sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and
+          positioning. Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed
+          height containers with auto-height children, nested flex without sizing, percentage height without parent
+          height, etc.
+      - name: diagnose_overflow
+        path: frontend-engine/diagnose-overflow.yaml
+        description: >-
+          Diagnose CSS overflow issues and recommend fixes. Analyzes layout hierarchy to identify overflow-prone
+          patterns such as fixed-height containers with auto-height children, flex containers without overflow handling,
+          nested percentage heights, absolute positioning without containment, and missing min-h-0 in nested flex.
+          Returns actionable fix options with Tailwind CSS classes and trade-off explanations.
+      - name: get_accessibility_tree
+        path: frontend-engine/get-accessibility-tree.yaml
+        description: >-
+          Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML
+          roles, focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1),
+          unlabeled form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on
+          non-interactive elements, missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical
+          accessibility tree, focus order sequence, issues with WCAG criteria references, and optimization suggestions.
+      - name: get_sizing_strategy
+        path: frontend-engine/get-sizing-strategy.yaml
+        description: >-
+          Analyze how a specific element's size is determined. Examines Tailwind classes or CSS to identify width/height
+          strategies (fixed, percentage, viewport, content-based, flex-controlled, grid-controlled), min/max
+          constraints, flex behavior (grow, shrink, basis), grid placement, overflow settings, and positioning context.
+          Walks the ancestor chain to find constraints that affect the target element. Returns a human-readable summary
+          explaining how the element's dimensions are computed.
+      - name: analyze_event_flow
+        path: frontend-engine/analyze-event-flow.yaml
+        description: >-
+          Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
+          onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
+          elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and
+          form submits without preventDefault. Also detects event delegation patterns (e.target.closest,
+          e.target.matches checks). Essential for debugging "why is my click firing twice" and accessibility audits.
+      - name: analyze_tailwind_conflicts
+        path: frontend-engine/analyze-tailwind-conflicts.yaml
+        description: >-
+          Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types
+          of issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant
+          classes from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3)
+          Contradiction conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts
+          with explicit w-/h- classes, z-index without position, and provides optimization suggestions like using size-X
+          instead of w-X h-X when equal.
 search_index:
+  - name: precision_write
+    keywords:
+      - precision
+      - write
+      - create
+      - files
+      - encoding
+      - support
+      - multiple
+      - overwrite
+      - modes
+      - supports
+      - batch
+      - writes
+      - automatic
+      - parent
+      - directory
+      - creation
+      - dry_run
+      - mode
+    path: precision-engine/precision_write
+    description: >-
+      Create or write files with encoding support and multiple overwrite modes. ' + 'Supports batch writes, automatic
+      parent directory creation, and dry_run mode.
+    server: precision-engine
+  - name: precision_exec
+    keywords:
+      - precision
+      - exec
+      - execute
+      - shell
+      - commands
+      - batch
+      - support
+      - timeout
+      - expectations
+      - checking
+      - captures
+      - stdout
+      - stderr
+      - exit
+      - code
+    path: precision-engine/precision_exec
+    description: >-
+      Execute shell commands with batch support, timeout, and expectations checking. ' + 'Captures stdout, stderr, and
+      exit code.
+    server: precision-engine
+  - name: precision_fetch
+    keywords:
+      - precision
+      - fetch
+      - urls
+      - native
+      - supports
+      - batch
+      - fetching
+      - extraction
+      - modes
+      - raw
+      - text
+      - json
+      - custom
+      - headers
+      - method
+      - override
+      - timeout
+    path: precision-engine/precision_fetch
+    description: >-
+      Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), ' + 'custom headers,
+      method override, and timeout.
+    server: precision-engine
+  - name: discover
+    keywords:
+      - discover
+      - execute
+      - multiple
+      - grep
+      - glob
+      - symbol
+      - queries
+      - parallel
+      - returns
+      - results
+      - keyed
+      - query
+      - efficient
+      - batch
+      - discovery
+    path: precision-engine/discover
+    description: >-
+      Execute multiple grep, glob, or symbol queries in parallel. ' + 'Returns results keyed by query ID for efficient
+      batch discovery.
+    server: precision-engine
+  - name: precision_grep
+    keywords:
+      - precision
+      - grep
+      - search
+      - patterns
+      - batch
+      - queries
+      - precise
+      - output
+      - control
+      - supports
+      - count_only
+      - files_only
+      - locations
+      - matches
+      - context
+      - modes
+    path: precision-engine/precision_grep
+    description: >-
+      Search for patterns with batch queries and precise output control. ' + 'Supports count_only, files_only,
+      locations, matches, and context modes.
+    server: precision-engine
+  - name: precision_read
+    keywords:
+      - precision
+      - read
+      - token
+      - efficient
+      - file
+      - reading
+      - extraction
+      - modes
+      - full
+      - content
+      - outlines
+      - symbols
+      - specific
+      - line
+      - ranges
+      - supports
+      - per
+      - range
+      - overrides
+      - symbol
+      - filtering
+    path: precision-engine/precision_read
+    description: >-
+      Token-efficient file reading with extraction modes. ' + 'Read full content, outlines, symbols, or specific line
+      ranges. ' + 'Supports per-file range overrides and symbol filtering.
+    server: precision-engine
+  - name: precision_glob
+    keywords:
+      - precision
+      - glob
+      - token
+      - efficient
+      - file
+      - finding
+      - filters
+      - optional
+      - preview
+      - supports
+      - size
+      - date
+      - content
+      - matching
+      - sorting
+      - gitignore
+    path: precision-engine/precision_glob
+    description: >-
+      Token-efficient file finding with filters and optional preview. ' + 'Supports size/date filters, content matching,
+      sorting, and gitignore.
+    server: precision-engine
+  - name: precision_symbols
+    keywords:
+      - precision
+      - symbols
+      - token
+      - efficient
+      - symbol
+      - search
+      - across
+      - workspace
+      - specific
+      - files
+      - supports
+      - wide
+      - per
+      - file
+      - extraction
+    path: precision-engine/precision_symbols
+    description: >-
+      Token-efficient symbol search across workspace or specific files. ' + 'Supports workspace-wide symbol search and
+      per-file symbol extraction.
+    server: precision-engine
+  - name: precision_edit
+    keywords:
+      - precision
+      - edit
+      - token
+      - efficient
+      - file
+      - editing
+      - atomic
+      - transactions
+      - conflict
+      - detection
+      - validation
+      - supports
+      - exact
+      - fuzzy
+      - regex
+      - ast
+      - matching
+      - modes
+    path: precision-engine/precision_edit
+    description: >-
+      Token-efficient file editing with atomic transactions, ' + 'conflict detection, and validation. Supports exact,
+      fuzzy, regex, and AST matching modes.
+    server: precision-engine
+  - name: batch
+    keywords:
+      - batch
+      - execute
+      - operations
+      - transaction
+      - support
+      - validation
+      - recovery
+      - heart
+      - spec
+      - orchestration
+    path: batch-engine/batch
+    description: >-
+      Execute a batch of operations with transaction support, validation, and recovery. The heart of SPEC-v2
+      orchestration.
+    server: batch-engine
+  - name: batch_status
+    keywords:
+      - batch
+      - status
+      - check
+      - execution
+      - including
+      - progress
+      - results
+      - agent
+    path: batch-engine/batch_status
+    description: Check the status of a batch execution, including progress, results, and agent status.
+    server: batch-engine
+  - name: batch_list
+    keywords:
+      - batch
+      - list
+      - all
+      - batches
+      - optionally
+      - filtered
+      - status
+      - time
+      - range
+    path: batch-engine/batch_list
+    description: List all batches, optionally filtered by status or time range.
+    server: batch-engine
+  - name: batch_recover
+    keywords:
+      - batch
+      - recover
+      - recovery
+      - operations
+      - rollback
+      - restore
+      - retry
+      - cleanup
+      - fix
+      - failed
+    path: batch-engine/batch_recover
+    description: 'Recovery operations: rollback, restore, retry, cleanup, or fix failed operations.'
+    server: batch-engine
+  - name: batch_checkpoints
+    keywords:
+      - batch
+      - checkpoints
+      - list
+      - available
+      - recovery
+    path: batch-engine/batch_checkpoints
+    description: List available checkpoints for recovery.
+    server: batch-engine
+  - name: batch_state
+    keywords:
+      - batch
+      - state
+      - manage
+      - persistent
+      - memory
+      - get
+      - set
+      - query
+      - export
+      - import
+      - clear
+    path: batch-engine/batch_state
+    description: 'Manage persistent state and memory: get, set, query, export, import, or clear.'
+    server: batch-engine
+  - name: search_skills
+    keywords:
+      - search
+      - skills
+      - skill
+      - registry
+      - relevant
+      - based
+      - keywords
+      - technology
+      - task
+      - description
+      - needing
+      - domain
+      - specific
+      - guidance
+      - that
+      - matches
+      - available
+    path: registry-engine/search-skills.yaml
+    description: |
+      Search the skill registry for relevant skills based on keywords,
+      technology, or task description. Use when needing domain-specific
+      guidance that matches available skills.
+    server: registry-engine
+  - name: search_agents
+    keywords:
+      - search
+      - agents
+      - specialized
+      - expertise
+      - area
+      - task
+      - type
+      - needing
+      - find
+      - agent
+      - specific
+      - domain
+      - knowledge
+    path: registry-engine/search-agents.yaml
+    description: |
+      Search for specialized agents by expertise area or task type.
+      Use when needing to find an agent with specific domain knowledge.
+    server: registry-engine
+  - name: search_tools
+    keywords:
+      - search
+      - tools
+      - available
+      - functionality
+      - case
+      - discovering
+      - what
+      - are
+      - task
+    path: registry-engine/search-tools.yaml
+    description: |
+      Search for available tools by functionality or use case.
+      Use when discovering what tools are available for a task.
+    server: registry-engine
+  - name: recommend_skills
+    keywords:
+      - recommend
+      - skills
+      - analyze
+      - task
+      - description
+      - project
+      - context
+      - relevant
+      - combines
+      - natural
+      - language
+      - understanding
+      - stack
+      - detection
+      - primary
+      - entry
+      - point
+      - skill
+      - discovery
+    path: registry-engine/recommend-skills.yaml
+    description: |
+      Analyze task description and project context to recommend relevant skills.
+      Combines natural language understanding with stack detection.
+      Primary entry point for skill discovery.
+    server: registry-engine
+  - name: get_skill_content
+    keywords:
+      - get
+      - skill
+      - content
+      - load
+      - full
+      - its
+      - path
+      - after
+      - searching
+      - detailed
+      - instructions
+    path: registry-engine/get-skill-content.yaml
+    description: |
+      Load the full content of a skill by its path.
+      Use after searching to get detailed skill instructions.
+    server: registry-engine
+  - name: get_agent_content
+    keywords:
+      - get
+      - agent
+      - content
+      - load
+      - full
+      - path
+      - retrieves
+      - complete
+      - definition
+      - including
+      - capabilities
+      - expertise
+      - areas
+      - configuration
+      - from
+      - registry
+    path: registry-engine/get-agent-content.yaml
+    description: |
+      Load full content of an agent by path.
+      Retrieves the complete agent definition including capabilities,
+      expertise areas, and configuration from the agent registry.
+    server: registry-engine
+  - name: skill_dependencies
+    keywords:
+      - skill
+      - dependencies
+      - show
+      - which
+      - skills
+      - work
+      - together
+      - their
+      - identifies
+      - prerequisite
+      - complementary
+      - conflicts
+      - helps
+      - build
+      - complete
+      - sets
+      - complex
+      - tasks
+    path: registry-engine/skill-dependencies.yaml
+    description: |
+      Show which skills work together and their dependencies.
+      Identifies prerequisite skills, complementary skills, and conflicts.
+      Helps build complete skill sets for complex tasks.
+    server: registry-engine
   - name: identify_tech_debt
     keywords:
       - identify
@@ -34,42 +928,12 @@ search_index:
       - items
       - effort
       - estimates
-    path: definitions/analysis-engine/identify-tech-debt.yaml
+    path: analysis-engine/identify-tech-debt.yaml
     description: >-
       Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
       cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
       debt items with effort estimates.
-  - name: analyze_bundle
-    keywords:
-      - analyze
-      - bundle
-      - size
-      - duplicates
-      - tree
-      - shaking
-      - issues
-      - build
-      - output
-      - scans
-      - dist
-      - next
-      - directories
-      - files
-      - reports
-      - total
-      - chunk
-      - breakdown
-      - largest
-      - modules
-      - duplicate
-      - dependencies
-      - optimization
-      - recommendations
-    path: definitions/project-engine/analyze-bundle.yaml
-    description: >-
-      Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
-      directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and
-      optimization recommendations.
+    server: analysis-engine
   - name: detect_stack
     keywords:
       - detect
@@ -93,11 +957,12 @@ search_index:
       - selecting
       - appropriate
       - skills
-    path: definitions/analysis-engine/detect-stack.yaml
+    path: analysis-engine/detect-stack.yaml
     description: |
       Analyze project to identify the technology stack. Scans package.json,
       config files, and directory structure to determine frameworks, libraries,
       and tools in use. Essential for selecting appropriate skills.
+    server: analysis-engine
   - name: check_versions
     keywords:
       - check
@@ -122,11 +987,12 @@ search_index:
       - direct
       - dependencies
       - peer
-    path: definitions/analysis-engine/check-versions.yaml
+    path: analysis-engine/check-versions.yaml
     description: |
       Get installed package versions and compare against skill assumptions.
       Identifies version mismatches that could cause skill advice to fail.
       Checks both direct dependencies and peer dependencies.
+    server: analysis-engine
   - name: scan_patterns
     keywords:
       - scan
@@ -146,11 +1012,12 @@ search_index:
       - file
       - structure
       - architectural
-    path: definitions/analysis-engine/scan-patterns.yaml
+    path: analysis-engine/scan-patterns.yaml
     description: |
       Identify existing code patterns and conventions in the project.
       Helps apply skills consistently with established patterns.
       Detects naming conventions, file structure, and architectural patterns.
+    server: analysis-engine
   - name: read_config
     keywords:
       - read
@@ -169,11 +1036,12 @@ search_index:
       - can
       - build
       - upon
-    path: definitions/analysis-engine/read-config.yaml
+    path: analysis-engine/read-config.yaml
     description: |
       Parse and return existing configuration files.
       Understands various config formats (JSON, YAML, JS, TS).
       Skills can build upon existing configuration.
+    server: analysis-engine
   - name: get_conventions
     keywords:
       - get
@@ -206,34 +1074,12 @@ search_index:
       - actionable
       - convention
       - guidelines
-    path: definitions/analysis-engine/get-conventions.yaml
+    path: analysis-engine/get-conventions.yaml
     description: >-
       LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the
       codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses
       Claude to synthesize findings into actionable convention guidelines.
-  - name: analyze_dependencies
-    keywords:
-      - analyze
-      - dependencies
-      - npm
-      - find
-      - unused
-      - missing
-      - outdated
-      - packages
-      - compares
-      - declared
-      - package
-      - json
-      - against
-      - actual
-      - imports
-      - source
-      - files
-    path: definitions/project-engine/analyze-dependencies.yaml
-    description: >-
-      Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
-      package.json against actual imports in source files.
+    server: analysis-engine
   - name: find_circular_deps
     keywords:
       - find
@@ -258,10 +1104,11 @@ search_index:
       - file
       - paths
       - involved
-    path: definitions/analysis-engine/find-circular-deps.yaml
+    path: analysis-engine/find-circular-deps.yaml
     description: >-
       Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses
       DFS to detect cycles. Returns all cycles found with the full file paths involved.
+    server: project-engine
   - name: parse_error_stack
     keywords:
       - parse
@@ -293,12 +1140,13 @@ search_index:
       - errors
       - understanding
       - origins
-    path: definitions/analysis-engine/parse-error-stack.yaml
+    path: analysis-engine/parse-error-stack.yaml
     description: |
       Parse error stack traces and provide structured analysis.
       Extracts file paths, line numbers, and function names from stack traces.
       Maps frames to project files and identifies the root cause frame.
       Useful for debugging runtime errors and understanding error origins.
+    server: analysis-engine
   - name: explain_type_error
     keywords:
       - explain
@@ -320,38 +1168,11 @@ search_index:
       - common
       - causes
       - actionable
-    path: definitions/analysis-engine/explain-type-error.yaml
+    path: analysis-engine/explain-type-error.yaml
     description: >-
       Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message,
       returns detailed explanation, common causes, and actionable fix suggestions.
-  - name: resolve_merge_conflict
-    keywords:
-      - resolve
-      - merge
-      - conflict
-      - analyze
-      - suggest
-      - resolutions
-      - git
-      - conflicts
-      - parses
-      - markers
-      - analyzes
-      - both
-      - versions
-      - recommends
-      - resolution
-      - strategy
-      - ours
-      - theirs
-      - combined
-      - can
-      - auto
-      - simple
-    path: definitions/project-engine/resolve-merge-conflict.yaml
-    description: >-
-      Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
-      recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
+    server: analysis-engine
   - name: find_dead_code
     keywords:
       - find
@@ -376,10 +1197,11 @@ search_index:
       - can
       - safely
       - removed
-    path: definitions/analysis-engine/find-dead-code.yaml
+    path: analysis-engine/find-dead-code.yaml
     description: >-
       Find unused exports and functions in a file or directory. Uses TypeScript Language Service to identify exports
       that have no external references. Useful for identifying dead code that can be safely removed.
+    server: analysis-engine
   - name: get_api_surface
     keywords:
       - get
@@ -404,10 +1226,11 @@ search_index:
       - information
       - each
       - export
-    path: definitions/analysis-engine/get-api-surface.yaml
+    path: analysis-engine/get-api-surface.yaml
     description: >-
       Analyze the public vs internal API surface of a module or package. Identifies exports from entry points (index.ts,
       package.json main) as public API, and other exports as internal. Includes type information for each export.
+    server: analysis-engine
   - name: safe_delete_check
     keywords:
       - safe
@@ -437,10 +1260,11 @@ search_index:
       - references
       - same
       - declaration
-    path: definitions/analysis-engine/safe-delete-check.yaml
+    path: analysis-engine/safe-delete-check.yaml
     description: >-
       Confirm a symbol has zero external usages before deleting. Provides a cleaner interface than find_references with
       a clear yes/no answer. Handles edge cases like self-references and same-declaration references.
+    server: analysis-engine
   - name: detect_breaking_changes
     keywords:
       - detect
@@ -473,11 +1297,12 @@ search_index:
       - non
       - migration
       - guidance
-    path: definitions/analysis-engine/detect-breaking-changes.yaml
+    path: analysis-engine/detect-breaking-changes.yaml
     description: >-
       LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and uses
       Claude to identify: function signature changes, interface/type property changes, exported symbol removals, and
       visibility changes. Returns breaking and non-breaking changes with migration guidance.
+    server: analysis-engine
   - name: semantic_diff
     keywords:
       - semantic
@@ -511,11 +1336,327 @@ search_index:
       - claude
       - deep
       - analysis
-    path: definitions/analysis-engine/semantic-diff.yaml
+    path: analysis-engine/semantic-diff.yaml
     description: >-
       LLM-powered type-aware diff with semantic impact explanation. Goes beyond text-based diff to understand what
       semantically changed, impact on type safety and API contracts, which callers might be affected, and risk level of
       each change. Uses Claude for deep analysis.
+    server: analysis-engine
+  - name: scan_for_secrets
+    keywords:
+      - scan
+      - for
+      - secrets
+      - source
+      - files
+      - potential
+      - credentials
+      - sensitive
+      - data
+      - detects
+      - common
+      - secret
+      - patterns
+      - including
+      - api
+      - keys
+      - tokens
+      - passwords
+      - private
+      - database
+      - connection
+      - strings
+      - supports
+      - configurable
+      - depth
+      - limit
+      - early
+      - exit
+      - presence
+      - only
+      - checks
+    path: analysis-engine/scan-for-secrets.yaml
+    description: >-
+      Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including
+      API keys, tokens, passwords, private keys, and database connection strings. Supports configurable depth limit and
+      early exit for presence-only checks.
+    server: analysis-engine
+  - name: check_permissions
+    keywords:
+      - check
+      - permissions
+      - analyze
+      - file
+      - network
+      - system
+      - access
+      - patterns
+      - code
+      - scans
+      - potentially
+      - sensitive
+      - api
+      - usage
+      - including
+      - filesystem
+      - path
+      - operations
+      - requests
+      - http
+      - https
+      - fetch
+      - axios
+      - process
+      - spawning
+      - child_process
+      - exec
+      - spawn
+      - cryptographic
+      - crypto
+      - categorizes
+      - findings
+      - risk
+      - level
+      - provides
+      - recommendations
+    path: analysis-engine/check-permissions.yaml
+    description: |
+      Analyze file, network, and system access patterns in code.
+      Scans for potentially sensitive API usage including:
+      - Filesystem access (fs, path operations)
+      - Network requests (http, https, fetch, axios)
+      - Process spawning (child_process, exec, spawn)
+      - Cryptographic operations (crypto)
+      Categorizes findings by risk level and provides recommendations.
+    server: analysis-engine
+  - name: validate_implementation
+    keywords:
+      - validate
+      - implementation
+      - check
+      - that
+      - generated
+      - code
+      - matches
+      - skill
+      - patterns
+      - best
+      - practices
+      - validates
+      - structure
+      - naming
+      - error
+      - handling
+      - security
+      - run
+      - after
+      - application
+      - ensure
+      - quality
+    path: analysis-engine/validate-implementation.yaml
+    description: |
+      Check that generated code matches skill patterns and best practices.
+      Validates structure, naming, error handling, and security.
+      Run after skill application to ensure quality.
+    server: analysis-engine
+  - name: validate_edits_preview
+    keywords:
+      - validate
+      - edits
+      - preview
+      - impact
+      - proposed
+      - before
+      - applying
+      - them
+      - creates
+      - virtual
+      - snapshot
+      - applied
+      - runs
+      - typescript
+      - diagnostics
+      - detect
+      - any
+      - new
+      - errors
+      - that
+      - would
+      - introduced
+      - does
+      - not
+      - modify
+      - files
+      - purely
+      - validation
+      - operation
+      - useful
+      - fail
+      - fast
+      - writing
+      - code
+    path: analysis-engine/validate-edits-preview.yaml
+    description: >-
+      Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs
+      TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a
+      validation/preview operation. Useful for fail-fast validation before writing code.
+    server: analysis-engine
+  - name: validate_api_contract
+    keywords:
+      - validate
+      - api
+      - contract
+      - responses
+      - against
+      - openapi
+      - spec
+      - makes
+      - requests
+      - each
+      - endpoint
+      - verifies
+      - response
+      - status
+      - codes
+      - body
+      - schemas
+      - match
+      - reports
+      - violations
+      - json
+      - paths
+    path: analysis-engine/validate-api-contract.yaml
+    description: >-
+      Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes
+      and body schemas match the spec. Reports violations with JSON paths.
+    server: analysis-engine
+  - name: env_audit
+    keywords:
+      - env
+      - audit
+      - comprehensive
+      - environment
+      - variable
+      - scans
+      - source
+      - files
+      - process
+      - import
+      - meta
+      - deno
+      - usages
+      - compares
+      - against
+      - example
+      - identifies
+      - missing
+      - unused
+      - undocumented
+      - variables
+      - optionally
+      - validates
+      - value
+      - formats
+      - based
+      - naming
+      - conventions
+      - ports
+      - should
+      - numbers
+      - urls
+      - valid
+      - etc
+    path: analysis-engine/env_audit
+    description: >-
+      Comprehensive environment variable audit. Scans source files for process.env.*, import.meta.env.*, Deno.env.*
+      usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
+      validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).
+    server: analysis-engine
+  - name: analyze_bundle
+    keywords:
+      - analyze
+      - bundle
+      - size
+      - duplicates
+      - tree
+      - shaking
+      - issues
+      - build
+      - output
+      - scans
+      - dist
+      - next
+      - directories
+      - files
+      - reports
+      - total
+      - chunk
+      - breakdown
+      - largest
+      - modules
+      - duplicate
+      - dependencies
+      - optimization
+      - recommendations
+    path: project-engine/analyze-bundle.yaml
+    description: >-
+      Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
+      directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and
+      optimization recommendations.
+    server: project-engine
+  - name: analyze_dependencies
+    keywords:
+      - analyze
+      - dependencies
+      - npm
+      - find
+      - unused
+      - missing
+      - outdated
+      - packages
+      - compares
+      - declared
+      - package
+      - json
+      - against
+      - actual
+      - imports
+      - source
+      - files
+    path: project-engine/analyze-dependencies.yaml
+    description: >-
+      Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
+      package.json against actual imports in source files.
+    server: project-engine
+  - name: resolve_merge_conflict
+    keywords:
+      - resolve
+      - merge
+      - conflict
+      - analyze
+      - suggest
+      - resolutions
+      - git
+      - conflicts
+      - parses
+      - markers
+      - analyzes
+      - both
+      - versions
+      - recommends
+      - resolution
+      - strategy
+      - ours
+      - theirs
+      - combined
+      - can
+      - auto
+      - simple
+    path: project-engine/resolve-merge-conflict.yaml
+    description: >-
+      Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
+      recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
+    server: project-engine
   - name: scaffold_project
     keywords:
       - scaffold
@@ -537,11 +1678,12 @@ search_index:
       - skills
       - based
       - stack
-    path: definitions/project-engine/scaffold-project.yaml
+    path: project-engine/scaffold-project.yaml
     description: |
       Create a new project from a template. Copies template files,
       applies variable substitutions, and runs post-create commands.
       Lists recommended skills based on the template stack.
+    server: project-engine
   - name: list_templates
     keywords:
       - list
@@ -556,10 +1698,11 @@ search_index:
       - levels
       - filter
       - category
-    path: definitions/project-engine/list-templates.yaml
+    path: project-engine/list-templates.yaml
     description: |
       List available project templates with their descriptions,
       tech stacks, and complexity levels. Filter by category.
+    server: project-engine
   - name: plugin_status
     keywords:
       - plugin
@@ -577,11 +1720,12 @@ search_index:
       - returns
       - issues
       - overall
-    path: definitions/project-engine/plugin-status.yaml
+    path: project-engine/plugin-status.yaml
     description: |
       Check GoodVibes plugin health status.
       Verifies manifest, registries, hooks config, and script files.
       Returns issues and overall health status.
+    server: project-engine
   - name: project_issues
     keywords:
       - project
@@ -606,12 +1750,13 @@ search_index:
       - locations
       - severity
       - levels
-    path: definitions/project-engine/project-issues.yaml
+    path: project-engine/project-issues.yaml
     description: |
       Get detailed project issues: high-priority TODOs with file:line,
       health warnings, environment issues.
       Scans the codebase for actionable issues and returns them
       in a structured format with locations and severity levels.
+    server: project-engine
   - name: generate_openapi
     keywords:
       - generate
@@ -640,11 +1785,12 @@ search_index:
       - handlers
       - generates
       - examples
-    path: definitions/project-engine/generate-openapi.yaml
+    path: project-engine/generate-openapi.yaml
     description: >-
       Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
       Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and
       generates examples.
+    server: project-engine
   - name: get_database_schema
     keywords:
       - get
@@ -666,10 +1812,11 @@ search_index:
       - columns
       - indexes
       - relations
-    path: definitions/project-engine/get-database-schema.yaml
+    path: project-engine/get-database-schema.yaml
     description: >-
       Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files.
       Returns unified schema with tables, columns, indexes, and relations.
+    server: project-engine
   - name: get_api_routes
     keywords:
       - get
@@ -695,10 +1842,11 @@ search_index:
       - location
       - middleware
       - information
-    path: definitions/project-engine/get-api-routes.yaml
+    path: project-engine/get-api-routes.yaml
     description: >-
       Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
       Returns HTTP method, path, handler location, and middleware information.
+    server: project-engine
   - name: get_prisma_operations
     keywords:
       - get
@@ -731,10 +1879,11 @@ search_index:
       - cause
       - performance
       - issues
-    path: definitions/project-engine/get-prisma-operations.yaml
+    path: project-engine/get-prisma-operations.yaml
     description: >-
       Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation()
       calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.
+    server: project-engine
   - name: query_database
     keywords:
       - query
@@ -784,13 +1933,14 @@ search_index:
       - ones
       - you
       - need
-    path: definitions/project-engine/query-database.yaml
+    path: project-engine/query-database.yaml
     description: >-
       Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
       accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For
       SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns
       affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only
       the ones you need.
+    server: project-engine
   - name: upgrade_package
     keywords:
       - upgrade
@@ -821,11 +1971,12 @@ search_index:
       - preview
       - before
       - making
-    path: definitions/project-engine/upgrade-package.yaml
+    path: project-engine/upgrade-package.yaml
     description: >-
       Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
       checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe
       preview before making changes.
+    server: project-engine
   - name: explain_codebase
     keywords:
       - explain
@@ -859,96 +2010,12 @@ search_index:
       - points
       - potential
       - concerns
-    path: definitions/project-engine/explain-codebase.yaml
+    path: project-engine/explain-codebase.yaml
     description: >-
       Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API
       routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams,
       key files, entry points, and potential concerns.
-  - name: scan_for_secrets
-    keywords:
-      - scan
-      - for
-      - secrets
-      - source
-      - files
-      - potential
-      - credentials
-      - sensitive
-      - data
-      - detects
-      - common
-      - secret
-      - patterns
-      - including
-      - api
-      - keys
-      - tokens
-      - passwords
-      - private
-      - database
-      - connection
-      - strings
-      - supports
-      - configurable
-      - depth
-      - limit
-      - early
-      - exit
-      - presence
-      - only
-      - checks
-    path: definitions/analysis-engine/scan-for-secrets.yaml
-    description: >-
-      Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including
-      API keys, tokens, passwords, private keys, and database connection strings. Supports configurable depth limit and
-      early exit for presence-only checks.
-  - name: check_permissions
-    keywords:
-      - check
-      - permissions
-      - analyze
-      - file
-      - network
-      - system
-      - access
-      - patterns
-      - code
-      - scans
-      - potentially
-      - sensitive
-      - api
-      - usage
-      - including
-      - filesystem
-      - path
-      - operations
-      - requests
-      - http
-      - https
-      - fetch
-      - axios
-      - process
-      - spawning
-      - child_process
-      - exec
-      - spawn
-      - cryptographic
-      - crypto
-      - categorizes
-      - findings
-      - risk
-      - level
-      - provides
-      - recommendations
-    path: definitions/analysis-engine/check-permissions.yaml
-    description: |
-      Analyze file, network, and system access patterns in code.
-      Scans for potentially sensitive API usage including:
-      - Filesystem access (fs, path operations)
-      - Network requests (http, https, fetch, axios)
-      - Process spawning (child_process, exec, spawn)
-      - Cryptographic operations (crypto)
-      Categorizes findings by risk level and provides recommendations.
+    server: project-engine
   - name: find_tests_for_file
     keywords:
       - find
@@ -972,10 +2039,11 @@ search_index:
       - list
       - confidence
       - scores
-    path: definitions/project-engine/find-tests-for-file.yaml
+    path: project-engine/find-tests-for-file.yaml
     description: >-
       Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find
       related tests. Returns a ranked list of test files with confidence scores.
+    server: project-engine
   - name: get_test_coverage
     keywords:
       - get
@@ -1004,11 +2072,12 @@ search_index:
       - lines
       - targeted
       - writing
-    path: definitions/project-engine/get-test-coverage.yaml
+    path: project-engine/get-test-coverage.yaml
     description: >-
       Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info,
       coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns
       uncovered lines and functions for targeted test writing.
+    server: project-engine
   - name: suggest_test_cases
     keywords:
       - suggest
@@ -1037,11 +2106,12 @@ search_index:
       - suggests
       - new
       - rationale
-    path: definitions/project-engine/suggest-test-cases.yaml
+    path: project-engine/suggest-test-cases.yaml
     description: >-
       Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error
       conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test
       cases with rationale.
+    server: project-engine
   - name: generate_types
     keywords:
       - generate
@@ -1063,10 +2133,11 @@ search_index:
       - generates
       - interface
       - definitions
-    path: definitions/project-engine/generate-types.yaml
+    path: project-engine/generate-types.yaml
     description: >-
       Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
       Infers types from sample data and generates .d.ts or interface definitions.
+    server: project-engine
   - name: generate_fixture
     keywords:
       - generate
@@ -1094,11 +2165,12 @@ search_index:
       - constants
       - seed
       - scripts
-    path: definitions/project-engine/generate-fixture.yaml
+    path: project-engine/generate-fixture.yaml
     description: >-
       Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
       @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript
       constants, and Prisma seed scripts.
+    server: project-engine
   - name: sync_api_types
     keywords:
       - sync
@@ -1126,384 +2198,550 @@ search_index:
       - that
       - don
       - exist
-    path: definitions/project-engine/sync-api-types.yaml
+    path: project-engine/sync-api-types.yaml
     description: >-
       Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
       handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that
       don't exist.
-  - name: validate_implementation
+    server: project-engine
+  - name: get_react_component_tree
     keywords:
-      - validate
-      - implementation
-      - check
-      - that
-      - generated
-      - code
-      - matches
-      - skill
-      - patterns
-      - best
-      - practices
-      - validates
-      - structure
-      - naming
-      - error
-      - handling
-      - security
-      - run
-      - after
-      - application
-      - ensure
-      - quality
-    path: definitions/analysis-engine/validate-implementation.yaml
-    description: |
-      Check that generated code matches skill patterns and best practices.
-      Validates structure, naming, error handling, and security.
-      Run after skill application to ensure quality.
-  - name: validate_edits_preview
-    keywords:
-      - validate
-      - edits
-      - preview
-      - impact
-      - proposed
-      - before
-      - applying
-      - them
-      - creates
-      - virtual
-      - snapshot
-      - applied
-      - runs
-      - typescript
-      - diagnostics
-      - detect
-      - any
-      - new
-      - errors
-      - that
-      - would
-      - introduced
-      - does
-      - not
-      - modify
+      - get
+      - react
+      - component
+      - tree
+      - parse
+      - jsx
+      - tsx
       - files
-      - purely
-      - validation
-      - operation
-      - useful
-      - fail
-      - fast
-      - writing
-      - code
-    path: definitions/analysis-engine/validate-edits-preview.yaml
-    description: >-
-      Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs
-      TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a
-      validation/preview operation. Useful for fail-fast validation before writing code.
-  - name: validate_api_contract
-    keywords:
-      - validate
-      - api
-      - contract
-      - responses
-      - against
-      - openapi
-      - spec
-      - makes
-      - requests
-      - each
-      - endpoint
-      - verifies
-      - response
-      - status
-      - codes
-      - body
-      - schemas
-      - match
-      - reports
-      - violations
-      - json
-      - paths
-    path: definitions/analysis-engine/validate-api-contract.yaml
-    description: >-
-      Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes
-      and body schemas match the spec. Reports violations with JSON paths.
-  - name: env_audit
-    keywords:
-      - env
-      - audit
-      - comprehensive
-      - environment
-      - variable
-      - scans
-      - source
-      - files
-      - process
-      - import
-      - meta
-      - deno
+      - build
+      - hierarchy
+      - uses
+      - static
+      - ast
+      - analysis
+      - find
+      - definitions
       - usages
-      - compares
-      - against
-      - example
-      - identifies
-      - missing
-      - unused
-      - undocumented
-      - variables
-      - optionally
-      - validates
-      - value
-      - formats
-      - based
-      - naming
-      - conventions
-      - ports
-      - should
-      - numbers
-      - urls
-      - valid
+      - extract
+      - props
+      - parent
+      - child
+      - relationships
+      - useful
+      - understanding
+      - architecture
+    path: frontend-engine/get-react-component-tree.yaml
+    description: >-
+      Parse JSX/TSX files and build a component hierarchy tree. Uses static AST analysis to find component definitions
+      and usages, extract props, and build parent-child relationships. Useful for understanding React component
+      architecture.
+    server: frontend-engine
+  - name: analyze_stacking_context
+    keywords:
+      - analyze
+      - stacking
+      - context
+      - index
+      - contexts
+      - react
+      - vue
+      - svelte
+      - components
+      - detects
+      - which
+      - css
+      - properties
+      - create
+      - new
+      - position
+      - transform
+      - opacity
+      - filter
+      - isolation
       - etc
-    path: mcp-server/env_audit
+      - builds
+      - hierarchical
+      - tree
+      - identifies
+      - potential
+      - conflicts
+      - finds
+      - portal
+      - destinations
+      - essential
+      - debugging
+      - why
+      - isn
+      - working
+      - issues
+    path: frontend-engine/analyze-stacking-context.yaml
     description: >-
-      Comprehensive environment variable audit. Scans source files for process.env.*, import.meta.env.*, Deno.env.*
-      usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
-      validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).
-core_tools:
-  - name: list_templates
-    path: definitions/project-engine/list-templates.yaml
-    description: |
-      List available project templates with their descriptions,
-      tech stacks, and complexity levels. Filter by category.
-  - name: plugin_status
-    path: definitions/project-engine/plugin-status.yaml
-    description: |
-      Check GoodVibes plugin health status.
-      Verifies manifest, registries, hooks config, and script files.
-      Returns issues and overall health status.
-  - name: project_issues
-    path: definitions/project-engine/project-issues.yaml
-    description: |
-      Get detailed project issues: high-priority TODOs with file:line,
-      health warnings, environment issues.
-      Scans the codebase for actionable issues and returns them
-      in a structured format with locations and severity levels.
-deferred_tools:
-  - name: identify_tech_debt
-    path: definitions/analysis-engine/identify-tech-debt.yaml
+      Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
+      stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
+      tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
+      z-index working" issues.
+    server: frontend-engine
+  - name: analyze_responsive_breakpoints
+    keywords:
+      - analyze
+      - responsive
+      - breakpoints
+      - tailwind
+      - classes
+      - across
+      - detects
+      - mobile
+      - first
+      - patterns
+      - tracks
+      - property
+      - changes
+      - 2xl
+      - identifies
+      - breakpoint
+      - coverage
+      - gaps
+      - flags
+      - potential
+      - design
+      - issues
+      - like
+      - desktop
+      - missing
+      - base
+      - styles
+    path: frontend-engine/analyze-responsive-breakpoints.yaml
     description: >-
-      Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
-      cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
-      debt items with effort estimates.
-  - name: analyze_bundle
-    path: definitions/project-engine/analyze-bundle.yaml
+      Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
+      across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
+      design issues like desktop-first patterns or missing base styles.
+    server: frontend-engine
+  - name: trace_component_state
+    keywords:
+      - trace
+      - component
+      - state
+      - react
+      - props
+      - through
+      - trees
+      - analyzes
+      - usestate
+      - usereducer
+      - useref
+      - usecontext
+      - effect
+      - hooks
+      - detects
+      - prop
+      - drilling
+      - callback
+      - instability
+      - missing
+      - memoization
+      - other
+      - common
+      - anti
+      - patterns
+      - returns
+      - detailed
+      - flow
+      - analysis
+      - including
+      - which
+      - used
+      - jsx
+      - passed
+      - children
+    path: frontend-engine/trace-component-state.yaml
     description: >-
-      Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
-      directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and
-      optimization recommendations.
-  - name: detect_stack
-    path: definitions/analysis-engine/detect-stack.yaml
-    description: |
-      Analyze project to identify the technology stack. Scans package.json,
-      config files, and directory structure to determine frameworks, libraries,
-      and tools in use. Essential for selecting appropriate skills.
-  - name: check_versions
-    path: definitions/analysis-engine/check-versions.yaml
-    description: |
-      Get installed package versions and compare against skill assumptions.
-      Identifies version mismatches that could cause skill advice to fail.
-      Checks both direct dependencies and peer dependencies.
-  - name: scan_patterns
-    path: definitions/analysis-engine/scan-patterns.yaml
-    description: |
-      Identify existing code patterns and conventions in the project.
-      Helps apply skills consistently with established patterns.
-      Detects naming conventions, file structure, and architectural patterns.
-  - name: read_config
-    path: definitions/analysis-engine/read-config.yaml
-    description: |
-      Parse and return existing configuration files.
-      Understands various config formats (JSON, YAML, JS, TS).
-      Skills can build upon existing configuration.
-  - name: get_conventions
-    path: definitions/analysis-engine/get-conventions.yaml
+      Trace React state and props through component trees. Analyzes useState, useReducer, useRef, useContext, and effect
+      hooks. Detects prop drilling, callback instability, missing memoization, and other common React anti-patterns.
+      Returns detailed state flow analysis including which state is used in JSX and passed to children.
+    server: frontend-engine
+  - name: analyze_render_triggers
+    keywords:
+      - analyze
+      - render
+      - triggers
+      - what
+      - causes
+      - react
+      - component
+      - identifies
+      - memoization
+      - status
+      - memo
+      - purecomponent
+      - shouldcomponentupdate
+      - inline
+      - definitions
+      - creating
+      - unstable
+      - references
+      - objects
+      - arrays
+      - functions
+      - jsx
+      - expensive
+      - computations
+      - not
+      - wrapped
+      - usememo
+      - context
+      - subscriptions
+      - their
+      - granularity
+      - provides
+      - prioritized
+      - optimization
+      - suggestions
+    path: frontend-engine/analyze-render-triggers.yaml
     description: >-
-      LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the
-      codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses
-      Claude to synthesize findings into actionable convention guidelines.
-  - name: analyze_dependencies
-    path: definitions/project-engine/analyze-dependencies.yaml
+      Analyze what causes a React component to re-render. Identifies memoization status (React.memo, PureComponent,
+      shouldComponentUpdate), inline definitions creating unstable references (objects, arrays, functions, JSX),
+      expensive computations not wrapped in useMemo, context subscriptions and their granularity, and provides
+      prioritized optimization suggestions.
+    server: frontend-engine
+  - name: analyze_layout_hierarchy
+    keywords:
+      - analyze
+      - layout
+      - hierarchy
+      - css
+      - react
+      - vue
+      - svelte
+      - components
+      - parses
+      - jsx
+      - tsx
+      - files
+      - build
+      - tree
+      - sizing
+      - constraints
+      - display
+      - types
+      - flex
+      - grid
+      - block
+      - properties
+      - overflow
+      - handling
+      - positioning
+      - supports
+      - comprehensive
+      - tailwind
+      - class
+      - parsing
+      - detects
+      - potential
+      - issues
+      - like
+      - fixed
+      - height
+      - containers
+      - auto
+      - children
+      - nested
+      - without
+      - percentage
+      - parent
+      - etc
+    path: frontend-engine/analyze-layout-hierarchy.yaml
     description: >-
-      Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
-      package.json against actual imports in source files.
-  - name: find_circular_deps
-    path: definitions/analysis-engine/find-circular-deps.yaml
+      Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree with
+      sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
+      Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers
+      with auto-height children, nested flex without sizing, percentage height without parent height, etc.
+    server: frontend-engine
+  - name: diagnose_overflow
+    keywords:
+      - diagnose
+      - overflow
+      - css
+      - issues
+      - recommend
+      - fixes
+      - analyzes
+      - layout
+      - hierarchy
+      - identify
+      - prone
+      - patterns
+      - such
+      - fixed
+      - height
+      - containers
+      - auto
+      - children
+      - flex
+      - without
+      - handling
+      - nested
+      - percentage
+      - heights
+      - absolute
+      - positioning
+      - containment
+      - missing
+      - min
+      - returns
+      - actionable
+      - fix
+      - options
+      - tailwind
+      - classes
+      - trade
+      - 'off'
+      - explanations
+    path: frontend-engine/diagnose-overflow.yaml
     description: >-
-      Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses
-      DFS to detect cycles. Returns all cycles found with the full file paths involved.
-  - name: parse_error_stack
-    path: definitions/analysis-engine/parse-error-stack.yaml
-    description: |
-      Parse error stack traces and provide structured analysis.
-      Extracts file paths, line numbers, and function names from stack traces.
-      Maps frames to project files and identifies the root cause frame.
-      Useful for debugging runtime errors and understanding error origins.
-  - name: explain_type_error
-    path: definitions/analysis-engine/explain-type-error.yaml
+      Diagnose CSS overflow issues and recommend fixes. Analyzes layout hierarchy to identify overflow-prone patterns
+      such as fixed-height containers with auto-height children, flex containers without overflow handling, nested
+      percentage heights, absolute positioning without containment, and missing min-h-0 in nested flex. Returns
+      actionable fix options with Tailwind CSS classes and trade-off explanations.
+    server: frontend-engine
+  - name: get_accessibility_tree
+    keywords:
+      - get
+      - accessibility
+      - tree
+      - build
+      - detect
+      - wcag
+      - issues
+      - react
+      - vue
+      - svelte
+      - components
+      - analyzes
+      - semantic
+      - html
+      - roles
+      - focus
+      - order
+      - keyboard
+      - interactions
+      - aria
+      - patterns
+      - detects
+      - like
+      - missing
+      - alt
+      - text
+      - unlabeled
+      - form
+      - inputs
+      - buttons
+      - links
+      - without
+      - accessible
+      - names
+      - click
+      - handlers
+      - non
+      - interactive
+      - elements
+      - indicators
+      - invalid
+      - returns
+      - hierarchical
+      - sequence
+      - criteria
+      - references
+      - optimization
+      - suggestions
+    path: frontend-engine/get-accessibility-tree.yaml
     description: >-
-      Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message,
-      returns detailed explanation, common causes, and actionable fix suggestions.
-  - name: resolve_merge_conflict
-    path: definitions/project-engine/resolve-merge-conflict.yaml
+      Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML roles,
+      focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled
+      form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
+      missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
+      order sequence, issues with WCAG criteria references, and optimization suggestions.
+    server: frontend-engine
+  - name: get_sizing_strategy
+    keywords:
+      - get
+      - sizing
+      - strategy
+      - analyze
+      - how
+      - specific
+      - element
+      - size
+      - determined
+      - examines
+      - tailwind
+      - classes
+      - css
+      - identify
+      - width
+      - height
+      - strategies
+      - fixed
+      - percentage
+      - viewport
+      - content
+      - based
+      - flex
+      - controlled
+      - grid
+      - min
+      - max
+      - constraints
+      - behavior
+      - grow
+      - shrink
+      - basis
+      - placement
+      - overflow
+      - settings
+      - positioning
+      - context
+      - walks
+      - ancestor
+      - chain
+      - find
+      - that
+      - affect
+      - target
+      - returns
+      - human
+      - readable
+      - summary
+      - explaining
+      - dimensions
+      - are
+      - computed
+    path: frontend-engine/get-sizing-strategy.yaml
     description: >-
-      Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
-      recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
-  - name: find_dead_code
-    path: definitions/analysis-engine/find-dead-code.yaml
+      Analyze how a specific element's size is determined. Examines Tailwind classes or CSS to identify width/height
+      strategies (fixed, percentage, viewport, content-based, flex-controlled, grid-controlled), min/max constraints,
+      flex behavior (grow, shrink, basis), grid placement, overflow settings, and positioning context. Walks the
+      ancestor chain to find constraints that affect the target element. Returns a human-readable summary explaining how
+      the element's dimensions are computed.
+    server: frontend-engine
+  - name: analyze_event_flow
+    keywords:
+      - analyze
+      - event
+      - flow
+      - handling
+      - propagation
+      - react
+      - vue
+      - svelte
+      - components
+      - detects
+      - all
+      - handlers
+      - onclick
+      - onchange
+      - onsubmit
+      - etc
+      - simulates
+      - bubbling
+      - from
+      - leaf
+      - root
+      - identifies
+      - issues
+      - like
+      - nested
+      - clickable
+      - elements
+      - that
+      - may
+      - double
+      - fire
+      - click
+      - non
+      - interactive
+      - without
+      - keyboard
+      - alternatives
+      - form
+      - submits
+      - preventdefault
+      - also
+      - delegation
+      - patterns
+      - target
+      - closest
+      - matches
+      - checks
+      - essential
+      - debugging
+      - why
+      - firing
+      - twice
+      - accessibility
+      - audits
+    path: frontend-engine/analyze-event-flow.yaml
     description: >-
-      Find unused exports and functions in a file or directory. Uses TypeScript Language Service to identify exports
-      that have no external references. Useful for identifying dead code that can be safely removed.
-  - name: get_api_surface
-    path: definitions/analysis-engine/get-api-surface.yaml
+      Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
+      onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
+      elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
+      submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
+      checks). Essential for debugging "why is my click firing twice" and accessibility audits.
+    server: frontend-engine
+  - name: analyze_tailwind_conflicts
+    keywords:
+      - analyze
+      - tailwind
+      - conflicts
+      - detect
+      - conflicting
+      - redundant
+      - css
+      - classes
+      - react
+      - vue
+      - svelte
+      - components
+      - identifies
+      - three
+      - types
+      - issues
+      - override
+      - where
+      - later
+      - earlier
+      - ones
+      - from
+      - shorthand
+      - longhand
+      - combinations
+      - padding
+      - overridden
+      - contradiction
+      - mutually
+      - exclusive
+      - hidden
+      - flex
+      - also
+      - detects
+      - size
+      - explicit
+      - index
+      - without
+      - position
+      - provides
+      - optimization
+      - suggestions
+      - like
+      - using
+      - instead
+      - equal
+    path: frontend-engine/analyze-tailwind-conflicts.yaml
     description: >-
-      Analyze the public vs internal API surface of a module or package. Identifies exports from entry points (index.ts,
-      package.json main) as public API, and other exports as internal. Includes type information for each export.
-  - name: safe_delete_check
-    path: definitions/analysis-engine/safe-delete-check.yaml
-    description: >-
-      Confirm a symbol has zero external usages before deleting. Provides a cleaner interface than find_references with
-      a clear yes/no answer. Handles edge cases like self-references and same-declaration references.
-  - name: detect_breaking_changes
-    path: definitions/analysis-engine/detect-breaking-changes.yaml
-    description: >-
-      LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and uses
-      Claude to identify: function signature changes, interface/type property changes, exported symbol removals, and
-      visibility changes. Returns breaking and non-breaking changes with migration guidance.
-  - name: semantic_diff
-    path: definitions/analysis-engine/semantic-diff.yaml
-    description: >-
-      LLM-powered type-aware diff with semantic impact explanation. Goes beyond text-based diff to understand what
-      semantically changed, impact on type safety and API contracts, which callers might be affected, and risk level of
-      each change. Uses Claude for deep analysis.
-  - name: scaffold_project
-    path: definitions/project-engine/scaffold-project.yaml
-    description: |
-      Create a new project from a template. Copies template files,
-      applies variable substitutions, and runs post-create commands.
-      Lists recommended skills based on the template stack.
-  - name: generate_openapi
-    path: definitions/project-engine/generate-openapi.yaml
-    description: >-
-      Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
-      Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and
-      generates examples.
-  - name: get_database_schema
-    path: definitions/project-engine/get-database-schema.yaml
-    description: >-
-      Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files.
-      Returns unified schema with tables, columns, indexes, and relations.
-  - name: get_api_routes
-    path: definitions/project-engine/get-api-routes.yaml
-    description: >-
-      Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
-      Returns HTTP method, path, handler location, and middleware information.
-  - name: get_prisma_operations
-    path: definitions/project-engine/get-prisma-operations.yaml
-    description: >-
-      Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation()
-      calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.
-  - name: query_database
-    path: definitions/project-engine/query-database.yaml
-    description: >-
-      Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
-      accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For
-      SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns
-      affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only
-      the ones you need.
-  - name: upgrade_package
-    path: definitions/project-engine/upgrade-package.yaml
-    description: >-
-      Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
-      checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe
-      preview before making changes.
-  - name: explain_codebase
-    path: definitions/project-engine/explain-codebase.yaml
-    description: >-
-      Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API
-      routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams,
-      key files, entry points, and potential concerns.
-  - name: scan_for_secrets
-    path: definitions/analysis-engine/scan-for-secrets.yaml
-    description: >-
-      Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including
-      API keys, tokens, passwords, private keys, and database connection strings. Supports configurable depth limit and
-      early exit for presence-only checks.
-  - name: check_permissions
-    path: definitions/analysis-engine/check-permissions.yaml
-    description: |
-      Analyze file, network, and system access patterns in code.
-      Scans for potentially sensitive API usage including:
-      - Filesystem access (fs, path operations)
-      - Network requests (http, https, fetch, axios)
-      - Process spawning (child_process, exec, spawn)
-      - Cryptographic operations (crypto)
-      Categorizes findings by risk level and provides recommendations.
-  - name: find_tests_for_file
-    path: definitions/project-engine/find-tests-for-file.yaml
-    description: >-
-      Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find
-      related tests. Returns a ranked list of test files with confidence scores.
-  - name: get_test_coverage
-    path: definitions/project-engine/get-test-coverage.yaml
-    description: >-
-      Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info,
-      coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns
-      uncovered lines and functions for targeted test writing.
-  - name: suggest_test_cases
-    path: definitions/project-engine/suggest-test-cases.yaml
-    description: >-
-      Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error
-      conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test
-      cases with rationale.
-  - name: generate_types
-    path: definitions/project-engine/generate-types.yaml
-    description: >-
-      Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
-      Infers types from sample data and generates .d.ts or interface definitions.
-  - name: generate_fixture
-    path: definitions/project-engine/generate-fixture.yaml
-    description: >-
-      Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
-      @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript
-      constants, and Prisma seed scripts.
-  - name: sync_api_types
-    path: definitions/project-engine/sync-api-types.yaml
-    description: >-
-      Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
-      handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that
-      don't exist.
-  - name: validate_implementation
-    path: definitions/analysis-engine/validate-implementation.yaml
-    description: |
-      Check that generated code matches skill patterns and best practices.
-      Validates structure, naming, error handling, and security.
-      Run after skill application to ensure quality.
-  - name: validate_edits_preview
-    path: definitions/analysis-engine/validate-edits-preview.yaml
-    description: >-
-      Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs
-      TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a
-      validation/preview operation. Useful for fail-fast validation before writing code.
-  - name: validate_api_contract
-    path: definitions/analysis-engine/validate-api-contract.yaml
-    description: >-
-      Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes
-      and body schemas match the spec. Reports violations with JSON paths.
-mcp_tools:
-  - name: env_audit
-    path: mcp-server/env_audit
-    description: >-
-      Comprehensive environment variable audit. Scans source files for process.env.*, import.meta.env.*, Deno.env.*
-      usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
-      validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).
+      Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types of
+      issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes
+      from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
+      conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit w-/h-
+      classes, z-index without position, and provides optimization suggestions like using size-X instead of w-X h-X when
+      equal.
+    server: frontend-engine

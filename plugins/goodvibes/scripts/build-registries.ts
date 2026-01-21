@@ -216,58 +216,80 @@ function scanSkills(): RegistryEntry[] {
 }
 
 /**
- * Parse TypeScript schema files to extract tool definitions.
+ * MCP Server configurations for the 6 focused servers
+ */
+const MCP_SERVERS = [
+  'precision-engine',
+  'batch-engine',
+  'registry-engine',
+  'analysis-engine',
+  'project-engine',
+  'frontend-engine',
+] as const;
+
+/**
+ * Parse TypeScript schema files to extract tool definitions from all MCP servers.
  * Handles multi-line descriptions properly.
  */
-function parseTypeScriptSchemas(): Map<string, { name: string; description: string }> {
-  const schemasDir = path.join(PLUGIN_ROOT, 'tools', 'implementations', 'tool-search-server', 'src', 'schemas');
-  const tools = new Map<string, { name: string; description: string }>();
+function parseTypeScriptSchemas(): Map<string, { name: string; description: string; server: string }> {
+  const tools = new Map<string, { name: string; description: string; server: string }>();
 
-  if (!fs.existsSync(schemasDir)) {
-    console.warn(`Schema directory not found: ${schemasDir}`);
-    return tools;
-  }
+  for (const server of MCP_SERVERS) {
+    const schemasDir = path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'schemas');
+    const handlersIndexPath = path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'handlers', 'index.ts');
 
-  const schemaFiles = fs.readdirSync(schemasDir).filter(f => f.endsWith('-schemas.ts'));
+    let schemaFiles: string[] = [];
+    let baseDir = schemasDir;
 
-  for (const file of schemaFiles) {
-    const filePath = path.join(schemasDir, file);
-    const content = fs.readFileSync(filePath, 'utf-8');
-
-    // Parse tool definitions from the schema file
-    // The structure is: { name: 'tool_name', description: '...', inputSchema: {...} }
-    // We need to handle multi-line descriptions with template literals or string concatenation
-
-    // Strategy: Find each tool object and extract name + description
-    // Tool objects start with { and have name: and description: properties
-
-    // Use a more robust approach: find all object literals that have name and description
-    const toolObjectRegex = /\{\s*name:\s*['"`]([^'"`]+)['"`]\s*,\s*description:\s*(['"`])([\s\S]*?)\2\s*,/g;
-    let match;
-
-    while ((match = toolObjectRegex.exec(content)) !== null) {
-      const name = match[1];
-      // The description may contain escaped quotes, handle them
-      const description = match[3]
-        .replace(/\\'/g, "'")
-        .replace(/\\"/g, '"')
-        .replace(/\\n/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      tools.set(name, { name, description });
+    if (fs.existsSync(schemasDir)) {
+      schemaFiles = fs.readdirSync(schemasDir).filter(f => f.endsWith('.ts'));
+    } else if (fs.existsSync(handlersIndexPath)) {
+      // Some servers (like batch-engine) define schemas in handlers/index.ts
+      schemaFiles = ['index.ts'];
+      baseDir = path.dirname(handlersIndexPath);
+    } else {
+      console.warn(`  No schemas found for: ${server}`);
+      continue;
     }
 
-    // Also try template literals for multi-line descriptions
-    // Pattern: { name: 'tool_name', description: `...`, inputSchema: {...} }
-    const templateRegex = /\{\s*name:\s*['"]([^'"]+)['"]\s*,\s*description:\s*`([^`]*)`\s*,/g;
-    while ((match = templateRegex.exec(content)) !== null) {
-      const name = match[1];
-      const description = match[2].replace(/\s+/g, ' ').trim();
-      if (!tools.has(name)) {
-        tools.set(name, { name, description });
+    for (const file of schemaFiles) {
+      const filePath = path.join(baseDir, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+
+      // Parse tool definitions from the schema file
+      // The structure is: { name: 'tool_name', description: '...', inputSchema: {...} }
+      // We need to handle multi-line descriptions with template literals or string concatenation
+
+      // Use a more robust approach: find all object literals that have name and description
+      const toolObjectRegex = /\{\s*name:\s*['"`]([^'"`]+)['"`]\s*,\s*description:\s*(['"`])([\s\S]*?)\2\s*,/g;
+      let match;
+
+      while ((match = toolObjectRegex.exec(content)) !== null) {
+        const name = match[1];
+        // The description may contain escaped quotes, handle them
+        const description = match[3]
+          .replace(/\\'/g, "'")
+          .replace(/\\"/g, '"')
+          .replace(/\\n/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        tools.set(name, { name, description, server });
+      }
+
+      // Also try template literals for multi-line descriptions
+      // Pattern: { name: 'tool_name', description: `...`, inputSchema: {...} }
+      const templateRegex = /\{\s*name:\s*['"]([^'"]+)['"]\s*,\s*description:\s*`([^`]*)`\s*,/g;
+      while ((match = templateRegex.exec(content)) !== null) {
+        const name = match[1];
+        const description = match[2].replace(/\s+/g, ' ').trim();
+        if (!tools.has(name)) {
+          tools.set(name, { name, description, server });
+        }
       }
     }
+
+    console.log(`  ${server}: ${Array.from(tools.values()).filter(t => t.server === server).length} tools`);
   }
 
   return tools;
@@ -275,12 +297,13 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
 
 /**
  * Scan YAML definitions and build a map of tool metadata (for enrichment).
+ * YAML definitions are now organized by server: registry-engine/, analysis-engine/, etc.
  */
-function scanYamlDefinitions(): Map<string, { path: string; description: string; deferLoading: boolean }> {
+function scanYamlDefinitions(): Map<string, { path: string; description: string; deferLoading: boolean; server: string }> {
   const toolsDir = path.join(PLUGIN_ROOT, 'tools', 'definitions');
-  const yamlTools = new Map<string, { path: string; description: string; deferLoading: boolean }>();
+  const yamlTools = new Map<string, { path: string; description: string; deferLoading: boolean; server: string }>();
 
-  function scanDir(dir: string, relativePath: string = 'definitions') {
+  function scanDir(dir: string, relativePath: string = '', server: string = '') {
     if (!fs.existsSync(dir)) return;
 
     const items = fs.readdirSync(dir);
@@ -291,7 +314,11 @@ function scanYamlDefinitions(): Map<string, { path: string; description: string;
       const stat = fs.statSync(fullPath);
 
       if (stat.isDirectory()) {
-        scanDir(fullPath, `${relativePath}/${item}`);
+        // Check if this is a server directory
+        const isServerDir = item.endsWith('-engine');
+        const newServer = isServerDir ? item : server;
+        const newRelativePath = relativePath ? `${relativePath}/${item}` : item;
+        scanDir(fullPath, newRelativePath, newServer);
       } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
         const content = fs.readFileSync(fullPath, 'utf-8');
 
@@ -300,7 +327,8 @@ function scanYamlDefinitions(): Map<string, { path: string; description: string;
           yamlTools.set(tool.name, {
             path: `${relativePath}/${item}`,
             description: tool.description || '',
-            deferLoading: tool.mcp?.defer_loading || false
+            deferLoading: tool.mcp?.defer_loading || false,
+            server: server || 'unknown'
           });
         } catch (e) {
           console.error(`Error parsing ${item}:`, e);
@@ -321,12 +349,12 @@ function scanYamlDefinitions(): Map<string, { path: string; description: string;
  * - 'mcp': Tools with only TypeScript schemas (basic metadata)
  * - 'deferred': Tools marked as defer_loading in YAML
  */
-function scanTools(): RegistryEntry[] {
-  const entries: RegistryEntry[] = [];
+function scanTools(): (RegistryEntry & { server: string })[] {
+  const entries: (RegistryEntry & { server: string })[] = [];
 
-  // PRIMARY: Parse all TypeScript schema files
+  // PRIMARY: Parse all TypeScript schema files from all 6 MCP servers
   const tsTools = parseTypeScriptSchemas();
-  console.log(`  Found ${tsTools.size} tools from TypeScript schemas`);
+  console.log(`  Found ${tsTools.size} tools total from TypeScript schemas`);
 
   // SECONDARY: Get YAML definitions for enrichment
   const yamlTools = scanYamlDefinitions();
@@ -351,7 +379,7 @@ function scanTools(): RegistryEntry[] {
         description = yamlMeta.description;
       }
     } else {
-      toolPath = `mcp-server/${name}`;
+      toolPath = `${tsTool.server}/${name}`;
       tags = ['mcp'];
     }
 
@@ -360,7 +388,8 @@ function scanTools(): RegistryEntry[] {
       path: toolPath,
       description,
       triggers: extractKeywords(description, name),
-      tags
+      tags,
+      server: tsTool.server
     });
   }
 
@@ -401,38 +430,46 @@ function main() {
   const skills = scanSkills();
   writeRegistry('skills', skills);
 
+  console.log('\nScanning tools from 6 MCP servers...');
   const tools = scanTools();
-  // Tools registry goes in tools/ directory
-  const toolsRegistry: Registry = {
-    version: '1.0.0',
+
+  // Organize tools by server
+  const byServer: Record<string, typeof tools> = {};
+  for (const server of MCP_SERVERS) {
+    byServer[server] = tools.filter(t => t.server === server);
+  }
+
+  // Build registry with server-based organization
+  const toolsRegistry = {
+    version: '2.0.0',
     generated: new Date().toISOString(),
     total: tools.length,
-    categories: {},
+    servers: MCP_SERVERS.map(server => ({
+      name: server,
+      count: byServer[server].length,
+      tools: byServer[server].map(t => ({
+        name: t.name,
+        path: t.path,
+        description: t.description
+      }))
+    })),
     search_index: tools.map(e => ({
       name: e.name,
       keywords: e.triggers || [],
       path: e.path,
-      description: e.description
+      description: e.description,
+      server: e.server
     }))
   };
 
-  // Separate tools by category
-  const core = tools.filter(t => t.tags?.includes('core'));
-  const deferred = tools.filter(t => t.tags?.includes('deferred'));
-  const mcp = tools.filter(t => t.tags?.includes('mcp'));
-
-  console.log(`  Tool breakdown: ${core.length} core, ${deferred.length} deferred, ${mcp.length} mcp-only`);
-
-  const toolsOutput = {
-    ...toolsRegistry,
-    core_tools: core.map(t => ({ name: t.name, path: t.path, description: t.description })),
-    deferred_tools: deferred.map(t => ({ name: t.name, path: t.path, description: t.description })),
-    mcp_tools: mcp.map(t => ({ name: t.name, path: t.path, description: t.description }))
-  };
+  console.log(`\n  Tool breakdown by server:`);
+  for (const server of MCP_SERVERS) {
+    console.log(`    ${server}: ${byServer[server].length} tools`);
+  }
 
   const toolsPath = path.join(PLUGIN_ROOT, 'tools', '_registry.yaml');
-  fs.writeFileSync(toolsPath, yaml.dump(toolsOutput, { lineWidth: 120 }));
-  console.log(`Written ${toolsPath} (${tools.length} entries)`);
+  fs.writeFileSync(toolsPath, yaml.dump(toolsRegistry, { lineWidth: 120 }));
+  console.log(`\nWritten ${toolsPath} (${tools.length} entries)`);
 
   console.log('\nDone!');
 }
