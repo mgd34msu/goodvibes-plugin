@@ -1,1014 +1,206 @@
-version: 1.0.0
-generated: '2026-01-21T14:33:29.279Z'
-total: 11
-categories:
-  _items:
-    - name: factory
-      path: factory
-      description: >-
-        Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
-        domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
-        delegates to skill-creator.
-      triggers: &ref_0
-        - factory
-        - meta
-        - agent
-        - that
-        - creates
-        - specialized
-        - claude
-        - code
-        - subagents
-        - you
-        - need
-        - build
-        - new
-        - specific
-        - domain
-        - researches
-        - thoroughly
-        - applies
-        - sdk
-        - patterns
-        - generates
-        - production
-        - ready
-        - files
-        - skills
-        - delegates
-        - skill
-        - creator
-    - name: skill-creator
-      path: skill-creator
-      description: >-
-        Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
-        update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge,
-        workflows, or tool integrations.
-      triggers: &ref_1
-        - skill
-        - creator
-        - creates
-        - high
-        - quality
-        - agent
-        - skills
-        - claude
-        - code
-        - slash
-        - commands
-        - proactively
-        - users
-        - want
-        - create
-        - update
-        - improve
-        - that
-        - extend
-        - capabilities
-        - specialized
-        - knowledge
-        - workflows
-        - tool
-        - integrations
-  webdev:
-    _items:
-      - name: backend-engineer
-        path: webdev/backend-engineer
-        description: >-
-          Use PROACTIVELY when user mentions: API, REST, GraphQL, tRPC, endpoint, route handler, database, SQL, query,
-          Prisma, Drizzle, PostgreSQL, MySQL, MongoDB, Redis, authentication, auth, login, signup, session, JWT, OAuth,
-          Clerk, NextAuth, middleware, server, backend, server-side, business logic, validation, schema, migration,
-          seed, CRUD, create, read, update, delete. Also trigger on: "build an API", "connect to database", "add
-          authentication", "protect routes", "fix server error", "optimize queries", "N+1 problem", "add caching",
-          "implement auth", "secure endpoint", "database design", "data model", "API design", "backend for", "server
-          logic", "handle requests", "process data", "store data", "fetch from database", "webhook", "API integration".
-        triggers: &ref_2
-          - backend
-          - engineer
-          - proactively
-          - user
-          - mentions
-          - api
-          - rest
-          - graphql
-          - trpc
-          - endpoint
-          - route
-          - handler
-          - database
-          - sql
-          - query
-          - prisma
-          - drizzle
-          - postgresql
-          - mysql
-          - mongodb
-          - redis
-          - authentication
-          - auth
-          - login
-          - signup
-          - session
-          - jwt
-          - oauth
-          - clerk
-          - nextauth
-          - middleware
-          - server
-          - side
-          - business
-          - logic
-          - validation
-          - schema
-          - migration
-          - seed
-          - crud
-          - create
-          - read
-          - update
-          - delete
-          - also
-          - trigger
-          - build
-          - connect
-          - add
-          - protect
-          - routes
-          - fix
-          - error
-          - optimize
-          - queries
-          - problem
-          - caching
-          - implement
-          - secure
-          - design
-          - data
-          - model
-          - handle
-          - requests
-          - process
-          - store
-          - fetch
-          - from
-          - webhook
-          - integration
-      - name: brutally-honest-reviewer
-        path: webdev/brutally-honest-reviewer
-        description: >-
-          Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate, critique, feedback,
-          score, rate, check my code, how does this look, is this good, technical debt, code smell, best practices,
-          clean code, code quality, maintainability, refactor review, PR review, pull request, merge request, sanity
-          check, second opinion, roast my code, honest feedback, what's wrong with, improve this, bad code, good code,
-          production ready, ship this, ready to deploy, before I commit, before merge. Also trigger on: "look at my
-          code", "review this", "what do you think", "is this okay", "any issues", "spot problems", "find bugs", "code
-          health", "codebase quality", "overall assessment", "grade this", "rate this code".
-        triggers: &ref_3
-          - brutally
-          - honest
-          - reviewer
-          - proactively
-          - user
-          - mentions
-          - review
-          - code
-          - audit
-          - quality
-          - assess
-          - evaluate
-          - critique
-          - feedback
-          - score
-          - rate
-          - check
-          - how
-          - does
-          - this
-          - look
-          - good
-          - technical
-          - debt
-          - smell
-          - best
-          - practices
-          - clean
-          - maintainability
-          - refactor
-          - pull
-          - request
-          - merge
-          - sanity
-          - second
-          - opinion
-          - roast
-          - what
-          - wrong
-          - improve
-          - bad
-          - production
-          - ready
-          - ship
-          - deploy
-          - before
-          - commit
-          - also
-          - trigger
-          - you
-          - think
-          - okay
-          - any
-          - issues
-          - spot
-          - problems
-          - find
-          - bugs
-          - health
-          - codebase
-          - overall
-          - assessment
-          - grade
-      - name: code-architect
-        path: webdev/code-architect
-        description: >-
-          Use PROACTIVELY when user mentions: refactor, restructure, reorganize, architecture, folder structure, file
-          organization, code structure, module, modular, clean up, extract, abstract, consolidate, DRY, SOLID, design
-          pattern, dependency, circular dependency, unused, dead code, code smell, duplication, duplicate code, copy
-          paste, reuse, reusable, maintainable, scalable, decouple, separation of concerns, single responsibility,
-          barrel file, index file, re-export, move files, rename, split, merge, combine, simplify, complexity, god
-          class, god file, monolith, break up, break down, organize imports, clean architecture, hexagonal, layered,
-          feature-based, domain-driven. Also trigger on: "organize this codebase", "structure this project", "make this
-          cleaner", "too messy", "hard to maintain", "spaghetti code", "fix the architecture", "better organization",
-          "reduce complexity", "extract component", "extract function", "consolidate files", "remove unused", "clean up
-          imports", "project setup", "folder layout".
-        triggers: &ref_4
-          - code
-          - architect
-          - proactively
-          - user
-          - mentions
-          - refactor
-          - restructure
-          - reorganize
-          - architecture
-          - folder
-          - structure
-          - file
-          - organization
-          - module
-          - modular
-          - clean
-          - extract
-          - abstract
-          - consolidate
-          - dry
-          - solid
-          - design
-          - pattern
-          - dependency
-          - circular
-          - unused
-          - dead
-          - smell
-          - duplication
-          - duplicate
-          - copy
-          - paste
-          - reuse
-          - reusable
-          - maintainable
-          - scalable
-          - decouple
-          - separation
-          - concerns
-          - single
-          - responsibility
-          - barrel
-          - index
-          - export
-          - move
-          - files
-          - rename
-          - split
-          - merge
-          - combine
-          - simplify
-          - complexity
-          - god
-          - class
-          - monolith
-          - break
-          - down
-          - organize
-          - imports
-          - hexagonal
-          - layered
-          - feature
-          - based
-          - domain
-          - driven
-          - also
-          - trigger
-          - this
-          - codebase
-          - project
-          - make
-          - cleaner
-          - too
-          - messy
-          - hard
-          - maintain
-          - spaghetti
-          - fix
-          - better
-          - reduce
-          - component
-          - function
-          - remove
-          - setup
-          - layout
-      - name: content-platform
-        path: webdev/content-platform
-        description: >-
-          Use PROACTIVELY when user mentions: CMS, content management, Sanity, Contentful, Strapi, Payload, headless
-          CMS, blog, posts, articles, content, MDX, markdown, rich text, editor, email, send email, Resend, SendGrid,
-          transactional email, email template, newsletter, notification email, payment, Stripe, checkout, subscribe,
-          subscription, billing, invoice, price, pricing, buy, purchase, e-commerce, cart, order, webhook, file upload,
-          upload, UploadThing, Cloudinary, S3, storage, media, image, video, asset, CDN, file handling, document upload,
-          avatar upload. Also trigger on: "add a blog", "create posts", "content schema", "setup CMS", "integrate CMS",
-          "send emails", "email notifications", "welcome email", "password reset email", "payment integration", "add
-          payments", "accept payments", "Stripe checkout", "subscription billing", "upload files", "image upload",
-          "handle uploads", "media management", "file storage", "process payments", "e-commerce features".
-        triggers: &ref_5
-          - content
-          - platform
-          - proactively
-          - user
-          - mentions
-          - cms
-          - management
-          - sanity
-          - contentful
-          - strapi
-          - payload
-          - headless
-          - blog
-          - posts
-          - articles
-          - mdx
-          - markdown
-          - rich
-          - text
-          - editor
-          - email
-          - send
-          - resend
-          - sendgrid
-          - transactional
-          - template
-          - newsletter
-          - notification
-          - payment
-          - stripe
-          - checkout
-          - subscribe
-          - subscription
-          - billing
-          - invoice
-          - price
-          - pricing
-          - buy
-          - purchase
-          - commerce
-          - cart
-          - order
-          - webhook
-          - file
-          - upload
-          - uploadthing
-          - cloudinary
-          - storage
-          - media
-          - image
-          - video
-          - asset
-          - cdn
-          - handling
-          - document
-          - avatar
-          - also
-          - trigger
-          - add
-          - create
-          - schema
-          - setup
-          - integrate
-          - emails
-          - notifications
-          - welcome
-          - password
-          - reset
-          - integration
-          - payments
-          - accept
-          - files
-          - handle
-          - uploads
-          - process
-          - features
-      - name: devops-deployer
-        path: webdev/devops-deployer
-        description: >-
-          Use PROACTIVELY when user mentions: deploy, deployment, hosting, Vercel, Netlify, Cloudflare, AWS, Railway,
-          Fly.io, Render, Docker, container, CI/CD, pipeline, GitHub Actions, build, bundle, Vite, webpack, esbuild,
-          Turbopack, production, prod, staging, environment, env, environment variable, secret, config, configuration,
-          domain, DNS, SSL, HTTPS, CDN, cache, monitoring, Sentry, error tracking, analytics, PostHog, logs, logging,
-          Axiom, performance, optimize, bundle size, tree shaking, code splitting, serverless, edge, function, lambda.
-          Also trigger on: "deploy this", "push to production", "go live", "ship it", "make it live", "setup hosting",
-          "configure deployment", "fix build", "build failing", "build error", "optimize build", "reduce bundle", "add
-          monitoring", "track errors", "setup analytics", "environment setup", "Docker setup", "containerize", "CI/CD
-          pipeline", "automate deployment", "production ready", "staging environment", "preview deployment".
-        triggers: &ref_6
-          - devops
-          - deployer
-          - proactively
-          - user
-          - mentions
-          - deploy
-          - deployment
-          - hosting
-          - vercel
-          - netlify
-          - cloudflare
-          - aws
-          - railway
-          - fly
-          - render
-          - docker
-          - container
-          - pipeline
-          - github
-          - actions
-          - build
-          - bundle
-          - vite
-          - webpack
-          - esbuild
-          - turbopack
-          - production
-          - prod
-          - staging
-          - environment
-          - env
-          - variable
-          - secret
-          - config
-          - configuration
-          - domain
-          - dns
-          - ssl
-          - https
-          - cdn
-          - cache
-          - monitoring
-          - sentry
-          - error
-          - tracking
-          - analytics
-          - posthog
-          - logs
-          - logging
-          - axiom
-          - performance
-          - optimize
-          - size
-          - tree
-          - shaking
-          - code
-          - splitting
-          - serverless
-          - edge
-          - function
-          - lambda
-          - also
-          - trigger
-          - this
-          - push
-          - live
-          - ship
-          - make
-          - setup
-          - configure
-          - fix
-          - failing
-          - reduce
-          - add
-          - track
-          - errors
-          - containerize
-          - automate
-          - ready
-          - preview
-      - name: frontend-architect
-        path: webdev/frontend-architect
-        description: >-
-          Use PROACTIVELY when user mentions: UI, component, React, Vue, Svelte, SolidJS, Next.js, Nuxt, Remix, Astro,
-          SvelteKit, frontend, front-end, client-side, page, layout, navigation, nav, header, footer, sidebar, modal,
-          dialog, dropdown, menu, button, form, input, card, list, table, grid, responsive, mobile, desktop, tablet,
-          CSS, Tailwind, styled-components, styling, theme, dark mode, light mode, design system, shadcn, Radix, Chakra,
-          MUI, animation, Framer Motion, transition, hover, interactive, accessibility, a11y, ARIA, semantic, SEO,
-          hydration, SSR, SSG, ISR, routing, route, link, navigate. Also trigger on: "build a page", "create component",
-          "add a button", "design the UI", "make it responsive", "style this", "add styling", "fix layout", "center
-          this", "flex", "grid layout", "add animation", "animate this", "make it look good", "UI design", "frontend
-          for", "landing page", "dashboard UI", "homepage", "settings page", "profile page", "user interface", "visual
-          design", "component library".
-        triggers: &ref_7
-          - frontend
-          - architect
-          - proactively
-          - user
-          - mentions
-          - component
-          - react
-          - vue
-          - svelte
-          - solidjs
-          - next
-          - nuxt
-          - remix
-          - astro
-          - sveltekit
-          - front
-          - end
-          - client
-          - side
-          - page
-          - layout
-          - navigation
-          - nav
-          - header
-          - footer
-          - sidebar
-          - modal
-          - dialog
-          - dropdown
-          - menu
-          - button
-          - form
-          - input
-          - card
-          - list
-          - table
-          - grid
-          - responsive
-          - mobile
-          - desktop
-          - tablet
-          - css
-          - tailwind
-          - styled
-          - components
-          - styling
-          - theme
-          - dark
-          - mode
-          - light
-          - design
-          - system
-          - shadcn
-          - radix
-          - chakra
-          - mui
-          - animation
-          - framer
-          - motion
-          - transition
-          - hover
-          - interactive
-          - accessibility
-          - a11y
-          - aria
-          - semantic
-          - seo
-          - hydration
-          - ssr
-          - ssg
-          - isr
-          - routing
-          - route
-          - link
-          - navigate
-          - also
-          - trigger
-          - build
-          - create
-          - add
-          - make
-          - style
-          - this
-          - fix
-          - center
-          - flex
-          - animate
-          - look
-          - good
-          - landing
-          - dashboard
-          - homepage
-          - settings
-          - profile
-          - interface
-          - visual
-          - library
-      - name: fullstack-integrator
-        path: webdev/fullstack-integrator
-        description: >-
-          Use PROACTIVELY when user mentions: state, state management, Zustand, Redux, Jotai, TanStack Query, React
-          Query, SWR, cache, caching, fetch, data fetching, mutation, optimistic, loading state, error state, form,
-          validation, Zod, React Hook Form, Formik, submit, input validation, schema validation, real-time, WebSocket,
-          Socket.IO, Pusher, live, live updates, presence, collaboration, collaborative, sync, synchronize, AI, LLM,
-          ChatGPT, Claude, OpenAI, Anthropic, Vercel AI SDK, streaming, chat, chatbot, assistant, prompt, completion,
-          tool calling, function calling, RAG, vector, embeddings, Pinecone. Also trigger on: "add state management",
-          "manage state", "global state", "persist state", "build a form", "form validation", "validate input", "submit
-          form", "add validation", "real-time updates", "live data", "WebSocket connection", "add chat", "integrate AI",
-          "add AI features", "LLM integration", "chatbot feature", "AI assistant", "connect frontend to backend", "data
-          flow", "handle form", "form errors", "form submission".
-        triggers: &ref_8
-          - fullstack
-          - integrator
-          - proactively
-          - user
-          - mentions
-          - state
-          - management
-          - zustand
-          - redux
-          - jotai
-          - tanstack
-          - query
-          - react
-          - swr
-          - cache
-          - caching
-          - fetch
-          - data
-          - fetching
-          - mutation
-          - optimistic
-          - loading
-          - error
-          - form
-          - validation
-          - zod
-          - hook
-          - formik
-          - submit
-          - input
-          - schema
-          - real
-          - time
-          - websocket
-          - socket
-          - pusher
-          - live
-          - updates
-          - presence
-          - collaboration
-          - collaborative
-          - sync
-          - synchronize
-          - llm
-          - chatgpt
-          - claude
-          - openai
-          - anthropic
-          - vercel
-          - sdk
-          - streaming
-          - chat
-          - chatbot
-          - assistant
-          - prompt
-          - completion
-          - tool
-          - calling
-          - function
-          - rag
-          - vector
-          - embeddings
-          - pinecone
-          - also
-          - trigger
-          - add
-          - manage
-          - global
-          - persist
-          - build
-          - validate
-          - connection
-          - integrate
-          - features
-          - integration
-          - feature
-          - connect
-          - frontend
-          - backend
-          - flow
-          - handle
-          - errors
-          - submission
-      - name: test-engineer
-        path: webdev/test-engineer
-        description: >-
-          Use PROACTIVELY when user mentions: test, testing, unit test, integration test, E2E, end-to-end, Vitest, Jest,
-          Playwright, Cypress, Testing Library, coverage, test coverage, mock, mocking, MSW, stub, spy, fixture,
-          snapshot, TDD, test-driven, BDD, assertion, expect, describe, it, spec, Storybook, visual test, regression,
-          flaky, flaky test, CI test, test failure, test setup, test config, component test, hook test, API test. Also
-          trigger on: "write tests", "add tests", "test this", "need tests", "improve coverage", "fix test", "test
-          failing", "debug test", "mock API", "mock data", "test setup", "configure testing", "run tests", "test suite",
-          "test file", "spec file", "testing strategy", "what to test", "how to test", "unit tests for", "E2E for",
-          "integration tests for", "test the component", "test the function", "test the API", "verify this works", "make
-          sure this works", "catch bugs", "prevent regression".
-        triggers: &ref_9
-          - test
-          - engineer
-          - proactively
-          - user
-          - mentions
-          - testing
-          - unit
-          - integration
-          - e2e
-          - end
-          - vitest
-          - jest
-          - playwright
-          - cypress
-          - library
-          - coverage
-          - mock
-          - mocking
-          - msw
-          - stub
-          - spy
-          - fixture
-          - snapshot
-          - tdd
-          - driven
-          - bdd
-          - assertion
-          - expect
-          - describe
-          - spec
-          - storybook
-          - visual
-          - regression
-          - flaky
-          - failure
-          - setup
-          - config
-          - component
-          - hook
-          - api
-          - also
-          - trigger
-          - write
-          - tests
-          - add
-          - this
-          - need
-          - improve
-          - fix
-          - failing
-          - debug
-          - data
-          - configure
-          - run
-          - suite
-          - file
-          - strategy
-          - what
-          - how
-          - function
-          - verify
-          - works
-          - make
-          - sure
-          - catch
-          - bugs
-          - prevent
-      - name: workflow-planner
-        path: webdev/workflow-planner
-        description: >-
-          Use PROACTIVELY when user mentions: plan, planning, breakdown, break down, complex task, multi-step, multiple
-          steps, architecture plan, implementation plan, roadmap, task list, task breakdown, work breakdown, project
-          plan, how should I approach, where do I start, what's the best approach, step by step, phases, dependencies,
-          parallel, parallelize, orchestrate, coordinate, sequence, order of operations, prioritize, priority, scope,
-          complexity, risk, blockers, prerequisites. Also trigger on: "plan this out", "help me plan", "break this
-          down", "what order should I", "how do I approach", "what's involved in", "scope this out", "what would it
-          take", "design the approach", "implementation strategy", "execution plan", "action plan", "work plan",
-          "decompose this", "analyze requirements", "figure out the steps", "map out", "outline the work", "structure
-          this project", "organize this work", "coordinate multiple", "multi-feature", "large feature", "big change",
-          "major refactor".
-        triggers: &ref_10
-          - workflow
-          - planner
-          - proactively
-          - user
-          - mentions
-          - plan
-          - planning
-          - breakdown
-          - break
-          - down
-          - complex
-          - task
-          - multi
-          - step
-          - multiple
-          - steps
-          - architecture
-          - implementation
-          - roadmap
-          - list
-          - work
-          - project
-          - how
-          - should
-          - approach
-          - where
-          - start
-          - what
-          - best
-          - phases
-          - dependencies
-          - parallel
-          - parallelize
-          - orchestrate
-          - coordinate
-          - sequence
-          - order
-          - operations
-          - prioritize
-          - priority
-          - scope
-          - complexity
-          - risk
-          - blockers
-          - prerequisites
-          - also
-          - trigger
-          - this
-          - out
-          - help
-          - involved
-          - would
-          - take
-          - design
-          - strategy
-          - execution
-          - action
-          - decompose
-          - analyze
-          - requirements
-          - figure
-          - map
-          - outline
-          - structure
-          - organize
-          - feature
-          - large
-          - big
-          - change
-          - major
-          - refactor
-search_index:
+version: 2.0.0
+generated: '2026-01-21T19:45:00.000Z'
+total: 8
+agents:
   - name: factory
-    keywords: *ref_0
     path: factory
     description: >-
-      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
-      domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
-      delegates to skill-creator.
+      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new
+      agent for a specific domain. Researches thoroughly, applies SDK patterns, and generates
+      production-ready agent files. For skills, delegates to skill-creator.
+    triggers:
+      - factory
+      - create agent
+      - build agent
+      - new agent
+      - agent creation
+      - meta-agent
+      - subagent
+
   - name: skill-creator
-    keywords: *ref_1
     path: skill-creator
     description: >-
-      Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
-      update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows,
-      or tool integrations.
-  - name: backend-engineer
-    keywords: *ref_2
-    path: webdev/backend-engineer
+      Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users
+      want to create, update, or improve skills/slash commands that extend Claude's capabilities
+      with specialized knowledge, workflows, or tool integrations.
+    triggers:
+      - skill
+      - slash command
+      - create skill
+      - build skill
+      - new skill
+      - skill creation
+      - command creation
+
+  - name: engineer
+    path: engineer
     description: >-
-      Use PROACTIVELY when user mentions: API, REST, GraphQL, tRPC, endpoint, route handler, database, SQL, query,
-      Prisma, Drizzle, PostgreSQL, MySQL, MongoDB, Redis, authentication, auth, login, signup, session, JWT, OAuth,
-      Clerk, NextAuth, middleware, server, backend, server-side, business logic, validation, schema, migration, seed,
-      CRUD, create, read, update, delete. Also trigger on: "build an API", "connect to database", "add authentication",
-      "protect routes", "fix server error", "optimize queries", "N+1 problem", "add caching", "implement auth", "secure
-      endpoint", "database design", "data model", "API design", "backend for", "server logic", "handle requests",
-      "process data", "store data", "fetch from database", "webhook", "API integration".
-  - name: brutally-honest-reviewer
-    keywords: *ref_3
-    path: webdev/brutally-honest-reviewer
+      Unified full-stack engineer for backend and frontend implementation. Use PROACTIVELY when user
+      mentions: API, REST, GraphQL, tRPC, endpoint, route, database, SQL, Prisma, Drizzle, PostgreSQL,
+      MongoDB, Redis, authentication, auth, login, JWT, OAuth, middleware, server, backend, validation,
+      schema, migration, CRUD, component, React, Vue, Svelte, Next.js, Nuxt, Remix, Astro, frontend,
+      page, layout, navigation, modal, form, button, card, table, responsive, CSS, Tailwind, styling,
+      theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR, SSG, hydration.
+    triggers:
+      - api
+      - rest
+      - graphql
+      - trpc
+      - endpoint
+      - route
+      - database
+      - prisma
+      - drizzle
+      - authentication
+      - component
+      - react
+      - vue
+      - svelte
+      - nextjs
+      - frontend
+      - backend
+      - page
+      - layout
+      - form
+      - button
+      - modal
+      - tailwind
+      - styling
+      - responsive
+
+  - name: reviewer
+    path: reviewer
     description: >-
-      Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate, critique, feedback,
-      score, rate, check my code, how does this look, is this good, technical debt, code smell, best practices, clean
-      code, code quality, maintainability, refactor review, PR review, pull request, merge request, sanity check, second
-      opinion, roast my code, honest feedback, what's wrong with, improve this, bad code, good code, production ready,
-      ship this, ready to deploy, before I commit, before merge. Also trigger on: "look at my code", "review this",
-      "what do you think", "is this okay", "any issues", "spot problems", "find bugs", "code health", "codebase
-      quality", "overall assessment", "grade this", "rate this code".
-  - name: code-architect
-    keywords: *ref_4
-    path: webdev/code-architect
+      Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs,
+      auditing code changes, performing quality assessments, or when user needs direct feedback on
+      code correctness, security, performance, and adherence to project patterns.
+    triggers:
+      - review
+      - code review
+      - pr review
+      - pull request
+      - audit
+      - quality
+      - assess
+      - evaluate
+      - critique
+      - feedback
+      - score
+      - rate
+      - technical debt
+      - code smell
+      - best practices
+
+  - name: tester
+    path: tester
     description: >-
-      Use PROACTIVELY when user mentions: refactor, restructure, reorganize, architecture, folder structure, file
-      organization, code structure, module, modular, clean up, extract, abstract, consolidate, DRY, SOLID, design
-      pattern, dependency, circular dependency, unused, dead code, code smell, duplication, duplicate code, copy paste,
-      reuse, reusable, maintainable, scalable, decouple, separation of concerns, single responsibility, barrel file,
-      index file, re-export, move files, rename, split, merge, combine, simplify, complexity, god class, god file,
-      monolith, break up, break down, organize imports, clean architecture, hexagonal, layered, feature-based,
-      domain-driven. Also trigger on: "organize this codebase", "structure this project", "make this cleaner", "too
-      messy", "hard to maintain", "spaghetti code", "fix the architecture", "better organization", "reduce complexity",
-      "extract component", "extract function", "consolidate files", "remove unused", "clean up imports", "project
-      setup", "folder layout".
-  - name: content-platform
-    keywords: *ref_5
-    path: webdev/content-platform
+      Testing specialist for comprehensive test coverage. Use PROACTIVELY when: writing tests (unit,
+      integration, E2E), improving test coverage, fixing failing tests, setting up test infrastructure,
+      mocking APIs/data, debugging flaky tests, or when user mentions Vitest, Jest, Playwright, Cypress,
+      Testing Library, MSW, coverage, TDD, fixtures, snapshots, or assertions.
+    triggers:
+      - test
+      - testing
+      - unit test
+      - integration test
+      - e2e
+      - vitest
+      - jest
+      - playwright
+      - cypress
+      - coverage
+      - mock
+      - tdd
+      - fixture
+      - snapshot
+
+  - name: architect
+    path: architect
     description: >-
-      Use PROACTIVELY when user mentions: CMS, content management, Sanity, Contentful, Strapi, Payload, headless CMS,
-      blog, posts, articles, content, MDX, markdown, rich text, editor, email, send email, Resend, SendGrid,
-      transactional email, email template, newsletter, notification email, payment, Stripe, checkout, subscribe,
-      subscription, billing, invoice, price, pricing, buy, purchase, e-commerce, cart, order, webhook, file upload,
-      upload, UploadThing, Cloudinary, S3, storage, media, image, video, asset, CDN, file handling, document upload,
-      avatar upload. Also trigger on: "add a blog", "create posts", "content schema", "setup CMS", "integrate CMS",
-      "send emails", "email notifications", "welcome email", "password reset email", "payment integration", "add
-      payments", "accept payments", "Stripe checkout", "subscription billing", "upload files", "image upload", "handle
-      uploads", "media management", "file storage", "process payments", "e-commerce features".
-  - name: devops-deployer
-    keywords: *ref_6
-    path: webdev/devops-deployer
+      Architecture and planning specialist. Use PROACTIVELY when designing system architecture,
+      planning implementation strategies, breaking down complex tasks, identifying dependencies
+      and risks, or making architectural decisions.
+    triggers:
+      - architecture
+      - planning
+      - plan
+      - breakdown
+      - complex task
+      - dependencies
+      - design
+      - structure
+      - refactor
+      - organize
+      - roadmap
+      - strategy
+
+  - name: deployer
+    path: deployer
     description: >-
-      Use PROACTIVELY when user mentions: deploy, deployment, hosting, Vercel, Netlify, Cloudflare, AWS, Railway,
-      Fly.io, Render, Docker, container, CI/CD, pipeline, GitHub Actions, build, bundle, Vite, webpack, esbuild,
-      Turbopack, production, prod, staging, environment, env, environment variable, secret, config, configuration,
-      domain, DNS, SSL, HTTPS, CDN, cache, monitoring, Sentry, error tracking, analytics, PostHog, logs, logging, Axiom,
-      performance, optimize, bundle size, tree shaking, code splitting, serverless, edge, function, lambda. Also trigger
-      on: "deploy this", "push to production", "go live", "ship it", "make it live", "setup hosting", "configure
-      deployment", "fix build", "build failing", "build error", "optimize build", "reduce bundle", "add monitoring",
-      "track errors", "setup analytics", "environment setup", "Docker setup", "containerize", "CI/CD pipeline",
-      "automate deployment", "production ready", "staging environment", "preview deployment".
-  - name: frontend-architect
-    keywords: *ref_7
-    path: webdev/frontend-architect
+      Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring
+      CI/CD pipelines, setting up Docker/containerization, deploying to cloud platforms (Vercel,
+      AWS, Railway, Fly.io), configuring environment variables, or setting up monitoring and
+      error tracking.
+    triggers:
+      - deploy
+      - deployment
+      - hosting
+      - ci/cd
+      - pipeline
+      - docker
+      - container
+      - kubernetes
+      - production
+      - staging
+      - environment
+      - secrets
+      - monitoring
+      - sentry
+      - vercel
+      - aws
+      - railway
+
+  - name: integrator
+    path: integrator
     description: >-
-      Use PROACTIVELY when user mentions: UI, component, React, Vue, Svelte, SolidJS, Next.js, Nuxt, Remix, Astro,
-      SvelteKit, frontend, front-end, client-side, page, layout, navigation, nav, header, footer, sidebar, modal,
-      dialog, dropdown, menu, button, form, input, card, list, table, grid, responsive, mobile, desktop, tablet, CSS,
-      Tailwind, styled-components, styling, theme, dark mode, light mode, design system, shadcn, Radix, Chakra, MUI,
-      animation, Framer Motion, transition, hover, interactive, accessibility, a11y, ARIA, semantic, SEO, hydration,
-      SSR, SSG, ISR, routing, route, link, navigate. Also trigger on: "build a page", "create component", "add a
-      button", "design the UI", "make it responsive", "style this", "add styling", "fix layout", "center this", "flex",
-      "grid layout", "add animation", "animate this", "make it look good", "UI design", "frontend for", "landing page",
-      "dashboard UI", "homepage", "settings page", "profile page", "user interface", "visual design", "component
-      library".
-  - name: fullstack-integrator
-    keywords: *ref_8
-    path: webdev/fullstack-integrator
-    description: >-
-      Use PROACTIVELY when user mentions: state, state management, Zustand, Redux, Jotai, TanStack Query, React Query,
-      SWR, cache, caching, fetch, data fetching, mutation, optimistic, loading state, error state, form, validation,
-      Zod, React Hook Form, Formik, submit, input validation, schema validation, real-time, WebSocket, Socket.IO,
-      Pusher, live, live updates, presence, collaboration, collaborative, sync, synchronize, AI, LLM, ChatGPT, Claude,
-      OpenAI, Anthropic, Vercel AI SDK, streaming, chat, chatbot, assistant, prompt, completion, tool calling, function
-      calling, RAG, vector, embeddings, Pinecone. Also trigger on: "add state management", "manage state", "global
-      state", "persist state", "build a form", "form validation", "validate input", "submit form", "add validation",
-      "real-time updates", "live data", "WebSocket connection", "add chat", "integrate AI", "add AI features", "LLM
-      integration", "chatbot feature", "AI assistant", "connect frontend to backend", "data flow", "handle form", "form
-      errors", "form submission".
-  - name: test-engineer
-    keywords: *ref_9
-    path: webdev/test-engineer
-    description: >-
-      Use PROACTIVELY when user mentions: test, testing, unit test, integration test, E2E, end-to-end, Vitest, Jest,
-      Playwright, Cypress, Testing Library, coverage, test coverage, mock, mocking, MSW, stub, spy, fixture, snapshot,
-      TDD, test-driven, BDD, assertion, expect, describe, it, spec, Storybook, visual test, regression, flaky, flaky
-      test, CI test, test failure, test setup, test config, component test, hook test, API test. Also trigger on: "write
-      tests", "add tests", "test this", "need tests", "improve coverage", "fix test", "test failing", "debug test",
-      "mock API", "mock data", "test setup", "configure testing", "run tests", "test suite", "test file", "spec file",
-      "testing strategy", "what to test", "how to test", "unit tests for", "E2E for", "integration tests for", "test the
-      component", "test the function", "test the API", "verify this works", "make sure this works", "catch bugs",
-      "prevent regression".
-  - name: workflow-planner
-    keywords: *ref_10
-    path: webdev/workflow-planner
-    description: >-
-      Use PROACTIVELY when user mentions: plan, planning, breakdown, break down, complex task, multi-step, multiple
-      steps, architecture plan, implementation plan, roadmap, task list, task breakdown, work breakdown, project plan,
-      how should I approach, where do I start, what's the best approach, step by step, phases, dependencies, parallel,
-      parallelize, orchestrate, coordinate, sequence, order of operations, prioritize, priority, scope, complexity,
-      risk, blockers, prerequisites. Also trigger on: "plan this out", "help me plan", "break this down", "what order
-      should I", "how do I approach", "what's involved in", "scope this out", "what would it take", "design the
-      approach", "implementation strategy", "execution plan", "action plan", "work plan", "decompose this", "analyze
-      requirements", "figure out the steps", "map out", "outline the work", "structure this project", "organize this
-      work", "coordinate multiple", "multi-feature", "large feature", "big change", "major refactor".
+      Integration specialist for state, forms, real-time, AI, CMS, payments, and uploads. Use
+      PROACTIVELY when user mentions: state management, Zustand, Redux, Jotai, TanStack Query,
+      React Query, forms, validation, Zod, React Hook Form, real-time, WebSocket, Socket.IO,
+      Pusher, live updates, AI, LLM, ChatGPT, Claude, Vercel AI SDK, streaming, chat, CMS,
+      Sanity, Contentful, Strapi, Payload, headless CMS, blog, content, email, Resend, SendGrid,
+      payment, Stripe, checkout, subscription, billing, file upload, UploadThing, Cloudinary,
+      S3, media.
+    triggers:
+      - state management
+      - zustand
+      - redux
+      - jotai
+      - tanstack query
+      - react query
+      - form
+      - validation
+      - zod
+      - react hook form
+      - real-time
+      - websocket
+      - socket.io
+      - pusher
+      - ai
+      - llm
+      - vercel ai sdk
+      - chat
+      - cms
+      - sanity
+      - contentful
+      - strapi
+      - payload
+      - email
+      - resend
+      - sendgrid
+      - payment
+      - stripe
+      - checkout
+      - subscription
+      - upload
+      - uploadthing
+      - cloudinary
