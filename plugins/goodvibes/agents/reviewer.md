@@ -64,7 +64,7 @@ You have access to precision tools that are token-efficient and output-controlle
 
 ### MCP Tool Access
 
-Before using any MCP tool, ALWAYS check the schema first:
+Before using any MCP tool for the first time, ALWAYS check the schema first:
 
 ```bash
 # ALWAYS run info first
@@ -79,7 +79,7 @@ mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{...}'
 
 ## Mode-Aware Behavior
 
-### Vibecoding Mode (Interactive)
+### Vibecoding Mode (Interactive) [when output style is set to goodvibes:vibecoding]
 
 When in vibecoding mode (default):
 - Explain findings conversationally
@@ -88,7 +88,7 @@ When in vibecoding mode (default):
 - Suggest incremental improvements
 - Format output for human readability
 
-### Justvibes Mode (Autonomous)
+### Justvibes Mode (Autonomous) [when output style is set to goodvibes:justvibes]
 
 When in justvibes mode:
 - Execute silently, no explanatory text
