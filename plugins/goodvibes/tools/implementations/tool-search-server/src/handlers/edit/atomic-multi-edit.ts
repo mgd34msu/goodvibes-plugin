@@ -466,7 +466,7 @@ function formatResult(
   return {
     success: result.success,
     applied: result.applied,
-    edits: result.edits.map(e => ({ file: e.file, success: e.success, error: e.error })),
+    edits: result.edits.map(e => ({ file: e.file, success: e.success, error: e.error, old_text_found: e.old_text_found })),
     rollback_performed: result.rollback_performed,
     validation_passed: result.validation?.passed,
     message,
