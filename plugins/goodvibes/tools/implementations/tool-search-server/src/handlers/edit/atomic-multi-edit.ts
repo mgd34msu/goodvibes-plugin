@@ -462,13 +462,13 @@ function formatResult(
     };
   }
 
-  // Standard mode: file names with success status, but no validation output details
+  // Standard mode: file names with success status and validation details
   return {
     success: result.success,
     applied: result.applied,
     edits: result.edits.map(e => ({ file: e.file, success: e.success, error: e.error, old_text_found: e.old_text_found })),
     rollback_performed: result.rollback_performed,
-    validation_passed: result.validation?.passed,
+    validation: result.validation,
     message,
   };
 }
@@ -695,8 +695,8 @@ export async function handleAtomicMultiEdit(
       result.rollback_performed = true;
     }
 
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    const errorResult = { ...result, error: message };
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    const errorResult = { ...result, error: errorMessage };
 
     return {
       content: [
@@ -705,7 +705,7 @@ export async function handleAtomicMultiEdit(
           text: JSON.stringify(
             outputMode === 'verbose'
               ? { ...errorResult, message: 'Unexpected error - changes rolled back' }
-              : formatResult(result, `Unexpected error - changes rolled back: ${message}`, outputMode),
+              : { ...formatResult(result, `Unexpected error - changes rolled back: ${errorMessage}`, outputMode), error: errorMessage },
             null,
             2
           ),
