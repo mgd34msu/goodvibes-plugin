@@ -42,3 +42,15 @@ export declare function findTestsForFile(sourceFile: string): string[];
  * }
  */
 export declare function runTests(testFiles: string[], cwd: string): Promise<TestResult>;
+/**
+ * Runs the full test suite using npm test.
+ * Returns structured results with parsed failure information.
+ *
+ * @param cwd - The current working directory (project root)
+ * @returns Promise resolving to a TestResult object with pass/fail status, summary, and parsed failures
+ *
+ * @example
+ * const result = await runFullTestSuite('/my-project');
+ * debug(result.summary); // 'All tests passed' or 'Tests failed'
+ */
+export declare function runFullTestSuite(cwd: string): Promise<TestResult>;

@@ -5,6 +5,46 @@
  * and repository state verification.
  */
 /**
+ * Executes a git command and returns the output.
+ * Handles errors gracefully by returning null on failure.
+ *
+ * @param command - The git command to execute
+ * @param cwd - The current working directory (repository root)
+ * @returns Promise resolving to the trimmed command output, or null if the command failed
+ *
+ * @example
+ * const branch = await execGit('git branch --show-current', '/repo');
+ * // => 'main' (trimmed output from git command)
+ * // OR
+ * // => null (if command failed)
+ */
+export declare function execGit(command: string, cwd: string): Promise<string | null>;
+/**
+ * Checks if a directory is a git repository by looking for a .git directory.
+ *
+ * @param cwd - The directory path to check
+ * @returns Promise resolving to true if the directory contains a .git folder, false otherwise
+ *
+ * @example
+ * const isRepo = await isGitRepo('/my-project');
+ * // => true (if .git directory exists)
+ * // => false (if not a git repository)
+ */
+export declare function isGitRepo(cwd: string): Promise<boolean>;
+/**
+ * Detects the main branch name for the repository.
+ * Checks for 'main' first, then 'master', defaulting to 'main'.
+ *
+ * @param cwd - The current working directory (repository root)
+ * @returns Promise resolving to the name of the main branch ('main' or 'master')
+ *
+ * @example
+ * const mainBranch = await detectMainBranch('/repo');
+ * // => 'main' (most repos)
+ * // => 'master' (older repos)
+ */
+export declare function detectMainBranch(cwd: string): Promise<string>;
+/**
  * Returns the current git branch name.
  *
  * @param cwd - The current working directory (repository root)
