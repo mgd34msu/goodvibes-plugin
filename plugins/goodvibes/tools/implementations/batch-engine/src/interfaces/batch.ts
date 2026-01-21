@@ -1,13 +1,11 @@
 /**
- * Batch Engine - Core Batch Interfaces
- * SPEC-v2 Section 3.1: Batch Definition Interfaces
+ * Batch Definition interfaces for Batch Engine
+ * @see SPEC-v2 Section 3.1
  */
 
-export interface ValidationStep {
-  type: 'typecheck' | 'lint' | 'test' | 'build' | 'custom';
-  command?: string;
-  required: boolean;
-}
+import type { Operation } from './operation.js';
+
+export type ValidationCheck = 'typecheck' | 'lint' | 'test' | 'build' | 'custom';
 
 export interface OutputConfig {
   mode: 'count_only' | 'minimal' | 'standard' | 'verbose';
@@ -19,47 +17,37 @@ export interface OutputConfig {
 export interface BatchConfig {
   transaction: {
     mode: 'atomic' | 'partial' | 'none';
-    checkpoint: boolean;
-    rollback_on_error: boolean;
+    checkpoint_before?: boolean;
+    rollback_on_error?: boolean;
   };
   execution: {
-    parallel: boolean;
-    max_concurrent: number;
-    timeout_ms: number;
-    retry: { max_attempts: number; backoff_ms: number };
+    parallel?: boolean;
+    max_parallel?: number;
+    timeout_ms?: number;
+    retry?: { max_attempts: number; delay_ms?: number; backoff?: 'linear' | 'exponential'; };
   };
-  preview: {
+  preview?: {
     enabled: boolean;
-    show_diffs: boolean;
-    require_approval: boolean;
+    show_diffs?: boolean;
+    require_approval?: boolean;
   };
-  validation: {
-    before: ValidationStep[];
-    after: ValidationStep[];
+  validation?: {
+    before?: ValidationCheck[];
+    after?: ValidationCheck[];
   };
-  recovery: {
-    on_error: 'halt' | 'continue' | 'rollback' | 'fix';
-    max_fix_attempts: number;
-    checkpoint_before: boolean;
+  recovery?: {
+    on_error: 'halt' | 'rollback' | 'continue' | 'fix';
+    max_fix_attempts?: number;
   };
 }
 
 export interface LifecycleHooks {
-  on_intent?: string;
-  on_plan?: string;
-  on_prepare?: string;
-  on_validate_before?: string;
-  on_execute?: string;
-  on_validate_after?: string;
-  on_commit?: string;
-  on_chain?: string;
-  before_operation?: string;
-  after_operation?: string;
-  on_operation_error?: string;
-  on_operation_retry?: string;
+  on_batch_start?: string;
+  on_batch_complete?: string;
+  on_operation_start?: string;
+  on_operation_complete?: string;
   on_error?: string;
   on_rollback?: string;
-  on_complete?: string;
 }
 
 export interface Batch {
@@ -70,5 +58,3 @@ export interface Batch {
   lifecycle?: LifecycleHooks;
   output?: OutputConfig;
 }
-
-import type { Operation } from './operation.js';
