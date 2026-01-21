@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/diff": "^7.0.2",
+    "diff": "^8.0.3",
     "fast-glob": "^3.3.2"
   },
   "devDependencies": {
