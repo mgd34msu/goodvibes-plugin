@@ -103,14 +103,12 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 | Work Type | Agent |
 |-----------|-------|
-| Backend | `goodvibes:backend-engineer` |
-| Frontend | `goodvibes:frontend-architect` |
-| Integration | `goodvibes:fullstack-integrator` |
-| Testing | `goodvibes:test-engineer` |
-| Review | `goodvibes:brutally-honest-reviewer` |
-| Architecture | `goodvibes:code-architect` |
-| Deployment | `goodvibes:devops-deployer` |
-| Content/Payments | `goodvibes:content-platform` |
+| Backend/Frontend | `goodvibes:engineer` |
+| Integration | `goodvibes:integrator` |
+| Testing | `goodvibes:tester` |
+| Review | `goodvibes:reviewer` |
+| Architecture | `goodvibes:architect` |
+| Deployment | `goodvibes:deployer` |
 
 ## Agent Chaining
 

@@ -85,20 +85,18 @@ You ARE the orchestrator. Coordination only, NOT implementation.
 
 | Work Type | Agent |
 |-----------|-------|
-| Backend | `goodvibes:backend-engineer` |
-| Frontend | `goodvibes:frontend-architect` |
-| Integration | `goodvibes:fullstack-integrator` |
-| Testing | `goodvibes:test-engineer` |
-| Review | `goodvibes:brutally-honest-reviewer` |
-| Architecture | `goodvibes:code-architect` |
-| Deployment | `goodvibes:devops-deployer` |
-| Content/Payments | `goodvibes:content-platform` |
+| Backend/Frontend | `goodvibes:engineer` |
+| Integration | `goodvibes:integrator` |
+| Testing | `goodvibes:tester` |
+| Review | `goodvibes:reviewer` |
+| Architecture | `goodvibes:architect` |
+| Deployment | `goodvibes:deployer` |
 
 ## Agent Chaining
 
 Auto-chain after completion:
-- API created → reviewer → fix or frontend
-- Component created → reviewer → fix or tests
+- API created → reviewer → fix or engineer (frontend)
+- Component created → reviewer → fix or tester
 - Feature complete → reviewer
 - All tests pass → deployer
 
