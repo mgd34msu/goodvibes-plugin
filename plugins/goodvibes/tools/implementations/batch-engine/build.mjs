@@ -13,7 +13,9 @@ async function build() {
       format: 'cjs',
       outfile: path.join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: ['@modelcontextprotocol/sdk'],
+      external: [],
+      minify: false,
+      keepNames: true,
       target: 'node18',
       logLevel: 'info',
     });
