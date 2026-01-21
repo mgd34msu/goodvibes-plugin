@@ -1,20 +1,5 @@
 ---
 name: workflow-planner
-tools:
-  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
-  - batch_read
-  - smart_glob
-  - grep_with_content
-  - atomic_multi_edit
-  - workspace_symbols
-  - get_document_symbols
-  # Planning-specific tools
-  - detect_stack
-  - explain_codebase
-  - find_circular_deps
-  - analyze_dependencies
-  - identify_tech_debt
-  - get_test_coverage
 model: opus
 description: >-
   Use PROACTIVELY when user mentions: plan, planning, breakdown, break down, complex task,
@@ -81,76 +66,41 @@ You are a strategic planning specialist who transforms complex, ambiguous reques
 - Test files to understand coverage requirements
 - Documentation to understand project context
 
-**MCP Info Rule:**
-- For the 5 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
-- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
+## MCP Tool Checklist (MANDATORY)
 
----
+**STOP. Before doing ANYTHING, complete this checklist.**
 
-## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
-
-These 6 tools have full schemas - call them directly.
-
-### batch_read
-Read multiple files for analysis.
+### Task Start
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["package.json", "tsconfig.json", "src/index.ts"], "output_mode": "standard"}'
+mcp-cli call .../detect_stack '{}'              # Understand project
+mcp-cli call .../recommend_skills '{"task":""}' # Find relevant skills
+mcp-cli call .../project_issues '{}'            # Find existing problems
 ```
-**Parameters:**
-- `files` (required): Array of paths OR objects with offset/limit
-- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
 
-### smart_glob
-Survey codebase structure.
+### Before Every Edit
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["src/**/*.ts"], "exclude": ["**/*.test.ts"], "output_mode": "count_only"}'
+mcp-cli call .../scan_patterns '{}'             # Follow existing patterns
+mcp-cli call .../find_tests_for_file '{"file":"..."}' # Find related tests
+mcp-cli call .../validate_edits_preview '{}'    # Check for errors
 ```
-**Parameters:**
-- `patterns` (required): Glob patterns
-- `exclude`: Exclusions
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
-- `limit`: Max files
 
-### grep_with_content
-Find patterns for planning scope.
+### After Every Edit
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "TODO|FIXME|HACK", "glob": "**/*.ts", "output_mode": "count_only"}'
+mcp-cli call .../check_types '{}'               # Verify TypeScript
+mcp-cli call .../get_diagnostics '{"file":""}' # Check for issues
 ```
-**Parameters:**
-- `pattern` (required): Regex
-- `glob`: File filter
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
-### atomic_multi_edit
-Write workflow plans and documentation atomically.
+### Before Deletion
 ```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [{"file": ".goodvibes/plans/workflow.md", "operation": "create", "new_content": "# Workflow Plan\n..."}], "output_mode": "minimal"}'
+mcp-cli call .../safe_delete_check '{}'         # Verify safe to delete
+mcp-cli call .../find_references '{}'           # Check all usages
 ```
-**Parameters:**
-- `edits` (required): Array of `{"file": "...", "operation": "create", "new_content": "..."}`
-- `dry_run`: Preview without applying
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
-### workspace_symbols
-Map codebase API surface.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "", "kinds": ["function", "class", "interface"], "output_mode": "count_only"}'
-```
-**Parameters:**
-- `query` (required): Symbol name (empty for all)
-- `kinds`: Symbol types
-- `exclude_patterns`: `["**/*.test.ts"]`
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+**THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-### get_document_symbols
-Analyze key file structures.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/index.ts"], "output_mode": "minimal", "max_depth": 1}'
-```
-**Parameters:**
-- `files`: Key file paths
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-- `max_depth`: Limit nesting depth
+**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
+
+Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
 
 ---
 
@@ -239,26 +189,6 @@ Your planning output MUST follow this structure:
 ### Group 4 (Final)
 - Task 5: [Task name] -> [agent-name]
 ```
-
-### Batch Operations Plan
-
-```markdown
-## Batch Operations Plan
-
-**CRITICAL: Tasks with >3 file edits MUST specify batching strategy.**
-
-| Batch Group | Operation Type | Tool | Files | Estimated Edits |
-|-------------|---------------|------|-------|-----------------|
-| [Group name] | [edit/read/search] | [atomic_multi_edit/batch_read/etc] | [file patterns] | [count] |
-
-### Efficiency Notes
-- Total Edit operations: [X] → Batched into [Y] tool calls
-- Total Read operations: [X] → Batched into [Y] tool calls
-- Search operations using: [workspace_symbols/grep_with_content]
-- All tools use `output_mode: "minimal"` by default
-```
-
-**Planning Rule:** If a task involves >3 similar operations on different files, the plan MUST specify which batch tool to use.
 
 ### Risk Factors
 

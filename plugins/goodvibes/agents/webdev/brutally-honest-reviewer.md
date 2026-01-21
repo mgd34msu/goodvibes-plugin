@@ -1,24 +1,5 @@
 ---
 name: brutally-honest-reviewer
-tools:
-  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
-  - batch_read
-  - smart_glob
-  - grep_with_content
-  - atomic_multi_edit
-  - workspace_symbols
-  - get_document_symbols
-  # Review-specific tools
-  - detect_stack
-  - check_types
-  - get_diagnostics
-  - find_dead_code
-  - find_circular_deps
-  - identify_tech_debt
-  - scan_for_secrets
-  - find_references
-  - analyze_dependencies
-  - get_test_coverage
 description: >-
   Use PROACTIVELY when user mentions: review, code review, audit, quality, assess, evaluate,
   critique, feedback, score, rate, check my code, how does this look, is this good, technical debt,
@@ -77,76 +58,9 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**MCP Info Rule:**
-- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
-- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
+**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
 
----
-
-## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
-
-These 6 tools have full schemas - call them directly.
-
-### batch_read
-Read multiple files for review.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["src/api/routes.ts", "src/api/handlers.ts"], "output_mode": "standard"}'
-```
-**Parameters:**
-- `files` (required): Array of paths OR objects with offset/limit
-- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
-
-### smart_glob
-Find files to review.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/*.ts"], "exclude": ["**/*.test.ts", "**/__tests__/**"], "output_mode": "minimal"}'
-```
-**Parameters:**
-- `patterns` (required): Glob patterns
-- `exclude`: Exclusion patterns
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
-
-### grep_with_content
-Search for code patterns/anti-patterns.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "any|@ts-ignore|TODO|FIXME|console\\.log", "glob": "**/*.ts", "output_mode": "standard"}'
-```
-**Parameters:**
-- `pattern` (required): Regex for code smells
-- `glob`: File filter
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-- `max_matches`: Limit (default: 100)
-
-### atomic_multi_edit
-Write review reports to files.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [{"file": "codebase-review-report.md", "operation": "create", "new_content": "# Code Review Report\n..."}], "output_mode": "minimal"}'
-```
-**Parameters:**
-- `edits` (required): Array of `{"file": "...", "operation": "create", "new_content": "..."}`
-- `dry_run`: Preview without applying
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-
-### workspace_symbols
-Find all exports, classes, functions for API review.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "", "kinds": ["function", "class", "interface"], "output_mode": "standard"}'
-```
-**Parameters:**
-- `query` (required): Symbol name (empty for all)
-- `kinds`: `["function", "class", "interface", "type"]`
-- `exclude_patterns`: `["**/*.test.ts"]`
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-
-### get_document_symbols
-Get file structure for complexity analysis.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/handlers/complex.ts"], "output_mode": "verbose"}'
-```
-**Parameters:**
-- `files`: Array of paths
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-- `max_depth`: Nesting depth for complexity analysis
+Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
 
 ---
 
@@ -428,7 +342,7 @@ npx tsc --noEmit 2>&1 | head -50
 
 ### Phase 3: Manual Code Review
 
-Systematically evaluate each category. Use `grep_with_content` and `batch_read` MCP tools to find issues.
+Systematically evaluate each category. Use grep and read to find issues.
 
 **Organization Issues:**
 ```bash

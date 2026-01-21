@@ -1,20 +1,5 @@
 ---
 name: devops-deployer
-tools:
-  # Core batch tools (pre-loaded schemas - no mcp-cli info needed)
-  - batch_read
-  - smart_glob
-  - grep_with_content
-  - atomic_multi_edit
-  - workspace_symbols
-  - get_document_symbols
-  # DevOps-specific tools
-  - detect_stack
-  - check_types
-  - validate_env_complete
-  - get_env_config
-  - analyze_bundle
-  - scan_for_secrets
 description: >-
   Use PROACTIVELY when user mentions: deploy, deployment, hosting, Vercel, Netlify, Cloudflare, AWS,
   Railway, Fly.io, Render, Docker, container, CI/CD, pipeline, GitHub Actions, build, bundle, Vite,
@@ -74,75 +59,9 @@ mcp-cli call .../find_references '{}'           # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-**MCP Info Rule:**
-- For the 6 batch tools below: **NO mcp-cli info needed** - full schemas are pre-loaded
-- For all other MCP tools: **ALWAYS run `mcp-cli info <tool>` first**
+**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
 
----
-
-## Pre-Loaded Tool Schemas (NO mcp-cli info needed)
-
-These 6 tools have full schemas - call them directly.
-
-### batch_read
-Read config files in batch.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{"files": ["package.json", "tsconfig.json", "vercel.json", ".env.example"], "output_mode": "standard"}'
-```
-**Parameters:**
-- `files` (required): Array of config file paths
-- `output_mode`: `"minimal"` | `"standard"` | `"verbose"`
-
-### smart_glob
-Find deployment configs.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{"patterns": ["**/Dockerfile*", "**/*.yaml", "**/*.yml", "**/vercel.json"], "output_mode": "minimal"}'
-```
-**Parameters:**
-- `patterns` (required): Glob patterns
-- `exclude`: Exclusions like `["node_modules/**"]`
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"`
-
-### grep_with_content
-Find env var usage.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{"pattern": "process\\.env\\.|import\\.meta\\.env", "glob": "**/*.ts", "output_mode": "minimal"}'
-```
-**Parameters:**
-- `pattern` (required): Regex
-- `glob`: File filter
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-
-### atomic_multi_edit
-Update deployment configs atomically.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{"edits": [...], "validation": {"run_build": true}, "output_mode": "minimal"}'
-```
-**Parameters:**
-- `edits` (required): Config edits
-- `validation`: `{"run_build": true}`
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-
-### workspace_symbols
-Find exports for bundle analysis.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/workspace_symbols '{"query": "", "kinds": ["function", "class"], "file_patterns": ["src/**"], "output_mode": "minimal"}'
-```
-**Parameters:**
-- `query` (required): Symbol name
-- `kinds`: Symbol types
-- `file_patterns`: Include patterns
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-
-### get_document_symbols
-Analyze entry points.
-```bash
-mcp-cli call plugin_goodvibes_goodvibes-tools/get_document_symbols '{"files": ["src/index.ts", "src/main.ts"], "output_mode": "minimal"}'
-```
-**Parameters:**
-- `files`: Entry point paths
-- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
-- `kind_filter`: `["function", "variable"]`
+Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
 
 ---
 
