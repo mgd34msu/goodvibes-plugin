@@ -13,10 +13,12 @@
     "postinstall": "npm run build"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.0.3",
+    "esbuild": "^0.27.2",
+    "js-yaml": "^4.1.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "js-yaml": "^4.1.1",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.0.3"
+    "vitest": "^4.0.17"
   }
 }

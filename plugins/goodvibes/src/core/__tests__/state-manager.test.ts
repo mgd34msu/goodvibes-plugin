@@ -39,27 +39,27 @@ describe("StateManager", () => {
 
   describe("Agent Management", () => {
     it("should spawn an agent", () => {
-      const agentId = stateManager.spawnAgent("backend-engineer", "Build API");
+      const agentId = stateManager.spawnAgent("backend-engineer", "Build API", 50000);
       expect(agentId).toBeDefined();
 
       const agent = stateManager.getAgent(agentId);
       expect(agent).toBeDefined();
       expect(agent?.type).toBe("backend-engineer");
       expect(agent?.task).toBe("Build API");
-      expect(agent?.status).toBe("running");
+      expect(agent?.status).toBe("queued");
     });
 
     it("should complete an agent", () => {
-      const agentId = stateManager.spawnAgent("test-engineer", "Write tests");
+      const agentId = stateManager.spawnAgent("test-engineer", "Write tests", 50000);
       stateManager.completeAgent(agentId, 10000);
 
       const agent = stateManager.getAgent(agentId);
       expect(agent?.status).toBe("completed");
-      expect(agent?.tokens_spent).toBe(10000);
+      expect(agent?.budget.spent).toBe(10000);
     });
 
     it("should fail an agent", () => {
-      const agentId = stateManager.spawnAgent("frontend-architect", "Build UI");
+      const agentId = stateManager.spawnAgent("frontend-architect", "Build UI", 50000);
       stateManager.failAgent(agentId, "Out of budget");
 
       const agent = stateManager.getAgent(agentId);
@@ -68,9 +68,9 @@ describe("StateManager", () => {
     });
 
     it("should get active agents", () => {
-      stateManager.spawnAgent("backend-engineer", "Task 1");
-      stateManager.spawnAgent("frontend-architect", "Task 2");
-      const agent3Id = stateManager.spawnAgent("test-engineer", "Task 3");
+      stateManager.spawnAgent("backend-engineer", "Task 1", 50000);
+      stateManager.spawnAgent("frontend-architect", "Task 2", 50000);
+      const agent3Id = stateManager.spawnAgent("test-engineer", "Task 3", 50000);
       stateManager.completeAgent(agent3Id, 5000);
 
       const active = stateManager.getActiveAgents();
@@ -78,69 +78,69 @@ describe("StateManager", () => {
     });
 
     it("should get agents by status", () => {
-      const agent1Id = stateManager.spawnAgent("backend-engineer", "Task 1");
-      stateManager.spawnAgent("frontend-architect", "Task 2");
+      const agent1Id = stateManager.spawnAgent("backend-engineer", "Task 1", 50000);
+      stateManager.spawnAgent("frontend-architect", "Task 2", 50000);
       stateManager.completeAgent(agent1Id, 5000);
 
       const completed = stateManager.getAgentsByStatus("completed");
       expect(completed.length).toBe(1);
 
-      const running = stateManager.getAgentsByStatus("running");
+      const running = stateManager.getAgentsByStatus("queued");
       expect(running.length).toBe(1);
     });
   });
 
   describe("File Locking", () => {
     it("should acquire a lock", () => {
-      const acquired = stateManager.acquireLock("/test/file.ts", "agent-1");
+      const acquired = stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
       expect(acquired).toBe(true);
     });
 
     it("should prevent double locking", () => {
-      stateManager.acquireLock("/test/file.ts", "agent-1");
-      const secondAcquire = stateManager.acquireLock("/test/file.ts", "agent-2");
+      stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
+      const secondAcquire = stateManager.acquireLock("/test/file.ts", "agent-2", "editing");
       expect(secondAcquire).toBe(false);
     });
 
     it("should allow same holder to re-acquire", () => {
-      stateManager.acquireLock("/test/file.ts", "agent-1");
-      const reAcquire = stateManager.acquireLock("/test/file.ts", "agent-1");
+      stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
+      const reAcquire = stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
       expect(reAcquire).toBe(true);
     });
 
     it("should release a lock", () => {
-      stateManager.acquireLock("/test/file.ts", "agent-1");
+      stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
       const released = stateManager.releaseLock("/test/file.ts", "agent-1");
       expect(released).toBe(true);
 
       // Now another agent can acquire
-      const acquired = stateManager.acquireLock("/test/file.ts", "agent-2");
+      const acquired = stateManager.acquireLock("/test/file.ts", "agent-2", "editing");
       expect(acquired).toBe(true);
     });
 
     it("should check if file is locked", () => {
       expect(stateManager.isLocked("/test/file.ts")).toBe(false);
-      stateManager.acquireLock("/test/file.ts", "agent-1");
+      stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
       expect(stateManager.isLocked("/test/file.ts")).toBe(true);
     });
 
     it("should get lock holder", () => {
-      stateManager.acquireLock("/test/file.ts", "agent-1");
+      stateManager.acquireLock("/test/file.ts", "agent-1", "editing");
       expect(stateManager.getLockHolder("/test/file.ts")).toBe("agent-1");
     });
 
     it("should get all locks for a holder", () => {
-      stateManager.acquireLock("/test/file1.ts", "agent-1");
-      stateManager.acquireLock("/test/file2.ts", "agent-1");
-      stateManager.acquireLock("/test/file3.ts", "agent-2");
+      stateManager.acquireLock("/test/file1.ts", "agent-1", "editing");
+      stateManager.acquireLock("/test/file2.ts", "agent-1", "editing");
+      stateManager.acquireLock("/test/file3.ts", "agent-2", "editing");
 
       const locks = stateManager.getLocksForHolder("agent-1");
       expect(locks.length).toBe(2);
     });
 
     it("should release all locks for a holder", () => {
-      stateManager.acquireLock("/test/file1.ts", "agent-1");
-      stateManager.acquireLock("/test/file2.ts", "agent-1");
+      stateManager.acquireLock("/test/file1.ts", "agent-1", "editing");
+      stateManager.acquireLock("/test/file2.ts", "agent-1", "editing");
 
       const released = stateManager.releaseAllLocks("agent-1");
       expect(released).toBe(2);
