@@ -51,229 +51,171 @@ When asked for ideas, provide thoughtful suggestions based on:
 ### Batching Thresholds
 | Situation | Action |
 |-----------|--------|
-| >3 Edit calls to different files | Use `precision_edit` with atomic transaction |
-| >3 Read calls | Use `precision_read` with multiple targets |
-| >3 Grep calls | Use `discover` with multiple grep queries |
+| >3 Edit calls to different files | Use `precision_edit` with multiple edits |
+| >3 Read calls | Use `precision_read` with multiple files |
+| >3 Grep calls | Use `discover` with multiple queries |
 | Searching for code symbols | Use `precision_symbols` instead of Grep |
 | Need file structure | Use `precision_read` with `extract: "outline"` or `"symbols"` |
 | Finding files with filters | Use `precision_glob` with filters |
-| Multiple operations of different types | Use `batch` tool for full batch execution |
 
 ### Efficiency Tools Reference
 
 | Tool | Replaces | Use When | Key Feature |
 |------|----------|----------|-------------|
-| `precision_edit` | Multiple Edit calls | >3 file edits | Atomic transactions, conflict detection |
+| `precision_edit` | Multiple Edit calls | >3 file edits | Multiple edits, dry_run, backup |
 | `precision_read` | Multiple Read calls | >3 file reads | Extract modes: content, outline, symbols, ast, lines |
-| `precision_grep` | Grep + context | Text pattern search | Token-efficient output modes |
+| `precision_grep` | Grep + context | Text pattern search | Batch queries, output modes |
 | `precision_glob` | Glob + Read each | Finding files with filters | Filters by size, date, content |
 | `precision_symbols` | workspace_symbols | Finding functions/classes | Workspace and document symbol search |
-| `precision_write` | Multiple Write calls | Creating files | Templates, atomic transactions |
-| `precision_exec` | Multiple Bash calls | Running commands | Batch commands, expectations, safe_mode |
-| `precision_fetch` | Multiple WebFetch | URL fetching | Caching, extraction modes |
-| `discover` | Multiple grep/glob | Pre-batch discovery | Lightweight, parallel queries |
-| `batch` | Multiple tool calls | Complex operations | Full batch execution engine |
+| `precision_write` | Multiple Write calls | Creating files | Batch writes, overwrite modes |
+| `precision_exec` | Multiple Bash calls | Running commands | Batch commands, expectations |
+| `precision_fetch` | Multiple WebFetch | URL fetching | Batch URLs, extraction modes |
+| `discover` | Multiple grep/glob | Pre-batch discovery | Parallel queries, minimal output |
 
 ### Output Mode Rules
 
 | Mode | Use When | Token Cost |
 |------|----------|------------|
 | `count_only` | Just need "how many" | Lowest |
-| `files_only` | Just need file paths | Low |
-| `locations` | Need file + line/column info | Low |
 | `minimal` | Need compact representation | Low |
+| `standard` | Normal operations | Medium |
+| `verbose` | Debugging | High |
 
-**DEFAULT: Always use `count_only`, `files_only`, or `minimal` unless you specifically need more.**
-
-### MCP Tool Commands
-```bash
-# Search text patterns with context
-mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"pattern": "export", "include": ["**/*.ts"], "context": 2}'
-
-# Read multiple files with extract modes
-mcp-cli call plugin_goodvibes_precision-engine/precision_read '{"targets": ["a.ts", "b.ts"], "extract": "outline"}'
-
-# Find files with intelligent filtering
-mcp-cli call plugin_goodvibes_precision-engine/precision_glob '{"patterns": ["**/*.ts"], "filters": {"max_size": 100000}}'
-
-# Search symbols semantically
-mcp-cli call plugin_goodvibes_precision-engine/precision_symbols '{"query": "handleSubmit", "kinds": ["function"]}'
-
-# Atomic multi-file edits
-mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits": [...], "options": {"conflict_strategy": "fail"}}'
-
-# Lightweight discovery before batch
-mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries": [{"id": "q1", "type": "grep", "pattern": "TODO"}]}'
-
-# Full batch execution
-mcp-cli call plugin_goodvibes_precision-engine/batch '{"operations": {"read": [...], "write": [...]}, "dry_run": true}'
-```
+**DEFAULT: Always use `count_only` or `minimal` unless you specifically need more.**
 
 ---
 
 ## Pre-Loaded Precision Tool Schemas (NO mcp-cli info needed)
 
-These 10 precision tools have full schemas below - call them **directly** without `mcp-cli info` first.
-
-### precision_grep
-Token-efficient text pattern search with output modes.
-```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"pattern": "export", "include": ["**/*.ts"]}'
-```
-- `pattern` (required): Regex pattern to search for
-- `paths`: Paths to search (default: project root)
-- `include`: Glob patterns to include
-- `exclude`: Glob patterns to exclude
-- `context`: Lines of context around matches
-- `case_sensitive`: Case-sensitive search (default: true)
-- `max_matches`: Maximum matches to return
+These precision tools have full schemas below - call them **directly** without `mcp-cli info` first.
 
 ### precision_read
 Read files with multiple extract modes.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_read '{"targets": ["src/index.ts"], "extract": "symbols"}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_read '{"files": ["src/index.ts", "src/utils.ts"], "extract": "content", "output_mode": "minimal"}'
 ```
-- `targets` (required): Array of paths OR `{"path": "file.ts", "offset": 10, "limit": 50}`
-- `extract`: `"content"` | `"outline"` | `"symbols"` | `"ast"` | `"lines"`
-- `options.include_line_numbers`: Include line numbers
-- `options.symbol_filter`: Filter by symbol kinds `["function", "class", "interface"]`
-- `options.max_lines`: Maximum lines to return
+- `files` (required): Array of paths OR objects `{"path": "file.ts", "offset": 0, "limit": 50, "extract": "content"}`
+- `extract`: `"content"` | `"outline"` | `"symbols"` | `"ast"` | `"lines"` (default: "content")
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### precision_grep
+Search for patterns with batch queries.
+```bash
+mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries": [{"id": "q1", "pattern": "export.*function", "glob": "**/*.ts"}], "output": {"mode": "files_only"}, "output_mode": "minimal"}'
+```
+- `queries` (required): Array of `{"id": "...", "pattern": "regex", "glob": "*.ts", "path": "src/", "exclude": [...], "case_sensitive": true, "whole_word": false}`
+- `output` (required): `{"mode": "count_only|files_only|locations|matches|context", "context_before": 2, "context_after": 2, "max_files": 100}`
+- `parallel`: Run queries in parallel (default: true)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### precision_glob
 Find files with intelligent filtering.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_glob '{"patterns": ["**/*.ts"], "filters": {"max_size": 50000}}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_glob '{"patterns": ["**/*.ts"], "output": {"mode": "paths_only"}, "output_mode": "minimal"}'
 ```
-- `patterns` (required): Array of glob patterns
+- `patterns`: Array of glob patterns
+- `preset`: `"typescript"` | `"javascript"` | `"styles"` | `"config"` | `"tests"` | `"all"`
 - `exclude`: Patterns to exclude
-- `filters.min_size`: Minimum file size in bytes
-- `filters.max_size`: Maximum file size in bytes
-- `filters.modified_after`: ISO date string
-- `filters.modified_before`: ISO date string
-- `filters.has_content`: Quick grep filter
-- `options.respect_gitignore`: Respect .gitignore (default: true)
-- `options.preview_lines`: Number of preview lines
-- `options.include_stats`: Include file stats
+- `filters`: `{"min_size": 0, "max_size": 100000, "modified_after": "ISO date", "modified_before": "ISO date", "has_content": "regex", "is_empty": false}`
+- `output`: `{"mode": "count_only|paths_only|with_stats|with_preview", "max_files": 100, "preview_lines": 5}`
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### precision_symbols
 Search symbols in workspace or documents.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_symbols '{"query": "handle", "kinds": ["function", "method"]}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_symbols '{"mode": "workspace", "query": "handle", "kinds": ["function", "method"], "output_mode": "minimal"}'
 ```
-- `query` (required): Symbol name pattern to search
-- `kinds`: `["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property"]`
-- `scope`: Glob pattern for files to search
-- `options.include_location`: Include line/column info
-- `options.include_signature`: Include type signatures
-- `options.max_results`: Maximum results (default: 50)
+- `mode`: `"workspace"` (search all) | `"document"` (specific files)
+- `query`: Symbol name pattern to search (workspace mode)
+- `match_type`: `"exact"` | `"prefix"` | `"substring"` | `"fuzzy"` (default: "substring")
+- `file`: Single file to analyze (document mode)
+- `files`: Multiple files (document mode)
+- `kinds`: `["function", "class", "interface", "type", "variable", "method", "property", "enum", "constant"]`
+- `line_range`: `{"start": 1, "end": 100}` - limit to line range
+- `limit`: Max results (default: 50)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### precision_edit
-Apply multiple edits atomically with conflict detection.
+Apply multiple edits with transaction support.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits": [{"file": "a.ts", "edits": [{"find": "old", "replace": "new"}]}]}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits": [{"file": "src/index.ts", "strategy": "search_replace", "search": "oldText", "content": "newText"}], "output_mode": "minimal"}'
 ```
-- `edits` (required): Array of `EditSpec`:
+- `edits` (required): Array of edit operations:
   ```json
   {
     "file": "path/to/file.ts",
-    "edits": [
-      {
-        "find": "text to find",
-        "replace": "replacement text",
-        "occurrence": "first" | "last" | "all" | number,
-        "near_line": 42,
-        "in_function": "functionName",
-        "in_class": "ClassName"
-      }
-    ]
+    "strategy": "line|search_replace|diff",
+    "start_line": 10,
+    "end_line": 20,
+    "search": "text to find",
+    "content": "new content",
+    "diff": "unified diff",
+    "regex": false,
+    "replace_all": false
   }
   ```
-- `options.match_mode`: `"exact"` | `"regex"` | `"ast"` | `"fuzzy"`
-- `options.conflict_strategy`: `"fail"` | `"merge"` | `"force"`
-- `options.create_if_missing`: Create file if it doesn't exist
+- `dry_run`: Preview changes without applying (default: false)
+- `backup`: Create backup before editing (default: false)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### precision_write
-Create files with templates and atomic transactions.
+Create files with batch support.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_write '{"files": [{"path": "new.ts", "content": "..."}]}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_write '{"files": [{"path": "src/new.ts", "content": "export const x = 1;"}], "output_mode": "minimal"}'
 ```
-- `files` (required): Array of `CreateSpec`:
-  ```json
-  {"path": "path/to/file.ts", "content": "file content", "encoding": "utf-8"}
-  ```
-- `options.overwrite`: Allow overwriting existing files
-- `options.create_dirs`: Create parent directories
-- `options.template`: `"handlebars"` | `"ejs"` | `"none"`
+- `files` (required): Array of `{"path": "...", "content": "...", "encoding": "utf-8", "mode": "fail_if_exists|overwrite|backup"}`
+- `dry_run`: Preview without writing (default: false)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### precision_exec
 Execute commands in batch with expectations.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_exec '{"commands": [{"cmd": "npm test", "expect": {"exit_code": 0}}]}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_exec '{"commands": [{"cmd": "npm test", "expect": {"exit_code": 0}}], "output_mode": "minimal"}'
 ```
-- `commands` (required): Array of `CommandSpec`:
+- `commands` (required): Array of command specs:
   ```json
   {
     "cmd": "npm test",
-    "timeout_ms": 60000,
-    "capture": {"stdout": true, "stderr": true, "exit_code": true},
-    "expect": {
-      "exit_code": 0,
-      "stdout_contains": "passed",
-      "stderr_empty": true
-    }
+    "args": ["--coverage"],
+    "cwd": "/path/to/dir",
+    "timeout": 60000,
+    "env": {"NODE_ENV": "test"},
+    "expect": {"exit_code": 0, "stdout_contains": "passed", "stderr_contains": ""}
   }
   ```
-- `options.shell`: Shell to use
-- `options.working_dir`: Working directory
-- `options.env`: Environment variables
-- `options.safe_mode`: Safe mode (restricted commands)
+- `parallel`: Execute in parallel (default: false)
+- `stop_on_error`: Stop on first error (default: true)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
 
 ### precision_fetch
-Fetch URLs with caching and extraction modes.
+Fetch URLs with batch support.
 ```bash
-mcp-cli call plugin_goodvibes_precision-engine/precision_fetch '{"targets": ["https://example.com"], "extract": "markdown"}'
+mcp-cli call plugin_goodvibes_precision-engine/precision_fetch '{"urls": [{"url": "https://api.example.com/data", "extract": "json"}], "output_mode": "minimal"}'
 ```
-- `targets` (required): Array of URLs to fetch
-- `extract`: `"raw"` | `"markdown"` | `"text"` | `"structured"`
-- `options.cache_ttl_seconds`: Cache TTL
-- `options.selectors`: CSS selectors for structured extraction
-- `options.summarize`: Summarize content
-- `options.max_tokens`: Maximum tokens in response
-
-### discover
-Lightweight pre-batch discovery tool.
-```bash
-mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries": [{"id": "files", "type": "glob", "patterns": ["**/*.ts"]}]}'
-```
-- `queries` (required): Array of discovery queries:
-  - **Grep query**: `{"id": "q1", "type": "grep", "pattern": "TODO", "include": ["**/*.ts"], "context": 2}`
-  - **Glob query**: `{"id": "q2", "type": "glob", "patterns": ["**/*.ts"], "max_files": 100}`
-  - **Symbol query**: `{"id": "q3", "type": "symbols", "query": "handle", "kinds": ["function"]}`
-- `parallel`: Run queries in parallel (default: true)
-- `timeout_ms`: Timeout for entire discovery operation
-- Output modes per query: `"count_only"` | `"files_only"` | `"locations"` | `"minimal"`
-
-### batch
-Full batch execution engine for complex operations.
-```bash
-mcp-cli call plugin_goodvibes_precision-engine/batch '{"operations": {"read": [...], "write": [...]}, "dry_run": true}'
-```
-- `discovery`: Optional discovery phase
-  ```json
-  {"queries": [...], "inject_results": true}
-  ```
-- `operations`: Operations by phase
+- `urls` (required): Array of URL specs:
   ```json
   {
-    "read": [{"type": "files", "id": "r1", "targets": ["a.ts"], "extract": "content"}],
-    "write": [{"type": "edit", "id": "w1", "edits": [...]}],
-    "exec": [{"type": "command", "id": "e1", "commands": [...]}]
+    "url": "https://example.com",
+    "method": "GET|POST|PUT|DELETE",
+    "headers": {"Authorization": "Bearer token"},
+    "body": "request body",
+    "timeout": 30000,
+    "extract": "raw|text|json"
   }
   ```
-- `config`: Batch configuration
-- `dry_run`: Preview without applying changes
-- `preview`: Get detailed preview of what batch would do
-- `timeout_ms`: Timeout for entire batch
+- `parallel`: Fetch in parallel (default: true)
+- `output_mode`: `"count_only"` | `"minimal"` | `"standard"` | `"verbose"`
+
+### discover
+Lightweight pre-batch discovery.
+```bash
+mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries": [{"id": "todos", "type": "grep", "pattern": "TODO", "glob": "**/*.ts"}], "output_mode": "files_only"}'
+```
+- `queries` (required): Array of discovery queries:
+  - **grep**: `{"id": "q1", "type": "grep", "pattern": "regex", "glob": "*.ts"}`
+  - **glob**: `{"id": "q2", "type": "glob", "patterns": ["**/*.ts"]}`
+  - **symbols**: `{"id": "q3", "type": "symbols", "query": "handle", "kinds": ["function"]}`
+- `output_mode`: `"count_only"` | `"files_only"` | `"locations"` (default: "files_only")
 
 **For ALL OTHER MCP tools: ALWAYS run `mcp-cli info <tool>` before calling.**
 

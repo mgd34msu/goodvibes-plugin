@@ -382,8 +382,8 @@ export interface TokenEfficiencyVerification {
   /** Output mode configuration exists */
   output_mode_config: boolean;
 
-  /** Batch read with filters is implemented */
-  batch_read_filters: boolean;
+  /** Precision read with filters is implemented */
+  precision_read_filters: boolean;
 
   /** Incremental updates are supported */
   incremental_updates: boolean;

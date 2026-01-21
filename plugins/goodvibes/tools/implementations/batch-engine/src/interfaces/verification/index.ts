@@ -26,3 +26,6 @@ export * from './lifecycle-context.js';
 
 // Telemetry and recovery verification (Sections 9-11)
 export * from './telemetry-recovery.js';
+
+// Philosophy verification (Appendix)
+export * from './philosophy.js';
