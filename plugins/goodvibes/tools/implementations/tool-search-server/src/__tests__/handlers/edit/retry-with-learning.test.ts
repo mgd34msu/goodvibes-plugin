@@ -850,10 +850,11 @@ describe('handleRetryWithLearning', () => {
       const data = JSON.parse(result.content[0].text);
 
       expect(data.success).toBe(false);
-      // Should log the parse error
+      // Should log the parse error via logError() which formats as "[GoodVibes timestamp] ERROR: message: errorMessage"
+      // Error.message doesn't include "SyntaxError:" prefix, just the message content like "Expected property name..."
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to parse Claude response:',
-        expect.any(Error)
+        expect.stringContaining('Failed to parse Claude response'),
+        expect.stringMatching(/Expected|JSON|position/)
       );
     });
 
@@ -1169,7 +1170,7 @@ describe('handleRetryWithLearning', () => {
   describe('Additional Coverage', () => {
     test('captures stderr from Claude CLI when it fails', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error');
-      
+
       mockSpawn.mockImplementation((cmd: string, args: string[]) => {
         if (cmd === 'claude') {
           if (args?.includes('--version')) {
@@ -1192,10 +1193,9 @@ describe('handleRetryWithLearning', () => {
       await resultPromise;
 
       // Check if console.error was called with the captured stderr
+      // logError() formats as "[GoodVibes timestamp] ERROR: message:" followed by the error message
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('exited with code:'),
-        1,
-        'stderr:',
+        expect.stringContaining('Claude CLI exited with code'),
         expect.stringContaining('Specific Claude Error')
       );
     });

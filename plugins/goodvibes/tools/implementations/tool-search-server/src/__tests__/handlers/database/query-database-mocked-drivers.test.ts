@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { __testing__ } from '../../../handlers/database/query-database.js';
+import { __testing__ } from '../../../handlers/database/query-database/index.js';
 
 const {
   executePostgresQuery,

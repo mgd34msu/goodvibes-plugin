@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
-import { handleQueryDatabase, type QueryDatabaseArgs, __testing__ } from '../../../handlers/database/query-database.js';
+import { handleQueryDatabase, type QueryDatabaseArgs, __testing__ } from '../../../handlers/database/query-database/index.js';
 import { shutdownConnectionPool } from '../../../handlers/database/sqlite-connection.js';
 
 // Mock the sqlite-connection module
@@ -1975,7 +1975,7 @@ describe('query_database handler', () => {
       vi.doMock('pg', () => mockPg);
 
       // Create a new import to use the mocked pg
-      const { handleQueryDatabase: handleQueryDatabaseWithPg } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handleQueryDatabaseWithPg } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handleQueryDatabaseWithPg({
         query: 'SELECT * FROM users',
@@ -2033,7 +2033,7 @@ describe('query_database handler', () => {
       vi.doMock('mysql2/promise', () => mockMysql);
 
       // Create a new import to use the mocked mysql
-      const { handleQueryDatabase: handleQueryDatabaseWithMysql } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handleQueryDatabaseWithMysql } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handleQueryDatabaseWithMysql({
         query: 'SELECT * FROM users',
@@ -2315,7 +2315,7 @@ describe('query_database handler with mocked drivers', () => {
       }));
 
       // Import with fresh mocks
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM users',
@@ -2350,7 +2350,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM users',
@@ -2401,7 +2401,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM test',
@@ -2434,7 +2434,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT COUNT(*) FROM users',
@@ -2473,7 +2473,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM users',
@@ -2503,7 +2503,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM users',
@@ -2558,7 +2558,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM test',
@@ -2591,7 +2591,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT COUNT(*) FROM users',
@@ -2624,7 +2624,7 @@ describe('query_database handler with mocked drivers', () => {
         shutdownConnectionPool: vi.fn(),
       }));
 
-      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database.js');
+      const { handleQueryDatabase: handler } = await import('../../../handlers/database/query-database/index.js');
 
       const result = await handler({
         query: 'SELECT * FROM users',
