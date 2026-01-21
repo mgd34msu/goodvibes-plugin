@@ -8,6 +8,9 @@ import type { WriteOperation } from './operations/write.js';
 import type { ExecOperation, QueryOperation, StateOperation } from './operations/exec.js';
 import type { LifecycleHooks } from './lifecycle.js';
 
+// Re-export BatchResult for mode-behavior.ts per SPEC-v2 Section 10.3
+export type { BatchResult } from './result.js';
+
 // LifecycleConfig is an alias for LifecycleHooks per SPEC-v2 Section 3.1/5.1
 export type LifecycleConfig = LifecycleHooks;
 
