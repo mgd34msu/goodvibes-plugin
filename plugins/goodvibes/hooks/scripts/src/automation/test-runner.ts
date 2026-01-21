@@ -104,7 +104,7 @@ export async function runTests(testFiles: string[], cwd: string): Promise<TestRe
  * const result = await runFullTestSuite('/my-project');
  * debug(result.summary); // 'All tests passed' or 'Tests failed'
  */
-async function runFullTestSuite(cwd: string): Promise<TestResult> {
+export async function runFullTestSuite(cwd: string): Promise<TestResult> {
   try {
     await execAsync('npm test', { cwd, timeout: 600000 });
     return { passed: true, summary: 'All tests passed', failures: [] };

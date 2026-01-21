@@ -1225,17 +1225,17 @@ describe('secrets-scanner handler', () => {
         mockedFsPromises.readdir.mockRejectedValue(new Error('Permission denied'));
         mockedSafeExec.mockResolvedValue({ stdout: '', stderr: '' });
 
-        // Mock console.warn to verify error logging
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        // Mock console.error to verify error logging (logWarn uses console.error)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const result = await handleScanForSecrets({});
         const data = JSON.parse(result.content[0].text);
 
         expect(result.isError).toBeUndefined();
         expect(data.files_scanned).toBe(0);
-        expect(warnSpy).toHaveBeenCalled();
+        expect(errorSpy).toHaveBeenCalled();
 
-        warnSpy.mockRestore();
+        errorSpy.mockRestore();
       });
 
       it('should handle file read error gracefully', async () => {
@@ -1247,15 +1247,15 @@ describe('secrets-scanner handler', () => {
         mockedFsPromises.readFile.mockRejectedValue(new Error('Cannot read file'));
         mockedSafeExec.mockResolvedValue({ stdout: '', stderr: '' });
 
-        // Mock console.warn to verify error logging
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        // Mock console.error to verify error logging (logWarn uses console.error)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const result = await handleScanForSecrets({});
 
         expect(result.isError).toBeUndefined();
-        expect(warnSpy).toHaveBeenCalled();
+        expect(errorSpy).toHaveBeenCalled();
 
-        warnSpy.mockRestore();
+        errorSpy.mockRestore();
       });
 
       it('should handle non-Error throws gracefully', async () => {
@@ -1264,14 +1264,14 @@ describe('secrets-scanner handler', () => {
         mockedFsPromises.readdir.mockRejectedValue('String error');
         mockedSafeExec.mockResolvedValue({ stdout: '', stderr: '' });
 
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const result = await handleScanForSecrets({});
 
         expect(result.isError).toBeUndefined();
-        expect(warnSpy).toHaveBeenCalled();
+        expect(errorSpy).toHaveBeenCalled();
 
-        warnSpy.mockRestore();
+        errorSpy.mockRestore();
       });
 
       it('should handle file read non-Error throws gracefully', async () => {
@@ -1283,14 +1283,14 @@ describe('secrets-scanner handler', () => {
         mockedFsPromises.readFile.mockRejectedValue('String file error');
         mockedSafeExec.mockResolvedValue({ stdout: '', stderr: '' });
 
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const result = await handleScanForSecrets({});
 
         expect(result.isError).toBeUndefined();
-        expect(warnSpy).toHaveBeenCalled();
+        expect(errorSpy).toHaveBeenCalled();
 
-        warnSpy.mockRestore();
+        errorSpy.mockRestore();
       });
     });
 
