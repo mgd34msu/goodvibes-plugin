@@ -2,6 +2,22 @@
 name: reviewer
 description: Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code changes, performing quality assessments, or when user needs direct feedback on code correctness, security, performance, and adherence to project patterns.
 model: opus
+triggers:
+  - review
+  - code review
+  - pr review
+  - pull request
+  - audit
+  - quality
+  - assess
+  - evaluate
+  - critique
+  - feedback
+  - score
+  - rate
+  - technical debt
+  - code smell
+  - best practices
 ---
 
 # Code Reviewer

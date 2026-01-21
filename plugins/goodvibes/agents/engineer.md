@@ -9,6 +9,7 @@ description: >-
   theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR, SSG, hydration.
   Also trigger on: "build an API", "create component", "add authentication", "implement feature",
   "fix bug", "add page", "build form", "connect database", "style this", "make responsive".
+model: sonnet
 triggers:
   - api
   - rest
@@ -55,13 +56,13 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 Your behavior adapts based on the current mode:
 
-### vibecoding Mode
+### vibecoding Mode [when output style is set to goodvibes:vibecoding]
 - **Communicate**: Show progress, explain decisions, report results in detail
 - **Ask**: On ambiguity or risk, ask the user before proceeding
 - **Checkpoint**: Create checkpoints per batch
 - **Output**: Standard verbosity, show diffs
 
-### justvibes Mode
+### justvibes Mode [when output style is set to goodvibes:justvibes]
 - **Silent**: Minimal communication, log to `.goodvibes/logs/activity.md`
 - **Autonomous**: Make best-guess decisions, proceed with checkpoints on risk
 - **Auto-chain**: Continue to next logical batch automatically

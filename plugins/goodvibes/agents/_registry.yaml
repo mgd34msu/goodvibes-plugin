@@ -1,206 +1,490 @@
-version: 2.0.0
-generated: '2026-01-21T19:45:00.000Z'
+version: 1.0.0
+generated: '2026-01-21T15:44:16.246Z'
 total: 8
-agents:
-  - name: factory
-    path: factory
-    description: >-
-      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new
-      agent for a specific domain. Researches thoroughly, applies SDK patterns, and generates
-      production-ready agent files. For skills, delegates to skill-creator.
-    triggers:
-      - factory
-      - create agent
-      - build agent
-      - new agent
-      - agent creation
-      - meta-agent
-      - subagent
-
-  - name: skill-creator
-    path: skill-creator
-    description: >-
-      Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users
-      want to create, update, or improve skills/slash commands that extend Claude's capabilities
-      with specialized knowledge, workflows, or tool integrations.
-    triggers:
-      - skill
-      - slash command
-      - create skill
-      - build skill
-      - new skill
-      - skill creation
-      - command creation
-
-  - name: engineer
-    path: engineer
-    description: >-
-      Unified full-stack engineer for backend and frontend implementation. Use PROACTIVELY when user
-      mentions: API, REST, GraphQL, tRPC, endpoint, route, database, SQL, Prisma, Drizzle, PostgreSQL,
-      MongoDB, Redis, authentication, auth, login, JWT, OAuth, middleware, server, backend, validation,
-      schema, migration, CRUD, component, React, Vue, Svelte, Next.js, Nuxt, Remix, Astro, frontend,
-      page, layout, navigation, modal, form, button, card, table, responsive, CSS, Tailwind, styling,
-      theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR, SSG, hydration.
-    triggers:
-      - api
-      - rest
-      - graphql
-      - trpc
-      - endpoint
-      - route
-      - database
-      - prisma
-      - drizzle
-      - authentication
-      - component
-      - react
-      - vue
-      - svelte
-      - nextjs
-      - frontend
-      - backend
-      - page
-      - layout
-      - form
-      - button
-      - modal
-      - tailwind
-      - styling
-      - responsive
-
-  - name: reviewer
-    path: reviewer
-    description: >-
-      Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs,
-      auditing code changes, performing quality assessments, or when user needs direct feedback on
-      code correctness, security, performance, and adherence to project patterns.
-    triggers:
-      - review
-      - code review
-      - pr review
-      - pull request
-      - audit
-      - quality
-      - assess
-      - evaluate
-      - critique
-      - feedback
-      - score
-      - rate
-      - technical debt
-      - code smell
-      - best practices
-
-  - name: tester
-    path: tester
-    description: >-
-      Testing specialist for comprehensive test coverage. Use PROACTIVELY when: writing tests (unit,
-      integration, E2E), improving test coverage, fixing failing tests, setting up test infrastructure,
-      mocking APIs/data, debugging flaky tests, or when user mentions Vitest, Jest, Playwright, Cypress,
-      Testing Library, MSW, coverage, TDD, fixtures, snapshots, or assertions.
-    triggers:
-      - test
-      - testing
-      - unit test
-      - integration test
-      - e2e
-      - vitest
-      - jest
-      - playwright
-      - cypress
-      - coverage
-      - mock
-      - tdd
-      - fixture
-      - snapshot
-
+categories:
+  _items:
+    - name: architect
+      path: architect
+      description: >-
+        Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning
+        implementation strategies, breaking down complex tasks, identifying dependencies and risks, or making
+        architectural decisions.
+      triggers: &ref_0
+        - architect
+        - architecture
+        - planning
+        - specialist
+        - proactively
+        - designing
+        - system
+        - implementation
+        - strategies
+        - breaking
+        - down
+        - complex
+        - tasks
+        - identifying
+        - dependencies
+        - risks
+        - making
+        - architectural
+        - decisions
+    - name: deployer
+      path: deployer
+      description: >-
+        Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring CI/CD pipelines,
+        setting up Docker/containerization, deploying to cloud platforms (Vercel, AWS, Railway, Fly.io), configuring
+        environment variables, or setting up monitoring and error tracking. Triggers on: deploy, deployment, hosting,
+        CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring,
+        Sentry, infrastructure.
+      triggers: &ref_1
+        - deployer
+        - deployment
+        - devops
+        - specialist
+        - proactively
+        - deploying
+        - applications
+        - configuring
+        - pipelines
+        - setting
+        - docker
+        - containerization
+        - cloud
+        - platforms
+        - vercel
+        - aws
+        - railway
+        - fly
+        - environment
+        - variables
+        - monitoring
+        - error
+        - tracking
+        - triggers
+        - deploy
+        - hosting
+        - pipeline
+        - container
+        - kubernetes
+        - production
+        - staging
+        - secrets
+        - sentry
+        - infrastructure
+    - name: engineer
+      path: engineer
+      description: >-
+        Unified full-stack engineer for backend and frontend implementation. Use PROACTIVELY when user mentions: API,
+        REST, GraphQL, tRPC, endpoint, route, database, SQL, Prisma, Drizzle, PostgreSQL, MongoDB, Redis,
+        authentication, auth, login, JWT, OAuth, middleware, server, backend, validation, schema, migration, CRUD,
+        component, React, Vue, Svelte, Next.js, Nuxt, Remix, Astro, frontend, page, layout, navigation, modal, form,
+        button, card, table, responsive, CSS, Tailwind, styling, theme, dark mode, shadcn, Radix, animation, Framer
+        Motion, accessibility, SSR, SSG, hydration. Also trigger on: "build an API", "create component", "add
+        authentication", "implement feature", "fix bug", "add page", "build form", "connect database", "style this",
+        "make responsive".
+      triggers: &ref_2
+        - engineer
+        - unified
+        - full
+        - stack
+        - backend
+        - frontend
+        - implementation
+        - proactively
+        - user
+        - mentions
+        - api
+        - rest
+        - graphql
+        - trpc
+        - endpoint
+        - route
+        - database
+        - sql
+        - prisma
+        - drizzle
+        - postgresql
+        - mongodb
+        - redis
+        - authentication
+        - auth
+        - login
+        - jwt
+        - oauth
+        - middleware
+        - server
+        - validation
+        - schema
+        - migration
+        - crud
+        - component
+        - react
+        - vue
+        - svelte
+        - next
+        - nuxt
+        - remix
+        - astro
+        - page
+        - layout
+        - navigation
+        - modal
+        - form
+        - button
+        - card
+        - table
+        - responsive
+        - css
+        - tailwind
+        - styling
+        - theme
+        - dark
+        - mode
+        - shadcn
+        - radix
+        - animation
+        - framer
+        - motion
+        - accessibility
+        - ssr
+        - ssg
+        - hydration
+        - also
+        - trigger
+        - build
+        - create
+        - add
+        - implement
+        - feature
+        - fix
+        - bug
+        - connect
+        - style
+        - this
+        - make
+    - name: factory
+      path: factory
+      description: >-
+        Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
+        domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
+        delegates to skill-creator.
+      triggers: &ref_3
+        - factory
+        - meta
+        - agent
+        - that
+        - creates
+        - specialized
+        - claude
+        - code
+        - subagents
+        - you
+        - need
+        - build
+        - new
+        - specific
+        - domain
+        - researches
+        - thoroughly
+        - applies
+        - sdk
+        - patterns
+        - generates
+        - production
+        - ready
+        - files
+        - skills
+        - delegates
+        - skill
+        - creator
+    - name: integrator
+      path: integrator
+      description: >-
+        Integration specialist for state management, forms, real-time features, AI/LLM integration, CMS platforms,
+        payment processing, email services, and file uploads. Use PROACTIVELY when user mentions: state management,
+        Zustand, Redux, Jotai, TanStack Query, React Query, forms, validation, Zod, React Hook Form, Formik, real-time,
+        WebSocket, Socket.IO, Pusher, Ably, live updates, presence, AI, LLM, ChatGPT, Claude, OpenAI, Anthropic, Vercel
+        AI SDK, streaming, chat, completions, embeddings, RAG, vector, CMS, Sanity, Contentful, Strapi, Payload,
+        Directus, headless CMS, blog, content, email, Resend, SendGrid, Postmark, React Email, transactional,
+        newsletter, payment, Stripe, checkout, subscription, billing, invoice, LemonSqueezy, Paddle, file upload,
+        UploadThing, Cloudinary, S3, media, image optimization. Triggers on: "add state", "manage state", "build a
+        form", "form validation", "real-time updates", "WebSocket connection", "integrate AI", "add chat", "LLM
+        feature", "setup CMS", "content management", "send emails", "email templates", "payment integration", "accept
+        payments", "subscription billing", "upload files", "image upload", "media management".
+      triggers: &ref_4
+        - integrator
+        - integration
+        - specialist
+        - state
+        - management
+        - forms
+        - real
+        - time
+        - features
+        - llm
+        - cms
+        - platforms
+        - payment
+        - processing
+        - email
+        - services
+        - file
+        - uploads
+        - proactively
+        - user
+        - mentions
+        - zustand
+        - redux
+        - jotai
+        - tanstack
+        - query
+        - react
+        - validation
+        - zod
+        - hook
+        - form
+        - formik
+        - websocket
+        - socket
+        - pusher
+        - ably
+        - live
+        - updates
+        - presence
+        - chatgpt
+        - claude
+        - openai
+        - anthropic
+        - vercel
+        - sdk
+        - streaming
+        - chat
+        - completions
+        - embeddings
+        - rag
+        - vector
+        - sanity
+        - contentful
+        - strapi
+        - payload
+        - directus
+        - headless
+        - blog
+        - content
+        - resend
+        - sendgrid
+        - postmark
+        - transactional
+        - newsletter
+        - stripe
+        - checkout
+        - subscription
+        - billing
+        - invoice
+        - lemonsqueezy
+        - paddle
+        - upload
+        - uploadthing
+        - cloudinary
+        - media
+        - image
+        - optimization
+        - triggers
+        - add
+        - manage
+        - build
+        - connection
+        - integrate
+        - feature
+        - setup
+        - send
+        - emails
+        - templates
+        - accept
+        - payments
+        - files
+    - name: reviewer
+      path: reviewer
+      description: >-
+        Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
+        changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
+        performance, and adherence to project patterns.
+      triggers: &ref_5
+        - reviewer
+        - code
+        - review
+        - specialist
+        - enforcing
+        - enterprise
+        - grade
+        - standards
+        - proactively
+        - reviewing
+        - prs
+        - auditing
+        - changes
+        - performing
+        - quality
+        - assessments
+        - user
+        - needs
+        - direct
+        - feedback
+        - correctness
+        - security
+        - performance
+        - adherence
+        - project
+        - patterns
+    - name: skill-creator
+      path: skill-creator
+      description: >-
+        Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
+        update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge,
+        workflows, or tool integrations.
+      triggers: &ref_6
+        - skill
+        - creator
+        - creates
+        - high
+        - quality
+        - agent
+        - skills
+        - claude
+        - code
+        - slash
+        - commands
+        - proactively
+        - users
+        - want
+        - create
+        - update
+        - improve
+        - that
+        - extend
+        - capabilities
+        - specialized
+        - knowledge
+        - workflows
+        - tool
+        - integrations
+    - name: tester
+      path: tester
+      description: >-
+        Testing specialist for comprehensive test coverage. Use PROACTIVELY when: writing tests (unit, integration,
+        E2E), improving test coverage, fixing failing tests, setting up test infrastructure, mocking APIs/data,
+        debugging flaky tests, or when user mentions Vitest, Jest, Playwright, Cypress, Testing Library, MSW, coverage,
+        TDD, fixtures, snapshots, or assertions. Enforces 100% coverage goal with no skips and no auto-pass.
+      triggers: &ref_7
+        - tester
+        - testing
+        - specialist
+        - comprehensive
+        - test
+        - coverage
+        - proactively
+        - writing
+        - tests
+        - unit
+        - integration
+        - e2e
+        - improving
+        - fixing
+        - failing
+        - setting
+        - infrastructure
+        - mocking
+        - apis
+        - data
+        - debugging
+        - flaky
+        - user
+        - mentions
+        - vitest
+        - jest
+        - playwright
+        - cypress
+        - library
+        - msw
+        - tdd
+        - fixtures
+        - snapshots
+        - assertions
+        - enforces
+        - '100'
+        - goal
+        - skips
+        - auto
+        - pass
+search_index:
   - name: architect
+    keywords: *ref_0
     path: architect
     description: >-
-      Architecture and planning specialist. Use PROACTIVELY when designing system architecture,
-      planning implementation strategies, breaking down complex tasks, identifying dependencies
-      and risks, or making architectural decisions.
-    triggers:
-      - architecture
-      - planning
-      - plan
-      - breakdown
-      - complex task
-      - dependencies
-      - design
-      - structure
-      - refactor
-      - organize
-      - roadmap
-      - strategy
-
+      Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning implementation
+      strategies, breaking down complex tasks, identifying dependencies and risks, or making architectural decisions.
   - name: deployer
+    keywords: *ref_1
     path: deployer
     description: >-
-      Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring
-      CI/CD pipelines, setting up Docker/containerization, deploying to cloud platforms (Vercel,
-      AWS, Railway, Fly.io), configuring environment variables, or setting up monitoring and
-      error tracking.
-    triggers:
-      - deploy
-      - deployment
-      - hosting
-      - ci/cd
-      - pipeline
-      - docker
-      - container
-      - kubernetes
-      - production
-      - staging
-      - environment
-      - secrets
-      - monitoring
-      - sentry
-      - vercel
-      - aws
-      - railway
-
+      Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring CI/CD pipelines,
+      setting up Docker/containerization, deploying to cloud platforms (Vercel, AWS, Railway, Fly.io), configuring
+      environment variables, or setting up monitoring and error tracking. Triggers on: deploy, deployment, hosting,
+      CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring,
+      Sentry, infrastructure.
+  - name: engineer
+    keywords: *ref_2
+    path: engineer
+    description: >-
+      Unified full-stack engineer for backend and frontend implementation. Use PROACTIVELY when user mentions: API,
+      REST, GraphQL, tRPC, endpoint, route, database, SQL, Prisma, Drizzle, PostgreSQL, MongoDB, Redis, authentication,
+      auth, login, JWT, OAuth, middleware, server, backend, validation, schema, migration, CRUD, component, React, Vue,
+      Svelte, Next.js, Nuxt, Remix, Astro, frontend, page, layout, navigation, modal, form, button, card, table,
+      responsive, CSS, Tailwind, styling, theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR,
+      SSG, hydration. Also trigger on: "build an API", "create component", "add authentication", "implement feature",
+      "fix bug", "add page", "build form", "connect database", "style this", "make responsive".
+  - name: factory
+    keywords: *ref_3
+    path: factory
+    description: >-
+      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
+      domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
+      delegates to skill-creator.
   - name: integrator
+    keywords: *ref_4
     path: integrator
     description: >-
-      Integration specialist for state, forms, real-time, AI, CMS, payments, and uploads. Use
-      PROACTIVELY when user mentions: state management, Zustand, Redux, Jotai, TanStack Query,
-      React Query, forms, validation, Zod, React Hook Form, real-time, WebSocket, Socket.IO,
-      Pusher, live updates, AI, LLM, ChatGPT, Claude, Vercel AI SDK, streaming, chat, CMS,
-      Sanity, Contentful, Strapi, Payload, headless CMS, blog, content, email, Resend, SendGrid,
-      payment, Stripe, checkout, subscription, billing, file upload, UploadThing, Cloudinary,
-      S3, media.
-    triggers:
-      - state management
-      - zustand
-      - redux
-      - jotai
-      - tanstack query
-      - react query
-      - form
-      - validation
-      - zod
-      - react hook form
-      - real-time
-      - websocket
-      - socket.io
-      - pusher
-      - ai
-      - llm
-      - vercel ai sdk
-      - chat
-      - cms
-      - sanity
-      - contentful
-      - strapi
-      - payload
-      - email
-      - resend
-      - sendgrid
-      - payment
-      - stripe
-      - checkout
-      - subscription
-      - upload
-      - uploadthing
-      - cloudinary
+      Integration specialist for state management, forms, real-time features, AI/LLM integration, CMS platforms, payment
+      processing, email services, and file uploads. Use PROACTIVELY when user mentions: state management, Zustand,
+      Redux, Jotai, TanStack Query, React Query, forms, validation, Zod, React Hook Form, Formik, real-time, WebSocket,
+      Socket.IO, Pusher, Ably, live updates, presence, AI, LLM, ChatGPT, Claude, OpenAI, Anthropic, Vercel AI SDK,
+      streaming, chat, completions, embeddings, RAG, vector, CMS, Sanity, Contentful, Strapi, Payload, Directus,
+      headless CMS, blog, content, email, Resend, SendGrid, Postmark, React Email, transactional, newsletter, payment,
+      Stripe, checkout, subscription, billing, invoice, LemonSqueezy, Paddle, file upload, UploadThing, Cloudinary, S3,
+      media, image optimization. Triggers on: "add state", "manage state", "build a form", "form validation", "real-time
+      updates", "WebSocket connection", "integrate AI", "add chat", "LLM feature", "setup CMS", "content management",
+      "send emails", "email templates", "payment integration", "accept payments", "subscription billing", "upload
+      files", "image upload", "media management".
+  - name: reviewer
+    keywords: *ref_5
+    path: reviewer
+    description: >-
+      Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
+      changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
+      performance, and adherence to project patterns.
+  - name: skill-creator
+    keywords: *ref_6
+    path: skill-creator
+    description: >-
+      Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
+      update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows,
+      or tool integrations.
+  - name: tester
+    keywords: *ref_7
+    path: tester
+    description: >-
+      Testing specialist for comprehensive test coverage. Use PROACTIVELY when: writing tests (unit, integration, E2E),
+      improving test coverage, fixing failing tests, setting up test infrastructure, mocking APIs/data, debugging flaky
+      tests, or when user mentions Vitest, Jest, Playwright, Cypress, Testing Library, MSW, coverage, TDD, fixtures,
+      snapshots, or assertions. Enforces 100% coverage goal with no skips and no auto-pass.

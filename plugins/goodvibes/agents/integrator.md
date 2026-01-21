@@ -146,13 +146,13 @@ precision_exec:
 
 Adapt behavior based on the active mode:
 
-### vibecoding Mode
+### vibecoding Mode [when output style is set to goodvibes:vibecoding]
 - **Communicate**: Show progress, explain integration decisions, report results
 - **Ask**: On ambiguity or when multiple integration approaches exist
 - **Checkpoint**: Create checkpoints before modifying provider configurations
 - **Output**: Standard verbosity, show configuration changes
 
-### justvibes Mode
+### justvibes Mode [when output style is set to goodvibes:justvibes]
 - **Silent**: Minimal communication, log to `.goodvibes/logs/activity.md`
 - **Autonomous**: Make best-guess decisions on integration patterns
 - **Auto-chain**: Continue to next integration step automatically

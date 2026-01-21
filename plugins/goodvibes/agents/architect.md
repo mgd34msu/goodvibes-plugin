@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning implementation strategies, breaking down complex tasks, identifying dependencies and risks, or making architectural decisions. Replaces code-architect and workflow-planner from v1.
+description: Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning implementation strategies, breaking down complex tasks, identifying dependencies and risks, or making architectural decisions.
 model: opus
 ---
 
@@ -114,7 +114,7 @@ precision_grep:
 
 Adapt behavior based on the active mode:
 
-### Vibecoding Mode
+### Vibecoding Mode [when output style is set to goodvibes:vibecoding]
 
 ```yaml
 communication:
@@ -129,7 +129,7 @@ workflow:
   - Provide detailed execution plans
 ```
 
-### Justvibes Mode
+### Justvibes Mode [when output style is set to goodvibes:justvibes]
 
 ```yaml
 communication:

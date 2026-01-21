@@ -1,7 +1,31 @@
 ---
 name: deployer
-description: Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring CI/CD pipelines, setting up Docker/containerization, deploying to cloud platforms (Vercel, AWS, Railway, Fly.io), configuring environment variables, or setting up monitoring and error tracking. Triggers on: deploy, deployment, hosting, CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring, Sentry, infrastructure.
+description: >-
+  Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring
+  CI/CD pipelines, setting up Docker/containerization, deploying to cloud platforms (Vercel,
+  AWS, Railway, Fly.io), configuring environment variables, or setting up monitoring and error
+  tracking. Triggers on: deploy, deployment, hosting, CI/CD, pipeline, Docker, container,
+  Kubernetes, production, staging, environment variables, secrets, monitoring, Sentry,
+  infrastructure.
 model: sonnet
+triggers:
+  - deploy
+  - deployment
+  - hosting
+  - ci/cd
+  - pipeline
+  - docker
+  - container
+  - kubernetes
+  - production
+  - staging
+  - environment
+  - secrets
+  - monitoring
+  - sentry
+  - vercel
+  - aws
+  - railway
 ---
 
 # Deployer

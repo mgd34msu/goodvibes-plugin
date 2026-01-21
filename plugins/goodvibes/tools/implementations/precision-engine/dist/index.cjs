@@ -251558,91 +251558,47 @@ var precisionReadSchema = {
     properties: {
       files: {
         type: "array",
-        description: "Files to read - can be paths or objects with {path, extract, range}",
         items: {
-          oneOf: [
-            { type: "string", description: "Simple file path" },
-            {
+          type: "object",
+          properties: {
+            path: { type: "string" },
+            extract: { type: "string", enum: ["content", "outline", "symbols", "ast", "lines"] },
+            range: {
               type: "object",
               properties: {
-                path: { type: "string", description: "File path to read" },
-                extract: {
-                  type: "string",
-                  enum: ["content", "outline", "symbols", "ast", "lines"],
-                  description: "Override extraction mode for this file"
-                },
-                range: {
-                  type: "object",
-                  properties: {
-                    start: { type: "integer", minimum: 1, description: "Start line (1-based)" },
-                    end: { type: "integer", minimum: 1, description: "End line (inclusive)" }
-                  },
-                  description: "Line range for content/lines extraction"
-                }
-              },
-              required: ["path"]
+                start: { type: "integer", minimum: 1 },
+                end: { type: "integer", minimum: 1 }
+              }
             }
-          ]
+          },
+          required: ["path"]
         }
       },
-      extract: {
-        type: "string",
-        enum: ["content", "outline", "symbols", "ast", "lines"],
-        default: "content",
-        description: "What to extract: content (full text), outline (structure tree), symbols (flat list), ast (syntax tree), lines (specific range)"
-      },
-      output: {
-        type: "object",
-        description: "Output control settings",
-        properties: {
-          mode: {
-            type: "string",
-            enum: ["count_only", "minimal", "standard", "verbose"],
-            default: "standard",
-            description: "Output verbosity: count_only (just counts), minimal (basic info), standard (normal), verbose (full details)"
-          },
-          include_line_numbers: {
-            type: "boolean",
-            default: true,
-            description: "Include line numbers in content/lines output"
-          },
-          include_metadata: {
-            type: "boolean",
-            default: false,
-            description: "Include file metadata (size, modified date)"
-          },
-          max_lines_per_file: {
-            type: "integer",
-            minimum: 1,
-            description: "Cap lines per file"
-          },
-          max_tokens: {
-            type: "integer",
-            minimum: 1,
-            description: "Hard token cap for output"
-          }
-        },
-        required: ["mode"]
-      },
+      extract: { type: "string", enum: ["content", "outline", "symbols", "ast", "lines"], default: "content" },
       symbol_filter: {
         type: "array",
-        items: {
-          type: "string",
-          enum: ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"]
-        },
-        description: "For extract: symbols - only include these symbol types"
+        items: { type: "string", enum: ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"] }
       },
       default_range: {
         type: "object",
         properties: {
-          start: { type: "integer", minimum: 1, description: "Start line (1-based)" },
-          end: { type: "integer", minimum: 1, description: "End line (inclusive)" }
-        },
-        description: "Default line range for files without per-file range"
+          start: { type: "integer", minimum: 1 },
+          end: { type: "integer", minimum: 1 }
+        }
       },
-      output_mode: outputModeSchema
+      output: {
+        type: "object",
+        properties: {
+          mode: { type: "string", enum: ["count_only", "minimal", "standard", "verbose"], default: "standard" },
+          include_line_numbers: { type: "boolean", default: true },
+          include_metadata: { type: "boolean", default: false },
+          max_lines_per_file: { type: "integer", minimum: 1 },
+          max_tokens: { type: "integer", minimum: 1 }
+        },
+        required: ["mode"]
+      }
     },
-    required: ["files", "extract", "output"]
+    required: ["files", "output"]
   }
 };
 var precisionGlobSchema = {
@@ -251671,7 +251627,7 @@ var precisionGlobSchema = {
           mode: { type: "string", enum: ["count_only", "paths_only", "with_stats", "with_preview"], description: "Output verbosity mode" },
           max_files: { type: "integer", minimum: 1, default: 100, description: "Maximum files to return" },
           sort_by: { type: "string", enum: ["name", "size", "modified"], description: "Sort results by field" },
-          sort_order: { type: "string", enum: ["asc", "desc"], description: "Sort order (ascending or descending)" },
+          sort_order: { type: "string", enum: ["asc", "desc"], default: "asc", description: "Sort order (ascending or descending)" },
           preview_lines: { type: "integer", minimum: 1, default: 3, description: "Lines to preview for with_preview mode" },
           max_tokens: { type: "integer", minimum: 1, description: "Hard token cap for output" }
         }
@@ -251688,77 +251644,28 @@ var precisionSymbolsSchema = {
   inputSchema: {
     type: "object",
     properties: {
-      mode: {
-        type: "string",
-        enum: ["workspace", "document"],
-        default: "workspace",
-        description: "Search mode: workspace for global search, document for specific files"
-      },
-      query: {
-        type: "string",
-        description: "Symbol name pattern to search (workspace mode)"
-      },
-      files: {
-        type: "array",
-        items: { type: "string" },
-        description: "Files to analyze (document mode)"
-      },
+      mode: { type: "string", enum: ["workspace", "document"], default: "workspace" },
+      query: { type: "string", description: "Symbol name pattern (workspace mode)" },
+      files: { type: "array", items: { type: "string" }, description: "Files to analyze (document mode)" },
       kinds: {
         type: "array",
-        items: {
-          type: "string",
-          enum: ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"]
-        },
-        description: "Filter by symbol kinds"
+        items: { type: "string", enum: ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"] }
       },
-      exported_only: {
-        type: "boolean",
-        default: false,
-        description: "Only include exported symbols"
-      },
-      include_private: {
-        type: "boolean",
-        default: false,
-        description: "Include private symbols (prefixed with _ or #)"
-      },
+      exported_only: { type: "boolean", default: false },
+      include_private: { type: "boolean", default: false },
       output: {
         type: "object",
         properties: {
-          mode: {
-            type: "string",
-            enum: ["count_only", "names_only", "locations", "signatures", "full"],
-            default: "locations",
-            description: "Output verbosity level"
-          },
-          max_results: {
-            type: "integer",
-            minimum: 1,
-            default: 100,
-            description: "Maximum symbols to return"
-          },
-          group_by: {
-            type: "string",
-            enum: ["file", "kind", "none"],
-            default: "none",
-            description: "Group results by file or kind"
-          },
-          max_tokens: {
-            type: "integer",
-            minimum: 1,
-            description: "Hard token cap for output"
-          }
+          mode: { type: "string", enum: ["count_only", "names_only", "locations", "signatures", "full"], default: "locations" },
+          max_results: { type: "integer", minimum: 1, default: 100 },
+          group_by: { type: "string", enum: ["file", "kind", "none"], default: "none" },
+          max_tokens: { type: "integer", minimum: 1 }
         },
-        required: ["mode"],
-        description: "Output control settings"
+        required: ["mode"]
       }
     },
     required: ["output"]
   }
-};
-var validationStepSchema = {
-  type: "string",
-  enum: ["typecheck", "lint", "test", "build", "env", "api_contract", "secrets", "permissions"],
-  description: "Validation step to run"
 };
 var precisionEditSchema = {
   name: "precision_edit",
@@ -251766,134 +251673,67 @@ var precisionEditSchema = {
   inputSchema: {
     type: "object",
     properties: {
-      // Edits to apply (EditSpec[])
       edits: {
         type: "array",
-        description: "Edit operations to perform",
         items: {
           type: "object",
           properties: {
-            id: { type: "string", description: "Optional edit identifier for tracking" },
-            file: { type: "string", description: "Target file path" },
-            // SPEC field: find (what to find)
-            find: { type: "string", description: "Content to find/match" },
-            // SPEC field: replace (what to replace with)
-            replace: { type: "string", description: "Content to replace with" },
-            // SPEC field: occurrence (which occurrence)
+            id: { type: "string" },
+            file: { type: "string" },
+            find: { type: "string" },
+            replace: { type: "string" },
             occurrence: {
               oneOf: [
                 { type: "string", enum: ["first", "last", "all"] },
-                { type: "integer", minimum: 1, description: "Specific occurrence number (1-indexed)" }
-              ],
-              default: "first",
-              description: "Which occurrence to replace: 'first', 'last', 'all', or a specific number"
+                { type: "integer", minimum: 1 }
+              ]
             },
-            // SPEC field: hints (position hints for ambiguous matches)
             hints: {
               type: "object",
               properties: {
-                near_line: { type: "integer", minimum: 1, description: "Expected line number (approximate)" },
-                in_function: { type: "string", description: "Function name containing the match" },
-                in_class: { type: "string", description: "Class name containing the match" },
-                after: { type: "string", description: "Text that should appear before the match" },
-                before: { type: "string", description: "Text that should appear after the match" }
-              },
-              description: "Position hints for disambiguating matches"
+                near_line: { type: "integer" },
+                in_function: { type: "string" },
+                in_class: { type: "string" },
+                after: { type: "string" },
+                before: { type: "string" }
+              }
             }
           },
           required: ["file", "find", "replace"]
         }
       },
-      // SPEC: Transaction control
       transaction: {
         type: "object",
         properties: {
-          mode: {
-            type: "string",
-            enum: ["atomic", "partial", "none"],
-            default: "atomic",
-            description: "Transaction mode: 'atomic' (all-or-nothing), 'partial' (apply what succeeds), 'none' (no transaction)"
-          },
-          rollback_on_fail: {
-            type: "boolean",
-            default: true,
-            description: "Whether to rollback all changes if any edit fails (when mode is atomic)"
-          }
+          mode: { type: "string", enum: ["atomic", "partial", "none"], default: "atomic" },
+          rollback_on_fail: { type: "boolean", default: true }
         },
-        default: { mode: "atomic", rollback_on_fail: true },
-        description: "Transaction control settings"
+        required: ["mode"]
       },
-      // SPEC: Matching behavior
       match: {
         type: "object",
         properties: {
-          mode: {
-            type: "string",
-            enum: ["exact", "fuzzy", "regex", "ast"],
-            default: "exact",
-            description: "Match mode: 'exact' (literal), 'fuzzy' (whitespace-tolerant), 'regex' (pattern), 'ast' (syntax-aware)"
-          },
-          case_sensitive: {
-            type: "boolean",
-            default: true,
-            description: "Whether matching is case-sensitive"
-          },
-          whitespace_sensitive: {
-            type: "boolean",
-            default: true,
-            description: "Whether matching is whitespace-sensitive (ignored in fuzzy mode)"
-          }
-        },
-        default: { mode: "exact", case_sensitive: true, whitespace_sensitive: true },
-        description: "Matching behavior settings"
+          mode: { type: "string", enum: ["exact", "fuzzy", "regex", "ast"], default: "exact" },
+          case_sensitive: { type: "boolean", default: true },
+          whitespace_sensitive: { type: "boolean", default: true }
+        }
       },
-      // SPEC: Validation
       validate: {
         type: "object",
         properties: {
-          before: {
-            type: "array",
-            items: validationStepSchema,
-            description: "Validation steps to run before applying edits"
-          },
-          after: {
-            type: "array",
-            items: validationStepSchema,
-            description: "Validation steps to run after applying edits"
-          }
-        },
-        description: "Validation steps to run before and/or after edits"
+          before: { type: "array", items: { type: "string", enum: ["typecheck", "lint", "test", "build"] } },
+          after: { type: "array", items: { type: "string", enum: ["typecheck", "lint", "test", "build"] } }
+        }
       },
-      // SPEC: Preview
-      dry_run: {
-        type: "boolean",
-        default: false,
-        description: "Preview changes without applying them"
-      },
-      // SPEC: Output control
+      dry_run: { type: "boolean", default: false },
       output: {
         type: "object",
         properties: {
-          mode: {
-            type: "string",
-            enum: ["count_only", "minimal", "with_diff", "verbose"],
-            default: "minimal",
-            description: "Output verbosity: 'count_only' (~10 tokens), 'minimal' (~30 tokens), 'with_diff' (~200 tokens), 'verbose' (~400 tokens)"
-          },
-          diff_context: {
-            type: "integer",
-            minimum: 0,
-            default: 3,
-            description: "Lines of context in diff output (when mode is with_diff or verbose)"
-          },
-          max_tokens: {
-            type: "integer",
-            minimum: 1,
-            description: "Maximum tokens for output (truncates if exceeded)"
-          }
+          mode: { type: "string", enum: ["count_only", "minimal", "with_diff", "verbose"], default: "minimal" },
+          diff_context: { type: "integer", minimum: 0, default: 3 },
+          max_tokens: { type: "integer", minimum: 1 }
         },
-        default: { mode: "minimal" },
-        description: "Output control settings"
+        required: ["mode"]
       }
     },
     required: ["edits"]
