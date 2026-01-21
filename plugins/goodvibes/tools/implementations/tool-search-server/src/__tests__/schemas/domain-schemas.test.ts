@@ -262,7 +262,9 @@ describe('LSP_SCHEMAS', () => {
   it('should include get_document_symbols schema', () => {
     const schema = LSP_SCHEMAS.find(s => s.name === 'get_document_symbols');
     expect(schema).toBeDefined();
-    expect(schema?.inputSchema.required).toContain('file');
+    // file is optional since you can use files array instead
+    expect(schema?.inputSchema.properties).toHaveProperty('file');
+    expect(schema?.inputSchema.properties).toHaveProperty('files');
   });
 
   it('should include get_signature_help schema', () => {
