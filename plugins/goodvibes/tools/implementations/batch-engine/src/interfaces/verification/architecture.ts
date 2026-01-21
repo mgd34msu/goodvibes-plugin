@@ -416,10 +416,10 @@ export const ARCHITECTURE_CHECKLIST = {
 } as const;
 
 /** Type for architecture checklist category keys */
-export type ArchitectureArchitectureChecklistCategory = keyof typeof ARCHITECTURE_CHECKLIST;
+export type ArchitectureChecklistCategory = keyof typeof ARCHITECTURE_CHECKLIST;
 
 /** Get checklist items for a category */
-export type ArchitectureChecklistItemsOf<C extends ArchitectureArchitectureChecklistCategory> =
+export type ArchitectureChecklistItemsOf<C extends ArchitectureChecklistCategory> =
   (typeof ARCHITECTURE_CHECKLIST)[C][number];
 
 // ============================================================================
@@ -429,7 +429,7 @@ export type ArchitectureChecklistItemsOf<C extends ArchitectureArchitectureCheck
 /**
  * Status of a single checklist item
  */
-export interface ChecklistItemStatus {
+export interface ArchitectureChecklistItemStatus {
   /** The checklist item description */
   item: string;
 
@@ -448,7 +448,7 @@ export interface ArchitectureChecklistCategoryStatus {
   category: ArchitectureChecklistCategory;
 
   /** Status of each item in the category */
-  items: ChecklistItemStatus[];
+  items: ArchitectureChecklistItemStatus[];
 
   /** Number of items verified */
   verified_count: number;
