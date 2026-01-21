@@ -1,6 +1,6 @@
 ---
-name: factory
-description: Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills, delegates to skill-creator.
+name: agent-factory
+description: Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills, delegates to skill-factory.
 model: opus
 ---
 

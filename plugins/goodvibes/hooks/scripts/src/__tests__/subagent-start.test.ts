@@ -782,16 +782,14 @@ describe('subagent-start hook', () => {
 
   describe('GoodVibes agent system messages', () => {
     const goodvibesAgentTypes = [
-      'goodvibes:factory',
-      'goodvibes:skill-creator',
-      'goodvibes:backend-engineer',
-      'goodvibes:content-platform',
-      'goodvibes:devops-deployer',
-      'goodvibes:frontend-architect',
-      'goodvibes:fullstack-integrator',
-      'goodvibes:test-engineer',
-      'goodvibes:brutal-reviewer',
-      'goodvibes:workflow-planner',
+      'goodvibes:agent-factory',
+      'goodvibes:skill-factory',
+      'goodvibes:engineer',
+      'goodvibes:reviewer',
+      'goodvibes:tester',
+      'goodvibes:architect',
+      'goodvibes:deployer',
+      'goodvibes:integrator',
     ];
 
     for (const agentType of goodvibesAgentTypes) {
@@ -997,7 +995,7 @@ describe('subagent-start hook', () => {
         transcript_path: '/test/transcript',
         permission_mode: 'default',
         agent_id: 'agent-abc',
-        agent_type: 'goodvibes:factory',
+        agent_type: 'goodvibes:agent-factory',
       });
 
       await setupMocksAndImport();

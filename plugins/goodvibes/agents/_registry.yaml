@@ -163,12 +163,12 @@ categories:
         - style
         - this
         - make
-    - name: factory
-      path: factory
+    - name: agent-factory
+      path: agent-factory
       description: >-
         Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
         domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
-        delegates to skill-creator.
+        delegates to skill-factory.
       triggers: &ref_3
         - factory
         - meta
@@ -337,8 +337,8 @@ categories:
         - adherence
         - project
         - patterns
-    - name: skill-creator
-      path: skill-creator
+    - name: skill-factory
+      path: skill-factory
       description: >-
         Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
         update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge,
@@ -444,13 +444,13 @@ search_index:
       responsive, CSS, Tailwind, styling, theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR,
       SSG, hydration. Also trigger on: "build an API", "create component", "add authentication", "implement feature",
       "fix bug", "add page", "build form", "connect database", "style this", "make responsive".
-  - name: factory
+  - name: agent-factory
     keywords: *ref_3
-    path: factory
+    path: agent-factory
     description: >-
       Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
       domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
-      delegates to skill-creator.
+      delegates to skill-factory.
   - name: integrator
     keywords: *ref_4
     path: integrator
@@ -473,9 +473,9 @@ search_index:
       Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
       changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
       performance, and adherence to project patterns.
-  - name: skill-creator
+  - name: skill-factory
     keywords: *ref_6
-    path: skill-creator
+    path: skill-factory
     description: >-
       Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
       update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows,

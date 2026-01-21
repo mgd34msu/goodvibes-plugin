@@ -97,16 +97,14 @@ function createResponse(options?: {
  * These agents are part of the GoodVibes ecosystem and get special handling.
  */
 const GOODVIBES_AGENTS = new Set([
-  'goodvibes:factory',
-  'goodvibes:skill-creator',
-  'goodvibes:backend-engineer',
-  'goodvibes:content-platform',
-  'goodvibes:devops-deployer',
-  'goodvibes:frontend-architect',
-  'goodvibes:fullstack-integrator',
-  'goodvibes:test-engineer',
-  'goodvibes:brutal-reviewer',
-  'goodvibes:workflow-planner',
+  'goodvibes:agent-factory',
+  'goodvibes:skill-factory',
+  'goodvibes:engineer',
+  'goodvibes:reviewer',
+  'goodvibes:tester',
+  'goodvibes:architect',
+  'goodvibes:deployer',
+  'goodvibes:integrator',
 ]);
 
 /**

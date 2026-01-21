@@ -1,5 +1,5 @@
 ---
-name: skill-creator
+name: skill-factory
 description: Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create, update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows, or tool integrations.
 model: opus
 ---

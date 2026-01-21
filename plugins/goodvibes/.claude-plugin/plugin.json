@@ -12,8 +12,8 @@
   "keywords": ["fullstack", "development", "mcp", "agents", "skills"],
   "commands": "./commands/",
   "agents": [
-    "./agents/factory.md",
-    "./agents/skill-creator.md",
+    "./agents/agent-factory.md",
+    "./agents/skill-factory.md",
     "./agents/engineer.md",
     "./agents/reviewer.md",
     "./agents/tester.md",
