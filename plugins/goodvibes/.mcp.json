@@ -1,13 +1,5 @@
 {
   "mcpServers": {
-    "goodvibes-tools": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/tool-search-server/dist/index.cjs"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    },
     "precision-engine": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/precision-engine/dist/index.cjs"],
@@ -19,6 +11,38 @@
     "batch-engine": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/batch-engine/dist/index.cjs"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
+    },
+    "registry-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/registry-engine/dist/index.cjs"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
+    },
+    "frontend-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/frontend-engine/dist/index.cjs"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
+    },
+    "analysis-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/analysis-engine/dist/index.cjs"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
+    },
+    "project-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/project-engine/dist/index.cjs"],
       "env": {
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"

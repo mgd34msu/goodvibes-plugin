@@ -1,16 +1,7 @@
 /**
  * Environment configuration tool schemas
+ *
+ * Note: Environment tools have been migrated to validation-schemas.ts
  */
 
-export const ENV_SCHEMAS = [
-  {
-    name: 'get_env_config',
-    description: 'Find all environment variable usages and their sources. Scans source files for process.env.*, import.meta.env.*, Deno.env.* and cross-references with .env files to identify documented vs undocumented variables.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: 'Project root path to analyze', default: '.' },
-      },
-    },
-  },
-];
+export const ENV_SCHEMAS: readonly never[] = [];

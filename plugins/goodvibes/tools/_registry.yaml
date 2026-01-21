@@ -1,60 +1,8 @@
 version: 1.0.0
-generated: '2026-01-21T16:31:07.292Z'
-total: 94
+generated: '2026-01-21T19:09:52.346Z'
+total: 40
 categories: {}
 search_index:
-  - name: profile_function
-    keywords:
-      - profile
-      - function
-      - javascript
-      - typescript
-      - performance
-      - measures
-      - execution
-      - time
-      - memory
-      - usage
-      - call
-      - frequency
-      - returns
-      - timing
-      - statistics
-      - min
-      - max
-      - avg
-      - p95
-      - deltas
-    path: definitions/analysis/profile-function.yaml
-    description: >-
-      Profile a JavaScript/TypeScript function for performance. Measures execution time, memory usage, and call
-      frequency. Returns timing statistics (min, max, avg, p95) and memory deltas.
-  - name: log_analyzer
-    keywords:
-      - log
-      - analyzer
-      - analyze
-      - files
-      - patterns
-      - errors
-      - anomalies
-      - parses
-      - structured
-      - json
-      - unstructured
-      - logs
-      - identifies
-      - error
-      - spikes
-      - correlates
-      - events
-      - provides
-      - timeline
-      - analysis
-    path: definitions/analysis/log-analyzer.yaml
-    description: >-
-      Analyze log files for patterns, errors, and anomalies. Parses structured (JSON) and unstructured logs, identifies
-      error spikes, correlates events, and provides timeline analysis.
   - name: identify_tech_debt
     keywords:
       - identify
@@ -86,188 +34,11 @@ search_index:
       - items
       - effort
       - estimates
-    path: definitions/analysis/identify-tech-debt.yaml
+    path: definitions/analysis-engine/identify-tech-debt.yaml
     description: >-
       Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
       cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
       debt items with effort estimates.
-  - name: batch_read
-    keywords:
-      - batch
-      - read
-      - multiple
-      - files
-      - single
-      - operation
-      - per
-      - file
-      - precision
-      - control
-      - supports
-      - offset
-      - limit
-      - each
-      - individually
-      - enabling
-      - surgical
-      - reads
-      - that
-      - minimize
-      - token
-      - usage
-      - this
-      - instead
-      - calls
-      - features
-      - specific
-      - line
-      - ranges
-      - mixed
-      - input
-      - simple
-      - paths
-      - detailed
-      - filereadrequest
-      - objects
-      - range
-      - metadata
-      - results
-      - has_more_before
-      - after
-      - output
-      - modes
-      - minimal
-      - counts
-      - standard
-      - first
-      - lines
-      - verbose
-      - full
-    path: definitions/batch/batch-read.yaml
-    description: |
-      Read multiple files in a single operation with per-file precision control.
-      Supports offset/limit for each file individually, enabling surgical reads
-      that minimize token usage. Use this instead of multiple Read calls.
-
-      Features:
-      - Per-file offset/limit (read specific line ranges)
-      - Mixed input: simple paths or detailed FileReadRequest objects
-      - Range metadata in results (has_more_before/after)
-      - Output modes: minimal (line counts), standard (first 50 lines), verbose (full)
-  - name: smart_glob
-    keywords:
-      - smart
-      - glob
-      - find
-      - files
-      - matching
-      - patterns
-      - intelligent
-      - filtering
-      - optional
-      - preview
-      - supports
-      - multiple
-      - exclusions
-      - configurable
-      - output
-      - modes
-      - this
-      - instead
-      - calls
-      - features
-      - one
-      - call
-      - exclusion
-      - file
-      - offset
-      - limit
-      - like
-      - batch_read
-      - precision
-      - auto
-      - ignores
-      - common
-      - directories
-      - node_modules
-      - git
-      - dist
-      - etc
-      - count_only
-      - minimal
-      - paths
-      - only
-      - standard
-      - metadata
-    path: definitions/batch/smart-glob.yaml
-    description: |
-      Find files matching glob patterns with intelligent filtering and optional preview.
-      Supports multiple patterns, exclusions, and configurable output modes.
-      Use this instead of multiple Glob calls.
-
-      Features:
-      - Multiple glob patterns in one call
-      - Exclusion patterns
-      - File preview with offset/limit (like batch_read precision)
-      - Auto-ignores common directories (node_modules, .git, dist, etc.)
-      - Output modes: count_only, minimal (paths only), standard (with metadata)
-  - name: grep_with_content
-    keywords:
-      - grep
-      - with
-      - content
-      - search
-      - patterns
-      - across
-      - files
-      - configurable
-      - context
-      - precision
-      - supports
-      - per
-      - query
-      - control
-      - line
-      - range
-      - filtering
-      - this
-      - instead
-      - multiple
-      - calls
-      - followed
-      - read
-      - features
-      - regex
-      - pattern
-      - codebase
-      - lines
-      - before
-      - after
-      - each
-      - match
-      - only
-      - specific
-      - regions
-      - glob
-      - target
-      - output
-      - modes
-      - count_only
-      - minimal
-      - standard
-      - verbose
-    path: definitions/batch/grep-with-content.yaml
-    description: |
-      Search for patterns across files with configurable context and precision.
-      Supports per-query context control and line range filtering.
-      Use this instead of multiple Grep calls followed by Read calls.
-
-      Features:
-      - Regex pattern search across codebase
-      - Configurable context lines (before/after each match)
-      - Line range filtering (search only specific regions)
-      - Glob pattern filtering for target files
-      - Output modes: count_only, minimal, standard, verbose
   - name: analyze_bundle
     keywords:
       - analyze
@@ -294,7 +65,7 @@ search_index:
       - dependencies
       - optimization
       - recommendations
-    path: definitions/build/analyze-bundle.yaml
+    path: definitions/project-engine/analyze-bundle.yaml
     description: >-
       Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
       directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and
@@ -322,7 +93,7 @@ search_index:
       - selecting
       - appropriate
       - skills
-    path: definitions/detect-stack.yaml
+    path: definitions/analysis-engine/detect-stack.yaml
     description: |
       Analyze project to identify the technology stack. Scans package.json,
       config files, and directory structure to determine frameworks, libraries,
@@ -351,7 +122,7 @@ search_index:
       - direct
       - dependencies
       - peer
-    path: definitions/check-versions.yaml
+    path: definitions/analysis-engine/check-versions.yaml
     description: |
       Get installed package versions and compare against skill assumptions.
       Identifies version mismatches that could cause skill advice to fail.
@@ -375,36 +146,11 @@ search_index:
       - file
       - structure
       - architectural
-    path: definitions/scan-patterns.yaml
+    path: definitions/analysis-engine/scan-patterns.yaml
     description: |
       Identify existing code patterns and conventions in the project.
       Helps apply skills consistently with established patterns.
       Detects naming conventions, file structure, and architectural patterns.
-  - name: fetch_docs
-    keywords:
-      - fetch
-      - docs
-      - current
-      - documentation
-      - library
-      - framework
-      - retrieves
-      - api
-      - references
-      - guides
-      - migration
-      - notes
-      - supplements
-      - static
-      - skill
-      - knowledge
-      - live
-      - data
-    path: definitions/fetch-docs.yaml
-    description: |
-      Fetch current documentation for a library or framework.
-      Retrieves API references, guides, and migration notes.
-      Supplements static skill knowledge with live data.
   - name: read_config
     keywords:
       - read
@@ -423,7 +169,7 @@ search_index:
       - can
       - build
       - upon
-    path: definitions/read-config.yaml
+    path: definitions/analysis-engine/read-config.yaml
     description: |
       Parse and return existing configuration files.
       Understands various config formats (JSON, YAML, JS, TS).
@@ -460,7 +206,7 @@ search_index:
       - actionable
       - convention
       - guidelines
-    path: definitions/project/get-conventions.yaml
+    path: definitions/analysis-engine/get-conventions.yaml
     description: >-
       LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the
       codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses
@@ -484,7 +230,7 @@ search_index:
       - imports
       - source
       - files
-    path: definitions/deps/analyze-dependencies.yaml
+    path: definitions/project-engine/analyze-dependencies.yaml
     description: >-
       Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
       package.json against actual imports in source files.
@@ -512,188 +258,10 @@ search_index:
       - file
       - paths
       - involved
-    path: definitions/deps/find-circular-deps.yaml
+    path: definitions/analysis-engine/find-circular-deps.yaml
     description: >-
       Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses
       DFS to detect cycles. Returns all cycles found with the full file paths involved.
-  - name: search_skills
-    keywords:
-      - search
-      - skills
-      - skill
-      - registry
-      - relevant
-      - based
-      - keywords
-      - technology
-      - task
-      - description
-      - needing
-      - domain
-      - specific
-      - guidance
-      - that
-      - matches
-      - available
-    path: definitions/search-skills.yaml
-    description: |
-      Search the skill registry for relevant skills based on keywords,
-      technology, or task description. Use when needing domain-specific
-      guidance that matches available skills.
-  - name: search_agents
-    keywords:
-      - search
-      - agents
-      - specialized
-      - expertise
-      - area
-      - task
-      - type
-      - needing
-      - find
-      - agent
-      - specific
-      - domain
-      - knowledge
-    path: definitions/search-agents.yaml
-    description: |
-      Search for specialized agents by expertise area or task type.
-      Use when needing to find an agent with specific domain knowledge.
-  - name: search_tools
-    keywords:
-      - search
-      - tools
-      - available
-      - functionality
-      - case
-      - discovering
-      - what
-      - are
-      - task
-    path: definitions/search-tools.yaml
-    description: |
-      Search for available tools by functionality or use case.
-      Use when discovering what tools are available for a task.
-  - name: recommend_skills
-    keywords:
-      - recommend
-      - skills
-      - analyze
-      - task
-      - description
-      - project
-      - context
-      - relevant
-      - combines
-      - natural
-      - language
-      - understanding
-      - stack
-      - detection
-      - primary
-      - entry
-      - point
-      - skill
-      - discovery
-    path: definitions/recommend-skills.yaml
-    description: |
-      Analyze task description and project context to recommend relevant skills.
-      Combines natural language understanding with stack detection.
-      Primary entry point for skill discovery.
-  - name: get_skill_content
-    keywords:
-      - get
-      - skill
-      - content
-      - load
-      - full
-      - its
-      - path
-      - after
-      - searching
-      - detailed
-      - instructions
-    path: definitions/get-skill-content.yaml
-    description: |
-      Load the full content of a skill by its path.
-      Use after searching to get detailed skill instructions.
-  - name: get_agent_content
-    keywords:
-      - get
-      - agent
-      - content
-      - load
-      - full
-      - path
-      - retrieves
-      - complete
-      - definition
-      - including
-      - capabilities
-      - expertise
-      - areas
-      - configuration
-      - from
-      - registry
-    path: definitions/discovery/get-agent-content.yaml
-    description: |
-      Load full content of an agent by path.
-      Retrieves the complete agent definition including capabilities,
-      expertise areas, and configuration from the agent registry.
-  - name: skill_dependencies
-    keywords:
-      - skill
-      - dependencies
-      - show
-      - which
-      - skills
-      - work
-      - together
-      - their
-      - identifies
-      - prerequisite
-      - complementary
-      - conflicts
-      - helps
-      - build
-      - complete
-      - sets
-      - complex
-      - tasks
-    path: definitions/skill-dependencies.yaml
-    description: |
-      Show which skills work together and their dependencies.
-      Identifies prerequisite skills, complementary skills, and conflicts.
-      Helps build complete skill sets for complex tasks.
-  - name: get_env_config
-    keywords:
-      - get
-      - env
-      - config
-      - find
-      - all
-      - environment
-      - variable
-      - usages
-      - their
-      - sources
-      - scans
-      - source
-      - files
-      - process
-      - import
-      - meta
-      - deno
-      - cross
-      - references
-      - identify
-      - documented
-      - undocumented
-      - variables
-    path: definitions/project/get-env-config.yaml
-    description: >-
-      Find all environment variable usages and their sources. Scans source files for process.env.*, import.meta.env.*,
-      Deno.env.* and cross-references with .env files to identify documented vs undocumented variables.
   - name: parse_error_stack
     keywords:
       - parse
@@ -725,7 +293,7 @@ search_index:
       - errors
       - understanding
       - origins
-    path: definitions/errors/parse-error-stack.yaml
+    path: definitions/analysis-engine/parse-error-stack.yaml
     description: |
       Parse error stack traces and provide structured analysis.
       Extracts file paths, line numbers, and function names from stack traces.
@@ -752,574 +320,10 @@ search_index:
       - common
       - causes
       - actionable
-    path: definitions/errors/explain-type-error.yaml
+    path: definitions/analysis-engine/explain-type-error.yaml
     description: >-
       Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message,
       returns detailed explanation, common causes, and actionable fix suggestions.
-  - name: get_react_component_tree
-    keywords:
-      - get
-      - react
-      - component
-      - tree
-      - parse
-      - jsx
-      - tsx
-      - files
-      - build
-      - hierarchy
-      - uses
-      - static
-      - ast
-      - analysis
-      - find
-      - definitions
-      - usages
-      - extract
-      - props
-      - parent
-      - child
-      - relationships
-      - useful
-      - understanding
-      - architecture
-    path: definitions/framework/get-react-component-tree.yaml
-    description: >-
-      Parse JSX/TSX files and build a component hierarchy tree. Uses static AST analysis to find component definitions
-      and usages, extract props, and build parent-child relationships. Useful for understanding React component
-      architecture.
-  - name: analyze_stacking_context
-    keywords:
-      - analyze
-      - stacking
-      - context
-      - index
-      - contexts
-      - react
-      - vue
-      - svelte
-      - components
-      - detects
-      - which
-      - css
-      - properties
-      - create
-      - new
-      - position
-      - transform
-      - opacity
-      - filter
-      - isolation
-      - etc
-      - builds
-      - hierarchical
-      - tree
-      - identifies
-      - potential
-      - conflicts
-      - finds
-      - portal
-      - destinations
-      - essential
-      - debugging
-      - why
-      - isn
-      - working
-      - issues
-    path: definitions/frontend/analyze-stacking-context.yaml
-    description: >-
-      Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
-      stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
-      tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
-      z-index working" issues.
-  - name: analyze_responsive_breakpoints
-    keywords:
-      - analyze
-      - responsive
-      - breakpoints
-      - tailwind
-      - classes
-      - across
-      - detects
-      - mobile
-      - first
-      - patterns
-      - tracks
-      - property
-      - changes
-      - 2xl
-      - identifies
-      - breakpoint
-      - coverage
-      - gaps
-      - flags
-      - potential
-      - design
-      - issues
-      - like
-      - desktop
-      - missing
-      - base
-      - styles
-    path: definitions/frontend/analyze-responsive-breakpoints.yaml
-    description: >-
-      Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
-      across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
-      design issues like desktop-first patterns or missing base styles.
-  - name: trace_component_state
-    keywords:
-      - trace
-      - component
-      - state
-      - react
-      - props
-      - through
-      - trees
-      - analyzes
-      - usestate
-      - usereducer
-      - useref
-      - usecontext
-      - effect
-      - hooks
-      - detects
-      - prop
-      - drilling
-      - callback
-      - instability
-      - missing
-      - memoization
-      - other
-      - common
-      - anti
-      - patterns
-      - returns
-      - detailed
-      - flow
-      - analysis
-      - including
-      - which
-      - used
-      - jsx
-      - passed
-      - children
-    path: definitions/frontend/trace-component-state.yaml
-    description: >-
-      Trace React state and props through component trees. Analyzes useState, useReducer, useRef, useContext, and effect
-      hooks. Detects prop drilling, callback instability, missing memoization, and other common React anti-patterns.
-      Returns detailed state flow analysis including which state is used in JSX and passed to children.
-  - name: analyze_render_triggers
-    keywords:
-      - analyze
-      - render
-      - triggers
-      - what
-      - causes
-      - react
-      - component
-      - identifies
-      - memoization
-      - status
-      - memo
-      - purecomponent
-      - shouldcomponentupdate
-      - inline
-      - definitions
-      - creating
-      - unstable
-      - references
-      - objects
-      - arrays
-      - functions
-      - jsx
-      - expensive
-      - computations
-      - not
-      - wrapped
-      - usememo
-      - context
-      - subscriptions
-      - their
-      - granularity
-      - provides
-      - prioritized
-      - optimization
-      - suggestions
-    path: definitions/frontend/analyze-render-triggers.yaml
-    description: >-
-      Analyze what causes a React component to re-render. Identifies memoization status (React.memo, PureComponent,
-      shouldComponentUpdate), inline definitions creating unstable references (objects, arrays, functions, JSX),
-      expensive computations not wrapped in useMemo, context subscriptions and their granularity, and provides
-      prioritized optimization suggestions.
-  - name: analyze_layout_hierarchy
-    keywords:
-      - analyze
-      - layout
-      - hierarchy
-      - css
-      - react
-      - vue
-      - svelte
-      - components
-      - parses
-      - jsx
-      - tsx
-      - files
-      - build
-      - tree
-      - sizing
-      - constraints
-      - display
-      - types
-      - flex
-      - grid
-      - block
-      - properties
-      - overflow
-      - handling
-      - positioning
-      - supports
-      - comprehensive
-      - tailwind
-      - class
-      - parsing
-      - detects
-      - potential
-      - issues
-      - like
-      - fixed
-      - height
-      - containers
-      - auto
-      - children
-      - nested
-      - without
-      - percentage
-      - parent
-      - etc
-    path: definitions/frontend/analyze-layout-hierarchy.yaml
-    description: >-
-      Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree with
-      sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
-      Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers
-      with auto-height children, nested flex without sizing, percentage height without parent height, etc.
-  - name: diagnose_overflow
-    keywords:
-      - diagnose
-      - overflow
-      - css
-      - issues
-      - recommend
-      - fixes
-      - analyzes
-      - layout
-      - hierarchy
-      - identify
-      - prone
-      - patterns
-      - such
-      - fixed
-      - height
-      - containers
-      - auto
-      - children
-      - flex
-      - without
-      - handling
-      - nested
-      - percentage
-      - heights
-      - absolute
-      - positioning
-      - containment
-      - missing
-      - min
-      - returns
-      - actionable
-      - fix
-      - options
-      - tailwind
-      - classes
-      - trade
-      - 'off'
-      - explanations
-    path: definitions/frontend/diagnose-overflow.yaml
-    description: >-
-      Diagnose CSS overflow issues and recommend fixes. Analyzes layout hierarchy to identify overflow-prone patterns
-      such as fixed-height containers with auto-height children, flex containers without overflow handling, nested
-      percentage heights, absolute positioning without containment, and missing min-h-0 in nested flex. Returns
-      actionable fix options with Tailwind CSS classes and trade-off explanations.
-  - name: get_accessibility_tree
-    keywords:
-      - get
-      - accessibility
-      - tree
-      - build
-      - detect
-      - wcag
-      - issues
-      - react
-      - vue
-      - svelte
-      - components
-      - analyzes
-      - semantic
-      - html
-      - roles
-      - focus
-      - order
-      - keyboard
-      - interactions
-      - aria
-      - patterns
-      - detects
-      - like
-      - missing
-      - alt
-      - text
-      - unlabeled
-      - form
-      - inputs
-      - buttons
-      - links
-      - without
-      - accessible
-      - names
-      - click
-      - handlers
-      - non
-      - interactive
-      - elements
-      - indicators
-      - invalid
-      - returns
-      - hierarchical
-      - sequence
-      - criteria
-      - references
-      - optimization
-      - suggestions
-    path: definitions/frontend/get-accessibility-tree.yaml
-    description: >-
-      Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML roles,
-      focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled
-      form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
-      missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
-      order sequence, issues with WCAG criteria references, and optimization suggestions.
-  - name: get_sizing_strategy
-    keywords:
-      - get
-      - sizing
-      - strategy
-      - analyze
-      - how
-      - specific
-      - element
-      - size
-      - determined
-      - examines
-      - tailwind
-      - classes
-      - css
-      - identify
-      - width
-      - height
-      - strategies
-      - fixed
-      - percentage
-      - viewport
-      - content
-      - based
-      - flex
-      - controlled
-      - grid
-      - min
-      - max
-      - constraints
-      - behavior
-      - grow
-      - shrink
-      - basis
-      - placement
-      - overflow
-      - settings
-      - positioning
-      - context
-      - walks
-      - ancestor
-      - chain
-      - find
-      - that
-      - affect
-      - target
-      - returns
-      - human
-      - readable
-      - summary
-      - explaining
-      - dimensions
-      - are
-      - computed
-    path: definitions/frontend/get-sizing-strategy.yaml
-    description: >-
-      Analyze how a specific element's size is determined. Examines Tailwind classes or CSS to identify width/height
-      strategies (fixed, percentage, viewport, content-based, flex-controlled, grid-controlled), min/max constraints,
-      flex behavior (grow, shrink, basis), grid placement, overflow settings, and positioning context. Walks the
-      ancestor chain to find constraints that affect the target element. Returns a human-readable summary explaining how
-      the element's dimensions are computed.
-  - name: analyze_event_flow
-    keywords:
-      - analyze
-      - event
-      - flow
-      - handling
-      - propagation
-      - react
-      - vue
-      - svelte
-      - components
-      - detects
-      - all
-      - handlers
-      - onclick
-      - onchange
-      - onsubmit
-      - etc
-      - simulates
-      - bubbling
-      - from
-      - leaf
-      - root
-      - identifies
-      - issues
-      - like
-      - nested
-      - clickable
-      - elements
-      - that
-      - may
-      - double
-      - fire
-      - click
-      - non
-      - interactive
-      - without
-      - keyboard
-      - alternatives
-      - form
-      - submits
-      - preventdefault
-      - also
-      - delegation
-      - patterns
-      - target
-      - closest
-      - matches
-      - checks
-      - essential
-      - debugging
-      - why
-      - firing
-      - twice
-      - accessibility
-      - audits
-    path: definitions/frontend/analyze-event-flow.yaml
-    description: >-
-      Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
-      onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
-      elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
-      submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
-      checks). Essential for debugging "why is my click firing twice" and accessibility audits.
-  - name: analyze_tailwind_conflicts
-    keywords:
-      - analyze
-      - tailwind
-      - conflicts
-      - detect
-      - conflicting
-      - redundant
-      - css
-      - classes
-      - react
-      - vue
-      - svelte
-      - components
-      - identifies
-      - three
-      - types
-      - issues
-      - override
-      - where
-      - later
-      - earlier
-      - ones
-      - from
-      - shorthand
-      - longhand
-      - combinations
-      - padding
-      - overridden
-      - contradiction
-      - mutually
-      - exclusive
-      - hidden
-      - flex
-      - also
-      - detects
-      - size
-      - explicit
-      - index
-      - without
-      - position
-      - provides
-      - optimization
-      - suggestions
-      - like
-      - using
-      - instead
-      - equal
-    path: definitions/frontend/analyze-tailwind-conflicts.yaml
-    description: >-
-      Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types of
-      issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes
-      from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
-      conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit w-/h-
-      classes, z-index without position, and provides optimization suggestions like using size-X instead of w-X h-X when
-      equal.
-  - name: create_pull_request
-    keywords:
-      - create
-      - pull
-      - request
-      - github
-      - auto
-      - generated
-      - descriptions
-      - analyzes
-      - git
-      - changes
-      - generates
-      - title
-      - description
-      - using
-      - llm
-      - pushes
-      - branch
-      - needed
-      - creates
-      - via
-      - cli
-      - supports
-      - draft
-      - prs
-      - labels
-      - reviewer
-      - assignment
-    path: definitions/git/create-pull-request.yaml
-    description: >-
-      Create a GitHub pull request with auto-generated descriptions. Analyzes git changes, generates title and
-      description using LLM, pushes branch if needed, and creates PR via gh CLI. Supports draft PRs, labels, and
-      reviewer assignment.
   - name: resolve_merge_conflict
     keywords:
       - resolve
@@ -1344,419 +348,10 @@ search_index:
       - can
       - auto
       - simple
-    path: definitions/git/resolve-merge-conflict.yaml
+    path: definitions/project-engine/resolve-merge-conflict.yaml
     description: >-
       Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
       recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
-  - name: auto_rollback
-    keywords:
-      - auto
-      - rollback
-      - automatically
-      - changes
-      - conditions
-      - are
-      - met
-      - monitors
-      - triggers
-      - build
-      - failure
-      - test
-      - error
-      - patterns
-      - reverts
-      - last
-      - known
-      - good
-      - state
-      - using
-      - git
-    path: definitions/git/auto-rollback.yaml
-    description: >-
-      Automatically rollback changes when conditions are met. Monitors for triggers (build failure, test failure, error
-      patterns) and reverts to last known good state using git.
-  - name: retry_with_learning
-    keywords:
-      - retry
-      - with
-      - learning
-      - failed
-      - operation
-      - progressive
-      - fix
-      - strategies
-      - analyzes
-      - error
-      - patterns
-      - applies
-      - fixes
-      - retries
-      - tracks
-      - attempt
-      - history
-      - avoid
-      - repeating
-      - approaches
-      - useful
-      - self
-      - healing
-      - code
-      - changes
-    path: definitions/git/retry-with-learning.yaml
-    description: >-
-      Retry a failed operation with progressive fix strategies. Analyzes error patterns, applies fixes, and retries.
-      Tracks attempt history to avoid repeating failed approaches. Useful for self-healing code changes.
-  - name: atomic_multi_edit
-    keywords:
-      - atomic
-      - multi
-      - edit
-      - apply
-      - multiple
-      - file
-      - edits
-      - atomically
-      - rollback
-      - failure
-      - creates
-      - backup
-      - applies
-      - all
-      - runs
-      - validation
-      - build
-      - test
-      - rolls
-      - back
-      - everything
-      - fails
-      - ensures
-      - codebase
-      - stays
-      - valid
-      - state
-    path: definitions/git/atomic-multi-edit.yaml
-    description: >-
-      Apply multiple file edits atomically with rollback on failure. Creates backup, applies all edits, runs validation
-      (build/test), and rolls back everything if validation fails. Ensures codebase stays in a valid state.
-  - name: find_references
-    keywords:
-      - find
-      - references
-      - all
-      - symbol
-      - given
-      - position
-      - returns
-      - file
-      - locations
-      - preview
-      - lines
-      - metadata
-      - each
-      - reference
-    path: definitions/lsp/find-references.yaml
-    description: >-
-      Find all references to a symbol at a given position. Returns file locations, preview lines, and metadata for each
-      reference.
-  - name: go_to_definition
-    keywords:
-      - go
-      - to
-      - definition
-      - symbol
-      - given
-      - position
-      - returns
-      - location
-      - where
-      - defined
-      - including
-      - file
-      - line
-      - column
-      - preview
-    path: definitions/lsp/go-to-definition.yaml
-    description: >-
-      Go to the definition of a symbol at a given position. Returns location(s) where the symbol is defined, including
-      file, line, column, and a preview.
-  - name: get_implementations
-    keywords:
-      - get
-      - implementations
-      - find
-      - all
-      - concrete
-      - interface
-      - abstract
-      - method
-      - critical
-      - polymorphic
-      - code
-      - go_to_definition
-      - goes
-      - find_references
-      - finds
-      - usages
-      - this
-      - tells
-      - you
-      - what
-      - actually
-      - runs
-    path: definitions/lsp/get-implementations.yaml
-    description: >-
-      Find all concrete implementations of an interface or abstract method. Critical for polymorphic code -
-      go_to_definition goes to the interface, find_references finds usages - this tells you what code actually RUNS.
-  - name: rename_symbol
-    keywords:
-      - rename
-      - symbol
-      - get
-      - all
-      - edits
-      - needed
-      - across
-      - codebase
-      - returns
-      - file
-      - locations
-      - text
-      - changes
-      - apply
-      - safe
-      - uses
-      - typescript
-      - language
-      - service
-      - accurate
-      - semantic
-      - renaming
-    path: definitions/lsp/rename-symbol.yaml
-    description: |
-      Get all edits needed to rename a symbol across the codebase.
-      Returns file locations and text changes to apply for a safe rename.
-      Uses TypeScript Language Service for accurate, semantic renaming.
-  - name: get_code_actions
-    keywords:
-      - get
-      - code
-      - actions
-      - available
-      - quick
-      - fixes
-      - refactorings
-      - position
-      - returns
-      - typescript
-      - language
-      - service
-      - refactoring
-      - suggestions
-    path: definitions/lsp/get-code-actions.yaml
-    description: >-
-      Get available code actions (quick fixes, refactorings) at a position. Returns TypeScript Language Service code
-      fixes and refactoring suggestions.
-  - name: apply_code_action
-    keywords:
-      - apply
-      - code
-      - action
-      - get
-      - file
-      - edits
-      - does
-      - not
-      - them
-      - directly
-      - get_code_actions
-      - first
-      - see
-      - available
-      - actions
-    path: definitions/lsp/apply-code-action.yaml
-    description: >-
-      Get the file edits for a code action (does not apply them directly). Use with get_code_actions to first see
-      available actions.
-  - name: get_symbol_info
-    keywords:
-      - get
-      - symbol
-      - info
-      - detailed
-      - information
-      - about
-      - given
-      - position
-      - returns
-      - type
-      - documentation
-      - definition
-      - location
-      - modifiers
-      - useful
-      - understanding
-      - types
-      - reading
-      - jsdoc
-      - navigating
-      - code
-    path: definitions/lsp/get-symbol-info.yaml
-    description: |
-      Get detailed information about a symbol at a given position.
-      Returns type info, documentation, definition location, and modifiers.
-      Useful for understanding symbol types, reading JSDoc, and navigating code.
-  - name: get_call_hierarchy
-    keywords:
-      - get
-      - call
-      - hierarchy
-      - symbol
-      - given
-      - position
-      - returns
-      - incoming
-      - calls
-      - who
-      - this
-      - function
-      - outgoing
-      - what
-      - useful
-      - understanding
-      - code
-      - flow
-      - impact
-      - analysis
-    path: definitions/lsp/get-call-hierarchy.yaml
-    description: >-
-      Get the call hierarchy for a symbol at a given position. Returns incoming calls (who calls this function) and/or
-      outgoing calls (what this function calls). Useful for understanding code flow and impact analysis.
-  - name: get_type_hierarchy
-    keywords:
-      - get
-      - type
-      - hierarchy
-      - full
-      - inheritance
-      - symbol
-      - given
-      - position
-      - returns
-      - supertypes
-      - what
-      - this
-      - extends
-      - implements
-      - subtypes
-      - essential
-      - understanding
-      - class
-      - relationships
-      - impact
-      - analysis
-      - modifying
-      - base
-      - classes
-    path: definitions/lsp/get-type-hierarchy.yaml
-    description: >-
-      Get the full type inheritance hierarchy for a symbol at a given position. Returns supertypes (what this type
-      extends/implements) and subtypes (what extends/implements this type). Essential for understanding class
-      relationships and impact analysis when modifying base classes.
-  - name: get_document_symbols
-    keywords:
-      - get
-      - document
-      - symbols
-      - structural
-      - outline
-      - documents
-      - classes
-      - functions
-      - interfaces
-      - etc
-      - returns
-      - hierarchical
-      - tree
-      - positions
-      - kinds
-      - supports
-      - single
-      - file
-      - backward
-      - compatible
-      - batch
-      - mode
-      - multiple
-      - files
-      - filter
-      - symbol
-      - kind
-      - line
-      - range
-      - limit
-      - depth
-    path: definitions/lsp/get-document-symbols.yaml
-    description: >-
-      Get the structural outline of documents (classes, functions, interfaces, etc.). Returns a hierarchical tree of
-      symbols with positions and kinds. Supports single file (backward compatible) or batch mode (multiple files).
-      Filter by symbol kind, line range, or limit tree depth.
-  - name: get_signature_help
-    keywords:
-      - get
-      - signature
-      - help
-      - function
-      - call
-      - site
-      - returns
-      - parameter
-      - information
-      - including
-      - types
-      - documentation
-      - which
-      - cursor
-      - currently
-      - useful
-      - understanding
-      - signatures
-      - while
-      - typing
-      - arguments
-    path: definitions/lsp/get-signature-help.yaml
-    description: >-
-      Get signature help at a function call site. Returns function parameter information including types, documentation,
-      and which parameter the cursor is currently on. Useful for understanding function signatures while typing function
-      arguments.
-  - name: get_diagnostics
-    keywords:
-      - get
-      - diagnostics
-      - all
-      - typescript
-      - file
-      - entire
-      - project
-      - returns
-      - errors
-      - warnings
-      - optionally
-      - suggestions
-      - available
-      - quick
-      - fixes
-      - uses
-      - language
-      - service
-      - semantic
-      - syntactic
-      - suggestion
-    path: definitions/lsp/get-diagnostics.yaml
-    description: |
-      Get all TypeScript diagnostics for a file or the entire project.
-      Returns errors, warnings, and optionally suggestions with available quick fixes.
-      Uses TypeScript Language Service for semantic, syntactic, and suggestion diagnostics.
   - name: find_dead_code
     keywords:
       - find
@@ -1781,7 +376,7 @@ search_index:
       - can
       - safely
       - removed
-    path: definitions/lsp/find-dead-code.yaml
+    path: definitions/analysis-engine/find-dead-code.yaml
     description: >-
       Find unused exports and functions in a file or directory. Uses TypeScript Language Service to identify exports
       that have no external references. Useful for identifying dead code that can be safely removed.
@@ -1809,7 +404,7 @@ search_index:
       - information
       - each
       - export
-    path: definitions/lsp/get-api-surface.yaml
+    path: definitions/analysis-engine/get-api-surface.yaml
     description: >-
       Analyze the public vs internal API surface of a module or package. Identifies exports from entry points (index.ts,
       package.json main) as public API, and other exports as internal. Includes type information for each export.
@@ -1842,79 +437,10 @@ search_index:
       - references
       - same
       - declaration
-    path: definitions/lsp/safe-delete-check.yaml
+    path: definitions/analysis-engine/safe-delete-check.yaml
     description: >-
       Confirm a symbol has zero external usages before deleting. Provides a cleaner interface than find_references with
       a clear yes/no answer. Handles edge cases like self-references and same-declaration references.
-  - name: get_inlay_hints
-    keywords:
-      - get
-      - inlay
-      - hints
-      - file
-      - see
-      - inferred
-      - types
-      - where
-      - they
-      - implicit
-      - returns
-      - return
-      - variable
-      - parameter
-      - names
-      - call
-      - sites
-      - type
-      - arguments
-      - helps
-      - understand
-      - code
-      - that
-      - doesn
-      - have
-      - explicit
-      - annotations
-    path: definitions/lsp/get-inlay-hints.yaml
-    description: >-
-      Get inlay hints for a file to see inferred types where they're implicit. Returns hints for inferred return types,
-      variable types, parameter names at call sites, and inferred type arguments. Helps understand code that doesn't
-      have explicit type annotations.
-  - name: workspace_symbols
-    keywords:
-      - workspace
-      - symbols
-      - search
-      - name
-      - across
-      - entire
-      - semantic
-      - awareness
-      - unlike
-      - grep
-      - this
-      - distinguishes
-      - between
-      - function
-      - named
-      - foo
-      - variable
-      - returns
-      - symbol
-      - kind
-      - location
-      - container
-      - information
-      - supports
-      - multi
-      - file
-      - pattern
-      - filtering
-    path: definitions/lsp/workspace-symbols.yaml
-    description: >-
-      Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes
-      between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container
-      information. Supports multi-kind search and file pattern filtering.
   - name: detect_breaking_changes
     keywords:
       - detect
@@ -1947,7 +473,7 @@ search_index:
       - non
       - migration
       - guidance
-    path: definitions/lsp/detect-breaking-changes.yaml
+    path: definitions/analysis-engine/detect-breaking-changes.yaml
     description: >-
       LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and uses
       Claude to identify: function signature changes, interface/type property changes, exported symbol removals, and
@@ -1985,156 +511,11 @@ search_index:
       - claude
       - deep
       - analysis
-    path: definitions/lsp/semantic-diff.yaml
+    path: definitions/analysis-engine/semantic-diff.yaml
     description: >-
       LLM-powered type-aware diff with semantic impact explanation. Goes beyond text-based diff to understand what
       semantically changed, impact on type safety and API contracts, which callers might be affected, and risk level of
       each change. Uses Claude for deep analysis.
-  - name: start_dev_server
-    keywords:
-      - start
-      - dev
-      - server
-      - development
-      - return
-      - ready
-      - spawns
-      - npm
-      - yarn
-      - pnpm
-      - command
-      - monitors
-      - output
-      - signals
-      - localhost
-      - urls
-      - compiled
-      - returns
-      - url
-      - supports
-      - custom
-      - commands
-      - ports
-      - process
-      - runs
-      - background
-      - can
-      - stopped
-      - returned
-    path: definitions/process/start-dev-server.yaml
-    description: >-
-      Start a development server and return when ready. Spawns npm/yarn/pnpm dev command, monitors output for ready
-      signals (localhost URLs, "ready", "compiled"), and returns server URL. Supports custom commands and ports. Process
-      runs in background and can be stopped with the returned process ID.
-  - name: health_monitor
-    keywords:
-      - health
-      - monitor
-      - url
-      - endpoint
-      - status
-      - makes
-      - periodic
-      - http
-      - requests
-      - check
-      - service
-      - responding
-      - returns
-      - response
-      - times
-      - any
-      - errors
-      - useful
-      - verifying
-      - dev
-      - servers
-      - are
-      - running
-      - after
-      - changes
-    path: definitions/process/health-monitor.yaml
-    description: >-
-      Monitor a URL endpoint for health status. Makes periodic HTTP requests to check if a service is responding.
-      Returns health status, response times, and any errors. Useful for verifying dev servers are running after changes.
-  - name: watch_for_errors
-    keywords:
-      - watch
-      - for
-      - errors
-      - monitor
-      - logs
-      - process
-      - output
-      - can
-      - tail
-      - log
-      - files
-      - run
-      - commands
-      - capture
-      - detects
-      - common
-      - error
-      - patterns
-      - typeerror
-      - referenceerror
-      - syntaxerror
-      - enoent
-      - etc
-      - extracts
-      - stack
-      - traces
-      - deduplicates
-      - similar
-      - classifies
-      - types
-      - returns
-      - structured
-      - information
-      - counts
-      - recommendations
-    path: definitions/process/watch-for-errors.yaml
-    description: >-
-      Monitor logs or process output for errors. Can tail log files or run commands and capture errors. Detects common
-      error patterns (TypeError, ReferenceError, SyntaxError, ENOENT, etc.), extracts stack traces, deduplicates similar
-      errors, and classifies error types. Returns structured error information with counts and recommendations.
-  - name: detect_memory_leaks
-    keywords:
-      - detect
-      - memory
-      - leaks
-      - monitor
-      - process
-      - usage
-      - over
-      - time
-      - potential
-      - takes
-      - periodic
-      - snapshots
-      - performs
-      - trend
-      - analysis
-      - linear
-      - regression
-      - identifies
-      - consistent
-      - growth
-      - patterns
-      - supports
-      - monitoring
-      - existing
-      - processes
-      - pid
-      - spawning
-      - new
-      - command
-    path: definitions/process/detect-memory-leaks.yaml
-    description: >-
-      Monitor process memory usage over time to detect potential memory leaks. Takes periodic snapshots, performs trend
-      analysis with linear regression, and identifies consistent memory growth patterns. Supports monitoring existing
-      processes by PID or spawning a new command.
   - name: scaffold_project
     keywords:
       - scaffold
@@ -2156,7 +537,7 @@ search_index:
       - skills
       - based
       - stack
-    path: definitions/scaffold-project.yaml
+    path: definitions/project-engine/scaffold-project.yaml
     description: |
       Create a new project from a template. Copies template files,
       applies variable substitutions, and runs post-create commands.
@@ -2175,7 +556,7 @@ search_index:
       - levels
       - filter
       - category
-    path: definitions/list-templates.yaml
+    path: definitions/project-engine/list-templates.yaml
     description: |
       List available project templates with their descriptions,
       tech stacks, and complexity levels. Filter by category.
@@ -2196,7 +577,7 @@ search_index:
       - returns
       - issues
       - overall
-    path: definitions/plugin-status.yaml
+    path: definitions/project-engine/plugin-status.yaml
     description: |
       Check GoodVibes plugin health status.
       Verifies manifest, registries, hooks config, and script files.
@@ -2225,7 +606,7 @@ search_index:
       - locations
       - severity
       - levels
-    path: definitions/project/project-issues.yaml
+    path: definitions/project-engine/project-issues.yaml
     description: |
       Get detailed project issues: high-priority TODOs with file:line,
       health warnings, environment issues.
@@ -2259,36 +640,11 @@ search_index:
       - handlers
       - generates
       - examples
-    path: definitions/project/generate-openapi.yaml
+    path: definitions/project-engine/generate-openapi.yaml
     description: >-
       Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
       Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and
       generates examples.
-  - name: get_schema
-    keywords:
-      - get
-      - schema
-      - introspect
-      - database
-      - from
-      - connection
-      - files
-      - returns
-      - tables
-      - columns
-      - relations
-      - indexes
-      - enables
-      - skills
-      - work
-      - actual
-      - data
-      - structure
-    path: definitions/get-schema.yaml
-    description: |
-      Introspect database schema from connection or schema files.
-      Returns tables, columns, relations, and indexes.
-      Enables skills to work with actual data structure.
   - name: get_database_schema
     keywords:
       - get
@@ -2310,7 +666,7 @@ search_index:
       - columns
       - indexes
       - relations
-    path: definitions/schema/get-database-schema.yaml
+    path: definitions/project-engine/get-database-schema.yaml
     description: >-
       Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files.
       Returns unified schema with tables, columns, indexes, and relations.
@@ -2339,7 +695,7 @@ search_index:
       - location
       - middleware
       - information
-    path: definitions/schema/get-api-routes.yaml
+    path: definitions/project-engine/get-api-routes.yaml
     description: >-
       Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
       Returns HTTP method, path, handler location, and middleware information.
@@ -2375,7 +731,7 @@ search_index:
       - cause
       - performance
       - issues
-    path: definitions/framework/get-prisma-operations.yaml
+    path: definitions/project-engine/get-prisma-operations.yaml
     description: >-
       Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation()
       calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.
@@ -2428,7 +784,7 @@ search_index:
       - ones
       - you
       - need
-    path: definitions/project/query-database.yaml
+    path: definitions/project-engine/query-database.yaml
     description: >-
       Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
       accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For
@@ -2465,7 +821,7 @@ search_index:
       - preview
       - before
       - making
-    path: definitions/project/upgrade-package.yaml
+    path: definitions/project-engine/upgrade-package.yaml
     description: >-
       Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
       checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe
@@ -2503,137 +859,11 @@ search_index:
       - points
       - potential
       - concerns
-    path: definitions/project/explain-codebase.yaml
+    path: definitions/project-engine/explain-codebase.yaml
     description: >-
       Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API
       routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams,
       key files, entry points, and potential concerns.
-  - name: browser_automation
-    keywords:
-      - browser
-      - automation
-      - automate
-      - interactions
-      - using
-      - puppeteer
-      - execute
-      - sequences
-      - actions
-      - navigate
-      - click
-      - type
-      - scroll
-      - screenshot
-      - assertions
-      - element
-      - exists
-      - text
-      - contains
-      - attribute
-      - matches
-      - returns
-      - step
-      - results
-      - screenshots
-      - requires
-      - installed
-    path: definitions/runtime/browser-automation.yaml
-    description: >-
-      Automate browser interactions using Puppeteer. Execute sequences of actions (navigate, click, type, scroll,
-      screenshot) and assertions (element exists, text contains, attribute matches). Returns step-by-step results with
-      screenshots. Requires puppeteer to be installed.
-  - name: verify_runtime_behavior
-    keywords:
-      - verify
-      - runtime
-      - behavior
-      - executing
-      - code
-      - checking
-      - results
-      - runs
-      - javascript
-      - typescript
-      - node
-      - environment
-      - verifies
-      - output
-      - matches
-      - expectations
-      - useful
-      - testing
-      - functions
-      - api
-      - responses
-      - data
-      - transformations
-    path: definitions/runtime/verify-runtime-behavior.yaml
-    description: >-
-      Verify runtime behavior by executing code and checking results. Runs JavaScript/TypeScript code in a Node.js
-      environment and verifies the output matches expectations. Useful for testing functions, API responses, and data
-      transformations.
-  - name: lighthouse_audit
-    keywords:
-      - lighthouse
-      - audit
-      - run
-      - audits
-      - url
-      - returns
-      - scores
-      - performance
-      - accessibility
-      - best
-      - practices
-      - seo
-      - pwa
-      - includes
-      - detailed
-      - metrics
-      - improvement
-      - suggestions
-      - requires
-      - chrome
-      - launcher
-      - packages
-    path: definitions/runtime/lighthouse-audit.yaml
-    description: >-
-      Run Lighthouse audits on a URL. Returns scores for performance, accessibility, best practices, SEO, and PWA.
-      Includes detailed metrics and improvement suggestions. Requires lighthouse and chrome-launcher packages.
-  - name: visual_regression
-    keywords:
-      - visual
-      - regression
-      - testing
-      - comparing
-      - screenshots
-      - takes
-      - screenshot
-      - url
-      - element
-      - compares
-      - against
-      - baseline
-      - image
-      - using
-      - pixel
-      - comparison
-      - returns
-      - match
-      - status
-      - diff
-      - percentage
-      - path
-      - requires
-      - puppeteer
-      - pixelmatch
-      - pngjs
-      - packages
-    path: definitions/runtime/visual-regression.yaml
-    description: >-
-      Visual regression testing by comparing screenshots. Takes a screenshot of a URL or element and compares against a
-      baseline image using pixel-by-pixel comparison. Returns match status, diff percentage, and diff image path.
-      Requires puppeteer, pixelmatch, and pngjs packages.
   - name: scan_for_secrets
     keywords:
       - scan
@@ -2667,7 +897,7 @@ search_index:
       - presence
       - only
       - checks
-    path: definitions/security/scan-for-secrets.yaml
+    path: definitions/analysis-engine/scan-for-secrets.yaml
     description: >-
       Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including
       API keys, tokens, passwords, private keys, and database connection strings. Supports configurable depth limit and
@@ -2710,7 +940,7 @@ search_index:
       - level
       - provides
       - recommendations
-    path: definitions/security/check-permissions.yaml
+    path: definitions/analysis-engine/check-permissions.yaml
     description: |
       Analyze file, network, and system access patterns in code.
       Scans for potentially sensitive API usage including:
@@ -2742,7 +972,7 @@ search_index:
       - list
       - confidence
       - scores
-    path: definitions/test/find-tests-for-file.yaml
+    path: definitions/project-engine/find-tests-for-file.yaml
     description: >-
       Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find
       related tests. Returns a ranked list of test files with confidence scores.
@@ -2774,7 +1004,7 @@ search_index:
       - lines
       - targeted
       - writing
-    path: definitions/test/get-test-coverage.yaml
+    path: definitions/project-engine/get-test-coverage.yaml
     description: >-
       Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info,
       coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns
@@ -2807,7 +1037,7 @@ search_index:
       - suggests
       - new
       - rationale
-    path: definitions/test/suggest-test-cases.yaml
+    path: definitions/project-engine/suggest-test-cases.yaml
     description: >-
       Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error
       conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test
@@ -2833,7 +1063,7 @@ search_index:
       - generates
       - interface
       - definitions
-    path: definitions/types/generate-types.yaml
+    path: definitions/project-engine/generate-types.yaml
     description: >-
       Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
       Infers types from sample data and generates .d.ts or interface definitions.
@@ -2864,7 +1094,7 @@ search_index:
       - constants
       - seed
       - scripts
-    path: definitions/types/generate-fixture.yaml
+    path: definitions/project-engine/generate-fixture.yaml
     description: >-
       Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
       @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript
@@ -2896,7 +1126,7 @@ search_index:
       - that
       - don
       - exist
-    path: definitions/types/sync-api-types.yaml
+    path: definitions/project-engine/sync-api-types.yaml
     description: >-
       Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
       handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that
@@ -2925,64 +1155,11 @@ search_index:
       - application
       - ensure
       - quality
-    path: definitions/validate-implementation.yaml
+    path: definitions/analysis-engine/validate-implementation.yaml
     description: |
       Check that generated code matches skill patterns and best practices.
       Validates structure, naming, error handling, and security.
       Run after skill application to ensure quality.
-  - name: run_smoke_test
-    keywords:
-      - run
-      - smoke
-      - test
-      - quick
-      - verification
-      - that
-      - generated
-      - code
-      - compiles
-      - runs
-      - performs
-      - basic
-      - sanity
-      - checks
-      - without
-      - full
-      - suite
-      - fast
-      - feedback
-      - loop
-      - skill
-      - application
-    path: definitions/run-smoke-test.yaml
-    description: |
-      Quick verification that generated code compiles and runs.
-      Performs basic sanity checks without full test suite.
-      Fast feedback loop for skill application.
-  - name: check_types
-    keywords:
-      - check
-      - types
-      - run
-      - typescript
-      - type
-      - checking
-      - files
-      - project
-      - returns
-      - detailed
-      - errors
-      - suggestions
-      - essential
-      - validation
-      - after
-      - generating
-      - code
-    path: definitions/check-types.yaml
-    description: |
-      Run TypeScript type checking on files or project.
-      Returns detailed type errors with suggestions.
-      Essential validation after generating TypeScript code.
   - name: validate_edits_preview
     keywords:
       - validate
@@ -3019,7 +1196,7 @@ search_index:
       - fast
       - writing
       - code
-    path: definitions/lsp/validate-edits-preview.yaml
+    path: definitions/analysis-engine/validate-edits-preview.yaml
     description: >-
       Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs
       TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a
@@ -3048,28 +1225,33 @@ search_index:
       - violations
       - json
       - paths
-    path: definitions/validation/validate-api-contract.yaml
+    path: definitions/analysis-engine/validate-api-contract.yaml
     description: >-
       Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes
       and body schemas match the spec. Reports violations with JSON paths.
-  - name: validate_env_complete
+  - name: env_audit
     keywords:
-      - validate
       - env
-      - complete
+      - audit
+      - comprehensive
       - environment
-      - variables
-      - are
-      - documented
+      - variable
+      - scans
+      - source
+      - files
+      - process
+      - import
+      - meta
+      - deno
+      - usages
       - compares
       - against
       - example
-      - code
-      - usage
-      - identify
+      - identifies
       - missing
       - unused
       - undocumented
+      - variables
       - optionally
       - validates
       - value
@@ -3083,461 +1265,156 @@ search_index:
       - urls
       - valid
       - etc
-    path: definitions/validation/validate-env-complete.yaml
+    path: mcp-server/env_audit
     description: >-
-      Validate environment variables are complete and documented. Compares .env against .env.example and code usage to
-      identify missing, unused, and undocumented variables. Optionally validates value formats based on naming
-      conventions (ports should be numbers, URLs should be valid, etc.).
+      Comprehensive environment variable audit. Scans source files for process.env.*, import.meta.env.*, Deno.env.*
+      usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
+      validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).
 core_tools:
-  - name: get_agent_content
-    path: definitions/discovery/get-agent-content.yaml
-    description: |
-      Load full content of an agent by path.
-      Retrieves the complete agent definition including capabilities,
-      expertise areas, and configuration from the agent registry.
   - name: list_templates
-    path: definitions/list-templates.yaml
+    path: definitions/project-engine/list-templates.yaml
     description: |
       List available project templates with their descriptions,
       tech stacks, and complexity levels. Filter by category.
   - name: plugin_status
-    path: definitions/plugin-status.yaml
+    path: definitions/project-engine/plugin-status.yaml
     description: |
       Check GoodVibes plugin health status.
       Verifies manifest, registries, hooks config, and script files.
       Returns issues and overall health status.
   - name: project_issues
-    path: definitions/project/project-issues.yaml
+    path: definitions/project-engine/project-issues.yaml
     description: |
       Get detailed project issues: high-priority TODOs with file:line,
       health warnings, environment issues.
       Scans the codebase for actionable issues and returns them
       in a structured format with locations and severity levels.
 deferred_tools:
-  - name: profile_function
-    path: definitions/analysis/profile-function.yaml
-    description: >-
-      Profile a JavaScript/TypeScript function for performance. Measures execution time, memory usage, and call
-      frequency. Returns timing statistics (min, max, avg, p95) and memory deltas.
-  - name: log_analyzer
-    path: definitions/analysis/log-analyzer.yaml
-    description: >-
-      Analyze log files for patterns, errors, and anomalies. Parses structured (JSON) and unstructured logs, identifies
-      error spikes, correlates events, and provides timeline analysis.
   - name: identify_tech_debt
-    path: definitions/analysis/identify-tech-debt.yaml
+    path: definitions/analysis-engine/identify-tech-debt.yaml
     description: >-
       Identify and grade technical debt in the codebase. Scans for TODO/FIXME/HACK comments, complex functions (high
       cyclomatic complexity), long files, missing tests, outdated dependencies, and code smells. Returns prioritized
       debt items with effort estimates.
-  - name: batch_read
-    path: definitions/batch/batch-read.yaml
-    description: |
-      Read multiple files in a single operation with per-file precision control.
-      Supports offset/limit for each file individually, enabling surgical reads
-      that minimize token usage. Use this instead of multiple Read calls.
-
-      Features:
-      - Per-file offset/limit (read specific line ranges)
-      - Mixed input: simple paths or detailed FileReadRequest objects
-      - Range metadata in results (has_more_before/after)
-      - Output modes: minimal (line counts), standard (first 50 lines), verbose (full)
-  - name: smart_glob
-    path: definitions/batch/smart-glob.yaml
-    description: |
-      Find files matching glob patterns with intelligent filtering and optional preview.
-      Supports multiple patterns, exclusions, and configurable output modes.
-      Use this instead of multiple Glob calls.
-
-      Features:
-      - Multiple glob patterns in one call
-      - Exclusion patterns
-      - File preview with offset/limit (like batch_read precision)
-      - Auto-ignores common directories (node_modules, .git, dist, etc.)
-      - Output modes: count_only, minimal (paths only), standard (with metadata)
-  - name: grep_with_content
-    path: definitions/batch/grep-with-content.yaml
-    description: |
-      Search for patterns across files with configurable context and precision.
-      Supports per-query context control and line range filtering.
-      Use this instead of multiple Grep calls followed by Read calls.
-
-      Features:
-      - Regex pattern search across codebase
-      - Configurable context lines (before/after each match)
-      - Line range filtering (search only specific regions)
-      - Glob pattern filtering for target files
-      - Output modes: count_only, minimal, standard, verbose
   - name: analyze_bundle
-    path: definitions/build/analyze-bundle.yaml
+    path: definitions/project-engine/analyze-bundle.yaml
     description: >-
       Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
       directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and
       optimization recommendations.
   - name: detect_stack
-    path: definitions/detect-stack.yaml
+    path: definitions/analysis-engine/detect-stack.yaml
     description: |
       Analyze project to identify the technology stack. Scans package.json,
       config files, and directory structure to determine frameworks, libraries,
       and tools in use. Essential for selecting appropriate skills.
   - name: check_versions
-    path: definitions/check-versions.yaml
+    path: definitions/analysis-engine/check-versions.yaml
     description: |
       Get installed package versions and compare against skill assumptions.
       Identifies version mismatches that could cause skill advice to fail.
       Checks both direct dependencies and peer dependencies.
   - name: scan_patterns
-    path: definitions/scan-patterns.yaml
+    path: definitions/analysis-engine/scan-patterns.yaml
     description: |
       Identify existing code patterns and conventions in the project.
       Helps apply skills consistently with established patterns.
       Detects naming conventions, file structure, and architectural patterns.
-  - name: fetch_docs
-    path: definitions/fetch-docs.yaml
-    description: |
-      Fetch current documentation for a library or framework.
-      Retrieves API references, guides, and migration notes.
-      Supplements static skill knowledge with live data.
   - name: read_config
-    path: definitions/read-config.yaml
+    path: definitions/analysis-engine/read-config.yaml
     description: |
       Parse and return existing configuration files.
       Understands various config formats (JSON, YAML, JS, TS).
       Skills can build upon existing configuration.
   - name: get_conventions
-    path: definitions/project/get-conventions.yaml
+    path: definitions/analysis-engine/get-conventions.yaml
     description: >-
       LLM-powered analysis of code patterns and conventions in a project. Samples files from different parts of the
       codebase, analyzes naming conventions, import patterns, file structure, testing patterns, and error handling. Uses
       Claude to synthesize findings into actionable convention guidelines.
   - name: analyze_dependencies
-    path: definitions/deps/analyze-dependencies.yaml
+    path: definitions/project-engine/analyze-dependencies.yaml
     description: >-
       Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
       package.json against actual imports in source files.
   - name: find_circular_deps
-    path: definitions/deps/find-circular-deps.yaml
+    path: definitions/analysis-engine/find-circular-deps.yaml
     description: >-
       Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses
       DFS to detect cycles. Returns all cycles found with the full file paths involved.
-  - name: search_skills
-    path: definitions/search-skills.yaml
-    description: |
-      Search the skill registry for relevant skills based on keywords,
-      technology, or task description. Use when needing domain-specific
-      guidance that matches available skills.
-  - name: search_agents
-    path: definitions/search-agents.yaml
-    description: |
-      Search for specialized agents by expertise area or task type.
-      Use when needing to find an agent with specific domain knowledge.
-  - name: search_tools
-    path: definitions/search-tools.yaml
-    description: |
-      Search for available tools by functionality or use case.
-      Use when discovering what tools are available for a task.
-  - name: recommend_skills
-    path: definitions/recommend-skills.yaml
-    description: |
-      Analyze task description and project context to recommend relevant skills.
-      Combines natural language understanding with stack detection.
-      Primary entry point for skill discovery.
-  - name: get_skill_content
-    path: definitions/get-skill-content.yaml
-    description: |
-      Load the full content of a skill by its path.
-      Use after searching to get detailed skill instructions.
-  - name: skill_dependencies
-    path: definitions/skill-dependencies.yaml
-    description: |
-      Show which skills work together and their dependencies.
-      Identifies prerequisite skills, complementary skills, and conflicts.
-      Helps build complete skill sets for complex tasks.
-  - name: get_env_config
-    path: definitions/project/get-env-config.yaml
-    description: >-
-      Find all environment variable usages and their sources. Scans source files for process.env.*, import.meta.env.*,
-      Deno.env.* and cross-references with .env files to identify documented vs undocumented variables.
   - name: parse_error_stack
-    path: definitions/errors/parse-error-stack.yaml
+    path: definitions/analysis-engine/parse-error-stack.yaml
     description: |
       Parse error stack traces and provide structured analysis.
       Extracts file paths, line numbers, and function names from stack traces.
       Maps frames to project files and identifies the root cause frame.
       Useful for debugging runtime errors and understanding error origins.
   - name: explain_type_error
-    path: definitions/errors/explain-type-error.yaml
+    path: definitions/analysis-engine/explain-type-error.yaml
     description: >-
       Explain TypeScript error codes in human-friendly terms with fix suggestions. Takes an error code and message,
       returns detailed explanation, common causes, and actionable fix suggestions.
-  - name: get_react_component_tree
-    path: definitions/framework/get-react-component-tree.yaml
-    description: >-
-      Parse JSX/TSX files and build a component hierarchy tree. Uses static AST analysis to find component definitions
-      and usages, extract props, and build parent-child relationships. Useful for understanding React component
-      architecture.
-  - name: analyze_stacking_context
-    path: definitions/frontend/analyze-stacking-context.yaml
-    description: >-
-      Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
-      stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
-      tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
-      z-index working" issues.
-  - name: analyze_responsive_breakpoints
-    path: definitions/frontend/analyze-responsive-breakpoints.yaml
-    description: >-
-      Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
-      across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
-      design issues like desktop-first patterns or missing base styles.
-  - name: trace_component_state
-    path: definitions/frontend/trace-component-state.yaml
-    description: >-
-      Trace React state and props through component trees. Analyzes useState, useReducer, useRef, useContext, and effect
-      hooks. Detects prop drilling, callback instability, missing memoization, and other common React anti-patterns.
-      Returns detailed state flow analysis including which state is used in JSX and passed to children.
-  - name: analyze_render_triggers
-    path: definitions/frontend/analyze-render-triggers.yaml
-    description: >-
-      Analyze what causes a React component to re-render. Identifies memoization status (React.memo, PureComponent,
-      shouldComponentUpdate), inline definitions creating unstable references (objects, arrays, functions, JSX),
-      expensive computations not wrapped in useMemo, context subscriptions and their granularity, and provides
-      prioritized optimization suggestions.
-  - name: analyze_layout_hierarchy
-    path: definitions/frontend/analyze-layout-hierarchy.yaml
-    description: >-
-      Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree with
-      sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
-      Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers
-      with auto-height children, nested flex without sizing, percentage height without parent height, etc.
-  - name: diagnose_overflow
-    path: definitions/frontend/diagnose-overflow.yaml
-    description: >-
-      Diagnose CSS overflow issues and recommend fixes. Analyzes layout hierarchy to identify overflow-prone patterns
-      such as fixed-height containers with auto-height children, flex containers without overflow handling, nested
-      percentage heights, absolute positioning without containment, and missing min-h-0 in nested flex. Returns
-      actionable fix options with Tailwind CSS classes and trade-off explanations.
-  - name: get_accessibility_tree
-    path: definitions/frontend/get-accessibility-tree.yaml
-    description: >-
-      Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML roles,
-      focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled
-      form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
-      missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
-      order sequence, issues with WCAG criteria references, and optimization suggestions.
-  - name: get_sizing_strategy
-    path: definitions/frontend/get-sizing-strategy.yaml
-    description: >-
-      Analyze how a specific element's size is determined. Examines Tailwind classes or CSS to identify width/height
-      strategies (fixed, percentage, viewport, content-based, flex-controlled, grid-controlled), min/max constraints,
-      flex behavior (grow, shrink, basis), grid placement, overflow settings, and positioning context. Walks the
-      ancestor chain to find constraints that affect the target element. Returns a human-readable summary explaining how
-      the element's dimensions are computed.
-  - name: analyze_event_flow
-    path: definitions/frontend/analyze-event-flow.yaml
-    description: >-
-      Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
-      onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
-      elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
-      submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
-      checks). Essential for debugging "why is my click firing twice" and accessibility audits.
-  - name: analyze_tailwind_conflicts
-    path: definitions/frontend/analyze-tailwind-conflicts.yaml
-    description: >-
-      Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types of
-      issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes
-      from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
-      conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit w-/h-
-      classes, z-index without position, and provides optimization suggestions like using size-X instead of w-X h-X when
-      equal.
-  - name: create_pull_request
-    path: definitions/git/create-pull-request.yaml
-    description: >-
-      Create a GitHub pull request with auto-generated descriptions. Analyzes git changes, generates title and
-      description using LLM, pushes branch if needed, and creates PR via gh CLI. Supports draft PRs, labels, and
-      reviewer assignment.
   - name: resolve_merge_conflict
-    path: definitions/git/resolve-merge-conflict.yaml
+    path: definitions/project-engine/resolve-merge-conflict.yaml
     description: >-
       Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
       recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
-  - name: auto_rollback
-    path: definitions/git/auto-rollback.yaml
-    description: >-
-      Automatically rollback changes when conditions are met. Monitors for triggers (build failure, test failure, error
-      patterns) and reverts to last known good state using git.
-  - name: retry_with_learning
-    path: definitions/git/retry-with-learning.yaml
-    description: >-
-      Retry a failed operation with progressive fix strategies. Analyzes error patterns, applies fixes, and retries.
-      Tracks attempt history to avoid repeating failed approaches. Useful for self-healing code changes.
-  - name: atomic_multi_edit
-    path: definitions/git/atomic-multi-edit.yaml
-    description: >-
-      Apply multiple file edits atomically with rollback on failure. Creates backup, applies all edits, runs validation
-      (build/test), and rolls back everything if validation fails. Ensures codebase stays in a valid state.
-  - name: find_references
-    path: definitions/lsp/find-references.yaml
-    description: >-
-      Find all references to a symbol at a given position. Returns file locations, preview lines, and metadata for each
-      reference.
-  - name: go_to_definition
-    path: definitions/lsp/go-to-definition.yaml
-    description: >-
-      Go to the definition of a symbol at a given position. Returns location(s) where the symbol is defined, including
-      file, line, column, and a preview.
-  - name: get_implementations
-    path: definitions/lsp/get-implementations.yaml
-    description: >-
-      Find all concrete implementations of an interface or abstract method. Critical for polymorphic code -
-      go_to_definition goes to the interface, find_references finds usages - this tells you what code actually RUNS.
-  - name: rename_symbol
-    path: definitions/lsp/rename-symbol.yaml
-    description: |
-      Get all edits needed to rename a symbol across the codebase.
-      Returns file locations and text changes to apply for a safe rename.
-      Uses TypeScript Language Service for accurate, semantic renaming.
-  - name: get_code_actions
-    path: definitions/lsp/get-code-actions.yaml
-    description: >-
-      Get available code actions (quick fixes, refactorings) at a position. Returns TypeScript Language Service code
-      fixes and refactoring suggestions.
-  - name: apply_code_action
-    path: definitions/lsp/apply-code-action.yaml
-    description: >-
-      Get the file edits for a code action (does not apply them directly). Use with get_code_actions to first see
-      available actions.
-  - name: get_symbol_info
-    path: definitions/lsp/get-symbol-info.yaml
-    description: |
-      Get detailed information about a symbol at a given position.
-      Returns type info, documentation, definition location, and modifiers.
-      Useful for understanding symbol types, reading JSDoc, and navigating code.
-  - name: get_call_hierarchy
-    path: definitions/lsp/get-call-hierarchy.yaml
-    description: >-
-      Get the call hierarchy for a symbol at a given position. Returns incoming calls (who calls this function) and/or
-      outgoing calls (what this function calls). Useful for understanding code flow and impact analysis.
-  - name: get_type_hierarchy
-    path: definitions/lsp/get-type-hierarchy.yaml
-    description: >-
-      Get the full type inheritance hierarchy for a symbol at a given position. Returns supertypes (what this type
-      extends/implements) and subtypes (what extends/implements this type). Essential for understanding class
-      relationships and impact analysis when modifying base classes.
-  - name: get_document_symbols
-    path: definitions/lsp/get-document-symbols.yaml
-    description: >-
-      Get the structural outline of documents (classes, functions, interfaces, etc.). Returns a hierarchical tree of
-      symbols with positions and kinds. Supports single file (backward compatible) or batch mode (multiple files).
-      Filter by symbol kind, line range, or limit tree depth.
-  - name: get_signature_help
-    path: definitions/lsp/get-signature-help.yaml
-    description: >-
-      Get signature help at a function call site. Returns function parameter information including types, documentation,
-      and which parameter the cursor is currently on. Useful for understanding function signatures while typing function
-      arguments.
-  - name: get_diagnostics
-    path: definitions/lsp/get-diagnostics.yaml
-    description: |
-      Get all TypeScript diagnostics for a file or the entire project.
-      Returns errors, warnings, and optionally suggestions with available quick fixes.
-      Uses TypeScript Language Service for semantic, syntactic, and suggestion diagnostics.
   - name: find_dead_code
-    path: definitions/lsp/find-dead-code.yaml
+    path: definitions/analysis-engine/find-dead-code.yaml
     description: >-
       Find unused exports and functions in a file or directory. Uses TypeScript Language Service to identify exports
       that have no external references. Useful for identifying dead code that can be safely removed.
   - name: get_api_surface
-    path: definitions/lsp/get-api-surface.yaml
+    path: definitions/analysis-engine/get-api-surface.yaml
     description: >-
       Analyze the public vs internal API surface of a module or package. Identifies exports from entry points (index.ts,
       package.json main) as public API, and other exports as internal. Includes type information for each export.
   - name: safe_delete_check
-    path: definitions/lsp/safe-delete-check.yaml
+    path: definitions/analysis-engine/safe-delete-check.yaml
     description: >-
       Confirm a symbol has zero external usages before deleting. Provides a cleaner interface than find_references with
       a clear yes/no answer. Handles edge cases like self-references and same-declaration references.
-  - name: get_inlay_hints
-    path: definitions/lsp/get-inlay-hints.yaml
-    description: >-
-      Get inlay hints for a file to see inferred types where they're implicit. Returns hints for inferred return types,
-      variable types, parameter names at call sites, and inferred type arguments. Helps understand code that doesn't
-      have explicit type annotations.
-  - name: workspace_symbols
-    path: definitions/lsp/workspace-symbols.yaml
-    description: >-
-      Search for symbols by name across the entire workspace with semantic awareness. Unlike grep, this distinguishes
-      between a function named `foo` vs a variable named `foo`. Returns symbol name, kind, location, and container
-      information. Supports multi-kind search and file pattern filtering.
   - name: detect_breaking_changes
-    path: definitions/lsp/detect-breaking-changes.yaml
+    path: definitions/analysis-engine/detect-breaking-changes.yaml
     description: >-
       LLM-powered tool to detect breaking API changes between git refs. Compares type signatures before/after and uses
       Claude to identify: function signature changes, interface/type property changes, exported symbol removals, and
       visibility changes. Returns breaking and non-breaking changes with migration guidance.
   - name: semantic_diff
-    path: definitions/lsp/semantic-diff.yaml
+    path: definitions/analysis-engine/semantic-diff.yaml
     description: >-
       LLM-powered type-aware diff with semantic impact explanation. Goes beyond text-based diff to understand what
       semantically changed, impact on type safety and API contracts, which callers might be affected, and risk level of
       each change. Uses Claude for deep analysis.
-  - name: start_dev_server
-    path: definitions/process/start-dev-server.yaml
-    description: >-
-      Start a development server and return when ready. Spawns npm/yarn/pnpm dev command, monitors output for ready
-      signals (localhost URLs, "ready", "compiled"), and returns server URL. Supports custom commands and ports. Process
-      runs in background and can be stopped with the returned process ID.
-  - name: health_monitor
-    path: definitions/process/health-monitor.yaml
-    description: >-
-      Monitor a URL endpoint for health status. Makes periodic HTTP requests to check if a service is responding.
-      Returns health status, response times, and any errors. Useful for verifying dev servers are running after changes.
-  - name: watch_for_errors
-    path: definitions/process/watch-for-errors.yaml
-    description: >-
-      Monitor logs or process output for errors. Can tail log files or run commands and capture errors. Detects common
-      error patterns (TypeError, ReferenceError, SyntaxError, ENOENT, etc.), extracts stack traces, deduplicates similar
-      errors, and classifies error types. Returns structured error information with counts and recommendations.
-  - name: detect_memory_leaks
-    path: definitions/process/detect-memory-leaks.yaml
-    description: >-
-      Monitor process memory usage over time to detect potential memory leaks. Takes periodic snapshots, performs trend
-      analysis with linear regression, and identifies consistent memory growth patterns. Supports monitoring existing
-      processes by PID or spawning a new command.
   - name: scaffold_project
-    path: definitions/scaffold-project.yaml
+    path: definitions/project-engine/scaffold-project.yaml
     description: |
       Create a new project from a template. Copies template files,
       applies variable substitutions, and runs post-create commands.
       Lists recommended skills based on the template stack.
   - name: generate_openapi
-    path: definitions/project/generate-openapi.yaml
+    path: definitions/project-engine/generate-openapi.yaml
     description: >-
       Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
       Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and
       generates examples.
-  - name: get_schema
-    path: definitions/get-schema.yaml
-    description: |
-      Introspect database schema from connection or schema files.
-      Returns tables, columns, relations, and indexes.
-      Enables skills to work with actual data structure.
   - name: get_database_schema
-    path: definitions/schema/get-database-schema.yaml
+    path: definitions/project-engine/get-database-schema.yaml
     description: >-
       Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files.
       Returns unified schema with tables, columns, indexes, and relations.
   - name: get_api_routes
-    path: definitions/schema/get-api-routes.yaml
+    path: definitions/project-engine/get-api-routes.yaml
     description: >-
       Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
       Returns HTTP method, path, handler location, and middleware information.
   - name: get_prisma_operations
-    path: definitions/framework/get-prisma-operations.yaml
+    path: definitions/project-engine/get-prisma-operations.yaml
     description: >-
       Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation()
       calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.
   - name: query_database
-    path: definitions/project/query-database.yaml
+    path: definitions/project-engine/query-database.yaml
     description: >-
       Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
       accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For
@@ -3545,48 +1422,25 @@ deferred_tools:
       affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only
       the ones you need.
   - name: upgrade_package
-    path: definitions/project/upgrade-package.yaml
+    path: definitions/project-engine/upgrade-package.yaml
     description: >-
       Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
       checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe
       preview before making changes.
   - name: explain_codebase
-    path: definitions/project/explain-codebase.yaml
+    path: definitions/project-engine/explain-codebase.yaml
     description: >-
       Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API
       routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams,
       key files, entry points, and potential concerns.
-  - name: browser_automation
-    path: definitions/runtime/browser-automation.yaml
-    description: >-
-      Automate browser interactions using Puppeteer. Execute sequences of actions (navigate, click, type, scroll,
-      screenshot) and assertions (element exists, text contains, attribute matches). Returns step-by-step results with
-      screenshots. Requires puppeteer to be installed.
-  - name: verify_runtime_behavior
-    path: definitions/runtime/verify-runtime-behavior.yaml
-    description: >-
-      Verify runtime behavior by executing code and checking results. Runs JavaScript/TypeScript code in a Node.js
-      environment and verifies the output matches expectations. Useful for testing functions, API responses, and data
-      transformations.
-  - name: lighthouse_audit
-    path: definitions/runtime/lighthouse-audit.yaml
-    description: >-
-      Run Lighthouse audits on a URL. Returns scores for performance, accessibility, best practices, SEO, and PWA.
-      Includes detailed metrics and improvement suggestions. Requires lighthouse and chrome-launcher packages.
-  - name: visual_regression
-    path: definitions/runtime/visual-regression.yaml
-    description: >-
-      Visual regression testing by comparing screenshots. Takes a screenshot of a URL or element and compares against a
-      baseline image using pixel-by-pixel comparison. Returns match status, diff percentage, and diff image path.
-      Requires puppeteer, pixelmatch, and pngjs packages.
   - name: scan_for_secrets
-    path: definitions/security/scan-for-secrets.yaml
+    path: definitions/analysis-engine/scan-for-secrets.yaml
     description: >-
       Scan source files for potential secrets, credentials, and sensitive data. Detects common secret patterns including
       API keys, tokens, passwords, private keys, and database connection strings. Supports configurable depth limit and
       early exit for presence-only checks.
   - name: check_permissions
-    path: definitions/security/check-permissions.yaml
+    path: definitions/analysis-engine/check-permissions.yaml
     description: |
       Analyze file, network, and system access patterns in code.
       Scans for potentially sensitive API usage including:
@@ -3596,72 +1450,60 @@ deferred_tools:
       - Cryptographic operations (crypto)
       Categorizes findings by risk level and provides recommendations.
   - name: find_tests_for_file
-    path: definitions/test/find-tests-for-file.yaml
+    path: definitions/project-engine/find-tests-for-file.yaml
     description: >-
       Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find
       related tests. Returns a ranked list of test files with confidence scores.
   - name: get_test_coverage
-    path: definitions/test/get-test-coverage.yaml
+    path: definitions/project-engine/get-test-coverage.yaml
     description: >-
       Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info,
       coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns
       uncovered lines and functions for targeted test writing.
   - name: suggest_test_cases
-    path: definitions/test/suggest-test-cases.yaml
+    path: definitions/project-engine/suggest-test-cases.yaml
     description: >-
       Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error
       conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test
       cases with rationale.
   - name: generate_types
-    path: definitions/types/generate-types.yaml
+    path: definitions/project-engine/generate-types.yaml
     description: >-
       Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
       Infers types from sample data and generates .d.ts or interface definitions.
   - name: generate_fixture
-    path: definitions/types/generate-fixture.yaml
+    path: definitions/project-engine/generate-fixture.yaml
     description: >-
       Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
       @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript
       constants, and Prisma seed scripts.
   - name: sync_api_types
-    path: definitions/types/sync-api-types.yaml
+    path: definitions/project-engine/sync-api-types.yaml
     description: >-
       Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
       handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that
       don't exist.
   - name: validate_implementation
-    path: definitions/validate-implementation.yaml
+    path: definitions/analysis-engine/validate-implementation.yaml
     description: |
       Check that generated code matches skill patterns and best practices.
       Validates structure, naming, error handling, and security.
       Run after skill application to ensure quality.
-  - name: run_smoke_test
-    path: definitions/run-smoke-test.yaml
-    description: |
-      Quick verification that generated code compiles and runs.
-      Performs basic sanity checks without full test suite.
-      Fast feedback loop for skill application.
-  - name: check_types
-    path: definitions/check-types.yaml
-    description: |
-      Run TypeScript type checking on files or project.
-      Returns detailed type errors with suggestions.
-      Essential validation after generating TypeScript code.
   - name: validate_edits_preview
-    path: definitions/lsp/validate-edits-preview.yaml
+    path: definitions/analysis-engine/validate-edits-preview.yaml
     description: >-
       Preview the impact of proposed edits before applying them. Creates a virtual snapshot with edits applied and runs
       TypeScript diagnostics to detect any new errors that would be introduced. Does NOT modify any files - purely a
       validation/preview operation. Useful for fail-fast validation before writing code.
   - name: validate_api_contract
-    path: definitions/validation/validate-api-contract.yaml
+    path: definitions/analysis-engine/validate-api-contract.yaml
     description: >-
       Validate API responses against OpenAPI spec. Makes requests to each endpoint and verifies response status codes
       and body schemas match the spec. Reports violations with JSON paths.
-  - name: validate_env_complete
-    path: definitions/validation/validate-env-complete.yaml
+mcp_tools:
+  - name: env_audit
+    path: mcp-server/env_audit
     description: >-
-      Validate environment variables are complete and documented. Compares .env against .env.example and code usage to
-      identify missing, unused, and undocumented variables. Optionally validates value formats based on naming
-      conventions (ports should be numbers, URLs should be valid, etc.).
-mcp_tools: []
+      Comprehensive environment variable audit. Scans source files for process.env.*, import.meta.env.*, Deno.env.*
+      usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
+      validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).

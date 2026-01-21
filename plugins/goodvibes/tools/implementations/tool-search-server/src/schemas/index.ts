@@ -15,7 +15,7 @@
  * - process: dev server, health monitoring, error watching
  * - runtime: browser automation, lighthouse, visual regression
  * - types: type generation, fixtures
- * - git: PR creation, merge conflicts, rollback
+ * - git: merge conflicts, rollback
  * - project: scaffolding, status, database, testing, analysis
  *
  * Performance features:
@@ -24,24 +24,23 @@
  * - Schemas are static and loaded once at module initialization
  */
 
-import { DISCOVERY_SCHEMAS } from './discovery-schemas.js';
 import { CONTEXT_SCHEMAS } from './context-schemas.js';
 import { LSP_SCHEMAS } from './lsp-schemas.js';
-import { FRONTEND_SCHEMAS } from './frontend-schemas.js';
 import { VALIDATION_SCHEMAS } from './validation-schemas.js';
 import { SECURITY_SCHEMAS } from './security-schemas.js';
 import { ERROR_SCHEMAS } from './error-schemas.js';
-import { DEPS_SCHEMAS } from './deps-schemas.js';
-import { BUILD_SCHEMAS } from './build-schemas.js';
 import { ENV_SCHEMAS } from './env-schemas.js';
 import { PROCESS_SCHEMAS } from './process-schemas.js';
 import { RUNTIME_SCHEMAS } from './runtime-schemas.js';
-import { TYPES_SCHEMAS } from './types-schemas.js';
-import { GIT_SCHEMAS } from './git-schemas.js';
-import { PROJECT_SCHEMAS } from './project-schemas.js';
-import { TEST_SCHEMAS } from './test-schemas.js';
 import { ANALYSIS_SCHEMAS } from './analysis-schemas.js';
-import { BATCH_SCHEMAS } from './batch-schemas.js';
+
+// These schemas have been moved to project-engine:
+// - DEPS_SCHEMAS (analyze_dependencies, find_circular_deps)
+// - BUILD_SCHEMAS (analyze_bundle)
+// - TYPES_SCHEMAS (generate_types, generate_fixture, sync_api_types)
+// - GIT_SCHEMAS (resolve_merge_conflict)
+// - PROJECT_SCHEMAS (scaffold_project, list_templates, plugin_status, project_issues, explain_codebase, get_database_schema, get_api_routes, get_prisma_operations, query_database, generate_openapi)
+// - TEST_SCHEMAS (find_tests_for_file, get_test_coverage, suggest_test_cases)
 
 // =============================================================================
 // Schema Types
@@ -51,24 +50,15 @@ import { BATCH_SCHEMAS } from './batch-schemas.js';
  * Schema domain categories for lazy loading
  */
 export type SchemaDomain =
-  | 'discovery'
   | 'context'
   | 'lsp'
-  | 'frontend'
   | 'validation'
   | 'security'
   | 'error'
-  | 'deps'
-  | 'build'
   | 'env'
   | 'process'
   | 'runtime'
-  | 'types'
-  | 'git'
-  | 'project'
-  | 'test'
-  | 'analysis'
-  | 'batch';
+  | 'analysis';
 
 /**
  * Tool schema interface
@@ -92,24 +82,15 @@ export interface ToolSchema {
  * Used for lazy loading by domain.
  */
 const DOMAIN_SCHEMAS: Record<SchemaDomain, readonly ToolSchema[]> = {
-  discovery: DISCOVERY_SCHEMAS,
   context: CONTEXT_SCHEMAS,
   lsp: LSP_SCHEMAS,
-  frontend: FRONTEND_SCHEMAS,
   validation: VALIDATION_SCHEMAS,
   security: SECURITY_SCHEMAS,
   error: ERROR_SCHEMAS,
-  deps: DEPS_SCHEMAS,
-  build: BUILD_SCHEMAS,
   env: ENV_SCHEMAS,
   process: PROCESS_SCHEMAS,
   runtime: RUNTIME_SCHEMAS,
-  types: TYPES_SCHEMAS,
-  git: GIT_SCHEMAS,
-  project: PROJECT_SCHEMAS,
-  test: TEST_SCHEMAS,
   analysis: ANALYSIS_SCHEMAS,
-  batch: BATCH_SCHEMAS,
 };
 
 // =============================================================================
@@ -229,44 +210,26 @@ export class LazySchemaLoader {
  * This is eagerly loaded for backward compatibility with existing code.
  */
 export const TOOL_SCHEMAS: readonly ToolSchema[] = [
-  ...DISCOVERY_SCHEMAS,
   ...CONTEXT_SCHEMAS,
   ...LSP_SCHEMAS,
-  ...FRONTEND_SCHEMAS,
   ...VALIDATION_SCHEMAS,
   ...SECURITY_SCHEMAS,
   ...ERROR_SCHEMAS,
-  ...DEPS_SCHEMAS,
-  ...BUILD_SCHEMAS,
   ...ENV_SCHEMAS,
   ...PROCESS_SCHEMAS,
   ...RUNTIME_SCHEMAS,
-  ...TYPES_SCHEMAS,
-  ...GIT_SCHEMAS,
-  ...PROJECT_SCHEMAS,
-  ...TEST_SCHEMAS,
   ...ANALYSIS_SCHEMAS,
-  ...BATCH_SCHEMAS,
 ];
 
 // Re-export individual schema groups for selective imports
 export {
-  DISCOVERY_SCHEMAS,
   CONTEXT_SCHEMAS,
   LSP_SCHEMAS,
-  FRONTEND_SCHEMAS,
   VALIDATION_SCHEMAS,
   SECURITY_SCHEMAS,
   ERROR_SCHEMAS,
-  DEPS_SCHEMAS,
-  BUILD_SCHEMAS,
   ENV_SCHEMAS,
   PROCESS_SCHEMAS,
   RUNTIME_SCHEMAS,
-  TYPES_SCHEMAS,
-  GIT_SCHEMAS,
-  PROJECT_SCHEMAS,
-  TEST_SCHEMAS,
   ANALYSIS_SCHEMAS,
-  BATCH_SCHEMAS,
 };

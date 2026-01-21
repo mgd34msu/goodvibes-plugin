@@ -1,0 +1,62 @@
+/**
+ * Content retrieval handlers
+ *
+ * Provides MCP tools for retrieving the full content of skills and agents
+ * from the GoodVibes plugin registry.
+ *
+ * @module handlers/content
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { PLUGIN_ROOT } from '../config.js';
+import { ToolResponse } from '../types.js';
+
+/**
+ * Create a text response.
+ */
+function createTextResponse(text: string): ToolResponse {
+  return {
+    content: [{ type: 'text', text }],
+  };
+}
+
+/**
+ * Handles the get_skill_content MCP tool call.
+ */
+export async function handleGetSkillContent(args: { path: string }): Promise<ToolResponse> {
+  const attempts = [
+    path.join(PLUGIN_ROOT, 'skills', args.path, 'SKILL.md'),
+    path.join(PLUGIN_ROOT, 'skills', args.path + '.md'),
+    path.join(PLUGIN_ROOT, 'skills', args.path),
+  ];
+
+  for (const skillPath of attempts) {
+    if (fs.existsSync(skillPath)) {
+      const content = await fs.promises.readFile(skillPath, 'utf-8');
+      return createTextResponse(content);
+    }
+  }
+
+  throw new Error(`Skill not found: ${args.path}`);
+}
+
+/**
+ * Handles the get_agent_content MCP tool call.
+ */
+export async function handleGetAgentContent(args: { path: string }): Promise<ToolResponse> {
+  const attempts = [
+    path.join(PLUGIN_ROOT, 'agents', `${args.path}.md`),
+    path.join(PLUGIN_ROOT, 'agents', args.path),
+    path.join(PLUGIN_ROOT, 'agents', args.path, 'index.md'),
+  ];
+
+  for (const agentPath of attempts) {
+    if (fs.existsSync(agentPath)) {
+      const content = await fs.promises.readFile(agentPath, 'utf-8');
+      return createTextResponse(content);
+    }
+  }
+
+  throw new Error(`Agent not found: ${args.path}`);
+}

@@ -5,9 +5,9 @@
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
-import { handleGrepWithContent } from './grep-with-content.js';
-import { handleSmartGlob } from './smart-glob.js';
-import { handleWorkspaceSymbols } from './workspace-symbols.js';
+import { handlePrecisionGrep } from './precision-grep.js';
+import { handlePrecisionGlob } from './precision-glob.js';
+import { handlePrecisionSymbols } from './precision-symbols.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -45,11 +45,19 @@ async function executeGrepQuery(
   }
 
   try {
-    const result = await handleGrepWithContent({
-      pattern: query.pattern,
-      glob: query.glob,
+    const mode = outputMode === 'count_only' ? 'count_only' : 'files_only';
+    const result = await handlePrecisionGrep({
+      queries: [{
+        id: 'discover-grep',
+        pattern: query.pattern,
+        glob: query.glob,
+      }],
+      output: {
+        mode,
+        max_total_matches: 100,
+      },
+      parallel: false,
       output_mode: 'minimal',
-      max_matches: 100,
     });
 
     const content = result.content?.[0];
@@ -63,14 +71,14 @@ async function executeGrepQuery(
     }
 
     const data = parsed.data;
-    const count = data.match_count || 0;
-    const files = data.files || [];
 
     if (outputMode === 'count_only') {
+      const count = data.results?.['discover-grep']?.total_matches || 0;
       return { count };
     }
 
-    return { count, files };
+    const files = data.results?.['discover-grep']?.files || [];
+    return { count: files.length, files };
   } catch (e) {
     return { count: 0, error: (e as Error).message };
   }
@@ -85,10 +93,14 @@ async function executeGlobQuery(
   }
 
   try {
-    const result = await handleSmartGlob({
+    const mode = outputMode === 'count_only' ? 'count_only' : 'paths_only';
+    const result = await handlePrecisionGlob({
       patterns: query.patterns,
-      output_mode: outputMode === 'count_only' ? 'count_only' : 'minimal',
-      limit: 100,
+      output: {
+        mode,
+        max_files: 100,
+      },
+      output_mode: 'minimal',
     });
 
     const content = result.content?.[0];
@@ -107,7 +119,7 @@ async function executeGlobQuery(
       return { count: data.total_files || 0 };
     }
 
-    const files = Array.isArray(data) ? data.map((f: { path: string } | string) => typeof f === 'string' ? f : f.path) : [];
+    const files = data.files || [];
     return { count: files.length, files };
   } catch (e) {
     return { count: 0, error: (e as Error).message };
@@ -123,11 +135,15 @@ async function executeSymbolsQuery(
   }
 
   try {
-    const result = await handleWorkspaceSymbols({
+    const mode = outputMode === 'count_only' ? 'count_only' : 'names_only';
+    const result = await handlePrecisionSymbols({
+      mode: 'workspace',
       query: query.query,
-      kinds: query.kinds,
-      output_mode: 'minimal',
-      limit: 100,
+      kinds: query.kinds as Array<'function' | 'method' | 'class' | 'interface' | 'type' | 'variable' | 'constant' | 'enum' | 'property' | 'namespace'>,
+      output: {
+        mode,
+        max_results: 100,
+      },
     });
 
     const content = result.content?.[0];
@@ -141,15 +157,15 @@ async function executeSymbolsQuery(
     }
 
     const data = parsed.data;
-    const names = Array.isArray(data) ? data : [];
-    const count = names.length;
 
     if (outputMode === 'count_only') {
-      return { count };
+      return { count: data.total_symbols || 0 };
     }
 
-    // In minimal mode, workspace_symbols returns just names
-    return { count, files: [] };
+    const symbols = data.symbols || [];
+    // Extract unique files from symbols
+    const files = [...new Set(symbols.map((s: any) => s.file).filter(Boolean))] as string[];
+    return { count: symbols.length, files };
   } catch (e) {
     return { count: 0, error: (e as Error).message };
   }

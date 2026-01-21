@@ -21,18 +21,8 @@
 // Status
 export { handlePluginStatus } from './status.js';
 
-// Search
-export { handleSearchSkills, handleSearchAgents, handleSearchTools, handleRecommendSkills } from './search.js';
-
-// Content
-export { handleGetSkillContent, handleGetAgentContent } from './content.js';
-
 // Context
 export { handleDetectStack, handleScanPatterns } from './context.js';
-
-// Dependencies
-export { handleSkillDependencies } from './dependencies.js';
-export type { SkillDependenciesArgs } from './dependencies.js';
 
 // NPM
 export { handleCheckVersions, fetchNpmPackageInfo, fetchNpmReadme } from './npm.js';
@@ -74,50 +64,21 @@ export type { ScaffoldProjectArgs, ListTemplatesArgs } from './scaffolding.js';
 export { handleProjectIssues } from './issues.js';
 export type { ProjectIssuesArgs } from './issues.js';
 
-// LSP Tools
+// LSP Tools (only 6 currently implemented)
 export {
-  handleFindReferences,
-  handleGoToDefinition,
-  handleGetImplementations,
-  handleRenameSymbol,
-  handleGetCodeActions,
-  handleApplyCodeAction,
-  handleGetCallHierarchy,
-  handleGetTypeHierarchy,
-  handleGetSymbolInfo,
-  handleGetSignatureHelp,
-  handleGetDocumentSymbols,
-  handleGetDiagnostics,
   handleFindDeadCode,
   handleGetApiSurface,
   handleDetectBreakingChanges,
   handleSemanticDiff,
-  handleWorkspaceSymbols,
   handleSafeDeleteCheck,
-  handleGetInlayHints,
   handleValidateEditsPreview,
 } from './lsp/index.js';
 export type {
-  FindReferencesArgs,
-  GoToDefinitionArgs,
-  GetImplementationsArgs,
-  RenameSymbolArgs,
-  GetCodeActionsArgs,
-  ApplyCodeActionArgs,
-  GetCallHierarchyArgs,
-  GetTypeHierarchyArgs,
-  GetSymbolInfoArgs,
-  GetSignatureHelpArgs,
-  GetDocumentSymbolsArgs,
-  LineRange,
-  GetDiagnosticsArgs,
   FindDeadCodeArgs,
   GetApiSurfaceArgs,
   DetectBreakingChangesArgs,
   SemanticDiffArgs,
-  WorkspaceSymbolsArgs,
   SafeDeleteCheckArgs,
-  GetInlayHintsArgs,
   ValidateEditsPreviewArgs,
 } from './lsp/index.js';
 
@@ -142,8 +103,8 @@ export { handleGetEnvConfig, handleGetConventions } from './project/index.js';
 export type { GetEnvConfigArgs, GetConventionsArgs } from './project/index.js';
 
 // Framework Tools
-export { handleGetReactComponentTree, handleGetPrismaOperations } from './framework/index.js';
-export type { GetReactComponentTreeArgs, GetPrismaOperationsArgs } from './framework/index.js';
+export { handleGetPrismaOperations } from './framework/index.js';
+export type { GetPrismaOperationsArgs } from './framework/index.js';
 
 // Build Tools
 export { handleAnalyzeBundle } from './build/index.js';
@@ -274,55 +235,6 @@ export type {
 // Fixture Generation
 export { handleGenerateFixture } from './fixtures/index.js';
 export type { GenerateFixtureArgs, GenerateFixtureResult } from './fixtures/index.js';
-
-// Git Tools
-export { handleCreatePullRequest } from './git/index.js';
-export type { CreatePullRequestArgs, CreatePullRequestResult } from './git/index.js';
-
-// Frontend Analysis Tools
-export {
-  handleTraceComponentState,
-  handleAnalyzeRenderTriggers,
-  handleAnalyzeResponsiveBreakpoints,
-  handleAnalyzeStackingContext,
-  handleAnalyzeLayoutHierarchy,
-  handleDiagnoseOverflow,
-  handleGetAccessibilityTree,
-  handleGetSizingStrategy,
-  handleAnalyzeEventFlow,
-  handleAnalyzeTailwindConflicts,
-} from './frontend/index.js';
-export type {
-  TraceComponentStateArgs,
-  AnalyzeRenderTriggersArgs,
-  AnalyzeResponsiveBreakpointsArgs,
-  AnalyzeStackingContextArgs,
-  AnalyzeLayoutHierarchyArgs,
-  DiagnoseOverflowArgs,
-  GetAccessibilityTreeArgs,
-  A11yNode,
-  GetSizingStrategyArgs,
-  GetSizingStrategyResult,
-  AnalyzeEventFlowArgs,
-  AnalyzeTailwindConflictsArgs,
-} from './frontend/index.js';
-
-// Batch Tools
-export {
-  handleBatchRead,
-  handleSmartGlob,
-  handleGrepWithContent,
-} from './batch/index.js';
-export type {
-  BatchReadArgs,
-  FileReadRequest,
-  FileReadRange,
-  FileReadResult,
-  SmartGlobArgs,
-  PreviewConfig,
-  FilePreview,
-  GrepWithContentArgs,
-} from './batch/index.js';
 
 // =============================================================================
 // REGISTRY AND TYPES

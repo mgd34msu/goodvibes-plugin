@@ -4,13 +4,7 @@
 
 import { ToolHandler } from '../utils/index.js';
 
-// Import real handler implementations
-import { handleBatchRead } from './batch-read.js';
-import { handleSmartGlob } from './smart-glob.js';
-import { handleGrepWithContent } from './grep-with-content.js';
-import { handleAtomicMultiEdit } from './atomic-multi-edit.js';
-import { handleWorkspaceSymbols } from './workspace-symbols.js';
-import { handleGetDocumentSymbols } from './document-symbols.js';
+// Import SPEC-v2 handler implementations
 import { handlePrecisionWrite } from './precision-write.js';
 import { handlePrecisionExec } from './precision-exec.js';
 import { handlePrecisionFetch } from './precision-fetch.js';
@@ -21,14 +15,8 @@ import { handlePrecisionGlob } from './precision-glob.js';
 import { handlePrecisionSymbols } from './precision-symbols.js';
 import { handlePrecisionEdit } from './precision-edit.js';
 
-// Re-export handlers for direct access
+// Re-export SPEC-v2 handlers for direct access
 export {
-  handleBatchRead,
-  handleSmartGlob,
-  handleGrepWithContent,
-  handleAtomicMultiEdit,
-  handleWorkspaceSymbols,
-  handleGetDocumentSymbols,
   handlePrecisionWrite,
   handlePrecisionExec,
   handlePrecisionFetch,
@@ -44,15 +32,9 @@ export {
 export type { ToolHandler };
 
 /**
- * Handler registry.
+ * Handler registry - SPEC-v2 tools only.
  */
 export const handlerRegistry = new Map<string, ToolHandler>([
-  ['batch_read', handleBatchRead],
-  ['smart_glob', handleSmartGlob],
-  ['grep_with_content', handleGrepWithContent],
-  ['atomic_multi_edit', handleAtomicMultiEdit],
-  ['workspace_symbols', handleWorkspaceSymbols],
-  ['get_document_symbols', handleGetDocumentSymbols],
   ['precision_write', handlePrecisionWrite],
   ['precision_exec', handlePrecisionExec],
   ['precision_fetch', handlePrecisionFetch],

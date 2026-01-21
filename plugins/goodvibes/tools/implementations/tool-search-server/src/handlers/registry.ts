@@ -15,59 +15,37 @@
 import type { ToolHandlerRegistry, HandlerContext, ToolHandlerResponse } from "./types.js";
 
 // Import all handlers from their respective modules
-import { handlePluginStatus } from "./status.js";
-import {
-  handleSearchSkills,
-  handleSearchAgents,
-  handleSearchTools,
-  handleRecommendSkills,
-} from "./search.js";
-import { handleGetSkillContent, handleGetAgentContent } from "./content.js";
+// NOTE: The following handlers have been moved to project-engine:
+// - handlePluginStatus, handleProjectIssues (project info)
+// - handleScaffoldProject, handleListTemplates (scaffolding)
+// - handleGenerateOpenApi, handleExplainCodebase (docs)
+// - handleGetDatabaseSchema, handleGetApiRoutes (schema/api)
+
 import { handleDetectStack, handleScanPatterns } from "./context.js";
-import { handleSkillDependencies } from "./dependencies.js";
 import { handleCheckVersions } from "./npm.js";
 import { handleFetchDocs } from "./docs.js";
-import { handleGenerateOpenApi, handleExplainCodebase } from "./docs/index.js";
-import { handleGetSchema, handleGetDatabaseSchema } from "./schema.js";
-import { handleGetApiRoutes } from "./schema/index.js";
+import { handleGetSchema } from "./schema.js";
 import { handleReadConfig } from "./config.js";
 import { handleValidateImplementation, handleCheckTypes } from "./validation.js";
 import { handleRunSmokeTest } from "./smoke-test.js";
-import { handleScaffoldProject, handleListTemplates } from "./scaffolding.js";
-import { handleProjectIssues } from "./issues.js";
 import {
-  handleFindReferences,
-  handleGoToDefinition,
-  handleGetImplementations,
-  handleRenameSymbol,
-  handleGetCodeActions,
-  handleApplyCodeAction,
-  handleGetCallHierarchy,
-  handleGetTypeHierarchy,
-  handleGetSymbolInfo,
-  handleGetSignatureHelp,
-  handleGetDocumentSymbols,
-  handleGetDiagnostics,
   handleFindDeadCode,
   handleGetApiSurface,
   handleDetectBreakingChanges,
   handleSemanticDiff,
-  handleWorkspaceSymbols,
   handleSafeDeleteCheck,
-  handleGetInlayHints,
+  handleValidateEditsPreview,
   handleValidateEditsPreview,
 } from "./lsp/index.js";
-import { handleAnalyzeDependencies, handleFindCircularDeps } from "./deps/index.js";
+// NOTE: Moved to project-engine:
+// - handleAnalyzeDependencies, handleFindCircularDeps (deps)
+// - handleFindTestsForFile, handleGetTestCoverage, handleSuggestTestCases (test)
+// - handleGetPrismaOperations (framework)
+// - handleAnalyzeBundle (build)
+
 import { handleParseErrorStack, handleExplainTypeError } from "./errors/index.js";
-import {
-  handleFindTestsForFile,
-  handleGetTestCoverage,
-  handleSuggestTestCases,
-} from "./test/index.js";
 import { handleScanForSecrets, handleCheckPermissions } from "./security/index.js";
-import { handleGetEnvConfig, handleGetConventions } from "./project/index.js";
-import { handleGetReactComponentTree, handleGetPrismaOperations } from "./framework/index.js";
-import { handleAnalyzeBundle } from "./build/index.js";
+import { handleGetConventions } from "./project/index.js";
 import {
   handleStartDevServer,
   handleWatchForErrors,
@@ -79,9 +57,17 @@ import {
   handleLighthouseAudit,
   handleVisualRegression,
 } from "./runtime/index.js";
+// NOTE: Moved to project-engine:
+// - handleResolveMergeConflict (edit/git)
+// - handleGenerateTypes (analysis)
+// - handleQueryDatabase (database)
+// - handleUpgradePackage (package)
+// - handleSyncApiTypes (sync)
+// - handleGenerateFixture (fixtures)
+// - handleCreatePullRequest (git)
+
 import {
   handleRetryWithLearning,
-  handleResolveMergeConflict,
   handleAtomicMultiEdit,
   handleAutoRollback,
   handleValidateApiContract,
@@ -89,28 +75,10 @@ import {
 import {
   handleProfileFunction,
   handleLogAnalyzer,
-  handleGenerateTypes,
   handleIdentifyTechDebt,
   handleDetectMemoryLeaks,
 } from "./analysis/index.js";
-import { handleQueryDatabase } from "./database/index.js";
 import { handleValidateEnvComplete } from "./env/index.js";
-import { handleUpgradePackage } from "./package/index.js";
-import { handleSyncApiTypes } from "./sync/index.js";
-import { handleGenerateFixture } from "./fixtures/index.js";
-import { handleCreatePullRequest } from "./git/index.js";
-import {
-  handleTraceComponentState,
-  handleAnalyzeRenderTriggers,
-  handleAnalyzeResponsiveBreakpoints,
-  handleAnalyzeStackingContext,
-  handleAnalyzeLayoutHierarchy,
-  handleDiagnoseOverflow,
-  handleGetAccessibilityTree,
-  handleGetSizingStrategy,
-  handleAnalyzeEventFlow,
-  handleAnalyzeTailwindConflicts,
-} from "./frontend/index.js";
 import {
   handleBatchRead,
   handleSmartGlob,
@@ -123,26 +91,18 @@ import {
 
 // Core types from main types module
 import type {
-  SearchSkillsArgs,
-  SearchArgs,
-  RecommendSkillsArgs,
-  GetContentArgs,
   DetectStackArgs,
   ScanPatternsArgs,
 } from "../types.js";
 
 // Handler-specific arg types - imported directly from source modules
-import type { SkillDependenciesArgs } from "./dependencies.js";
+// Type imports for remaining handlers
 import type { CheckVersionsArgs } from "./npm.js";
 import type { FetchDocsArgs } from "./docs.js";
-import type { GenerateOpenApiArgs, ExplainCodebaseArgs } from "./docs/index.js";
-import type { GetSchemaArgs, GetDatabaseSchemaArgs } from "./schema.js";
-import type { GetApiRoutesArgs } from "./schema/index.js";
+import type { GetSchemaArgs } from "./schema.js";
 import type { ReadConfigArgs } from "./config.js";
 import type { ValidateImplementationArgs, CheckTypesArgs } from "./validation.js";
 import type { RunSmokeTestArgs } from "./smoke-test.js";
-import type { ScaffoldProjectArgs, ListTemplatesArgs } from "./scaffolding.js";
-import type { ProjectIssuesArgs } from "./issues.js";
 
 // LSP arg types - imported from lsp/index.js which re-exports from individual modules
 import type {
@@ -168,26 +128,14 @@ import type {
   ValidateEditsPreviewArgs,
 } from "./lsp/index.js";
 
-// Dependency analysis arg types
-import type { AnalyzeDependenciesArgs, FindCircularDepsArgs } from "./deps/index.js";
-
 // Error handling arg types
 import type { ParseErrorStackArgs, ExplainTypeErrorArgs } from "./errors/index.js";
-
-// Test tool arg types
-import type { FindTestsForFileArgs, GetTestCoverageArgs, SuggestTestCasesArgs } from "./test/index.js";
 
 // Security arg types
 import type { ScanForSecretsArgs, CheckPermissionsArgs } from "./security/index.js";
 
 // Project arg types
 import type { GetEnvConfigArgs, GetConventionsArgs } from "./project/index.js";
-
-// Framework arg types
-import type { GetReactComponentTreeArgs, GetPrismaOperationsArgs } from "./framework/index.js";
-
-// Build arg types
-import type { AnalyzeBundleArgs } from "./build/index.js";
 
 // Process arg types
 import type { StartDevServerArgs, WatchForErrorsArgs, HealthMonitorArgs } from "./process/index.js";
@@ -203,7 +151,6 @@ import type {
 // Edit tool arg types
 import type {
   RetryWithLearningArgs,
-  ResolveMergeConflictArgs,
   AtomicMultiEditArgs,
   AutoRollbackArgs,
   ValidateApiContractArgs,
@@ -213,42 +160,12 @@ import type {
 import type {
   ProfileFunctionArgs,
   LogAnalyzerArgs,
-  GenerateTypesArgs,
   IdentifyTechDebtArgs,
   DetectMemoryLeaksArgs,
 } from "./analysis/index.js";
 
-// Database arg types
-import type { QueryDatabaseArgs } from "./database/index.js";
-
 // Environment arg types
 import type { ValidateEnvCompleteArgs } from "./env/index.js";
-
-// Package arg types
-import type { UpgradePackageArgs } from "./package/index.js";
-
-// Sync arg types
-import type { SyncApiTypesArgs } from "./sync/index.js";
-
-// Fixture arg types
-import type { GenerateFixtureArgs } from "./fixtures/index.js";
-
-// Git arg types
-import type { CreatePullRequestArgs } from "./git/index.js";
-
-// Frontend arg types
-import type {
-  TraceComponentStateArgs,
-  AnalyzeRenderTriggersArgs,
-  AnalyzeResponsiveBreakpointsArgs,
-  AnalyzeStackingContextArgs,
-  AnalyzeLayoutHierarchyArgs,
-  DiagnoseOverflowArgs,
-  GetAccessibilityTreeArgs,
-  GetSizingStrategyArgs,
-  AnalyzeEventFlowArgs,
-  AnalyzeTailwindConflictsArgs,
-} from "./frontend/index.js";
 
 // Batch tool arg types
 import type {
@@ -268,36 +185,6 @@ function noContext<TArgs>(
 }
 
 // =============================================================================
-// SEARCH HANDLERS
-// These handlers use Fuse.js indexes for searching skills, agents, and tools
-// =============================================================================
-const searchHandlers: ToolHandlerRegistry = {
-  search_skills: (ctx, args) =>
-    handleSearchSkills(ctx.skillsIndex, args as SearchSkillsArgs),
-  search_agents: (ctx, args) =>
-    handleSearchAgents(ctx.agentsIndex, args as SearchArgs),
-  search_tools: (ctx, args) =>
-    handleSearchTools(ctx.toolsIndex, args as SearchArgs),
-  recommend_skills: (ctx, args) =>
-    handleRecommendSkills(ctx.skillsIndex, args as RecommendSkillsArgs),
-};
-
-// =============================================================================
-// CONTENT HANDLERS
-// These handlers retrieve skill and agent content from the filesystem
-// =============================================================================
-const contentHandlers: ToolHandlerRegistry = {
-  get_skill_content: noContext(handleGetSkillContent),
-  get_agent_content: noContext(handleGetAgentContent),
-  skill_dependencies: (ctx, args) =>
-    handleSkillDependencies(
-      ctx.skillsIndex,
-      ctx.skillsRegistry,
-      args as SkillDependenciesArgs,
-    ),
-};
-
-// =============================================================================
 // CONTEXT HANDLERS
 // Stack detection, pattern scanning, and version checking
 // =============================================================================
@@ -309,22 +196,18 @@ const contextHandlers: ToolHandlerRegistry = {
 
 // =============================================================================
 // DOCS HANDLERS
-// Documentation fetching, OpenAPI generation, codebase explanation
+// Documentation fetching (moved: generate_openapi, explain_codebase → project-engine)
 // =============================================================================
 const docsHandlers: ToolHandlerRegistry = {
   fetch_docs: noContext(handleFetchDocs),
-  generate_openapi: noContext(handleGenerateOpenApi),
-  explain_codebase: noContext(handleExplainCodebase),
 };
 
 // =============================================================================
 // SCHEMA HANDLERS
-// Database schema parsing and API route discovery
+// Schema parsing (moved: get_database_schema, get_api_routes → project-engine)
 // =============================================================================
 const schemaHandlers: ToolHandlerRegistry = {
   get_schema: noContext(handleGetSchema),
-  get_database_schema: noContext(handleGetDatabaseSchema),
-  get_api_routes: noContext(handleGetApiRoutes),
   read_config: noContext(handleReadConfig),
 };
 
@@ -339,58 +222,33 @@ const validationHandlers: ToolHandlerRegistry = {
 };
 
 // =============================================================================
-// SCAFFOLDING HANDLERS
-// Project scaffolding and template management
+// SCAFFOLDING HANDLERS (moved to project-engine)
 // =============================================================================
-const scaffoldingHandlers: ToolHandlerRegistry = {
-  scaffold_project: noContext(handleScaffoldProject),
-  list_templates: noContext(handleListTemplates),
-};
+// const scaffoldingHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
-// STATUS HANDLERS
-// Plugin status and project issues
+// STATUS HANDLERS (moved to project-engine)
 // =============================================================================
-const statusHandlers: ToolHandlerRegistry = {
-  plugin_status: () => handlePluginStatus(),
-  project_issues: noContext(handleProjectIssues),
-};
+// const statusHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
 // LSP HANDLERS
 // Language Server Protocol based tools for code intelligence
 // =============================================================================
 const lspHandlers: ToolHandlerRegistry = {
-  find_references: noContext(handleFindReferences),
-  go_to_definition: noContext(handleGoToDefinition),
-  get_implementations: noContext(handleGetImplementations),
-  rename_symbol: noContext(handleRenameSymbol),
-  get_code_actions: noContext(handleGetCodeActions),
-  apply_code_action: noContext(handleApplyCodeAction),
-  get_call_hierarchy: noContext(handleGetCallHierarchy),
-  get_type_hierarchy: noContext(handleGetTypeHierarchy),
-  get_document_symbols: noContext(handleGetDocumentSymbols),
-  get_symbol_info: noContext(handleGetSymbolInfo),
-  get_signature_help: noContext(handleGetSignatureHelp),
-  get_diagnostics: noContext(handleGetDiagnostics),
+  // Note: Most LSP handlers are not yet implemented - only these 6 exist:
   find_dead_code: noContext(handleFindDeadCode),
   get_api_surface: noContext(handleGetApiSurface),
   detect_breaking_changes: noContext(handleDetectBreakingChanges),
   semantic_diff: noContext(handleSemanticDiff),
-  get_inlay_hints: noContext(handleGetInlayHints),
-  workspace_symbols: noContext(handleWorkspaceSymbols),
   safe_delete_check: noContext(handleSafeDeleteCheck),
   validate_edits_preview: noContext(handleValidateEditsPreview),
 };
 
 // =============================================================================
-// DEPENDENCY HANDLERS
-// Dependency analysis and circular dependency detection
+// DEPENDENCY HANDLERS (moved to project-engine)
 // =============================================================================
-const depsHandlers: ToolHandlerRegistry = {
-  analyze_dependencies: noContext(handleAnalyzeDependencies),
-  find_circular_deps: noContext(handleFindCircularDeps),
-};
+// const depsHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
 // ERROR HANDLERS
@@ -402,14 +260,9 @@ const errorHandlers: ToolHandlerRegistry = {
 };
 
 // =============================================================================
-// TEST HANDLERS
-// Test discovery, coverage, and test case suggestions
+// TEST HANDLERS (moved to project-engine)
 // =============================================================================
-const testHandlers: ToolHandlerRegistry = {
-  find_tests_for_file: noContext(handleFindTestsForFile),
-  get_test_coverage: noContext(handleGetTestCoverage),
-  suggest_test_cases: noContext(handleSuggestTestCases),
-};
+// const testHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
 // SECURITY HANDLERS
@@ -425,26 +278,18 @@ const securityHandlers: ToolHandlerRegistry = {
 // Environment config and conventions
 // =============================================================================
 const projectHandlers: ToolHandlerRegistry = {
-  get_env_config: noContext(handleGetEnvConfig),
   get_conventions: noContext(handleGetConventions),
 };
 
 // =============================================================================
-// FRAMEWORK HANDLERS
-// React component tree and Prisma operations
+// FRAMEWORK HANDLERS (moved to project-engine)
 // =============================================================================
-const frameworkHandlers: ToolHandlerRegistry = {
-  get_react_component_tree: noContext(handleGetReactComponentTree),
-  get_prisma_operations: noContext(handleGetPrismaOperations),
-};
+// const frameworkHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
-// BUILD HANDLERS
-// Bundle analysis
+// BUILD HANDLERS (moved to project-engine)
 // =============================================================================
-const buildHandlers: ToolHandlerRegistry = {
-  analyze_bundle: noContext(handleAnalyzeBundle),
-};
+// const buildHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
 // PROCESS HANDLERS
@@ -469,11 +314,10 @@ const runtimeHandlers: ToolHandlerRegistry = {
 
 // =============================================================================
 // EDIT HANDLERS
-// Retry with learning, merge conflicts, atomic edits, rollback
+// (moved: resolve_merge_conflict → project-engine)
 // =============================================================================
 const editHandlers: ToolHandlerRegistry = {
   retry_with_learning: noContext(handleRetryWithLearning),
-  resolve_merge_conflict: noContext(handleResolveMergeConflict),
   atomic_multi_edit: noContext(handleAtomicMultiEdit),
   auto_rollback: noContext(handleAutoRollback),
   validate_api_contract: noContext(handleValidateApiContract),
@@ -481,23 +325,19 @@ const editHandlers: ToolHandlerRegistry = {
 
 // =============================================================================
 // ANALYSIS HANDLERS
-// Function profiling, log analysis, type generation, tech debt
+// (moved: generate_types → project-engine)
 // =============================================================================
 const analysisHandlers: ToolHandlerRegistry = {
   profile_function: noContext(handleProfileFunction),
   log_analyzer: noContext(handleLogAnalyzer),
-  generate_types: noContext(handleGenerateTypes),
   identify_tech_debt: noContext(handleIdentifyTechDebt),
   detect_memory_leaks: noContext(handleDetectMemoryLeaks),
 };
 
 // =============================================================================
-// DATABASE HANDLERS
-// Database querying
+// DATABASE HANDLERS (moved to project-engine)
 // =============================================================================
-const databaseHandlers: ToolHandlerRegistry = {
-  query_database: noContext(handleQueryDatabase),
-};
+// const databaseHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
 // ENVIRONMENT HANDLERS
@@ -508,53 +348,24 @@ const envHandlers: ToolHandlerRegistry = {
 };
 
 // =============================================================================
-// PACKAGE HANDLERS
-// Package upgrades
+// PACKAGE HANDLERS (moved to project-engine)
 // =============================================================================
-const packageHandlers: ToolHandlerRegistry = {
-  upgrade_package: noContext(handleUpgradePackage),
-};
+// const packageHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
-// SYNC HANDLERS
-// API type synchronization
+// SYNC HANDLERS (moved to project-engine)
 // =============================================================================
-const syncHandlers: ToolHandlerRegistry = {
-  sync_api_types: noContext(handleSyncApiTypes),
-};
+// const syncHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
-// FIXTURE HANDLERS
-// Test fixture generation
+// FIXTURE HANDLERS (moved to project-engine)
 // =============================================================================
-const fixtureHandlers: ToolHandlerRegistry = {
-  generate_fixture: noContext(handleGenerateFixture),
-};
+// const fixtureHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
-// GIT HANDLERS
-// Pull request creation
+// GIT HANDLERS (moved to project-engine)
 // =============================================================================
-const gitHandlers: ToolHandlerRegistry = {
-  create_pull_request: noContext(handleCreatePullRequest),
-};
-
-// =============================================================================
-// FRONTEND HANDLERS
-// React component analysis, responsive breakpoints, accessibility
-// =============================================================================
-const frontendHandlers: ToolHandlerRegistry = {
-  trace_component_state: noContext(handleTraceComponentState),
-  analyze_render_triggers: noContext(handleAnalyzeRenderTriggers),
-  analyze_responsive_breakpoints: noContext(handleAnalyzeResponsiveBreakpoints),
-  analyze_stacking_context: noContext(handleAnalyzeStackingContext),
-  analyze_layout_hierarchy: noContext(handleAnalyzeLayoutHierarchy),
-  diagnose_overflow: noContext(handleDiagnoseOverflow),
-  get_accessibility_tree: noContext(handleGetAccessibilityTree),
-  get_sizing_strategy: noContext(handleGetSizingStrategy),
-  analyze_event_flow: noContext(handleAnalyzeEventFlow),
-  analyze_tailwind_conflicts: noContext(handleAnalyzeTailwindConflicts),
-};
+// const gitHandlers: ToolHandlerRegistry = {};
 
 // =============================================================================
 // BATCH HANDLERS
@@ -585,10 +396,6 @@ const batchHandlers: ToolHandlerRegistry = {
  * ```
  */
 export const TOOL_HANDLERS: ToolHandlerRegistry = {
-  // Search tools (require Fuse.js indexes)
-  ...searchHandlers,
-  // Content retrieval
-  ...contentHandlers,
   // Context gathering
   ...contextHandlers,
   // Documentation
@@ -597,26 +404,14 @@ export const TOOL_HANDLERS: ToolHandlerRegistry = {
   ...schemaHandlers,
   // Validation
   ...validationHandlers,
-  // Scaffolding
-  ...scaffoldingHandlers,
-  // Status
-  ...statusHandlers,
   // LSP Tools
   ...lspHandlers,
-  // Dependency Analysis
-  ...depsHandlers,
   // Error Tools
   ...errorHandlers,
-  // Test Tools
-  ...testHandlers,
   // Security
   ...securityHandlers,
   // Project Tools
   ...projectHandlers,
-  // Framework Tools
-  ...frameworkHandlers,
-  // Build Tools
-  ...buildHandlers,
   // Process Management
   ...processHandlers,
   // Runtime Tools
@@ -625,20 +420,8 @@ export const TOOL_HANDLERS: ToolHandlerRegistry = {
   ...editHandlers,
   // Analysis Tools
   ...analysisHandlers,
-  // Database Tools
-  ...databaseHandlers,
   // Environment Validation
   ...envHandlers,
-  // Package Management
-  ...packageHandlers,
-  // Sync Tools
-  ...syncHandlers,
-  // Fixture Generation
-  ...fixtureHandlers,
-  // Git Tools
-  ...gitHandlers,
-  // Frontend Analysis
-  ...frontendHandlers,
   // Batch Tools
   ...batchHandlers,
 };

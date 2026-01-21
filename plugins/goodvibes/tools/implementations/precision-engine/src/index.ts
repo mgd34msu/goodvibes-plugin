@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 /**
- * Precision Engine MCP Server
+ * Precision Engine MCP Server - SPEC-v2
  *
  * Token-efficient file operations with configurable output modes.
- * Tools: batch_read, smart_glob, grep_with_content, atomic_multi_edit,
- *        workspace_symbols, get_document_symbols
+ *
+ * SPEC-v2 Tools (9):
+ * - precision_grep: Search with precise output control
+ * - precision_read: Read files with extraction modes
+ * - precision_glob: Find files with intelligent filtering
+ * - precision_symbols: Search and analyze code symbols
+ * - precision_edit: Atomic file editing with validation
+ * - precision_write: Create/write files with encoding support
+ * - precision_exec: Execute shell commands with expectations
+ * - precision_fetch: Fetch URLs with extraction modes
+ * - discover: Lightweight parallel query execution
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
