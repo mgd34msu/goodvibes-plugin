@@ -1,15 +1,49 @@
 version: 1.0.0
-generated: '2026-01-21T15:44:16.246Z'
+generated: '2026-01-21T16:13:47.331Z'
 total: 8
 categories:
   _items:
+    - name: agent-factory
+      path: agent-factory
+      description: >-
+        Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
+        domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
+        delegates to skill-factory.
+      triggers: &ref_0
+        - agent
+        - factory
+        - meta
+        - that
+        - creates
+        - specialized
+        - claude
+        - code
+        - subagents
+        - you
+        - need
+        - build
+        - new
+        - specific
+        - domain
+        - researches
+        - thoroughly
+        - applies
+        - sdk
+        - patterns
+        - generates
+        - production
+        - ready
+        - files
+        - skills
+        - delegates
+        - skill
     - name: architect
       path: architect
       description: >-
         Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning
         implementation strategies, breaking down complex tasks, identifying dependencies and risks, or making
         architectural decisions.
-      triggers: &ref_0
+      triggers: &ref_1
         - architect
         - architecture
         - planning
@@ -37,7 +71,7 @@ categories:
         environment variables, or setting up monitoring and error tracking. Triggers on: deploy, deployment, hosting,
         CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring,
         Sentry, infrastructure.
-      triggers: &ref_1
+      triggers: &ref_2
         - deployer
         - deployment
         - devops
@@ -83,7 +117,7 @@ categories:
         Motion, accessibility, SSR, SSG, hydration. Also trigger on: "build an API", "create component", "add
         authentication", "implement feature", "fix bug", "add page", "build form", "connect database", "style this",
         "make responsive".
-      triggers: &ref_2
+      triggers: &ref_3
         - engineer
         - unified
         - full
@@ -163,41 +197,6 @@ categories:
         - style
         - this
         - make
-    - name: agent-factory
-      path: agent-factory
-      description: >-
-        Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
-        domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
-        delegates to skill-factory.
-      triggers: &ref_3
-        - factory
-        - meta
-        - agent
-        - that
-        - creates
-        - specialized
-        - claude
-        - code
-        - subagents
-        - you
-        - need
-        - build
-        - new
-        - specific
-        - domain
-        - researches
-        - thoroughly
-        - applies
-        - sdk
-        - patterns
-        - generates
-        - production
-        - ready
-        - files
-        - skills
-        - delegates
-        - skill
-        - creator
     - name: integrator
       path: integrator
       description: >-
@@ -345,7 +344,7 @@ categories:
         workflows, or tool integrations.
       triggers: &ref_6
         - skill
-        - creator
+        - factory
         - creates
         - high
         - quality
@@ -418,14 +417,21 @@ categories:
         - auto
         - pass
 search_index:
-  - name: architect
+  - name: agent-factory
     keywords: *ref_0
+    path: agent-factory
+    description: >-
+      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
+      domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
+      delegates to skill-factory.
+  - name: architect
+    keywords: *ref_1
     path: architect
     description: >-
       Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning implementation
       strategies, breaking down complex tasks, identifying dependencies and risks, or making architectural decisions.
   - name: deployer
-    keywords: *ref_1
+    keywords: *ref_2
     path: deployer
     description: >-
       Deployment and DevOps specialist. Use PROACTIVELY when deploying applications, configuring CI/CD pipelines,
@@ -434,7 +440,7 @@ search_index:
       CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring,
       Sentry, infrastructure.
   - name: engineer
-    keywords: *ref_2
+    keywords: *ref_3
     path: engineer
     description: >-
       Unified full-stack engineer for backend and frontend implementation. Use PROACTIVELY when user mentions: API,
@@ -444,13 +450,6 @@ search_index:
       responsive, CSS, Tailwind, styling, theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR,
       SSG, hydration. Also trigger on: "build an API", "create component", "add authentication", "implement feature",
       "fix bug", "add page", "build form", "connect database", "style this", "make responsive".
-  - name: agent-factory
-    keywords: *ref_3
-    path: agent-factory
-    description: >-
-      Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific
-      domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills,
-      delegates to skill-factory.
   - name: integrator
     keywords: *ref_4
     path: integrator
