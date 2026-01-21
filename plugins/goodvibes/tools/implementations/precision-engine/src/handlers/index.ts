@@ -15,6 +15,11 @@ import { handlePrecisionWrite } from './precision-write.js';
 import { handlePrecisionExec } from './precision-exec.js';
 import { handlePrecisionFetch } from './precision-fetch.js';
 import { handleDiscover } from './discover.js';
+import { handlePrecisionGrep } from './precision-grep.js';
+import { handlePrecisionRead } from './precision-read.js';
+import { handlePrecisionGlob } from './precision-glob.js';
+import { handlePrecisionSymbols } from './precision-symbols.js';
+import { handlePrecisionEdit } from './precision-edit.js';
 
 // Re-export handlers for direct access
 export {
@@ -28,6 +33,11 @@ export {
   handlePrecisionExec,
   handlePrecisionFetch,
   handleDiscover,
+  handlePrecisionGrep,
+  handlePrecisionRead,
+  handlePrecisionGlob,
+  handlePrecisionSymbols,
+  handlePrecisionEdit,
 };
 
 // Re-export ToolHandler type
@@ -47,6 +57,11 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['precision_exec', handlePrecisionExec],
   ['precision_fetch', handlePrecisionFetch],
   ['discover', handleDiscover],
+  ['precision_grep', handlePrecisionGrep],
+  ['precision_read', handlePrecisionRead],
+  ['precision_glob', handlePrecisionGlob],
+  ['precision_symbols', handlePrecisionSymbols],
+  ['precision_edit', handlePrecisionEdit],
 ]);
 
 /**
