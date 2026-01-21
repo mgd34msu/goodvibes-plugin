@@ -80,8 +80,21 @@ export function parseOutputMode(args: unknown): OutputMode {
     typeof (args as Record<string, unknown>).output_mode === 'string'
   ) {
     const mode = (args as Record<string, unknown>).output_mode as string;
-    if (['count_only', 'minimal', 'standard', 'verbose'].includes(mode)) {
+    if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(mode)) {
       return mode as OutputMode;
+    }
+  }
+  // Check for output.mode nested structure (SPEC-v2 format)
+  if (
+    typeof args === 'object' &&
+    args !== null &&
+    'output' in args &&
+    typeof (args as Record<string, unknown>).output === 'object' &&
+    (args as Record<string, unknown>).output !== null
+  ) {
+    const output = (args as Record<string, { mode?: string }>).output;
+    if (output.mode && ['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.mode)) {
+      return output.mode as OutputMode;
     }
   }
   return 'standard';

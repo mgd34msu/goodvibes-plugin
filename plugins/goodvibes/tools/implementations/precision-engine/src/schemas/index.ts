@@ -400,6 +400,7 @@ export const discoverSchema: Tool = {
 
 /**
  * precision_grep - Token-efficient search with precise output control.
+ * SPEC-v2 Section 13.1.1
  */
 export const precisionGrepSchema: Tool = {
   name: 'precision_grep',
@@ -420,8 +421,10 @@ export const precisionGrepSchema: Tool = {
             glob: { type: 'string', description: 'File pattern to search in' },
             path: { type: 'string', description: 'Directory path to search' },
             exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
-            case_sensitive: { type: 'boolean', description: 'Case sensitive search' },
+            case_sensitive: { type: 'boolean', description: 'Case sensitive search (default: true)' },
             whole_word: { type: 'boolean', description: 'Match whole words only' },
+            multiline: { type: 'boolean', description: 'Allow multiline matches (default: false)' },
+            include_binary: { type: 'boolean', description: 'Search binary files (default: false)' },
           },
           required: ['id', 'pattern'],
         },
@@ -430,15 +433,17 @@ export const precisionGrepSchema: Tool = {
         type: 'object',
         properties: {
           mode: { type: 'string', enum: ['count_only', 'files_only', 'locations', 'matches', 'context'] },
-          context_before: { type: 'integer', minimum: 0 },
-          context_after: { type: 'integer', minimum: 0 },
-          max_files: { type: 'integer', minimum: 1 },
-          max_matches_per_file: { type: 'integer', minimum: 1 },
-          max_total_matches: { type: 'integer', minimum: 1 },
+          context_before: { type: 'integer', minimum: 0, description: 'Lines before match (default: 0)' },
+          context_after: { type: 'integer', minimum: 0, description: 'Lines after match (default: 0)' },
+          expand_to: { type: 'string', enum: ['line', 'block', 'function', 'class'], description: 'Expand match context to enclosing scope' },
+          max_files: { type: 'integer', minimum: 1, description: 'Max files to return (default: 100)' },
+          max_matches_per_file: { type: 'integer', minimum: 1, description: 'Cap per file (default: 10)' },
+          max_total_matches: { type: 'integer', minimum: 1, description: 'Total cap (default: 100)' },
+          max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap' },
         },
         required: ['mode'],
       },
-      parallel: { type: 'boolean', default: true },
+      parallel: { type: 'boolean', default: true, description: 'Run queries in parallel (default: true)' },
       output_mode: outputModeSchema,
     },
     required: ['queries', 'output'],
@@ -447,74 +452,102 @@ export const precisionGrepSchema: Tool = {
 
 /**
  * precision_read - Read files with precise extraction modes.
+ * SPEC-v2 Section 13.1.2
  */
 export const precisionReadSchema: Tool = {
   name: 'precision_read',
   description:
-    'Read files with configurable extraction modes: content, outline, symbols, ast, or lines. ' +
-    'Supports per-file offsets and limits.',
+    'Token-efficient file reading with extraction modes. ' +
+    'Read full content, outlines, symbols, or specific line ranges. ' +
+    'Supports per-file range overrides and symbol filtering.',
   inputSchema: {
     type: 'object',
     properties: {
       files: {
         type: 'array',
-        description: 'Files to read with optional per-file settings',
         items: {
-          oneOf: [
-            { type: 'string' },
-            {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            extract: { type: 'string', enum: ['content', 'outline', 'symbols', 'ast', 'lines'] },
+            range: {
               type: 'object',
               properties: {
-                path: { type: 'string' },
-                offset: { type: 'integer', minimum: 0 },
-                limit: { type: 'integer', minimum: 1 },
-                extract: { type: 'string', enum: ['content', 'outline', 'symbols', 'ast', 'lines'] },
+                start: { type: 'integer', minimum: 1 },
+                end: { type: 'integer', minimum: 1 },
               },
-              required: ['path'],
             },
-          ],
+          },
+          required: ['path'],
         },
       },
       extract: { type: 'string', enum: ['content', 'outline', 'symbols', 'ast', 'lines'], default: 'content' },
-      output_mode: outputModeSchema,
-    },
-    required: ['files'],
-  },
-};
-
-/**
- * precision_glob - Find files with intelligent filtering and presets.
- */
-export const precisionGlobSchema: Tool = {
-  name: 'precision_glob',
-  description:
-    'Find files with presets, intelligent filtering, and previews. ' +
-    'Supports size/date filters, content matching, and depth limits.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns to match' },
-      preset: { type: 'string', enum: ['typescript', 'javascript', 'styles', 'config', 'tests', 'all'] },
-      exclude: { type: 'array', items: { type: 'string' } },
-      filters: {
+      symbol_filter: {
+        type: 'array',
+        items: { type: 'string', enum: ['function', 'method', 'class', 'interface', 'type', 'variable', 'constant', 'enum', 'property', 'namespace'] },
+      },
+      default_range: {
         type: 'object',
         properties: {
-          min_size: { type: 'integer', minimum: 0 },
-          max_size: { type: 'integer', minimum: 0 },
-          modified_after: { type: 'string', format: 'date-time' },
-          modified_before: { type: 'string', format: 'date-time' },
-          has_content: { type: 'string', description: 'Regex to match in file content' },
-          is_empty: { type: 'boolean' },
+          start: { type: 'integer', minimum: 1 },
+          end: { type: 'integer', minimum: 1 },
         },
       },
       output: {
         type: 'object',
         properties: {
-          mode: { type: 'string', enum: ['count_only', 'paths_only', 'with_stats', 'with_preview'] },
-          max_files: { type: 'integer', minimum: 1 },
-          preview_lines: { type: 'integer', minimum: 1 },
+          mode: { type: 'string', enum: ['count_only', 'minimal', 'standard', 'verbose'], default: 'standard' },
+          include_line_numbers: { type: 'boolean', default: true },
+          include_metadata: { type: 'boolean', default: false },
+          max_lines_per_file: { type: 'integer', minimum: 1 },
+          max_tokens: { type: 'integer', minimum: 1 },
+        },
+        required: ['mode'],
+      },
+    },
+    required: ['files', 'output'],
+  },
+};
+
+/**
+ * precision_glob - Find files with intelligent filtering and presets.
+ * SPEC-v2 Section 13.1.3
+ */
+export const precisionGlobSchema: Tool = {
+  name: 'precision_glob',
+  description:
+    'Token-efficient file finding with filters and optional preview. ' +
+    'Supports size/date filters, content matching, sorting, and gitignore.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns to match' },
+      preset: { type: 'string', enum: ['typescript', 'javascript', 'styles', 'config', 'tests', 'all'] },
+      exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
+      filters: {
+        type: 'object',
+        properties: {
+          min_size: { type: 'integer', minimum: 0, description: 'Minimum file size in bytes' },
+          max_size: { type: 'integer', minimum: 0, description: 'Maximum file size in bytes' },
+          modified_after: { type: 'string', format: 'date-time', description: 'ISO date - files modified after' },
+          modified_before: { type: 'string', format: 'date-time', description: 'ISO date - files modified before' },
+          has_content: { type: 'string', description: 'Regex to match in file content (quick grep filter)' },
+          is_empty: { type: 'boolean', description: 'Filter for empty files' },
         },
       },
+      output: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['count_only', 'paths_only', 'with_stats', 'with_preview'], description: 'Output verbosity mode' },
+          max_files: { type: 'integer', minimum: 1, default: 100, description: 'Maximum files to return' },
+          sort_by: { type: 'string', enum: ['name', 'size', 'modified'], description: 'Sort results by field' },
+          sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'asc', description: 'Sort order (ascending or descending)' },
+          preview_lines: { type: 'integer', minimum: 1, default: 3, description: 'Lines to preview for with_preview mode' },
+          max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap for output' },
+        },
+      },
+      respect_gitignore: { type: 'boolean', default: true, description: 'Respect .gitignore rules' },
+      follow_symlinks: { type: 'boolean', default: false, description: 'Follow symbolic links' },
       output_mode: outputModeSchema,
     },
   },
@@ -522,68 +555,125 @@ export const precisionGlobSchema: Tool = {
 
 /**
  * precision_symbols - Search and analyze code symbols.
+ * SPEC-v2 Section 13.1.4 compliant.
  */
 export const precisionSymbolsSchema: Tool = {
   name: 'precision_symbols',
   description:
-    'Search symbols across workspace or analyze document structure. ' +
+    'Token-efficient symbol search across workspace or specific files. ' +
     'Supports workspace-wide symbol search and per-file symbol extraction.',
   inputSchema: {
     type: 'object',
     properties: {
       mode: { type: 'string', enum: ['workspace', 'document'], default: 'workspace' },
-      query: { type: 'string', description: 'Symbol name pattern to search (workspace mode)' },
-      match_type: { type: 'string', enum: ['exact', 'prefix', 'substring', 'fuzzy'], default: 'substring' },
-      file: { type: 'string', description: 'Single file to analyze (document mode)' },
-      files: { type: 'array', items: { type: 'string' }, description: 'Multiple files (document mode)' },
-      kinds: { type: 'array', items: { type: 'string', enum: ['function', 'class', 'interface', 'type', 'variable', 'method', 'property', 'enum', 'constant'] } },
-      line_range: {
+      query: { type: 'string', description: 'Symbol name pattern (workspace mode)' },
+      files: { type: 'array', items: { type: 'string' }, description: 'Files to analyze (document mode)' },
+      kinds: {
+        type: 'array',
+        items: { type: 'string', enum: ['function', 'method', 'class', 'interface', 'type', 'variable', 'constant', 'enum', 'property', 'namespace'] },
+      },
+      exported_only: { type: 'boolean', default: false },
+      include_private: { type: 'boolean', default: false },
+      output: {
         type: 'object',
         properties: {
-          start: { type: 'integer', minimum: 1 },
-          end: { type: 'integer', minimum: 1 },
+          mode: { type: 'string', enum: ['count_only', 'names_only', 'locations', 'signatures', 'full'], default: 'locations' },
+          max_results: { type: 'integer', minimum: 1, default: 100 },
+          group_by: { type: 'string', enum: ['file', 'kind', 'none'], default: 'none' },
+          max_tokens: { type: 'integer', minimum: 1 },
         },
+        required: ['mode'],
       },
-      max_depth: { type: 'integer', minimum: 1 },
-      limit: { type: 'integer', minimum: 1, default: 50 },
-      output_mode: outputModeSchema,
     },
+    required: ['output'],
   },
 };
 
 /**
- * precision_edit - Atomic file editing with transactions.
+ * Validation step types per SPEC-v2 Section 13.1.5.
+ */
+const validationStepSchema = {
+  type: 'string' as const,
+  enum: ['typecheck', 'lint', 'test', 'build', 'env', 'api_contract', 'secrets', 'permissions'],
+  description: 'Validation step to run',
+};
+
+/**
+ * precision_edit - Token-efficient file editing with atomic transactions.
+ *
+ * SPEC-v2 Section 13.1.5 compliant.
+ * Replaces: System `Edit` tool
  */
 export const precisionEditSchema: Tool = {
   name: 'precision_edit',
   description:
-    'Apply precise edits with transaction support. ' +
-    'Supports line-based, search-replace, and unified diff strategies.',
+    'Token-efficient file editing with atomic transactions, ' +
+    'conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching modes.',
   inputSchema: {
     type: 'object',
     properties: {
       edits: {
         type: 'array',
-        description: 'Edit operations to perform',
         items: {
           type: 'object',
           properties: {
-            file: { type: 'string', description: 'Target file path' },
-            strategy: { type: 'string', enum: ['line', 'search_replace', 'diff'] },
-            start_line: { type: 'integer', minimum: 1, description: 'Start line (line strategy)' },
-            end_line: { type: 'integer', minimum: 1, description: 'End line (line strategy)' },
-            search: { type: 'string', description: 'Search pattern (search_replace strategy)' },
-            content: { type: 'string', description: 'New content' },
-            diff: { type: 'string', description: 'Unified diff (diff strategy)' },
-            regex: { type: 'boolean', default: false },
-            replace_all: { type: 'boolean', default: false },
+            id: { type: 'string' },
+            file: { type: 'string' },
+            find: { type: 'string' },
+            replace: { type: 'string' },
+            occurrence: {
+              oneOf: [
+                { type: 'string', enum: ['first', 'last', 'all'] },
+                { type: 'integer', minimum: 1 },
+              ],
+            },
+            hints: {
+              type: 'object',
+              properties: {
+                near_line: { type: 'integer' },
+                in_function: { type: 'string' },
+                in_class: { type: 'string' },
+                after: { type: 'string' },
+                before: { type: 'string' },
+              },
+            },
           },
-          required: ['file', 'strategy', 'content'],
+          required: ['file', 'find', 'replace'],
+        },
+      },
+      transaction: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['atomic', 'partial', 'none'], default: 'atomic' },
+          rollback_on_fail: { type: 'boolean', default: true },
+        },
+        required: ['mode'],
+      },
+      match: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['exact', 'fuzzy', 'regex', 'ast'], default: 'exact' },
+          case_sensitive: { type: 'boolean', default: true },
+          whitespace_sensitive: { type: 'boolean', default: true },
+        },
+      },
+      validate: {
+        type: 'object',
+        properties: {
+          before: { type: 'array', items: { type: 'string', enum: ['typecheck', 'lint', 'test', 'build'] } },
+          after: { type: 'array', items: { type: 'string', enum: ['typecheck', 'lint', 'test', 'build'] } },
         },
       },
       dry_run: { type: 'boolean', default: false },
-      backup: { type: 'boolean', default: false },
-      output_mode: outputModeSchema,
+      output: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['count_only', 'minimal', 'with_diff', 'verbose'], default: 'minimal' },
+          diff_context: { type: 'integer', minimum: 0, default: 3 },
+          max_tokens: { type: 'integer', minimum: 1 },
+        },
+        required: ['mode'],
+      },
     },
     required: ['edits'],
   },

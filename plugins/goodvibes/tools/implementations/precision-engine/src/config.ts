@@ -27,8 +27,10 @@ export const DEFAULTS = {
  */
 export const TOKEN_MULTIPLIERS: Record<OutputMode, number> = {
   count_only: 0.05,
+  exit_codes: 0.1,
   minimal: 0.2,
   standard: 0.6,
+  with_preview: 0.8,
   verbose: 1.0,
 };
 

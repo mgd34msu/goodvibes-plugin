@@ -6,11 +6,29 @@
 import type { LifecycleHooks, Hook, OperationHook, ErrorHook } from './lifecycle.js';
 import type { BuiltinHookName } from './hooks-builtin.js';
 
-export type HookReference = BuiltinHookName | HookConfigEntry;
+/**
+ * Filter configuration - supports string shorthand (e.g., "related") or full object
+ * @see SPEC-v2 Section 5.3
+ */
+export type FilterConfig = string | { types?: string[]; ids?: string[]; severity?: string[] };
+
+/**
+ * Shorthand hook syntax for inline configuration
+ * @example { test: { filter: "related", timeout_ms: 120000 } }
+ */
+export type HookShorthand = { [K in BuiltinHookName]?: { filter?: FilterConfig; timeout_ms?: number; max_retries?: number } };
+
+/**
+ * Hook reference - supports:
+ * - String builtin name: "test"
+ * - Full config entry: { handler: "test", filter: {...} }
+ * - Shorthand object: { test: { filter: "related" } }
+ */
+export type HookReference = BuiltinHookName | HookConfigEntry | HookShorthand;
 
 export interface HookConfigEntry {
   handler: string;
-  filter?: { types?: string[]; ids?: string[]; severity?: string[]; };
+  filter?: FilterConfig;
   timeout_ms?: number;
   max_retries?: number;
 }

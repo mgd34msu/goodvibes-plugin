@@ -26,7 +26,9 @@ type SymbolKind = 'function' | 'method' | 'class' | 'interface' | 'type' | 'vari
 interface FileReadSpec {
   path: string;
   extract?: ExtractMode;
-  lines?: { start: number; end: number };
+  // SPEC-v2 uses 'range', but we support 'lines' for backward compatibility
+  range?: { start: number; end: number };
+  lines?: { start: number; end: number };  // @deprecated - use 'range' instead
 }
 
 interface ReadOutput {
@@ -325,8 +327,8 @@ async function readSingleFile(
     const allLines = content.split('\n');
     result.line_count = allLines.length;
 
-    // Determine line range
-    const lineRange = spec.lines ?? defaultRange;
+    // Determine line range (SPEC-v2 uses 'range', fallback to 'lines' for backward compatibility)
+    const lineRange = spec.range ?? spec.lines ?? defaultRange;
     let lines = allLines;
     let truncated = false;
 

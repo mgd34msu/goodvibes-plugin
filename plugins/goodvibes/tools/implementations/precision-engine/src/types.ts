@@ -5,7 +5,26 @@
 /**
  * Output mode controls verbosity/token usage of responses.
  */
-export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
+export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose' | 'with_preview' | 'exit_codes';
+
+/**
+ * Validation step for post-write validation.
+ */
+export interface ValidationStep {
+  type: 'typescript' | 'eslint' | 'prettier' | 'custom';
+  command?: string;  // For custom validation
+  fix?: boolean;     // Attempt to auto-fix
+}
+
+/**
+ * Validation result from post-write validation.
+ */
+export interface ValidationResult {
+  valid: boolean;
+  errors?: string[];
+  warnings?: string[];
+  fixed?: number;
+}
 
 /**
  * Standard result wrapper for all precision tools.

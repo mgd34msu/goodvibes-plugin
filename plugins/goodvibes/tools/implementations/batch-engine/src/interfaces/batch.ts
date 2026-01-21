@@ -11,7 +11,7 @@ import type { LifecycleHooks } from './lifecycle.js';
 // LifecycleConfig is an alias for LifecycleHooks per SPEC-v2 Section 3.1/5.1
 export type LifecycleConfig = LifecycleHooks;
 
-export type ValidationStep = 'typecheck' | 'lint' | 'test' | 'build' | 'custom';
+export type ValidationStep = 'typecheck' | 'lint' | 'test' | 'build' | 'env' | 'api_contract' | 'secrets' | 'permissions';
 
 export interface OutputConfig {
   mode: 'count_only' | 'minimal' | 'standard' | 'verbose';

@@ -31,6 +31,8 @@ interface GrepQuery {
   exclude?: string[];
   case_sensitive?: boolean;
   whole_word?: boolean;
+  multiline?: boolean;
+  include_binary?: boolean;
 }
 
 interface GrepOutput {
@@ -57,6 +59,7 @@ interface GrepMatch {
   content?: string;
   before?: string[];
   after?: string[];
+  highlight?: [number, number];
 }
 
 interface GrepFileResult {
@@ -77,6 +80,17 @@ interface GrepResult {
 function estimateTokens(str: string): number {
   // Rough estimate: ~4 chars per token
   return Math.ceil(str.length / 4);
+}
+
+function isBinaryContent(buffer: Buffer): boolean {
+  // Check for null bytes in first 8KB - indicates binary
+  const checkLength = Math.min(buffer.length, 8192);
+  for (let i = 0; i < checkLength; i++) {
+    if (buffer[i] === 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function expandToBlock(lines: string[], lineIndex: number): { start: number; end: number } {
@@ -192,13 +206,17 @@ async function executeQuery(
   const maxTokens = output.max_tokens ?? Infinity;
   const contextBefore = output.context_before ?? 0;
   const contextAfter = output.context_after ?? 0;
+  const includeBinary = query.include_binary ?? false;
 
-  // Build regex
+  // Build regex with multiline support
   let patternStr = query.pattern;
   if (query.whole_word) {
     patternStr = `\\b${patternStr}\\b`;
   }
-  const flags = query.case_sensitive === false ? 'gi' : 'g';
+  let flags = query.case_sensitive === false ? 'gi' : 'g';
+  if (query.multiline) {
+    flags += 'm'; // Add multiline flag
+  }
   const regex = new RegExp(patternStr, flags);
 
   // Get files
@@ -225,7 +243,15 @@ async function executeQuery(
     }
 
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      // Read file as buffer first to check for binary content
+      const buffer = await fs.readFile(filePath);
+
+      // Skip binary files unless include_binary is true
+      if (!includeBinary && isBinaryContent(buffer)) {
+        continue;
+      }
+
+      const content = buffer.toString('utf-8');
       const lines = content.split('\n');
       const relativePath = path.relative(workDir, filePath);
 
@@ -260,9 +286,11 @@ async function executeQuery(
             grepMatch.column = match.index + 1;
           }
 
-          // Add content for matches mode and above
+          // Add content and highlight for matches mode and above
           if (output.mode === 'matches' || output.mode === 'context') {
             grepMatch.content = line;
+            // highlight: [start, end] position of match within content
+            grepMatch.highlight = [match.index, match.index + match[0].length];
             totalTokens += estimateTokens(line);
           }
 

@@ -26,8 +26,9 @@ export interface CommandSpec {
   timeout_ms?: number;
   capture?: CaptureSpec;
   expect?: {
-    exit_code?: number;
+    exit_code?: number | number[];
     stdout_contains?: string;
+    stdout_matches?: string;
     stderr_empty?: boolean;
   };
 }
@@ -86,7 +87,7 @@ export interface AgentSpec {
   agent: string;
   task: string;
   budget?: AgentBudget;
-  model?: string;
+  model?: 'sonnet' | 'opus' | 'haiku';
   inject?: AgentInject;
   chain_on_complete?: ChainSpec;
 }
@@ -103,7 +104,7 @@ export interface AgentOperation extends OperationBase {
  * Script specification - args is string[] not unknown[]
  */
 export interface ScriptSpec {
-  language: 'javascript' | 'typescript' | 'python' | 'shell';
+  language: 'bash' | 'python' | 'node' | 'deno' | 'bun';
   code: string;
   args?: string[];
 }
@@ -176,11 +177,22 @@ export type ValidationType =
   | 'permissions';
 
 /**
+ * Individual validation check
+ */
+export interface ValidationCheck {
+  kind: ValidationType;
+  options?: Record<string, unknown>;
+}
+
+/**
  * Validation specification
  */
 export interface ValidationSpec {
-  kind: ValidationType;
-  options?: Record<string, unknown>;
+  checks: ValidationCheck[];
+  options?: {
+    fix?: boolean;
+    paths?: string[];
+  };
 }
 
 /**
@@ -189,10 +201,6 @@ export interface ValidationSpec {
 export interface ValidateOperation extends OperationBase {
   type: 'validate';
   validations: ValidationSpec[];
-  options?: {
-    fix?: boolean;
-    paths?: string[];
-  };
 }
 
 /**
@@ -207,11 +215,11 @@ export type DiagnosisKind =
   | 'bundle_size';
 
 /**
- * Diagnosis specification
+ * Diagnosis specification - uses `subject` and `context` per SPEC-v2
  */
 export interface DiagnosisSpec {
   kind: DiagnosisKind;
-  input: string;
+  subject: string;
   context?: Record<string, unknown>;
 }
 
@@ -279,6 +287,22 @@ export interface SetOperation extends OperationBase {
 }
 
 /**
+ * Delete operation - remove state by keys
+ */
+export interface DeleteOperation extends OperationBase {
+  type: 'delete_state';
+  keys: string[];
+}
+
+/**
+ * List operation - list all state keys
+ */
+export interface ListOperation extends OperationBase {
+  type: 'list';
+  prefix?: string;
+}
+
+/**
  * Track operation - record decisions, patterns, failures, tasks, metrics
  */
 export interface TrackOperation extends OperationBase {
@@ -298,6 +322,23 @@ export interface MemoryQueryOperation extends OperationBase {
 // Union Types
 // =============================================================================
 
+/**
+ * Discriminated union for EXEC operations
+ */
 export type ExecOperation = CommandOperation | AgentOperation | ScriptOperation;
+
+/**
+ * Discriminated union for QUERY operations
+ */
 export type QueryOperation = LspOperation | ValidateOperation | DiagnoseOperation;
-export type StateOperation = GetOperation | SetOperation | TrackOperation | MemoryQueryOperation;
+
+/**
+ * Discriminated union for STATE operations with proper 'get'|'set'|'delete'|'list' types
+ */
+export type StateOperation =
+  | GetOperation
+  | SetOperation
+  | DeleteOperation
+  | ListOperation
+  | TrackOperation
+  | MemoryQueryOperation;

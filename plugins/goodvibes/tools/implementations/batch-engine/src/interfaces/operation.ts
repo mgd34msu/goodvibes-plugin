@@ -5,10 +5,10 @@
 
 export type OperationType =
   | 'files' | 'search' | 'glob' | 'symbols' | 'url' | 'analyze'
-  | 'create' | 'edit' | 'delete' | 'move' | 'copy'
+  | 'create' | 'edit' | 'delete' | 'move' | 'copy' | 'atomic'
   | 'command' | 'agent' | 'script'
   | 'lsp' | 'validate' | 'diagnose'
-  | 'get' | 'set' | 'track' | 'query';
+  | 'get' | 'set' | 'delete_state' | 'list' | 'track' | 'query';
 
 export interface Condition {
   expression: string;
