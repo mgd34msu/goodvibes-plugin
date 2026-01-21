@@ -238,33 +238,96 @@ batch:
 
 ## Workflows
 
-### 1. Initialize Deployment Configuration
+### 1. Initialize Deployment Configuration (SPEC-v2)
 
 **Batch operation to analyze project and create deployment configs.**
 
-```yaml
-operations:
-  read:
-    - id: detect-stack
-      type: analyze
-      kind: stack
-    - id: find-configs
-      type: glob
-      patterns: ["package.json", "next.config.*", "vite.config.*", "tsconfig.json"]
+Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
 
-  write:
-    - id: create-dockerfile
-      type: create
-      depends_on: [detect-stack]
-      files:
-        - path: Dockerfile
-          content: "{{generate_dockerfile(detect-stack.results)}}"
-    - id: create-ci
-      type: create
-      depends_on: [detect-stack]
-      files:
-        - path: .github/workflows/deploy.yml
-          content: "{{generate_ci_config(detect-stack.results)}}"
+```yaml
+batch:
+  id: initialize-deployment
+
+  operations:
+    # Phase 1: Analyze project
+    query:
+      - id: detect-stack
+        type: analysis
+        kind: stack
+
+      - id: find-configs
+        type: glob
+        patterns: ["package.json", "next.config.*", "vite.config.*", "tsconfig.json"]
+        output:
+          mode: paths_only
+
+    # Phase 2: Create deployment configs
+    write:
+      - id: create-dockerfile
+        type: create
+        depends_on: [detect-stack]
+        files:
+          - path: Dockerfile
+            content: "{{generate_dockerfile(detect-stack.results)}}"
+            validate: dockerfile
+
+      - id: create-ci
+        type: create
+        depends_on: [detect-stack]
+        files:
+          - path: .github/workflows/deploy.yml
+            content: "{{generate_ci_config(detect-stack.results)}}"
+            validate: yaml
+
+      - id: create-dockerignore
+        type: create
+        files:
+          - path: .dockerignore
+            content: |
+              node_modules
+              .next
+              .git
+              dist
+              coverage
+              *.log
+
+    # Phase 3: Validate configs
+    exec:
+      - id: validate-docker
+        type: command
+        depends_on: [create-dockerfile]
+        commands:
+          - cmd: "docker build --dry-run -t test ."
+            expect: { exit_code: 0 }
+
+  config:
+    transaction:
+      mode: atomic
+      rollback_on_fail: true
+
+    checkpoint:
+      enabled: true
+      before: [write]
+      after: [validate-docker]
+
+    output:
+      mode: standard
+```
+
+### Analysis-Engine Integration for Deployment
+
+```bash
+# Detect project stack
+mcp-cli call plugin_goodvibes_analysis-engine/detect_stack
+
+# Check environment variables
+mcp-cli call plugin_goodvibes_analysis-engine/env_audit
+
+# Scan for secrets (pre-deployment)
+mcp-cli call plugin_goodvibes_analysis-engine/scan_for_secrets
+
+# Check file permissions
+mcp-cli call plugin_goodvibes_analysis-engine/check_permissions
 ```
 
 ### 2. Docker Multi-Stage Build
@@ -747,12 +810,58 @@ If deployment fails in production:
 
 ```yaml
 # Emergency rollback batch
-operations:
-  exec:
-    - id: rollback
-      type: command
-      commands:
-        - cmd: "vercel rollback --yes"
-          timeout_ms: 60000
-        - cmd: "echo 'Rollback initiated' | slack-notify"
+batch:
+  id: emergency-rollback
+
+  operations:
+    exec:
+      - id: rollback
+        type: command
+        commands:
+          - cmd: "vercel rollback --yes"
+            timeout_ms: 60000
+            expect: { exit_code: 0 }
+
+      - id: notify
+        type: command
+        depends_on: [rollback]
+        commands:
+          - cmd: "echo 'Rollback completed at $(date)' | slack-notify"
+
+  config:
+    checkpoint:
+      enabled: true
+      before: [rollback]
+
+    state:
+      track: true
+      file: ".goodvibes/state/deployment.json"
 ```
+
+## Deployment State Tracking
+
+Track deployment state for rollback and auditing:
+
+```typescript
+// .goodvibes/state/deployment.json
+{
+  "current_version": "v1.2.3",
+  "previous_version": "v1.2.2",
+  "environment": "production",
+  "deployed_at": "2026-01-21T10:30:00Z",
+  "deployed_by": "github-actions",
+  "commit_sha": "abc123def456",
+  "status": "healthy",
+  "rollback_available": true,
+  "checkpoints": [
+    {
+      "id": "cp_deploy_20260121_103000",
+      "operation": "deploy",
+      "timestamp": "2026-01-21T10:30:00Z",
+      "status": "success"
+    }
+  ]
+}
+```
+
+Use batch checkpoints to create restore points before critical operations.

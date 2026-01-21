@@ -1,0 +1,388 @@
+# Example Batch: API Endpoint Implementation
+# Adds a new API endpoint with validation and tests
+#
+# This batch demonstrates:
+# - Adding new functionality to existing codebase
+# - Following established patterns
+# - Schema validation with Zod
+# - OpenAPI spec validation
+# - Incremental implementation with validation
+
+metadata:
+  name: add-api-endpoint
+  description: Add POST /api/posts endpoint with validation
+  author: goodvibes
+  version: 1.0.0
+  tags: [api, endpoint, validation]
+
+operations:
+
+  # ============================================================
+  # PHASE 1: ANALYZE EXISTING PATTERNS
+  # Understand how APIs are structured in this codebase
+  # ============================================================
+
+  read:
+    # Find existing API route patterns
+    - id: find-api-routes
+      type: search
+      pattern: "export async function (GET|POST|PUT|PATCH|DELETE)"
+      glob: "src/app/api/**/*.{ts,js}"
+      output:
+        mode: content
+        context:
+          before: 3
+          after: 15
+
+    # Look for validation schemas (Zod/Yup/Joi)
+    - id: find-validation-schemas
+      type: search
+      pattern: "z\\.(object|string|number|array|enum)|yup\\.|Joi\\."
+      glob: "src/**/*.{ts,js}"
+      output:
+        mode: content
+        context:
+          before: 2
+          after: 10
+
+    # Check existing error handling patterns
+    - id: find-error-handling
+      type: search
+      pattern: "Response\\.json.*error|new Response.*status.*[45]\\d\\d"
+      glob: "src/app/api/**/*.ts"
+      output:
+        mode: content
+
+    # Get API route structure
+    - id: analyze-api-structure
+      type: files
+      targets: ["src/app/api/**"]
+      extract: outline
+      options:
+        depth: 4
+
+    # Look for related database models
+    - id: find-post-model
+      type: search
+      pattern: "(interface|type|model)\\s+Post"
+      glob: "src/**/*.{ts,prisma}"
+      output:
+        mode: content
+
+  # ============================================================
+  # PHASE 2-7: EXECUTION AND QUERY OPERATIONS
+  # Implementation, validation, and state tracking
+  # ============================================================
+
+  exec:
+    # ============================================================
+    # API endpoint implementation
+    # ============================================================
+
+    # Engineer implements the endpoint
+    - id: implement-endpoint
+      type: agent
+      agent: goodvibes:engineer
+      task: |
+        Implement a new API endpoint: POST /api/posts
+
+        **Endpoint specification:**
+        - Method: POST
+        - Path: /api/posts
+        - Purpose: Create a new blog post
+        - Authentication: Required (JWT token)
+
+        **Request body schema (validate with Zod):**
+        ```typescript
+        {
+          title: string (min: 1, max: 200),
+          content: string (min: 1),
+          published: boolean (default: false),
+          tags?: string[] (optional)
+        }
+        ```
+
+        **Response:**
+        - Success (201): Return created post with id, createdAt, updatedAt
+        - Bad Request (400): Validation errors
+        - Unauthorized (401): Missing or invalid token
+        - Internal Error (500): Database or server errors
+
+        **Requirements:**
+        1. Follow existing API route patterns found in the codebase
+        2. Create Zod validation schema
+        3. Extract and verify JWT token from Authorization header
+        4. Validate request body against schema
+        5. Save to database using Prisma (or existing ORM)
+        6. Return proper HTTP status codes
+        7. Include error handling for all edge cases
+        8. Add TypeScript types for request/response
+
+        **Files to create/modify:**
+        - src/app/api/posts/route.ts (new endpoint)
+        - src/lib/validations/post.ts (validation schema)
+        - Update src/app/api/posts/route.ts if exists
+
+        **DO NOT:**
+        - Skip validation
+        - Return raw database errors to client
+        - Use 'any' type
+
+      depends_on:
+        - find-api-routes
+        - find-validation-schemas
+        - find-error-handling
+        - find-post-model
+
+      inject:
+        existing_patterns: "{{find-api-routes.results}}"
+        validation_examples: "{{find-validation-schemas.results}}"
+        error_patterns: "{{find-error-handling.results}}"
+        post_model: "{{find-post-model.results}}"
+
+      config:
+        timeout_ms: 600000
+        max_turns: 40
+
+    # ============================================================
+    # Validation commands
+    # ============================================================
+
+    # TypeScript type checking
+    - id: typecheck
+      type: command
+      commands:
+        - cmd: "npm run typecheck"
+          expect:
+            exit_code: 0
+            stderr_empty: true
+      depends_on:
+        - implement-endpoint
+
+    # Lint check
+    - id: lint
+      type: command
+      commands:
+        - cmd: "npm run lint"
+          expect:
+            exit_code: 0
+      depends_on:
+        - implement-endpoint
+
+    # Run API tests if they exist
+    - id: run-api-tests
+      type: command
+      commands:
+        - cmd: "npm run test -- --grep 'API|/api/'"
+          expect:
+            exit_code: 0
+          # Optional: might not exist
+          continue_on_error: true
+      depends_on:
+        - typecheck
+      config:
+        timeout_ms: 300000
+
+  # ============================================================
+  # PHASE 4-7: QUERY OPERATIONS
+  # OpenAPI validation, integration checks, and state tracking
+  # ============================================================
+
+  query:
+    # ============================================================
+    # OpenAPI validation
+    # ============================================================
+    # Validate OpenAPI specification
+    - id: validate-openapi
+      type: analyze
+      kind: openapi_validate
+      target: "src/app/api/posts/route.ts"
+      options:
+        check_schemas: true
+        check_responses: true
+
+      validation:
+        expect:
+          valid: true
+        on_fail:
+          action: warning
+          message: "OpenAPI validation failed. Update spec or fix endpoint."
+
+      depends_on:
+        - implement-endpoint
+
+    # ============================================================
+    # Integration verification
+    # ============================================================
+    # Verify endpoint is exported properly
+    - id: verify-route-export
+      type: search
+      pattern: "export async function POST"
+      glob: "src/app/api/posts/route.ts"
+      output:
+        mode: count
+
+      validation:
+        expect:
+          count: 1
+        on_fail:
+          action: error
+          message: "POST function not properly exported"
+
+      depends_on:
+        - implement-endpoint
+
+    # Verify Zod schema exists
+    - id: verify-validation-schema
+      type: search
+      pattern: "z\\.object\\(.*title.*content"
+      glob: "src/lib/validations/post.ts"
+      output:
+        mode: count
+
+      validation:
+        expect:
+          count: { min: 1 }
+        on_fail:
+          action: error
+          message: "Validation schema not found or incomplete"
+
+      depends_on:
+        - implement-endpoint
+
+    # Build the project
+    - id: build
+      type: command
+      commands:
+        - cmd: "npm run build"
+          expect:
+            exit_code: 0
+      depends_on:
+        - typecheck
+        - lint
+      config:
+        timeout_ms: 300000
+
+    # ============================================================
+    # State tracking
+    # ============================================================
+
+    - id: track-api-endpoint
+      type: state_write
+      operation: track
+      entries:
+        - kind: api_endpoint
+          data:
+            method: POST
+            path: "/api/posts"
+            description: "Create a new blog post"
+            authentication: "JWT token required"
+            request_schema:
+              title: "string"
+              content: "string"
+              published: "boolean"
+              tags: "string[] (optional)"
+            responses:
+              201: "Post created successfully"
+              400: "Validation error"
+              401: "Unauthorized"
+              500: "Internal server error"
+            location: "src/app/api/posts/route.ts"
+            validation: "src/lib/validations/post.ts"
+
+        - kind: decision
+          data:
+            what: "Added POST /api/posts endpoint"
+            why: "Enable creating blog posts via API"
+            category: api
+            confidence: high
+
+      depends_on:
+        - build
+
+# ============================================================
+# TRANSACTION CONFIGURATION
+# ============================================================
+
+transaction:
+  mode: atomic
+
+  checkpoints:
+    - after: find-post-model
+      name: discovery-complete
+    - after: implement-endpoint
+      name: implementation-complete
+    - after: validate-openapi
+      name: validation-complete
+    - after: build
+      name: build-complete
+
+# ============================================================
+# VALIDATION CONFIGURATION
+# ============================================================
+
+validation:
+  after:
+    - typecheck
+    - lint
+    - build
+
+  rules:
+    # Ensure proper error handling
+    - name: has-error-handling
+      pattern: "try.*catch|Response\\.json.*error"
+      location: "src/app/api/posts/route.ts"
+      severity: error
+      message: "API endpoint must have error handling"
+
+    # Ensure authentication check
+    - name: has-auth-check
+      pattern: "Authorization|token|auth"
+      location: "src/app/api/posts/route.ts"
+      severity: error
+      message: "API endpoint must check authentication"
+
+    # Ensure validation
+    - name: has-validation
+      pattern: "z\\.object|parse|safeParse|validate"
+      location: "src/app/api/posts/route.ts"
+      severity: error
+      message: "API endpoint must validate input"
+
+# ============================================================
+# RECOVERY CONFIGURATION
+# ============================================================
+
+recovery:
+  checkpoint: true
+  rollback_on_fail: true
+
+  retry:
+    max_attempts: 2
+    backoff: linear
+    initial_delay_ms: 1000
+
+  on_fail:
+    - action: create_report
+      output: ".goodvibes/logs/api-endpoint-failure.md"
+    - action: notify
+      level: error
+
+# ============================================================
+# OUTPUT CONFIGURATION
+# ============================================================
+
+output:
+  mode: standard
+  show_diffs: true
+  include_reasoning: true
+
+  report:
+    format: markdown
+    output: ".goodvibes/logs/api-endpoint-report.md"
+    sections:
+      - summary
+      - changes
+      - validation_results
+      - api_documentation
+      - metrics

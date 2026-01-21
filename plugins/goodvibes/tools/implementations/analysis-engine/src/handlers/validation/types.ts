@@ -79,3 +79,21 @@ export interface CheckTypesArgs {
   strict?: boolean;
   include_suggestions?: boolean;
 }
+
+/**
+ * Arguments for the validate_api_contract MCP tool.
+ * @property spec_path - Path to OpenAPI spec file (JSON or YAML)
+ * @property base_url - Base URL of running API
+ * @property endpoints - Optional array of specific endpoints to test (default: all)
+ * @property include_examples - Use spec examples as request data (default: true)
+ * @property timeout - Per-request timeout in ms (default: 10000)
+ * @property auth_header - Authorization header value if needed
+ */
+export interface ValidateApiContractArgs {
+  spec_path: string;
+  base_url: string;
+  endpoints?: string[];
+  include_examples?: boolean;
+  timeout?: number;
+  auth_header?: string;
+}

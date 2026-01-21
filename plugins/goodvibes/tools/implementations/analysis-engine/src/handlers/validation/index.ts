@@ -16,7 +16,7 @@ import {
   type ToolResponse,
 } from '../response-utils.js';
 
-import { ValidationIssue, ValidationContext, SkillPatterns, ValidateImplementationArgs, CheckTypesArgs } from './types.js';
+import { ValidationIssue, ValidationContext, SkillPatterns, ValidateImplementationArgs, CheckTypesArgs, ValidateApiContractArgs } from './types.js';
 import { runSecurityChecks } from './security-checks.js';
 import { runStructureChecks } from './structure-checks.js';
 import { runErrorHandlingChecks } from './error-handling-checks.js';
@@ -24,9 +24,11 @@ import { runTypeScriptChecks } from './typescript-checks.js';
 import { runNamingChecks } from './naming-checks.js';
 import { runBestPracticesChecks } from './best-practices-checks.js';
 import { runSkillPatternChecks } from './skill-pattern-checks.js';
+import { handleValidateApiContract } from './api-contract.js';
 
 // Re-export types
-export { ValidateImplementationArgs, CheckTypesArgs } from './types.js';
+export { ValidateImplementationArgs, CheckTypesArgs, ValidateApiContractArgs } from './types.js';
+export { handleValidateApiContract } from './api-contract.js';
 
 /**
  * Handles the validate_implementation MCP tool call.

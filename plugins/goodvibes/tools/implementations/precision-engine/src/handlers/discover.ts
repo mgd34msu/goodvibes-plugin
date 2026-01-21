@@ -29,10 +29,18 @@ interface DiscoverInput {
   output_mode?: DiscoverOutputMode;
 }
 
+interface LocationInfo {
+  file: string;
+  line: number;
+  column: number;
+  match?: string;
+}
+
 interface QueryResult {
+  type?: 'grep' | 'glob' | 'symbols';
   count: number;
   files?: string[];
-  locations?: Array<{ file: string; line: number }>;
+  locations?: LocationInfo[];
   error?: string;
 }
 
@@ -41,11 +49,19 @@ async function executeGrepQuery(
   outputMode: DiscoverOutputMode
 ): Promise<QueryResult> {
   if (!query.pattern) {
-    return { count: 0, error: "Missing 'pattern' for grep query" };
+    return { type: 'grep', count: 0, error: "Missing 'pattern' for grep query" };
   }
 
   try {
-    const mode = outputMode === 'count_only' ? 'count_only' : 'files_only';
+    let mode: 'count_only' | 'files_only' | 'locations';
+    if (outputMode === 'count_only') {
+      mode = 'count_only';
+    } else if (outputMode === 'locations') {
+      mode = 'locations';
+    } else {
+      mode = 'files_only';
+    }
+
     const result = await handlePrecisionGrep({
       queries: [{
         id: 'discover-grep',
@@ -62,25 +78,66 @@ async function executeGrepQuery(
 
     const content = result.content?.[0];
     if (!content || content.type !== 'text') {
-      return { count: 0, files: [] };
+      return { type: 'grep', count: 0, files: [] };
     }
 
     const parsed = JSON.parse(content.text);
     if (!parsed.success) {
-      return { count: 0, error: parsed.error };
+      return { type: 'grep', count: 0, error: parsed.error };
     }
 
     const data = parsed.data;
+    const queryResult = data.queries?.['discover-grep'];
 
-    if (outputMode === 'count_only') {
-      const count = data.results?.['discover-grep']?.total_matches || 0;
-      return { count };
+    // If no results, return empty based on mode
+    if (!queryResult) {
+      if (outputMode === 'locations') {
+        return { type: 'grep', count: 0, locations: [] };
+      } else if (outputMode === 'count_only') {
+        return { type: 'grep', count: 0 };
+      } else {
+        return { type: 'grep', count: 0, files: [] };
+      }
     }
 
-    const files = data.results?.['discover-grep']?.files || [];
-    return { count: files.length, files };
+    if (outputMode === 'count_only') {
+      const count = queryResult.match_count || 0;
+      return { type: 'grep', count };
+    }
+
+    if (outputMode === 'locations') {
+      // Extract locations from grep results
+      const locations: LocationInfo[] = [];
+      const files = queryResult.files || [];
+
+      for (const fileResult of files) {
+        const filePath = fileResult.file;
+        const matches = fileResult.matches || [];
+
+        for (const match of matches) {
+          locations.push({
+            file: filePath,
+            line: match.line,
+            column: match.column || 1,
+            match: match.content?.trim(),
+          });
+        }
+      }
+
+      return {
+        type: 'grep',
+        count: locations.length,
+        locations,
+      };
+    }
+
+    // files_only mode
+    const files = (queryResult.files || []).map((f: any) =>
+      typeof f === 'string' ? f : f.file
+    );
+    return { type: 'grep', count: files.length, files };
   } catch (e) {
-    return { count: 0, error: (e as Error).message };
+    return { type: 'grep', count: 0, error: (e as Error).message };
   }
 }
 
@@ -89,11 +146,19 @@ async function executeGlobQuery(
   outputMode: DiscoverOutputMode
 ): Promise<QueryResult> {
   if (!query.patterns || query.patterns.length === 0) {
-    return { count: 0, error: "Missing 'patterns' for glob query" };
+    return { type: 'glob', count: 0, error: "Missing 'patterns' for glob query" };
   }
 
   try {
-    const mode = outputMode === 'count_only' ? 'count_only' : 'paths_only';
+    let mode: 'count_only' | 'paths_only' | 'with_stats';
+    if (outputMode === 'count_only') {
+      mode = 'count_only';
+    } else if (outputMode === 'locations') {
+      mode = 'with_stats'; // Get stats for locations mode
+    } else {
+      mode = 'paths_only';
+    }
+
     const result = await handlePrecisionGlob({
       patterns: query.patterns,
       output: {
@@ -105,24 +170,51 @@ async function executeGlobQuery(
 
     const content = result.content?.[0];
     if (!content || content.type !== 'text') {
-      return { count: 0, files: [] };
+      return { type: 'glob', count: 0, files: [] };
     }
 
     const parsed = JSON.parse(content.text);
     if (!parsed.success) {
-      return { count: 0, error: parsed.error };
+      return { type: 'glob', count: 0, error: parsed.error };
     }
 
     const data = parsed.data;
 
     if (outputMode === 'count_only') {
-      return { count: data.total_files || 0 };
+      return { type: 'glob', count: data.total_files || 0 };
     }
 
-    const files = data.files || [];
-    return { count: files.length, files };
+    if (outputMode === 'locations') {
+      // Convert glob results with stats to locations
+      const locations: LocationInfo[] = [];
+      const files = data.files || [];
+
+      for (const fileInfo of files) {
+        const filePath = typeof fileInfo === 'string' ? fileInfo : fileInfo.path;
+        if (filePath) {
+          // Glob returns files, not specific lines, so use line 1, column 1
+          locations.push({
+            file: filePath,
+            line: 1,
+            column: 1,
+          });
+        }
+      }
+
+      return {
+        type: 'glob',
+        count: locations.length,
+        locations,
+      };
+    }
+
+    // files_only mode
+    const files = (data.files || []).map((f: any) =>
+      typeof f === 'string' ? f : f.path
+    ).filter(Boolean);
+    return { type: 'glob', count: files.length, files };
   } catch (e) {
-    return { count: 0, error: (e as Error).message };
+    return { type: 'glob', count: 0, error: (e as Error).message };
   }
 }
 
@@ -131,11 +223,19 @@ async function executeSymbolsQuery(
   outputMode: DiscoverOutputMode
 ): Promise<QueryResult> {
   if (!query.query) {
-    return { count: 0, error: "Missing 'query' for symbols query" };
+    return { type: 'symbols', count: 0, error: "Missing 'query' for symbols query" };
   }
 
   try {
-    const mode = outputMode === 'count_only' ? 'count_only' : 'names_only';
+    let mode: 'count_only' | 'names_only' | 'locations';
+    if (outputMode === 'count_only') {
+      mode = 'count_only';
+    } else if (outputMode === 'locations') {
+      mode = 'locations';
+    } else {
+      mode = 'names_only';
+    }
+
     const result = await handlePrecisionSymbols({
       mode: 'workspace',
       query: query.query,
@@ -148,26 +248,49 @@ async function executeSymbolsQuery(
 
     const content = result.content?.[0];
     if (!content || content.type !== 'text') {
-      return { count: 0, files: [] };
+      return { type: 'symbols', count: 0, files: [] };
     }
 
     const parsed = JSON.parse(content.text);
     if (!parsed.success) {
-      return { count: 0, error: parsed.error };
+      return { type: 'symbols', count: 0, error: parsed.error };
     }
 
     const data = parsed.data;
 
     if (outputMode === 'count_only') {
-      return { count: data.total_symbols || 0 };
+      return { type: 'symbols', count: data.total_symbols || data.summary?.total_symbols || 0 };
     }
 
+    if (outputMode === 'locations') {
+      // Extract locations from symbols
+      const locations: LocationInfo[] = [];
+      const symbols = data.symbols || [];
+
+      for (const symbol of symbols) {
+        if (symbol.file && symbol.line !== undefined && symbol.column !== undefined) {
+          locations.push({
+            file: symbol.file,
+            line: symbol.line,
+            column: symbol.column,
+            match: symbol.name,
+          });
+        }
+      }
+
+      return {
+        type: 'symbols',
+        count: locations.length,
+        locations,
+      };
+    }
+
+    // files_only mode - extract unique files
     const symbols = data.symbols || [];
-    // Extract unique files from symbols
     const files = [...new Set(symbols.map((s: any) => s.file).filter(Boolean))] as string[];
-    return { count: symbols.length, files };
+    return { type: 'symbols', count: symbols.length, files };
   } catch (e) {
-    return { count: 0, error: (e as Error).message };
+    return { type: 'symbols', count: 0, error: (e as Error).message };
   }
 }
 

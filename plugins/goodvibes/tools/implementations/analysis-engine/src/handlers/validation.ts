@@ -8,6 +8,8 @@
 export {
   handleValidateImplementation,
   handleCheckTypes,
+  handleValidateApiContract,
   ValidateImplementationArgs,
   CheckTypesArgs,
+  ValidateApiContractArgs,
 } from './validation/index.js';

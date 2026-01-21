@@ -4,14 +4,15 @@
  *
  * Project operations for GoodVibes - scaffolding, database, API, dependencies, tests.
  *
- * Tool Categories (17 tools):
+ * Tool Categories (22 tools):
  * - Scaffolding (2): scaffold_project, list_templates
  * - Project Info (3): plugin_status, project_issues, explain_codebase
  * - Database & API (5): get_database_schema, get_api_routes, get_prisma_operations, query_database, generate_openapi
- * - Dependencies (3): analyze_dependencies, analyze_bundle, upgrade_package
+ * - Dependencies (3): analyze_dependencies, find_circular_deps, upgrade_package
+ * - Build (1): analyze_bundle
  * - Types & Fixtures (3): generate_types, generate_fixture, sync_api_types
  * - Tests (3): find_tests_for_file, get_test_coverage, suggest_test_cases
- * - Git (1): resolve_merge_conflict
+ * - Git (2): create_pull_request, resolve_merge_conflict
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

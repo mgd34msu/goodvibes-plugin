@@ -1,0 +1,70 @@
+{
+  "id": "fixture-batch-001",
+  "operations": {
+    "read": [
+      {
+        "type": "files",
+        "id": "read-files",
+        "targets": ["src/main.ts", "src/utils.ts"],
+        "extract": "content"
+      }
+    ],
+    "write": [
+      {
+        "type": "create",
+        "id": "create-file",
+        "files": [
+          {
+            "path": "output/result.txt",
+            "content": "Test output"
+          }
+        ]
+      }
+    ]
+  },
+  "config": {
+    "transaction": {
+      "mode": "atomic",
+      "isolation": "strict",
+      "timeout_ms": 30000
+    },
+    "execution": {
+      "mode": "sequential",
+      "max_workers": 1,
+      "fail_fast": true,
+      "retry": {
+        "attempts": 3,
+        "backoff": "exponential",
+        "delay_ms": 100
+      }
+    },
+    "preview": {
+      "dry_run": false,
+      "diff": false,
+      "impact": false
+    },
+    "validation": {
+      "before": [],
+      "after": ["typecheck", "lint"],
+      "on_fail": "rollback"
+    },
+    "recovery": {
+      "checkpoint": true,
+      "rollback_on_fail": true,
+      "cleanup_on_success": true
+    }
+  },
+  "lifecycle": {
+    "on_intent": {
+      "handler": "logIntent"
+    },
+    "on_complete": {
+      "handler": "logComplete"
+    }
+  },
+  "output": {
+    "mode": "standard",
+    "include": [],
+    "exclude": []
+  }
+}

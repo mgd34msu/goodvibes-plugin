@@ -3506,8 +3506,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path5) {
-      let input = path5;
+    function removeDotSegments(path7) {
+      let input = path7;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3714,8 +3714,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path5, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
+        const [path7, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7184,12 +7184,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs5, exportName) {
+    function addFormats(ajv, list, fs7, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs5[f]);
+        ajv.addFormat(f, fs7[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -7201,14 +7201,20 @@ var require_dist = __commonJS({
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
+  CheckpointManagerImpl: () => CheckpointManagerImpl,
   DEFAULTS: () => DEFAULTS,
   EMPTY_AGGREGATIONS: () => EMPTY_AGGREGATIONS,
   EMPTY_INDEX: () => EMPTY_INDEX,
   EMPTY_PREFERENCES: () => EMPTY_PREFERENCES,
   EMPTY_SESSION_METRICS: () => EMPTY_SESSION_METRICS,
+  FixLoopImpl: () => FixLoopImpl,
   MEMORY_PATHS: () => MEMORY_PATHS,
+  MODES: () => MODES,
   MemoryManagerImpl: () => MemoryManagerImpl,
   PHASE_ORDER: () => PHASE_ORDER2,
+  RecoveryManagerImpl: () => RecoveryManagerImpl,
+  RecoveryOrchestratorImpl: () => RecoveryOrchestratorImpl,
+  RollbackSystemImpl: () => RollbackSystemImpl,
   SERVER_NAME: () => SERVER_NAME,
   STATE_PATHS: () => STATE_PATHS,
   StateManagerImpl: () => StateManagerImpl,
@@ -7216,16 +7222,28 @@ __export(src_exports, {
   TOKEN_COSTS: () => TOKEN_COSTS,
   TelemetryCollectorImpl: () => TelemetryCollectorImpl,
   VERSION: () => VERSION,
+  createCheckpointManager: () => createCheckpointManager,
+  createFixLoop: () => createFixLoop,
   createMemoryManager: () => createMemoryManager,
+  createRecoveryManager: () => createRecoveryManager,
+  createRollbackSystem: () => createRollbackSystem,
   createRuntimeContext: () => createRuntimeContext,
   createStateManager: () => createStateManager,
   createTelemetryCollector: () => createTelemetryCollector,
+  formatResult: () => formatResult,
   getActiveBatch: () => getActiveBatch,
+  getCheckpointManager: () => getCheckpointManager,
   getCheckpointPath: () => getCheckpointPath,
   getCompletedBatch: () => getCompletedBatch,
+  getFixLoop: () => getFixLoop,
   getHandler: () => getHandler,
   getHistoryPath: () => getHistoryPath,
   getMemoryManager: () => getMemoryManager,
+  getMode: () => getMode,
+  getModeNames: () => getModeNames,
+  getOutputMode: () => getOutputMode,
+  getRecoveryManager: () => getRecoveryManager,
+  getRollbackSystem: () => getRollbackSystem,
   getStateManager: () => getStateManager,
   getTelemetryCollector: () => getTelemetryCollector,
   getTodayDateString: () => getTodayDateString,
@@ -7234,19 +7252,30 @@ __export(src_exports, {
   handleBatchRecover: () => handleBatchRecover,
   handleBatchState: () => handleBatchState,
   handleBatchStatus: () => handleBatchStatus,
+  handleError: () => handleError,
   handleListBatches: () => handleListBatches,
   handleListCheckpoints: () => handleListCheckpoints,
   handlerRegistry: () => handlerRegistry,
   hasHandler: () => hasHandler,
   initializeRuntime: () => initializeRuntime,
+  isCheckpointFrequency: () => isCheckpointFrequency,
+  isErrorStrategy: () => isErrorStrategy,
+  isModeConfig: () => isModeConfig,
+  isOutputVerbosity: () => isOutputVerbosity,
+  isValidModeName: () => isValidModeName,
   listActiveBatches: () => listActiveBatches,
   listCompletedBatches: () => listCompletedBatches,
   listHandlers: () => listHandlers,
   persistRuntime: () => persistRuntime,
+  resetGlobalCheckpointManager: () => resetGlobalCheckpointManager,
+  resetGlobalFixLoop: () => resetGlobalFixLoop,
   resetGlobalMemoryManager: () => resetGlobalMemoryManager,
+  resetGlobalRecoveryManager: () => resetGlobalRecoveryManager,
+  resetGlobalRollbackSystem: () => resetGlobalRollbackSystem,
   resetGlobalStateManager: () => resetGlobalStateManager,
   resetGlobalTelemetryCollector: () => resetGlobalTelemetryCollector,
   resetRuntime: () => resetRuntime,
+  shouldAskUser: () => shouldAskUser,
   toolDefinitions: () => toolDefinitions
 });
 module.exports = __toCommonJS(src_exports);
@@ -7617,8 +7646,8 @@ __name(getErrorMap, "getErrorMap");
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = /* @__PURE__ */ __name((params) => {
-  const { data, path: path5, errorMaps, issueData } = params;
-  const fullPath = [...path5, ...issueData.path || []];
+  const { data, path: path7, errorMaps, issueData } = params;
+  const fullPath = [...path7, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7740,11 +7769,11 @@ var ParseInputLazyPath = class {
   static {
     __name(this, "ParseInputLazyPath");
   }
-  constructor(parent, value, path5, key) {
+  constructor(parent, value, path7, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path5;
+    this._path = path7;
     this._key = key;
   }
   get path() {
@@ -11546,10 +11575,10 @@ function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
 __name(cloneDef, "cloneDef");
-function getElementAtPath(obj, path5) {
-  if (!path5)
+function getElementAtPath(obj, path7) {
+  if (!path7)
     return obj;
-  return path5.reduce((acc, key) => acc?.[key], obj);
+  return path7.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
@@ -11955,11 +11984,11 @@ function aborted(x, startIndex = 0) {
   return false;
 }
 __name(aborted, "aborted");
-function prefixIssues(path5, issues) {
+function prefixIssues(path7, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path5);
+    iss.path.unshift(path7);
     return iss;
   });
 }
@@ -21616,7 +21645,7 @@ var logger = {
 };
 
 // src/handlers/batch.ts
-var crypto4 = __toESM(require("crypto"), 1);
+var crypto7 = __toESM(require("crypto"), 1);
 
 // src/interfaces/tools/batch-tool.ts
 var PHASE_ORDER = ["discovery", "read", "write", "exec", "query", "state"];
@@ -23309,12 +23338,2203 @@ function resetGlobalTelemetryCollector() {
 }
 __name(resetGlobalTelemetryCollector, "resetGlobalTelemetryCollector");
 
+// src/runtime/checkpoint.ts
+var fs4 = __toESM(require("fs/promises"), 1);
+var path4 = __toESM(require("path"), 1);
+var crypto4 = __toESM(require("crypto"), 1);
+
+// src/interfaces/checkpoint-files.ts
+var CHECKPOINT_PATHS = {
+  root: ".goodvibes/checkpoints",
+  manifest: (id) => `.goodvibes/checkpoints/${id}/manifest.json`,
+  files: (id) => `.goodvibes/checkpoints/${id}/files`,
+  state: (id) => `.goodvibes/checkpoints/${id}/state.json`,
+  index: ".goodvibes/checkpoints/index.json"
+};
+function getCheckpointDir(checkpoint_id) {
+  return `${CHECKPOINT_PATHS.root}/${checkpoint_id}`;
+}
+__name(getCheckpointDir, "getCheckpointDir");
+function generateCheckpointId() {
+  const now = /* @__PURE__ */ new Date();
+  const pad = /* @__PURE__ */ __name((n, len = 2) => n.toString().padStart(len, "0"), "pad");
+  return `cp_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+__name(generateCheckpointId, "generateCheckpointId");
+function toStoredPath(originalPath) {
+  return originalPath.replace(/[/\\]/g, "_").replace(/^_/, "");
+}
+__name(toStoredPath, "toStoredPath");
+function isValidCheckpointId(id) {
+  const pattern = /^cp_\d{8}_\d{6}$/;
+  return pattern.test(id);
+}
+__name(isValidCheckpointId, "isValidCheckpointId");
+var EMPTY_CHECKPOINT_INDEX = {
+  version: 1,
+  checkpoints: [],
+  last_cleanup: (/* @__PURE__ */ new Date()).toISOString(),
+  total_size_bytes: 0
+};
+var MANIFEST_VERSION = 1;
+
+// src/runtime/checkpoint.ts
+async function hashFile(filePath) {
+  try {
+    const content = await fs4.readFile(filePath);
+    return crypto4.createHash("sha256").update(content).digest("hex");
+  } catch {
+    return "";
+  }
+}
+__name(hashFile, "hashFile");
+function hashContent(content) {
+  return crypto4.createHash("sha256").update(content).digest("hex");
+}
+__name(hashContent, "hashContent");
+async function getFileSize(filePath) {
+  try {
+    const stats = await fs4.stat(filePath);
+    return stats.size;
+  } catch {
+    return 0;
+  }
+}
+__name(getFileSize, "getFileSize");
+async function getFilePermissions(filePath) {
+  try {
+    const stats = await fs4.stat(filePath);
+    return (stats.mode & 511).toString(8);
+  } catch {
+    return void 0;
+  }
+}
+__name(getFilePermissions, "getFilePermissions");
+async function getFileModifiedTime(filePath) {
+  try {
+    const stats = await fs4.stat(filePath);
+    return stats.mtime.toISOString();
+  } catch {
+    return (/* @__PURE__ */ new Date()).toISOString();
+  }
+}
+__name(getFileModifiedTime, "getFileModifiedTime");
+async function calculateDirectorySize(dirPath) {
+  let totalSize = 0;
+  try {
+    const entries = await fs4.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path4.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        totalSize += await calculateDirectorySize(fullPath);
+      } else {
+        totalSize += await getFileSize(fullPath);
+      }
+    }
+  } catch {
+  }
+  return totalSize;
+}
+__name(calculateDirectorySize, "calculateDirectorySize");
+var CheckpointFileManagerImpl = class {
+  constructor(projectRoot) {
+    this.projectRoot = projectRoot;
+  }
+  static {
+    __name(this, "CheckpointFileManagerImpl");
+  }
+  getAbsolutePath(relativePath) {
+    return path4.join(this.projectRoot, relativePath);
+  }
+  async initialize() {
+    const rootDir = this.getAbsolutePath(CHECKPOINT_PATHS.root);
+    await fs4.mkdir(rootDir, { recursive: true });
+    const indexPath = this.getAbsolutePath(CHECKPOINT_PATHS.index);
+    try {
+      await fs4.access(indexPath);
+    } catch {
+      await fs4.writeFile(indexPath, JSON.stringify(EMPTY_CHECKPOINT_INDEX, null, 2), "utf-8");
+    }
+  }
+  async createCheckpointDir(id) {
+    const cpDir = this.getAbsolutePath(getCheckpointDir(id));
+    const filesDir = this.getAbsolutePath(CHECKPOINT_PATHS.files(id));
+    await fs4.mkdir(cpDir, { recursive: true });
+    await fs4.mkdir(filesDir, { recursive: true });
+    return cpDir;
+  }
+  async writeManifest(id, manifest) {
+    const manifestPath = this.getAbsolutePath(CHECKPOINT_PATHS.manifest(id));
+    await fs4.writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
+  }
+  async readManifest(id) {
+    const manifestPath = this.getAbsolutePath(CHECKPOINT_PATHS.manifest(id));
+    try {
+      const content = await fs4.readFile(manifestPath, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+  async copyFileToCheckpoint(id, sourcePath, entry) {
+    const absSourcePath = this.getAbsolutePath(sourcePath);
+    const filesDir = this.getAbsolutePath(CHECKPOINT_PATHS.files(id));
+    const destPath = path4.join(filesDir, entry.stored_path);
+    try {
+      await fs4.copyFile(absSourcePath, destPath);
+    } catch (error2) {
+      throw new Error(`Failed to copy file ${sourcePath} to checkpoint: ${error2}`);
+    }
+  }
+  async restoreFileFromCheckpoint(id, entry) {
+    const filesDir = this.getAbsolutePath(CHECKPOINT_PATHS.files(id));
+    const sourcePath = path4.join(filesDir, entry.stored_path);
+    const destPath = this.getAbsolutePath(entry.original_path);
+    try {
+      await fs4.mkdir(path4.dirname(destPath), { recursive: true });
+      await fs4.copyFile(sourcePath, destPath);
+      if (entry.permissions) {
+        await fs4.chmod(destPath, parseInt(entry.permissions, 8));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async writeState(id, state) {
+    const statePath = this.getAbsolutePath(CHECKPOINT_PATHS.state(id));
+    await fs4.writeFile(statePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+  async readState(id) {
+    const statePath = this.getAbsolutePath(CHECKPOINT_PATHS.state(id));
+    try {
+      const content = await fs4.readFile(statePath, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+  async updateIndex(entry) {
+    const index = await this.readIndex();
+    index.checkpoints = index.checkpoints.filter((cp) => cp.id !== entry.id);
+    index.checkpoints.push(entry);
+    index.checkpoints.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    index.total_size_bytes = index.checkpoints.reduce((sum, cp) => sum + cp.size_bytes, 0);
+    const indexPath = this.getAbsolutePath(CHECKPOINT_PATHS.index);
+    await fs4.writeFile(indexPath, JSON.stringify(index, null, 2), "utf-8");
+  }
+  async removeFromIndex(id) {
+    const index = await this.readIndex();
+    index.checkpoints = index.checkpoints.filter((cp) => cp.id !== id);
+    index.total_size_bytes = index.checkpoints.reduce((sum, cp) => sum + cp.size_bytes, 0);
+    const indexPath = this.getAbsolutePath(CHECKPOINT_PATHS.index);
+    await fs4.writeFile(indexPath, JSON.stringify(index, null, 2), "utf-8");
+  }
+  async readIndex() {
+    const indexPath = this.getAbsolutePath(CHECKPOINT_PATHS.index);
+    try {
+      const content = await fs4.readFile(indexPath, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return { ...EMPTY_CHECKPOINT_INDEX };
+    }
+  }
+  async deleteCheckpoint(id) {
+    const cpDir = this.getAbsolutePath(getCheckpointDir(id));
+    try {
+      await fs4.rm(cpDir, { recursive: true, force: true });
+      await this.removeFromIndex(id);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async calculateSize(id) {
+    const cpDir = this.getAbsolutePath(getCheckpointDir(id));
+    return await calculateDirectorySize(cpDir);
+  }
+  async verifyIntegrity(id) {
+    const errors = [];
+    const manifest = await this.readManifest(id);
+    if (!manifest) {
+      return { valid: false, errors: ["Manifest not found"] };
+    }
+    const filesDir = this.getAbsolutePath(CHECKPOINT_PATHS.files(id));
+    for (const entry of manifest.files) {
+      const filePath = path4.join(filesDir, entry.stored_path);
+      try {
+        const actualHash = await hashFile(filePath);
+        if (actualHash !== entry.hash) {
+          errors.push(`Hash mismatch for ${entry.original_path}: expected ${entry.hash}, got ${actualHash}`);
+        }
+      } catch {
+        errors.push(`File not found: ${entry.original_path}`);
+      }
+    }
+    const statePath = this.getAbsolutePath(CHECKPOINT_PATHS.state(id));
+    try {
+      await fs4.access(statePath);
+    } catch {
+      errors.push("State snapshot not found");
+    }
+    return { valid: errors.length === 0, errors };
+  }
+};
+var CheckpointManagerImpl = class {
+  static {
+    __name(this, "CheckpointManagerImpl");
+  }
+  config;
+  fileManager;
+  projectRoot;
+  constructor(projectRoot = process.cwd(), config2) {
+    this.projectRoot = projectRoot;
+    this.config = {
+      max_checkpoints: config2?.max_checkpoints ?? 10,
+      default_expiry_hours: config2?.default_expiry_hours ?? 24,
+      auto_cleanup: config2?.auto_cleanup ?? true,
+      checkpoint_dir: config2?.checkpoint_dir ?? CHECKPOINT_PATHS.root
+    };
+    this.fileManager = new CheckpointFileManagerImpl(projectRoot);
+  }
+  async initialize() {
+    await this.fileManager.initialize();
+    if (this.config.auto_cleanup) {
+      await this.cleanup();
+    }
+  }
+  async shutdown() {
+  }
+  async create(config2) {
+    const id = generateCheckpointId();
+    const now = /* @__PURE__ */ new Date();
+    const expiresAfterHours = config2.expires_after_hours ?? this.config.default_expiry_hours;
+    const expiresAt = new Date(now.getTime() + expiresAfterHours * 60 * 60 * 1e3);
+    await this.fileManager.createCheckpointDir(id);
+    const filesToBackup = config2.include?.files ?? [];
+    const fileEntries = [];
+    for (const filePath of filesToBackup) {
+      const absPath = path4.join(this.projectRoot, filePath);
+      try {
+        await fs4.access(absPath);
+        const storedPath = toStoredPath(filePath);
+        const hash2 = await hashFile(absPath);
+        const size = await getFileSize(absPath);
+        const permissions = await getFilePermissions(absPath);
+        const modifiedAt = await getFileModifiedTime(absPath);
+        const entry = {
+          original_path: filePath,
+          stored_path: storedPath,
+          hash: hash2,
+          size_bytes: size,
+          permissions,
+          modified_at: modifiedAt
+        };
+        await this.fileManager.copyFileToCheckpoint(id, filePath, entry);
+        fileEntries.push(entry);
+      } catch {
+        continue;
+      }
+    }
+    const stateManager = getStateManager(this.projectRoot);
+    const currentState = stateManager.getState();
+    const stateSnapshot = {
+      checkpoint_id: id,
+      captured_at: now.toISOString(),
+      session: currentState.session,
+      agents: {
+        active: Array.from(currentState.agents.active.entries()),
+        completed: currentState.agents.completed,
+        total_spawned: currentState.agents.total_spawned,
+        total_tokens: currentState.agents.total_tokens
+      },
+      locks: currentState.locks
+    };
+    let memorySnapshot;
+    if (config2.include?.memory !== false) {
+      const memoryManager = getMemoryManager(this.projectRoot);
+      const memory = memoryManager.getMemory();
+      memorySnapshot = {
+        decisions: memory.decisions.length,
+        patterns: memory.patterns.length,
+        failures: memory.failures.length
+      };
+      stateSnapshot.memory = {
+        decisions: memory.decisions,
+        patterns: memory.patterns,
+        failures: memory.failures
+      };
+    }
+    await this.fileManager.writeState(id, stateSnapshot);
+    const stateKeys = Object.keys(stateSnapshot.session);
+    const totalSize = await this.fileManager.calculateSize(id);
+    const manifestChecksum = hashContent(JSON.stringify({
+      id,
+      files: fileEntries,
+      state_keys: stateKeys
+    }));
+    const manifest = {
+      id,
+      version: MANIFEST_VERSION,
+      created_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      type: config2.type,
+      reason: config2.reason,
+      batch_id: config2.batch_id,
+      files: fileEntries,
+      state_keys: stateKeys,
+      memory_included: config2.include?.memory !== false,
+      total_size_bytes: totalSize,
+      checksum: manifestChecksum
+    };
+    await this.fileManager.writeManifest(id, manifest);
+    const indexEntry = {
+      id,
+      created_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      type: config2.type,
+      reason: config2.reason,
+      batch_id: config2.batch_id,
+      size_bytes: totalSize,
+      file_count: fileEntries.length
+    };
+    await this.fileManager.updateIndex(indexEntry);
+    if (this.config.auto_cleanup) {
+      await this.enforceMaxCheckpoints();
+    }
+    const checkpoint = {
+      id,
+      batch_id: config2.batch_id,
+      created_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      type: config2.type,
+      reason: config2.reason,
+      files: fileEntries.map((e) => ({
+        path: e.original_path,
+        hash: e.hash
+      })),
+      state_snapshot: stateSnapshot.session,
+      memory_snapshot: memorySnapshot,
+      size_bytes: totalSize
+    };
+    return checkpoint;
+  }
+  async restore(checkpoint_id, options) {
+    const startTime = Date.now();
+    const filesRestored = [];
+    const stateRestored = [];
+    const errors = [];
+    if (!isValidCheckpointId(checkpoint_id)) {
+      return {
+        success: false,
+        checkpoint_id,
+        files_restored: [],
+        state_restored: [],
+        errors: ["Invalid checkpoint ID format"],
+        duration_ms: Date.now() - startTime
+      };
+    }
+    const manifest = await this.fileManager.readManifest(checkpoint_id);
+    if (!manifest) {
+      return {
+        success: false,
+        checkpoint_id,
+        files_restored: [],
+        state_restored: [],
+        errors: ["Checkpoint not found"],
+        duration_ms: Date.now() - startTime
+      };
+    }
+    if (!options?.dry_run) {
+      const integrity = await this.fileManager.verifyIntegrity(checkpoint_id);
+      if (!integrity.valid) {
+        errors.push(...integrity.errors);
+      }
+    }
+    if (!options?.state_only && !options?.dry_run) {
+      const filesToRestore = options?.specific_files ? manifest.files.filter((f) => options.specific_files.includes(f.original_path)) : manifest.files;
+      for (const entry of filesToRestore) {
+        const restored = await this.fileManager.restoreFileFromCheckpoint(checkpoint_id, entry);
+        if (restored) {
+          filesRestored.push(entry.original_path);
+        } else {
+          errors.push(`Failed to restore file: ${entry.original_path}`);
+        }
+      }
+    }
+    if (!options?.files_only && !options?.dry_run) {
+      const stateSnapshot = await this.fileManager.readState(checkpoint_id);
+      if (stateSnapshot) {
+        const stateManager = getStateManager(this.projectRoot);
+        if (!options?.specific_state || options.specific_state.includes("session")) {
+          try {
+            stateManager.updateSession(stateSnapshot.session);
+            stateRestored.push("session");
+          } catch (error2) {
+            errors.push(`Failed to restore session state: ${error2}`);
+          }
+        }
+        if (!options?.specific_state || options.specific_state.includes("locks")) {
+          try {
+            const currentState = stateManager.getState();
+            currentState.locks = stateSnapshot.locks;
+            stateRestored.push("locks");
+          } catch (error2) {
+            errors.push(`Failed to restore locks: ${error2}`);
+          }
+        }
+        if (manifest.memory_included && stateSnapshot.memory) {
+          const memoryManager = getMemoryManager(this.projectRoot);
+          try {
+            memoryManager.reset();
+            memoryManager.import(JSON.stringify(stateSnapshot.memory));
+            stateRestored.push("memory");
+          } catch (error2) {
+            errors.push(`Failed to restore memory: ${error2}`);
+          }
+        }
+      } else {
+        errors.push("State snapshot not found");
+      }
+    }
+    if (options?.dry_run) {
+      const filesToRestore = options?.specific_files ? manifest.files.filter((f) => options.specific_files.includes(f.original_path)) : manifest.files;
+      filesRestored.push(...filesToRestore.map((f) => f.original_path));
+      if (!options?.files_only) {
+        stateRestored.push("session", "locks");
+        if (manifest.memory_included) {
+          stateRestored.push("memory");
+        }
+      }
+    }
+    return {
+      success: errors.length === 0,
+      checkpoint_id,
+      files_restored: filesRestored,
+      state_restored: stateRestored,
+      errors: errors.length > 0 ? errors : void 0,
+      duration_ms: Date.now() - startTime
+    };
+  }
+  list(filter) {
+    const index = this.fileManager.readIndex();
+    return [];
+  }
+  get(checkpoint_id) {
+    return void 0;
+  }
+  delete(checkpoint_id) {
+    return false;
+  }
+  cleanup() {
+    return {
+      removed: 0,
+      freed_bytes: 0,
+      remaining: 0
+    };
+  }
+  /**
+   * Async version of list (for internal use)
+   */
+  async listAsync(filter) {
+    const index = await this.fileManager.readIndex();
+    let entries = [...index.checkpoints];
+    if (filter) {
+      if (filter.batch_id) {
+        entries = entries.filter((e) => e.batch_id === filter.batch_id);
+      }
+      if (filter.type) {
+        entries = entries.filter((e) => e.type === filter.type);
+      }
+      if (filter.reason) {
+        entries = entries.filter((e) => e.reason === filter.reason);
+      }
+      if (filter.created_after) {
+        const afterDate = new Date(filter.created_after);
+        entries = entries.filter((e) => new Date(e.created_at) >= afterDate);
+      }
+      if (filter.created_before) {
+        const beforeDate = new Date(filter.created_before);
+        entries = entries.filter((e) => new Date(e.created_at) <= beforeDate);
+      }
+      if (filter.limit) {
+        entries = entries.slice(0, filter.limit);
+      }
+    }
+    const checkpoints = [];
+    for (const entry of entries) {
+      const manifest = await this.fileManager.readManifest(entry.id);
+      if (manifest) {
+        const checkpoint = {
+          id: manifest.id,
+          batch_id: manifest.batch_id,
+          created_at: manifest.created_at,
+          expires_at: manifest.expires_at,
+          type: manifest.type,
+          reason: manifest.reason,
+          files: manifest.files.map((f) => ({
+            path: f.original_path,
+            hash: f.hash
+          })),
+          state_snapshot: {},
+          memory_snapshot: manifest.memory_included ? {
+            decisions: 0,
+            patterns: 0,
+            failures: 0
+          } : void 0,
+          size_bytes: manifest.total_size_bytes
+        };
+        checkpoints.push(checkpoint);
+      }
+    }
+    return checkpoints;
+  }
+  /**
+   * Async version of get (for internal use)
+   */
+  async getAsync(checkpoint_id) {
+    const manifest = await this.fileManager.readManifest(checkpoint_id);
+    if (!manifest) {
+      return void 0;
+    }
+    const stateSnapshot = await this.fileManager.readState(checkpoint_id);
+    return {
+      id: manifest.id,
+      batch_id: manifest.batch_id,
+      created_at: manifest.created_at,
+      expires_at: manifest.expires_at,
+      type: manifest.type,
+      reason: manifest.reason,
+      files: manifest.files.map((f) => ({
+        path: f.original_path,
+        hash: f.hash
+      })),
+      state_snapshot: stateSnapshot?.session ?? {},
+      memory_snapshot: manifest.memory_included ? {
+        decisions: stateSnapshot?.memory?.decisions?.length ?? 0,
+        patterns: stateSnapshot?.memory?.patterns?.length ?? 0,
+        failures: stateSnapshot?.memory?.failures?.length ?? 0
+      } : void 0,
+      size_bytes: manifest.total_size_bytes
+    };
+  }
+  /**
+   * Async version of delete (for internal use)
+   */
+  async deleteAsync(checkpoint_id) {
+    return await this.fileManager.deleteCheckpoint(checkpoint_id);
+  }
+  /**
+   * Async version of cleanup (for internal use)
+   */
+  async cleanupAsync() {
+    const index = await this.fileManager.readIndex();
+    const now = /* @__PURE__ */ new Date();
+    let removed = 0;
+    let freedBytes = 0;
+    const errors = [];
+    for (const entry of index.checkpoints) {
+      if (entry.expires_at && new Date(entry.expires_at) <= now) {
+        const deleted = await this.fileManager.deleteCheckpoint(entry.id);
+        if (deleted) {
+          removed++;
+          freedBytes += entry.size_bytes;
+        } else {
+          errors.push(`Failed to delete checkpoint: ${entry.id}`);
+        }
+      }
+    }
+    const updatedIndex = await this.fileManager.readIndex();
+    updatedIndex.last_cleanup = now.toISOString();
+    const indexPath = path4.join(this.projectRoot, CHECKPOINT_PATHS.index);
+    await fs4.writeFile(indexPath, JSON.stringify(updatedIndex, null, 2), "utf-8");
+    return {
+      removed,
+      freed_bytes: freedBytes,
+      remaining: updatedIndex.checkpoints.length,
+      errors: errors.length > 0 ? errors : void 0
+    };
+  }
+  /**
+   * Enforce max checkpoints limit by removing oldest
+   */
+  async enforceMaxCheckpoints() {
+    const index = await this.fileManager.readIndex();
+    if (index.checkpoints.length <= this.config.max_checkpoints) {
+      return;
+    }
+    const sorted = [...index.checkpoints].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const toRemove = sorted.slice(0, sorted.length - this.config.max_checkpoints);
+    for (const entry of toRemove) {
+      await this.fileManager.deleteCheckpoint(entry.id);
+    }
+  }
+};
+function createCheckpointManager(projectRoot, config2) {
+  return new CheckpointManagerImpl(projectRoot, config2);
+}
+__name(createCheckpointManager, "createCheckpointManager");
+var globalCheckpointManager = null;
+function getCheckpointManager(projectRoot, config2) {
+  if (!globalCheckpointManager) {
+    globalCheckpointManager = createCheckpointManager(projectRoot, config2);
+  }
+  return globalCheckpointManager;
+}
+__name(getCheckpointManager, "getCheckpointManager");
+function resetGlobalCheckpointManager() {
+  globalCheckpointManager = null;
+}
+__name(resetGlobalCheckpointManager, "resetGlobalCheckpointManager");
+
+// src/runtime/rollback.ts
+var fs5 = __toESM(require("fs/promises"), 1);
+var path5 = __toESM(require("path"), 1);
+var crypto5 = __toESM(require("crypto"), 1);
+function generateId4(prefix) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+  const random = crypto5.randomBytes(4).toString("hex");
+  return `${prefix}_${timestamp}_${random}`;
+}
+__name(generateId4, "generateId");
+async function calculateFileHash(filePath) {
+  try {
+    const content = await fs5.readFile(filePath);
+    return crypto5.createHash("sha256").update(content).digest("hex");
+  } catch {
+    return "";
+  }
+}
+__name(calculateFileHash, "calculateFileHash");
+async function fileExists(filePath) {
+  try {
+    await fs5.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+__name(fileExists, "fileExists");
+var RollbackSystemImpl = class {
+  static {
+    __name(this, "RollbackSystemImpl");
+  }
+  stateManager;
+  projectRoot;
+  rollbackLock = null;
+  history = [];
+  config;
+  operationFileMap = /* @__PURE__ */ new Map();
+  constructor(projectRoot = process.cwd(), stateManager) {
+    this.projectRoot = projectRoot;
+    this.stateManager = stateManager || getStateManager(projectRoot);
+    this.config = {
+      auto_rollback_on_error: true,
+      keep_rollback_history: true,
+      max_history_entries: 50,
+      require_checkpoint: true
+    };
+  }
+  // =========================================================================
+  // RollbackSystem Core Methods
+  // =========================================================================
+  async toCheckpoint(checkpoint_id, scope = "all") {
+    const target = { type: "checkpoint", checkpoint_id };
+    return this.executeRollback(target, scope);
+  }
+  async lastBatch() {
+    const state = this.stateManager.getState();
+    const checkpoints = state.checkpoints.checkpoints;
+    if (checkpoints.length === 0) {
+      return this.createFailedResult(
+        { type: "checkpoint", checkpoint_id: "" },
+        "all",
+        ["No checkpoints available"]
+      );
+    }
+    const latestCheckpoint = checkpoints[checkpoints.length - 1];
+    if (!latestCheckpoint) {
+      return this.createFailedResult(
+        { type: "checkpoint", checkpoint_id: "" },
+        "all",
+        ["No checkpoint found"]
+      );
+    }
+    return this.toCheckpoint(latestCheckpoint.id, "all");
+  }
+  async operations(operation_ids) {
+    const target = { type: "operations", operation_ids };
+    return this.executeRollback(target, "selective");
+  }
+  async selective(options) {
+    let target;
+    if (options.to_checkpoint) {
+      target = { type: "checkpoint", checkpoint_id: options.to_checkpoint };
+    } else if (options.to_batch) {
+      const checkpoint = this.findCheckpointByBatch(options.to_batch);
+      if (!checkpoint) {
+        return this.createFailedResult(
+          { type: "checkpoint", checkpoint_id: "" },
+          "selective",
+          [`No checkpoint found for batch: ${options.to_batch}`]
+        );
+      }
+      target = { type: "checkpoint", checkpoint_id: checkpoint.id };
+    } else if (options.to_time) {
+      target = { type: "time", timestamp: options.to_time };
+    } else {
+      return this.createFailedResult(
+        { type: "checkpoint", checkpoint_id: "" },
+        "selective",
+        ["No valid target specified in selective options"]
+      );
+    }
+    return this.executeRollback(target, "selective", options);
+  }
+  async preview(target, scope = "all") {
+    const checkpoint = await this.resolveTarget(target);
+    if (!checkpoint) {
+      return {
+        files_to_restore: [],
+        state_to_restore: [],
+        warnings: ["No checkpoint found for target"],
+        estimated_duration_ms: 0
+      };
+    }
+    const manifest = await this.readManifest(checkpoint.id);
+    if (!manifest) {
+      return {
+        files_to_restore: [],
+        state_to_restore: [],
+        warnings: ["Checkpoint manifest not found"],
+        estimated_duration_ms: 0
+      };
+    }
+    const filesToRestore = [];
+    const warnings = [];
+    for (const fileEntry of manifest.files) {
+      const currentExists = await fileExists(this.getAbsolutePath(fileEntry.original_path));
+      const currentHash = currentExists ? await calculateFileHash(this.getAbsolutePath(fileEntry.original_path)) : "";
+      let changeType = "modified";
+      if (!currentExists) {
+        changeType = "deleted";
+      } else if (currentHash !== fileEntry.hash) {
+        changeType = "modified";
+      }
+      if (changeType !== "modified" || currentHash !== fileEntry.hash) {
+        filesToRestore.push({
+          path: fileEntry.original_path,
+          current_hash: currentHash,
+          target_hash: fileEntry.hash,
+          change_type: changeType
+        });
+      }
+    }
+    const estimatedDurationMs = filesToRestore.length * 10 + 100;
+    return {
+      files_to_restore: filesToRestore,
+      state_to_restore: [],
+      warnings,
+      estimated_duration_ms: estimatedDurationMs
+    };
+  }
+  canRollback(target) {
+    const checkpoint = this.findCheckpointSync(target);
+    return checkpoint !== void 0;
+  }
+  // =========================================================================
+  // RollbackManager Extended Methods
+  // =========================================================================
+  getAvailableTargets() {
+    const state = this.stateManager.getState();
+    const checkpoints = state.checkpoints.checkpoints;
+    return checkpoints.map((cp) => ({
+      type: "checkpoint",
+      checkpoint_id: cp.id
+    }));
+  }
+  getLatestCheckpoint() {
+    const state = this.stateManager.getState();
+    const checkpoints = state.checkpoints.checkpoints;
+    return checkpoints.length > 0 ? checkpoints[checkpoints.length - 1] : void 0;
+  }
+  createPlan(target, options) {
+    const checkpoint = this.findCheckpointSync(target);
+    if (!checkpoint) {
+      return {
+        id: generateId4("plan"),
+        target,
+        scope: "all",
+        steps: [],
+        estimated_duration_ms: 0,
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        valid_until: new Date(Date.now() + 5 * 60 * 1e3).toISOString()
+        // 5 minutes
+      };
+    }
+    const steps = [];
+    let order = 1;
+    for (const file2 of checkpoint.files) {
+      steps.push({
+        order: order++,
+        type: "restore_file",
+        target: file2.path,
+        source: file2.backup_path,
+        description: `Restore ${file2.path}`
+      });
+    }
+    steps.push({
+      order: order++,
+      type: "restore_state",
+      target: "session",
+      description: "Restore session state"
+    });
+    return {
+      id: generateId4("plan"),
+      target,
+      scope: options ? "selective" : "all",
+      steps,
+      estimated_duration_ms: steps.length * 10 + 100,
+      created_at: (/* @__PURE__ */ new Date()).toISOString(),
+      valid_until: new Date(Date.now() + 5 * 60 * 1e3).toISOString()
+    };
+  }
+  async executePlan(plan) {
+    if (new Date(plan.valid_until) < /* @__PURE__ */ new Date()) {
+      return this.createFailedResult(plan.target, plan.scope, ["Plan has expired"]);
+    }
+    return this.executeRollback(plan.target, plan.scope);
+  }
+  // =========================================================================
+  // Operation File Tracking
+  // =========================================================================
+  /**
+   * Track that an operation modified specific files
+   */
+  trackOperationFiles(operation_id, files) {
+    if (!this.operationFileMap.has(operation_id)) {
+      this.operationFileMap.set(operation_id, /* @__PURE__ */ new Set());
+    }
+    const fileSet = this.operationFileMap.get(operation_id);
+    for (const file2 of files) {
+      fileSet.add(file2);
+    }
+  }
+  /**
+   * Get files modified by specific operations
+   */
+  getOperationFiles(operation_ids) {
+    const allFiles = /* @__PURE__ */ new Set();
+    for (const opId of operation_ids) {
+      const files = this.operationFileMap.get(opId);
+      if (files) {
+        for (const file2 of files) {
+          allFiles.add(file2);
+        }
+      }
+    }
+    return Array.from(allFiles);
+  }
+  // =========================================================================
+  // Private Implementation Methods
+  // =========================================================================
+  async executeRollback(target, scope, options) {
+    if (this.rollbackLock) {
+      await this.rollbackLock;
+    }
+    this.rollbackLock = this.doRollback(target, scope, options);
+    const result = await this.rollbackLock;
+    this.rollbackLock = null;
+    return result;
+  }
+  async doRollback(target, scope, options) {
+    const startTime = Date.now();
+    const filesRestored = [];
+    const filesFailed = [];
+    const stateRestored = [];
+    const stateFailed = [];
+    const errors = [];
+    try {
+      const checkpoint = await this.resolveTarget(target);
+      if (!checkpoint) {
+        errors.push("No checkpoint found for target");
+        return this.createFailedResult(target, scope, errors);
+      }
+      const manifest = await this.readManifest(checkpoint.id);
+      if (!manifest) {
+        errors.push("Checkpoint manifest not found");
+        return this.createFailedResult(target, scope, errors);
+      }
+      const backupCheckpoint = this.stateManager.createCheckpoint(
+        "rollback_backup",
+        `Backup before rollback to ${checkpoint.id}`
+      );
+      if (scope === "all" || scope === "files" || scope === "selective") {
+        const filesToRestore = this.filterFilesToRestore(manifest.files, options);
+        for (const fileEntry of filesToRestore) {
+          try {
+            const restored = await this.restoreFile(checkpoint.id, fileEntry);
+            if (restored) {
+              filesRestored.push(fileEntry.original_path);
+            } else {
+              filesFailed.push(fileEntry.original_path);
+              errors.push(`Failed to restore file: ${fileEntry.original_path}`);
+            }
+          } catch (error2) {
+            filesFailed.push(fileEntry.original_path);
+            errors.push(`Error restoring ${fileEntry.original_path}: ${error2}`);
+          }
+        }
+      }
+      if (scope === "all" || scope === "state" || scope === "selective") {
+        try {
+          const stateSnapshot = await this.readStateSnapshot(checkpoint.id);
+          if (stateSnapshot) {
+            await this.restoreState(stateSnapshot, options);
+            stateRestored.push("session");
+          } else {
+            stateFailed.push("session");
+            errors.push("State snapshot not found");
+          }
+        } catch (error2) {
+          stateFailed.push("session");
+          errors.push(`Error restoring state: ${error2}`);
+        }
+      }
+      for (const filePath of filesRestored) {
+        const currentHash = await calculateFileHash(this.getAbsolutePath(filePath));
+        const expectedEntry = manifest.files.find((f) => f.original_path === filePath);
+        if (expectedEntry && currentHash !== expectedEntry.hash) {
+          errors.push(`Hash mismatch after restore: ${filePath}`);
+        }
+      }
+      const duration3 = Date.now() - startTime;
+      const success2 = filesFailed.length === 0 && stateFailed.length === 0;
+      const result = {
+        success: success2,
+        scope,
+        target,
+        files_restored: filesRestored,
+        files_failed: filesFailed,
+        state_restored: stateRestored,
+        state_failed: stateFailed,
+        duration_ms: duration3,
+        checkpoint_used: checkpoint.id,
+        errors: errors.length > 0 ? errors : void 0
+      };
+      if (this.config.keep_rollback_history) {
+        this.addToHistory(target, scope, result);
+      }
+      return result;
+    } catch (error2) {
+      const duration3 = Date.now() - startTime;
+      errors.push(`Rollback failed: ${error2}`);
+      return {
+        success: false,
+        scope,
+        target,
+        files_restored: filesRestored,
+        files_failed: filesFailed,
+        state_restored: stateRestored,
+        state_failed: stateFailed,
+        duration_ms: duration3,
+        errors
+      };
+    }
+  }
+  async resolveTarget(target) {
+    switch (target.type) {
+      case "checkpoint":
+        return this.findCheckpointById(target.checkpoint_id);
+      case "batch":
+        return this.findCheckpointByBatch(target.batch_id);
+      case "time":
+        return this.findCheckpointByTime(target.timestamp);
+      case "operations":
+        return this.findCheckpointForOperations(target.operation_ids);
+      default:
+        return void 0;
+    }
+  }
+  findCheckpointSync(target) {
+    const state = this.stateManager.getState();
+    const checkpoints = state.checkpoints.checkpoints;
+    switch (target.type) {
+      case "checkpoint":
+        return checkpoints.find((cp) => cp.id === target.checkpoint_id);
+      case "batch":
+        return checkpoints.find((cp) => cp.batch_id === target.batch_id);
+      default:
+        return void 0;
+    }
+  }
+  findCheckpointById(checkpoint_id) {
+    const state = this.stateManager.getState();
+    return state.checkpoints.checkpoints.find((cp) => cp.id === checkpoint_id);
+  }
+  findCheckpointByBatch(batch_id) {
+    const state = this.stateManager.getState();
+    return state.checkpoints.checkpoints.find((cp) => cp.batch_id === batch_id);
+  }
+  findCheckpointByTime(timestamp) {
+    const state = this.stateManager.getState();
+    const checkpoints = state.checkpoints.checkpoints;
+    const targetTime = new Date(timestamp).getTime();
+    let bestMatch;
+    let smallestDiff = Infinity;
+    for (const cp of checkpoints) {
+      const cpTime = new Date(cp.created_at).getTime();
+      const diff = targetTime - cpTime;
+      if (diff >= 0 && diff < smallestDiff) {
+        smallestDiff = diff;
+        bestMatch = cp;
+      }
+    }
+    return bestMatch;
+  }
+  findCheckpointForOperations(operation_ids) {
+    return this.getLatestCheckpoint();
+  }
+  filterFilesToRestore(files, options) {
+    if (!options) {
+      return files;
+    }
+    let filtered = files;
+    if (options.files && options.files.length > 0) {
+      filtered = filtered.filter((f) => options.files.includes(f.original_path));
+    }
+    if (options.exclude_files && options.exclude_files.length > 0) {
+      filtered = filtered.filter((f) => !options.exclude_files.includes(f.original_path));
+    }
+    return filtered;
+  }
+  async restoreFile(checkpoint_id, entry) {
+    const storedPath = this.getAbsolutePath(CHECKPOINT_PATHS.files(checkpoint_id) + "/" + entry.stored_path);
+    const targetPath = this.getAbsolutePath(entry.original_path);
+    try {
+      await fs5.mkdir(path5.dirname(targetPath), { recursive: true });
+      await fs5.copyFile(storedPath, targetPath);
+      const restoredHash = await calculateFileHash(targetPath);
+      return restoredHash === entry.hash;
+    } catch {
+      return false;
+    }
+  }
+  async restoreState(snapshot, options) {
+    if (!options?.exclude_state || !options.exclude_state.includes("session")) {
+      if (snapshot.session) {
+        this.stateManager.updateSession(snapshot.session);
+      }
+    }
+  }
+  async readManifest(checkpoint_id) {
+    const manifestPath = this.getAbsolutePath(CHECKPOINT_PATHS.manifest(checkpoint_id));
+    try {
+      const content = await fs5.readFile(manifestPath, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+  async readStateSnapshot(checkpoint_id) {
+    const statePath = this.getAbsolutePath(CHECKPOINT_PATHS.state(checkpoint_id));
+    try {
+      const content = await fs5.readFile(statePath, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+  createFailedResult(target, scope, errors) {
+    return {
+      success: false,
+      scope,
+      target,
+      files_restored: [],
+      files_failed: [],
+      state_restored: [],
+      state_failed: [],
+      duration_ms: 0,
+      errors
+    };
+  }
+  addToHistory(target, scope, result) {
+    const entry = {
+      id: generateId4("rollback"),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      target,
+      scope,
+      result,
+      triggered_by: "manual"
+    };
+    this.history.push(entry);
+    while (this.history.length > this.config.max_history_entries) {
+      this.history.shift();
+    }
+  }
+  getAbsolutePath(relativePath) {
+    return path5.join(this.projectRoot, relativePath);
+  }
+  // =========================================================================
+  // Public Configuration
+  // =========================================================================
+  getConfig() {
+    return { ...this.config };
+  }
+  updateConfig(updates) {
+    this.config = { ...this.config, ...updates };
+  }
+  getHistory() {
+    return [...this.history];
+  }
+  clearHistory() {
+    this.history = [];
+  }
+};
+function createRollbackSystem(projectRoot, stateManager) {
+  return new RollbackSystemImpl(projectRoot, stateManager);
+}
+__name(createRollbackSystem, "createRollbackSystem");
+var globalRollbackSystem = null;
+function getRollbackSystem(projectRoot, stateManager) {
+  if (!globalRollbackSystem) {
+    globalRollbackSystem = createRollbackSystem(projectRoot, stateManager);
+  }
+  return globalRollbackSystem;
+}
+__name(getRollbackSystem, "getRollbackSystem");
+function resetGlobalRollbackSystem() {
+  globalRollbackSystem = null;
+}
+__name(resetGlobalRollbackSystem, "resetGlobalRollbackSystem");
+
+// src/runtime/recovery.ts
+var crypto6 = __toESM(require("crypto"), 1);
+
+// src/interfaces/recovery.ts
+var DEFAULT_RECOVERY_CONFIG = {
+  mode: "fix_loop",
+  checkpoint_before_batch: true,
+  checkpoint_before_risky: true,
+  max_fix_attempts: 3,
+  fix_timeout_ms: 6e4,
+  rollback_on_fix_failure: true,
+  keep_history: true
+};
+
+// src/runtime/recovery.ts
+function generateId5(prefix) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+  const random = crypto6.randomBytes(4).toString("hex");
+  return `${prefix}_${timestamp}_${random}`;
+}
+__name(generateId5, "generateId");
+var RecoveryOrchestratorImpl = class {
+  static {
+    __name(this, "RecoveryOrchestratorImpl");
+  }
+  checkpoint;
+  fixLoop;
+  rollback;
+  mode;
+  eventHandlers;
+  constructor(checkpoint, fixLoop, rollback, mode = "fix_loop") {
+    this.checkpoint = checkpoint;
+    this.fixLoop = fixLoop;
+    this.rollback = rollback;
+    this.mode = mode;
+    this.eventHandlers = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Prepare batch for recovery (create checkpoint)
+   */
+  async prepareBatch(batch, config2) {
+    if (!config2.recovery.checkpoint) {
+      return null;
+    }
+    const checkpoint = await this.checkpoint.create({
+      batch_id: batch.id,
+      reason: "batch_start",
+      type: "automatic"
+    });
+    this.emit("checkpoint_created", {
+      event: "checkpoint_created",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      batch_id: batch.id,
+      checkpoint_id: checkpoint.id
+    });
+    return checkpoint;
+  }
+  /**
+   * Handle operation failure
+   * Decides what recovery action to take for a failed operation
+   */
+  async handleOperationFailure(context) {
+    const { mode, failed_operations } = context;
+    if (mode === "none") {
+      return {
+        action: {
+          type: "abort",
+          reason: "Recovery mode is set to none"
+        },
+        context,
+        decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+        decided_by: "mode_config"
+      };
+    }
+    const failedOp = failed_operations[0];
+    if (!failedOp || !failedOp.error) {
+      return {
+        action: {
+          type: "abort",
+          reason: "No error information available"
+        },
+        context,
+        decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+        decided_by: "error_type"
+      };
+    }
+    const error2 = this.parseOperationError(failedOp);
+    if (mode === "fix_loop" || mode === "full") {
+      if (this.fixLoop.canFix(error2)) {
+        return {
+          action: {
+            type: "fix",
+            reason: `Error type '${error2.type}' is auto-fixable`,
+            data: { error: error2 }
+          },
+          context,
+          decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+          decided_by: "error_type"
+        };
+      }
+    }
+    if (mode === "auto_rollback" || mode === "full") {
+      return {
+        action: {
+          type: "rollback",
+          reason: "Error cannot be auto-fixed, rolling back"
+        },
+        context,
+        decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+        decided_by: "mode_config"
+      };
+    }
+    if (mode === "checkpoint") {
+      return {
+        action: {
+          type: "ask_user",
+          reason: "Checkpoint mode requires user decision"
+        },
+        context,
+        decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+        decided_by: "mode_config"
+      };
+    }
+    return {
+      action: {
+        type: "continue",
+        reason: "Continuing with partial results"
+      },
+      context,
+      decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+      decided_by: "mode_config"
+    };
+  }
+  /**
+   * Handle batch failure
+   * Executes full recovery flow for batch-level failure
+   */
+  async handleBatchFailure(context) {
+    const startTime = Date.now();
+    const { mode, failed_operations, checkpoint } = context;
+    if (mode === "none") {
+      return {
+        success: false,
+        action_taken: {
+          type: "abort",
+          reason: "Recovery mode is set to none"
+        },
+        duration_ms: Date.now() - startTime,
+        error: "Recovery disabled"
+      };
+    }
+    if (mode === "fix_loop" || mode === "full") {
+      for (const failedOp of failed_operations) {
+        const error2 = this.parseOperationError(failedOp);
+        if (this.fixLoop.canFix(error2)) {
+          this.emit("fix_started", {
+            event: "fix_started",
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            batch_id: context.batch.id,
+            operation_id: failedOp.id,
+            error: error2
+          });
+          const fixContext = {
+            operation: failedOp,
+            batch: context.batch,
+            error: error2,
+            attempt: 1,
+            max_attempts: context.max_fix_attempts,
+            prior_attempts: []
+          };
+          const fixResult = await this.fixLoop.run(fixContext);
+          if (fixResult.success) {
+            this.emit("fix_succeeded", {
+              event: "fix_succeeded",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              batch_id: context.batch.id,
+              operation_id: failedOp.id,
+              result: fixResult
+            });
+            return {
+              success: true,
+              action_taken: {
+                type: "fix",
+                reason: "Fix loop successfully resolved errors"
+              },
+              fix_result: fixResult,
+              duration_ms: Date.now() - startTime
+            };
+          } else {
+            this.emit("fix_failed", {
+              event: "fix_failed",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              batch_id: context.batch.id,
+              operation_id: failedOp.id,
+              result: fixResult
+            });
+          }
+        }
+      }
+    }
+    if ((mode === "auto_rollback" || mode === "full") && checkpoint) {
+      this.emit("rollback_started", {
+        event: "rollback_started",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        batch_id: context.batch.id,
+        checkpoint_id: checkpoint.id
+      });
+      const rollbackResult = await this.rollback.toCheckpoint(checkpoint.id, "all");
+      if (rollbackResult.success) {
+        this.emit("rollback_succeeded", {
+          event: "rollback_succeeded",
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          batch_id: context.batch.id,
+          result: rollbackResult
+        });
+        return {
+          success: true,
+          action_taken: {
+            type: "rollback",
+            reason: "Rolled back to checkpoint after fix failure"
+          },
+          rollback_result: rollbackResult,
+          checkpoint_restored: checkpoint.id,
+          duration_ms: Date.now() - startTime
+        };
+      } else {
+        this.emit("rollback_failed", {
+          event: "rollback_failed",
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          batch_id: context.batch.id,
+          result: rollbackResult
+        });
+        return {
+          success: false,
+          action_taken: {
+            type: "rollback",
+            reason: "Rollback attempted but failed"
+          },
+          rollback_result: rollbackResult,
+          duration_ms: Date.now() - startTime,
+          error: rollbackResult.errors?.join("; ")
+        };
+      }
+    }
+    return {
+      success: false,
+      action_taken: {
+        type: "abort",
+        reason: "No recovery options available"
+      },
+      duration_ms: Date.now() - startTime,
+      error: "Recovery not possible"
+    };
+  }
+  /**
+   * Execute recovery action
+   * Performs the specified recovery action
+   */
+  async executeAction(action, context) {
+    const startTime = Date.now();
+    switch (action.type) {
+      case "fix": {
+        const error2 = action.data.error;
+        const failedOp = context.failed_operations[0];
+        if (!failedOp) {
+          return {
+            success: false,
+            action_taken: action,
+            duration_ms: Date.now() - startTime,
+            error: "No failed operation to fix"
+          };
+        }
+        const fixContext = {
+          operation: failedOp,
+          batch: context.batch,
+          error: error2,
+          attempt: 1,
+          max_attempts: context.max_fix_attempts,
+          prior_attempts: []
+        };
+        const fixResult = await this.fixLoop.run(fixContext);
+        return {
+          success: fixResult.success,
+          action_taken: action,
+          fix_result: fixResult,
+          duration_ms: Date.now() - startTime,
+          error: fixResult.success ? void 0 : "Fix loop failed"
+        };
+      }
+      case "rollback": {
+        if (!context.checkpoint) {
+          return {
+            success: false,
+            action_taken: action,
+            duration_ms: Date.now() - startTime,
+            error: "No checkpoint available for rollback"
+          };
+        }
+        const rollbackResult = await this.rollback.toCheckpoint(context.checkpoint.id, "all");
+        return {
+          success: rollbackResult.success,
+          action_taken: action,
+          rollback_result: rollbackResult,
+          checkpoint_restored: context.checkpoint.id,
+          duration_ms: Date.now() - startTime,
+          error: rollbackResult.success ? void 0 : rollbackResult.errors?.join("; ")
+        };
+      }
+      case "continue":
+        return {
+          success: true,
+          action_taken: action,
+          duration_ms: Date.now() - startTime
+        };
+      case "abort":
+        return {
+          success: false,
+          action_taken: action,
+          duration_ms: Date.now() - startTime,
+          error: action.reason
+        };
+      case "ask_user":
+        return {
+          success: false,
+          action_taken: action,
+          duration_ms: Date.now() - startTime,
+          error: "User intervention required"
+        };
+      default:
+        return {
+          success: false,
+          action_taken: action,
+          duration_ms: Date.now() - startTime,
+          error: `Unknown action type: ${action.type}`
+        };
+    }
+  }
+  /**
+   * Register event handler
+   */
+  on(event, handler) {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, []);
+    }
+    this.eventHandlers.get(event).push(handler);
+  }
+  /**
+   * Unregister event handler
+   */
+  off(event, handler) {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers) {
+      const index = handlers.indexOf(handler);
+      if (index !== -1) {
+        handlers.splice(index, 1);
+      }
+    }
+  }
+  /**
+   * Emit event to registered handlers
+   */
+  emit(event, data) {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          handler(event, data);
+        } catch (error2) {
+          console.error(`Error in recovery event handler for ${event}:`, error2);
+        }
+      }
+    }
+  }
+  /**
+   * Parse operation error into FixableError structure
+   */
+  parseOperationError(operation) {
+    if (!operation.error) {
+      return {
+        type: "runtime_error",
+        message: "Unknown error"
+      };
+    }
+    const message = operation.error.message.toLowerCase();
+    let type = "runtime_error";
+    if (message.includes("typescript") || message.includes("ts(")) {
+      type = "typescript_error";
+    } else if (message.includes("eslint") || message.includes("lint")) {
+      type = "lint_error";
+    } else if (message.includes("prettier") || message.includes("format")) {
+      type = "format_error";
+    } else if (message.includes("import") || message.includes("module")) {
+      type = "import_error";
+    } else if (message.includes("test") || message.includes("expect")) {
+      type = "test_failure";
+    } else if (message.includes("build")) {
+      type = "build_error";
+    }
+    return {
+      type,
+      message: operation.error.message,
+      code: operation.error.code
+    };
+  }
+};
+var RecoveryManagerImpl = class extends RecoveryOrchestratorImpl {
+  static {
+    __name(this, "RecoveryManagerImpl");
+  }
+  config;
+  history;
+  stats;
+  constructor(checkpoint, fixLoop, rollback, config2 = { ...DEFAULT_RECOVERY_CONFIG }) {
+    super(checkpoint, fixLoop, rollback, config2.mode);
+    this.config = config2;
+    this.history = [];
+    this.stats = this.createDefaultStats();
+  }
+  /**
+   * Initialize the recovery manager
+   */
+  async initialize() {
+    this.history = [];
+    this.stats = this.createDefaultStats();
+  }
+  /**
+   * Shutdown the recovery manager
+   */
+  async shutdown() {
+    this.eventHandlers.clear();
+  }
+  /**
+   * Override handleBatchFailure to track history
+   */
+  async handleBatchFailure(context) {
+    const decision = {
+      action: {
+        type: "fix",
+        reason: "Attempting recovery"
+      },
+      context,
+      decided_at: (/* @__PURE__ */ new Date()).toISOString(),
+      decided_by: "mode_config"
+    };
+    const result = await super.handleBatchFailure(context);
+    if (this.config.keep_history) {
+      const entry = {
+        id: generateId5("recovery"),
+        batch_id: context.batch.id,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        context,
+        decision,
+        result
+      };
+      this.history.push(entry);
+    }
+    this.updateStats(result, context);
+    return result;
+  }
+  /**
+   * Get recovery history with optional filtering
+   */
+  getHistory(filter) {
+    let filtered = this.history;
+    if (filter?.batch_id) {
+      filtered = filtered.filter((entry) => entry.batch_id === filter.batch_id);
+    }
+    if (filter?.success !== void 0) {
+      filtered = filtered.filter((entry) => entry.result.success === filter.success);
+    }
+    if (filter?.limit) {
+      filtered = filtered.slice(-filter.limit);
+    }
+    return filtered;
+  }
+  /**
+   * Clear all recovery history
+   */
+  clearHistory() {
+    this.history = [];
+  }
+  /**
+   * Get current recovery statistics
+   */
+  getStats() {
+    return { ...this.stats };
+  }
+  /**
+   * Reset all statistics
+   */
+  resetStats() {
+    this.stats = this.createDefaultStats();
+  }
+  /**
+   * Create default statistics
+   */
+  createDefaultStats() {
+    return {
+      total_recoveries: 0,
+      successful_fixes: 0,
+      successful_rollbacks: 0,
+      failed_recoveries: 0,
+      avg_fix_attempts: 0,
+      avg_recovery_duration_ms: 0,
+      by_error_type: {}
+    };
+  }
+  /**
+   * Update statistics based on recovery result
+   */
+  updateStats(result, context) {
+    this.stats.total_recoveries++;
+    if (result.success) {
+      if (result.fix_result) {
+        this.stats.successful_fixes++;
+        const currentAvg2 = this.stats.avg_fix_attempts;
+        const count = this.stats.successful_fixes;
+        this.stats.avg_fix_attempts = (currentAvg2 * (count - 1) + result.fix_result.attempts) / count;
+      }
+      if (result.rollback_result) {
+        this.stats.successful_rollbacks++;
+      }
+    } else {
+      this.stats.failed_recoveries++;
+    }
+    const currentAvg = this.stats.avg_recovery_duration_ms;
+    const total = this.stats.total_recoveries;
+    this.stats.avg_recovery_duration_ms = (currentAvg * (total - 1) + result.duration_ms) / total;
+    for (const failedOp of context.failed_operations) {
+      const error2 = this.parseOperationError(failedOp);
+      const errorType = error2.type;
+      if (!this.stats.by_error_type[errorType]) {
+        this.stats.by_error_type[errorType] = {
+          count: 0,
+          success_rate: 0
+        };
+      }
+      const typeStats = this.stats.by_error_type[errorType];
+      const prevCount = typeStats.count;
+      const prevSuccesses = prevCount * typeStats.success_rate;
+      typeStats.count++;
+      const newSuccesses = prevSuccesses + (result.success ? 1 : 0);
+      typeStats.success_rate = newSuccesses / typeStats.count;
+    }
+  }
+};
+var globalRecoveryManager = null;
+function getRecoveryManager(checkpoint, fixLoop, rollback, config2) {
+  if (!globalRecoveryManager) {
+    if (!checkpoint || !fixLoop || !rollback) {
+      throw new Error("Recovery manager not initialized. Provide checkpoint, fixLoop, and rollback systems.");
+    }
+    globalRecoveryManager = new RecoveryManagerImpl(checkpoint, fixLoop, rollback, config2);
+  }
+  return globalRecoveryManager;
+}
+__name(getRecoveryManager, "getRecoveryManager");
+function createRecoveryManager(checkpoint, fixLoop, rollback, config2) {
+  return new RecoveryManagerImpl(checkpoint, fixLoop, rollback, config2);
+}
+__name(createRecoveryManager, "createRecoveryManager");
+function resetGlobalRecoveryManager() {
+  globalRecoveryManager = null;
+}
+__name(resetGlobalRecoveryManager, "resetGlobalRecoveryManager");
+
+// src/runtime/context.ts
+var globalContextGatherer = null;
+function resetGlobalContextGatherer() {
+  globalContextGatherer = null;
+}
+__name(resetGlobalContextGatherer, "resetGlobalContextGatherer");
+
+// src/runtime/template-resolver.ts
+var globalTemplateResolver = null;
+function resetGlobalTemplateResolver() {
+  globalTemplateResolver = null;
+}
+__name(resetGlobalTemplateResolver, "resetGlobalTemplateResolver");
+
+// src/runtime/fix-loop.ts
+var import_child_process = require("child_process");
+var import_util6 = require("util");
+var execPromise = (0, import_util6.promisify)(import_child_process.spawn);
+var ERROR_TO_STRATEGY = {
+  typescript_error: ["auto_fix", "agent_fix", "targeted_fix"],
+  lint_error: ["auto_fix", "targeted_fix"],
+  format_error: ["auto_fix"],
+  import_error: ["auto_fix", "targeted_fix"],
+  test_failure: ["agent_fix", "targeted_fix"],
+  build_error: ["auto_fix", "agent_fix"],
+  runtime_error: ["agent_fix", "targeted_fix"]
+};
+var DEFAULT_CONFIG = {
+  max_attempts: 3,
+  strategies: ["auto_fix", "agent_fix", "targeted_fix"],
+  timeout_ms: 6e4,
+  auto_fixers: {}
+};
+var BUILTIN_AUTO_FIXERS = {
+  lint_error: {
+    name: "eslint-fix",
+    can_fix: (error2) => error2.type === "lint_error",
+    fix: async (error2, context) => {
+      const actions = [];
+      if (!error2.file) {
+        return actions;
+      }
+      try {
+        const result = await executeCommand(`npx eslint --fix "${error2.file}"`, 3e4);
+        actions.push({
+          type: "command",
+          target: `eslint --fix ${error2.file}`,
+          description: `Auto-fix ESLint errors in ${error2.file}`,
+          success: result.exitCode === 0,
+          error: result.exitCode !== 0 ? result.stderr : void 0
+        });
+      } catch (err) {
+        actions.push({
+          type: "command",
+          target: `eslint --fix ${error2.file}`,
+          description: `Auto-fix ESLint errors in ${error2.file}`,
+          success: false,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+      return actions;
+    }
+  },
+  format_error: {
+    name: "prettier-fix",
+    can_fix: (error2) => error2.type === "format_error",
+    fix: async (error2, context) => {
+      const actions = [];
+      if (!error2.file) {
+        return actions;
+      }
+      try {
+        const result = await executeCommand(`npx prettier --write "${error2.file}"`, 3e4);
+        actions.push({
+          type: "command",
+          target: `prettier --write ${error2.file}`,
+          description: `Auto-format file ${error2.file}`,
+          success: result.exitCode === 0,
+          error: result.exitCode !== 0 ? result.stderr : void 0
+        });
+      } catch (err) {
+        actions.push({
+          type: "command",
+          target: `prettier --write ${error2.file}`,
+          description: `Auto-format file ${error2.file}`,
+          success: false,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+      return actions;
+    }
+  }
+};
+async function executeCommand(command, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const child = (0, import_child_process.spawn)(command, [], {
+      shell: true,
+      timeout: timeoutMs
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+    child.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+    child.on("close", (code) => {
+      resolve({
+        exitCode: code ?? 1,
+        stdout,
+        stderr
+      });
+    });
+    child.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+__name(executeCommand, "executeCommand");
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+__name(sleep, "sleep");
+function getBackoffDelay(attempt) {
+  return Math.pow(2, attempt - 1) * 1e3;
+}
+__name(getBackoffDelay, "getBackoffDelay");
+var FixLoopImpl = class {
+  static {
+    __name(this, "FixLoopImpl");
+  }
+  config;
+  stateManager;
+  customAutoFixers;
+  constructor(config2 = {}, stateManager) {
+    this.config = { ...DEFAULT_CONFIG, ...config2 };
+    this.stateManager = stateManager || getStateManager();
+    this.customAutoFixers = /* @__PURE__ */ new Map();
+    for (const [errorType, fixer] of Object.entries(BUILTIN_AUTO_FIXERS)) {
+      this.config.auto_fixers[errorType] = fixer;
+    }
+  }
+  /**
+   * Run the fix loop for the given context
+   */
+  async run(context) {
+    const startTime = Date.now();
+    const allActions = [];
+    let totalTokens = 0;
+    let currentErrors = [context.error];
+    console.log(`[FixLoop] Starting fix loop for error: ${context.error.type}`);
+    for (let attempt = 1; attempt <= context.max_attempts; attempt++) {
+      if (attempt > 1) {
+        const delay = getBackoffDelay(attempt);
+        console.log(`[FixLoop] Waiting ${delay}ms before attempt ${attempt}`);
+        await sleep(delay);
+      }
+      const strategy = this.getStrategy(attempt);
+      console.log(`[FixLoop] Attempt ${attempt}/${context.max_attempts} using strategy: ${strategy}`);
+      const attemptStart = (/* @__PURE__ */ new Date()).toISOString();
+      const attemptResult = await this.executeAttempt(
+        {
+          ...context,
+          attempt,
+          prior_attempts: context.prior_attempts
+        },
+        strategy,
+        currentErrors
+      );
+      const attemptEnd = (/* @__PURE__ */ new Date()).toISOString();
+      const fixAttempt = {
+        strategy,
+        started_at: attemptStart,
+        completed_at: attemptEnd,
+        success: attemptResult.success,
+        actions: attemptResult.actions,
+        remaining_errors: attemptResult.remaining_errors,
+        tokens_used: attemptResult.tokens_used
+      };
+      allActions.push(...attemptResult.actions);
+      totalTokens += attemptResult.tokens_used;
+      currentErrors = attemptResult.remaining_errors;
+      console.log(
+        `[FixLoop] Attempt ${attempt} ${attemptResult.success ? "succeeded" : "failed"}. Actions: ${attemptResult.actions.length}, Remaining errors: ${attemptResult.remaining_errors.length}`
+      );
+      if (attemptResult.success && currentErrors.length === 0) {
+        const duration4 = Date.now() - startTime;
+        return {
+          success: true,
+          attempts: attempt,
+          final_strategy: strategy,
+          actions_taken: allActions,
+          remaining_errors: [],
+          total_tokens_used: totalTokens,
+          duration_ms: duration4
+        };
+      }
+    }
+    const duration3 = Date.now() - startTime;
+    console.log(`[FixLoop] All ${context.max_attempts} attempts exhausted. Fix failed.`);
+    return {
+      success: false,
+      attempts: context.max_attempts,
+      final_strategy: this.getStrategy(context.max_attempts),
+      actions_taken: allActions,
+      remaining_errors: currentErrors,
+      total_tokens_used: totalTokens,
+      duration_ms: duration3
+    };
+  }
+  /**
+   * Execute a single fix attempt
+   */
+  async executeAttempt(context, strategy, errors) {
+    switch (strategy) {
+      case "auto_fix":
+        return this.executeAutoFix(context, errors);
+      case "agent_fix":
+        return this.executeAgentFix(context, errors);
+      case "targeted_fix":
+        return this.executeTargetedFix(context, errors);
+      default:
+        return {
+          success: false,
+          actions: [],
+          remaining_errors: errors,
+          tokens_used: 0
+        };
+    }
+  }
+  /**
+   * Execute auto-fix strategy
+   */
+  async executeAutoFix(context, errors) {
+    const actions = [];
+    for (const error2 of errors) {
+      const fixer = this.config.auto_fixers[error2.type] || this.customAutoFixers.get(error2.type);
+      if (fixer && fixer.can_fix(error2)) {
+        try {
+          const fixActions = await fixer.fix(error2, context);
+          actions.push(...fixActions);
+        } catch (err) {
+          console.error(`[FixLoop] Auto-fixer failed for ${error2.type}:`, err);
+        }
+      }
+    }
+    const anySuccess = actions.some((a) => a.success);
+    const allSuccess = actions.length > 0 && actions.every((a) => a.success);
+    const remaining_errors = allSuccess ? [] : anySuccess ? errors.slice(0, Math.ceil(errors.length / 2)) : errors;
+    return {
+      success: allSuccess,
+      actions,
+      remaining_errors,
+      tokens_used: 0
+      // Auto-fix doesn't use tokens
+    };
+  }
+  /**
+   * Execute agent-fix strategy (spawn code-architect agent)
+   */
+  async executeAgentFix(context, errors) {
+    const actions = [];
+    const errorSummary = errors.map((e) => `${e.type}: ${e.message}${e.file ? ` (${e.file}:${e.line})` : ""}`).join("\n");
+    const prompt = `Fix the following errors in the batch operation:
+
+Batch ID: ${context.batch.id}
+Operation: ${context.operation.type}
+
+Errors:
+${errorSummary}
+
+Previous attempts:
+${context.prior_attempts.map((a, i) => `Attempt ${i + 1} (${a.strategy}): ${a.success ? "succeeded" : "failed"}`).join("\n")}
+
+Please analyze and fix these errors. Focus on:
+1. Understanding the root cause
+2. Making surgical fixes
+3. Validating the fix works
+`;
+    console.log(`[FixLoop] Would spawn code-architect agent with prompt:
+${prompt}`);
+    actions.push({
+      type: "command",
+      target: "agent:code-architect",
+      description: "Spawned code-architect agent to fix errors",
+      success: false,
+      // Simulated - would be determined by actual agent result
+      error: "Agent spawning not yet fully implemented"
+    });
+    return {
+      success: false,
+      actions,
+      remaining_errors: errors,
+      tokens_used: 1e3
+      // Estimated tokens for agent call
+    };
+  }
+  /**
+   * Execute targeted-fix strategy (spawn specialized agent based on error type)
+   */
+  async executeTargetedFix(context, errors) {
+    const actions = [];
+    const errorsByType = /* @__PURE__ */ new Map();
+    for (const error2 of errors) {
+      const existing = errorsByType.get(error2.type) || [];
+      existing.push(error2);
+      errorsByType.set(error2.type, existing);
+    }
+    const TARGETED_AGENTS = {
+      typescript_error: "goodvibes:backend-engineer",
+      lint_error: "goodvibes:code-architect",
+      format_error: "goodvibes:code-architect",
+      import_error: "goodvibes:backend-engineer",
+      test_failure: "goodvibes:test-engineer",
+      build_error: "goodvibes:devops-deployer",
+      runtime_error: "goodvibes:backend-engineer"
+    };
+    for (const [errorType, typeErrors] of errorsByType) {
+      const agentType = TARGETED_AGENTS[errorType] || "goodvibes:code-architect";
+      const errorSummary = typeErrors.map((e) => `${e.message}${e.file ? ` (${e.file}:${e.line})` : ""}`).join("\n");
+      const prompt = `Fix these ${errorType} errors:
+
+Batch ID: ${context.batch.id}
+Operation: ${context.operation.type}
+Attempt: ${context.attempt}/${context.max_attempts}
+
+Errors:
+${errorSummary}
+
+Context from previous attempts:
+${context.prior_attempts.map((a) => `- ${a.strategy}: ${a.actions.length} actions, ${a.success ? "succeeded" : "failed"}`).join("\n")}
+
+This is a targeted fix with specialized knowledge of ${errorType} issues.
+Please provide a detailed fix with validation.
+`;
+      console.log(`[FixLoop] Would spawn ${agentType} agent with prompt:
+${prompt}`);
+      actions.push({
+        type: "command",
+        target: `agent:${agentType}`,
+        description: `Spawned ${agentType} agent to fix ${errorType} errors`,
+        success: false,
+        // Simulated
+        error: "Targeted agent spawning not yet fully implemented"
+      });
+    }
+    return {
+      success: false,
+      actions,
+      remaining_errors: errors,
+      tokens_used: 2e3
+      // Estimated tokens for specialized agent
+    };
+  }
+  /**
+   * Check if an error can be fixed
+   */
+  canFix(error2) {
+    const strategies = ERROR_TO_STRATEGY[error2.type];
+    if (!strategies || strategies.length === 0) {
+      return false;
+    }
+    return strategies.some((strategy) => {
+      if (strategy === "auto_fix") {
+        const fixer = this.config.auto_fixers[error2.type] || this.customAutoFixers.get(error2.type);
+        return fixer ? fixer.can_fix(error2) : false;
+      }
+      return true;
+    });
+  }
+  /**
+   * Get the strategy to use for a given attempt number
+   */
+  getStrategy(attempt) {
+    const strategies = this.config.strategies;
+    const index = Math.min(attempt - 1, strategies.length - 1);
+    return strategies[index] || "auto_fix";
+  }
+  /**
+   * Register a custom auto-fixer for an error type
+   */
+  registerAutoFixer(type, fixer) {
+    this.customAutoFixers.set(type, fixer);
+    this.config.auto_fixers[type] = fixer;
+  }
+  /**
+   * Parse an error into a FixableError structure
+   */
+  parseError(error2) {
+    const message = typeof error2 === "string" ? error2 : error2.message;
+    const stack = typeof error2 === "string" ? void 0 : error2.stack;
+    const tsMatch = message.match(/^(.+?)\((\d+),(\d+)\): error TS(\d+): (.+)$/);
+    if (tsMatch && tsMatch[1] && tsMatch[2] && tsMatch[3] && tsMatch[4] && tsMatch[5]) {
+      return {
+        type: "typescript_error",
+        message: tsMatch[5],
+        file: tsMatch[1],
+        line: parseInt(tsMatch[2], 10),
+        column: parseInt(tsMatch[3], 10),
+        code: `TS${tsMatch[4]}`
+      };
+    }
+    const eslintMatch = message.match(/^(.+?):(\d+):(\d+): (.+?) \[(.+?)\]$/);
+    if (eslintMatch && eslintMatch[1] && eslintMatch[2] && eslintMatch[3] && eslintMatch[4] && eslintMatch[5]) {
+      return {
+        type: "lint_error",
+        message: eslintMatch[4],
+        file: eslintMatch[1],
+        line: parseInt(eslintMatch[2], 10),
+        column: parseInt(eslintMatch[3], 10),
+        code: eslintMatch[5]
+      };
+    }
+    if (message.includes("FAIL") || message.includes("Test failed")) {
+      return {
+        type: "test_failure",
+        message
+      };
+    }
+    if (message.includes("Build failed") || message.includes("Module not found")) {
+      return {
+        type: "build_error",
+        message
+      };
+    }
+    return {
+      type: "runtime_error",
+      message
+    };
+  }
+};
+function createFixLoop(config2, stateManager) {
+  return new FixLoopImpl(config2, stateManager);
+}
+__name(createFixLoop, "createFixLoop");
+var globalFixLoop = null;
+function getFixLoop(config2) {
+  if (!globalFixLoop) {
+    globalFixLoop = createFixLoop(config2);
+  }
+  return globalFixLoop;
+}
+__name(getFixLoop, "getFixLoop");
+function resetGlobalFixLoop() {
+  globalFixLoop = null;
+}
+__name(resetGlobalFixLoop, "resetGlobalFixLoop");
+
 // src/runtime/index.ts
 function createRuntimeContext(projectRoot) {
   return {
     state: getStateManager(projectRoot),
     memory: getMemoryManager(projectRoot),
-    telemetry: getTelemetryCollector(projectRoot)
+    telemetry: getTelemetryCollector(projectRoot),
+    checkpoint: getCheckpointManager(projectRoot),
+    rollback: getRollbackSystem(projectRoot)
   };
 }
 __name(createRuntimeContext, "createRuntimeContext");
@@ -23322,10 +25542,12 @@ async function initializeRuntime(context) {
   const stateManager = context.state;
   const memoryManager = context.memory;
   const telemetryCollector = context.telemetry;
+  const checkpointManager = context.checkpoint;
   await Promise.all([
     stateManager.load(),
     memoryManager.load(),
-    telemetryCollector.load()
+    telemetryCollector.load(),
+    checkpointManager.initialize()
   ]);
 }
 __name(initializeRuntime, "initializeRuntime");
@@ -23333,10 +25555,12 @@ async function persistRuntime(context) {
   const stateManager = context.state;
   const memoryManager = context.memory;
   const telemetryCollector = context.telemetry;
+  const checkpointManager = context.checkpoint;
   await Promise.all([
     stateManager.persist(),
     memoryManager.persist(),
-    telemetryCollector.persist()
+    telemetryCollector.persist(),
+    checkpointManager.shutdown()
   ]);
 }
 __name(persistRuntime, "persistRuntime");
@@ -23344,13 +25568,18 @@ function resetRuntime() {
   resetGlobalStateManager();
   resetGlobalMemoryManager();
   resetGlobalTelemetryCollector();
+  resetGlobalCheckpointManager();
+  resetGlobalRollbackSystem();
+  resetGlobalRecoveryManager();
+  resetGlobalContextGatherer();
+  resetGlobalTemplateResolver();
 }
 __name(resetRuntime, "resetRuntime");
 
 // src/handlers/batch.ts
 function generateBatchId() {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-  const random = crypto4.randomBytes(4).toString("hex");
+  const random = crypto7.randomBytes(4).toString("hex");
   return `batch_${timestamp}_${random}`;
 }
 __name(generateBatchId, "generateBatchId");
@@ -24656,8 +26885,8 @@ var handleListBatches = /* @__PURE__ */ __name(async (args) => {
 }, "handleListBatches");
 
 // src/handlers/batch-recover.ts
-var fs4 = __toESM(require("fs/promises"), 1);
-var path4 = __toESM(require("path"), 1);
+var fs6 = __toESM(require("fs/promises"), 1);
+var path6 = __toESM(require("path"), 1);
 function startTimer3() {
   const start = performance.now();
   return () => Math.round(performance.now() - start);
@@ -24763,11 +26992,11 @@ async function executeRollback(options, runtime) {
       const projectRoot = getProjectRoot();
       const checkpointPaths = getCheckpointPath(checkpointId);
       for (const file2 of options.files) {
-        const backupPath = path4.join(projectRoot, checkpointPaths.files, file2);
-        const targetPath = path4.join(projectRoot, file2);
+        const backupPath = path6.join(projectRoot, checkpointPaths.files, file2);
+        const targetPath = path6.join(projectRoot, file2);
         try {
-          const backupContent = await fs4.readFile(backupPath, "utf-8");
-          await fs4.writeFile(targetPath, backupContent, "utf-8");
+          const backupContent = await fs6.readFile(backupPath, "utf-8");
+          await fs6.writeFile(targetPath, backupContent, "utf-8");
           filesRestored.push(file2);
         } catch {
           filesFailed.push(file2);
@@ -24820,17 +27049,17 @@ async function executeRestore(options, runtime) {
     if (!options.state_only) {
       const projectRoot = getProjectRoot();
       const checkpointPaths = getCheckpointPath(checkpointId);
-      const filesDir = path4.join(projectRoot, checkpointPaths.files);
+      const filesDir = path6.join(projectRoot, checkpointPaths.files);
       try {
-        const files = await fs4.readdir(filesDir);
+        const files = await fs6.readdir(filesDir);
         for (const file2 of files) {
-          const backupPath = path4.join(filesDir, file2);
-          const targetPath = path4.join(projectRoot, file2);
+          const backupPath = path6.join(filesDir, file2);
+          const targetPath = path6.join(projectRoot, file2);
           try {
-            const stats = await fs4.stat(backupPath);
+            const stats = await fs6.stat(backupPath);
             if (stats.isFile()) {
-              const content = await fs4.readFile(backupPath, "utf-8");
-              await fs4.writeFile(targetPath, content, "utf-8");
+              const content = await fs6.readFile(backupPath, "utf-8");
+              await fs6.writeFile(targetPath, content, "utf-8");
               filesRestored.push(file2);
             }
           } catch {
@@ -24900,13 +27129,13 @@ async function executeCleanup(options, runtime) {
     for (const cp of toRemove) {
       try {
         const checkpointPaths = getCheckpointPath(cp.id);
-        const checkpointDir = path4.join(projectRoot, checkpointPaths.manifest).replace("/manifest.json", "");
+        const checkpointDir = path6.join(projectRoot, checkpointPaths.manifest).replace("/manifest.json", "");
         try {
-          const stats = await fs4.stat(checkpointDir);
+          const stats = await fs6.stat(checkpointDir);
           bytesFreed += 1024;
         } catch {
         }
-        await fs4.rm(checkpointDir, { recursive: true, force: true });
+        await fs6.rm(checkpointDir, { recursive: true, force: true });
         checkpointsRemoved++;
       } catch (error2) {
         errors.push(`Failed to remove checkpoint ${cp.id}: ${error2 instanceof Error ? error2.message : String(error2)}`);
@@ -25230,8 +27459,8 @@ function toCallToolResult4(result) {
   };
 }
 __name(toCallToolResult4, "toCallToolResult");
-function getByPath(obj, path5) {
-  const parts = path5.split(".");
+function getByPath(obj, path7) {
+  const parts = path7.split(".");
   let current = obj;
   for (const part of parts) {
     if (current === null || current === void 0) {
@@ -25245,8 +27474,8 @@ function getByPath(obj, path5) {
   return current;
 }
 __name(getByPath, "getByPath");
-function setByPath(obj, path5, value) {
-  const parts = path5.split(".");
+function setByPath(obj, path7, value) {
+  const parts = path7.split(".");
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
@@ -25374,11 +27603,11 @@ async function executeExport(options, runtime) {
     exported = data;
   }
   if (options.output_path) {
-    const fs5 = await import("fs/promises");
-    const path5 = await import("path");
+    const fs7 = await import("fs/promises");
+    const path7 = await import("path");
     const projectRoot = process.env.PROJECT_ROOT || process.cwd();
-    const outputPath = path5.isAbsolute(options.output_path) ? options.output_path : path5.join(projectRoot, options.output_path);
-    await fs5.writeFile(
+    const outputPath = path7.isAbsolute(options.output_path) ? options.output_path : path7.join(projectRoot, options.output_path);
+    await fs7.writeFile(
       outputPath,
       typeof exported === "string" ? exported : JSON.stringify(exported, null, 2),
       "utf-8"
@@ -25447,11 +27676,11 @@ async function executeImport(options, runtime) {
     if (options.source.startsWith("{") || options.source.startsWith("[")) {
       data = JSON.parse(options.source);
     } else {
-      const fs5 = await import("fs/promises");
-      const path5 = await import("path");
+      const fs7 = await import("fs/promises");
+      const path7 = await import("path");
       const projectRoot = process.env.PROJECT_ROOT || process.cwd();
-      const filePath = path5.isAbsolute(options.source) ? options.source : path5.join(projectRoot, options.source);
-      const content = await fs5.readFile(filePath, "utf-8");
+      const filePath = path7.isAbsolute(options.source) ? options.source : path7.join(projectRoot, options.source);
+      const content = await fs7.readFile(filePath, "utf-8");
       data = JSON.parse(content);
     }
   } else {
@@ -26010,6 +28239,170 @@ function getToolDefinitions() {
 }
 __name(getToolDefinitions, "getToolDefinitions");
 
+// src/interfaces/mode-behavior.ts
+function shouldAskUser(mode, situation) {
+  switch (situation) {
+    case "ambiguous_requirement":
+      return mode.communication.ask_on_ambiguity;
+    case "high_risk_operation":
+      return mode.recovery.on_risk === "ask_user";
+    case "error_occurred":
+      return mode.recovery.on_error === "ask_user";
+    case "batch_complete":
+      return !mode.execution.auto_chain;
+    default:
+      return false;
+  }
+}
+__name(shouldAskUser, "shouldAskUser");
+function getOutputMode(mode, _operation) {
+  return mode.output.default_mode;
+}
+__name(getOutputMode, "getOutputMode");
+function handleError(mode, _error) {
+  switch (mode.recovery.on_error) {
+    case "halt":
+      return { action: "halt", notify: true };
+    case "ask_user":
+      return { action: "ask_user", options: ["retry", "skip", "abort"] };
+    case "log_and_continue":
+      return { action: "log", continue: true };
+    case "fix_and_continue":
+      return { action: "fix_loop", max_attempts: mode.recovery.max_fix_attempts };
+  }
+}
+__name(handleError, "handleError");
+function formatResult(mode, result) {
+  switch (mode.communication.report_results) {
+    case "none":
+      return "";
+    case "minimal":
+      return `Done. ${result.summary.operations_succeeded}/${result.summary.operations_total} operations succeeded.`;
+    case "summary":
+      return formatSummary(result);
+    case "detailed":
+      return formatDetailed(result);
+  }
+}
+__name(formatResult, "formatResult");
+function formatSummary(result) {
+  const { summary } = result;
+  return [
+    `Batch ${summary.status}`,
+    `Operations: ${summary.operations_succeeded}/${summary.operations_total}`,
+    `Duration: ${summary.duration_ms}ms`,
+    `Tokens: ${summary.tokens_used}`
+  ].join("\n");
+}
+__name(formatSummary, "formatSummary");
+function formatDetailed(result) {
+  return JSON.stringify(result, null, 2);
+}
+__name(formatDetailed, "formatDetailed");
+
+// src/interfaces/mode-configs.ts
+var MODES = {
+  vibecoding: {
+    name: "vibecoding",
+    description: "Autonomous coding with communication",
+    communication: {
+      show_progress: true,
+      explain_decisions: true,
+      ask_on_ambiguity: true,
+      report_results: "detailed"
+    },
+    execution: {
+      auto_chain: false,
+      max_autonomous_batches: 1,
+      checkpoint_frequency: "per_batch",
+      parallel_agents: 3
+    },
+    recovery: {
+      on_error: "ask_user",
+      on_ambiguity: "ask_user",
+      on_risk: "ask_user",
+      max_fix_attempts: 2
+    },
+    output: {
+      default_mode: "standard",
+      show_diffs: true,
+      show_telemetry: "summary"
+    },
+    logging: {
+      log_decisions: true,
+      log_errors: true,
+      log_activity: false,
+      log_path: ".goodvibes/logs/"
+    }
+  },
+  justvibes: {
+    name: "justvibes",
+    description: "Fully autonomous silent execution",
+    communication: {
+      show_progress: false,
+      explain_decisions: false,
+      ask_on_ambiguity: false,
+      report_results: "minimal"
+    },
+    execution: {
+      auto_chain: true,
+      max_autonomous_batches: "unlimited",
+      checkpoint_frequency: "per_phase",
+      parallel_agents: 6
+    },
+    recovery: {
+      on_error: "fix_and_continue",
+      on_ambiguity: "best_guess",
+      on_risk: "proceed_with_checkpoint",
+      max_fix_attempts: 3
+    },
+    output: {
+      default_mode: "minimal",
+      show_diffs: false,
+      show_telemetry: "none"
+    },
+    logging: {
+      log_decisions: true,
+      log_errors: true,
+      log_activity: true,
+      log_path: ".goodvibes/logs/"
+    }
+  }
+};
+function getMode(name) {
+  return MODES[name];
+}
+__name(getMode, "getMode");
+function getModeNames() {
+  return Object.keys(MODES);
+}
+__name(getModeNames, "getModeNames");
+
+// src/interfaces/mode-wiring.ts
+function isModeConfig(value) {
+  if (typeof value !== "object" || value === null)
+    return false;
+  const config2 = value;
+  return typeof config2.name === "string" && typeof config2.description === "string" && typeof config2.communication === "object" && typeof config2.execution === "object" && typeof config2.recovery === "object" && typeof config2.output === "object" && typeof config2.logging === "object";
+}
+__name(isModeConfig, "isModeConfig");
+function isValidModeName(name) {
+  return name === "vibecoding" || name === "justvibes";
+}
+__name(isValidModeName, "isValidModeName");
+function isErrorStrategy(value) {
+  return ["halt", "ask", "log_and_continue", "fix_and_continue"].includes(value);
+}
+__name(isErrorStrategy, "isErrorStrategy");
+function isOutputVerbosity(value) {
+  return ["count_only", "minimal", "standard", "verbose"].includes(value);
+}
+__name(isOutputVerbosity, "isOutputVerbosity");
+function isCheckpointFrequency(value) {
+  return ["never", "per_batch", "per_phase", "per_operation"].includes(value);
+}
+__name(isCheckpointFrequency, "isCheckpointFrequency");
+
 // src/index.ts
 var VERSION = "1.0.0";
 var SERVER_NAME = "batch-engine";
@@ -26110,14 +28503,20 @@ __name(main, "main");
 main();
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  CheckpointManagerImpl,
   DEFAULTS,
   EMPTY_AGGREGATIONS,
   EMPTY_INDEX,
   EMPTY_PREFERENCES,
   EMPTY_SESSION_METRICS,
+  FixLoopImpl,
   MEMORY_PATHS,
+  MODES,
   MemoryManagerImpl,
   PHASE_ORDER,
+  RecoveryManagerImpl,
+  RecoveryOrchestratorImpl,
+  RollbackSystemImpl,
   SERVER_NAME,
   STATE_PATHS,
   StateManagerImpl,
@@ -26125,16 +28524,28 @@ main();
   TOKEN_COSTS,
   TelemetryCollectorImpl,
   VERSION,
+  createCheckpointManager,
+  createFixLoop,
   createMemoryManager,
+  createRecoveryManager,
+  createRollbackSystem,
   createRuntimeContext,
   createStateManager,
   createTelemetryCollector,
+  formatResult,
   getActiveBatch,
+  getCheckpointManager,
   getCheckpointPath,
   getCompletedBatch,
+  getFixLoop,
   getHandler,
   getHistoryPath,
   getMemoryManager,
+  getMode,
+  getModeNames,
+  getOutputMode,
+  getRecoveryManager,
+  getRollbackSystem,
   getStateManager,
   getTelemetryCollector,
   getTodayDateString,
@@ -26143,19 +28554,30 @@ main();
   handleBatchRecover,
   handleBatchState,
   handleBatchStatus,
+  handleError,
   handleListBatches,
   handleListCheckpoints,
   handlerRegistry,
   hasHandler,
   initializeRuntime,
+  isCheckpointFrequency,
+  isErrorStrategy,
+  isModeConfig,
+  isOutputVerbosity,
+  isValidModeName,
   listActiveBatches,
   listCompletedBatches,
   listHandlers,
   persistRuntime,
+  resetGlobalCheckpointManager,
+  resetGlobalFixLoop,
   resetGlobalMemoryManager,
+  resetGlobalRecoveryManager,
+  resetGlobalRollbackSystem,
   resetGlobalStateManager,
   resetGlobalTelemetryCollector,
   resetRuntime,
+  shouldAskUser,
   toolDefinitions
 });
 //# sourceMappingURL=index.cjs.map

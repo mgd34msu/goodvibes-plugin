@@ -24,7 +24,7 @@ import {
 } from './lsp/index.js';
 
 // Validation handlers
-import { handleValidateImplementation } from './validation.js';
+import { handleValidateImplementation, handleValidateApiContract } from './validation.js';
 import { handleEnvAudit } from './env/index.js';
 
 // Security handlers
@@ -64,8 +64,9 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['semantic_diff', handleSemanticDiff],
   ['validate_edits_preview', handleValidateEditsPreview],
 
-  // Validation & Security (8 tools)
+  // Validation & Security (9 tools)
   ['validate_implementation', handleValidateImplementation],
+  ['validate_api_contract', handleValidateApiContract],
   ['env_audit', handleEnvAudit],
   ['scan_for_secrets', handleScanForSecrets],
   ['check_permissions', handleCheckPermissions],

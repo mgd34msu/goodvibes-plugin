@@ -24,9 +24,9 @@ export interface ModeConfig {
   };
 
   recovery: {
-    on_error: 'halt' | 'ask' | 'log_and_continue' | 'fix_and_continue';
-    on_ambiguity: 'ask' | 'best_guess';
-    on_risk: 'halt' | 'ask' | 'proceed_with_checkpoint';
+    on_error: 'halt' | 'ask_user' | 'log_and_continue' | 'fix_and_continue';
+    on_ambiguity: 'ask_user' | 'best_guess';
+    on_risk: 'halt' | 'ask_user' | 'proceed_with_checkpoint';
     max_fix_attempts: number;
   };
 

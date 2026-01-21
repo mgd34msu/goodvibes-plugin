@@ -21,14 +21,14 @@ export const MODES: Record<ModeName, ModeConfig> = {
       auto_chain: false,
       max_autonomous_batches: 1,
       checkpoint_frequency: 'per_batch',
-      parallel_agents: 6
+      parallel_agents: 3
     },
 
     recovery: {
-      on_error: 'ask',
-      on_ambiguity: 'ask',
-      on_risk: 'ask',
-      max_fix_attempts: 3
+      on_error: 'ask_user',
+      on_ambiguity: 'ask_user',
+      on_risk: 'ask_user',
+      max_fix_attempts: 2
     },
 
     output: {

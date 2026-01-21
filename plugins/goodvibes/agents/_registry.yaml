@@ -1,6 +1,7 @@
-version: 1.0.0
-generated: '2026-01-21T19:56:01.753Z'
+version: 2.0.0
+generated: '2026-01-21T22:35:00.000Z'
 total: 8
+spec_version: SPEC-v2
 categories:
   _items:
     - name: agent-factory
@@ -43,6 +44,11 @@ categories:
         Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning
         implementation strategies, breaking down complex tasks, identifying dependencies and risks, or making
         architectural decisions.
+      batch_integration:
+        uses_batch: true
+        batch_operations: [read, query]
+        tools: [precision_read, precision_grep, precision_symbols, discover, analysis-engine]
+        output_format: execution_plan
       triggers: &ref_1
         - architect
         - architecture
@@ -71,6 +77,13 @@ categories:
         environment variables, or setting up monitoring and error tracking. Triggers on: deploy, deployment, hosting,
         CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring,
         Sentry, infrastructure.
+      batch_integration:
+        uses_batch: true
+        batch_operations: [read, write, exec, query]
+        tools: [precision_read, precision_write, precision_exec, batch, discover, analysis-engine]
+        output_format: structured
+        state_tracking: true
+        checkpoint_strategy: before_critical_ops
       triggers: &ref_2
         - deployer
         - deployment
@@ -117,6 +130,11 @@ categories:
         Motion, accessibility, SSR, SSG, hydration. Also trigger on: "build an API", "create component", "add
         authentication", "implement feature", "fix bug", "add page", "build form", "connect database", "style this",
         "make responsive".
+      batch_integration:
+        uses_batch: true
+        batch_operations: [read, write, exec, query]
+        tools: [precision_read, precision_write, precision_edit, precision_exec, batch, discover]
+        output_format: structured
       triggers: &ref_3
         - engineer
         - unified
@@ -211,6 +229,11 @@ categories:
         form", "form validation", "real-time updates", "WebSocket connection", "integrate AI", "add chat", "LLM
         feature", "setup CMS", "content management", "send emails", "email templates", "payment integration", "accept
         payments", "subscription billing", "upload files", "image upload", "media management".
+      batch_integration:
+        uses_batch: true
+        batch_operations: [read, write, exec]
+        tools: [precision_read, precision_write, precision_edit, precision_exec, batch, discover]
+        output_format: structured
       triggers: &ref_4
         - integrator
         - integration
@@ -309,6 +332,11 @@ categories:
         Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
         changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
         performance, and adherence to project patterns.
+      batch_integration:
+        uses_batch: true
+        batch_operations: [read, query]
+        tools: [precision_read, precision_grep, batch, discover, analysis-engine]
+        output_format: structured_json
       triggers: &ref_5
         - reviewer
         - code
@@ -375,6 +403,11 @@ categories:
         E2E), improving test coverage, fixing failing tests, setting up test infrastructure, mocking APIs/data,
         debugging flaky tests, or when user mentions Vitest, Jest, Playwright, Cypress, Testing Library, MSW, coverage,
         TDD, fixtures, snapshots, or assertions. Enforces 100% coverage goal with no skips and no auto-pass.
+      batch_integration:
+        uses_batch: true
+        batch_operations: [read, write, exec, query]
+        tools: [precision_read, precision_write, precision_exec, batch, discover, project-engine]
+        output_format: structured
       triggers: &ref_7
         - tester
         - testing
@@ -430,6 +463,11 @@ search_index:
     description: >-
       Architecture and planning specialist. Use PROACTIVELY when designing system architecture, planning implementation
       strategies, breaking down complex tasks, identifying dependencies and risks, or making architectural decisions.
+    batch_integration:
+      uses_batch: true
+      batch_operations: [read, query]
+      tools: [precision_read, precision_grep, precision_symbols, discover, analysis-engine]
+      output_format: execution_plan
   - name: deployer
     keywords: *ref_2
     path: deployer
@@ -439,6 +477,13 @@ search_index:
       environment variables, or setting up monitoring and error tracking. Triggers on: deploy, deployment, hosting,
       CI/CD, pipeline, Docker, container, Kubernetes, production, staging, environment variables, secrets, monitoring,
       Sentry, infrastructure.
+    batch_integration:
+      uses_batch: true
+      batch_operations: [read, write, exec, query]
+      tools: [precision_read, precision_write, precision_exec, batch, discover, analysis-engine]
+      output_format: structured
+      state_tracking: true
+      checkpoint_strategy: before_critical_ops
   - name: engineer
     keywords: *ref_3
     path: engineer
@@ -450,6 +495,11 @@ search_index:
       responsive, CSS, Tailwind, styling, theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR,
       SSG, hydration. Also trigger on: "build an API", "create component", "add authentication", "implement feature",
       "fix bug", "add page", "build form", "connect database", "style this", "make responsive".
+    batch_integration:
+      uses_batch: true
+      batch_operations: [read, write, exec, query]
+      tools: [precision_read, precision_write, precision_edit, precision_exec, batch, discover]
+      output_format: structured
   - name: integrator
     keywords: *ref_4
     path: integrator
@@ -465,6 +515,11 @@ search_index:
       updates", "WebSocket connection", "integrate AI", "add chat", "LLM feature", "setup CMS", "content management",
       "send emails", "email templates", "payment integration", "accept payments", "subscription billing", "upload
       files", "image upload", "media management".
+    batch_integration:
+      uses_batch: true
+      batch_operations: [read, write, exec]
+      tools: [precision_read, precision_write, precision_edit, precision_exec, batch, discover]
+      output_format: structured
   - name: reviewer
     keywords: *ref_5
     path: reviewer
@@ -472,6 +527,11 @@ search_index:
       Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
       changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
       performance, and adherence to project patterns.
+    batch_integration:
+      uses_batch: true
+      batch_operations: [read, query]
+      tools: [precision_read, precision_grep, batch, discover, analysis-engine]
+      output_format: structured_json
   - name: skill-factory
     keywords: *ref_6
     path: skill-factory
@@ -487,3 +547,8 @@ search_index:
       improving test coverage, fixing failing tests, setting up test infrastructure, mocking APIs/data, debugging flaky
       tests, or when user mentions Vitest, Jest, Playwright, Cypress, Testing Library, MSW, coverage, TDD, fixtures,
       snapshots, or assertions. Enforces 100% coverage goal with no skips and no auto-pass.
+    batch_integration:
+      uses_batch: true
+      batch_operations: [read, write, exec, query]
+      tools: [precision_read, precision_write, precision_exec, batch, discover, project-engine]
+      output_format: structured

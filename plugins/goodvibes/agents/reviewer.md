@@ -537,27 +537,92 @@ Load specialized knowledge from these skills when needed:
 
 ## Review Commands
 
-### Batch Review Operations
+### Batch Review Operations (SPEC-v2)
 
-When reviewing multiple files, use batch operations:
+When reviewing multiple files, use batch operations for efficient parallel analysis.
+
+Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
 
 ```yaml
-# Efficient multi-file review
+# Efficient multi-file review batch
 batch:
-  read:
-    - type: files
-      paths: [changed_files]
-      extract: outline
-    - type: search
-      queries:
-        - id: security_issues
-          pattern: "(api_key|secret|password)\\s*="
-        - id: empty_catches
-          pattern: "catch.*\\{\\s*\\}"
-        - id: todos
-          pattern: "TODO|FIXME|HACK"
-  output:
-    mode: standard
+  id: review-pr-changes
+
+  operations:
+    read:
+      - id: get-file-structure
+        type: files
+        targets: ["{{changed_files}}"]
+        extract: outline
+        output:
+          mode: minimal
+
+      - id: find-security-issues
+        type: search
+        queries:
+          - id: secrets
+            pattern: "(api_key|secret|password|token)\\s*[:=]\\s*['\"][^'\"]+['\"]"
+          - id: sql-injection
+            pattern: "query.*\\$\\{|execute.*\\+"
+          - id: xss-risk
+            pattern: "innerHTML|dangerouslySetInnerHTML"
+        output:
+          mode: locations
+
+      - id: find-error-handling
+        type: search
+        queries:
+          - id: empty-catches
+            pattern: "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}"
+          - id: swallowed-errors
+            pattern: "catch[^}]*console\\.(log|error|warn)[^}]*\\}"
+        output:
+          mode: locations
+
+      - id: find-code-smells
+        type: search
+        queries:
+          - id: todos
+            pattern: "TODO|FIXME|HACK|XXX"
+          - id: magic-numbers
+            pattern: "[^0-9.][0-9]{2,}[^0-9.]"
+        output:
+          mode: count
+
+    query:
+      - id: analyze-complexity
+        type: analysis
+        kind: complexity
+        targets: ["{{changed_files}}"]
+
+      - id: check-test-coverage
+        type: analysis
+        kind: coverage
+        targets: ["{{changed_files}}"]
+
+  config:
+    execution:
+      mode: parallel
+      max_workers: 4
+
+    output:
+      mode: standard
+      format: json
+```
+
+### Analysis-Engine Integration
+
+Use analysis-engine tools for deeper code quality checks:
+
+```bash
+# Check for breaking changes
+mcp-cli call plugin_goodvibes_analysis-engine/detect_breaking_changes
+
+# Scan for patterns
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns
+
+# Validate implementation
+mcp-cli call plugin_goodvibes_analysis-engine/validate_implementation
 ```
 
 ### Quick Checks

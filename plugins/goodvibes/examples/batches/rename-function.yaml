@@ -1,0 +1,231 @@
+# Example Batch: Quick Multi-Edit
+# Renames a function across the entire codebase
+#
+# This batch demonstrates:
+# - Simple search-and-replace workflow
+# - Minimal verbosity mode for quick edits
+# - TypeScript validation after refactor
+# - Efficient parallel operations
+
+metadata:
+  name: rename-function
+  description: Rename getUserData to fetchUserProfile across codebase
+  author: goodvibes
+  version: 1.0.0
+  tags: [refactor, rename, quick-edit]
+
+operations:
+
+  # ============================================================
+  # PHASE 1: FIND ALL USAGES
+  # Locate every instance of the function name
+  # ============================================================
+
+  read:
+    # Find all usages of the old function name
+    - id: find-function-usages
+      type: search
+      # Use word boundary to avoid partial matches (e.g., don't match "getUserDataFromCache")
+      pattern: "\\bgetUserData\\b"
+      glob: "**/*.{ts,tsx,js,jsx}"
+      # Exclude common non-source directories
+      exclude:
+        - "node_modules/**"
+        - "dist/**"
+        - "build/**"
+        - ".next/**"
+      output:
+        mode: content
+        context:
+          before: 2
+          after: 2
+
+    # Find the function definition specifically
+    - id: find-function-definition
+      type: search
+      pattern: "(function|const|export)\\s+getUserData"
+      glob: "**/*.{ts,tsx,js,jsx}"
+      exclude:
+        - "node_modules/**"
+        - "dist/**"
+      output:
+        mode: content
+        context:
+          before: 3
+          after: 10
+
+    # Find type definitions or interfaces
+    - id: find-type-references
+      type: search
+      pattern: "getUserData.*:"
+      glob: "**/*.{ts,tsx,d.ts}"
+      exclude:
+        - "node_modules/**"
+      output:
+        mode: content
+
+  # ============================================================
+  # PHASE 2: RENAME OPERATION
+  # Replace all occurrences with the new name
+  # ============================================================
+
+  write:
+    # Perform the rename across all files
+    - id: rename-function
+      type: edit
+      # Target all files that contain the old function name
+      targets: "{{find-function-usages.files}}"
+      edits:
+        # Replace all occurrences in each file
+        - find: "getUserData"
+          replace: "fetchUserProfile"
+          # Replace all occurrences, not just the first one
+          occurrence: all
+      options:
+        # Use exact string matching (not regex)
+        match_mode: exact
+        # Preserve original formatting
+        preserve_formatting: true
+
+      depends_on:
+        - find-function-usages
+        - find-function-definition
+        - find-type-references
+
+  # ============================================================
+  # PHASE 3: VALIDATION
+  # Ensure rename didn't break anything
+  # ============================================================
+
+  exec:
+    # Run TypeScript compiler to catch any broken references
+    - id: typecheck
+      type: command
+      commands:
+        - cmd: "npm run typecheck"
+          expect:
+            exit_code: 0
+            stderr_empty: true
+      depends_on:
+        - rename-function
+      config:
+        timeout_ms: 120000  # 2 minutes
+
+    # Run linter to ensure code quality maintained
+    - id: lint-check
+      type: command
+      commands:
+        - cmd: "npm run lint -- --quiet"
+          expect:
+            exit_code: 0
+      depends_on:
+        - rename-function
+
+  # ============================================================
+  # PHASE 4: VERIFICATION
+  # Verify the old name no longer exists
+  # ============================================================
+
+  query:
+    # Search for any remaining instances of old name
+    - id: verify-rename-complete
+      type: search
+      pattern: "\\bgetUserData\\b"
+      glob: "**/*.{ts,tsx,js,jsx}"
+      exclude:
+        - "node_modules/**"
+        - "dist/**"
+        - "build/**"
+        - ".next/**"
+        - "**/*.test.{ts,tsx,js,jsx}"  # Test files might still reference old name in descriptions
+        - "**/*.spec.{ts,tsx,js,jsx}"
+      output:
+        mode: count
+
+      # Expect zero results
+      validation:
+        expect:
+          count: 0
+        on_fail:
+          action: warning
+          message: "Some instances of 'getUserData' still exist. Review results."
+
+      depends_on:
+        - typecheck
+
+# ============================================================
+# TRANSACTION CONFIGURATION
+# ============================================================
+
+transaction:
+  # Atomic: Either rename everywhere or rollback
+  mode: atomic
+
+  # Create checkpoint before and after rename
+  checkpoints:
+    - after: find-type-references
+      name: pre-rename
+    - after: rename-function
+      name: post-rename
+
+# ============================================================
+# VALIDATION CONFIGURATION
+# ============================================================
+
+validation:
+  # Only run typecheck - fast validation
+  after:
+    - typecheck
+
+  # No old function name should remain
+  rules:
+    - name: no-old-function-name
+      pattern: "\\bgetUserData\\b"
+      exclude:
+        - "**/*.test.*"
+        - "**/*.spec.*"
+        - "**/CHANGELOG.md"
+        - "**/docs/**"
+      severity: error
+      message: "Old function name 'getUserData' still exists"
+
+# ============================================================
+# RECOVERY CONFIGURATION
+# ============================================================
+
+recovery:
+  # Enable checkpointing for easy rollback
+  checkpoint: true
+
+  # Roll back if validation fails
+  rollback_on_fail: true
+
+  # No retry needed for simple rename
+  retry:
+    max_attempts: 1
+
+  on_fail:
+    - action: create_report
+      output: ".goodvibes/logs/rename-failure.md"
+
+# ============================================================
+# OUTPUT CONFIGURATION
+# ============================================================
+
+output:
+  # Minimal output for quick operation
+  mode: minimal
+
+  # Don't show full diffs (could be many files)
+  show_diffs: false
+
+  # Don't need agent reasoning for simple rename
+  include_reasoning: false
+
+  # Simple summary report
+  report:
+    format: markdown
+    output: ".goodvibes/logs/rename-report.md"
+    sections:
+      - summary
+      - metrics

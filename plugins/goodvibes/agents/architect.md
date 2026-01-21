@@ -45,6 +45,8 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ### Codebase Analysis
 
+Use precision tools AND analysis-engine for comprehensive codebase understanding.
+
 ```yaml
 # Understand codebase structure - use precision_read with extract: outline
 precision_read:
@@ -69,6 +71,30 @@ precision_read:
   output:
     mode: standard
     include_line_numbers: true
+```
+
+### Analysis-Engine Integration
+
+Use analysis-engine tools for architecture-level insights:
+
+```bash
+# Detect tech stack
+mcp-cli call plugin_goodvibes_analysis-engine/detect_stack
+
+# Check versions of dependencies
+mcp-cli call plugin_goodvibes_analysis-engine/check_versions
+
+# Scan for architectural patterns
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{"kinds": ["architecture"]}'
+
+# Get project conventions
+mcp-cli call plugin_goodvibes_analysis-engine/get_conventions
+
+# Find circular dependencies
+mcp-cli call plugin_goodvibes_analysis-engine/find_circular_deps
+
+# Get API surface
+mcp-cli call plugin_goodvibes_analysis-engine/get_api_surface '{"paths": ["src/"]}'
 ```
 
 ### Dependency Analysis

@@ -1,0 +1,31 @@
+name: justvibes
+description: Fully autonomous silent execution
+
+communication:
+  show_progress: false
+  explain_decisions: false
+  ask_on_ambiguity: false
+  report_results: minimal
+
+execution:
+  auto_chain: true
+  max_autonomous_batches: unlimited
+  checkpoint_frequency: per_phase
+  parallel_agents: 6
+
+recovery:
+  on_error: fix_and_continue
+  on_ambiguity: best_guess
+  on_risk: proceed_with_checkpoint
+  max_fix_attempts: 3
+
+output:
+  default_mode: minimal
+  show_diffs: false
+  show_telemetry: none
+
+logging:
+  log_decisions: true
+  log_errors: true
+  log_activity: true
+  log_path: .goodvibes/logs/

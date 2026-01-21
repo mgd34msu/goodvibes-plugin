@@ -9,6 +9,22 @@
  * - Validation hooks: typecheck, lint, test, build
  * - Diff output
  * - Rollback support
+ *
+ * AST Mode:
+ * - Supports TypeScript/JavaScript files (.ts, .tsx, .js, .jsx)
+ * - Matches entire AST nodes (functions, classes, types, imports, etc.)
+ * - Falls back to exact match for non-JS/TS files or parse failures
+ * - Preserves formatting and comments within matched nodes
+ *
+ * AST Match Patterns:
+ * - Function declarations: "function myFunc" or "myFunc"
+ * - Variable declarations: "const myVar", "let myVar", "var myVar", or "myVar"
+ * - Method declarations: "methodName" or "async methodName"
+ * - Class declarations: "class MyClass" or "MyClass"
+ * - Type aliases: "type MyType" or "MyType"
+ * - Interfaces: "interface MyInterface" or "MyInterface"
+ * - Enums: "enum MyEnum" or "MyEnum"
+ * - Imports: matches if pattern is contained in import statement
  */
 
 import * as fs from 'fs/promises';
@@ -16,6 +32,7 @@ import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { diffLines } from 'diff';
+import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
@@ -167,28 +184,262 @@ function regexMatch(content: string, pattern: string, caseSensitive: boolean): {
   return matches;
 }
 
+function isJavaScriptFile(filePath: string): boolean {
+  const ext = path.extname(filePath).toLowerCase();
+  return ['.ts', '.tsx', '.js', '.jsx'].includes(ext);
+}
+
+function getScriptKind(filePath: string): ts.ScriptKind {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case '.tsx':
+      return ts.ScriptKind.TSX;
+    case '.jsx':
+      return ts.ScriptKind.JSX;
+    case '.ts':
+      return ts.ScriptKind.TS;
+    case '.js':
+    default:
+      return ts.ScriptKind.JS;
+  }
+}
+
+interface AstMatch {
+  index: number;
+  length: number;
+  nodeText: string;
+}
+
+function astMatch(filePath: string, content: string, pattern: string): AstMatch[] {
+  // Only apply AST matching to JavaScript/TypeScript files
+  if (!isJavaScriptFile(filePath)) {
+    return [];
+  }
+
+  try {
+    // Parse the file into an AST
+    const sourceFile = ts.createSourceFile(
+      filePath,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      getScriptKind(filePath)
+    );
+
+    const matches: AstMatch[] = [];
+
+    // Parse the pattern to determine what we're looking for
+    const patternNormalized = pattern.trim();
+
+    // Helper to check if a node matches the pattern
+    function matchesPattern(node: ts.Node): boolean {
+      const nodeText = node.getText(sourceFile).trim();
+
+      // Function declarations: "function myFunc" or "async function myFunc"
+      if (ts.isFunctionDeclaration(node)) {
+        if (!node.name) return false;
+        const funcName = node.name.getText(sourceFile);
+
+        // Match patterns like "function myFunc", "async function myFunc", or just "myFunc"
+        if (
+          patternNormalized === `function ${funcName}` ||
+          patternNormalized === `async function ${funcName}` ||
+          patternNormalized === funcName
+        ) {
+          return true;
+        }
+      }
+
+      // Arrow functions: "const myFunc = " or "const myFunc: Type = "
+      if (ts.isVariableDeclaration(node) && node.initializer) {
+        const varName = node.name.getText(sourceFile);
+
+        // Match patterns like "const myVar", "let myVar", "var myVar", or just "myVar"
+        if (
+          patternNormalized === `const ${varName}` ||
+          patternNormalized === `let ${varName}` ||
+          patternNormalized === `var ${varName}` ||
+          patternNormalized === varName
+        ) {
+          return true;
+        }
+      }
+
+      // Method declarations in classes
+      if (ts.isMethodDeclaration(node)) {
+        const methodName = node.name.getText(sourceFile);
+
+        // Match patterns like "methodName" or "async methodName"
+        if (
+          patternNormalized === methodName ||
+          patternNormalized === `async ${methodName}`
+        ) {
+          return true;
+        }
+      }
+
+      // Class declarations: "class MyClass" or "export class MyClass"
+      if (ts.isClassDeclaration(node)) {
+        if (!node.name) return false;
+        const className = node.name.getText(sourceFile);
+
+        // Match patterns like "class MyClass", "export class MyClass", or just "MyClass"
+        if (
+          patternNormalized === `class ${className}` ||
+          patternNormalized === `export class ${className}` ||
+          patternNormalized === className
+        ) {
+          return true;
+        }
+      }
+
+      // Import declarations: "import { foo }"
+      if (ts.isImportDeclaration(node)) {
+        const importText = nodeText;
+
+        // Check if pattern is contained in the import statement
+        if (importText.includes(patternNormalized)) {
+          return true;
+        }
+      }
+
+      // Type alias declarations: "type MyType" or "export type MyType"
+      if (ts.isTypeAliasDeclaration(node)) {
+        const typeName = node.name.getText(sourceFile);
+
+        // Match patterns like "type MyType", "export type MyType", or just "MyType"
+        if (
+          patternNormalized === `type ${typeName}` ||
+          patternNormalized === `export type ${typeName}` ||
+          patternNormalized === typeName
+        ) {
+          return true;
+        }
+      }
+
+      // Interface declarations: "interface MyInterface" or "export interface MyInterface"
+      if (ts.isInterfaceDeclaration(node)) {
+        const interfaceName = node.name.getText(sourceFile);
+
+        // Match patterns like "interface MyInterface", "export interface MyInterface", or just "MyInterface"
+        if (
+          patternNormalized === `interface ${interfaceName}` ||
+          patternNormalized === `export interface ${interfaceName}` ||
+          patternNormalized === interfaceName
+        ) {
+          return true;
+        }
+      }
+
+      // Enum declarations: "enum MyEnum" or "export enum MyEnum"
+      if (ts.isEnumDeclaration(node)) {
+        const enumName = node.name.getText(sourceFile);
+
+        // Match patterns like "enum MyEnum", "export enum MyEnum", or just "MyEnum"
+        if (
+          patternNormalized === `enum ${enumName}` ||
+          patternNormalized === `export enum ${enumName}` ||
+          patternNormalized === enumName
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    // Walk the AST to find matching nodes
+    function visit(node: ts.Node) {
+      if (matchesPattern(node)) {
+        matches.push({
+          index: node.getStart(sourceFile),
+          length: node.getEnd() - node.getStart(sourceFile),
+          nodeText: node.getText(sourceFile),
+        });
+      }
+
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+
+    return matches;
+  } catch (error) {
+    // If AST parsing fails, return empty array (will fall back to exact match)
+    console.error(`AST parsing failed for ${filePath}:`, error);
+    return [];
+  }
+}
+
+interface MatchResult {
+  index: number;
+  length: number; // For AST mode, length of the matched node
+}
+
 function findInContext(
+  filePath: string,
   content: string,
   find: string,
   hints: EditHints,
   matchConfig: MatchConfig
-): number[] {
+): MatchResult[] {
   const lines = content.split('\n');
-  const candidates: number[] = [];
+  const candidates: MatchResult[] = [];
 
   // Find all occurrences first
-  let allIndices: number[] = [];
+  let allMatches: MatchResult[] = [];
 
-  if (matchConfig.mode === 'regex') {
+  if (matchConfig.mode === 'ast') {
+    // Use AST matching
+    const astMatches = astMatch(filePath, content, find);
+
+    if (astMatches.length === 0 && isJavaScriptFile(filePath)) {
+      // AST matching failed or found nothing, fall back to exact match with warning
+      console.warn(`AST matching found no matches for "${find}" in ${filePath}, falling back to exact match`);
+
+      // Fall back to exact match
+      let searchContent = content;
+      let searchFind = find;
+      if (matchConfig.case_sensitive === false) {
+        searchContent = content.toLowerCase();
+        searchFind = find.toLowerCase();
+      }
+
+      let pos = 0;
+      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+        allMatches.push({ index: pos, length: searchFind.length });
+        pos++;
+      }
+    } else if (astMatches.length === 0 && !isJavaScriptFile(filePath)) {
+      // Non-JS/TS file, fall back to exact match
+      console.warn(`AST mode only applies to .ts, .tsx, .js, .jsx files. Using exact match for ${filePath}`);
+
+      let searchContent = content;
+      let searchFind = find;
+      if (matchConfig.case_sensitive === false) {
+        searchContent = content.toLowerCase();
+        searchFind = find.toLowerCase();
+      }
+
+      let pos = 0;
+      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+        allMatches.push({ index: pos, length: searchFind.length });
+        pos++;
+      }
+    } else {
+      allMatches = astMatches;
+    }
+  } else if (matchConfig.mode === 'regex') {
     const matches = regexMatch(content, find, matchConfig.case_sensitive ?? true);
-    allIndices = matches.map(m => m.index);
+    allMatches = matches.map(m => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === 'fuzzy') {
-    allIndices = fuzzyMatch(
+    const indices = fuzzyMatch(
       content,
       find,
       matchConfig.case_sensitive ?? true,
       matchConfig.whitespace_sensitive ?? true
     );
+    allMatches = indices.map(index => ({ index, length: find.length }));
   } else {
     // exact match
     let searchContent = content;
@@ -200,16 +451,16 @@ function findInContext(
 
     let pos = 0;
     while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-      allIndices.push(pos);
+      allMatches.push({ index: pos, length: searchFind.length });
       pos++;
     }
   }
 
-  if (allIndices.length === 0) return [];
+  if (allMatches.length === 0) return [];
 
   // Apply hints to filter candidates
-  for (const index of allIndices) {
-    const lineNumber = content.substring(0, index).split('\n').length;
+  for (const match of allMatches) {
+    const lineNumber = content.substring(0, match.index).split('\n').length;
     let score = 0;
 
     // near_line hint
@@ -221,30 +472,30 @@ function findInContext(
     // in_function hint
     if (hints.in_function) {
       const funcPattern = new RegExp(`function\\s+${hints.in_function}|const\\s+${hints.in_function}\\s*=`, 'g');
-      const beforeIndex = content.substring(0, index);
+      const beforeIndex = content.substring(0, match.index);
       if (funcPattern.test(beforeIndex)) score += 20;
     }
 
     // in_class hint
     if (hints.in_class) {
       const classPattern = new RegExp(`class\\s+${hints.in_class}`, 'g');
-      const beforeIndex = content.substring(0, index);
+      const beforeIndex = content.substring(0, match.index);
       if (classPattern.test(beforeIndex)) score += 20;
     }
 
     // after hint
     if (hints.after) {
       const afterIndex = content.indexOf(hints.after);
-      if (afterIndex !== -1 && index > afterIndex) score += 15;
+      if (afterIndex !== -1 && match.index > afterIndex) score += 15;
     }
 
     // before hint
     if (hints.before) {
       const beforeIndex = content.indexOf(hints.before);
-      if (beforeIndex !== -1 && index < beforeIndex) score += 15;
+      if (beforeIndex !== -1 && match.index < beforeIndex) score += 15;
     }
 
-    candidates.push(index);
+    candidates.push(match);
   }
 
   // If hints were provided, sort by score (highest first)
@@ -303,57 +554,49 @@ async function applyEdit(
   }
 
   // Find matches using hints and match mode
-  const indices = findInContext(content, edit.find, edit.hints ?? {}, matchConfig);
+  const matches = findInContext(filePath, content, edit.find, edit.hints ?? {}, matchConfig);
 
-  if (indices.length === 0) {
+  if (matches.length === 0) {
     return { newContent: content, status: 'not_found', editsApplied: 0, error: 'Pattern not found' };
   }
 
   // Determine which occurrences to replace
-  let indicesToReplace: number[];
+  let matchesToReplace: MatchResult[];
   const occurrence = edit.occurrence ?? 'first';
 
   if (occurrence === 'first') {
-    indicesToReplace = [indices[0]];
+    matchesToReplace = [matches[0]];
   } else if (occurrence === 'last') {
-    indicesToReplace = [indices[indices.length - 1]];
+    matchesToReplace = [matches[matches.length - 1]];
   } else if (occurrence === 'all') {
-    indicesToReplace = indices;
+    matchesToReplace = matches;
   } else if (typeof occurrence === 'number') {
-    if (occurrence > 0 && occurrence <= indices.length) {
-      indicesToReplace = [indices[occurrence - 1]];
+    if (occurrence > 0 && occurrence <= matches.length) {
+      matchesToReplace = [matches[occurrence - 1]];
     } else {
-      return { newContent: content, status: 'not_found', editsApplied: 0, error: `Occurrence ${occurrence} not found (only ${indices.length} matches)` };
+      return { newContent: content, status: 'not_found', editsApplied: 0, error: `Occurrence ${occurrence} not found (only ${matches.length} matches)` };
     }
   } else {
-    indicesToReplace = [indices[0]];
+    matchesToReplace = [matches[0]];
   }
 
   // Check for ambiguity in single-replacement modes
-  if ((occurrence === 'first' || occurrence === 'last' || typeof occurrence === 'number') && indices.length > 1) {
+  if ((occurrence === 'first' || occurrence === 'last' || typeof occurrence === 'number') && matches.length > 1) {
     // Not ambiguous if we're explicitly selecting one
   }
 
   // Apply replacements (reverse order to preserve indices)
   let newContent = content;
-  const sortedIndices = [...indicesToReplace].sort((a, b) => b - a);
+  const sortedMatches = [...matchesToReplace].sort((a, b) => b.index - a.index);
 
-  for (const index of sortedIndices) {
-    if (matchConfig.mode === 'regex') {
-      // For regex, we need to find the actual match at this index
-      const flags = matchConfig.case_sensitive ? '' : 'i';
-      const regex = new RegExp(edit.find, flags);
-      const match = regex.exec(newContent.slice(index));
-      if (match) {
-        newContent = newContent.slice(0, index) + edit.replace + newContent.slice(index + match[0].length);
-      }
-    } else {
-      // For exact/fuzzy, use the find string length
-      newContent = newContent.slice(0, index) + edit.replace + newContent.slice(index + edit.find.length);
-    }
+  for (const match of sortedMatches) {
+    // Use the match.length property which is set correctly for each match mode
+    // For AST mode, this will be the entire node length
+    // For other modes, this will be the matched string length
+    newContent = newContent.slice(0, match.index) + edit.replace + newContent.slice(match.index + match.length);
   }
 
-  return { newContent, status: 'applied', editsApplied: indicesToReplace.length };
+  return { newContent, status: 'applied', editsApplied: matchesToReplace.length };
 }
 
 // === Main Handler ===

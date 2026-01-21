@@ -538,44 +538,99 @@ it('displays user list', () => {
 });
 ```
 
-## Batch Operations
+## Batch Operations (SPEC-v2)
 
-### Batch Test Execution
+### Batch Test Creation and Execution
 
-Use precision_exec for running multiple test commands:
+Use batch tool for comprehensive test workflows.
 
-```json
-{
-  "commands": [
-    {
-      "cmd": "npm",
-      "args": ["run", "test:unit", "--", "--run"],
-      "expect": { "exit_code": 0 }
-    },
-    {
-      "cmd": "npm",
-      "args": ["run", "test:integration", "--", "--run"],
-      "expect": { "exit_code": 0 }
-    }
-  ],
-  "parallel": false,
-  "stop_on_error": true
-}
+Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
+
+```yaml
+# Complete test workflow batch
+batch:
+  id: test-workflow
+
+  operations:
+    # Phase 1: Analyze code to test
+    read:
+      - id: get-code-structure
+        type: files
+        targets: ["src/utils/*.ts"]
+        extract: symbols
+        output:
+          mode: standard
+
+      - id: find-existing-tests
+        type: glob
+        patterns: ["src/utils/*.test.ts", "src/utils/*.spec.ts"]
+        output:
+          mode: paths_only
+
+    # Phase 2: Create missing test files
+    write:
+      - id: create-test-files
+        type: create
+        depends_on: [get-code-structure, find-existing-tests]
+        files:
+          - path: "src/utils/validation.test.ts"
+            content: "{{generate_test_file(get-code-structure.symbols)}}"
+
+    # Phase 3: Run tests
+    exec:
+      - id: run-unit-tests
+        type: command
+        depends_on: [create-test-files]
+        commands:
+          - cmd: "npm run test:unit -- --run"
+            expect: { exit_code: 0 }
+            timeout_ms: 120000
+
+      - id: run-coverage
+        type: command
+        depends_on: [run-unit-tests]
+        commands:
+          - cmd: "npm run test -- --coverage --run"
+            expect: { exit_code: 0 }
+            timeout_ms: 180000
+
+    # Phase 4: Analyze coverage
+    query:
+      - id: check-coverage
+        type: analysis
+        kind: coverage
+        depends_on: [run-coverage]
+        targets: ["src/utils/*.ts"]
+
+  config:
+    transaction:
+      mode: atomic
+      rollback_on_fail: true
+
+    execution:
+      mode: sequential  # Tests must run in order
+
+    checkpoint:
+      enabled: true
+      after: [create-test-files, run-coverage]
+
+    output:
+      mode: standard
 ```
 
-### Batch File Reading
+### Project-Engine Integration
 
-Use precision_read to understand code before writing tests:
+Use project-engine tools for test-related operations:
 
-```json
-{
-  "files": [
-    { "path": "src/utils/index.ts", "extract": "symbols" },
-    { "path": "src/utils/validation.ts", "extract": "content" },
-    { "path": "src/utils/format.ts", "extract": "content" }
-  ],
-  "output_mode": "standard"
-}
+```bash
+# Find tests for a specific file
+mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file": "src/utils/validation.ts"}'
+
+# Get test coverage report
+mcp-cli call plugin_goodvibes_project-engine/get_test_coverage '{"paths": ["src/utils"]}'
+
+# Suggest test cases
+mcp-cli call plugin_goodvibes_project-engine/suggest_test_cases '{"file": "src/utils/validation.ts"}'
 ```
 
 ## Configuration Templates

@@ -200,9 +200,13 @@ batch:
 - Reduces token usage by targeting exactly what's needed
 - Enables informed decisions about implementation approach
 
-## Batch Operations
+## Batch Operations (SPEC-v2)
 
-For multi-file operations, use the batch tool to execute operations in parallel:
+**For multi-file operations, ALWAYS use batch tool to execute operations efficiently.**
+
+Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
+
+### Batch Tool Usage
 
 ```yaml
 # Example: Implement a feature across multiple files
@@ -250,6 +254,40 @@ batch:
       mode: atomic
     execution:
       mode: parallel
+
+    checkpoint:
+      enabled: true
+      before: ["write"]
+      after: ["validate"]
+```
+
+### Batch Operation Types
+
+| Type | Use For | Example |
+|------|---------|---------|
+| `read` | Gather context from files | Read existing code patterns |
+| `write` | Create/edit files atomically | Write new components, configs |
+| `exec` | Run commands (build, test, lint) | Validate changes |
+| `query` | Search/analyze code | Find usage, check patterns |
+
+### Output Format
+
+Batch operations return structured results:
+
+```typescript
+interface BatchResult {
+  batch_id: string;
+  status: 'completed' | 'failed' | 'partial';
+  operations: {
+    [id: string]: {
+      status: 'success' | 'failed' | 'skipped';
+      output: any;
+      error?: string;
+    };
+  };
+  checkpoint_id?: string;
+  elapsed_ms: number;
+}
 ```
 
 ## Capabilities

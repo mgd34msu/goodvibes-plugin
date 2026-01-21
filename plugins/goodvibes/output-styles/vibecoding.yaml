@@ -1,0 +1,31 @@
+name: vibecoding
+description: Autonomous coding with communication
+
+communication:
+  show_progress: true
+  explain_decisions: true
+  ask_on_ambiguity: true
+  report_results: detailed
+
+execution:
+  auto_chain: false
+  max_autonomous_batches: 1
+  checkpoint_frequency: per_batch
+  parallel_agents: 6
+
+recovery:
+  on_error: ask
+  on_ambiguity: ask
+  on_risk: ask
+  max_fix_attempts: 3
+
+output:
+  default_mode: standard
+  show_diffs: true
+  show_telemetry: summary
+
+logging:
+  log_decisions: true
+  log_errors: true
+  log_activity: false
+  log_path: .goodvibes/logs/

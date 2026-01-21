@@ -1,0 +1,319 @@
+# Example Batch: Feature Implementation
+# Implements a complete user authentication feature across backend and frontend
+#
+# This batch demonstrates:
+# - Multi-phase operations with dependencies
+# - Agent coordination (engineer for implementation)
+# - Reading existing patterns before implementing
+# - Validation and recovery strategies
+# - State tracking for architectural decisions
+
+# Metadata about this batch
+metadata:
+  name: auth-feature
+  description: Implement user authentication feature
+  author: goodvibes
+  version: 1.0.0
+
+# Operations are grouped by type and executed in dependency order
+operations:
+
+  # ============================================================
+  # PHASE 1: DISCOVERY
+  # Understand the current codebase before making changes
+  # ============================================================
+
+  read:
+    # Find existing authentication patterns
+    - id: find-auth-patterns
+      type: search
+      pattern: "auth|login|session|authenticate|token"
+      glob: "src/**/*.{ts,tsx,js,jsx}"
+      output:
+        mode: content
+        context:
+          before: 2
+          after: 2
+
+    # Check what auth libraries are already installed
+    - id: check-auth-deps
+      type: analyze
+      kind: dependencies
+      filters:
+        keywords: ["auth", "jwt", "passport", "session", "bcrypt"]
+
+    # Get existing API route structure
+    - id: analyze-api-structure
+      type: files
+      targets: ["src/api/**/*", "src/app/api/**/*"]
+      extract: outline
+
+    # Look for existing user models
+    - id: find-user-models
+      type: search
+      pattern: "(interface|type|class)\\s+User"
+      glob: "src/**/*.{ts,tsx}"
+      output:
+        mode: content
+
+  # ============================================================
+  # PHASE 2-5: EXECUTION PHASE
+  # Backend, frontend, validation, and state tracking
+  # ============================================================
+
+  exec:
+    # ============================================================
+    # Backend implementation
+    # ============================================================
+
+    # Implement the backend authentication system
+    - id: backend-implementation
+      type: agent
+      agent: goodvibes:engineer
+      task: |
+        Implement user authentication API with these requirements:
+
+        **API Endpoints:**
+        - POST /api/auth/register - Create new user account
+        - POST /api/auth/login - Authenticate and return JWT token
+        - POST /api/auth/logout - Invalidate session/token
+        - GET /api/auth/me - Get current authenticated user
+        - POST /api/auth/refresh - Refresh JWT token
+
+        **Requirements:**
+        - Use JWT tokens for stateless authentication
+        - Hash passwords with bcrypt (salt rounds: 10)
+        - Validate email format and password strength
+        - Return proper HTTP status codes (200, 201, 400, 401, 500)
+        - Include proper error messages
+        - Add rate limiting for login attempts
+
+        **Implementation notes:**
+        - Follow existing API patterns found in the codebase
+        - Create middleware for JWT verification
+        - Add proper TypeScript types for request/response
+        - Handle edge cases (duplicate email, invalid credentials, expired tokens)
+
+      # Wait for discovery phase to complete
+      depends_on:
+        - find-auth-patterns
+        - check-auth-deps
+        - analyze-api-structure
+        - find-user-models
+
+      # Inject discovery results into agent context
+      inject:
+        existing_patterns: "{{find-auth-patterns.results}}"
+        installed_deps: "{{check-auth-deps.results}}"
+        api_structure: "{{analyze-api-structure.outline}}"
+        user_models: "{{find-user-models.results}}"
+
+      # Configuration for this agent execution
+      config:
+        timeout_ms: 600000  # 10 minutes
+        max_turns: 50
+
+    # ============================================================
+    # Frontend implementation
+    # ============================================================
+
+    # Implement the frontend authentication UI
+    - id: frontend-implementation
+      type: agent
+      agent: goodvibes:engineer
+      task: |
+        Create authentication UI components and state management:
+
+        **Components to create:**
+        - LoginForm - Email/password login form with validation
+        - RegisterForm - User registration form
+        - AuthProvider - React context for auth state
+        - ProtectedRoute - Wrapper component for authenticated routes
+
+        **State management:**
+        - Track authentication status (loading, authenticated, error)
+        - Store user data and token
+        - Persist auth state to localStorage
+        - Auto-refresh tokens before expiry
+
+        **Features:**
+        - Client-side form validation
+        - Loading states during API calls
+        - Error message display
+        - Redirect after login/logout
+        - Remember me functionality (optional)
+
+        **Requirements:**
+        - Follow existing component patterns
+        - Use proper TypeScript types
+        - Implement accessible forms (ARIA labels, keyboard navigation)
+        - Add responsive design (mobile-friendly)
+        - Include proper error handling
+
+      # Wait for backend to be implemented first
+      depends_on:
+        - backend-implementation
+
+      # Inject backend API details
+      inject:
+        api_endpoints: "{{backend-implementation.outputs.endpoints}}"
+        api_types: "{{backend-implementation.outputs.types}}"
+
+      config:
+        timeout_ms: 600000
+        max_turns: 50
+
+    # ============================================================
+    # Validation commands
+    # ============================================================
+
+    # Run TypeScript type checking
+    - id: typecheck
+      type: command
+      commands:
+        - cmd: "npm run typecheck"
+          expect:
+            exit_code: 0
+            stderr_empty: true
+      depends_on:
+        - backend-implementation
+        - frontend-implementation
+
+    # Run linter to ensure code quality
+    - id: lint
+      type: command
+      commands:
+        - cmd: "npm run lint"
+          expect:
+            exit_code: 0
+      depends_on:
+        - backend-implementation
+        - frontend-implementation
+
+    # Build the project to ensure no build errors
+    - id: build-check
+      type: command
+      commands:
+        - cmd: "npm run build"
+          expect:
+            exit_code: 0
+      depends_on:
+        - typecheck
+        - lint
+      config:
+        timeout_ms: 300000  # 5 minutes for build
+
+  # ============================================================
+  # PHASE 6: STATE TRACKING
+  # Record architectural decisions for future reference
+  # ============================================================
+
+  query:
+    # Track the authentication approach decision
+    - id: record-auth-decision
+      type: state_write
+      operation: track
+      entries:
+        - kind: decision
+          data:
+            what: "JWT-based stateless authentication"
+            why: "Enables horizontal scaling, simpler than session-based auth, works well with modern SPA architecture"
+            alternatives: "Session-based auth, OAuth2, Auth0/Clerk"
+            category: authentication
+            confidence: high
+            timestamp: "{{now}}"
+      depends_on:
+        - backend-implementation
+
+# ============================================================
+# TRANSACTION CONFIGURATION
+# Controls atomicity and rollback behavior
+# ============================================================
+
+transaction:
+  # Atomic mode: All operations succeed or all are rolled back
+  mode: atomic
+
+  # Create checkpoints after each major phase
+  checkpoints:
+    - after: find-user-models
+      name: discovery-complete
+    - after: backend-implementation
+      name: backend-complete
+    - after: frontend-implementation
+      name: frontend-complete
+    - after: build-check
+      name: validation-complete
+
+# ============================================================
+# VALIDATION CONFIGURATION
+# Automated checks to run at various stages
+# ============================================================
+
+validation:
+  # Run these checks after all operations complete
+  after:
+    - typecheck
+    - lint
+    - build
+
+  # Define custom validation rules
+  rules:
+    - name: no-console-logs
+      pattern: "console\\.(log|debug|info)"
+      severity: warning
+
+    - name: no-any-types
+      pattern: ":\\s*any\\b"
+      severity: error
+      exclude: ["**/*.spec.ts", "**/*.test.ts"]
+
+# ============================================================
+# RECOVERY CONFIGURATION
+# Defines behavior when operations fail
+# ============================================================
+
+recovery:
+  # Create checkpoints for recovery
+  checkpoint: true
+
+  # Roll back all changes if any operation fails
+  rollback_on_fail: true
+
+  # Retry strategy for transient failures
+  retry:
+    max_attempts: 3
+    backoff: exponential
+    initial_delay_ms: 1000
+
+  # What to do on failure
+  on_fail:
+    - action: create_report
+      output: ".goodvibes/logs/auth-feature-failure.md"
+    - action: notify
+      level: error
+
+# ============================================================
+# OUTPUT CONFIGURATION
+# Controls verbosity and reporting
+# ============================================================
+
+output:
+  # Standard verbosity for this example
+  mode: standard
+
+  # Show diffs for file changes
+  show_diffs: true
+
+  # Include agent reasoning in output
+  include_reasoning: true
+
+  # Generate final report
+  report:
+    format: markdown
+    output: ".goodvibes/logs/auth-feature-report.md"
+    sections:
+      - summary
+      - changes
+      - validation_results
+      - metrics

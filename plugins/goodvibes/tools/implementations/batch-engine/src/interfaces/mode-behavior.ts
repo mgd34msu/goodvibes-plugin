@@ -27,9 +27,9 @@ export function shouldAskUser(mode: ModeConfig, situation: Situation): boolean {
     case 'ambiguous_requirement':
       return mode.communication.ask_on_ambiguity;
     case 'high_risk_operation':
-      return mode.recovery.on_risk === 'ask';
+      return mode.recovery.on_risk === 'ask_user';
     case 'error_occurred':
-      return mode.recovery.on_error === 'ask';
+      return mode.recovery.on_error === 'ask_user';
     case 'batch_complete':
       return !mode.execution.auto_chain;
     default:
@@ -45,7 +45,7 @@ export function handleError(mode: ModeConfig, _error: Error): ErrorAction {
   switch (mode.recovery.on_error) {
     case 'halt':
       return { action: 'halt', notify: true };
-    case 'ask':
+    case 'ask_user':
       return { action: 'ask_user', options: ['retry', 'skip', 'abort'] };
     case 'log_and_continue':
       return { action: 'log', continue: true };

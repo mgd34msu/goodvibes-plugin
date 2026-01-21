@@ -90,6 +90,31 @@ export {
   getTelemetryCollector,
   resetGlobalTelemetryCollector,
 
+  // Checkpoint Manager
+  CheckpointManagerImpl,
+  createCheckpointManager,
+  getCheckpointManager,
+  resetGlobalCheckpointManager,
+
+  // Fix Loop
+  FixLoopImpl,
+  createFixLoop,
+  getFixLoop,
+  resetGlobalFixLoop,
+
+  // Rollback System
+  RollbackSystemImpl,
+  createRollbackSystem,
+  getRollbackSystem,
+  resetGlobalRollbackSystem,
+
+  // Recovery Manager
+  RecoveryManagerImpl,
+  RecoveryOrchestratorImpl,
+  createRecoveryManager,
+  getRecoveryManager,
+  resetGlobalRecoveryManager,
+
   // Runtime Context
   type RuntimeContext,
   createRuntimeContext,
@@ -106,6 +131,25 @@ export {
   type FailureFilter,
   type TelemetryAPI,
   type Bottleneck,
+  type CheckpointManager,
+  type CheckpointConfig,
+  type RestoreOptions,
+  type RestoreResult,
+  type CleanupResult,
+  type RollbackSystem,
+  type RollbackManager,
+  type RollbackResult,
+  type RollbackScope,
+  type RollbackTarget,
+  type SelectiveRollbackOptions,
+  type RollbackPreview,
+  type RecoveryManager,
+  type RecoveryOrchestrator,
+  type RecoveryContext,
+  type RecoveryDecision,
+  type RecoveryResult,
+  type RecoveryAction,
+  type RecoveryConfig,
 } from './runtime/index.js';
 
 // ============================================================================
@@ -196,6 +240,97 @@ export type {
   HookContext,
   HookResult,
 } from './interfaces/lifecycle.js';
+
+// Mode System
+export type {
+  ModeName,
+  ModeConfig,
+} from './interfaces/mode.js';
+
+export type {
+  Situation,
+  OutputMode,
+  ErrorAction,
+  ResultFormat,
+} from './interfaces/mode-behavior.js';
+
+export {
+  shouldAskUser,
+  getOutputMode,
+  handleError,
+  formatResult,
+} from './interfaces/mode-behavior.js';
+
+export {
+  MODES,
+  getMode,
+  getModeNames,
+} from './interfaces/mode-configs.js';
+
+export type {
+  GoodVibesRuntime,
+  RuntimeState,
+  ModeController,
+  ModeChangeResult,
+  ModeChangeEffect,
+  ModeEffectSystem,
+  ModeEffects,
+  OutputModeEffects,
+  OutputVerbosity,
+  TelemetryLevel,
+  ErrorModeEffects,
+  ErrorStrategy,
+  AmbiguityStrategy,
+  RiskStrategy,
+  CommunicationModeEffects,
+  ReportFormat,
+  ExecutionModeEffects,
+  CheckpointFrequency,
+  LoggingModeEffects,
+  ModeAwareComponent,
+  ModeAwareBehavior,
+  ModeAwareFormatter,
+  OutputType,
+  FormatConfig,
+  ProgressContext,
+  DecisionContext,
+  ResultContext,
+  ErrorContext,
+  ModeAwareErrorHandler,
+  ErrorHandlingContext,
+  ErrorHandlingResult,
+  ErrorActionTaken,
+  FixResult,
+  ErrorActionDecision,
+  ModeAwareDecisionMaker,
+  DecisionMakingContext,
+  DecisionOption,
+  DecisionSituation,
+  DecisionResult,
+  DecisionMethod,
+  ModeConfigLoader,
+  ModeValidation,
+  ModeValidationError,
+  ModeValidationWarning,
+  ModeBehaviorCoordinator,
+  CoordinatedComponent,
+  ComponentBehavior,
+  ModeSwitchHooks,
+  BeforeSwitchContext,
+  AfterSwitchContext,
+  SwitchErrorContext,
+  ValidateSwitchContext,
+  SwitchValidation,
+  ModeWiringFactory,
+} from './interfaces/mode-wiring.js';
+
+export {
+  isModeConfig,
+  isValidModeName,
+  isErrorStrategy,
+  isOutputVerbosity,
+  isCheckpointFrequency,
+} from './interfaces/mode-wiring.js';
 
 // Tools
 export type {

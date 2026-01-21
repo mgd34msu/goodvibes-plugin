@@ -2911,6 +2911,142 @@ Before considering integration work complete:
 - [ ] **Security**: All checklist items verified
 - [ ] **Testing**: Integration points have test coverage
 
+## Batch Operations (SPEC-v2)
+
+For integrations that span multiple files or systems, use batch operations.
+
+Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
+
+```yaml
+# Example: Setup Stripe payment integration
+batch:
+  id: integrate-stripe-payments
+
+  operations:
+    # Phase 1: Read existing code
+    read:
+      - id: find-api-routes
+        type: glob
+        patterns: ["app/api/**/*.ts", "src/api/**/*.ts"]
+        output:
+          mode: paths_only
+
+      - id: check-env
+        type: files
+        targets: [".env.example", ".env.local"]
+        extract: content
+
+    # Phase 2: Create integration files
+    write:
+      - id: create-stripe-client
+        type: create
+        files:
+          - path: "lib/stripe.ts"
+            content: |
+              import Stripe from 'stripe';
+
+              export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+                apiVersion: '2024-12-18.acacia',
+                typescript: true,
+              });
+
+      - id: create-webhook-handler
+        type: create
+        files:
+          - path: "app/api/webhooks/stripe/route.ts"
+            content: "{{generate_stripe_webhook_handler()}}"
+
+      - id: create-checkout-route
+        type: create
+        files:
+          - path: "app/api/checkout/route.ts"
+            content: "{{generate_checkout_api()}}"
+
+      - id: update-env-example
+        type: edit
+        depends_on: [check-env]
+        targets: [".env.example"]
+        edits:
+          - find: "# API Keys"
+            replace: |
+              # API Keys
+
+              # Stripe
+              STRIPE_SECRET_KEY=sk_test_...
+              STRIPE_WEBHOOK_SECRET=whsec_...
+              NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+    # Phase 3: Install dependencies
+    exec:
+      - id: install-stripe
+        type: command
+        commands:
+          - cmd: "npm install stripe @stripe/stripe-js"
+            expect: { exit_code: 0 }
+
+      - id: validate
+        type: command
+        depends_on: [install-stripe]
+        commands:
+          - cmd: "npm run typecheck"
+            expect: { exit_code: 0 }
+
+  config:
+    transaction:
+      mode: atomic
+      rollback_on_fail: true
+
+    execution:
+      mode: mixed  # Read parallel, write sequential
+
+    checkpoint:
+      enabled: true
+      after: [create-webhook-handler, install-stripe]
+
+    output:
+      mode: standard
+```
+
+### State Management Integration
+
+```yaml
+# Example: Setup TanStack Query + Zustand
+batch:
+  id: integrate-state-management
+
+  operations:
+    write:
+      - id: create-query-provider
+        type: create
+        files:
+          - path: "app/providers.tsx"
+            content: "{{generate_query_provider()}}"
+
+      - id: create-stores
+        type: create
+        files:
+          - path: "lib/store/auth.ts"
+            content: "{{generate_zustand_store('auth')}}"
+          - path: "lib/store/ui.ts"
+            content: "{{generate_zustand_store('ui')}}"
+
+      - id: update-layout
+        type: edit
+        targets: ["app/layout.tsx"]
+        edits:
+          - find: "<body>"
+            replace: "<body><Providers>"
+          - find: "</body>"
+            replace: "</Providers></body>"
+
+    exec:
+      - id: install-deps
+        type: command
+        commands:
+          - cmd: "npm install @tanstack/react-query zustand"
+          - cmd: "npm install -D @tanstack/react-query-devtools"
+```
+
 ## Guardrails
 
 **Always confirm before (vibecoding mode):**
