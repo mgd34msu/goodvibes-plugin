@@ -78,8 +78,8 @@ describe('smart_glob handler', () => {
     beforeEach(async () => {
       await createTestFiles({
         'src/index.ts': 'export {};',
-        'src/test.ts': 'test';
-        'src/utils.ts': 'utils';
+        'src/test.ts': 'test',
+        'src/utils.ts': 'utils',
       });
     });
 

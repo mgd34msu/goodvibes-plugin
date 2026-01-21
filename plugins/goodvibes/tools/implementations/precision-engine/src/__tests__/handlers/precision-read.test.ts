@@ -1,0 +1,420 @@
+/**
+ * Tests for precision_read handler.
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { handlePrecisionRead } from '../../handlers/precision-read.js';
+import { createTestFile, createTestFiles, expectSuccess, expectError, SAMPLE_TS_CODE } from '../test-utils.js';
+
+describe('precision_read handler', () => {
+  describe('input validation', () => {
+    it('should return error when files array is missing', async () => {
+      const result = await handlePrecisionRead({
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const parsed = expectError(result);
+      expect(parsed.error).toContain('files array is required');
+    });
+
+    it('should return error when extract mode is missing', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        output: { mode: 'standard' },
+      });
+      const parsed = expectError(result);
+      expect(parsed.error).toContain('extract mode is required');
+    });
+
+    it('should return error when output is missing', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+      });
+      const parsed = expectError(result);
+      expect(parsed.error).toContain('output configuration is required');
+    });
+  });
+
+  describe('extract mode: content', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'line 1\nline 2\nline 3\nline 4\nline 5');
+    });
+
+    it('should read full file content', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].exists).toBe(true);
+      expect(parsed.data.files['file.ts'].content).toContain('line 1');
+    });
+
+    it('should include line numbers by default', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].content).toMatch(/\d+\s*\|/);
+    });
+
+    it('should exclude line numbers when disabled', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard', include_line_numbers: false },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].content).not.toMatch(/\d+\s*\|/);
+    });
+
+    it('should support line range with range parameter', async () => {
+      const result = await handlePrecisionRead({
+        files: [{ path: 'file.ts', range: { start: 2, end: 4 } }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].content).toContain('line 2');
+      expect(parsed.data.files['file.ts'].content).toContain('line 3');
+      expect(parsed.data.files['file.ts'].content).toContain('line 4');
+    });
+
+    it('should support default_range for all files', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        default_range: { start: 1, end: 2 },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].content).toContain('line 1');
+    });
+  });
+
+  describe('extract mode: lines', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'line 1\nline 2\nline 3');
+    });
+
+    it('should return lines as array', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'lines',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].lines).toBeInstanceOf(Array);
+      expect(parsed.data.files['file.ts'].lines).toHaveLength(3);
+    });
+  });
+
+  describe('extract mode: outline', () => {
+    beforeEach(async () => {
+      await createTestFile('sample.ts', SAMPLE_TS_CODE);
+    });
+
+    it('should extract document outline', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'outline',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['sample.ts'].outline).toBeDefined();
+      expect(parsed.data.files['sample.ts'].outline.length).toBeGreaterThan(0);
+    });
+
+    it('should include hierarchical structure', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'outline',
+        output: { mode: 'verbose' },
+      });
+
+      const parsed = expectSuccess(result);
+      const classOutline = parsed.data.files['sample.ts'].outline.find(
+        (o: { name: string }) => o.name === 'SampleClass'
+      );
+      expect(classOutline?.children).toBeDefined();
+    });
+  });
+
+  describe('extract mode: symbols', () => {
+    beforeEach(async () => {
+      await createTestFile('sample.ts', SAMPLE_TS_CODE);
+    });
+
+    it('should extract symbols from file', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'symbols',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['sample.ts'].symbols).toBeDefined();
+      expect(parsed.data.files['sample.ts'].symbols.length).toBeGreaterThan(0);
+    });
+
+    it('should filter symbols by kind', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'symbols',
+        output: { mode: 'standard' },
+        symbol_filter: ['function'],
+      });
+
+      const parsed = expectSuccess(result);
+      const symbols = parsed.data.files['sample.ts'].symbols;
+      expect(symbols.every((s: { kind: string }) => s.kind === 'function')).toBe(true);
+    });
+
+    it('should include signature in verbose mode', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'symbols',
+        output: { mode: 'verbose' },
+      });
+
+      const parsed = expectSuccess(result);
+      const symbols = parsed.data.files['sample.ts'].symbols;
+      expect(symbols.some((s: { signature?: string }) => s.signature)).toBe(true);
+    });
+  });
+
+  describe('extract mode: ast', () => {
+    beforeEach(async () => {
+      await createTestFile('sample.ts', 'const x = 1;\nfunction foo() {}');
+    });
+
+    it('should extract simplified AST', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'ast',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['sample.ts'].ast).toBeDefined();
+      expect(parsed.data.files['sample.ts'].ast.kind).toBe('SourceFile');
+    });
+  });
+
+  describe('multiple files', () => {
+    beforeEach(async () => {
+      await createTestFiles({
+        'file1.ts': 'content 1',
+        'file2.ts': 'content 2',
+      });
+    });
+
+    it('should read multiple files', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file1.ts', 'file2.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(Object.keys(parsed.data.files)).toHaveLength(2);
+    });
+
+    it('should handle mix of existing and non-existing files', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file1.ts', 'nonexistent.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file1.ts'].exists).toBe(true);
+      expect(parsed.data.files['nonexistent.ts'].exists).toBe(false);
+      expect(parsed.data.summary.files_not_found).toBe(1);
+    });
+  });
+
+  describe('output modes', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'content');
+    });
+
+    it('should return count_only output', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'count_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary).toBeDefined();
+      expect(parsed.data.files).toBeUndefined();
+    });
+
+    it('should return minimal output', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts']).toHaveProperty('exists');
+      expect(parsed.data.files['file.ts']).toHaveProperty('line_count');
+      expect(parsed.data.files['file.ts']).not.toHaveProperty('content');
+    });
+
+    it('should return verbose output with metadata', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'verbose', include_metadata: true },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].metadata).toBeDefined();
+      expect(parsed.data.files['file.ts'].metadata.size).toBeDefined();
+      expect(parsed.data.files['file.ts'].metadata.modified).toBeDefined();
+    });
+  });
+
+  describe('truncation', () => {
+    beforeEach(async () => {
+      const longContent = Array(1000).fill('line').join('\n');
+      await createTestFile('long.ts', longContent);
+    });
+
+    it('should truncate when max_lines_per_file exceeded', async () => {
+      const result = await handlePrecisionRead({
+        files: ['long.ts'],
+        extract: 'content',
+        output: { mode: 'verbose', max_lines_per_file: 10 },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['long.ts'].truncated).toBe(true);
+    });
+
+    it('should report truncation in summary', async () => {
+      const result = await handlePrecisionRead({
+        files: ['long.ts'],
+        extract: 'content',
+        output: { mode: 'standard', max_lines_per_file: 10 },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.truncated).toBe(true);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle non-existent file', async () => {
+      const result = await handlePrecisionRead({
+        files: ['nonexistent.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['nonexistent.ts'].exists).toBe(false);
+      expect(parsed.data.files['nonexistent.ts'].error).toBeDefined();
+    });
+
+    it('should handle empty file', async () => {
+      await createTestFile('empty.ts', '');
+
+      const result = await handlePrecisionRead({
+        files: ['empty.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['empty.ts'].exists).toBe(true);
+      expect(parsed.data.files['empty.ts'].line_count).toBe(1);
+    });
+
+    it('should return error for non-TS file with symbols extract', async () => {
+      await createTestFile('file.txt', 'just text');
+
+      const result = await handlePrecisionRead({
+        files: ['file.txt'],
+        extract: 'symbols',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.txt'].error).toContain('TypeScript/JavaScript');
+    });
+  });
+
+  describe('summary', () => {
+    beforeEach(async () => {
+      await createTestFiles({
+        'file1.ts': 'line 1\nline 2',
+        'file2.ts': 'line 1',
+      });
+    });
+
+    it('should include files_read in summary', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file1.ts', 'file2.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.files_read).toBe(2);
+    });
+
+    it('should include total_lines in summary', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file1.ts', 'file2.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.total_lines).toBe(3);
+    });
+  });
+
+  describe('metadata', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'content');
+    });
+
+    it('should include tokens_used', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.tokens_used).toBeGreaterThan(0);
+    });
+
+    it('should include execution time', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
