@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -54,9 +55,9 @@ __export(src_exports, {
   getCompletedBatch: () => getCompletedBatch,
   getHandler: () => getHandler,
   getHistoryPath: () => getHistoryPath,
-  getMemoryManager: () => getMemoryManager2,
-  getStateManager: () => getStateManager2,
-  getTelemetryCollector: () => getTelemetryCollector2,
+  getMemoryManager: () => getMemoryManager,
+  getStateManager: () => getStateManager,
+  getTelemetryCollector: () => getTelemetryCollector,
   getTodayDateString: () => getTodayDateString,
   getToolDefinitions: () => getToolDefinitions,
   handleBatch: () => handleBatch,
@@ -72,16 +73,47 @@ __export(src_exports, {
   listCompletedBatches: () => listCompletedBatches,
   listHandlers: () => listHandlers,
   persistRuntime: () => persistRuntime,
-  resetGlobalMemoryManager: () => resetGlobalMemoryManager2,
-  resetGlobalStateManager: () => resetGlobalStateManager2,
-  resetGlobalTelemetryCollector: () => resetGlobalTelemetryCollector2,
+  resetGlobalMemoryManager: () => resetGlobalMemoryManager,
+  resetGlobalStateManager: () => resetGlobalStateManager,
+  resetGlobalTelemetryCollector: () => resetGlobalTelemetryCollector,
   resetRuntime: () => resetRuntime,
   toolDefinitions: () => toolDefinitions
 });
 module.exports = __toCommonJS(src_exports);
+var import_server = require("@modelcontextprotocol/sdk/server/index.js");
+var import_stdio = require("@modelcontextprotocol/sdk/server/stdio.js");
+var import_types = require("@modelcontextprotocol/sdk/types.js");
+
+// src/logging.ts
+function formatLog(entry) {
+  const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}]`;
+  if (entry.data !== void 0) {
+    return `${prefix} ${entry.message} ${JSON.stringify(entry.data)}`;
+  }
+  return `${prefix} ${entry.message}`;
+}
+function log(level, message, data) {
+  const entry = {
+    level,
+    message,
+    data,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  console.error(formatLog(entry));
+}
+var logger = {
+  debug: (message, data) => log("debug", message, data),
+  info: (message, data) => log("info", message, data),
+  warn: (message, data) => log("warn", message, data),
+  error: (message, data) => log("error", message, data),
+  tool: (name, args) => log("tool", `Calling ${name}`, args)
+};
 
 // src/handlers/batch.ts
 var crypto4 = __toESM(require("crypto"), 1);
+
+// src/interfaces/tools/batch-tool.ts
+var PHASE_ORDER = ["discovery", "read", "write", "exec", "query", "state"];
 
 // src/runtime/state.ts
 var fs = __toESM(require("fs/promises"), 1);
@@ -441,13 +473,13 @@ function createStateManager(projectRoot) {
   return new StateManagerImpl(projectRoot);
 }
 var globalStateManager = null;
-function getStateManager2(projectRoot) {
+function getStateManager(projectRoot) {
   if (!globalStateManager) {
     globalStateManager = createStateManager(projectRoot);
   }
   return globalStateManager;
 }
-function resetGlobalStateManager2() {
+function resetGlobalStateManager() {
   globalStateManager = null;
 }
 
@@ -590,7 +622,7 @@ function parseDecisions(content) {
       const statusMatch = section.match(/\*\*Status\*\*:\s*(\S+)/);
       const whatMatch = section.match(/^(.+?)\n/);
       const whyMatch = section.match(/### Why\n([\s\S]*?)(?=\n###|$)/);
-      if (idMatch && whatMatch) {
+      if (idMatch?.[1] && whatMatch?.[1]) {
         decisions.push({
           id: idMatch[1],
           timestamp: dateMatch?.[1] || (/* @__PURE__ */ new Date()).toISOString(),
@@ -617,7 +649,7 @@ function parsePatterns(content) {
       const nameMatch = section.match(/^(.+?)\n/);
       const descMatch = section.match(/### Description\n([\s\S]*?)(?=\n###|$)/);
       const whenMatch = section.match(/### When to Use\n([\s\S]*?)(?=\n###|$)/);
-      if (idMatch && nameMatch) {
+      if (idMatch?.[1] && nameMatch?.[1]) {
         patterns.push({
           id: idMatch[1],
           timestamp: dateMatch?.[1] || (/* @__PURE__ */ new Date()).toISOString(),
@@ -644,7 +676,7 @@ function parseFailures(content) {
       const typeMatch = section.match(/^(.+?)\n/);
       const messageMatch = section.match(/### Error Message\n([\s\S]*?)(?=\n###|$)/);
       const resolutionMatch = section.match(/### Resolution\n([\s\S]*?)(?=\n###|$)/);
-      if (idMatch && typeMatch) {
+      if (idMatch?.[1] && typeMatch?.[1]) {
         failures.push({
           id: idMatch[1],
           timestamp: dateMatch?.[1] || (/* @__PURE__ */ new Date()).toISOString(),
@@ -1088,13 +1120,13 @@ function createMemoryManager(projectRoot) {
   return new MemoryManagerImpl(projectRoot);
 }
 var globalMemoryManager = null;
-function getMemoryManager2(projectRoot) {
+function getMemoryManager(projectRoot) {
   if (!globalMemoryManager) {
     globalMemoryManager = createMemoryManager(projectRoot);
   }
   return globalMemoryManager;
 }
-function resetGlobalMemoryManager2() {
+function resetGlobalMemoryManager() {
   globalMemoryManager = null;
 }
 
@@ -1145,7 +1177,7 @@ var TELEMETRY_FILE_TYPES = {
   [TELEMETRY_PATHS.AGGREGATIONS]: "aggregations"
 };
 function getTodayDateString() {
-  return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  return (/* @__PURE__ */ new Date()).toISOString().split("T")[0] ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 }
 
 // src/runtime/telemetry.ts
@@ -1219,8 +1251,10 @@ function calculateTrend(points, metric) {
   if (recent.length < 2) {
     return { direction: "stable", change_percent: 0, period: "7d" };
   }
-  const oldValue = recent[0][metric];
-  const newValue = recent[recent.length - 1][metric];
+  const firstPoint = recent[0];
+  const lastPoint = recent[recent.length - 1];
+  const oldValue = firstPoint[metric];
+  const newValue = lastPoint[metric];
   if (oldValue === 0) {
     return { direction: newValue > 0 ? "up" : "stable", change_percent: 0, period: "7d" };
   }
@@ -1718,13 +1752,13 @@ function createTelemetryCollector(projectRoot) {
   return new TelemetryCollectorImpl(projectRoot);
 }
 var globalTelemetryCollector = null;
-function getTelemetryCollector2(projectRoot) {
+function getTelemetryCollector(projectRoot) {
   if (!globalTelemetryCollector) {
     globalTelemetryCollector = createTelemetryCollector(projectRoot);
   }
   return globalTelemetryCollector;
 }
-function resetGlobalTelemetryCollector2() {
+function resetGlobalTelemetryCollector() {
   globalTelemetryCollector = null;
 }
 
@@ -1891,7 +1925,7 @@ function collectAffectedFiles(operations) {
           }
         }
       }
-      if ("file" in op && op.file) {
+      if ("file" in op && typeof op.file === "string") {
         files.add(op.file);
       }
     }
@@ -2348,9 +2382,11 @@ function evaluateCondition(expression, context) {
   if (resultMatch) {
     const [, opId, field, expectedValue] = resultMatch;
     const result = context.phase_results[context.current_phase];
-    if (result && typeof result === "object" && opId in result) {
+    if (result && typeof result === "object" && opId && opId in result) {
       const opResult = result[opId];
-      return opResult[field] === expectedValue;
+      if (opResult && field) {
+        return opResult[field] === expectedValue;
+      }
     }
   }
   return true;
@@ -2364,7 +2400,9 @@ function evaluateExpectation(expression, data, context) {
     const match = expression.match(/data\.(\w+)\s*==\s*'(\w+)'/);
     if (match) {
       const [, field, expectedValue] = match;
-      return data[field] === expectedValue;
+      if (field) {
+        return data[field] === expectedValue;
+      }
     }
   }
   return true;
@@ -3106,7 +3144,8 @@ async function executeRollback(options, runtime) {
       const state = runtime.state.getState();
       const checkpoints = state.checkpoints.checkpoints;
       if (checkpoints.length > 0) {
-        checkpointId = checkpoints[checkpoints.length - 1].id;
+        const lastCheckpoint = checkpoints[checkpoints.length - 1];
+        checkpointId = lastCheckpoint?.id;
       }
     }
     if (!checkpointId) {
@@ -3608,7 +3647,10 @@ function setByPath(obj, path5, value) {
     }
     current = current[part];
   }
-  current[parts[parts.length - 1]] = value;
+  const lastPart = parts[parts.length - 1];
+  if (lastPart !== void 0) {
+    current[lastPart] = value;
+  }
 }
 async function executeGet(options, runtime) {
   const state = runtime.state.getState();
@@ -4371,6 +4413,77 @@ var TOKEN_COSTS = {
     opus: 75
   }
 };
+var BatchEngineServer = class {
+  server;
+  constructor() {
+    this.server = new import_server.Server(
+      { name: SERVER_NAME, version: VERSION },
+      { capabilities: { tools: {} } }
+    );
+    this.setupHandlers();
+    this.setupErrorHandling();
+  }
+  setupHandlers() {
+    this.server.setRequestHandler(import_types.ListToolsRequestSchema, async () => {
+      logger.debug("ListTools request");
+      return { tools: toolDefinitions };
+    });
+    this.server.setRequestHandler(import_types.CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+      logger.tool(name, args);
+      if (!hasHandler(name)) {
+        throw new import_types.McpError(
+          import_types.ErrorCode.MethodNotFound,
+          `Unknown tool: ${name}. Available: ${listHandlers().join(", ")}`
+        );
+      }
+      const handler = getHandler(name);
+      if (!handler) {
+        throw new import_types.McpError(import_types.ErrorCode.InternalError, `Handler not found: ${name}`);
+      }
+      try {
+        return await handler(args);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`Tool ${name} failed`, { error: message, args });
+        throw new import_types.McpError(import_types.ErrorCode.InternalError, `Tool ${name} failed: ${message}`);
+      }
+    });
+  }
+  setupErrorHandling() {
+    this.server.onerror = (error) => logger.error("MCP Server error", error);
+    process.on("SIGINT", async () => {
+      logger.info("Shutting down");
+      await this.stop();
+      process.exit(0);
+    });
+    process.on("SIGTERM", async () => {
+      logger.info("Shutting down");
+      await this.stop();
+      process.exit(0);
+    });
+  }
+  async start() {
+    const transport = new import_stdio.StdioServerTransport();
+    await this.server.connect(transport);
+    logger.info(`${SERVER_NAME} v${VERSION} started`);
+    logger.info(`Tools: ${listHandlers().join(", ")}`);
+  }
+  async stop() {
+    await this.server.close();
+  }
+};
+async function main() {
+  try {
+    const server = new BatchEngineServer();
+    await server.start();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("Failed to start server", { error: message });
+    process.exit(1);
+  }
+}
+main();
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DEFAULTS,
