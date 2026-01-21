@@ -5,54 +5,129 @@
 
 import type { OperationBase } from '../operation.js';
 
+// === Type Aliases ===
+
 export type ExtractMode = 'content' | 'outline' | 'symbols' | 'ast' | 'lines';
+
 export type SearchMode = 'regex' | 'semantic' | 'fuzzy';
-export type ContextExpand = 'line' | 'block' | 'function' | 'class';
-export type SymbolKind = 'function' | 'class' | 'interface' | 'type' | 'variable' | 'method' | 'property' | 'enum';
-export type SymbolScope = 'workspace' | 'document';
-export type UrlExtractMode = 'raw' | 'text' | 'markdown' | 'structured' | 'summary';
-export type AnalysisKind = 'dependencies' | 'dead_code' | 'circular_deps' | 'bundle' | 'coverage';
+
+export type SymbolKind =
+  | 'function' | 'method' | 'class' | 'interface'
+  | 'type' | 'variable' | 'constant' | 'enum'
+  | 'property' | 'constructor' | 'namespace';
+
+export type UrlExtractMode = 'raw' | 'markdown' | 'text' | 'structured';
+
+export type AnalysisKind =
+  | 'dependencies' | 'dead_code' | 'circular_deps'
+  | 'tech_debt' | 'bundle' | 'coverage'
+  | 'stack' | 'api_surface' | 'breaking_changes';
+
+// === Shared Interfaces ===
+
+export interface FileSpec {
+  path: string;
+  offset?: number;               // Start line (1-based)
+  limit?: number;                // Number of lines
+  encoding?: string;
+}
+
+// === FILE READ ===
 
 export interface FileReadOperation extends OperationBase {
-  type: 'read';
-  targets: { path: string; extract?: ExtractMode; lines?: { start: number; end: number; }; }[];
-  extract?: ExtractMode;
+  type: 'files';
+  targets: (string | FileSpec)[];
+  extract: ExtractMode;
+  options?: {
+    include_line_numbers?: boolean;
+    symbol_filter?: SymbolKind[];
+    max_lines?: number;
+  };
 }
+
+// === SEARCH ===
 
 export interface SearchOperation extends OperationBase {
   type: 'search';
   pattern: string;
-  mode?: SearchMode;
-  paths?: string[];
+  mode: SearchMode;
   glob?: string;
-  context?: { before?: number; after?: number; expand?: ContextExpand; };
+  context?: {
+    before: number;
+    after: number;
+    max_per_file?: number;
+  };
+  options?: {
+    case_sensitive?: boolean;
+    whole_word?: boolean;
+    dedupe?: boolean;
+    relevance_threshold?: number;  // For semantic search
+  };
 }
+
+// === GLOB ===
 
 export interface GlobOperation extends OperationBase {
   type: 'glob';
   patterns: string[];
   exclude?: string[];
-  filters?: { min_size?: number; max_size?: number; modified_after?: string; modified_before?: string; has_content?: string; is_empty?: boolean; };
+  filters?: {
+    min_size?: number;
+    max_size?: number;
+    modified_after?: string;
+    modified_before?: string;
+    has_content?: string;        // Quick grep filter
+  };
+  options?: {
+    respect_gitignore?: boolean;
+    preview_lines?: number;
+    include_stats?: boolean;
+  };
 }
 
+// === SYMBOLS ===
+
 export interface SymbolOperation extends OperationBase {
-  type: 'symbol';
+  type: 'symbols';
   query: string;
   kinds?: SymbolKind[];
-  scope?: SymbolScope;
-  files?: string[];
+  scope?: string;                // Glob pattern for files to search
+  options?: {
+    include_location?: boolean;
+    include_signature?: boolean;
+    max_results?: number;
+  };
 }
+
+// === URL FETCH ===
 
 export interface UrlOperation extends OperationBase {
   type: 'url';
-  targets: { url: string; extract?: UrlExtractMode; }[];
-  extract?: UrlExtractMode;
+  targets: string[];
+  extract: UrlExtractMode;
+  options?: {
+    cache_ttl_seconds?: number;
+    selectors?: string[];        // CSS selectors for structured
+    summarize?: boolean;
+    max_tokens?: number;
+  };
 }
+
+// === ANALYZE ===
 
 export interface AnalyzeOperation extends OperationBase {
   type: 'analyze';
   kind: AnalysisKind;
+  target?: string;
   options?: Record<string, unknown>;
 }
 
-export type ReadOperation = FileReadOperation | SearchOperation | GlobOperation | SymbolOperation | UrlOperation | AnalyzeOperation;
+// === Union Type ===
+
+export type ReadOperation =
+  | FileReadOperation
+  | SearchOperation
+  | GlobOperation
+  | SymbolOperation
+  | UrlOperation
+  | AnalyzeOperation;

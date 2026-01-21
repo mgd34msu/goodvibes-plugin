@@ -3,12 +3,12 @@
  * @see SPEC-v2 Section 3.2
  */
 
-export type OperationType = 
-  | 'read' | 'search' | 'glob' | 'symbol' | 'url' | 'analyze'
+export type OperationType =
+  | 'files' | 'search' | 'glob' | 'symbols' | 'url' | 'analyze'
   | 'create' | 'edit' | 'delete' | 'move' | 'copy'
   | 'command' | 'agent' | 'script'
   | 'lsp' | 'validate' | 'diagnose'
-  | 'state';
+  | 'get' | 'set' | 'track' | 'query';
 
 export interface Condition {
   expression: string;
@@ -23,8 +23,8 @@ export interface OperationBase {
   id: string;
   type: OperationType;
   depends_on?: string[];
-  when?: Condition;
-  skip_if?: Condition;
+  when?: Condition[];
+  skip_if?: Condition[];
   expect?: Expectation[];
   inject?: Record<string, string>;
 }

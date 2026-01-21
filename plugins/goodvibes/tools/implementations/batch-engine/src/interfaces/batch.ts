@@ -3,58 +3,84 @@
  * @see SPEC-v2 Section 3.1
  */
 
-import type { Operation } from './operation.js';
+import type { ReadOperation } from './operations/read.js';
+import type { WriteOperation } from './operations/write.js';
+import type { ExecOperation, QueryOperation, StateOperation } from './operations/exec.js';
+import type { LifecycleHooks } from './lifecycle.js';
 
-export type ValidationCheck = 'typecheck' | 'lint' | 'test' | 'build' | 'custom';
+// LifecycleConfig is an alias for LifecycleHooks per SPEC-v2 Section 3.1/5.1
+export type LifecycleConfig = LifecycleHooks;
+
+export type ValidationStep = 'typecheck' | 'lint' | 'test' | 'build' | 'custom';
 
 export interface OutputConfig {
   mode: 'count_only' | 'minimal' | 'standard' | 'verbose';
-  include?: string[];
-  exclude?: string[];
+  include: string[];
+  exclude: string[];
   max_tokens?: number;
 }
 
 export interface BatchConfig {
+  // Transaction control
   transaction: {
     mode: 'atomic' | 'partial' | 'none';
-    checkpoint_before?: boolean;
-    rollback_on_error?: boolean;
+    isolation: 'strict' | 'relaxed';
+    timeout_ms: number;
   };
-  execution: {
-    parallel?: boolean;
-    max_parallel?: number;
-    timeout_ms?: number;
-    retry?: { max_attempts: number; delay_ms?: number; backoff?: 'linear' | 'exponential'; };
-  };
-  preview?: {
-    enabled: boolean;
-    show_diffs?: boolean;
-    require_approval?: boolean;
-  };
-  validation?: {
-    before?: ValidationCheck[];
-    after?: ValidationCheck[];
-  };
-  recovery?: {
-    on_error: 'halt' | 'rollback' | 'continue' | 'fix';
-    max_fix_attempts?: number;
-  };
-}
 
-export interface LifecycleHooks {
-  on_batch_start?: string;
-  on_batch_complete?: string;
-  on_operation_start?: string;
-  on_operation_complete?: string;
-  on_error?: string;
-  on_rollback?: string;
+  // Execution control
+  execution: {
+    mode: 'parallel' | 'sequential' | 'adaptive';
+    max_workers: number;
+    fail_fast: boolean;
+    retry: {
+      attempts: number;
+      backoff: 'linear' | 'exponential' | 'fixed';
+      delay_ms: number;
+    };
+  };
+
+  // Preview & validation
+  preview: {
+    dry_run: boolean;
+    diff: boolean;
+    impact: boolean;
+  };
+
+  validation: {
+    before: ValidationStep[];
+    after: ValidationStep[];
+    on_fail: 'rollback' | 'warn' | 'ignore';
+  };
+
+  // Recovery
+  recovery: {
+    checkpoint: boolean;
+    rollback_on_fail: boolean;
+    cleanup_on_success: boolean;
+  };
 }
 
 export interface Batch {
+  // Identity
   id: string;
   parent_id?: string;
-  operations: Operation[];
+
+  // Operations (categorized)
+  operations: {
+    read?: ReadOperation[];
+    write?: WriteOperation[];
+    exec?: ExecOperation[];
+    query?: QueryOperation[];
+    state?: StateOperation[];
+  };
+
+  // Configuration
   config: BatchConfig;
-  lifecycle?: LifecycleHooks;
-  output?: OutputConfig;
+
+  // Lifecycle
+  lifecycle: LifecycleConfig;
+
+  // Output
+  output: OutputConfig;
 }
