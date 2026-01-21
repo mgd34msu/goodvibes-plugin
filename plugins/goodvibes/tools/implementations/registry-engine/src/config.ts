@@ -41,7 +41,7 @@ export const getConfigDir = (): string => {
  * Resolved from environment variables or relative to config location.
  * @example "/home/user/project/plugins/goodvibes"
  */
-export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), '../../../..');
+export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), '../../..');
 
 /**
  * Root directory of the current project being analyzed.

@@ -245340,7 +245340,7 @@ var getConfigDir = /* @__PURE__ */ __name(() => {
     return process.cwd();
   }
 }, "getConfigDir");
-var PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), "../../../..");
+var PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), "../../..");
 var PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 function getProjectRoot() {
   return PROJECT_ROOT;

@@ -15,7 +15,7 @@ async function build() {
       format: 'cjs',
       outfile: join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: ['node:*', 'typescript'],
+      external: [],
       minify: false,
       keepNames: true,
     });

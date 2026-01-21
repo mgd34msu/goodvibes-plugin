@@ -15,7 +15,7 @@ async function build() {
       format: 'cjs',
       outfile: join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: ['@modelcontextprotocol/sdk', 'fuse.js', 'js-yaml'],
+      external: [],
       minify: false,
       keepNames: true,
     });
