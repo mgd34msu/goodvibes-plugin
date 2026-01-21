@@ -1,0 +1,45 @@
+name: precision_fetch
+description: |
+  Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json),
+  custom headers, method override, and timeout.
+inputSchema:
+  type: object
+  properties:
+    urls:
+      type: array
+      description: Array of URL requests to fetch
+      items:
+        type: object
+        properties:
+          url:
+            type: string
+            description: URL to fetch
+          method:
+            type: string
+            enum: [GET, POST, PUT, DELETE]
+            description: HTTP method (default GET)
+          headers:
+            type: object
+            description: Custom headers to send
+          body:
+            type: string
+            description: Request body (for POST/PUT)
+          timeout:
+            type: integer
+            minimum: 1
+            description: Timeout in ms (default 30000)
+          extract:
+            type: string
+            enum: [raw, text, json]
+            description: Extraction mode (default text)
+        required: [url]
+    parallel:
+      type: boolean
+      default: true
+      description: Fetch URLs in parallel
+    output_mode:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      default: standard
+      description: Output verbosity level
+  required: [urls]

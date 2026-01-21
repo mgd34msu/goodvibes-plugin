@@ -1,0 +1,89 @@
+name: precision_grep
+description: |
+  Search for patterns with batch queries and precise output control.
+  Supports count_only, files_only, locations, matches, and context modes.
+inputSchema:
+  type: object
+  properties:
+    queries:
+      type: array
+      description: Array of search queries to execute
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+            description: Query identifier
+          pattern:
+            type: string
+            description: Regex pattern to search for
+          glob:
+            type: string
+            description: File pattern to search in
+          path:
+            type: string
+            description: Directory path to search
+          exclude:
+            type: array
+            items:
+              type: string
+            description: Patterns to exclude
+          case_sensitive:
+            type: boolean
+            description: Case sensitive search (default true)
+          whole_word:
+            type: boolean
+            description: Match whole words only
+          multiline:
+            type: boolean
+            description: Allow multiline matches (default false)
+          include_binary:
+            type: boolean
+            description: Search binary files (default false)
+        required: [id, pattern]
+    output:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [count_only, files_only, locations, matches, context]
+          description: Output mode
+        context_before:
+          type: integer
+          minimum: 0
+          description: Lines before match (default 0)
+        context_after:
+          type: integer
+          minimum: 0
+          description: Lines after match (default 0)
+        expand_to:
+          type: string
+          enum: [line, block, function, class]
+          description: Expand match context to enclosing scope
+        max_files:
+          type: integer
+          minimum: 1
+          description: Max files to return (default 100)
+        max_matches_per_file:
+          type: integer
+          minimum: 1
+          description: Cap per file (default 10)
+        max_total_matches:
+          type: integer
+          minimum: 1
+          description: Total cap (default 100)
+        max_tokens:
+          type: integer
+          minimum: 1
+          description: Hard token cap
+      required: [mode]
+    parallel:
+      type: boolean
+      default: true
+      description: Run queries in parallel (default true)
+    output_mode:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      default: standard
+      description: Output verbosity level
+  required: [queries, output]

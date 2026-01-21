@@ -1,0 +1,97 @@
+name: batch_recover
+description: |
+  Recovery operations - rollback, restore, retry, cleanup, or fix failed operations.
+inputSchema:
+  type: object
+  properties:
+    operation:
+      type: string
+      enum: [rollback, restore, retry, cleanup, fix]
+      description: The recovery operation to perform
+    rollback:
+      type: object
+      description: Options for rollback operation
+      properties:
+        batch_id:
+          type: string
+          description: Batch to rollback
+        checkpoint_id:
+          type: string
+          description: Checkpoint to rollback to
+        scope:
+          type: string
+          enum: [all, files, state, selective]
+          description: Rollback scope
+        files:
+          type: array
+          items:
+            type: string
+          description: Specific files to rollback
+        state_keys:
+          type: array
+          items:
+            type: string
+          description: Specific state keys to rollback
+    restore:
+      type: object
+      description: Options for restore operation
+      properties:
+        checkpoint_id:
+          type: string
+          description: Checkpoint to restore from
+        files_only:
+          type: boolean
+          description: Only restore files
+        state_only:
+          type: boolean
+          description: Only restore state
+    retry:
+      type: object
+      description: Options for retry operation
+      properties:
+        batch_id:
+          type: string
+          description: Batch to retry
+        operation_ids:
+          type: array
+          items:
+            type: string
+          description: Specific operations to retry
+        max_attempts:
+          type: number
+          description: Maximum retry attempts
+    cleanup:
+      type: object
+      description: Options for cleanup operation
+      properties:
+        older_than_hours:
+          type: number
+          description: Clean up batches older than hours
+        keep_last:
+          type: number
+          description: Keep last N batches
+        dry_run:
+          type: boolean
+          description: Preview cleanup without executing
+    fix:
+      type: object
+      description: Options for fix operation
+      properties:
+        batch_id:
+          type: string
+          description: Batch to fix
+        operation_id:
+          type: string
+          description: Specific operation to fix
+        strategy:
+          type: string
+          enum: [auto, agent, targeted]
+          description: Fix strategy
+        max_attempts:
+          type: number
+          description: Maximum fix attempts
+    output_mode:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      description: Output verbosity level
+  required: [operation]

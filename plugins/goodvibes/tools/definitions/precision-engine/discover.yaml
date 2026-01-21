@@ -1,0 +1,46 @@
+name: discover
+description: |
+  Execute multiple grep, glob, or symbol queries in parallel.
+  Returns results keyed by query ID for efficient batch discovery.
+inputSchema:
+  type: object
+  properties:
+    queries:
+      type: array
+      description: Array of queries to execute
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+            description: Unique ID for this query
+          type:
+            type: string
+            enum: [grep, glob, symbols]
+            description: Query type
+          pattern:
+            type: string
+            description: Regex pattern (for grep)
+          glob:
+            type: string
+            description: File filter (for grep)
+          patterns:
+            type: array
+            items:
+              type: string
+            description: Glob patterns (for glob)
+          query:
+            type: string
+            description: Symbol name (for symbols)
+          kinds:
+            type: array
+            items:
+              type: string
+            description: Symbol kinds (for symbols)
+        required: [id, type]
+    output_mode:
+      type: string
+      enum: [count_only, files_only, locations]
+      default: files_only
+      description: Output mode
+  required: [queries]

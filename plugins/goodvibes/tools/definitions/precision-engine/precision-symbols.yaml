@@ -1,0 +1,58 @@
+name: precision_symbols
+description: |
+  Token-efficient symbol search across workspace or specific files.
+  Supports workspace-wide symbol search and per-file symbol extraction.
+inputSchema:
+  type: object
+  properties:
+    mode:
+      type: string
+      enum: [workspace, document]
+      default: workspace
+      description: Symbol search mode
+    query:
+      type: string
+      description: Symbol name pattern (workspace mode)
+    files:
+      type: array
+      items:
+        type: string
+      description: Files to analyze (document mode)
+    kinds:
+      type: array
+      items:
+        type: string
+        enum: [function, method, class, interface, type, variable, constant, enum, property, namespace]
+      description: Filter by symbol kinds
+    exported_only:
+      type: boolean
+      default: false
+      description: Only exported symbols
+    include_private:
+      type: boolean
+      default: false
+      description: Include private symbols
+    output:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [count_only, names_only, locations, signatures, full]
+          default: locations
+          description: Output detail level
+        max_results:
+          type: integer
+          minimum: 1
+          default: 100
+          description: Maximum results to return
+        group_by:
+          type: string
+          enum: [file, kind, none]
+          default: none
+          description: Group results by field
+        max_tokens:
+          type: integer
+          minimum: 1
+          description: Hard token cap
+      required: [mode]
+  required: [output]

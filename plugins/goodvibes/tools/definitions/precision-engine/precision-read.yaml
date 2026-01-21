@@ -1,0 +1,81 @@
+name: precision_read
+description: |
+  Token-efficient file reading with extraction modes.
+  Read full content, outlines, symbols, or specific line ranges.
+  Supports per-file range overrides and symbol filtering.
+inputSchema:
+  type: object
+  properties:
+    files:
+      type: array
+      description: Array of files to read
+      items:
+        type: object
+        properties:
+          path:
+            type: string
+            description: File path
+          extract:
+            type: string
+            enum: [content, outline, symbols, ast, lines]
+            description: Extraction mode
+          range:
+            type: object
+            properties:
+              start:
+                type: integer
+                minimum: 1
+                description: Start line number
+              end:
+                type: integer
+                minimum: 1
+                description: End line number
+            description: Line range override
+        required: [path]
+    extract:
+      type: string
+      enum: [content, outline, symbols, ast, lines]
+      default: content
+      description: Default extraction mode
+    symbol_filter:
+      type: array
+      items:
+        type: string
+        enum: [function, method, class, interface, type, variable, constant, enum, property, namespace]
+      description: Filter symbols by kind
+    default_range:
+      type: object
+      properties:
+        start:
+          type: integer
+          minimum: 1
+        end:
+          type: integer
+          minimum: 1
+      description: Default line range
+    output:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [count_only, minimal, standard, verbose]
+          default: standard
+          description: Output verbosity
+        include_line_numbers:
+          type: boolean
+          default: true
+          description: Include line numbers
+        include_metadata:
+          type: boolean
+          default: false
+          description: Include file metadata
+        max_lines_per_file:
+          type: integer
+          minimum: 1
+          description: Max lines per file
+        max_tokens:
+          type: integer
+          minimum: 1
+          description: Hard token cap
+      required: [mode]
+  required: [files, output]

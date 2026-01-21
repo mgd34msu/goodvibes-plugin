@@ -1,0 +1,26 @@
+name: batch_list
+description: |
+  List all batches, optionally filtered by status or time range.
+inputSchema:
+  type: object
+  properties:
+    status:
+      type: array
+      items:
+        type: string
+        enum: [pending, running, paused, completing, completed, failed, rolled_back, cancelled]
+      description: Filter by status
+    limit:
+      type: number
+      description: Maximum number of batches to return
+    since:
+      type: string
+      description: ISO timestamp - only batches after this time
+    until:
+      type: string
+      description: ISO timestamp - only batches before this time
+    output_mode:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      description: Output verbosity level
+  required: []

@@ -1,0 +1,92 @@
+name: precision_glob
+description: |
+  Token-efficient file finding with filters and optional preview.
+  Supports size/date filters, content matching, sorting, and gitignore.
+inputSchema:
+  type: object
+  properties:
+    patterns:
+      type: array
+      items:
+        type: string
+      description: Glob patterns to match
+    preset:
+      type: string
+      enum: [typescript, javascript, styles, config, tests, all]
+      description: Predefined pattern preset
+    exclude:
+      type: array
+      items:
+        type: string
+      description: Patterns to exclude
+    filters:
+      type: object
+      properties:
+        min_size:
+          type: integer
+          minimum: 0
+          description: Minimum file size in bytes
+        max_size:
+          type: integer
+          minimum: 0
+          description: Maximum file size in bytes
+        modified_after:
+          type: string
+          format: date-time
+          description: ISO date - files modified after
+        modified_before:
+          type: string
+          format: date-time
+          description: ISO date - files modified before
+        has_content:
+          type: string
+          description: Regex to match in file content
+        is_empty:
+          type: boolean
+          description: Filter for empty files
+      description: File filters
+    output:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [count_only, paths_only, with_stats, with_preview]
+          description: Output verbosity mode
+        max_files:
+          type: integer
+          minimum: 1
+          default: 100
+          description: Maximum files to return
+        sort_by:
+          type: string
+          enum: [name, size, modified]
+          description: Sort results by field
+        sort_order:
+          type: string
+          enum: [asc, desc]
+          default: asc
+          description: Sort order
+        preview_lines:
+          type: integer
+          minimum: 1
+          default: 3
+          description: Lines to preview for with_preview mode
+        max_tokens:
+          type: integer
+          minimum: 1
+          description: Hard token cap for output
+      description: Output configuration
+    respect_gitignore:
+      type: boolean
+      default: true
+      description: Respect .gitignore rules
+    follow_symlinks:
+      type: boolean
+      default: false
+      description: Follow symbolic links
+    output_mode:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      default: standard
+      description: Output verbosity level
+  required: []

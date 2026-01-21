@@ -1,0 +1,20 @@
+name: batch_checkpoints
+description: |
+  List available checkpoints for recovery.
+inputSchema:
+  type: object
+  properties:
+    batch_id:
+      type: string
+      description: Filter by batch ID
+    limit:
+      type: number
+      description: Maximum number of checkpoints to return
+    include_expired:
+      type: boolean
+      description: Include expired checkpoints
+    output_mode:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      description: Output verbosity level
+  required: []
