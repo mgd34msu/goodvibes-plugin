@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-01-22T05:35:46.582Z'
+generated: '2026-01-22T20:31:56.469Z'
 total: 173
 categories:
   common:
@@ -956,10 +956,10 @@ categories:
     - name: goodvibes-codebase-review
       path: goodvibes-codebase-review
       description: >-
-        Comprehensive codebase review and parallel agent-based remediation skill.  Use PROACTIVELY when agent needs to
-        perform full codebase audit, generate  master findings report with quantified metrics, and execute remediation 
-        using parallel goodvibes background agents (max 6 concurrent, one task  per agent with fresh context). Triggers
-        on: codebase review, code audit,  full project analysis, quality assessment, technical debt analysis,  parallel
+        Comprehensive codebase review and parallel agent-based remediation skill. Use PROACTIVELY when agent needs to
+        perform full codebase audit, generate master findings report with quantified metrics, and execute remediation
+        using parallel goodvibes background agents (max 6 concurrent, one task per agent with fresh context). Triggers
+        on: codebase review, code audit, full project analysis, quality assessment, technical debt analysis, parallel
         remediation, bulk fixes.
       triggers: &ref_34
         - goodvibes
@@ -4770,10 +4770,10 @@ search_index:
     keywords: *ref_34
     path: goodvibes-codebase-review
     description: >-
-      Comprehensive codebase review and parallel agent-based remediation skill.  Use PROACTIVELY when agent needs to
-      perform full codebase audit, generate  master findings report with quantified metrics, and execute remediation 
-      using parallel goodvibes background agents (max 6 concurrent, one task  per agent with fresh context). Triggers
-      on: codebase review, code audit,  full project analysis, quality assessment, technical debt analysis,  parallel
+      Comprehensive codebase review and parallel agent-based remediation skill. Use PROACTIVELY when agent needs to
+      perform full codebase audit, generate master findings report with quantified metrics, and execute remediation
+      using parallel goodvibes background agents (max 6 concurrent, one task per agent with fresh context). Triggers on:
+      codebase review, code audit, full project analysis, quality assessment, technical debt analysis, parallel
       remediation, bulk fixes.
   - name: vercel-ai-sdk
     keywords: *ref_35
