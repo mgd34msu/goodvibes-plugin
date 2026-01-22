@@ -272,7 +272,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       duration_ms,
       tokens_used: result.tokens_used,
       status: result.status,
-      retries: 0, // TODO: Track retries
+      retries: result.retries ?? 0,
       details: result.data || {},
     };
 
@@ -319,10 +319,10 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       tokens_output: Math.round(result.tokens_used * 0.7), // Estimate 70% output
       tokens_total: result.tokens_used,
       turns: result.turns_used,
-      tool_calls: 0, // TODO: Track tool calls
-      files_read: 0, // TODO: Track files read
+      tool_calls: result.tool_calls ?? 0,
+      files_read: result.files_read ?? 0,
       files_written: result.files_modified.length,
-      tools_used: [], // TODO: Track tools used
+      tools_used: result.tools_used ?? [],
       status: result.status,
       budget_utilization: budget.max_tokens
         ? Math.round((result.tokens_used / budget.max_tokens) * 100)

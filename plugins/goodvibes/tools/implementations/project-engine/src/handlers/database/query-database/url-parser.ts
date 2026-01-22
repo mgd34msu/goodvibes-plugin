@@ -64,7 +64,7 @@ export function parseDatabaseUrl(url: string): DatabaseConnectionInfo {
     };
   }
 
-  // PostgreSQL pattern: postgresql://<user>:<pass>@host:port/database
+  // PostgreSQL pattern: postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
   if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {
     try {
       const parsed = new URL(url);
@@ -81,7 +81,7 @@ export function parseDatabaseUrl(url: string): DatabaseConnectionInfo {
     }
   }
 
-  // MySQL pattern: mysql://<user>:<pass>@host:port/database
+  // MySQL pattern: mysql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
   if (url.startsWith('mysql://')) {
     try {
       const parsed = new URL(url);

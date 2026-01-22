@@ -938,7 +938,7 @@ var SKIP_PATH_PATTERNS = [
   /\/scripts\/.*-generator/
   // Other generator scripts
 ];
-var DEFAULT_TODO_LIMIT = 10;
+var DEFAULT_TODO_LIMIT = 100;
 var MAX_TODO_TEXT_LENGTH = 60;
 async function getFiles(dir, extensions, skipDirs) {
   const files = [];

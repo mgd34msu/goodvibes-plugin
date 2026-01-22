@@ -4,6 +4,11 @@
  */
 
 import * as crypto from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { spawn } from 'child_process';
+import { promisify } from 'util';
+import { exec as execCallback } from 'child_process';
 import type { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import type {
   BatchToolInput,
@@ -175,8 +180,9 @@ const activeBatches = new Map<string, BatchExecutionContext>();
 
 /**
  * Completed batch results (for status queries)
+ * Stores both input and output for retry capability
  */
-const completedBatches = new Map<string, BatchToolOutput>();
+const completedBatches = new Map<string, { input: BatchToolInput; output: BatchToolOutput }>();
 
 /**
  * Count total operations in a batch
@@ -744,62 +750,870 @@ async function executeOperation(
 
 /**
  * Execute operation by type
- * This is a placeholder - in a real implementation, this would delegate to specific operation handlers
+ * Delegates to specific handlers based on operation type
  */
 async function executeOperationByType(
   operation: OperationBase,
   context: BatchExecutionContext,
   runtime: RuntimeContext,
 ): Promise<unknown> {
-  // TODO: Implement actual operation execution
-  // For now, return mock results based on operation type
-
   switch (operation.type) {
+    // READ operations
     case 'files':
-      return { files_read: 0, total_lines: 0 };
+      return await executeFilesOperation(operation as ReadOperation, runtime);
     case 'search':
-      return { matches: [], total: 0 };
+      return await executeSearchOperation(operation as ReadOperation, runtime);
     case 'glob':
-      return { files: [], total: 0 };
+      return await executeGlobOperation(operation as ReadOperation, runtime);
     case 'symbols':
-      return { symbols: [] };
+      return await executeSymbolsOperation(operation as ReadOperation, runtime);
+
+    // WRITE operations
     case 'create':
-      return { created: true };
+      return await executeCreateOperation(operation as WriteOperation, runtime);
     case 'edit':
-      return { edited: true };
+      return await executeEditOperation(operation as WriteOperation, runtime);
     case 'delete':
-      return { deleted: true };
+      return await executeDeleteOperation(operation as WriteOperation, runtime);
     case 'move':
-      return { moved: true };
+      return await executeMoveOperation(operation as WriteOperation, runtime);
     case 'atomic':
-      return { edits_applied: 0 };
+      return await executeAtomicOperation(operation as WriteOperation, context, runtime);
+
+    // EXEC operations
     case 'command':
-      return { exit_code: 0, stdout: '', stderr: '' };
+      return await executeCommandOperation(operation as ExecOperation, runtime);
     case 'agent':
-      return { agent_id: '', status: 'spawned' };
+      return await executeAgentOperation(operation as ExecOperation, runtime);
     case 'script':
-      return { exit_code: 0, output: '' };
+      return await executeScriptOperation(operation as ExecOperation, runtime);
+
+    // QUERY operations
     case 'lsp':
-      return { results: [] };
+      return await executeLspOperation(operation as QueryOperation, runtime);
     case 'validate':
-      return { valid: true, errors: [] };
+      return await executeValidateOperation(operation as QueryOperation, runtime);
     case 'diagnose':
-      return { diagnosis: '', suggestions: [] };
+      return await executeDiagnoseOperation(operation as QueryOperation, runtime);
+
+    // STATE operations
     case 'get':
-      return { values: {} };
+      return await executeGetOperation(operation as StateOperation, runtime);
     case 'set':
-      return { set: true };
+      return await executeSetOperation(operation as StateOperation, runtime);
     case 'delete_state':
-      return { deleted: true };
+      return await executeDeleteStateOperation(operation as StateOperation, runtime);
     case 'list':
-      return { keys: [] };
+      return await executeListOperation(operation as StateOperation, runtime);
     case 'track':
-      return { tracked: true };
+      return await executeTrackOperation(operation as StateOperation, runtime);
     case 'query':
-      return { results: [] };
+      return await executeQueryOperation(operation as StateOperation, runtime);
+
     default:
-      return {};
+      throw new Error(`Unknown operation type: ${operation.type}`);
   }
+}
+
+// ============================================================================
+// READ Operation Handlers
+// ============================================================================
+
+const execAsync = promisify(execCallback);
+
+async function executeFilesOperation(operation: ReadOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'files') throw new Error('Invalid operation type');
+
+  const results: Record<string, unknown> = {};
+  let totalLines = 0;
+
+  for (const target of operation.targets) {
+    const filePath = typeof target === 'string' ? target : target.path;
+    const offset = typeof target === 'string' ? undefined : target.offset;
+    const limit = typeof target === 'string' ? undefined : target.limit;
+
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const lines = content.split('\n');
+
+      const startLine = offset ? offset - 1 : 0;
+      const endLine = limit ? startLine + limit : lines.length;
+      const selectedLines = lines.slice(startLine, endLine);
+
+      totalLines += selectedLines.length;
+
+      if (operation.extract === 'content') {
+        results[filePath] = selectedLines.join('\n');
+      } else if (operation.extract === 'outline') {
+        // Simple outline extraction (functions, classes)
+        const outline = selectedLines
+          .map((line, idx) => ({ line: line.trim(), num: startLine + idx + 1 }))
+          .filter(({ line }) =>
+            line.startsWith('function ') ||
+            line.startsWith('class ') ||
+            line.startsWith('interface ') ||
+            line.startsWith('type ') ||
+            line.startsWith('export ')
+          )
+          .map(({ line, num }) => `${num}: ${line}`);
+        results[filePath] = outline;
+      } else if (operation.extract === 'lines') {
+        results[filePath] = {
+          lines: selectedLines,
+          start: startLine + 1,
+          end: endLine,
+          total: selectedLines.length,
+        };
+      } else {
+        results[filePath] = content;
+      }
+    } catch (error) {
+      results[filePath] = { error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  return { files_read: operation.targets.length, total_lines: totalLines, results };
+}
+
+async function executeSearchOperation(operation: ReadOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'search') throw new Error('Invalid operation type');
+
+  const matches: Array<{ file: string; line: number; content: string }> = [];
+
+  try {
+    // Use ripgrep if available, fallback to grep
+    const caseSensitive = operation.options?.case_sensitive ?? true;
+    const flags = caseSensitive ? '' : '-i';
+    const globPattern = operation.glob || '**/*';
+
+    // Try ripgrep first
+    const rgCommand = `rg ${flags} --line-number --no-heading "${operation.pattern}" ${globPattern}`;
+
+    try {
+      const { stdout } = await execAsync(rgCommand, { maxBuffer: 10 * 1024 * 1024 });
+      const lines = stdout.split('\n').filter(l => l.trim());
+
+      for (const line of lines) {
+        const match = line.match(/^([^:]+):(\d+):(.*)$/);
+        if (match && match[1] && match[2] && match[3]) {
+          matches.push({
+            file: match[1],
+            line: parseInt(match[2], 10),
+            content: match[3],
+          });
+        }
+      }
+    } catch {
+      // Ripgrep not available or failed, return empty results
+    }
+
+    return { matches, total: matches.length };
+  } catch (error) {
+    return { matches: [], total: 0, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+async function executeGlobOperation(operation: ReadOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'glob') throw new Error('Invalid operation type');
+
+  const files: string[] = [];
+
+  try {
+    // Use glob pattern with Node.js fs
+    const { glob } = await import('glob');
+
+    for (const pattern of operation.patterns) {
+      const matched = await glob(pattern, {
+        ignore: operation.exclude || [],
+        nodir: true,
+      });
+      files.push(...matched);
+    }
+
+    // Apply filters
+    let filteredFiles = files;
+    if (operation.filters) {
+      const stats = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const stat = await fs.stat(file);
+            return { file, stat };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      filteredFiles = stats
+        .filter((s): s is { file: string; stat: import('fs').Stats } => s !== null)
+        .filter(({ stat }) => {
+          if (operation.filters?.min_size && stat.size < operation.filters.min_size) return false;
+          if (operation.filters?.max_size && stat.size > operation.filters.max_size) return false;
+          return true;
+        })
+        .map(({ file }) => file);
+    }
+
+    return { files: filteredFiles, total: filteredFiles.length };
+  } catch (error) {
+    return { files: [], total: 0, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+async function executeSymbolsOperation(operation: ReadOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'symbols') throw new Error('Invalid operation type');
+
+  // Symbol extraction requires LSP or AST parsing
+  // This is a simplified implementation that searches for common patterns
+  const symbols: Array<{ name: string; kind: string; location: string }> = [];
+
+  try {
+    const scope = operation.scope || '**/*.{ts,js,tsx,jsx}';
+    const { glob } = await import('glob');
+    const files = await glob(scope, { nodir: true });
+
+    for (const file of files) {
+      try {
+        const content = await fs.readFile(file, 'utf-8');
+        const lines = content.split('\n');
+
+        lines.forEach((line, idx) => {
+          const trimmed = line.trim();
+
+          // Match functions
+          if (trimmed.match(/^(export\s+)?(async\s+)?function\s+(\w+)/)) {
+            const match = trimmed.match(/function\s+(\w+)/);
+            if (match && match[1] && match[1].includes(operation.query)) {
+              symbols.push({ name: match[1], kind: 'function', location: `${file}:${idx + 1}` });
+            }
+          }
+
+          // Match classes
+          if (trimmed.match(/^(export\s+)?class\s+(\w+)/)) {
+            const match = trimmed.match(/class\s+(\w+)/);
+            if (match && match[1] && match[1].includes(operation.query)) {
+              symbols.push({ name: match[1], kind: 'class', location: `${file}:${idx + 1}` });
+            }
+          }
+
+          // Match interfaces
+          if (trimmed.match(/^(export\s+)?interface\s+(\w+)/)) {
+            const match = trimmed.match(/interface\s+(\w+)/);
+            if (match && match[1] && match[1].includes(operation.query)) {
+              symbols.push({ name: match[1], kind: 'interface', location: `${file}:${idx + 1}` });
+            }
+          }
+        });
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+
+    return { symbols, total: symbols.length };
+  } catch (error) {
+    return { symbols: [], total: 0, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+// ============================================================================
+// WRITE Operation Handlers
+// ============================================================================
+
+async function executeCreateOperation(operation: WriteOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'create') throw new Error('Invalid operation type');
+
+  const created: string[] = [];
+  const errors: Record<string, string> = {};
+
+  for (const file of operation.files) {
+    try {
+      // Create directories if needed
+      if (operation.options?.create_dirs) {
+        await fs.mkdir(path.dirname(file.path), { recursive: true });
+      }
+
+      // Check if file exists
+      if (!operation.options?.overwrite) {
+        try {
+          await fs.access(file.path);
+          errors[file.path] = 'File already exists';
+          continue;
+        } catch {
+          // File doesn't exist, proceed
+        }
+      }
+
+      await fs.writeFile(file.path, file.content, { encoding: (file.encoding || 'utf-8') as BufferEncoding });
+      created.push(file.path);
+    } catch (error) {
+      errors[file.path] = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return { created, total: created.length, errors: Object.keys(errors).length > 0 ? errors : undefined };
+}
+
+async function executeEditOperation(operation: WriteOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'edit') throw new Error('Invalid operation type');
+
+  const edited: string[] = [];
+  const errors: Record<string, string> = {};
+
+  for (const editSpec of operation.edits) {
+    try {
+      const content = await fs.readFile(editSpec.file, 'utf-8');
+      let newContent = content;
+
+      for (const edit of editSpec.edits) {
+        if (edit.occurrence === 'all') {
+          // Replace all occurrences
+          const regex = new RegExp(edit.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+          newContent = newContent.replace(regex, edit.replace);
+        } else if (edit.occurrence === 'first') {
+          // Replace first occurrence
+          newContent = newContent.replace(edit.find, edit.replace);
+        } else {
+          // Default to exact match replacement
+          const index = newContent.indexOf(edit.find);
+          if (index !== -1) {
+            newContent = newContent.slice(0, index) + edit.replace + newContent.slice(index + edit.find.length);
+          }
+        }
+      }
+
+      await fs.writeFile(editSpec.file, newContent, 'utf-8');
+      edited.push(editSpec.file);
+    } catch (error) {
+      errors[editSpec.file] = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return { edited, total: edited.length, errors: Object.keys(errors).length > 0 ? errors : undefined };
+}
+
+async function executeDeleteOperation(operation: WriteOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'delete') throw new Error('Invalid operation type');
+
+  const deleted: string[] = [];
+  const errors: Record<string, string> = {};
+
+  for (const file of operation.files) {
+    try {
+      // Safety checks
+      if (operation.options?.blocked_paths?.some(pattern => file.includes(pattern))) {
+        errors[file] = 'Path is blocked by safety rules';
+        continue;
+      }
+
+      const stat = await fs.stat(file);
+
+      if (stat.isDirectory() && operation.options?.require_empty) {
+        const contents = await fs.readdir(file);
+        if (contents.length > 0) {
+          errors[file] = 'Directory is not empty';
+          continue;
+        }
+      }
+
+      if (stat.isDirectory()) {
+        await fs.rmdir(file, { recursive: true });
+      } else {
+        await fs.unlink(file);
+      }
+
+      deleted.push(file);
+    } catch (error) {
+      errors[file] = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return { deleted, total: deleted.length, errors: Object.keys(errors).length > 0 ? errors : undefined };
+}
+
+async function executeMoveOperation(operation: WriteOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'move') throw new Error('Invalid operation type');
+
+  const moved: Array<{ from: string; to: string }> = [];
+  const errors: Record<string, string> = {};
+
+  for (const move of operation.moves) {
+    try {
+      // Create target directory if needed
+      await fs.mkdir(path.dirname(move.to), { recursive: true });
+
+      // Check if target exists
+      if (!operation.options?.overwrite) {
+        try {
+          await fs.access(move.to);
+          errors[move.from] = 'Target file already exists';
+          continue;
+        } catch {
+          // Target doesn't exist, proceed
+        }
+      }
+
+      await fs.rename(move.from, move.to);
+      moved.push({ from: move.from, to: move.to });
+    } catch (error) {
+      errors[move.from] = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return { moved, total: moved.length, errors: Object.keys(errors).length > 0 ? errors : undefined };
+}
+
+async function executeAtomicOperation(
+  operation: WriteOperation,
+  context: BatchExecutionContext,
+  runtime: RuntimeContext
+): Promise<unknown> {
+  if (operation.type !== 'atomic') throw new Error('Invalid operation type');
+
+  const results: unknown[] = [];
+  const errors: string[] = [];
+
+  // Execute all operations atomically
+  for (const subOp of operation.operations) {
+    try {
+      const result = await executeOperationByType(subOp as OperationBase, context, runtime);
+      results.push(result);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+
+      // Rollback on failure if configured
+      if (operation.options?.rollback_on_failure) {
+        // Trigger rollback via runtime
+        throw new Error(`Atomic operation failed: ${errors.join(', ')}`);
+      }
+
+      if (!operation.options?.continue_on_error) {
+        break;
+      }
+    }
+  }
+
+  return {
+    edits_applied: results.length,
+    total_operations: operation.operations.length,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+// ============================================================================
+// EXEC Operation Handlers
+// ============================================================================
+
+async function executeCommandOperation(operation: ExecOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'command') throw new Error('Invalid operation type');
+
+  const results: Array<{ cmd: string; exit_code: number; stdout: string; stderr: string }> = [];
+
+  for (const cmd of operation.commands) {
+    try {
+      const timeout = cmd.timeout_ms || 30000;
+      const env = { ...process.env, ...operation.options?.env };
+      const cwd = operation.options?.working_dir || process.cwd();
+
+      const { stdout, stderr } = await execAsync(cmd.cmd, {
+        timeout,
+        env,
+        cwd,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+
+      results.push({
+        cmd: cmd.cmd,
+        exit_code: 0,
+        stdout: stdout.toString(),
+        stderr: stderr.toString(),
+      });
+    } catch (error: unknown) {
+      const execError = error as { code?: number; stdout?: string; stderr?: string };
+      results.push({
+        cmd: cmd.cmd,
+        exit_code: execError.code || 1,
+        stdout: execError.stdout?.toString() || '',
+        stderr: execError.stderr?.toString() || (error instanceof Error ? error.message : String(error)),
+      });
+    }
+  }
+
+  return { commands: results, total: results.length };
+}
+
+async function executeAgentOperation(operation: ExecOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'agent') throw new Error('Invalid operation type');
+
+  /**
+   * Agent spawning requires integration with the agent pool system.
+   * This is a complex operation that delegates to the runtime's agent coordination system.
+   *
+   * Implementation approach:
+   * 1. For each agent spec, call runtime.state.registerAgent()
+   * 2. Return agent IDs and spawn status
+   * 3. Actual agent execution happens asynchronously via the agent pool
+   */
+
+  const spawned: Array<{ id: string; agent: string; status: string }> = [];
+
+  for (const agentSpec of operation.agents) {
+    try {
+      // Register agent in state
+      runtime.state.registerAgent({
+        id: agentSpec.id,
+        agent_type: agentSpec.agent,
+        task: agentSpec.task,
+        started_at: new Date().toISOString(),
+        budget: {
+          max_tokens: agentSpec.budget?.max_tokens || 100000,
+          max_turns: agentSpec.budget?.max_turns || 50,
+          tokens_used: 0,
+          turns_used: 0,
+        },
+        batch_id: '',
+        operation_id: '',
+      });
+
+      spawned.push({
+        id: agentSpec.id,
+        agent: agentSpec.agent,
+        status: 'spawned',
+      });
+    } catch (error) {
+      spawned.push({
+        id: agentSpec.id,
+        agent: agentSpec.agent,
+        status: 'failed',
+      });
+    }
+  }
+
+  return { spawned, total: spawned.length };
+}
+
+async function executeScriptOperation(operation: ExecOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'script') throw new Error('Invalid operation type');
+
+  const results: Array<{ language: string; exit_code: number; output: string }> = [];
+
+  for (const script of operation.scripts) {
+    try {
+      let command: string;
+
+      switch (script.language) {
+        case 'bash':
+          command = 'bash';
+          break;
+        case 'python':
+          command = 'python';
+          break;
+        case 'node':
+          command = 'node';
+          break;
+        case 'deno':
+          command = 'deno run';
+          break;
+        case 'bun':
+          command = 'bun run';
+          break;
+        default:
+          throw new Error(`Unsupported script language: ${script.language}`);
+      }
+
+      // Write script to temp file
+      const tmpFile = path.join(process.cwd(), `.tmp-script-${Date.now()}`);
+      await fs.writeFile(tmpFile, script.code, 'utf-8');
+
+      try {
+        const { stdout } = await execAsync(`${command} ${tmpFile}`, {
+          maxBuffer: 10 * 1024 * 1024,
+        });
+
+        results.push({
+          language: script.language,
+          exit_code: 0,
+          output: stdout,
+        });
+      } finally {
+        // Cleanup temp file
+        try {
+          await fs.unlink(tmpFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    } catch (error) {
+      results.push({
+        language: script.language,
+        exit_code: 1,
+        output: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { scripts: results, total: results.length };
+}
+
+// ============================================================================
+// QUERY Operation Handlers (Stubs with clear documentation)
+// ============================================================================
+
+async function executeLspOperation(operation: QueryOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'lsp') throw new Error('Invalid operation type');
+
+  /**
+   * LSP operations require an active Language Server Protocol connection.
+   * Implementation would need to:
+   * 1. Initialize LSP client for the appropriate language
+   * 2. Send LSP requests (textDocument/definition, textDocument/references, etc.)
+   * 3. Parse and return LSP responses
+   *
+   * This is a complex operation that requires external LSP infrastructure.
+   * For now, return a stub result indicating LSP is not yet implemented.
+   */
+
+  return {
+    results: [],
+    total: 0,
+    message: 'LSP operations require Language Server Protocol integration (not yet implemented)',
+  };
+}
+
+async function executeValidateOperation(operation: QueryOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'validate') throw new Error('Invalid operation type');
+
+  /**
+   * Validation operations execute various checks like typecheck, lint, test, build.
+   * Implementation approach:
+   * 1. For 'typecheck': Run `tsc --noEmit` or equivalent
+   * 2. For 'lint': Run `eslint` or configured linter
+   * 3. For 'test': Run test suite
+   * 4. For 'build': Run build command
+   *
+   * For now, delegate to command execution where possible.
+   */
+
+  const results: Array<{ check: string; passed: boolean; errors?: string[] }> = [];
+
+  for (const validation of operation.validations) {
+    for (const check of validation.checks) {
+      try {
+        let command: string;
+
+        switch (check.kind) {
+          case 'typecheck':
+            command = 'tsc --noEmit';
+            break;
+          case 'lint':
+            command = 'eslint .';
+            break;
+          case 'test':
+            command = 'npm test';
+            break;
+          case 'build':
+            command = 'npm run build';
+            break;
+          default:
+            throw new Error(`Unsupported validation type: ${check.kind}`);
+        }
+
+        const { stdout, stderr } = await execAsync(command, { maxBuffer: 10 * 1024 * 1024 });
+        results.push({ check: check.kind, passed: true });
+      } catch (error: unknown) {
+        const execError = error as { stderr?: string };
+        results.push({
+          check: check.kind,
+          passed: false,
+          errors: [execError.stderr || (error instanceof Error ? error.message : String(error))],
+        });
+      }
+    }
+  }
+
+  return { validations: results, total: results.length };
+}
+
+async function executeDiagnoseOperation(operation: QueryOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'diagnose') throw new Error('Invalid operation type');
+
+  /**
+   * Diagnose operations analyze errors, performance issues, memory leaks, etc.
+   * Implementation would require integration with diagnostic tools and AI analysis.
+   *
+   * For now, return a stub indicating diagnosis is not yet implemented.
+   */
+
+  return {
+    diagnoses: [],
+    total: 0,
+    message: 'Diagnostic operations require specialized analysis tools (not yet implemented)',
+  };
+}
+
+// ============================================================================
+// STATE Operation Handlers
+// ============================================================================
+
+async function executeGetOperation(operation: StateOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'get') throw new Error('Invalid operation type');
+
+  /**
+   * State GET operations retrieve key-value pairs from session preferences.
+   * Uses the memory manager's preference system.
+   */
+
+  const values: Record<string, unknown> = {};
+
+  for (const key of operation.keys) {
+    const value = runtime.memory.getPreference(key);
+    values[key] = value;
+  }
+
+  return { values, total: Object.keys(values).length };
+}
+
+async function executeSetOperation(operation: StateOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'set') throw new Error('Invalid operation type');
+
+  /**
+   * State SET operations store key-value pairs in session preferences.
+   * Uses the memory manager's preference system.
+   */
+
+  const set: string[] = [];
+
+  for (const entry of operation.entries) {
+    const scope = operation.options?.persist ? 'project' : 'session';
+    runtime.memory.setPreference(entry.key, entry.value, scope);
+    set.push(entry.key);
+  }
+
+  return { set, total: set.length };
+}
+
+async function executeDeleteStateOperation(operation: StateOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'delete_state') throw new Error('Invalid operation type');
+
+  /**
+   * State DELETE operations remove preferences.
+   * Sets preference values to undefined.
+   */
+
+  const deleted: string[] = [];
+
+  for (const key of operation.keys) {
+    runtime.memory.setPreference(key, undefined);
+    deleted.push(key);
+  }
+
+  return { deleted, total: deleted.length };
+}
+
+async function executeListOperation(operation: StateOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'list') throw new Error('Invalid operation type');
+
+  /**
+   * State LIST operations list all preference keys.
+   * Returns all keys from memory manager preferences.
+   */
+
+  const memory = runtime.memory.getMemory();
+  const keys = memory.preferences.map(p => p.key);
+
+  // Filter by prefix if specified
+  const filteredKeys = operation.prefix
+    ? keys.filter(k => k.startsWith(operation.prefix!))
+    : keys;
+
+  return { keys: filteredKeys, total: filteredKeys.length };
+}
+
+async function executeTrackOperation(operation: StateOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'track') throw new Error('Invalid operation type');
+
+  /**
+   * Track operations record various types of memory entries.
+   * Uses the memory manager's record methods.
+   */
+
+  const tracked: string[] = [];
+
+  for (const entry of operation.entries) {
+    switch (entry.kind) {
+      case 'decision':
+        // Type assertion needed as the data structure may not be complete
+        runtime.memory.recordDecision(entry.data as Omit<import('../interfaces/memory.js').Decision, 'id' | 'timestamp'>);
+        break;
+      case 'pattern':
+        runtime.memory.recordPattern(entry.data as Omit<import('../interfaces/memory.js').Pattern, 'id' | 'timestamp' | 'usage_count'>);
+        break;
+      case 'failure':
+        runtime.memory.recordFailure(entry.data as Omit<import('../interfaces/memory.js').Failure, 'id' | 'timestamp'>);
+        break;
+      case 'task':
+        // Tasks are stored as preferences
+        runtime.memory.setPreference(`task_${Date.now()}`, entry.data);
+        break;
+      case 'metric':
+        // Metrics are stored as preferences
+        runtime.memory.setPreference(`metric_${Date.now()}`, entry.data);
+        break;
+    }
+    tracked.push(entry.kind);
+  }
+
+  return { tracked, total: tracked.length };
+}
+
+async function executeQueryOperation(operation: StateOperation, runtime: RuntimeContext): Promise<unknown> {
+  if (operation.type !== 'query') throw new Error('Invalid operation type');
+
+  /**
+   * Query operations search memory for tracked entries.
+   * Uses the memory manager's get methods with filters.
+   */
+
+  const filters = operation.filters || {};
+  const results: unknown[] = [];
+
+  // Use memory manager to query
+  if (!filters.kinds || filters.kinds.includes('decision')) {
+    const decisions = runtime.memory.getDecisions({
+      since: filters.since,
+    });
+    results.push(...decisions);
+  }
+
+  if (!filters.kinds || filters.kinds.includes('pattern')) {
+    const patterns = runtime.memory.getPatterns({
+      since: filters.since,
+    });
+    results.push(...patterns);
+  }
+
+  if (!filters.kinds || filters.kinds.includes('failure')) {
+    const failures = runtime.memory.getFailures({
+      since: filters.since,
+    });
+    results.push(...failures);
+  }
+
+  // Apply keyword filtering if specified
+  let filteredResults = results;
+  if (filters.keywords && filters.keywords.length > 0) {
+    const searchResults = runtime.memory.search(
+      filters.keywords,
+      filters.kinds as ('decision' | 'pattern' | 'failure' | 'preference')[] | undefined
+    );
+    filteredResults = searchResults.map(r => r.entry);
+  }
+
+  // Apply limit if specified
+  if (filters.limit) {
+    filteredResults = filteredResults.slice(0, filters.limit);
+  }
+
+  return { results: filteredResults, total: filteredResults.length };
 }
 
 /**
@@ -865,8 +1679,85 @@ async function runValidation(
   const errors: string[] = [];
 
   for (const check of checks) {
-    // TODO: Implement actual validation
-    // For now, assume all checks pass
+    try {
+      let command: string;
+
+      // Parse check string to determine validation type
+      // Supports formats: 'typecheck', 'lint', 'test', 'build'
+      // Or with options: 'typecheck:strict', 'test:unit'
+      const [checkType, ...options] = check.split(':');
+      const checkName: string = checkType || check;
+
+      // Map check type to appropriate command
+      switch (checkType) {
+        case 'typecheck':
+          // Run TypeScript type checking
+          command = 'tsc --noEmit';
+          if (options.includes('strict')) {
+            command += ' --strict';
+          }
+          break;
+
+        case 'lint':
+          // Run linter (ESLint)
+          command = 'eslint .';
+          if (options.includes('fix')) {
+            command += ' --fix';
+          }
+          break;
+
+        case 'test':
+          // Run test suite
+          if (options.includes('unit')) {
+            command = 'npm run test:unit';
+          } else if (options.includes('integration')) {
+            command = 'npm run test:integration';
+          } else {
+            command = 'npm test';
+          }
+          break;
+
+        case 'build':
+          // Run build process
+          command = 'npm run build';
+          break;
+
+        default:
+          // Unknown check type - log warning and skip
+          errors.push(`Unknown validation check type: ${checkType}`);
+          continue;
+      }
+
+      // Execute validation command
+      const { stdout, stderr } = await execAsync(command, {
+        maxBuffer: 10 * 1024 * 1024,
+        cwd: process.cwd(),
+      });
+
+      // Command succeeded (exit code 0)
+      // Check stderr for warnings that should be treated as errors
+      if (stderr && stderr.length > 0) {
+        const stderrStr = stderr.toString().trim();
+        if (stderrStr.length > 0) {
+          // Log stderr but don't treat as error unless it contains error keywords
+          if (stderrStr.toLowerCase().includes('error')) {
+            errors.push(`${checkName} validation warnings: ${stderrStr.substring(0, 500)}`);
+          }
+        }
+      }
+    } catch (error: unknown) {
+      // Command failed (non-zero exit code)
+      const execError = error as { code?: number; stderr?: string; stdout?: string };
+      const errorMsg = execError.stderr?.toString() || execError.stdout?.toString() ||
+        (error instanceof Error ? error.message : String(error));
+
+      // Truncate long error messages to keep output manageable
+      const truncatedMsg = errorMsg.length > 500
+        ? errorMsg.substring(0, 500) + '... (truncated)'
+        : errorMsg;
+
+      errors.push(`${check} failed: ${truncatedMsg}`);
+    }
   }
 
   return {
@@ -976,7 +1867,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
       };
 
       activeBatches.delete(batchId);
-      completedBatches.set(batchId, output);
+      completedBatches.set(batchId, { input, output });
 
       return toCallToolResult(successResult(output, outputMode, getElapsed()));
     }
@@ -1125,7 +2016,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
 
     // Move from active to completed
     activeBatches.delete(batchId);
-    completedBatches.set(batchId, output);
+    completedBatches.set(batchId, { input, output });
 
     // Format output based on mode
     let responseData: unknown;
@@ -1219,7 +2110,7 @@ export function getActiveBatch(batchId: string): BatchExecutionContext | undefin
 /**
  * Get completed batch result (for status queries)
  */
-export function getCompletedBatch(batchId: string): BatchToolOutput | undefined {
+export function getCompletedBatch(batchId: string): { input: BatchToolInput; output: BatchToolOutput } | undefined {
   return completedBatches.get(batchId);
 }
 

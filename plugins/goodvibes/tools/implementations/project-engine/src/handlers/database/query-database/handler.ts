@@ -31,9 +31,9 @@ export async function handleQueryDatabase(args: QueryDatabaseArgs): Promise<Tool
   if (connectionInfo.type === 'unknown') {
     return formatErrorResponse(
       `Unable to parse database URL. Supported formats:\n` +
-      `  - PostgreSQL: postgresql://<user>:<pass>@host:port/database\n` +
-      `  - MySQL: mysql://<user>:<pass>@host:port/database\n` +
-      `  - SQLite: sqlite:///path/to/db.sqlite or file:./db.sqlite`,
+      `  - PostgreSQL: postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>\n` +
+      `  - MySQL: mysql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>\n` +
+      `  - SQLite: sqlite:///<PATH_TO_DB> or file:./<DB_FILE>`,
     );
   }
 

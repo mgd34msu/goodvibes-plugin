@@ -17,8 +17,6 @@ import { VALIDATION_SCHEMAS } from './validation-schemas.js';
 import { SECURITY_SCHEMAS } from './security-schemas.js';
 import { ERROR_SCHEMAS } from './error-schemas.js';
 import { DEPS_SCHEMAS } from './deps-schemas.js';
-// TODO: Re-enable when test/coverage and issues modules are migrated
-// import { ANALYSIS_SCHEMAS } from './analysis-schemas.js';
 
 /**
  * Tool schema interface
@@ -43,8 +41,6 @@ export const ALL_SCHEMAS: readonly ToolSchema[] = [
   ...SECURITY_SCHEMAS,
   ...ERROR_SCHEMAS,
   ...DEPS_SCHEMAS,
-  // TODO: Re-enable when test/coverage and issues modules are migrated
-  // ...ANALYSIS_SCHEMAS,
 ];
 
 // Re-export individual schema groups for selective imports
@@ -55,5 +51,4 @@ export {
   SECURITY_SCHEMAS,
   ERROR_SCHEMAS,
   DEPS_SCHEMAS,
-  // ANALYSIS_SCHEMAS, // TODO: Re-enable when modules are migrated
 };

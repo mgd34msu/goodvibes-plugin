@@ -23,6 +23,7 @@ export interface OperationResult {
   error?: ErrorInfo;
   duration_ms: number;
   tokens_used: number;
+  retries?: number;              // Number of retry attempts (0 if succeeded on first try)
 }
 
 export interface PhaseResult {

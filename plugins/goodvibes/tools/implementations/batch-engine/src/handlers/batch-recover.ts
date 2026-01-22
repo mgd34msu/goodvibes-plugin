@@ -24,7 +24,7 @@ import type {
   hasFixOptions,
 } from '../interfaces/tools/batch-recover.js';
 import type { RollbackResult, RollbackScope } from '../interfaces/rollback.js';
-import type { FixResult, FixStrategy } from '../interfaces/fix-loop.js';
+import type { FixResult, FixStrategy, FixableError, FixAction, FixableErrorType } from '../interfaces/fix-loop.js';
 import type { Checkpoint } from '../interfaces/checkpoint.js';
 import {
   createRuntimeContext,
@@ -301,20 +301,194 @@ async function executeRestore(
 
 /**
  * Execute a retry operation
+ *
+ * @remarks
+ * This function only works for batches executed in the current process session.
+ * Retry relies on in-memory storage of completed batch information and will not
+ * work for batches from previous sessions or other processes.
  */
 async function executeRetry(
   options: NonNullable<BatchRecoverInput['retry']>,
   runtime: ReturnType<typeof createRuntimeContext>
 ): Promise<RetryOutput> {
-  // TODO: Implement actual retry logic
-  // For now, return a placeholder result
+  // Dynamic import to avoid circular dependency between batch.ts and batch-recover.ts
+  const { getCompletedBatch, handleBatch } = await import('./batch.js');
+
+  // Get the completed batch
+  const completedBatch = getCompletedBatch(options.batch_id);
+
+  if (!completedBatch) {
+    // Batch not found in completed batches
+    return {
+      batch_id: options.batch_id,
+      operations_retried: 0,
+      operations_succeeded: 0,
+      operations_failed: 0,
+      new_batch_id: undefined,
+    };
+  }
+
+  // Extract failed operations from batch result
+  const failedOperations: string[] = [];
+
+  if (completedBatch.output.result?.phases) {
+    const phases = completedBatch.output.result.phases;
+
+    // Collect all failed operations from all phases
+    for (const phase of Object.values(phases)) {
+      if (phase && phase.results) {
+        for (const result of phase.results) {
+          if (result.status === 'failed') {
+            failedOperations.push(result.id);
+          }
+        }
+      }
+    }
+  } else if (!completedBatch.output.result) {
+    // Batch completed but had no result to inspect - this may indicate
+    // the batch was aborted early or completed with no operations
+    return {
+      batch_id: options.batch_id,
+      operations_retried: 0,
+      operations_succeeded: 0,
+      operations_failed: 0,
+      new_batch_id: undefined,
+    };
+  }
+
+  // Filter to specific operation IDs if provided
+  const operationsToRetry = options.operation_ids
+    ? failedOperations.filter(id => options.operation_ids.includes(id))
+    : failedOperations;
+
+  if (operationsToRetry.length === 0) {
+    // No operations to retry
+    return {
+      batch_id: options.batch_id,
+      operations_retried: 0,
+      operations_succeeded: 0,
+      operations_failed: 0,
+      new_batch_id: undefined,
+    };
+  }
+
+  // Filter the original input to only include failed operations
+  const originalInput = completedBatch.input;
+  const operationsToRetrySet = new Set(operationsToRetry);
+
+  const filteredOperations: typeof originalInput.operations = {};
+
+  if (originalInput.operations?.read) {
+    const filtered = originalInput.operations.read.filter(op =>
+      operationsToRetrySet.has(op.id)
+    );
+    // Only add if filtered array has items
+    if (filtered.length > 0) {
+      filteredOperations.read = filtered;
+    }
+  }
+
+  if (originalInput.operations?.write) {
+    const filtered = originalInput.operations.write.filter(op =>
+      operationsToRetrySet.has(op.id)
+    );
+    if (filtered.length > 0) {
+      filteredOperations.write = filtered;
+    }
+  }
+
+  if (originalInput.operations?.exec) {
+    const filtered = originalInput.operations.exec.filter(op =>
+      operationsToRetrySet.has(op.id)
+    );
+    if (filtered.length > 0) {
+      filteredOperations.exec = filtered;
+    }
+  }
+
+  if (originalInput.operations?.query) {
+    const filtered = originalInput.operations.query.filter(op =>
+      operationsToRetrySet.has(op.id)
+    );
+    if (filtered.length > 0) {
+      filteredOperations.query = filtered;
+    }
+  }
+
+  if (originalInput.operations?.state) {
+    const filtered = originalInput.operations.state.filter(op =>
+      operationsToRetrySet.has(op.id)
+    );
+    if (filtered.length > 0) {
+      filteredOperations.state = filtered;
+    }
+  }
+
+  // After filtering, verify we found something to retry
+  const totalFilteredOps =
+    (filteredOperations.read?.length || 0) +
+    (filteredOperations.write?.length || 0) +
+    (filteredOperations.exec?.length || 0) +
+    (filteredOperations.query?.length || 0) +
+    (filteredOperations.state?.length || 0);
+
+  if (totalFilteredOps === 0 && operationsToRetry.length > 0) {
+    // Data integrity issue - operations marked for retry but not found in original input
+    return {
+      batch_id: options.batch_id,
+      operations_retried: 0,
+      operations_succeeded: 0,
+      operations_failed: 0,
+      new_batch_id: undefined,
+    };
+  }
+
+  // Create new batch input with only failed operations
+  // Override dry_run and preview to false, remove discovery
+  const retryInput: typeof originalInput = {
+    ...originalInput,
+    operations: filteredOperations,
+    dry_run: false,
+    preview: false,
+    discovery: undefined,
+  };
+
+  // Execute the retry batch using handleBatch
+  const retryResult = await handleBatch(retryInput);
+
+  // Parse the result
+  let operationsSucceeded = 0;
+  let operationsFailed = 0;
+  let newBatchId: string | undefined;
+
+  if (retryResult.content && retryResult.content.length > 0) {
+    const resultText = retryResult.content[0]?.text;
+    if (resultText && typeof resultText === 'string') {
+      try {
+        const parsedResult = JSON.parse(resultText);
+        if (parsedResult.success && parsedResult.data) {
+          newBatchId = parsedResult.data.batch_id;
+
+          // Count successes and failures from the retry result
+          if (parsedResult.data.result?.summary) {
+            operationsSucceeded = parsedResult.data.result.summary.operations.succeeded || 0;
+            operationsFailed = parsedResult.data.result.summary.operations.failed || 0;
+          }
+        }
+      } catch (error) {
+        // Log the error for debugging
+        console.error('Failed to parse retry result:', error);
+        operationsFailed = operationsToRetry.length;
+      }
+    }
+  }
 
   return {
     batch_id: options.batch_id,
-    operations_retried: 0,
-    operations_succeeded: 0,
-    operations_failed: 0,
-    new_batch_id: undefined,
+    operations_retried: operationsToRetry.length,
+    operations_succeeded: operationsSucceeded,
+    operations_failed: operationsFailed,
+    new_batch_id: newBatchId,
   };
 }
 
@@ -410,24 +584,218 @@ async function executeCleanup(
 }
 
 /**
+ * Parse error from batch operation result
+ */
+function parseErrorFromOperation(opResult: any): FixableError | null {
+  if (!opResult.error) return null;
+
+  const error = opResult.error;
+
+  // Classify error type based on error code or message
+  let errorType: FixableErrorType = 'runtime_error';
+  if (error.code) {
+    if (error.code.startsWith('TS')) {
+      errorType = 'typescript_error';
+    } else if (error.code.includes('lint') || error.code.includes('eslint')) {
+      errorType = 'lint_error';
+    } else if (error.code.includes('prettier') || error.code.includes('format')) {
+      errorType = 'format_error';
+    } else if (error.code.includes('import')) {
+      errorType = 'import_error';
+    } else if (error.code.includes('test')) {
+      errorType = 'test_failure';
+    } else if (error.code.includes('build')) {
+      errorType = 'build_error';
+    }
+  }
+
+  return {
+    type: errorType,
+    message: error.message || String(error),
+    code: error.code,
+  };
+}
+
+/**
+ * Collect errors from batch result
+ */
+function collectErrorsFromBatch(batchMetrics: any): FixableError[] {
+  const errors: FixableError[] = [];
+
+  // The batch metrics contain operation results
+  if (batchMetrics.operations) {
+    for (const op of batchMetrics.operations) {
+      if (op.status === 'failed' && op.error) {
+        const parsedError = parseErrorFromOperation(op);
+        if (parsedError) {
+          errors.push(parsedError);
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Map user strategy to internal FixStrategy type
+ */
+function mapStrategy(userStrategy?: 'auto' | 'agent' | 'targeted'): FixStrategy {
+  switch (userStrategy) {
+    case 'agent':
+      return 'agent_fix';
+    case 'targeted':
+      return 'targeted_fix';
+    case 'auto':
+    default:
+      return 'auto_fix';
+  }
+}
+
+/**
  * Execute a fix operation
  */
 async function executeFix(
   options: NonNullable<BatchRecoverInput['fix']>,
   runtime: ReturnType<typeof createRuntimeContext>
 ): Promise<FixResult> {
-  // TODO: Implement actual fix loop logic
-  // For now, return a placeholder result
+  const startTime = Date.now();
+  const maxAttempts = options.max_attempts || 3;
+  const strategy = mapStrategy(options.strategy);
 
-  return {
-    success: false,
-    attempts: 0,
-    final_strategy: 'auto_fix',
-    actions_taken: [],
-    remaining_errors: [],
-    total_tokens_used: 0,
-    duration_ms: 0,
-  };
+  const actionsTaken: FixAction[] = [];
+  let remainingErrors: FixableError[] = [];
+  let totalTokensUsed = 0;
+  let attempts = 0;
+
+  try {
+    // Get batch metrics to extract errors
+    const batchMetrics = runtime.telemetry.getBatchMetrics(options.batch_id);
+
+    // Collect all errors from failed operations
+    remainingErrors = collectErrorsFromBatch(batchMetrics);
+
+    if (remainingErrors.length === 0) {
+      // No errors to fix
+      return {
+        success: true,
+        attempts: 0,
+        final_strategy: strategy,
+        actions_taken: [],
+        remaining_errors: [],
+        total_tokens_used: 0,
+        duration_ms: Date.now() - startTime,
+      };
+    }
+
+    // Fix loop: attempt fixes up to max_attempts
+    for (attempts = 1; attempts <= maxAttempts && remainingErrors.length > 0; attempts++) {
+      const attemptStartTime = Date.now();
+
+      // Determine strategy for this attempt
+      let currentStrategy: FixStrategy;
+      if (strategy === 'auto_fix' && attempts === 1) {
+        currentStrategy = 'auto_fix';
+      } else if (attempts === 2) {
+        currentStrategy = 'agent_fix';
+      } else {
+        currentStrategy = 'targeted_fix';
+      }
+
+      // For auto_fix strategy, attempt to apply automatic fixes
+      if (currentStrategy === 'auto_fix') {
+        for (const error of remainingErrors) {
+          let action: FixAction;
+
+          switch (error.type) {
+            case 'lint_error':
+              action = {
+                type: 'command',
+                target: 'eslint --fix',
+                description: 'Apply ESLint auto-fixes',
+                success: false,
+              };
+              // In a real implementation, we would run eslint --fix
+              // For now, we mark it as attempted but not successful
+              break;
+
+            case 'format_error':
+              action = {
+                type: 'command',
+                target: 'prettier --write',
+                description: 'Apply Prettier formatting',
+                success: false,
+              };
+              break;
+
+            case 'typescript_error':
+              action = {
+                type: 'command',
+                target: 'tsc --noEmit',
+                description: 'Check TypeScript errors',
+                success: false,
+              };
+              break;
+
+            default:
+              action = {
+                type: 'command',
+                target: 'analyze',
+                description: `Analyze ${error.type} error`,
+                success: false,
+              };
+          }
+
+          actionsTaken.push(action);
+
+          // Estimate token usage for analysis
+          totalTokensUsed += estimateTokens(JSON.stringify(error));
+        }
+      }
+      // For agent_fix and targeted_fix, we would spawn an agent
+      // For now, we log the intent
+      else if (currentStrategy === 'agent_fix' || currentStrategy === 'targeted_fix') {
+        const action: FixAction = {
+          type: 'command',
+          target: 'spawn_agent',
+          description: `Spawn ${currentStrategy === 'agent_fix' ? 'code-architect' : 'specialized'} agent to fix errors`,
+          success: false,
+          error: 'Agent spawning not implemented in this handler',
+        };
+        actionsTaken.push(action);
+        totalTokensUsed += 1000; // Estimate for agent spawning overhead
+      }
+
+      const attemptDuration = Date.now() - attemptStartTime;
+
+      // In a real implementation, we would re-check for errors after fixes
+      // For now, we assume fixes were not successful (as they're not actually executed)
+      // and break the loop
+      break;
+    }
+
+    const duration = Date.now() - startTime;
+
+    return {
+      success: remainingErrors.length === 0,
+      attempts,
+      final_strategy: strategy,
+      actions_taken: actionsTaken,
+      remaining_errors: remainingErrors,
+      total_tokens_used: totalTokensUsed,
+      duration_ms: duration,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      attempts,
+      final_strategy: strategy,
+      actions_taken: actionsTaken,
+      remaining_errors: remainingErrors,
+      total_tokens_used: totalTokensUsed,
+      duration_ms: Date.now() - startTime,
+    };
+  }
 }
 
 /**

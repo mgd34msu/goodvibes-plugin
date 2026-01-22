@@ -36,10 +36,6 @@ import { handleParseErrorStack, handleExplainTypeError } from './errors/index.js
 // Dependency handlers
 import { handleFindCircularDeps } from './deps/index.js';
 
-// Analysis handlers
-// TODO: Re-enable identify_tech_debt once test/coverage and issues modules are migrated
-// import { handleIdentifyTechDebt } from './analysis/index.js';
-
 /**
  * Handler function type.
  */
@@ -75,8 +71,6 @@ export const handlerRegistry = new Map<string, ToolHandler>([
 
   // Dependencies (1 tool)
   ['find_circular_deps', handleFindCircularDeps],
-  // TODO: Re-enable once test/coverage and issues modules are migrated
-  // ['identify_tech_debt', handleIdentifyTechDebt],
 ]);
 
 /**

@@ -245750,8 +245750,6 @@ var ALL_SCHEMAS = [
   ...SECURITY_SCHEMAS,
   ...ERROR_SCHEMAS,
   ...DEPS_SCHEMAS
-  // TODO: Re-enable when test/coverage and issues modules are migrated
-  // ...ANALYSIS_SCHEMAS,
 ];
 
 // src/handlers/context.ts
@@ -254971,8 +254969,6 @@ var handlerRegistry = /* @__PURE__ */ new Map([
   ["explain_type_error", handleExplainTypeError],
   // Dependencies (1 tool)
   ["find_circular_deps", handleFindCircularDeps]
-  // TODO: Re-enable once test/coverage and issues modules are migrated
-  // ['identify_tech_debt', handleIdentifyTechDebt],
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);

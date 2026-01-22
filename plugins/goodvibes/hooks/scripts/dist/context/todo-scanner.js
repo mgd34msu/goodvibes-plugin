@@ -38,9 +38,9 @@ const SKIP_PATH_PATTERNS = [
 ];
 /**
  * Default maximum number of TODOs to return.
- * Limits the number of TODO items to prevent overwhelming output.
+ * Limited to 100 for production use to avoid overwhelming output.
  */
-const DEFAULT_TODO_LIMIT = 10;
+const DEFAULT_TODO_LIMIT = 100;
 /**
  * Maximum text length to display in formatted output.
  * Truncates long TODO comments for readability.

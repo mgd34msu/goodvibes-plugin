@@ -16,6 +16,9 @@ export interface AgentResult {
   tokens_used: number;
   turns_used: number;
   files_modified: string[];
+  files_read?: number;
+  tool_calls?: number;
+  tools_used?: string[];
   summary?: string;
 }
 

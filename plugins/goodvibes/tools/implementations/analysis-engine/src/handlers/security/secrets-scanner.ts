@@ -125,7 +125,13 @@ const SECRET_PATTERNS: SecretPattern[] = [
     recommendation: 'Use environment variables for webhook URLs. Consider regenerating the webhook if exposed.',
   },
 
-  // Private Keys (High severity)
+  /**
+   * Private Key Detection Patterns (High severity)
+   *
+   * IMPORTANT: These strings are DETECTION PATTERNS used for scanning, NOT actual secrets.
+   * They are intentionally written to match private key headers in scanned code files.
+   * The secrets scanner uses these patterns to identify potential secrets in other files.
+   */
   {
     name: 'rsa_private_key',
     pattern: /-----BEGIN RSA PRIVATE KEY-----/g,

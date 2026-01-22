@@ -27,11 +27,6 @@ import {
 import { handleFindDeadCode, type FindDeadCodeArgs } from '../lsp/dead-code.js';
 import { handleFindCircularDeps, type FindCircularDepsArgs } from '../deps/circular.js';
 import { handleScanForSecrets, type ScanForSecretsArgs } from '../security/secrets-scanner.js';
-// TODO: Re-enable when test/coverage and issues modules are migrated
-// import { handleGetTestCoverage, type GetTestCoverageArgs } from '../test/coverage.js';
-// import { handleCheckTypes, type CheckTypesArgs } from '../validation/index.js';
-// import { scanDirectory } from '../issues/todo-scanner.js';
-// import type { TodoItem } from '../issues/types.js';
 
 // =============================================================================
 // Types
@@ -403,107 +398,24 @@ async function analyzeSecurity(
   }
 }
 
-/** Analyze test coverage */
+/** Analyze test coverage (stub - coverage tool not yet migrated) */
 async function analyzeCoverage(
   coverageThreshold: number
 ): Promise<{ uncoveredPercent: number; issues: PrioritizedIssue[] }> {
-  const result = await handleGetTestCoverage({});
-
-  if (result.isError) {
-    // No coverage data available - return neutral score
-    return { uncoveredPercent: 0, issues: [] };
-  }
-
-  try {
-    const data = JSON.parse(result.content[0].text);
-    const coverage = data.coverage || { lines: 0 };
-    const coveredPercent = coverage.lines || 0;
-    const uncoveredPercent = 100 - coveredPercent;
-
-    const issues: PrioritizedIssue[] = [];
-    const uncoveredFunctions = data.uncovered_functions || [];
-
-    uncoveredFunctions.slice(0, 10).forEach((fn: { file: string; name: string; line: number }) => {
-      issues.push({
-        type: 'coverage_gap',
-        severity: getIssueSeverity('coverage_gap'),
-        location: `${fn.file}:${fn.line}`,
-        description: `Uncovered function "${fn.name}"`,
-        effort: estimateEffort('coverage_gap'),
-        recommendation: getRecommendation('coverage_gap'),
-      });
-    });
-
-    return { uncoveredPercent, issues };
-  } catch {
-    return { uncoveredPercent: 0, issues: [] };
-  }
+  // Return neutral score until coverage tool is migrated
+  return { uncoveredPercent: 0, issues: [] };
 }
 
-/** Analyze type errors */
+/** Analyze type errors (stub - type checker not yet migrated) */
 async function analyzeTypeErrors(): Promise<{ count: number; issues: PrioritizedIssue[] }> {
-  const result = await handleCheckTypes({ strict: false, include_suggestions: false });
-
-  if (result.isError) {
-    return { count: 0, issues: [] };
-  }
-
-  try {
-    const data = JSON.parse(result.content[0].text);
-    const errors = data.errors || [];
-    const errorCount = errors.length;
-
-    const issues: PrioritizedIssue[] = errors.slice(0, 15).map((error: { file: string; line: number; message: string }) => ({
-      type: 'type_error',
-      severity: getIssueSeverity('type_error'),
-      location: `${error.file}:${error.line}`,
-      description: error.message.slice(0, 100),
-      effort: estimateEffort('type_error'),
-      recommendation: getRecommendation('type_error'),
-    }));
-
-    return { count: errorCount, issues };
-  } catch {
-    return { count: 0, issues: [] };
-  }
+  // Return neutral score until type checker is migrated
+  return { count: 0, issues: [] };
 }
 
-/** Scan for TODOs */
+/** Scan for TODOs (stub - todo scanner not yet migrated) */
 function analyzeTodos(scanPath: string): { high: number; medium: number; low: number; issues: PrioritizedIssue[] } {
-  const items: TodoItem[] = [];
-
-  try {
-    scanDirectory(scanPath, scanPath, items, 500);
-  } catch {
-    return { high: 0, medium: 0, low: 0, issues: [] };
-  }
-
-  let high = 0;
-  let medium = 0;
-  let low = 0;
-
-  for (const item of items) {
-    if (item.priority === 'high') high++;
-    else if (item.priority === 'medium') medium++;
-    else low++;
-  }
-
-  const issues: PrioritizedIssue[] = items
-    .filter(item => item.priority === 'high' || item.priority === 'medium')
-    .slice(0, 15)
-    .map(item => {
-      const issueType = `todo_${item.priority}`;
-      return {
-        type: issueType,
-        severity: getIssueSeverity(issueType),
-        location: `${item.file}:${item.line}`,
-        description: `${item.type}: ${item.text}`,
-        effort: estimateEffort(issueType),
-        recommendation: getRecommendation(issueType),
-      };
-    });
-
-  return { high, medium, low, issues };
+  // Return neutral score until todo scanner is migrated
+  return { high: 0, medium: 0, low: 0, issues: [] };
 }
 
 /** Generate summary message */

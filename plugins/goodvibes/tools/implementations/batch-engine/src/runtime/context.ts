@@ -298,10 +298,38 @@ export class ContextGathererImpl implements ContextGatherer {
         priorResultsObj[key] = value.data;
       });
 
+      // Extract constraints from batch config and context
+      const batch = this.batchRegistry.get(agentState.batch_id);
+      const constraints: string[] = [];
+
+      if (batch) {
+        // Add constraints based on validation steps
+        if (batch.config.validation.before.includes('typecheck') || batch.config.validation.after.includes('typecheck')) {
+          constraints.push('Maintain TypeScript type safety');
+        }
+        if (batch.config.validation.before.includes('test') || batch.config.validation.after.includes('test')) {
+          constraints.push('Do not break existing tests');
+        }
+        if (batch.config.validation.before.includes('lint') || batch.config.validation.after.includes('lint')) {
+          constraints.push('Follow project linting rules');
+        }
+
+        // Add constraints based on transaction mode
+        if (batch.config.transaction.mode === 'atomic') {
+          constraints.push('All changes must succeed together or roll back');
+        }
+
+        // Add constraints based on risk level
+        if (batchContext.risk.level === 'high' || batchContext.risk.level === 'critical') {
+          constraints.push('High risk operation - proceed with extra caution');
+          constraints.push(...batchContext.risk.factors.map(f => `Risk factor: ${f}`));
+        }
+      }
+
       const context: AgentContext = {
         task: agentState.task,
         scope: batchContext.affected_files,
-        constraints: [], // TODO: Extract from batch config
+        constraints,
         relevant_decisions: batchContext.decisions,
         relevant_patterns: batchContext.patterns,
         past_failures: batchContext.failures,
@@ -406,11 +434,14 @@ export class ContextGathererImpl implements ContextGatherer {
 
   async loadGitStatus(): Promise<SessionContext['git']> {
     try {
-      const [branch, commit, status, remote] = await Promise.all([
+      const [branch, commit, status, remote, mainBranch] = await Promise.all([
         executeGitCommand(['rev-parse', '--abbrev-ref', 'HEAD']),
         executeGitCommand(['rev-parse', '--short', 'HEAD']),
         executeGitCommand(['status', '--porcelain']),
         executeGitCommand(['config', '--get', 'remote.origin.url']),
+        executeGitCommand(['symbolic-ref', 'refs/remotes/origin/HEAD'])
+          .then(ref => ref.replace('refs/remotes/origin/', '').trim() || 'main')
+          .catch(() => 'main'),
       ]);
 
       const git = {
@@ -423,7 +454,7 @@ export class ContextGathererImpl implements ContextGatherer {
       // Update state manager
       this.stateManager.updateSession({
         git: {
-          main_branch: 'main', // TODO: Detect main branch
+          main_branch: mainBranch,
           current_branch: git.branch,
           uncommitted_files: status.split('\n').filter(Boolean).map(line => line.slice(3)),
           last_commit: git.commit,

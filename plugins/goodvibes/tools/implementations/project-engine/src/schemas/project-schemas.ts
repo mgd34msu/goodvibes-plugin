@@ -117,7 +117,7 @@ export const PROJECT_SCHEMAS = [
         },
         database_url: {
           type: 'string',
-          description: 'Database connection URL. Formats: postgresql://<user>:<pass>@host:port/db, mysql://<user>:<pass>@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3.',
+          description: 'Database connection URL. Example formats (replace with actual values): postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>, mysql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>, sqlite:///<PATH_TO_FILE>.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3.',
         },
         params: {
           type: 'array',
