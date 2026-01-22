@@ -437,18 +437,26 @@ class MockModeHandler {
       }
 
       // Simulate operation execution
+      let hasError = false;
       if (op.execute) {
         try {
           await op.execute();
         } catch (error) {
-          // Handle errors based on mode
-          if (this.mode === 'vibecoding') {
-            this.output.push(`Error in operation ${op.id}`);
-            this.output.push(`Command exited with code 1`);
-            this.output.push('Stack trace:');
-          } else {
-            this.logFile.push(`Error in operation ${op.id}`);
-          }
+          hasError = true;
+        }
+      } else if (op.cmd && op.cmd.includes('exit 1')) {
+        // Simulate command failure
+        hasError = true;
+      }
+
+      // Handle errors based on mode
+      if (hasError) {
+        if (this.mode === 'vibecoding') {
+          this.output.push(`Error in operation ${op.id}`);
+          this.output.push(`Command exited with code 1`);
+          this.output.push('Stack trace:');
+        } else {
+          this.logFile.push(`Error in operation ${op.id}`);
         }
       }
     }

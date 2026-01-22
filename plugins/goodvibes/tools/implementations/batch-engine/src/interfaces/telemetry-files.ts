@@ -123,9 +123,11 @@ export const EMPTY_AGGREGATIONS: Aggregations = {
   daily: [],
   by_operation_type: {},
   by_agent_type: {},
-  token_trend: { direction: 'stable', change_percent: 0, period: '7d' },
-  success_trend: { direction: 'stable', change_percent: 0, period: '7d' },
-  duration_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+  trends: {
+    token_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+    success_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+    duration_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+  },
 };
 
 /**

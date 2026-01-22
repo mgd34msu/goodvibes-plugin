@@ -33,13 +33,15 @@ export interface PhaseResult {
 }
 
 export interface BatchResult {
-  // Summary (flat structure per SPEC-v2 Section 10.3)
+  // Summary
   summary: {
     status: 'success' | 'partial' | 'failed' | 'rolled_back';
-    operations_total: number;
-    operations_succeeded: number;
-    operations_failed: number;
-    operations_skipped: number;
+    operations: {
+      total: number;
+      succeeded: number;
+      failed: number;
+      skipped: number;
+    };
     duration_ms: number;
     tokens_used: number;
   };

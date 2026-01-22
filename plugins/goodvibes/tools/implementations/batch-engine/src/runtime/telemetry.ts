@@ -188,11 +188,20 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
         ...EMPTY_SESSION_METRICS,
         id: generateId('session'),
         started_at: new Date().toISOString(),
+        operations_by_type: {},
+        tokens_by_type: {},
       },
-      batches: [],
-      operations: [],
-      agents: [],
-      aggregations: { ...EMPTY_AGGREGATIONS },
+      batches: new Map<string, BatchMetrics>(),
+      operations: new Map<string, OperationMetrics>(),
+      agents: new Map<string, AgentMetrics>(),
+      aggregations: {
+        ...EMPTY_AGGREGATIONS,
+        trends: {
+          token_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+          success_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+          duration_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+        },
+      },
     };
   }
 
@@ -219,9 +228,9 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       started_at: new Date(active.startTime).toISOString(),
       completed_at: new Date().toISOString(),
       status: result.summary.status,
-      operations_total: result.summary.operations_total,
-      operations_succeeded: result.summary.operations_succeeded,
-      operations_failed: result.summary.operations_failed,
+      operations_total: result.summary.operations.total,
+      operations_succeeded: result.summary.operations.succeeded,
+      operations_failed: result.summary.operations.failed,
       duration_ms,
       tokens_used,
       parallel_efficiency: this.calculateParallelEfficiency(result),
@@ -231,7 +240,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       rollback_triggered: result.recovery.rollback_triggered,
     };
 
-    this.telemetry.batches.push(batchMetrics);
+    this.telemetry.batches.set(batch_id, batchMetrics);
     this.activeBatches.delete(batch_id);
 
     // Update session metrics
@@ -257,6 +266,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       id: operation_id,
       batch_id: active.batch_id,
       type: result.type,
+      queued_at: new Date(active.startTime - 100).toISOString(), // Estimate queue time
       started_at: new Date(active.startTime).toISOString(),
       completed_at: new Date().toISOString(),
       duration_ms,
@@ -266,7 +276,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       details: result.data || {},
     };
 
-    this.telemetry.operations.push(operationMetrics);
+    this.telemetry.operations.set(operation_id, operationMetrics);
     this.activeOperations.delete(operation_id);
 
     // Update session operation counts
@@ -312,13 +322,14 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       tool_calls: 0, // TODO: Track tool calls
       files_read: 0, // TODO: Track files read
       files_written: result.files_modified.length,
+      tools_used: [], // TODO: Track tools used
       status: result.status,
       budget_utilization: budget.max_tokens
         ? Math.round((result.tokens_used / budget.max_tokens) * 100)
         : 0,
     };
 
-    this.telemetry.agents.push(agentMetrics);
+    this.telemetry.agents.set(agent_id, agentMetrics);
     this.activeAgents.delete(agent_id);
 
     // Update session agent counts
@@ -336,7 +347,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
   }
 
   getBatchMetrics(batch_id: string): BatchMetrics {
-    const batch = this.telemetry.batches.find(b => b.id === batch_id);
+    const batch = this.telemetry.batches.get(batch_id);
     if (!batch) {
       throw new Error(`Batch not found: ${batch_id}`);
     }
@@ -360,11 +371,12 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
   }
 
   projectTokenUsage(batches: number): number {
-    if (this.telemetry.batches.length === 0) return 0;
+    if (this.telemetry.batches.size === 0) return 0;
 
-    const avgTokensPerBatch = this.telemetry.batches.reduce(
+    const batchArray = Array.from(this.telemetry.batches.values());
+    const avgTokensPerBatch = batchArray.reduce(
       (sum, b) => sum + b.tokens_used, 0
-    ) / this.telemetry.batches.length;
+    ) / batchArray.length;
 
     return Math.round(avgTokensPerBatch * batches);
   }
@@ -373,7 +385,8 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
     const bottlenecks: Bottleneck[] = [];
 
     // Find slowest operations
-    const sortedOps = [...this.telemetry.operations].sort(
+    const operationsArray = Array.from(this.telemetry.operations.values());
+    const sortedOps = operationsArray.sort(
       (a, b) => b.duration_ms - a.duration_ms
     );
 
@@ -390,7 +403,8 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
     }
 
     // Find validation failures
-    const validationFailures = this.telemetry.batches.filter(b => !b.validation_passed);
+    const batchesArray = Array.from(this.telemetry.batches.values());
+    const validationFailures = batchesArray.filter(b => !b.validation_passed);
     if (validationFailures.length > 0) {
       const avgRetryTime = validationFailures.reduce(
         (sum, b) => sum + b.duration_ms, 0
@@ -406,7 +420,8 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
     }
 
     // Find agents with high budget utilization
-    const overBudgetAgents = this.telemetry.agents.filter(a => a.budget_utilization > 80);
+    const agentsArray = Array.from(this.telemetry.agents.values());
+    const overBudgetAgents = agentsArray.filter(a => a.budget_utilization > 80);
     for (const agent of overBudgetAgents) {
       bottlenecks.push({
         type: 'agent',
@@ -431,7 +446,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
 
     switch (format) {
       case 'json':
-        return JSON.stringify(this.telemetry, null, 2);
+        return this.exportJson();
 
       case 'markdown':
         return this.exportMarkdown();
@@ -440,8 +455,20 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
         return this.exportCsv();
 
       default:
-        return JSON.stringify(this.telemetry, null, 2);
+        return this.exportJson();
     }
+  }
+
+  private exportJson(): string {
+    // Convert Maps to objects for JSON serialization
+    const serializable = {
+      session: this.telemetry.session,
+      batches: Object.fromEntries(this.telemetry.batches),
+      operations: Object.fromEntries(this.telemetry.operations),
+      agents: Object.fromEntries(this.telemetry.agents),
+      aggregations: this.telemetry.aggregations,
+    };
+    return JSON.stringify(serializable, null, 2);
   }
 
   private exportMarkdown(): string {
@@ -492,7 +519,7 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       'batch_id,started_at,completed_at,status,operations_total,operations_succeeded,operations_failed,duration_ms,tokens_used,parallel_efficiency',
     ];
 
-    for (const batch of this.telemetry.batches) {
+    for (const batch of this.telemetry.batches.values()) {
       lines.push([
         batch.id,
         batch.started_at,
@@ -532,17 +559,23 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
   async load(): Promise<void> {
     await this.ensureTelemetryDir();
 
-    // Load current session
+    // Load current session, create empty session if missing
     const session = await this.readCurrentSession();
     if (session) {
       this.telemetry.session = session;
       this.sessionStartTime = new Date(session.started_at).getTime();
+    } else {
+      const emptySession = this.telemetry.session;
+      await this.writeCurrentSession(emptySession);
     }
 
-    // Load aggregations
+    // Load aggregations, create empty aggregations if missing
     const aggregations = await this.readAggregations();
     if (aggregations) {
       this.telemetry.aggregations = aggregations;
+    } else {
+      const emptyAggregations = this.telemetry.aggregations;
+      await this.writeAggregations(emptyAggregations);
     }
   }
 
@@ -613,23 +646,23 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
 
   private calculateSuccessRates(): void {
     const session = this.telemetry.session;
-    const batches = this.telemetry.batches;
-    const operations = this.telemetry.operations;
-    const agents = this.telemetry.agents;
+    const batchesArray = Array.from(this.telemetry.batches.values());
+    const operationsArray = Array.from(this.telemetry.operations.values());
+    const agentsArray = Array.from(this.telemetry.agents.values());
 
     session.batch_success_rate = calcSuccessRate(
-      batches.filter(b => b.status === 'success').length,
-      batches.length
+      batchesArray.filter(b => b.status === 'success').length,
+      batchesArray.length
     );
 
     session.operation_success_rate = calcSuccessRate(
-      operations.filter(o => o.status === 'success').length,
-      operations.length
+      operationsArray.filter(o => o.status === 'success').length,
+      operationsArray.length
     );
 
     session.agent_success_rate = calcSuccessRate(
-      agents.filter(a => a.status === 'success').length,
-      agents.length
+      agentsArray.filter(a => a.status === 'success').length,
+      agentsArray.length
     );
   }
 
@@ -637,25 +670,28 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
     const aggregations = this.telemetry.aggregations;
 
     // Update by type aggregations
-    aggregations.by_operation_type = aggregateByType(this.telemetry.operations);
-    aggregations.by_agent_type = aggregateAgentsByType(this.telemetry.agents);
+    const operationsArray = Array.from(this.telemetry.operations.values());
+    const agentsArray = Array.from(this.telemetry.agents.values());
+
+    aggregations.by_operation_type = aggregateByType(operationsArray);
+    aggregations.by_agent_type = aggregateAgentsByType(agentsArray);
 
     // Update trends
-    aggregations.token_trend = calculateTrend(aggregations.daily, 'tokens');
-    aggregations.success_trend = calculateTrend(aggregations.daily, 'success_rate');
-    aggregations.duration_trend = { direction: 'stable', change_percent: 0, period: '7d' };
+    aggregations.trends.token_trend = calculateTrend(aggregations.daily, 'tokens');
+    aggregations.trends.success_trend = calculateTrend(aggregations.daily, 'success_rate');
+    aggregations.trends.duration_trend = { direction: 'stable', change_percent: 0, period: '7d' };
   }
 
   private calculateDailyAggregations(date: string): Aggregations {
     const dayStart = new Date(date).getTime();
     const dayEnd = dayStart + 24 * 60 * 60 * 1000;
 
-    const batchesForDay = this.telemetry.batches.filter(b => {
+    const batchesForDay = Array.from(this.telemetry.batches.values()).filter(b => {
       const ts = new Date(b.started_at).getTime();
       return ts >= dayStart && ts < dayEnd;
     });
 
-    const operationsForDay = this.telemetry.operations.filter(o => {
+    const operationsForDay = Array.from(this.telemetry.operations.values()).filter(o => {
       const ts = new Date(o.started_at).getTime();
       return ts >= dayStart && ts < dayEnd;
     });
@@ -676,9 +712,11 @@ export class TelemetryCollectorImpl implements TelemetryAPI {
       daily: [point],
       by_operation_type: aggregateByType(operationsForDay),
       by_agent_type: {},
-      token_trend: { direction: 'stable', change_percent: 0, period: '7d' },
-      success_trend: { direction: 'stable', change_percent: 0, period: '7d' },
-      duration_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+      trends: {
+        token_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+        success_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+        duration_trend: { direction: 'stable', change_percent: 0, period: '7d' },
+      },
     };
   }
 

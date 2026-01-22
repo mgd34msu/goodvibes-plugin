@@ -5,9 +5,9 @@
 
 export interface Telemetry {
   session: SessionMetrics;
-  batches: BatchMetrics[];
-  operations: OperationMetrics[];
-  agents: AgentMetrics[];
+  batches: Map<string, BatchMetrics>;
+  operations: Map<string, OperationMetrics>;
+  agents: Map<string, AgentMetrics>;
   aggregations: Aggregations;
 }
 
@@ -52,6 +52,7 @@ export interface OperationMetrics {
   id: string;
   batch_id: string;
   type: string;
+  queued_at: string;
   started_at: string;
   completed_at: string;
   duration_ms: number;
@@ -76,6 +77,7 @@ export interface AgentMetrics {
   tool_calls: number;
   files_read: number;
   files_written: number;
+  tools_used: string[];
   status: string;
   budget_utilization: number;
 }
@@ -85,9 +87,11 @@ export interface Aggregations {
   daily: TimeseriesPoint[];
   by_operation_type: Record<string, TypeAggregation>;
   by_agent_type: Record<string, TypeAggregation>;
-  token_trend: TrendAnalysis;
-  success_trend: TrendAnalysis;
-  duration_trend: TrendAnalysis;
+  trends: {
+    token_trend: TrendAnalysis;
+    success_trend: TrendAnalysis;
+    duration_trend: TrendAnalysis;
+  };
 }
 
 export interface TimeseriesPoint {

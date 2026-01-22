@@ -44,7 +44,7 @@ describe('Recovery Flow Integration', () => {
       const checkpoint = await mockCheckpointSystem.create(config);
 
       // Assert
-      expect(checkpoint.id).toMatch(/^cp_\d{8}_\d{6}$/);
+      expect(checkpoint.id).toMatch(/^cp_\d{8}_\d{6}_\d+$/);
       expect(checkpoint.batch_id).toBe('batch-001');
       expect(checkpoint.reason).toBe('batch_start');
       expect(checkpoint.type).toBe('automatic');
@@ -435,13 +435,16 @@ class MockCheckpointSystem {
     session: { user: 'test' },
     config: { mode: 'test' },
   };
+  private checkpointCounter: number = 0;
 
   async create(config: CheckpointConfig): Promise<Checkpoint> {
     const now = new Date();
+    // Add counter to ensure unique IDs even if created at the same time
+    this.checkpointCounter++;
     const id = `cp_${now.toISOString().slice(0, 10).replace(/-/g, '')}_${now
       .toTimeString()
       .slice(0, 8)
-      .replace(/:/g, '')}`;
+      .replace(/:/g, '')}_${this.checkpointCounter}`;
 
     const files = (config.include?.files || ['test-file.ts']).map((path) => ({
       path,
@@ -490,7 +493,12 @@ class MockCheckpointSystem {
     let state_restored: string[] = [];
 
     if (!options?.state_only) {
-      const filesToRestore = options?.specific_files || checkpoint.files.map((f) => f.path);
+      // Get files that were changed and need restoration
+      const fileSnapshot = (checkpoint as any)._fileSnapshot || [];
+      const changedFilesList = Array.from(this.changedFiles);
+
+      // If specific files requested, use those; otherwise restore all changed files
+      const filesToRestore = options?.specific_files || changedFilesList;
       files_restored = filesToRestore;
 
       if (!options?.dry_run) {
@@ -591,6 +599,7 @@ class MockCheckpointSystem {
     this.checkpoints.clear();
     this.changedFiles.clear();
     this.currentState = { session: { user: 'test' }, config: { mode: 'test' } };
+    this.checkpointCounter = 0;
   }
 
   getChangedFiles(): string[] {

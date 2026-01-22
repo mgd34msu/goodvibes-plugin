@@ -713,25 +713,31 @@ export class MemoryManagerImpl implements MemoryManager {
   async load(): Promise<void> {
     await this.ensureMemoryDir();
 
-    // Load decisions
+    // Load decisions, create with header if missing
     const decisionsContent = await this.readMemoryFile(MEMORY_PATHS.DECISIONS_FILE);
     if (decisionsContent) {
       this.memory.decisions = parseDecisions(decisionsContent);
+    } else {
+      await this.writeMemoryFile(MEMORY_PATHS.DECISIONS_FILE, '# Decisions\n\n');
     }
 
-    // Load patterns
+    // Load patterns, create with header if missing
     const patternsContent = await this.readMemoryFile(MEMORY_PATHS.PATTERNS_FILE);
     if (patternsContent) {
       this.memory.patterns = parsePatterns(patternsContent);
+    } else {
+      await this.writeMemoryFile(MEMORY_PATHS.PATTERNS_FILE, '# Patterns\n\n');
     }
 
-    // Load failures
+    // Load failures, create with header if missing
     const failuresContent = await this.readMemoryFile(MEMORY_PATHS.FAILURES_FILE);
     if (failuresContent) {
       this.memory.failures = parseFailures(failuresContent);
+    } else {
+      await this.writeMemoryFile(MEMORY_PATHS.FAILURES_FILE, '# Failures\n\n');
     }
 
-    // Load preferences
+    // Load preferences, create empty object if missing
     const preferencesContent = await this.readMemoryFile(MEMORY_PATHS.PREFERENCES_FILE);
     if (preferencesContent) {
       try {
@@ -740,9 +746,15 @@ export class MemoryManagerImpl implements MemoryManager {
       } catch {
         this.memory.preferences = [];
       }
+    } else {
+      const emptyPreferences: PreferencesFile = {
+        preferences: [],
+        last_updated: new Date().toISOString(),
+      };
+      await this.writeMemoryFile(MEMORY_PATHS.PREFERENCES_FILE, JSON.stringify(emptyPreferences, null, 2));
     }
 
-    // Load index
+    // Load index, create empty index if missing
     const indexContent = await this.readMemoryFile(MEMORY_PATHS.INDEX_FILE);
     if (indexContent) {
       try {
@@ -751,7 +763,8 @@ export class MemoryManagerImpl implements MemoryManager {
         this.rebuildIndex();
       }
     } else {
-      this.rebuildIndex();
+      this.index = { ...EMPTY_INDEX, last_updated: new Date().toISOString() };
+      await this.writeMemoryFile(MEMORY_PATHS.INDEX_FILE, JSON.stringify(this.index, null, 2));
     }
 
     this.notifyChange();

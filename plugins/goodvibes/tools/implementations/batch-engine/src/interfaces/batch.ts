@@ -17,7 +17,7 @@ export type LifecycleConfig = LifecycleHooks;
 export type ValidationStep = 'typecheck' | 'lint' | 'test' | 'build' | 'env' | 'api_contract' | 'secrets' | 'permissions';
 
 export interface OutputConfig {
-  mode: 'count_only' | 'minimal' | 'standard' | 'verbose';
+  mode: 'minimal' | 'summary' | 'full' | 'verbose';
   include: string[];
   exclude: string[];
   max_tokens?: number;

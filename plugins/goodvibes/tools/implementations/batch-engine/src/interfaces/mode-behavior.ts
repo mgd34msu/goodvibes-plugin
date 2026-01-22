@@ -61,7 +61,7 @@ export function formatResult(mode: ModeConfig, result: BatchResult): string {
     case 'none':
       return '';
     case 'minimal':
-      return `Done. ${result.summary.operations_succeeded}/${result.summary.operations_total} operations succeeded.`;
+      return `Done. ${result.summary.operations.succeeded}/${result.summary.operations.total} operations succeeded.`;
     case 'summary':
       return formatSummary(result);
     case 'detailed':
@@ -73,7 +73,7 @@ function formatSummary(result: BatchResult): string {
   const { summary } = result;
   return [
     `Batch ${summary.status}`,
-    `Operations: ${summary.operations_succeeded}/${summary.operations_total}`,
+    `Operations: ${summary.operations.succeeded}/${summary.operations.total}`,
     `Duration: ${summary.duration_ms}ms`,
     `Tokens: ${summary.tokens_used}`
   ].join('\n');

@@ -3506,8 +3506,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path7) {
-      let input = path7;
+    function removeDotSegments(path9) {
+      let input = path9;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3714,8 +3714,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path7, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
+        const [path9, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7184,12 +7184,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs7, exportName) {
+    function addFormats(ajv, list, fs9, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs7[f]);
+        ajv.addFormat(f, fs9[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -7211,23 +7211,28 @@ __export(src_exports, {
   MEMORY_PATHS: () => MEMORY_PATHS,
   MODES: () => MODES,
   MemoryManagerImpl: () => MemoryManagerImpl,
+  ModeManagerImpl: () => ModeManagerImpl,
   PHASE_ORDER: () => PHASE_ORDER2,
   RecoveryManagerImpl: () => RecoveryManagerImpl,
   RecoveryOrchestratorImpl: () => RecoveryOrchestratorImpl,
   RollbackSystemImpl: () => RollbackSystemImpl,
   SERVER_NAME: () => SERVER_NAME,
   STATE_PATHS: () => STATE_PATHS,
+  SessionModeTracker: () => SessionModeTracker,
   StateManagerImpl: () => StateManagerImpl,
   TELEMETRY_PATHS: () => TELEMETRY_PATHS,
   TOKEN_COSTS: () => TOKEN_COSTS,
   TelemetryCollectorImpl: () => TelemetryCollectorImpl,
   VERSION: () => VERSION,
+  applyModeOverride: () => applyModeOverride,
   createCheckpointManager: () => createCheckpointManager,
   createFixLoop: () => createFixLoop,
   createMemoryManager: () => createMemoryManager,
+  createModeManager: () => createModeManager,
   createRecoveryManager: () => createRecoveryManager,
   createRollbackSystem: () => createRollbackSystem,
   createRuntimeContext: () => createRuntimeContext,
+  createSessionModeTracker: () => createSessionModeTracker,
   createStateManager: () => createStateManager,
   createTelemetryCollector: () => createTelemetryCollector,
   formatResult: () => formatResult,
@@ -7240,6 +7245,7 @@ __export(src_exports, {
   getHistoryPath: () => getHistoryPath,
   getMemoryManager: () => getMemoryManager,
   getMode: () => getMode,
+  getModeManager: () => getModeManager,
   getModeNames: () => getModeNames,
   getOutputMode: () => getOutputMode,
   getRecoveryManager: () => getRecoveryManager,
@@ -7257,12 +7263,37 @@ __export(src_exports, {
   handleListCheckpoints: () => handleListCheckpoints,
   handlerRegistry: () => handlerRegistry,
   hasHandler: () => hasHandler,
+  initializeModeSystem: () => initializeModeSystem,
   initializeRuntime: () => initializeRuntime,
+  isAgentResult: () => isAgentResult,
+  isAnalyzeResult: () => isAnalyzeResult,
+  isAtomicResult: () => isAtomicResult,
   isCheckpointFrequency: () => isCheckpointFrequency,
+  isCommandResult: () => isCommandResult,
+  isCopyResult: () => isCopyResult,
+  isCreateResult: () => isCreateResult,
+  isDeleteResult: () => isDeleteResult,
+  isDeleteStateResult: () => isDeleteStateResult,
+  isDiagnoseResult: () => isDiagnoseResult,
+  isEditResult: () => isEditResult,
   isErrorStrategy: () => isErrorStrategy,
+  isFileReadResult: () => isFileReadResult,
+  isGetResult: () => isGetResult,
+  isGlobResult: () => isGlobResult,
+  isListResult: () => isListResult,
+  isLspResult: () => isLspResult,
+  isMemoryQueryResult: () => isMemoryQueryResult,
   isModeConfig: () => isModeConfig,
+  isMoveResult: () => isMoveResult,
   isOutputVerbosity: () => isOutputVerbosity,
+  isScriptResult: () => isScriptResult,
+  isSearchResult: () => isSearchResult,
+  isSetResult: () => isSetResult,
+  isSymbolResult: () => isSymbolResult,
+  isTrackResult: () => isTrackResult,
+  isUrlResult: () => isUrlResult,
   isValidModeName: () => isValidModeName,
+  isValidateResult: () => isValidateResult,
   listActiveBatches: () => listActiveBatches,
   listCompletedBatches: () => listCompletedBatches,
   listHandlers: () => listHandlers,
@@ -7270,6 +7301,7 @@ __export(src_exports, {
   resetGlobalCheckpointManager: () => resetGlobalCheckpointManager,
   resetGlobalFixLoop: () => resetGlobalFixLoop,
   resetGlobalMemoryManager: () => resetGlobalMemoryManager,
+  resetGlobalModeManager: () => resetGlobalModeManager,
   resetGlobalRecoveryManager: () => resetGlobalRecoveryManager,
   resetGlobalRollbackSystem: () => resetGlobalRollbackSystem,
   resetGlobalStateManager: () => resetGlobalStateManager,
@@ -7646,8 +7678,8 @@ __name(getErrorMap, "getErrorMap");
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = /* @__PURE__ */ __name((params) => {
-  const { data, path: path7, errorMaps, issueData } = params;
-  const fullPath = [...path7, ...issueData.path || []];
+  const { data, path: path9, errorMaps, issueData } = params;
+  const fullPath = [...path9, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7769,11 +7801,11 @@ var ParseInputLazyPath = class {
   static {
     __name(this, "ParseInputLazyPath");
   }
-  constructor(parent, value, path7, key) {
+  constructor(parent, value, path9, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path7;
+    this._path = path9;
     this._key = key;
   }
   get path() {
@@ -11575,10 +11607,10 @@ function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
 __name(cloneDef, "cloneDef");
-function getElementAtPath(obj, path7) {
-  if (!path7)
+function getElementAtPath(obj, path9) {
+  if (!path9)
     return obj;
-  return path7.reduce((acc, key) => acc?.[key], obj);
+  return path9.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
@@ -11984,11 +12016,11 @@ function aborted(x, startIndex = 0) {
   return false;
 }
 __name(aborted, "aborted");
-function prefixIssues(path7, issues) {
+function prefixIssues(path9, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path7);
+    iss.path.unshift(path9);
     return iss;
   });
 }
@@ -22620,14 +22652,20 @@ var MemoryManagerImpl = class {
     const decisionsContent = await this.readMemoryFile(MEMORY_PATHS.DECISIONS_FILE);
     if (decisionsContent) {
       this.memory.decisions = parseDecisions(decisionsContent);
+    } else {
+      await this.writeMemoryFile(MEMORY_PATHS.DECISIONS_FILE, "# Decisions\n\n");
     }
     const patternsContent = await this.readMemoryFile(MEMORY_PATHS.PATTERNS_FILE);
     if (patternsContent) {
       this.memory.patterns = parsePatterns(patternsContent);
+    } else {
+      await this.writeMemoryFile(MEMORY_PATHS.PATTERNS_FILE, "# Patterns\n\n");
     }
     const failuresContent = await this.readMemoryFile(MEMORY_PATHS.FAILURES_FILE);
     if (failuresContent) {
       this.memory.failures = parseFailures(failuresContent);
+    } else {
+      await this.writeMemoryFile(MEMORY_PATHS.FAILURES_FILE, "# Failures\n\n");
     }
     const preferencesContent = await this.readMemoryFile(MEMORY_PATHS.PREFERENCES_FILE);
     if (preferencesContent) {
@@ -22637,6 +22675,12 @@ var MemoryManagerImpl = class {
       } catch {
         this.memory.preferences = [];
       }
+    } else {
+      const emptyPreferences = {
+        preferences: [],
+        last_updated: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      await this.writeMemoryFile(MEMORY_PATHS.PREFERENCES_FILE, JSON.stringify(emptyPreferences, null, 2));
     }
     const indexContent = await this.readMemoryFile(MEMORY_PATHS.INDEX_FILE);
     if (indexContent) {
@@ -22646,7 +22690,8 @@ var MemoryManagerImpl = class {
         this.rebuildIndex();
       }
     } else {
-      this.rebuildIndex();
+      this.index = { ...EMPTY_INDEX, last_updated: (/* @__PURE__ */ new Date()).toISOString() };
+      await this.writeMemoryFile(MEMORY_PATHS.INDEX_FILE, JSON.stringify(this.index, null, 2));
     }
     this.notifyChange();
   }
@@ -22732,9 +22777,11 @@ var EMPTY_AGGREGATIONS = {
   daily: [],
   by_operation_type: {},
   by_agent_type: {},
-  token_trend: { direction: "stable", change_percent: 0, period: "7d" },
-  success_trend: { direction: "stable", change_percent: 0, period: "7d" },
-  duration_trend: { direction: "stable", change_percent: 0, period: "7d" }
+  trends: {
+    token_trend: { direction: "stable", change_percent: 0, period: "7d" },
+    success_trend: { direction: "stable", change_percent: 0, period: "7d" },
+    duration_trend: { direction: "stable", change_percent: 0, period: "7d" }
+  }
 };
 var TELEMETRY_FILE_TYPES = {
   [TELEMETRY_PATHS.CURRENT_SESSION]: "current_session",
@@ -22859,12 +22906,21 @@ var TelemetryCollectorImpl = class {
       session: {
         ...EMPTY_SESSION_METRICS,
         id: generateId3("session"),
-        started_at: (/* @__PURE__ */ new Date()).toISOString()
+        started_at: (/* @__PURE__ */ new Date()).toISOString(),
+        operations_by_type: {},
+        tokens_by_type: {}
       },
-      batches: [],
-      operations: [],
-      agents: [],
-      aggregations: { ...EMPTY_AGGREGATIONS }
+      batches: /* @__PURE__ */ new Map(),
+      operations: /* @__PURE__ */ new Map(),
+      agents: /* @__PURE__ */ new Map(),
+      aggregations: {
+        ...EMPTY_AGGREGATIONS,
+        trends: {
+          token_trend: { direction: "stable", change_percent: 0, period: "7d" },
+          success_trend: { direction: "stable", change_percent: 0, period: "7d" },
+          duration_trend: { direction: "stable", change_percent: 0, period: "7d" }
+        }
+      }
     };
   }
   // =========================================================================
@@ -22887,9 +22943,9 @@ var TelemetryCollectorImpl = class {
       started_at: new Date(active.startTime).toISOString(),
       completed_at: (/* @__PURE__ */ new Date()).toISOString(),
       status: result.summary.status,
-      operations_total: result.summary.operations_total,
-      operations_succeeded: result.summary.operations_succeeded,
-      operations_failed: result.summary.operations_failed,
+      operations_total: result.summary.operations.total,
+      operations_succeeded: result.summary.operations.succeeded,
+      operations_failed: result.summary.operations.failed,
       duration_ms,
       tokens_used,
       parallel_efficiency: this.calculateParallelEfficiency(result),
@@ -22898,7 +22954,7 @@ var TelemetryCollectorImpl = class {
       checkpoint_created: !!result.recovery.checkpoint_id,
       rollback_triggered: result.recovery.rollback_triggered
     };
-    this.telemetry.batches.push(batchMetrics);
+    this.telemetry.batches.set(batch_id, batchMetrics);
     this.activeBatches.delete(batch_id);
     this.updateSessionMetrics(batchMetrics, result);
   }
@@ -22919,6 +22975,8 @@ var TelemetryCollectorImpl = class {
       id: operation_id,
       batch_id: active.batch_id,
       type: result.type,
+      queued_at: new Date(active.startTime - 100).toISOString(),
+      // Estimate queue time
       started_at: new Date(active.startTime).toISOString(),
       completed_at: (/* @__PURE__ */ new Date()).toISOString(),
       duration_ms,
@@ -22928,7 +22986,7 @@ var TelemetryCollectorImpl = class {
       // TODO: Track retries
       details: result.data || {}
     };
-    this.telemetry.operations.push(operationMetrics);
+    this.telemetry.operations.set(operation_id, operationMetrics);
     this.activeOperations.delete(operation_id);
     this.telemetry.session.total_operations++;
     this.telemetry.session.total_tokens += result.tokens_used;
@@ -22970,10 +23028,12 @@ var TelemetryCollectorImpl = class {
       files_read: 0,
       // TODO: Track files read
       files_written: result.files_modified.length,
+      tools_used: [],
+      // TODO: Track tools used
       status: result.status,
       budget_utilization: budget.max_tokens ? Math.round(result.tokens_used / budget.max_tokens * 100) : 0
     };
-    this.telemetry.agents.push(agentMetrics);
+    this.telemetry.agents.set(agent_id, agentMetrics);
     this.activeAgents.delete(agent_id);
     this.telemetry.session.total_agents++;
   }
@@ -22986,7 +23046,7 @@ var TelemetryCollectorImpl = class {
     return this.telemetry.session;
   }
   getBatchMetrics(batch_id) {
-    const batch = this.telemetry.batches.find((b) => b.id === batch_id);
+    const batch = this.telemetry.batches.get(batch_id);
     if (!batch) {
       throw new Error(`Batch not found: ${batch_id}`);
     }
@@ -23006,17 +23066,19 @@ var TelemetryCollectorImpl = class {
     return Math.round((inputCost + outputCost) * 100) / 100;
   }
   projectTokenUsage(batches) {
-    if (this.telemetry.batches.length === 0)
+    if (this.telemetry.batches.size === 0)
       return 0;
-    const avgTokensPerBatch = this.telemetry.batches.reduce(
+    const batchArray = Array.from(this.telemetry.batches.values());
+    const avgTokensPerBatch = batchArray.reduce(
       (sum, b) => sum + b.tokens_used,
       0
-    ) / this.telemetry.batches.length;
+    ) / batchArray.length;
     return Math.round(avgTokensPerBatch * batches);
   }
   identifyBottlenecks() {
     const bottlenecks = [];
-    const sortedOps = [...this.telemetry.operations].sort(
+    const operationsArray = Array.from(this.telemetry.operations.values());
+    const sortedOps = operationsArray.sort(
       (a, b) => b.duration_ms - a.duration_ms
     );
     for (const op of sortedOps.slice(0, 3)) {
@@ -23030,7 +23092,8 @@ var TelemetryCollectorImpl = class {
         });
       }
     }
-    const validationFailures = this.telemetry.batches.filter((b) => !b.validation_passed);
+    const batchesArray = Array.from(this.telemetry.batches.values());
+    const validationFailures = batchesArray.filter((b) => !b.validation_passed);
     if (validationFailures.length > 0) {
       const avgRetryTime = validationFailures.reduce(
         (sum, b) => sum + b.duration_ms,
@@ -23044,7 +23107,8 @@ var TelemetryCollectorImpl = class {
         suggestion: "Pre-validate operations before batch execution"
       });
     }
-    const overBudgetAgents = this.telemetry.agents.filter((a) => a.budget_utilization > 80);
+    const agentsArray = Array.from(this.telemetry.agents.values());
+    const overBudgetAgents = agentsArray.filter((a) => a.budget_utilization > 80);
     for (const agent of overBudgetAgents) {
       bottlenecks.push({
         type: "agent",
@@ -23065,14 +23129,24 @@ var TelemetryCollectorImpl = class {
     this.updateAggregations();
     switch (format) {
       case "json":
-        return JSON.stringify(this.telemetry, null, 2);
+        return this.exportJson();
       case "markdown":
         return this.exportMarkdown();
       case "csv":
         return this.exportCsv();
       default:
-        return JSON.stringify(this.telemetry, null, 2);
+        return this.exportJson();
     }
+  }
+  exportJson() {
+    const serializable = {
+      session: this.telemetry.session,
+      batches: Object.fromEntries(this.telemetry.batches),
+      operations: Object.fromEntries(this.telemetry.operations),
+      agents: Object.fromEntries(this.telemetry.agents),
+      aggregations: this.telemetry.aggregations
+    };
+    return JSON.stringify(serializable, null, 2);
   }
   exportMarkdown() {
     const session = this.telemetry.session;
@@ -23117,7 +23191,7 @@ var TelemetryCollectorImpl = class {
     const lines = [
       "batch_id,started_at,completed_at,status,operations_total,operations_succeeded,operations_failed,duration_ms,tokens_used,parallel_efficiency"
     ];
-    for (const batch of this.telemetry.batches) {
+    for (const batch of this.telemetry.batches.values()) {
       lines.push([
         batch.id,
         batch.started_at,
@@ -23150,10 +23224,16 @@ var TelemetryCollectorImpl = class {
     if (session) {
       this.telemetry.session = session;
       this.sessionStartTime = new Date(session.started_at).getTime();
+    } else {
+      const emptySession = this.telemetry.session;
+      await this.writeCurrentSession(emptySession);
     }
     const aggregations = await this.readAggregations();
     if (aggregations) {
       this.telemetry.aggregations = aggregations;
+    } else {
+      const emptyAggregations = this.telemetry.aggregations;
+      await this.writeAggregations(emptyAggregations);
     }
   }
   // =========================================================================
@@ -23216,38 +23296,40 @@ var TelemetryCollectorImpl = class {
   }
   calculateSuccessRates() {
     const session = this.telemetry.session;
-    const batches = this.telemetry.batches;
-    const operations = this.telemetry.operations;
-    const agents = this.telemetry.agents;
+    const batchesArray = Array.from(this.telemetry.batches.values());
+    const operationsArray = Array.from(this.telemetry.operations.values());
+    const agentsArray = Array.from(this.telemetry.agents.values());
     session.batch_success_rate = calcSuccessRate(
-      batches.filter((b) => b.status === "success").length,
-      batches.length
+      batchesArray.filter((b) => b.status === "success").length,
+      batchesArray.length
     );
     session.operation_success_rate = calcSuccessRate(
-      operations.filter((o) => o.status === "success").length,
-      operations.length
+      operationsArray.filter((o) => o.status === "success").length,
+      operationsArray.length
     );
     session.agent_success_rate = calcSuccessRate(
-      agents.filter((a) => a.status === "success").length,
-      agents.length
+      agentsArray.filter((a) => a.status === "success").length,
+      agentsArray.length
     );
   }
   updateAggregations() {
     const aggregations = this.telemetry.aggregations;
-    aggregations.by_operation_type = aggregateByType(this.telemetry.operations);
-    aggregations.by_agent_type = aggregateAgentsByType(this.telemetry.agents);
-    aggregations.token_trend = calculateTrend(aggregations.daily, "tokens");
-    aggregations.success_trend = calculateTrend(aggregations.daily, "success_rate");
-    aggregations.duration_trend = { direction: "stable", change_percent: 0, period: "7d" };
+    const operationsArray = Array.from(this.telemetry.operations.values());
+    const agentsArray = Array.from(this.telemetry.agents.values());
+    aggregations.by_operation_type = aggregateByType(operationsArray);
+    aggregations.by_agent_type = aggregateAgentsByType(agentsArray);
+    aggregations.trends.token_trend = calculateTrend(aggregations.daily, "tokens");
+    aggregations.trends.success_trend = calculateTrend(aggregations.daily, "success_rate");
+    aggregations.trends.duration_trend = { direction: "stable", change_percent: 0, period: "7d" };
   }
   calculateDailyAggregations(date4) {
     const dayStart = new Date(date4).getTime();
     const dayEnd = dayStart + 24 * 60 * 60 * 1e3;
-    const batchesForDay = this.telemetry.batches.filter((b) => {
+    const batchesForDay = Array.from(this.telemetry.batches.values()).filter((b) => {
       const ts = new Date(b.started_at).getTime();
       return ts >= dayStart && ts < dayEnd;
     });
-    const operationsForDay = this.telemetry.operations.filter((o) => {
+    const operationsForDay = Array.from(this.telemetry.operations.values()).filter((o) => {
       const ts = new Date(o.started_at).getTime();
       return ts >= dayStart && ts < dayEnd;
     });
@@ -23266,9 +23348,11 @@ var TelemetryCollectorImpl = class {
       daily: [point],
       by_operation_type: aggregateByType(operationsForDay),
       by_agent_type: {},
-      token_trend: { direction: "stable", change_percent: 0, period: "7d" },
-      success_trend: { direction: "stable", change_percent: 0, period: "7d" },
-      duration_trend: { direction: "stable", change_percent: 0, period: "7d" }
+      trends: {
+        token_trend: { direction: "stable", change_percent: 0, period: "7d" },
+        success_trend: { direction: "stable", change_percent: 0, period: "7d" },
+        duration_trend: { direction: "stable", change_percent: 0, period: "7d" }
+      }
     };
   }
   // =========================================================================
@@ -25078,6 +25162,13 @@ function resetGlobalRecoveryManager() {
 }
 __name(resetGlobalRecoveryManager, "resetGlobalRecoveryManager");
 
+// src/runtime/template-resolver.ts
+var globalTemplateResolver = null;
+function resetGlobalTemplateResolver() {
+  globalTemplateResolver = null;
+}
+__name(resetGlobalTemplateResolver, "resetGlobalTemplateResolver");
+
 // src/runtime/context.ts
 var globalContextGatherer = null;
 function resetGlobalContextGatherer() {
@@ -25085,12 +25176,504 @@ function resetGlobalContextGatherer() {
 }
 __name(resetGlobalContextGatherer, "resetGlobalContextGatherer");
 
-// src/runtime/template-resolver.ts
-var globalTemplateResolver = null;
-function resetGlobalTemplateResolver() {
-  globalTemplateResolver = null;
+// src/runtime/mode.ts
+var fs6 = __toESM(require("fs/promises"), 1);
+var path6 = __toESM(require("path"), 1);
+
+// src/interfaces/mode-configs.ts
+var MODES = {
+  vibecoding: {
+    name: "vibecoding",
+    description: "Autonomous coding with communication",
+    communication: {
+      show_progress: true,
+      explain_decisions: true,
+      ask_on_ambiguity: true,
+      report_results: "detailed"
+    },
+    execution: {
+      auto_chain: false,
+      max_autonomous_batches: 1,
+      checkpoint_frequency: "per_batch",
+      parallel_agents: 3
+    },
+    recovery: {
+      on_error: "ask_user",
+      on_ambiguity: "ask_user",
+      on_risk: "ask_user",
+      max_fix_attempts: 2
+    },
+    output: {
+      default_mode: "standard",
+      show_diffs: true,
+      show_telemetry: "summary"
+    },
+    logging: {
+      log_decisions: true,
+      log_errors: true,
+      log_activity: false,
+      log_path: ".goodvibes/logs/"
+    }
+  },
+  justvibes: {
+    name: "justvibes",
+    description: "Fully autonomous silent execution",
+    communication: {
+      show_progress: false,
+      explain_decisions: false,
+      ask_on_ambiguity: false,
+      report_results: "minimal"
+    },
+    execution: {
+      auto_chain: true,
+      max_autonomous_batches: "unlimited",
+      checkpoint_frequency: "per_phase",
+      parallel_agents: 6
+    },
+    recovery: {
+      on_error: "fix_and_continue",
+      on_ambiguity: "best_guess",
+      on_risk: "proceed_with_checkpoint",
+      max_fix_attempts: 3
+    },
+    output: {
+      default_mode: "minimal",
+      show_diffs: false,
+      show_telemetry: "none"
+    },
+    logging: {
+      log_decisions: true,
+      log_errors: true,
+      log_activity: true,
+      log_path: ".goodvibes/logs/"
+    }
+  }
+};
+function getMode(name) {
+  return MODES[name];
 }
-__name(resetGlobalTemplateResolver, "resetGlobalTemplateResolver");
+__name(getMode, "getMode");
+function getModeNames() {
+  return Object.keys(MODES);
+}
+__name(getModeNames, "getModeNames");
+
+// src/runtime/mode.ts
+var MODE_CONFIG_PATH = ".goodvibes/config/modes.json";
+var MODE_PREFERENCE_PATH = ".goodvibes/config/mode-preference.json";
+var ModeManagerImpl = class {
+  static {
+    __name(this, "ModeManagerImpl");
+  }
+  currentMode;
+  customModes = /* @__PURE__ */ new Map();
+  projectRoot;
+  constructor(projectRoot, initialMode = "vibecoding") {
+    this.projectRoot = projectRoot || process.cwd();
+    this.currentMode = MODES[initialMode];
+  }
+  getCurrentMode() {
+    return this.currentMode;
+  }
+  getCurrentModeName() {
+    return this.currentMode.name;
+  }
+  setMode(name) {
+    if (name === "vibecoding" || name === "justvibes") {
+      this.currentMode = MODES[name];
+      return;
+    }
+    const customMode = this.customModes.get(name);
+    if (customMode) {
+      this.currentMode = customMode;
+      return;
+    }
+    console.warn(`Mode "${name}" not found. Falling back to vibecoding.`);
+    this.currentMode = MODES.vibecoding;
+  }
+  async loadCustomModes() {
+    const configPath = path6.join(this.projectRoot, MODE_CONFIG_PATH);
+    try {
+      const content = await fs6.readFile(configPath, "utf-8");
+      const config2 = JSON.parse(content);
+      if (config2.modes) {
+        for (const [name, modeConfig] of Object.entries(config2.modes)) {
+          this.customModes.set(name, modeConfig);
+        }
+      }
+      if (config2.default_mode) {
+        this.setMode(config2.default_mode);
+      }
+    } catch (error2) {
+      if (error2.code !== "ENOENT") {
+        console.warn(`Failed to load custom modes from ${configPath}:`, error2);
+      }
+    }
+  }
+  async savePreference() {
+    const prefPath = path6.join(this.projectRoot, MODE_PREFERENCE_PATH);
+    const prefDir = path6.dirname(prefPath);
+    try {
+      await fs6.mkdir(prefDir, { recursive: true });
+      await fs6.writeFile(
+        prefPath,
+        JSON.stringify({
+          mode: this.currentMode.name,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        }, null, 2),
+        "utf-8"
+      );
+    } catch (error2) {
+      console.warn(`Failed to save mode preference to ${prefPath}:`, error2);
+    }
+  }
+  async loadPreference() {
+    const prefPath = path6.join(this.projectRoot, MODE_PREFERENCE_PATH);
+    try {
+      const content = await fs6.readFile(prefPath, "utf-8");
+      const pref = JSON.parse(content);
+      if (pref.mode) {
+        this.setMode(pref.mode);
+      }
+    } catch (error2) {
+      if (error2.code !== "ENOENT") {
+        console.warn(`Failed to load mode preference from ${prefPath}:`, error2);
+      }
+    }
+  }
+  shouldAskUser(situation) {
+    switch (situation) {
+      case "ambiguous_requirement":
+        return this.currentMode.communication.ask_on_ambiguity;
+      case "high_risk_operation":
+        return this.currentMode.recovery.on_risk === "ask_user";
+      case "error_occurred":
+        return this.currentMode.recovery.on_error === "ask_user";
+      case "batch_complete":
+        return !this.currentMode.execution.auto_chain;
+      default:
+        return false;
+    }
+  }
+  getOutputMode(_operation) {
+    return this.currentMode.output.default_mode;
+  }
+  handleError(_error) {
+    switch (this.currentMode.recovery.on_error) {
+      case "halt":
+        return { action: "halt", notify: true };
+      case "ask_user":
+        return { action: "ask_user", options: ["retry", "skip", "abort"] };
+      case "log_and_continue":
+        return { action: "log", continue: true };
+      case "fix_and_continue":
+        return {
+          action: "fix_loop",
+          max_attempts: this.currentMode.recovery.max_fix_attempts
+        };
+    }
+  }
+  formatResult(result) {
+    switch (this.currentMode.communication.report_results) {
+      case "none":
+        return "";
+      case "minimal":
+        return this.formatMinimal(result);
+      case "summary":
+        return this.formatSummary(result);
+      case "detailed":
+        return this.formatDetailed(result);
+    }
+  }
+  formatMinimal(result) {
+    const { summary } = result;
+    return `Done. ${summary.operations.succeeded}/${summary.operations.total} operations succeeded.`;
+  }
+  formatSummary(result) {
+    const { summary } = result;
+    const lines = [
+      `Batch ${summary.status}`,
+      `Operations: ${summary.operations.succeeded}/${summary.operations.total}`,
+      `Duration: ${summary.duration_ms}ms`
+    ];
+    if (summary.tokens_used !== void 0) {
+      lines.push(`Tokens: ${summary.tokens_used}`);
+    }
+    return lines.join("\n");
+  }
+  formatDetailed(result) {
+    return JSON.stringify(result, null, 2);
+  }
+  shouldShowProgress() {
+    return this.currentMode.communication.show_progress;
+  }
+  shouldExplainDecisions() {
+    return this.currentMode.communication.explain_decisions;
+  }
+  shouldShowDiffs() {
+    return this.currentMode.output.show_diffs;
+  }
+  shouldShowTelemetry() {
+    return this.currentMode.output.show_telemetry;
+  }
+  shouldAutoChain() {
+    return this.currentMode.execution.auto_chain;
+  }
+  getMaxAutonomousBatches() {
+    return this.currentMode.execution.max_autonomous_batches;
+  }
+  getCheckpointFrequency() {
+    return this.currentMode.execution.checkpoint_frequency;
+  }
+  getParallelAgentsLimit() {
+    return this.currentMode.execution.parallel_agents;
+  }
+  getMaxFixAttempts() {
+    return this.currentMode.recovery.max_fix_attempts;
+  }
+  getLogPath() {
+    return path6.join(this.projectRoot, this.currentMode.logging.log_path);
+  }
+  shouldLogDecisions() {
+    return this.currentMode.logging.log_decisions;
+  }
+  shouldLogErrors() {
+    return this.currentMode.logging.log_errors;
+  }
+  shouldLogActivity() {
+    return this.currentMode.logging.log_activity;
+  }
+};
+var globalModeManager = null;
+function createModeManager(projectRoot, initialMode = "vibecoding") {
+  return new ModeManagerImpl(projectRoot, initialMode);
+}
+__name(createModeManager, "createModeManager");
+function getModeManager(projectRoot) {
+  if (!globalModeManager) {
+    globalModeManager = new ModeManagerImpl(projectRoot || process.cwd());
+  }
+  return globalModeManager;
+}
+__name(getModeManager, "getModeManager");
+function resetGlobalModeManager() {
+  globalModeManager = null;
+}
+__name(resetGlobalModeManager, "resetGlobalModeManager");
+async function initializeModeSystem(projectRoot) {
+  const manager = getModeManager(projectRoot);
+  await manager.loadCustomModes();
+  await manager.loadPreference();
+  return manager;
+}
+__name(initializeModeSystem, "initializeModeSystem");
+function shouldAskUser(situation) {
+  return getModeManager().shouldAskUser(situation);
+}
+__name(shouldAskUser, "shouldAskUser");
+function getOutputMode(operation) {
+  return getModeManager().getOutputMode(operation);
+}
+__name(getOutputMode, "getOutputMode");
+function handleError(error2) {
+  return getModeManager().handleError(error2);
+}
+__name(handleError, "handleError");
+function formatResult(result) {
+  return getModeManager().formatResult(result);
+}
+__name(formatResult, "formatResult");
+function applyModeOverride(parentMode, override) {
+  if (!override) {
+    return parentMode;
+  }
+  const overriddenMode = JSON.parse(JSON.stringify(parentMode));
+  if (override.checkpoint_frequency) {
+    overriddenMode.execution.checkpoint_frequency = override.checkpoint_frequency;
+  }
+  if (override.parallel_agents !== void 0) {
+    overriddenMode.execution.parallel_agents = override.parallel_agents;
+  }
+  if (override.output_mode) {
+    overriddenMode.output.default_mode = override.output_mode;
+  }
+  if (override.mode && override.mode !== parentMode.name) {
+    const manager = getModeManager();
+    manager.setMode(override.mode);
+    return manager.getCurrentMode();
+  }
+  return overriddenMode;
+}
+__name(applyModeOverride, "applyModeOverride");
+var SessionModeTracker = class {
+  static {
+    __name(this, "SessionModeTracker");
+  }
+  modeStack = [];
+  manager;
+  constructor(manager) {
+    this.manager = manager || getModeManager();
+  }
+  /**
+   * Push current mode onto stack and switch to new mode
+   */
+  pushMode(mode) {
+    this.modeStack.push(this.manager.getCurrentMode());
+    this.manager.setMode(mode);
+  }
+  /**
+   * Pop mode from stack and restore it
+   */
+  popMode() {
+    const previousMode = this.modeStack.pop();
+    if (previousMode) {
+      this.manager.setMode(previousMode.name);
+    }
+  }
+  /**
+   * Get current stack depth
+   */
+  getStackDepth() {
+    return this.modeStack.length;
+  }
+  /**
+   * Clear mode stack
+   */
+  clearStack() {
+    this.modeStack = [];
+  }
+};
+function createSessionModeTracker(manager) {
+  return new SessionModeTracker(manager);
+}
+__name(createSessionModeTracker, "createSessionModeTracker");
+
+// src/runtime/logs.ts
+var fs7 = __toESM(require("fs/promises"), 1);
+var path7 = __toESM(require("path"), 1);
+var LOGS_PATHS = {
+  LOGS_DIR: ".goodvibes/logs",
+  JUSTVIBES_LOG: ".goodvibes/logs/justvibes-log.md",
+  JUSTVIBES_ERRORS: ".goodvibes/logs/justvibes-errors.md",
+  ACTIVITY_LOG: ".goodvibes/logs/activity.log",
+  DECISIONS_LOG: ".goodvibes/logs/decisions.log"
+};
+var LogsManagerImpl = class {
+  static {
+    __name(this, "LogsManagerImpl");
+  }
+  projectRoot;
+  constructor(projectRoot = process.cwd()) {
+    this.projectRoot = projectRoot;
+  }
+  async ensureLogsDir() {
+    const absPath = this.getAbsolutePath(LOGS_PATHS.LOGS_DIR);
+    try {
+      await fs7.mkdir(absPath, { recursive: true });
+    } catch {
+    }
+  }
+  async initialize() {
+    await this.ensureLogsDir();
+    const logFiles = [
+      { path: LOGS_PATHS.JUSTVIBES_LOG, content: "# JustVibes Activity Log\n\n" },
+      { path: LOGS_PATHS.JUSTVIBES_ERRORS, content: "# JustVibes Errors Log\n\n" },
+      { path: LOGS_PATHS.ACTIVITY_LOG, content: "" },
+      { path: LOGS_PATHS.DECISIONS_LOG, content: "" }
+    ];
+    for (const logFile of logFiles) {
+      const absPath = this.getAbsolutePath(logFile.path);
+      try {
+        await fs7.access(absPath);
+      } catch {
+        await fs7.writeFile(absPath, logFile.content, "utf-8");
+      }
+    }
+  }
+  async appendJustvibesLog(message) {
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+    const logEntry = `## ${timestamp}
+
+${message}
+
+---
+
+`;
+    await this.appendToFile(LOGS_PATHS.JUSTVIBES_LOG, logEntry);
+  }
+  async appendJustvibesError(error2) {
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+    const logEntry = `## ${timestamp}
+
+${error2}
+
+---
+
+`;
+    await this.appendToFile(LOGS_PATHS.JUSTVIBES_ERRORS, logEntry);
+  }
+  async appendActivity(activity) {
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+    const logEntry = `[${timestamp}] ${activity}
+`;
+    await this.appendToFile(LOGS_PATHS.ACTIVITY_LOG, logEntry);
+  }
+  async appendDecision(decision) {
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+    const logEntry = `[${timestamp}] ${decision}
+`;
+    await this.appendToFile(LOGS_PATHS.DECISIONS_LOG, logEntry);
+  }
+  async readLog(logPath) {
+    const absPath = this.getAbsolutePath(logPath);
+    try {
+      return await fs7.readFile(absPath, "utf-8");
+    } catch {
+      return "";
+    }
+  }
+  async clearLog(logPath) {
+    const absPath = this.getAbsolutePath(logPath);
+    let initialContent = "";
+    if (logPath === LOGS_PATHS.JUSTVIBES_LOG) {
+      initialContent = "# JustVibes Activity Log\n\n";
+    } else if (logPath === LOGS_PATHS.JUSTVIBES_ERRORS) {
+      initialContent = "# JustVibes Errors Log\n\n";
+    }
+    await fs7.writeFile(absPath, initialContent, "utf-8");
+  }
+  // =========================================================================
+  // Helper Methods
+  // =========================================================================
+  getAbsolutePath(relativePath) {
+    return path7.join(this.projectRoot, relativePath);
+  }
+  async appendToFile(relativePath, content) {
+    const absPath = this.getAbsolutePath(relativePath);
+    try {
+      await fs7.appendFile(absPath, content, "utf-8");
+    } catch {
+      await this.initialize();
+      await fs7.appendFile(absPath, content, "utf-8");
+    }
+  }
+};
+function createLogsManager(projectRoot) {
+  return new LogsManagerImpl(projectRoot);
+}
+__name(createLogsManager, "createLogsManager");
+var globalLogsManager = null;
+function getLogsManager(projectRoot) {
+  if (!globalLogsManager) {
+    globalLogsManager = createLogsManager(projectRoot);
+  }
+  return globalLogsManager;
+}
+__name(getLogsManager, "getLogsManager");
+function resetGlobalLogsManager() {
+  globalLogsManager = null;
+}
+__name(resetGlobalLogsManager, "resetGlobalLogsManager");
 
 // src/runtime/fix-loop.ts
 var import_child_process = require("child_process");
@@ -25534,7 +26117,9 @@ function createRuntimeContext(projectRoot) {
     memory: getMemoryManager(projectRoot),
     telemetry: getTelemetryCollector(projectRoot),
     checkpoint: getCheckpointManager(projectRoot),
-    rollback: getRollbackSystem(projectRoot)
+    rollback: getRollbackSystem(projectRoot),
+    mode: getModeManager(projectRoot),
+    logs: getLogsManager(projectRoot)
   };
 }
 __name(createRuntimeContext, "createRuntimeContext");
@@ -25543,11 +26128,16 @@ async function initializeRuntime(context) {
   const memoryManager = context.memory;
   const telemetryCollector = context.telemetry;
   const checkpointManager = context.checkpoint;
+  const modeManager = context.mode;
+  const logsManager = context.logs;
   await Promise.all([
     stateManager.load(),
     memoryManager.load(),
     telemetryCollector.load(),
-    checkpointManager.initialize()
+    checkpointManager.initialize(),
+    modeManager.loadCustomModes(),
+    modeManager.loadPreference(),
+    logsManager.initialize()
   ]);
 }
 __name(initializeRuntime, "initializeRuntime");
@@ -25556,11 +26146,13 @@ async function persistRuntime(context) {
   const memoryManager = context.memory;
   const telemetryCollector = context.telemetry;
   const checkpointManager = context.checkpoint;
+  const modeManager = context.mode;
   await Promise.all([
     stateManager.persist(),
     memoryManager.persist(),
     telemetryCollector.persist(),
-    checkpointManager.shutdown()
+    checkpointManager.shutdown(),
+    modeManager.savePreference()
   ]);
 }
 __name(persistRuntime, "persistRuntime");
@@ -25573,6 +26165,8 @@ function resetRuntime() {
   resetGlobalRecoveryManager();
   resetGlobalContextGatherer();
   resetGlobalTemplateResolver();
+  resetGlobalModeManager();
+  resetGlobalLogsManager();
 }
 __name(resetRuntime, "resetRuntime");
 
@@ -25596,20 +26190,20 @@ function parseOutputMode(args) {
   if (typeof args === "object" && args !== null) {
     const obj = args;
     if (obj.output_mode && typeof obj.output_mode === "string") {
-      if (["count_only", "minimal", "standard", "verbose"].includes(obj.output_mode)) {
+      if (["minimal", "summary", "full", "verbose"].includes(obj.output_mode)) {
         return obj.output_mode;
       }
     }
     if (obj.output && typeof obj.output === "object" && obj.output !== null) {
       const output = obj.output;
       if (output.mode && typeof output.mode === "string") {
-        if (["count_only", "minimal", "standard", "verbose"].includes(output.mode)) {
+        if (["minimal", "summary", "full", "verbose"].includes(output.mode)) {
           return output.mode;
         }
       }
     }
   }
-  return "standard";
+  return "summary";
 }
 __name(parseOutputMode, "parseOutputMode");
 function successResult(data, outputMode, executionMs) {
@@ -26367,10 +26961,12 @@ var handleBatch = /* @__PURE__ */ __name(async (args) => {
     const batchResult = {
       summary: {
         status,
-        operations_total: totalOperations,
-        operations_succeeded: succeededOperations,
-        operations_failed: failedOperations,
-        operations_skipped: skippedOperations,
+        operations: {
+          total: totalOperations,
+          succeeded: succeededOperations,
+          failed: failedOperations,
+          skipped: skippedOperations
+        },
         duration_ms: getElapsed(),
         tokens_used: totalTokens
       },
@@ -26403,21 +26999,33 @@ var handleBatch = /* @__PURE__ */ __name(async (args) => {
     completedBatches.set(batchId, output);
     let responseData;
     switch (outputMode) {
-      case "count_only":
+      case "minimal":
         responseData = {
           batch_id: batchId,
           status,
-          operations_total: totalOperations,
-          operations_succeeded: succeededOperations,
-          operations_failed: failedOperations
+          operations: {
+            total: totalOperations,
+            succeeded: succeededOperations,
+            failed: failedOperations
+          }
         };
         break;
-      case "minimal":
+      case "summary":
         responseData = {
           batch_id: batchId,
           status,
           summary: batchResult.summary,
           errors: errors.length > 0 ? errors.map((e) => e.message) : void 0
+        };
+        break;
+      case "full":
+        responseData = {
+          batch_id: batchId,
+          status,
+          summary: batchResult.summary,
+          validation: batchResult.validation,
+          recovery: batchResult.recovery,
+          errors: errors.length > 0 ? errors : void 0
         };
         break;
       case "verbose":
@@ -26428,9 +27036,7 @@ var handleBatch = /* @__PURE__ */ __name(async (args) => {
           batch_id: batchId,
           status,
           summary: batchResult.summary,
-          validation: batchResult.validation,
-          recovery: batchResult.recovery,
-          errors: errors.length > 0 ? errors : void 0
+          errors: errors.length > 0 ? errors.map((e) => e.message) : void 0
         };
     }
     return toCallToolResult(successResult(responseData, outputMode, getElapsed()));
@@ -26712,9 +27318,9 @@ var handleBatchStatus = /* @__PURE__ */ __name(async (args) => {
           // Last phase
           completed_phases: PHASE_LIST,
           pending_phases: [],
-          operations_total: completedOutput.result?.summary.operations_total || 0,
-          operations_completed: completedOutput.result?.summary.operations_succeeded || 0,
-          operations_failed: completedOutput.result?.summary.operations_failed || 0,
+          operations_total: completedOutput.result?.summary.operations.total || 0,
+          operations_completed: completedOutput.result?.summary.operations.succeeded || 0,
+          operations_failed: completedOutput.result?.summary.operations.failed || 0,
           operations_pending: 0,
           percent_complete: 100
         },
@@ -26809,7 +27415,7 @@ var handleListBatches = /* @__PURE__ */ __name(async (args) => {
           completed_at: "",
           // Not stored in output
           status: mapToBatchStatus(output2.status),
-          operations_count: output2.result?.summary.operations_total || 0,
+          operations_count: output2.result?.summary.operations.total || 0,
           tokens_used: output2.tokens_used,
           duration_ms: output2.duration_ms
         });
@@ -26885,8 +27491,8 @@ var handleListBatches = /* @__PURE__ */ __name(async (args) => {
 }, "handleListBatches");
 
 // src/handlers/batch-recover.ts
-var fs6 = __toESM(require("fs/promises"), 1);
-var path6 = __toESM(require("path"), 1);
+var fs8 = __toESM(require("fs/promises"), 1);
+var path8 = __toESM(require("path"), 1);
 function startTimer3() {
   const start = performance.now();
   return () => Math.round(performance.now() - start);
@@ -26992,11 +27598,11 @@ async function executeRollback(options, runtime) {
       const projectRoot = getProjectRoot();
       const checkpointPaths = getCheckpointPath(checkpointId);
       for (const file2 of options.files) {
-        const backupPath = path6.join(projectRoot, checkpointPaths.files, file2);
-        const targetPath = path6.join(projectRoot, file2);
+        const backupPath = path8.join(projectRoot, checkpointPaths.files, file2);
+        const targetPath = path8.join(projectRoot, file2);
         try {
-          const backupContent = await fs6.readFile(backupPath, "utf-8");
-          await fs6.writeFile(targetPath, backupContent, "utf-8");
+          const backupContent = await fs8.readFile(backupPath, "utf-8");
+          await fs8.writeFile(targetPath, backupContent, "utf-8");
           filesRestored.push(file2);
         } catch {
           filesFailed.push(file2);
@@ -27049,17 +27655,17 @@ async function executeRestore(options, runtime) {
     if (!options.state_only) {
       const projectRoot = getProjectRoot();
       const checkpointPaths = getCheckpointPath(checkpointId);
-      const filesDir = path6.join(projectRoot, checkpointPaths.files);
+      const filesDir = path8.join(projectRoot, checkpointPaths.files);
       try {
-        const files = await fs6.readdir(filesDir);
+        const files = await fs8.readdir(filesDir);
         for (const file2 of files) {
-          const backupPath = path6.join(filesDir, file2);
-          const targetPath = path6.join(projectRoot, file2);
+          const backupPath = path8.join(filesDir, file2);
+          const targetPath = path8.join(projectRoot, file2);
           try {
-            const stats = await fs6.stat(backupPath);
+            const stats = await fs8.stat(backupPath);
             if (stats.isFile()) {
-              const content = await fs6.readFile(backupPath, "utf-8");
-              await fs6.writeFile(targetPath, content, "utf-8");
+              const content = await fs8.readFile(backupPath, "utf-8");
+              await fs8.writeFile(targetPath, content, "utf-8");
               filesRestored.push(file2);
             }
           } catch {
@@ -27129,13 +27735,13 @@ async function executeCleanup(options, runtime) {
     for (const cp of toRemove) {
       try {
         const checkpointPaths = getCheckpointPath(cp.id);
-        const checkpointDir = path6.join(projectRoot, checkpointPaths.manifest).replace("/manifest.json", "");
+        const checkpointDir = path8.join(projectRoot, checkpointPaths.manifest).replace("/manifest.json", "");
         try {
-          const stats = await fs6.stat(checkpointDir);
+          const stats = await fs8.stat(checkpointDir);
           bytesFreed += 1024;
         } catch {
         }
-        await fs6.rm(checkpointDir, { recursive: true, force: true });
+        await fs8.rm(checkpointDir, { recursive: true, force: true });
         checkpointsRemoved++;
       } catch (error2) {
         errors.push(`Failed to remove checkpoint ${cp.id}: ${error2 instanceof Error ? error2.message : String(error2)}`);
@@ -27459,8 +28065,8 @@ function toCallToolResult4(result) {
   };
 }
 __name(toCallToolResult4, "toCallToolResult");
-function getByPath(obj, path7) {
-  const parts = path7.split(".");
+function getByPath(obj, path9) {
+  const parts = path9.split(".");
   let current = obj;
   for (const part of parts) {
     if (current === null || current === void 0) {
@@ -27474,8 +28080,8 @@ function getByPath(obj, path7) {
   return current;
 }
 __name(getByPath, "getByPath");
-function setByPath(obj, path7, value) {
-  const parts = path7.split(".");
+function setByPath(obj, path9, value) {
+  const parts = path9.split(".");
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
@@ -27603,11 +28209,11 @@ async function executeExport(options, runtime) {
     exported = data;
   }
   if (options.output_path) {
-    const fs7 = await import("fs/promises");
-    const path7 = await import("path");
+    const fs9 = await import("fs/promises");
+    const path9 = await import("path");
     const projectRoot = process.env.PROJECT_ROOT || process.cwd();
-    const outputPath = path7.isAbsolute(options.output_path) ? options.output_path : path7.join(projectRoot, options.output_path);
-    await fs7.writeFile(
+    const outputPath = path9.isAbsolute(options.output_path) ? options.output_path : path9.join(projectRoot, options.output_path);
+    await fs9.writeFile(
       outputPath,
       typeof exported === "string" ? exported : JSON.stringify(exported, null, 2),
       "utf-8"
@@ -27676,11 +28282,11 @@ async function executeImport(options, runtime) {
     if (options.source.startsWith("{") || options.source.startsWith("[")) {
       data = JSON.parse(options.source);
     } else {
-      const fs7 = await import("fs/promises");
-      const path7 = await import("path");
+      const fs9 = await import("fs/promises");
+      const path9 = await import("path");
       const projectRoot = process.env.PROJECT_ROOT || process.cwd();
-      const filePath = path7.isAbsolute(options.source) ? options.source : path7.join(projectRoot, options.source);
-      const content = await fs7.readFile(filePath, "utf-8");
+      const filePath = path9.isAbsolute(options.source) ? options.source : path9.join(projectRoot, options.source);
+      const content = await fs9.readFile(filePath, "utf-8");
       data = JSON.parse(content);
     }
   } else {
@@ -28239,144 +28845,103 @@ function getToolDefinitions() {
 }
 __name(getToolDefinitions, "getToolDefinitions");
 
-// src/interfaces/mode-behavior.ts
-function shouldAskUser(mode, situation) {
-  switch (situation) {
-    case "ambiguous_requirement":
-      return mode.communication.ask_on_ambiguity;
-    case "high_risk_operation":
-      return mode.recovery.on_risk === "ask_user";
-    case "error_occurred":
-      return mode.recovery.on_error === "ask_user";
-    case "batch_complete":
-      return !mode.execution.auto_chain;
-    default:
-      return false;
-  }
+// src/interfaces/operations/results.ts
+function isFileReadResult(result) {
+  return result.type === "files";
 }
-__name(shouldAskUser, "shouldAskUser");
-function getOutputMode(mode, _operation) {
-  return mode.output.default_mode;
+__name(isFileReadResult, "isFileReadResult");
+function isSearchResult(result) {
+  return result.type === "search";
 }
-__name(getOutputMode, "getOutputMode");
-function handleError(mode, _error) {
-  switch (mode.recovery.on_error) {
-    case "halt":
-      return { action: "halt", notify: true };
-    case "ask_user":
-      return { action: "ask_user", options: ["retry", "skip", "abort"] };
-    case "log_and_continue":
-      return { action: "log", continue: true };
-    case "fix_and_continue":
-      return { action: "fix_loop", max_attempts: mode.recovery.max_fix_attempts };
-  }
+__name(isSearchResult, "isSearchResult");
+function isGlobResult(result) {
+  return result.type === "glob";
 }
-__name(handleError, "handleError");
-function formatResult(mode, result) {
-  switch (mode.communication.report_results) {
-    case "none":
-      return "";
-    case "minimal":
-      return `Done. ${result.summary.operations_succeeded}/${result.summary.operations_total} operations succeeded.`;
-    case "summary":
-      return formatSummary(result);
-    case "detailed":
-      return formatDetailed(result);
-  }
+__name(isGlobResult, "isGlobResult");
+function isSymbolResult(result) {
+  return result.type === "symbols";
 }
-__name(formatResult, "formatResult");
-function formatSummary(result) {
-  const { summary } = result;
-  return [
-    `Batch ${summary.status}`,
-    `Operations: ${summary.operations_succeeded}/${summary.operations_total}`,
-    `Duration: ${summary.duration_ms}ms`,
-    `Tokens: ${summary.tokens_used}`
-  ].join("\n");
+__name(isSymbolResult, "isSymbolResult");
+function isUrlResult(result) {
+  return result.type === "url";
 }
-__name(formatSummary, "formatSummary");
-function formatDetailed(result) {
-  return JSON.stringify(result, null, 2);
+__name(isUrlResult, "isUrlResult");
+function isAnalyzeResult(result) {
+  return result.type === "analyze";
 }
-__name(formatDetailed, "formatDetailed");
-
-// src/interfaces/mode-configs.ts
-var MODES = {
-  vibecoding: {
-    name: "vibecoding",
-    description: "Autonomous coding with communication",
-    communication: {
-      show_progress: true,
-      explain_decisions: true,
-      ask_on_ambiguity: true,
-      report_results: "detailed"
-    },
-    execution: {
-      auto_chain: false,
-      max_autonomous_batches: 1,
-      checkpoint_frequency: "per_batch",
-      parallel_agents: 3
-    },
-    recovery: {
-      on_error: "ask_user",
-      on_ambiguity: "ask_user",
-      on_risk: "ask_user",
-      max_fix_attempts: 2
-    },
-    output: {
-      default_mode: "standard",
-      show_diffs: true,
-      show_telemetry: "summary"
-    },
-    logging: {
-      log_decisions: true,
-      log_errors: true,
-      log_activity: false,
-      log_path: ".goodvibes/logs/"
-    }
-  },
-  justvibes: {
-    name: "justvibes",
-    description: "Fully autonomous silent execution",
-    communication: {
-      show_progress: false,
-      explain_decisions: false,
-      ask_on_ambiguity: false,
-      report_results: "minimal"
-    },
-    execution: {
-      auto_chain: true,
-      max_autonomous_batches: "unlimited",
-      checkpoint_frequency: "per_phase",
-      parallel_agents: 6
-    },
-    recovery: {
-      on_error: "fix_and_continue",
-      on_ambiguity: "best_guess",
-      on_risk: "proceed_with_checkpoint",
-      max_fix_attempts: 3
-    },
-    output: {
-      default_mode: "minimal",
-      show_diffs: false,
-      show_telemetry: "none"
-    },
-    logging: {
-      log_decisions: true,
-      log_errors: true,
-      log_activity: true,
-      log_path: ".goodvibes/logs/"
-    }
-  }
-};
-function getMode(name) {
-  return MODES[name];
+__name(isAnalyzeResult, "isAnalyzeResult");
+function isCreateResult(result) {
+  return result.type === "create";
 }
-__name(getMode, "getMode");
-function getModeNames() {
-  return Object.keys(MODES);
+__name(isCreateResult, "isCreateResult");
+function isEditResult(result) {
+  return result.type === "edit";
 }
-__name(getModeNames, "getModeNames");
+__name(isEditResult, "isEditResult");
+function isDeleteResult(result) {
+  return result.type === "delete";
+}
+__name(isDeleteResult, "isDeleteResult");
+function isMoveResult(result) {
+  return result.type === "move";
+}
+__name(isMoveResult, "isMoveResult");
+function isCopyResult(result) {
+  return result.type === "copy";
+}
+__name(isCopyResult, "isCopyResult");
+function isAtomicResult(result) {
+  return result.type === "atomic";
+}
+__name(isAtomicResult, "isAtomicResult");
+function isCommandResult(result) {
+  return result.type === "command";
+}
+__name(isCommandResult, "isCommandResult");
+function isAgentResult(result) {
+  return result.type === "agent";
+}
+__name(isAgentResult, "isAgentResult");
+function isScriptResult(result) {
+  return result.type === "script";
+}
+__name(isScriptResult, "isScriptResult");
+function isLspResult(result) {
+  return result.type === "lsp";
+}
+__name(isLspResult, "isLspResult");
+function isValidateResult(result) {
+  return result.type === "validate";
+}
+__name(isValidateResult, "isValidateResult");
+function isDiagnoseResult(result) {
+  return result.type === "diagnose";
+}
+__name(isDiagnoseResult, "isDiagnoseResult");
+function isGetResult(result) {
+  return result.type === "get";
+}
+__name(isGetResult, "isGetResult");
+function isSetResult(result) {
+  return result.type === "set";
+}
+__name(isSetResult, "isSetResult");
+function isDeleteStateResult(result) {
+  return result.type === "delete_state";
+}
+__name(isDeleteStateResult, "isDeleteStateResult");
+function isListResult(result) {
+  return result.type === "list";
+}
+__name(isListResult, "isListResult");
+function isTrackResult(result) {
+  return result.type === "track";
+}
+__name(isTrackResult, "isTrackResult");
+function isMemoryQueryResult(result) {
+  return result.type === "query";
+}
+__name(isMemoryQueryResult, "isMemoryQueryResult");
 
 // src/interfaces/mode-wiring.ts
 function isModeConfig(value) {
@@ -28513,23 +29078,28 @@ main();
   MEMORY_PATHS,
   MODES,
   MemoryManagerImpl,
+  ModeManagerImpl,
   PHASE_ORDER,
   RecoveryManagerImpl,
   RecoveryOrchestratorImpl,
   RollbackSystemImpl,
   SERVER_NAME,
   STATE_PATHS,
+  SessionModeTracker,
   StateManagerImpl,
   TELEMETRY_PATHS,
   TOKEN_COSTS,
   TelemetryCollectorImpl,
   VERSION,
+  applyModeOverride,
   createCheckpointManager,
   createFixLoop,
   createMemoryManager,
+  createModeManager,
   createRecoveryManager,
   createRollbackSystem,
   createRuntimeContext,
+  createSessionModeTracker,
   createStateManager,
   createTelemetryCollector,
   formatResult,
@@ -28542,6 +29112,7 @@ main();
   getHistoryPath,
   getMemoryManager,
   getMode,
+  getModeManager,
   getModeNames,
   getOutputMode,
   getRecoveryManager,
@@ -28559,12 +29130,37 @@ main();
   handleListCheckpoints,
   handlerRegistry,
   hasHandler,
+  initializeModeSystem,
   initializeRuntime,
+  isAgentResult,
+  isAnalyzeResult,
+  isAtomicResult,
   isCheckpointFrequency,
+  isCommandResult,
+  isCopyResult,
+  isCreateResult,
+  isDeleteResult,
+  isDeleteStateResult,
+  isDiagnoseResult,
+  isEditResult,
   isErrorStrategy,
+  isFileReadResult,
+  isGetResult,
+  isGlobResult,
+  isListResult,
+  isLspResult,
+  isMemoryQueryResult,
   isModeConfig,
+  isMoveResult,
   isOutputVerbosity,
+  isScriptResult,
+  isSearchResult,
+  isSetResult,
+  isSymbolResult,
+  isTrackResult,
+  isUrlResult,
   isValidModeName,
+  isValidateResult,
   listActiveBatches,
   listCompletedBatches,
   listHandlers,
@@ -28572,6 +29168,7 @@ main();
   resetGlobalCheckpointManager,
   resetGlobalFixLoop,
   resetGlobalMemoryManager,
+  resetGlobalModeManager,
   resetGlobalRecoveryManager,
   resetGlobalRollbackSystem,
   resetGlobalStateManager,

@@ -34,7 +34,7 @@ import {
 /**
  * Output modes for batch tool responses
  */
-type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose';
+type OutputMode = 'minimal' | 'summary' | 'full' | 'verbose';
 
 /**
  * Tool handler type
@@ -72,20 +72,20 @@ function parseOutputMode(args: unknown): OutputMode {
   if (typeof args === 'object' && args !== null) {
     const obj = args as Record<string, unknown>;
     if (obj.output_mode && typeof obj.output_mode === 'string') {
-      if (['count_only', 'minimal', 'standard', 'verbose'].includes(obj.output_mode)) {
+      if (['minimal', 'summary', 'full', 'verbose'].includes(obj.output_mode)) {
         return obj.output_mode as OutputMode;
       }
     }
     if (obj.output && typeof obj.output === 'object' && obj.output !== null) {
       const output = obj.output as Record<string, unknown>;
       if (output.mode && typeof output.mode === 'string') {
-        if (['count_only', 'minimal', 'standard', 'verbose'].includes(output.mode)) {
+        if (['minimal', 'summary', 'full', 'verbose'].includes(output.mode)) {
           return output.mode as OutputMode;
         }
       }
     }
   }
-  return 'standard';
+  return 'summary';
 }
 
 /**
@@ -1080,10 +1080,12 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
     const batchResult: BatchResult = {
       summary: {
         status,
-        operations_total: totalOperations,
-        operations_succeeded: succeededOperations,
-        operations_failed: failedOperations,
-        operations_skipped: skippedOperations,
+        operations: {
+          total: totalOperations,
+          succeeded: succeededOperations,
+          failed: failedOperations,
+          skipped: skippedOperations,
+        },
         duration_ms: getElapsed(),
         tokens_used: totalTokens,
       },
@@ -1128,17 +1130,19 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
     // Format output based on mode
     let responseData: unknown;
     switch (outputMode) {
-      case 'count_only':
+      case 'minimal':
         responseData = {
           batch_id: batchId,
           status,
-          operations_total: totalOperations,
-          operations_succeeded: succeededOperations,
-          operations_failed: failedOperations,
+          operations: {
+            total: totalOperations,
+            succeeded: succeededOperations,
+            failed: failedOperations,
+          },
         };
         break;
 
-      case 'minimal':
+      case 'summary':
         responseData = {
           batch_id: batchId,
           status,
@@ -1147,11 +1151,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
         };
         break;
 
-      case 'verbose':
-        responseData = output;
-        break;
-
-      default: // standard
+      case 'full':
         responseData = {
           batch_id: batchId,
           status,
@@ -1159,6 +1159,20 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
           validation: batchResult.validation,
           recovery: batchResult.recovery,
           errors: errors.length > 0 ? errors : undefined,
+        };
+        break;
+
+      case 'verbose':
+        responseData = output;
+        break;
+
+      default:
+        // Default to summary mode
+        responseData = {
+          batch_id: batchId,
+          status,
+          summary: batchResult.summary,
+          errors: errors.length > 0 ? errors.map(e => e.message) : undefined,
         };
     }
 

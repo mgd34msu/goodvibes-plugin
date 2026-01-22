@@ -36,6 +36,14 @@ import {
   getTemplateResolver,
   resetGlobalTemplateResolver,
 } from './template-resolver.js';
+import {
+  getModeManager,
+  resetGlobalModeManager,
+} from './mode.js';
+import {
+  getLogsManager,
+  resetGlobalLogsManager,
+} from './logs.js';
 
 // State Manager
 export {
@@ -102,6 +110,8 @@ export interface RuntimeContext {
   telemetry: import('../interfaces/telemetry-api.js').TelemetryAPI;
   checkpoint: import('../interfaces/checkpoint.js').CheckpointManager;
   rollback: import('../interfaces/rollback.js').RollbackManager;
+  mode: import('./mode.js').ModeManager;
+  logs: import('./logs.js').LogsManager;
 }
 
 /**
@@ -114,6 +124,8 @@ export function createRuntimeContext(projectRoot?: string): RuntimeContext {
     telemetry: getTelemetryCollector(projectRoot),
     checkpoint: getCheckpointManager(projectRoot),
     rollback: getRollbackSystem(projectRoot),
+    mode: getModeManager(projectRoot),
+    logs: getLogsManager(projectRoot),
   };
 }
 
@@ -126,12 +138,17 @@ export async function initializeRuntime(context: RuntimeContext): Promise<void> 
   const memoryManager = context.memory as import('./memory.js').MemoryManagerImpl;
   const telemetryCollector = context.telemetry as import('./telemetry.js').TelemetryCollectorImpl;
   const checkpointManager = context.checkpoint as import('./checkpoint.js').CheckpointManagerImpl;
+  const modeManager = context.mode as import('./mode.js').ModeManagerImpl;
+  const logsManager = context.logs as import('./logs.js').LogsManagerImpl;
 
   await Promise.all([
     stateManager.load(),
     memoryManager.load(),
     telemetryCollector.load(),
     checkpointManager.initialize(),
+    modeManager.loadCustomModes(),
+    modeManager.loadPreference(),
+    logsManager.initialize(),
   ]);
 }
 
@@ -144,12 +161,14 @@ export async function persistRuntime(context: RuntimeContext): Promise<void> {
   const memoryManager = context.memory as import('./memory.js').MemoryManagerImpl;
   const telemetryCollector = context.telemetry as import('./telemetry.js').TelemetryCollectorImpl;
   const checkpointManager = context.checkpoint as import('./checkpoint.js').CheckpointManagerImpl;
+  const modeManager = context.mode as import('./mode.js').ModeManagerImpl;
 
   await Promise.all([
     stateManager.persist(),
     memoryManager.persist(),
     telemetryCollector.persist(),
     checkpointManager.shutdown(),
+    modeManager.savePreference(),
   ]);
 }
 
@@ -165,6 +184,8 @@ export function resetRuntime(): void {
   resetGlobalRecoveryManager();
   resetGlobalContextGatherer();
   resetGlobalTemplateResolver();
+  resetGlobalModeManager();
+  resetGlobalLogsManager();
 }
 
 // Fix Loop
@@ -208,6 +229,47 @@ export {
 export type { ContextGatherer, GatheringPhase, GatheringResult } from '../interfaces/context-gathering.js';
 export type { Context, SessionContext, BatchContext, OperationContext, AgentContext } from '../interfaces/context.js';
 export type { TemplateResolver, TemplateString, TemplateContext, TemplateHelper } from '../interfaces/template.js';
+
+// ============================================================================
+// Mode System (SPEC-v2 Section 10)
+// ============================================================================
+
+// Mode Manager
+export {
+  ModeManagerImpl,
+  SessionModeTracker,
+  createModeManager,
+  getModeManager,
+  resetGlobalModeManager,
+  initializeModeSystem,
+  shouldAskUser,
+  getOutputMode,
+  handleError,
+  formatResult,
+  applyModeOverride,
+  createSessionModeTracker,
+} from './mode.js';
+
+// Re-export mode interfaces
+export type { ModeConfig, ModeName } from '../interfaces/mode.js';
+export type { Situation, OutputMode, ErrorAction, ResultFormat } from '../interfaces/mode-behavior.js';
+export type { ModeManager, ModeOverride } from './mode.js';
+
+// ============================================================================
+// Logs System (SPEC-v2 Section 14.2.5)
+// ============================================================================
+
+// Logs Manager
+export {
+  LogsManagerImpl,
+  createLogsManager,
+  getLogsManager,
+  resetGlobalLogsManager,
+  LOGS_PATHS,
+} from './logs.js';
+
+// Re-export logs interfaces
+export type { LogsManager, LogsPath } from './logs.js';
 
 // ============================================================================
 // Agent Coordination System (SPEC-v2 Section 12)

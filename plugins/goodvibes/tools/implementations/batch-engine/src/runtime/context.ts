@@ -27,7 +27,11 @@ import type { MemoryManager } from '../interfaces/memory-api.js';
 import type { TemplateString, TemplateContext } from '../interfaces/template.js';
 import { getStateManager } from './state.js';
 import { getMemoryManager } from './memory.js';
-import { resolveTemplate, hasTemplates } from './template-resolver.js';
+import { resolveTemplate, hasTemplates, resolveTemplatesInObject, getTemplateResolver } from './template-resolver.js';
+import type { Batch } from '../interfaces/batch.js';
+import type { ReadOperation } from '../interfaces/operations/read.js';
+import type { WriteOperation } from '../interfaces/operations/write.js';
+import type { ExecOperation } from '../interfaces/operations/exec.js';
 
 /**
  * Cache for expensive operations
@@ -165,6 +169,7 @@ export class ContextGathererImpl implements ContextGatherer {
   private projectRoot: string;
   private cache: ContextCache = {};
   private batchResults: Map<string, Map<string, OperationResult>> = new Map();
+  private batchRegistry: Map<string, Batch> = new Map();
 
   constructor(
     projectRoot: string = process.cwd(),
@@ -436,11 +441,75 @@ export class ContextGathererImpl implements ContextGatherer {
   // =========================================================================
 
   async analyzeScope(batch_id: string): Promise<{ files: string[]; symbols: string[] }> {
-    // TODO: Implement actual scope analysis based on batch operations
-    // For now, return empty scope
+    const batch = this.batchRegistry.get(batch_id);
+    if (!batch) {
+      throw new Error(`Batch ${batch_id} not found in registry`);
+    }
+
+    const files = new Set<string>();
+    const symbols = new Set<string>();
+
+    // Extract files from read operations
+    if (batch.operations.read) {
+      for (const op of batch.operations.read) {
+        if (op.type === 'files' && Array.isArray(op.targets)) {
+          op.targets.forEach(f => {
+            if (typeof f === 'string') {
+              files.add(f);
+            } else if (typeof f === 'object' && f.path) {
+              files.add(f.path);
+            }
+          });
+        } else if (op.type === 'glob' && Array.isArray(op.patterns)) {
+          // Glob patterns will be resolved at runtime, we can estimate for now
+          // In a real implementation, this would actually execute the glob
+          op.patterns.forEach(p => files.add(p));
+        }
+      }
+    }
+
+    // Extract files from write operations
+    if (batch.operations.write) {
+      for (const op of batch.operations.write) {
+        if (op.type === 'create' && Array.isArray(op.files)) {
+          op.files.forEach(f => {
+            if (f.path) {
+              files.add(f.path);
+            }
+          });
+        } else if (op.type === 'edit' && Array.isArray(op.edits)) {
+          op.edits.forEach(e => {
+            if (e.file) files.add(e.file);
+          });
+        } else if (op.type === 'delete' && Array.isArray(op.files)) {
+          op.files.forEach(f => files.add(f));
+        } else if (op.type === 'move' && Array.isArray(op.moves)) {
+          op.moves.forEach(m => {
+            files.add(m.from);
+            files.add(m.to);
+          });
+        } else if (op.type === 'copy' && Array.isArray(op.copies)) {
+          op.copies.forEach(c => {
+            files.add(c.from);
+            files.add(c.to);
+          });
+        }
+      }
+    }
+
+    // Extract files from exec operations
+    if (batch.operations.exec) {
+      for (const op of batch.operations.exec) {
+        if (op.type === 'command' && Array.isArray(op.commands)) {
+          // Could parse command strings to extract file references
+          // For now, we'll skip this as it's complex
+        }
+      }
+    }
+
     return {
-      files: [],
-      symbols: [],
+      files: Array.from(files),
+      symbols: Array.from(symbols),
     };
   }
 
@@ -539,9 +608,94 @@ export class ContextGathererImpl implements ContextGatherer {
   }
 
   async resolveDependencies(batch_id: string): Promise<Map<string, unknown>> {
-    // TODO: Implement dependency resolution
-    // This would build a graph of operation dependencies
-    return new Map();
+    const batch = this.batchRegistry.get(batch_id);
+    if (!batch) {
+      throw new Error(`Batch ${batch_id} not found in registry`);
+    }
+
+    // Collect all operations
+    const allOperations: Array<{ id: string; depends_on?: string[] }> = [];
+
+    if (batch.operations.read) {
+      allOperations.push(...batch.operations.read);
+    }
+    if (batch.operations.write) {
+      allOperations.push(...batch.operations.write);
+    }
+    if (batch.operations.exec) {
+      allOperations.push(...batch.operations.exec);
+    }
+    if (batch.operations.query) {
+      allOperations.push(...batch.operations.query);
+    }
+    if (batch.operations.state) {
+      allOperations.push(...batch.operations.state);
+    }
+
+    // Build adjacency list for dependency graph
+    const graph = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+
+    // Initialize graph
+    for (const op of allOperations) {
+      graph.set(op.id, op.depends_on || []);
+      inDegree.set(op.id, 0);
+    }
+
+    // Calculate in-degrees
+    for (const op of allOperations) {
+      if (op.depends_on) {
+        for (const dep of op.depends_on) {
+          if (!graph.has(dep)) {
+            throw new Error(`Operation ${op.id} depends on unknown operation: ${dep}`);
+          }
+          inDegree.set(op.id, (inDegree.get(op.id) || 0) + 1);
+        }
+      }
+    }
+
+    // Topological sort using Kahn's algorithm
+    const queue: string[] = [];
+    const sorted: string[] = [];
+
+    // Find all nodes with no incoming edges
+    for (const [id, degree] of inDegree.entries()) {
+      if (degree === 0) {
+        queue.push(id);
+      }
+    }
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      sorted.push(current);
+
+      // For each operation that depends on the current one
+      for (const op of allOperations) {
+        if (op.depends_on?.includes(current)) {
+          const newDegree = (inDegree.get(op.id) || 0) - 1;
+          inDegree.set(op.id, newDegree);
+          if (newDegree === 0) {
+            queue.push(op.id);
+          }
+        }
+      }
+    }
+
+    // Check for circular dependencies
+    if (sorted.length !== allOperations.length) {
+      const remaining = allOperations.filter(op => !sorted.includes(op.id));
+      throw new Error(
+        `Circular dependency detected involving operations: ${remaining.map(op => op.id).join(', ')}`
+      );
+    }
+
+    // Build resolution map with execution order
+    const resolution = new Map<string, unknown>();
+    sorted.forEach((id, index) => {
+      resolution.set(id, { order: index, dependencies: graph.get(id) || [] });
+    });
+
+    return resolution;
   }
 
   // =========================================================================
@@ -552,9 +706,71 @@ export class ContextGathererImpl implements ContextGatherer {
     operation_id: string,
     priorResults: Map<string, OperationResult>
   ): Promise<Record<string, unknown>> {
-    // TODO: Implement template resolution for operation parameters
-    // This would resolve {{operation_id.path}} references
-    return {};
+    // Get the batch_id from the operation_id (format: batch_id:operation_id)
+    const [batch_id, op_id] = operation_id.split(':');
+
+    const batch = this.batchRegistry.get(batch_id ?? '');
+    if (!batch) {
+      throw new Error(`Batch ${batch_id} not found in registry`);
+    }
+
+    // Find the operation in the batch
+    let operation: any = null;
+
+    const allOps = [
+      ...(batch.operations.read || []),
+      ...(batch.operations.write || []),
+      ...(batch.operations.exec || []),
+      ...(batch.operations.query || []),
+      ...(batch.operations.state || []),
+    ];
+
+    operation = allOps.find(op => op.id === op_id);
+
+    if (!operation) {
+      throw new Error(`Operation ${op_id} not found in batch ${batch_id}`);
+    }
+
+    // Build template context from prior results and session context
+    const session = this.stateManager.getSession();
+    const context: TemplateContext = {
+      results: {},
+      session: {
+        id: session.id,
+        mode: session.mode,
+        project_root: this.projectRoot,
+        git: {
+          branch: session.git.current_branch,
+          commit: session.git.last_commit,
+        },
+      },
+      now: new Date().toISOString(),
+    };
+
+    // Add prior results to context
+    priorResults.forEach((result, id) => {
+      context[id] = result.data;
+    });
+
+    // Get the injections from operation.inject or resolve templates in parameters
+    const injected: Record<string, unknown> = {};
+
+    if (operation.inject) {
+      // Resolve each injection template
+      for (const [key, template] of Object.entries(operation.inject)) {
+        if (typeof template === 'string') {
+          injected[key] = resolveTemplate(template, context);
+        }
+      }
+    }
+
+    // Also resolve any templates in operation parameters
+    const resolvedParams = resolveTemplatesInObject({ ...operation }, context);
+
+    return {
+      ...injected,
+      ...resolvedParams,
+    };
   }
 
   // =========================================================================
@@ -562,25 +778,103 @@ export class ContextGathererImpl implements ContextGatherer {
   // =========================================================================
 
   async buildAgentPrompt(agent_id: string): Promise<string> {
-    // TODO: Implement agent prompt construction
-    return '';
+    const agentContext = await this.gatherAgentContext(agent_id);
+
+    const prompt = `
+# Agent Task
+
+${agentContext.task}
+
+## Scope
+
+Files in scope:
+${agentContext.scope.map(f => `- ${f}`).join('\n')}
+
+## Constraints
+
+${agentContext.constraints.length > 0 ? agentContext.constraints.map(c => `- ${c}`).join('\n') : 'None'}
+
+## Relevant Decisions
+
+${agentContext.relevant_decisions.map(d => `- ${d.what}: ${d.why} (confidence: ${d.confidence})`).join('\n')}
+
+## Relevant Patterns
+
+${agentContext.relevant_patterns.map(p => `- ${p.name}: ${p.description}`).join('\n')}
+
+## Past Failures to Avoid
+
+${agentContext.past_failures.map(f => `- ${f.error_type}: ${f.error_message} (resolution: ${f.resolution})`).join('\n')}
+
+## Prior Results
+
+${JSON.stringify(agentContext.prior_results, null, 2)}
+
+## Budget
+
+- Tokens remaining: ${agentContext.budget.tokens_remaining}
+- Turns remaining: ${agentContext.budget.turns_remaining}
+`.trim();
+
+    return prompt;
   }
 
   async injectMemory(agent_id: string): Promise<void> {
-    // TODO: Implement memory injection into agent context
+    const agentState = this.stateManager.getActiveAgents().find(a => a.id === agent_id);
+    if (!agentState) {
+      throw new Error(`Agent ${agent_id} not found`);
+    }
+
+    // Memory is already injected via gatherAgentContext
+    // This method could be used for additional memory injection if needed
+    // For now, it's a no-op as the context gathering handles it
   }
 
   async injectPriorResults(agent_id: string): Promise<void> {
-    // TODO: Implement prior results injection
+    const agentState = this.stateManager.getActiveAgents().find(a => a.id === agent_id);
+    if (!agentState) {
+      throw new Error(`Agent ${agent_id} not found`);
+    }
+
+    // Prior results are already injected via gatherAgentContext
+    // This method could be used for additional result injection if needed
+    // For now, it's a no-op as the context gathering handles it
   }
 
   async setBudget(agent_id: string): Promise<void> {
-    // TODO: Implement budget setting based on operation complexity
+    const agentState = this.stateManager.getActiveAgents().find(a => a.id === agent_id);
+    if (!agentState) {
+      throw new Error(`Agent ${agent_id} not found`);
+    }
+
+    // Budget is set when agent is registered
+    // This method could be used to adjust budget based on operation complexity
+    // For now, we'll keep the existing budget
+
+    // Could implement complexity-based budget adjustments here:
+    // - Analyze operation scope
+    // - Count files affected
+    // - Check risk level
+    // - Adjust budget accordingly
   }
 
   // =========================================================================
   // Public API - Result Management
   // =========================================================================
+
+  /**
+   * Register a batch for context gathering
+   */
+  registerBatch(batch: Batch): void {
+    this.batchRegistry.set(batch.id, batch);
+  }
+
+  /**
+   * Unregister a batch to free memory
+   */
+  unregisterBatch(batch_id: string): void {
+    this.batchRegistry.delete(batch_id);
+  }
 
   /**
    * Store operation result for later use by other operations

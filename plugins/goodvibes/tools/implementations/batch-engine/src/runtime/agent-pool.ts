@@ -1049,6 +1049,7 @@ export class AgentLifecycleManagerImpl implements AgentLifecycleManager {
  * Handles inter-agent messaging and result sharing
  */
 export class AgentCommunicationManagerImpl implements AgentCommunicationManager {
+  private pool: AgentPool;
   private sharedResults: Map<string, SharedResult[]> = new Map();
   private messages: Map<string, AgentMessage[]> = new Map();
   private broadcasts: BroadcastMessage[] = [];
@@ -1066,7 +1067,8 @@ export class AgentCommunicationManagerImpl implements AgentCommunicationManager 
     avg_response_time_ms: 0,
   };
 
-  constructor(config?: Partial<SharingConfig>) {
+  constructor(pool: AgentPool, config?: Partial<SharingConfig>) {
+    this.pool = pool;
     this.config = {
       auto_share_on_complete: config?.auto_share_on_complete ?? true,
       result_ttl_ms: config?.result_ttl_ms ?? 3600000,
@@ -1102,8 +1104,8 @@ export class AgentCommunicationManagerImpl implements AgentCommunicationManager 
     const results = this.sharedResults.get(to)!;
     results.push(result);
 
-    // Enforce max results limit
-    if (results.length > this.config.max_results_per_agent) {
+    // Enforce max results limit - remove oldest if we exceed the max
+    while (results.length > this.config.max_results_per_agent) {
       results.shift();
     }
 
@@ -1248,18 +1250,118 @@ export class AgentCommunicationManagerImpl implements AgentCommunicationManager 
 
   async waitForAgent(
     agent_id: string,
-    timeout_ms?: number
+    timeout_ms: number = 300000
   ): Promise<StateCompletedAgent> {
-    // This would be implemented using the agent pool's state
-    throw new Error('Not implemented - requires agent pool integration');
+    const startTime = Date.now();
+    const pollInterval = 100; // Poll every 100ms
+
+    while (Date.now() - startTime < timeout_ms) {
+      // Check if agent is already completed
+      const completed = this.pool.state.completed.find((a) => a.id === agent_id);
+      if (completed) {
+        // Map CompletedAgent to StateCompletedAgent
+        return {
+          id: completed.id,
+          agent_type: completed.spec.type,
+          task: completed.spec.task,
+          started_at: completed.started_at,
+          completed_at: completed.completed_at,
+          status: completed.status === 'success' ? 'success' :
+                  completed.status === 'timeout' ? 'timeout' :
+                  completed.status === 'failed' ? 'failed' : 'budget_exceeded',
+          tokens_used: completed.tokens_used,
+          turns_used: completed.turns_used,
+          files_modified: [], // Not tracked in this CompletedAgent type
+          summary: typeof completed.result === 'string' ? completed.result : undefined,
+        };
+      }
+
+      // Check if agent is still active
+      const active = this.pool.state.active.get(agent_id);
+      if (!active) {
+        // Agent not found in active or completed - may not exist
+        throw new Error(`Agent ${agent_id} not found in pool`);
+      }
+
+      // Wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    // Timeout exceeded
+    throw new Error(`Timeout waiting for agent ${agent_id} (${timeout_ms}ms exceeded)`);
   }
 
   async waitForAnyOf(
     agent_ids: string[],
-    timeout_ms?: number
+    timeout_ms: number = 300000
   ): Promise<StateCompletedAgent> {
-    // This would be implemented using the agent pool's state
-    throw new Error('Not implemented - requires agent pool integration');
+    if (agent_ids.length === 0) {
+      throw new Error('waitForAnyOf requires at least one agent_id');
+    }
+
+    const startTime = Date.now();
+    const pollInterval = 100; // Poll every 100ms
+
+    while (Date.now() - startTime < timeout_ms) {
+      // Check if any agent has completed
+      for (const agent_id of agent_ids) {
+        const completed = this.pool.state.completed.find((a) => a.id === agent_id);
+        if (completed) {
+          // Map CompletedAgent to StateCompletedAgent
+          return {
+            id: completed.id,
+            agent_type: completed.spec.type,
+            task: completed.spec.task,
+            started_at: completed.started_at,
+            completed_at: completed.completed_at,
+            status: completed.status === 'success' ? 'success' :
+                    completed.status === 'timeout' ? 'timeout' :
+                    completed.status === 'failed' ? 'failed' : 'budget_exceeded',
+            tokens_used: completed.tokens_used,
+            turns_used: completed.turns_used,
+            files_modified: [], // Not tracked in this CompletedAgent type
+            summary: typeof completed.result === 'string' ? completed.result : undefined,
+          };
+        }
+      }
+
+      // Check if any of the agents still exist (either active or queued)
+      const anyExists = agent_ids.some((id) => {
+        return this.pool.state.active.has(id) ||
+               this.pool.state.queued.some((q) => q.spec.id === id);
+      });
+
+      if (!anyExists) {
+        // None of the agents exist anymore - they may have all completed before we started waiting
+        // Check completed one more time
+        for (const agent_id of agent_ids) {
+          const completed = this.pool.state.completed.find((a) => a.id === agent_id);
+          if (completed) {
+            return {
+              id: completed.id,
+              agent_type: completed.spec.type,
+              task: completed.spec.task,
+              started_at: completed.started_at,
+              completed_at: completed.completed_at,
+              status: completed.status === 'success' ? 'success' :
+                      completed.status === 'timeout' ? 'timeout' :
+                      completed.status === 'failed' ? 'failed' : 'budget_exceeded',
+              tokens_used: completed.tokens_used,
+              turns_used: completed.turns_used,
+              files_modified: [],
+              summary: typeof completed.result === 'string' ? completed.result : undefined,
+            };
+          }
+        }
+        throw new Error(`None of the specified agents found in pool: ${agent_ids.join(', ')}`);
+      }
+
+      // Wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    // Timeout exceeded
+    throw new Error(`Timeout waiting for any of agents [${agent_ids.join(', ')}] (${timeout_ms}ms exceeded)`);
   }
 
   // -------------------------------------------------------------------------
@@ -1396,28 +1498,39 @@ export class DependencyResolverImpl implements DependencyManager {
   private calculateDepths(graph: DependencyGraph): void {
     const visited = new Set<string>();
 
-    const visit = (nodeId: string, depth: number): number => {
+    const visit = (nodeId: string): number => {
+      // Check if node exists first
+      const node = graph.nodes.get(nodeId);
+      if (!node) {
+        return 0;
+      }
+
       if (visited.has(nodeId)) {
-        const node = graph.nodes.get(nodeId)!;
         return node.depth;
       }
 
       visited.add(nodeId);
-      const node = graph.nodes.get(nodeId)!;
 
-      let maxDepth = depth;
+      // If node has no dependencies, it's at depth 0 (root)
+      if (node.dependencies.length === 0) {
+        node.depth = 0;
+        return 0;
+      }
+
+      // Otherwise, depth is 1 + max(depth of all dependencies)
+      let maxDepth = 0;
       for (const dep of node.dependencies) {
-        const depDepth = visit(dep.agent_id, depth + 1);
+        const depDepth = visit(dep.agent_id);
         maxDepth = Math.max(maxDepth, depDepth);
       }
 
-      node.depth = maxDepth;
-      graph.max_depth = Math.max(graph.max_depth, maxDepth);
-      return maxDepth;
+      node.depth = maxDepth + 1;
+      graph.max_depth = Math.max(graph.max_depth, node.depth);
+      return node.depth;
     };
 
     for (const nodeId of graph.nodes.keys()) {
-      visit(nodeId, 0);
+      visit(nodeId);
     }
   }
 
@@ -1642,6 +1755,8 @@ export class DependencyResolverImpl implements DependencyManager {
       };
 
       // Find agents whose dependencies are all processed
+      // Collect them first, then mark as processed after the loop
+      const readyAgents: string[] = [];
       for (const agentId of sorted) {
         if (processed.has(agentId)) continue;
 
@@ -1651,8 +1766,7 @@ export class DependencyResolverImpl implements DependencyManager {
         );
 
         if (depsMet) {
-          phase.agents.push(agentId);
-          processed.add(agentId);
+          readyAgents.push(agentId);
 
           // Estimate tokens
           const budget = node.spec.budget?.max_tokens ?? 100000;
@@ -1660,8 +1774,14 @@ export class DependencyResolverImpl implements DependencyManager {
         }
       }
 
-      if (phase.agents.length === 0) {
+      if (readyAgents.length === 0) {
         break; // No more agents can be processed
+      }
+
+      // Now mark them all as processed
+      for (const agentId of readyAgents) {
+        phase.agents.push(agentId);
+        processed.add(agentId);
       }
 
       phases.push(phase);
@@ -1906,10 +2026,12 @@ export function getLifecycleManager(pool?: AgentPool): AgentLifecycleManager {
  * Get the global communication manager instance (singleton)
  */
 export function getCommunicationManager(
+  pool?: AgentPool,
   config?: Partial<SharingConfig>
 ): AgentCommunicationManager {
   if (!globalCommunicationManager) {
-    globalCommunicationManager = new AgentCommunicationManagerImpl(config);
+    const agentPool = pool ?? getAgentPool();
+    globalCommunicationManager = new AgentCommunicationManagerImpl(agentPool, config);
   }
   return globalCommunicationManager;
 }
@@ -1952,9 +2074,27 @@ export function createLifecycleManager(pool: AgentPool): AgentLifecycleManager {
  * Create a new communication manager instance
  */
 export function createCommunicationManager(
+  poolOrConfig?: AgentPool | Partial<SharingConfig>,
   config?: Partial<SharingConfig>
 ): AgentCommunicationManager {
-  return new AgentCommunicationManagerImpl(config);
+  let pool: AgentPool;
+  let actualConfig: Partial<SharingConfig> | undefined;
+
+  // Handle overloaded parameters
+  if (!poolOrConfig) {
+    pool = createAgentPool();
+    actualConfig = undefined;
+  } else if ('state' in poolOrConfig) {
+    // It's an AgentPool
+    pool = poolOrConfig as AgentPool;
+    actualConfig = config;
+  } else {
+    // It's a config
+    pool = createAgentPool();
+    actualConfig = poolOrConfig as Partial<SharingConfig>;
+  }
+
+  return new AgentCommunicationManagerImpl(pool, actualConfig);
 }
 
 /**

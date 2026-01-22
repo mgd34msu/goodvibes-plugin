@@ -371,9 +371,9 @@ export const handleBatchStatus: ToolHandler = async (args: unknown) => {
           current_phase: 'state', // Last phase
           completed_phases: PHASE_LIST,
           pending_phases: [],
-          operations_total: completedOutput.result?.summary.operations_total || 0,
-          operations_completed: completedOutput.result?.summary.operations_succeeded || 0,
-          operations_failed: completedOutput.result?.summary.operations_failed || 0,
+          operations_total: completedOutput.result?.summary.operations.total || 0,
+          operations_completed: completedOutput.result?.summary.operations.succeeded || 0,
+          operations_failed: completedOutput.result?.summary.operations.failed || 0,
           operations_pending: 0,
           percent_complete: 100,
         },
@@ -494,7 +494,7 @@ export const handleListBatches: ToolHandler = async (args: unknown) => {
           started_at: '', // Not stored in output
           completed_at: '', // Not stored in output
           status: mapToBatchStatus(output.status),
-          operations_count: output.result?.summary.operations_total || 0,
+          operations_count: output.result?.summary.operations.total || 0,
           tokens_used: output.tokens_used,
           duration_ms: output.duration_ms,
         });

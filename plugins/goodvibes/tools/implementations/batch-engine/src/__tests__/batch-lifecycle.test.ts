@@ -117,7 +117,7 @@ describe('Batch Lifecycle Integration', () => {
           },
         },
         output: {
-          mode: 'standard',
+          mode: 'summary',
           include: [],
           exclude: [],
         },
@@ -133,14 +133,13 @@ describe('Batch Lifecycle Integration', () => {
       const result = await executeBatchMock(batch, trackHook);
 
       // Assert: Verify all phases executed in correct order
+      // Note: validate_before and validate_after are skipped when no validation steps configured
       expect(result.success).toBe(true);
       expect(hookExecutionOrder).toEqual([
         'intent',
         'plan',
         'prepare',
-        'validate_before',
         'execute',
-        'validate_after',
         'commit',
         'chain',
         'complete',
@@ -207,7 +206,7 @@ describe('Batch Lifecycle Integration', () => {
           on_complete: { handler: 'trackHook' },
         },
         output: {
-          mode: 'standard',
+          mode: 'summary',
           include: [],
           exclude: [],
         },
@@ -270,7 +269,7 @@ describe('Batch Lifecycle Integration', () => {
           },
         },
         output: {
-          mode: 'standard',
+          mode: 'summary',
           include: [],
           exclude: [],
         },
@@ -324,7 +323,7 @@ describe('Batch Lifecycle Integration', () => {
           },
         },
         output: {
-          mode: 'standard',
+          mode: 'summary',
           include: [],
           exclude: [],
         },
@@ -377,7 +376,7 @@ describe('Batch Lifecycle Integration', () => {
         },
         lifecycle: {},
         output: {
-          mode: 'standard',
+          mode: 'summary',
           include: [],
           exclude: [],
         },
@@ -417,7 +416,7 @@ describe('Batch Lifecycle Integration', () => {
         },
         lifecycle: {},
         output: {
-          mode: 'standard',
+          mode: 'summary',
           include: [],
           exclude: [],
         },
@@ -465,6 +464,16 @@ async function executeBatchMock(
   for (const phase of phases) {
     // Skip commit and chain if rollback is needed
     if (shouldRollback && (phase === 'commit' || phase === 'chain' || phase === 'complete')) {
+      continue;
+    }
+
+    // Skip validate_before if no before validation steps
+    if (phase === 'validate_before' && batch.config.validation.before.length === 0) {
+      continue;
+    }
+
+    // Skip validate_after if no after validation steps
+    if (phase === 'validate_after' && batch.config.validation.after.length === 0) {
       continue;
     }
 

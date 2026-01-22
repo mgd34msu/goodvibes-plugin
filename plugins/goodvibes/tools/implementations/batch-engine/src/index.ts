@@ -115,6 +115,20 @@ export {
   getRecoveryManager,
   resetGlobalRecoveryManager,
 
+  // Mode Manager
+  ModeManagerImpl,
+  SessionModeTracker,
+  createModeManager,
+  getModeManager,
+  resetGlobalModeManager,
+  initializeModeSystem,
+  shouldAskUser,
+  getOutputMode,
+  handleError,
+  formatResult,
+  applyModeOverride,
+  createSessionModeTracker,
+
   // Runtime Context
   type RuntimeContext,
   createRuntimeContext,
@@ -150,6 +164,14 @@ export {
   type RecoveryResult,
   type RecoveryAction,
   type RecoveryConfig,
+  type ModeManager,
+  type ModeConfig,
+  type ModeName,
+  type Situation,
+  type OutputMode,
+  type ErrorAction,
+  type ResultFormat,
+  type ModeOverride,
 } from './runtime/index.js';
 
 // ============================================================================
@@ -174,6 +196,66 @@ export type {
   ErrorInfo,
 } from './interfaces/result.js';
 
+// Operation-specific results
+export type {
+  // READ results
+  FileReadResult,
+  SearchResult,
+  GlobResult,
+  SymbolResult,
+  UrlResult,
+  AnalyzeResult,
+  // WRITE results
+  CreateResult,
+  EditResult,
+  DeleteResult,
+  MoveResult,
+  CopyResult,
+  AtomicResult,
+  // EXEC results
+  CommandResult,
+  ScriptResult,
+  // QUERY results
+  LspResult,
+  ValidateResult,
+  DiagnoseResult,
+  // STATE results
+  GetResult,
+  SetResult,
+  DeleteStateResult,
+  ListResult,
+  TrackResult,
+  MemoryQueryResult,
+} from './interfaces/operations/results.js';
+
+// Result type guards
+export {
+  isFileReadResult,
+  isSearchResult,
+  isGlobResult,
+  isSymbolResult,
+  isUrlResult,
+  isAnalyzeResult,
+  isCreateResult,
+  isEditResult,
+  isDeleteResult,
+  isMoveResult,
+  isCopyResult,
+  isAtomicResult,
+  isCommandResult,
+  isAgentResult,
+  isScriptResult,
+  isLspResult,
+  isValidateResult,
+  isDiagnoseResult,
+  isGetResult,
+  isSetResult,
+  isDeleteStateResult,
+  isListResult,
+  isTrackResult,
+  isMemoryQueryResult,
+} from './interfaces/operations/results.js';
+
 // Operations
 export type {
   OperationType,
@@ -182,6 +264,86 @@ export type {
   Condition,
   Expectation,
 } from './interfaces/operation.js';
+
+// READ operations
+export type {
+  ReadOperation,
+  ExtractMode,
+  SearchMode,
+  SymbolKind,
+  UrlExtractMode,
+  AnalysisKind,
+  FileSpec,
+} from './interfaces/operations/read.js';
+
+// WRITE operations
+export type {
+  WriteOperation,
+  ExtendedWriteOperation,
+  CreateOperation,
+  EditOperation,
+  DeleteOperation,
+  MoveOperation,
+  CopyOperation,
+  AtomicOperation,
+  CreateSpec,
+  EditSpec,
+  Edit,
+  MoveSpec,
+  CopySpec,
+  CreateOptions,
+  EditOptions,
+  DeleteOptions,
+  MoveOptions,
+  CopyOptions,
+  AtomicOptions,
+} from './interfaces/operations/write.js';
+
+// EXEC, QUERY, STATE operations
+export type {
+  ExecOperation,
+  QueryOperation,
+  StateOperation,
+  // Command
+  CommandOperation,
+  CommandSpec,
+  CommandOptions,
+  CaptureSpec,
+  // Agent
+  AgentOperation,
+  AgentSpec,
+  AgentBudget,
+  AgentInject,
+  ChainSpec,
+  // Script
+  ScriptOperation,
+  ScriptSpec,
+  // LSP
+  LspOperation,
+  LspQuery,
+  LspOperationType,
+  Position,
+  // Validate
+  ValidateOperation,
+  ValidationSpec,
+  ValidationCheck,
+  ValidationType,
+  // Diagnose
+  DiagnoseOperation,
+  DiagnosisSpec,
+  DiagnosisKind,
+  // State operations
+  GetOperation,
+  SetOperation,
+  DeleteOperation as DeleteStateOperation,
+  ListOperation,
+  TrackOperation,
+  MemoryQueryOperation,
+  SetEntry,
+  TrackEntry,
+  TrackEntryKind,
+  MemoryQueryFilters,
+} from './interfaces/operations/exec.js';
 
 // State
 export type {
@@ -241,25 +403,8 @@ export type {
   HookResult,
 } from './interfaces/lifecycle.js';
 
-// Mode System
-export type {
-  ModeName,
-  ModeConfig,
-} from './interfaces/mode.js';
-
-export type {
-  Situation,
-  OutputMode,
-  ErrorAction,
-  ResultFormat,
-} from './interfaces/mode-behavior.js';
-
-export {
-  shouldAskUser,
-  getOutputMode,
-  handleError,
-  formatResult,
-} from './interfaces/mode-behavior.js';
+// Mode System types are already exported from runtime/index.js
+// (ModeName, ModeConfig, shouldAskUser, getOutputMode, handleError, formatResult)
 
 export {
   MODES,
@@ -364,7 +509,7 @@ export type {
 export type {
   BatchStateInput,
   BatchStateOutput,
-  StateOperation,
+  StateOperation as BatchStateOperation,
   MemoryQuery,
   StateSnapshot,
 } from './interfaces/tools/batch-state.js';
