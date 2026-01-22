@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-01-21T19:56:01.832Z'
-total: 73
+generated: '2026-01-22T05:35:46.645Z'
+total: 74
 servers:
   - name: precision-engine
     count: 9
@@ -234,7 +234,7 @@ servers:
           usages, compares .env against .env.example, identifies missing/unused/undocumented variables, and optionally
           validates value formats based on naming conventions (ports should be numbers, URLs should be valid, etc.).
   - name: project-engine
-    count: 21
+    count: 22
     tools:
       - name: find_circular_deps
         path: analysis-engine/find-circular-deps.yaml
@@ -252,6 +252,11 @@ servers:
         description: >-
           Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
           package.json against actual imports in source files.
+      - name: create_pull_request
+        path: project-engine/create_pull_request
+        description: >-
+          Create a GitHub pull request with auto-generated description using LLM analysis. Handles git state detection,
+          branch pushing, and PR creation via gh CLI. Requires gh CLI to be installed and authenticated.
       - name: resolve_merge_conflict
         path: project-engine/resolve-merge-conflict.yaml
         description: >-
@@ -1627,6 +1632,35 @@ search_index:
     description: >-
       Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
       package.json against actual imports in source files.
+    server: project-engine
+  - name: create_pull_request
+    keywords:
+      - create
+      - pull
+      - request
+      - github
+      - auto
+      - generated
+      - description
+      - using
+      - llm
+      - analysis
+      - handles
+      - git
+      - state
+      - detection
+      - branch
+      - pushing
+      - creation
+      - via
+      - cli
+      - requires
+      - installed
+      - authenticated
+    path: project-engine/create_pull_request
+    description: >-
+      Create a GitHub pull request with auto-generated description using LLM analysis. Handles git state detection,
+      branch pushing, and PR creation via gh CLI. Requires gh CLI to be installed and authenticated.
     server: project-engine
   - name: resolve_merge_conflict
     keywords:
