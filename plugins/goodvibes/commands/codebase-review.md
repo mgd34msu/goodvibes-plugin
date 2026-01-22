@@ -333,6 +333,24 @@ Maintain `remediation-log.md`:
 - **Success Rate**: X%
 ```
 
+### Phase 5: Cleanup
+
+After ALL remediation tasks pass, archive the output files:
+
+```bash
+# Archive completed review files
+mkdir -p .goodvibes/completed
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+mv codebase-review-report.md .goodvibes/completed/code-review-${TIMESTAMP}.md
+mv remediation-plan.md .goodvibes/completed/remediation-plan-${TIMESTAMP}.md
+mv remediation-log.md .goodvibes/completed/remediation-log-${TIMESTAMP}.md
+```
+
+**Cleanup Checklist:**
+- [ ] All tasks completed in remediation-log.md
+- [ ] Memory files updated
+- [ ] Files archived to `.goodvibes/completed/`
+
 ---
 
 ## Constraints
@@ -350,11 +368,11 @@ Maintain `remediation-log.md`:
 
 ## Output Artifacts
 
-| File | Description |
-|------|-------------|
-| `codebase-review-report.md` | Complete findings with scores and file:line references |
-| `remediation-plan.md` | Prioritized task checklist by severity wave |
-| `remediation-log.md` | Real-time execution tracking |
+| File | Description | Post-Completion |
+|------|-------------|-----------------|
+| `codebase-review-report.md` | Complete findings with scores and file:line references | Archived to `.goodvibes/completed/code-review-{timestamp}.md` |
+| `remediation-plan.md` | Prioritized task checklist by severity wave | Archived to `.goodvibes/completed/remediation-plan-{timestamp}.md` |
+| `remediation-log.md` | Real-time execution tracking | Archived to `.goodvibes/completed/remediation-log-{timestamp}.md` |
 
 ---
 
