@@ -536,7 +536,7 @@ mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 
 ## Tool Priority (MANDATORY)
 
-1. First: Check `mcp-cli call plugin_goodvibes_*`
+1. First: Check `mcp-cli info` then `mcp-cli call plugin_goodvibes_*`
 2. Second: Use precision tools (precision_edit, precision_read, etc.)
 3. Only then: Fall back to standard tools if no MCP/precision tool exists
 
@@ -809,6 +809,7 @@ After ALL remediation tasks have passed review and been committed, archive the o
 
 **Archive Commands:**
 ```bash
+# Run all commands together in a single shell session:
 # Create archive directory if it doesn't exist
 mkdir -p .goodvibes/completed
 

@@ -262,7 +262,7 @@ mcp-cli call plugin_goodvibes_analysis-engine/validate_edits_preview '{"files":[
 ## Tool Priority (MANDATORY)
 
 Check in this order:
-1. `mcp-cli call plugin_goodvibes_*` - Use if applicable
+1. Check goodvibes MCP tools first (`plugin_goodvibes_*`) - Use if applicable
 2. `bash` - Only if no MCP tool exists
 
 ## Completion
@@ -333,7 +333,7 @@ Maintain `remediation-log.md`:
 - **Success Rate**: X%
 ```
 
-### Phase 5: Cleanup
+## Phase 5: Cleanup
 
 After ALL remediation tasks pass, archive the output files:
 
