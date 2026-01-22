@@ -1,12 +1,12 @@
 ---
 name: goodvibes-codebase-review
 description: >-
-  Comprehensive codebase review and parallel agent-based remediation skill. 
-  Use PROACTIVELY when agent needs to perform full codebase audit, generate 
-  master findings report with quantified metrics, and execute remediation 
-  using parallel goodvibes background agents (max 6 concurrent, one task 
-  per agent with fresh context). Triggers on: codebase review, code audit, 
-  full project analysis, quality assessment, technical debt analysis, 
+  Comprehensive codebase review and parallel agent-based remediation skill.
+  Use PROACTIVELY when agent needs to perform full codebase audit, generate
+  master findings report with quantified metrics, and execute remediation
+  using parallel goodvibes background agents (max 6 concurrent, one task
+  per agent with fresh context). Triggers on: codebase review, code audit,
+  full project analysis, quality assessment, technical debt analysis,
   parallel remediation, bulk fixes.
 ---
 
@@ -22,50 +22,229 @@ Systematic codebase analysis with parallelized remediation using goodvibes agent
 
 **CRITICAL: Write-local, read-global.**
 
-- **WRITE/EDIT/CREATE**: ONLY within the current working directory and its subdirectories
-- **READ**: Can read any file anywhere for context
-- **NEVER WRITE** to: parent directories, home directory, system files, other projects
+- **WRITE/EDIT/CREATE**: ONLY within the current working directory and its subdirectories. This is the project root. All changes must be git-trackable.
+- **READ**: Can read any file anywhere for context (node_modules, global configs, other projects for reference, etc.)
+- **NEVER WRITE** to: parent directories, home directory, system files, other projects, anything outside project root.
+
+The working directory when you were spawned IS the project root. Stay within it for all modifications.
 
 ## MCP Tool Checklist (MANDATORY)
 
 **STOP. Before doing ANYTHING, complete this checklist.**
 
+**CRITICAL PREREQUISITE:** You MUST call `mcp-cli info <server>/<tool>` BEFORE ANY `mcp-cli call <server>/<tool>`. This is a BLOCKING REQUIREMENT.
+
 ### Task Start
 
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__detect_stack '{}'
-mcp__plugin_goodvibes_goodvibes-tools__recommend_skills '{"task":"codebase review quality audit"}'
-mcp__plugin_goodvibes_goodvibes-tools__project_issues '{}'
+# ALWAYS check schema first
+mcp-cli info plugin_goodvibes_analysis-engine/detect_stack
+mcp-cli info plugin_goodvibes_registry-engine/recommend_skills
+mcp-cli info plugin_goodvibes_project-engine/project_issues
+
+# Then make the calls
+mcp-cli call plugin_goodvibes_analysis-engine/detect_stack '{}'
+mcp-cli call plugin_goodvibes_registry-engine/recommend_skills '{"task":"codebase review quality audit"}'
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 ```
 
 ### Review Phase
 
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__check_types '{}'
-mcp__plugin_goodvibes_goodvibes-tools__find_circular_deps '{}'
-mcp__plugin_goodvibes_goodvibes-tools__scan_for_secrets '{}'
-mcp__plugin_goodvibes_goodvibes-tools__analyze_dependencies '{}'
-mcp__plugin_goodvibes_goodvibes-tools__identify_tech_debt '{}'
-mcp__plugin_goodvibes_goodvibes-tools__find_dead_code '{}'
-mcp__plugin_goodvibes_goodvibes-tools__get_test_coverage '{}'
+# Check schemas first
+mcp-cli info plugin_goodvibes_analysis-engine/find_circular_deps
+mcp-cli info plugin_goodvibes_analysis-engine/scan_for_secrets
+mcp-cli info plugin_goodvibes_project-engine/analyze_dependencies
+mcp-cli info plugin_goodvibes_analysis-engine/find_dead_code
+mcp-cli info plugin_goodvibes_project-engine/get_test_coverage
+
+# Then execute
+mcp-cli call plugin_goodvibes_analysis-engine/find_circular_deps '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/scan_for_secrets '{}'
+mcp-cli call plugin_goodvibes_project-engine/analyze_dependencies '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/find_dead_code '{}'
+mcp-cli call plugin_goodvibes_project-engine/get_test_coverage '{}'
 ```
 
 ### Before Every Edit
 
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__scan_patterns '{}'
-mcp__plugin_goodvibes_goodvibes-tools__find_tests_for_file '{"file":"..."}'
-mcp__plugin_goodvibes_goodvibes-tools__validate_edits_preview '{}'
+# Check schemas
+mcp-cli info plugin_goodvibes_analysis-engine/scan_patterns
+mcp-cli info plugin_goodvibes_project-engine/find_tests_for_file
+mcp-cli info plugin_goodvibes_analysis-engine/validate_edits_preview
+
+# Execute
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
+mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"path/to/file.ts"}'
+mcp-cli call plugin_goodvibes_analysis-engine/validate_edits_preview '{}'
 ```
 
 ### After Every Edit
 
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__check_types '{}'
-mcp__plugin_goodvibes_goodvibes-tools__get_diagnostics '{"file":"..."}'
+# Check schema
+mcp-cli info plugin_goodvibes_project-engine/project_issues
+
+# Execute
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 ```
 
-**THE LAW: If a goodvibes tool can do it, USE THE TOOL. No exceptions.**
+**THE LAW: If a goodvibes MCP tool can do it, USE THE TOOL. No exceptions.**
+
+---
+
+## Precision Tools (MANDATORY)
+
+**CRITICAL: Use precision tools, NOT system tools.**
+
+| Instead Of | Use | Why |
+|------------|-----|-----|
+| `Read` | `precision_read` | Extract modes, line ranges, outline/symbols |
+| `Grep` | `precision_grep` | Output modes, batch queries, context control |
+| `Glob` | `precision_glob` | Output modes, filters, preview |
+| `Edit` | `precision_edit` | Atomic transactions, validation, hints |
+| `Write` | `precision_write` | Atomic, templates, validation |
+| `Bash` | `precision_exec` | Batch commands, expectations, output control |
+
+### Precision Tool Patterns
+
+```yaml
+# Find files with pattern (minimal output)
+precision_grep:
+  queries:
+    - pattern: "TODO|FIXME|HACK"
+      glob: "src/**/*.ts"
+  output:
+    mode: files_only
+
+# Read file structure without content
+precision_read:
+  files: ["src/index.ts", "src/app.ts"]
+  extract: outline
+  output:
+    mode: minimal
+
+# Batch edit multiple files atomically
+precision_edit:
+  edits:
+    - file: "src/api.ts"
+      find: "const API_URL = 'http://localhost'"
+      replace: "const API_URL = process.env.API_URL"
+    - file: "src/config.ts"
+      find: "debug: true"
+      replace: "debug: process.env.NODE_ENV !== 'production'"
+  transaction:
+    mode: atomic
+    rollback_on_fail: true
+  output:
+    mode: minimal
+
+# Execute commands with expectations
+precision_exec:
+  commands:
+    - cmd: "npm run typecheck"
+      expect:
+        exit_code: 0
+    - cmd: "npm run lint"
+      expect:
+        exit_code: 0
+  output:
+    mode: minimal
+```
+
+---
+
+## Discovery -> Batch Workflow
+
+**CRITICAL: Always discover before batching.**
+
+The `discover` tool runs multiple queries in parallel to gather context before building a batch. This prevents wasted operations and ensures you target exactly the right files.
+
+### Discovery Tool Usage
+
+```yaml
+# Run parallel discovery queries
+discover:
+  queries:
+    - id: find_components
+      type: glob
+      patterns: ["src/components/**/*.tsx"]
+    - id: find_api_routes
+      type: glob
+      patterns: ["src/api/**/*.ts", "src/app/api/**/*.ts"]
+    - id: find_issues
+      type: grep
+      pattern: "TODO|FIXME|HACK"
+      glob: "src/**/*.{ts,tsx}"
+    - id: find_hooks
+      type: symbols
+      query: "use"
+      kinds: ["function"]
+  output_mode: files_only  # count_only | files_only | locations
+```
+
+### Workflow Pattern
+
+1. **Discover** - Run queries to understand scope
+   - Use `count_only` first to gauge magnitude
+   - Then `files_only` to get target list
+
+2. **Plan** - Build batch operations using discovery results
+   - Reference discovered files in batch operations
+   - Scope work to exactly what was found
+
+3. **Execute** - Run batch with full context
+
+### Example: Feature Implementation
+
+```yaml
+# Step 1: Discover current state
+discover:
+  queries:
+    - id: existing_files
+      type: glob
+      patterns: ["src/features/auth/**/*.ts"]
+    - id: existing_patterns
+      type: grep
+      pattern: "export (function|const|class)"
+      glob: "src/features/**/*.ts"
+  output_mode: files_only
+
+# Step 2: Use results to build targeted batch
+batch:
+  id: implement-feature
+  operations:
+    read:
+      - id: analyze
+        type: files
+        targets: "{{existing_files.files}}"  # From discovery
+        extract: outline
+```
+
+**Benefits:**
+- Prevents blind operations on wrong files
+- Ensures consistent patterns across the codebase
+- Reduces token usage by targeting exactly what's needed
+- Enables informed decisions about implementation approach
+
+---
+
+## Mode-Aware Behavior
+
+Your behavior adapts based on the current mode:
+
+### vibecoding Mode
+- **Communicate**: Show progress, explain decisions, report results in detail
+- **Ask**: On ambiguity or risk, ask the user before proceeding
+- **Checkpoint**: Create checkpoints per batch
+- **Output**: Standard verbosity, show diffs
+
+### justvibes Mode
+- **Silent**: Minimal communication, log to `.goodvibes/logs/activity.md`
+- **Autonomous**: Make best-guess decisions, proceed with checkpoints on risk
+- **Auto-chain**: Continue to next logical batch automatically
+- **Output**: Minimal verbosity, no diffs
 
 ---
 
@@ -78,7 +257,7 @@ mcp__plugin_goodvibes_goodvibes-tools__get_diagnostics '{"file":"..."}'
 │  Phase 1: Review      │  Run MCP tools, analyze all code   │
 │  Phase 2: Report      │  Generate codebase-review-report.md │
 │  Phase 3: Plan        │  Create remediation-plan.md        │
-│  Phase 4: Execute     │  Parallel agents (max 6)           │
+│  Phase 4: Execute     │  WORK-REVIEW-FIX-CHECK (max 6)     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -90,20 +269,18 @@ mcp__plugin_goodvibes_goodvibes-tools__get_diagnostics '{"file":"..."}'
 
 | Category | Primary Tools | Fallback |
 |----------|---------------|----------|
-| **Quality** | `find_dead_code`, `scan_patterns`, `identify_tech_debt` | grep for patterns |
-| **Architecture** | `find_circular_deps`, `get_call_hierarchy`, `get_api_surface` | manual analysis |
+| **Quality** | `find_dead_code`, `scan_patterns` | grep for patterns |
+| **Architecture** | `find_circular_deps`, `get_api_surface` | manual analysis |
 | **Security** | `scan_for_secrets`, `check_permissions` | grep for patterns |
-| **Performance** | `get_prisma_operations`, `profile_function`, `analyze_bundle` | none |
-| **Documentation** | `explain_codebase`, `get_document_symbols` | file scan |
+| **Performance** | `get_prisma_operations`, `analyze_bundle` | none |
+| **Documentation** | `explain_codebase` | file scan |
 | **Testing** | `get_test_coverage`, `find_tests_for_file`, `suggest_test_cases` | jest --coverage |
-| **Config** | `get_env_config`, `validate_env_complete`, `read_config` | env file scan |
+| **Config** | `read_config`, `env_audit` | env file scan |
 | **Dependencies** | `analyze_dependencies` | npm audit |
-| **Errors** | `get_diagnostics`, `parse_error_stack`, `explain_type_error` | tsc output |
+| **Errors** | `parse_error_stack`, `explain_type_error` | tsc output |
 | **Style** | `scan_patterns`, `get_conventions` | eslint output |
 
 ### Review Checklist
-
-See `references/review-checklist.md` for complete 200+ item checklist.
 
 **Minimum per category:**
 - 5 specific file:line findings OR explicit "no issues found"
@@ -207,7 +384,7 @@ Generate `remediation-plan.md`:
 
 **Generated**: {timestamp}
 **Total Tasks**: {N}
-**Execution Strategy**: Parallel goodvibes agents (max 6 concurrent)
+**Execution Strategy**: WORK-REVIEW-FIX-CHECK with parallel goodvibes agents (max 6 concurrent)
 
 ## Execution Rules
 
@@ -218,6 +395,7 @@ Generate `remediation-plan.md`:
 | Context model | Fresh per task (no accumulation) |
 | Tool priority | MCP tools > bash |
 | Monitoring | Self-report via SubagentStop hook |
+| Workflow | WORK → REVIEW → PASS/FAIL → (FIX → CHECK) |
 
 ## Task Definitions
 
@@ -233,9 +411,9 @@ Generate `remediation-plan.md`:
 | **MCP Tools** | `tool1`, `tool2` |
 | **Estimated Duration** | Xm |
 
-**Agent Instructions:**
+**Context from Report:**
 ```
-{specific instructions for this task}
+{relevant finding details}
 ```
 
 ---
@@ -255,88 +433,112 @@ Generate `remediation-plan.md`:
 
 ---
 
-## Phase 4: Parallel Execution
+## Phase 4: Parallel Agent Execution
 
-### Agent Spawn Protocol
+### WORK-REVIEW-FIX-CHECK Workflow
 
-```python
-# Pseudocode for orchestration
-MAX_AGENTS = 6
-active_agents = {}
-task_queue = load_tasks("remediation-plan.md")
+```
+For each remediation task:
 
-while task_queue or active_agents:
-    # Spawn new agents up to limit
-    while len(active_agents) < MAX_AGENTS and task_queue:
-        task = task_queue.pop(0)
-        
-        agent_prompt = generate_agent_prompt(task)
-        
-        # Use Task tool to spawn background agent
-        agent_id = Task(
-            description=f"REMEDIATION: {task.id} - {task.description}",
-            prompt=agent_prompt,
-            background=True  # Critical: must be background
-        )
-        
-        active_agents[task.id] = {
-            "agent_id": agent_id,
-            "started": now(),
-            "task": task
-        }
-        
-        log_task_start(task)
-    
-    # SubagentStop hook handles completion notifications
-    # No polling required - hook updates remediation-log.md
+  WORK Agent ─────────────────────> REVIEW Agent
+  (goodvibes:engineer)              (goodvibes:reviewer)
+       │                                  │
+       │                                  ├─> PASS ─> Commit ─> Update Log ─> Next Task
+       │                                  │
+       │                                  └─> FAIL ─> FIX Agent ─> CHECK Agent
+                                                         │              │
+                                                         │              ├─> PASS ─> Commit
+                                                         │              │
+                                                         └──────────────┴─> FAIL (loop)
 ```
 
-### Agent Task Template
+### Agent Role Mapping
+
+| Phase | Agent | Purpose |
+|-------|-------|---------|
+| WORK | `goodvibes:engineer` | Implements remediation task |
+| REVIEW | `goodvibes:reviewer` | Verifies work quality (100% required) |
+| FIX | `goodvibes:engineer` | Addresses ALL review issues |
+| CHECK | `goodvibes:reviewer` | Re-verifies fixes |
+
+### Waiting for Agents (CRITICAL)
+
+**NEVER use these to check agent status:**
+- `tail` command on transcript files
+- `TaskOutput` tool
+- Any form of polling
+
+**INSTEAD, the orchestrator:**
+1. Spawns agent with `run_in_background: true`
+2. Stops taking actions (turn ends)
+3. Receives SubagentStop hook notification when agent completes
+4. Hook message appears in context with status
+
+### Concurrency Rules
+
+| Rule | Value |
+|------|-------|
+| Max concurrent agents | 6 |
+| Agents per task | 1 (one agent works on a task at a time) |
+| Completion requirement | 100% (not 99.9%) |
+
+---
+
+### WORK Agent Prompt Template
 
 ```markdown
-# Goodvibes Remediation Agent
+# Remediation Task: {TASK_ID}
 
 ## MCP Tool Checklist (MANDATORY)
 
+**CRITICAL PREREQUISITE:** You MUST call `mcp-cli info <server>/<tool>` BEFORE ANY `mcp-cli call <server>/<tool>`.
+
 Before ANY edit:
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__scan_patterns '{}'
-mcp__plugin_goodvibes_goodvibes-tools__find_tests_for_file '{"file":"{TARGET}"}'
-mcp__plugin_goodvibes_goodvibes-tools__validate_edits_preview '{}'
+# Check schemas first
+mcp-cli info plugin_goodvibes_analysis-engine/scan_patterns
+mcp-cli info plugin_goodvibes_project-engine/find_tests_for_file
+
+# Then execute
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
+mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"{TARGET_FILE}"}'
 ```
 
 After EVERY edit:
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__check_types '{}'
-mcp__plugin_goodvibes_goodvibes-tools__get_diagnostics '{"file":"{EDITED}"}'
-mcp__plugin_goodvibes_goodvibes-tools__run_smoke_test '{}'
+# Check schema first
+mcp-cli info plugin_goodvibes_project-engine/project_issues
+
+# Then execute
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 ```
 
 ## Assignment
 
 | Field | Value |
 |-------|-------|
-| **Task ID** | {TASK_ID} |
-| **Severity** | {SEVERITY} |
-| **Description** | {DESCRIPTION} |
-| **Target Files** | {FILE_LIST} |
+| Task ID | {TASK_ID} |
+| Severity | {SEVERITY} |
+| Description | {DESCRIPTION} |
+| Files | {FILE_LIST} |
 
 ## Context from Report
 
-{RELEVANT_FINDING_DETAILS}
+{FINDING_DETAILS}
 
 ## Instructions
 
 1. Complete ONLY this assigned task
 2. Use goodvibes MCP tools BEFORE bash
-3. Run validation tools after every edit  
-4. If edit causes new errors, fix them before completing
-5. Report completion with status
+3. Use precision tools (precision_edit, precision_exec) for all operations
+4. Run validation tools after every edit
+5. If edit causes new errors, fix them before completing
 
 ## Tool Priority (MANDATORY)
 
-1. First: Check `mcp__plugin_goodvibes_goodvibes-tools__*`
-2. Only then: Fall back to bash if no MCP tool exists
+1. First: Check `mcp-cli call plugin_goodvibes_*`
+2. Second: Use precision tools (precision_edit, precision_read, etc.)
+3. Only then: Fall back to standard tools if no MCP/precision tool exists
 
 ## Completion Report
 
@@ -345,13 +547,258 @@ When done, output:
 ```json
 {
   "task_id": "{TASK_ID}",
-  "status": "success|failed|partial",
+  "status": "success|failed",
   "files_modified": ["file1.ts", "file2.ts"],
   "tests_passed": true|false,
   "type_check_passed": true|false,
   "notes": "Any relevant context"
 }
 ```
+```
+
+---
+
+### REVIEW Agent Prompt Template
+
+```markdown
+# Review Task: {TASK_ID}
+
+## MCP Tool Checklist (MANDATORY)
+
+**CRITICAL PREREQUISITE:** You MUST call `mcp-cli info <server>/<tool>` BEFORE ANY `mcp-cli call <server>/<tool>`.
+
+```bash
+# Check schemas first
+mcp-cli info plugin_goodvibes_project-engine/project_issues
+mcp-cli info plugin_goodvibes_analysis-engine/scan_patterns
+mcp-cli info plugin_goodvibes_project-engine/get_test_coverage
+
+# Then execute
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
+mcp-cli call plugin_goodvibes_project-engine/get_test_coverage '{}'
+```
+
+## Assignment
+
+| Field | Value |
+|-------|-------|
+| Task ID | {TASK_ID} |
+| Work Agent | {WORK_AGENT_ID} |
+| Files Modified | {FILE_LIST} |
+
+## Context from WORK Agent
+
+{WORK_COMPLETION_REPORT}
+
+## Review Criteria
+
+| Criterion | Weight | Description |
+|-----------|--------|-------------|
+| Correctness | 30% | Does it solve the problem correctly? |
+| Completeness | 25% | Are all aspects addressed? |
+| Quality | 20% | Is the code clean, maintainable? |
+| Safety | 15% | No new errors, security issues? |
+| Tests | 10% | Tests pass, coverage maintained? |
+
+## Review Process
+
+1. Read all modified files
+2. Run MCP validation tools
+3. Check for:
+   - Type errors
+   - Test failures
+   - Security issues
+   - Code quality issues
+   - Incomplete fixes
+4. Calculate score based on criteria weights
+5. Provide verdict
+
+## Review Output
+
+```json
+{
+  "task_id": "{TASK_ID}",
+  "verdict": "PASS|FAIL",
+  "score": 8.5,
+  "issues": [
+    {
+      "severity": "critical|major|minor",
+      "file": "path/to/file.ts",
+      "line": 47,
+      "issue": "Description of the issue",
+      "fix_guidance": "Specific guidance on how to fix"
+    }
+  ],
+  "recommendation": "Details for FIX agent if FAIL"
+}
+```
+
+## Verdict Rules
+
+- **PASS**: Score >= 8.0 AND no critical issues AND all criteria pass
+- **FAIL**: Score < 8.0 OR any critical issue OR any criterion fails
+
+**CRITICAL: Be honest. Better to catch issues now than in production.**
+```
+
+---
+
+### FIX Agent Prompt Template
+
+```markdown
+# Fix Task: {TASK_ID} (Iteration {N})
+
+## MCP Tool Checklist (MANDATORY)
+
+**CRITICAL PREREQUISITE:** You MUST call `mcp-cli info <server>/<tool>` BEFORE ANY `mcp-cli call <server>/<tool>`.
+
+Before ANY edit:
+```bash
+# Check schemas first
+mcp-cli info plugin_goodvibes_analysis-engine/scan_patterns
+mcp-cli info plugin_goodvibes_project-engine/find_tests_for_file
+
+# Then execute
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
+mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"{TARGET_FILE}"}'
+```
+
+After EVERY edit:
+```bash
+# Check schema first
+mcp-cli info plugin_goodvibes_project-engine/project_issues
+
+# Then execute
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
+```
+
+## Review Feedback
+
+{ISSUES_FROM_REVIEW}
+
+## Instructions
+
+1. Address EVERY issue from the review - no skipping
+2. Follow the `fix_guidance` provided for each issue
+3. Use precision tools for all operations
+4. Run validation after each fix
+5. If you cannot fix an issue, document WHY and mark as blocked
+
+## Completion Report
+
+```json
+{
+  "task_id": "{TASK_ID}",
+  "iteration": {N},
+  "status": "success|blocked",
+  "issues_addressed": N,
+  "issues_remaining": N,
+  "blocked_issues": [
+    {
+      "issue": "Description",
+      "reason": "Why it cannot be fixed"
+    }
+  ],
+  "notes": "Any relevant context"
+}
+```
+```
+
+---
+
+### CHECK Agent Prompt Template
+
+```markdown
+# Check Task: {TASK_ID} (Verification Round {N})
+
+## MCP Tool Checklist (MANDATORY)
+
+**CRITICAL PREREQUISITE:** You MUST call `mcp-cli info <server>/<tool>` BEFORE ANY `mcp-cli call <server>/<tool>`.
+
+```bash
+# Check schemas first
+mcp-cli info plugin_goodvibes_project-engine/project_issues
+mcp-cli info plugin_goodvibes_analysis-engine/scan_patterns
+
+# Then execute
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
+```
+
+## Assignment
+
+| Field | Value |
+|-------|-------|
+| Task ID | {TASK_ID} |
+| FIX Agent | {FIX_AGENT_ID} |
+| Iteration | {N} |
+
+## Previous Issues
+
+{ISSUES_TO_VERIFY}
+
+## Context from FIX Agent
+
+{FIX_COMPLETION_REPORT}
+
+## Verification Process
+
+1. Read all modified files
+2. Run MCP validation tools
+3. Verify each previous issue is resolved
+4. Check for new issues introduced by fixes
+5. Provide verdict
+
+## Verdict Output
+
+```json
+{
+  "task_id": "{TASK_ID}",
+  "iteration": {N},
+  "verdict": "PASS|FAIL",
+  "resolved_issues": N,
+  "unresolved_issues": [
+    {
+      "issue": "Description",
+      "status": "still_present|new_issue"
+    }
+  ],
+  "recommendation": "Next action if FAIL"
+}
+```
+
+## Verdict Rules
+
+- **PASS**: ALL previous issues resolved AND no new critical issues
+- **FAIL**: ANY issue unresolved OR new critical issues found
+
+**If FAIL after 3 iterations, escalate to human review.**
+```
+
+---
+
+### Commit Protocol
+
+After REVIEW or CHECK verdict is PASS, create commit:
+
+```
+fix({CATEGORY}): {TASK_ID} - {SHORT_DESCRIPTION}
+
+{DETAILED_DESCRIPTION}
+
+## Changes
+- {FILE_1}: {WHAT_CHANGED}
+- {FILE_2}: {WHAT_CHANGED}
+
+## Review
+- Reviewed by: REVIEW agent
+- Score: {SCORE}/10
+- Iterations: {FIX_ITERATIONS}
+
+Task-ID: {TASK_ID}
+Severity: {SEVERITY}
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ### Completion Logging
@@ -363,21 +810,22 @@ Maintain `remediation-log.md`:
 
 ## Active Agents
 
-| Task ID | Description | Agent | Started | Elapsed |
-|---------|-------------|-------|---------|---------|
-| TASK-002 | Remove secrets | agent-abc | 10:05:00 | 5m |
+| Task ID | Description | Agent | Phase | Started | Elapsed |
+|---------|-------------|-------|-------|---------|---------|
+| TASK-002 | Remove secrets | agent-abc | WORK | 10:05:00 | 5m |
+| TASK-003 | Fix auth flow | agent-def | REVIEW | 10:08:00 | 2m |
 
 ## Completed Tasks
 
-| Task ID | Description | Status | Duration | Changes |
-|---------|-------------|--------|----------|---------|
-| TASK-001 | Fix SQL injection | ✅ success | 15m32s | `api/users.ts` |
+| Task ID | Description | Status | Duration | Iterations | Changes |
+|---------|-------------|--------|----------|------------|---------|
+| TASK-001 | Fix SQL injection | ✅ PASS | 15m32s | 1 | `api/users.ts` |
 
 ## Failed Tasks
 
-| Task ID | Description | Status | Reason | Retry? |
-|---------|-------------|--------|--------|--------|
-| TASK-005 | Fix auth flow | ❌ failed | Type errors | Yes |
+| Task ID | Description | Status | Iterations | Reason | Retry? |
+|---------|-------------|--------|------------|--------|--------|
+| TASK-005 | Fix type errors | ❌ FAIL | 3 | Blocked by external dependency | No |
 
 ## Summary
 
@@ -391,36 +839,13 @@ Maintain `remediation-log.md`:
 
 ---
 
-## Tool Priority Enforcement
+## Output Artifacts
 
-See `references/tool-priority.md` for complete reference.
-
-### Quick Reference
-
-| Need | Use This Tool | NOT This |
-|------|---------------|----------|
-| Type check | `check_types` | `tsc` directly |
-| Find usages | `find_references` | grep |
-| Rename symbol | `rename_symbol` | find-replace |
-| Check diagnostics | `get_diagnostics` | compile errors |
-| Dead code | `find_dead_code` | manual search |
-| Circular deps | `find_circular_deps` | madge/deptree |
-| Secrets scan | `scan_for_secrets` | grep for keys |
-| Test coverage | `get_test_coverage` | jest --coverage |
-| Bundle analysis | `analyze_bundle` | webpack-bundle-analyzer |
-
----
-
-## Constraints
-
-| Constraint | Value | Rationale |
-|------------|-------|-----------|
-| Max concurrent agents | 6 | Resource management |
-| Agent type | goodvibes background | Telemetry via hooks |
-| Tasks per agent | 1 | Fresh context per task |
-| Context inheritance | None | Prevent cross-contamination |
-| Monitoring method | Self-report | SubagentStop hook handles |
-| Tool priority | MCP > bash | Consistency and telemetry |
+| File | Purpose |
+|------|---------|
+| `codebase-review-report.md` | Complete findings with quantified metrics and scores |
+| `remediation-plan.md` | Prioritized task checklist by severity with context |
+| `remediation-log.md` | Real-time execution tracking with WORK-REVIEW-FIX-CHECK status |
 
 ---
 
@@ -437,10 +862,14 @@ After review/remediation, update `.goodvibes/memory/`:
 
 ---
 
-## Output Artifacts
+## Constraints
 
-| File | Purpose |
-|------|---------|
-| `codebase-review-report.md` | Complete findings with quantified metrics |
-| `remediation-plan.md` | Prioritized task checklist by severity |
-| `remediation-log.md` | Real-time execution tracking |
+| Constraint | Value | Rationale |
+|------------|-------|-----------|
+| Max concurrent agents | 6 | Resource management |
+| Agent type | goodvibes background | Telemetry via hooks |
+| Tasks per agent | 1 | Fresh context per task |
+| Context inheritance | None | Prevent cross-contamination |
+| Monitoring method | Self-report | SubagentStop hook handles |
+| Tool priority | MCP > precision > bash | Consistency and telemetry |
+| Review requirement | 100% | Ensure quality before commit |
