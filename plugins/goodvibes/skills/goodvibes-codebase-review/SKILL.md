@@ -801,6 +801,46 @@ Severity: {SEVERITY}
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
+### Completion Cleanup
+
+After ALL remediation tasks have passed review and been committed, archive the output files:
+
+**Archive Location:** `.goodvibes/completed/`
+
+**Archive Commands:**
+```bash
+# Create archive directory if it doesn't exist
+mkdir -p .goodvibes/completed
+
+# Generate timestamp
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
+# Move and rename files
+mv codebase-review-report.md .goodvibes/completed/code-review-${TIMESTAMP}.md
+mv remediation-plan.md .goodvibes/completed/remediation-plan-${TIMESTAMP}.md
+mv remediation-log.md .goodvibes/completed/remediation-log-${TIMESTAMP}.md
+```
+
+**Archive Checklist:**
+- [ ] All remediation tasks show status: completed in remediation-log.md
+- [ ] All commits pushed (if applicable)
+- [ ] Memory files updated (.goodvibes/memory/)
+- [ ] Archive directory created
+- [ ] Files moved with timestamp suffix
+
+**File Naming Convention:**
+| Original | Archived |
+|----------|----------|
+| `codebase-review-report.md` | `code-review-{YYYYMMDD-HHMMSS}.md` |
+| `remediation-plan.md` | `remediation-plan-{YYYYMMDD-HHMMSS}.md` |
+| `remediation-log.md` | `remediation-log-{YYYYMMDD-HHMMSS}.md` |
+
+**Why Archive:**
+- Keeps project root clean
+- Preserves historical review data
+- Enables tracking of codebase health over time
+- Prevents confusion with future reviews
+
 ### Completion Logging
 
 Maintain `remediation-log.md`:
@@ -846,6 +886,8 @@ Maintain `remediation-log.md`:
 | `codebase-review-report.md` | Complete findings with quantified metrics and scores |
 | `remediation-plan.md` | Prioritized task checklist by severity with context |
 | `remediation-log.md` | Real-time execution tracking with WORK-REVIEW-FIX-CHECK status |
+
+**Note:** After all remediation tasks are completed, these files are archived to `.goodvibes/completed/` with timestamp suffixes. See "Completion Cleanup" section for details.
 
 ---
 
