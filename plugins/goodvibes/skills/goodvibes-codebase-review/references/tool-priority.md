@@ -88,6 +88,9 @@ mcp-cli call plugin_goodvibes_{engine}/{tool_name} '{"param": "value"}'
 | `batch-engine/batch` | Execute multi-file operations | `{"id": "...", "operations": {...}}` |
 | `batch-engine/batch_status` | Get batch status | `{"batch_id": "..."}` |
 | `batch-engine/batch_list` | List all batches | `{}` |
+| `batch-engine/batch_recover` | Recovery operations for failed batches | `{"batch_id": "..."}` |
+| `batch-engine/batch_checkpoints` | Checkpoint management | `{"batch_id": "..."}` |
+| `batch-engine/batch_state` | Get current batch state | `{"batch_id": "..."}` |
 
 ### Discovery & Search (Registry)
 
@@ -207,6 +210,7 @@ mcp-cli call plugin_goodvibes_{engine}/{tool_name} '{"param": "value"}'
 | `project-engine/generate_types` | Type generation | `{"source": "path"}` |
 | `project-engine/generate_fixture` | Test fixture gen | `{"type": "..."}` |
 | `project-engine/sync_api_types` | API type sync | `{}` |
+| `project-engine/create_pull_request` | Create GitHub PR | `{"title": "...", "body": "...", "base": "main"}` |
 
 ---
 
