@@ -22,13 +22,13 @@ Comprehensive codebase analysis with automated parallel remediation using goodvi
 
 ```bash
 # 1. Understand the project
-mcp__plugin_goodvibes_goodvibes-tools__detect_stack '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/detect_stack '{}'
 
 # 2. Find relevant skills for review
-mcp__plugin_goodvibes_goodvibes-tools__recommend_skills '{"task":"codebase review and quality audit"}'
+mcp-cli call plugin_goodvibes_registry-engine/recommend_skills '{"task":"codebase review and quality audit"}'
 
 # 3. Identify existing issues
-mcp__plugin_goodvibes_goodvibes-tools__project_issues '{}'
+mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 ```
 
 **THE LAW: If a goodvibes tool can do it, USE THE TOOL. No bash fallbacks without checking first.**
@@ -40,26 +40,20 @@ mcp__plugin_goodvibes_goodvibes-tools__project_issues '{}'
 ### Pre-Review Tool Calls
 
 ```bash
-# Type checking
-mcp__plugin_goodvibes_goodvibes-tools__check_types '{}'
-
 # Find circular dependencies
-mcp__plugin_goodvibes_goodvibes-tools__find_circular_deps '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/find_circular_deps '{}'
 
 # Scan for secrets
-mcp__plugin_goodvibes_goodvibes-tools__scan_for_secrets '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/scan_for_secrets '{}'
 
 # Analyze dependencies
-mcp__plugin_goodvibes_goodvibes-tools__analyze_dependencies '{}'
-
-# Identify tech debt
-mcp__plugin_goodvibes_goodvibes-tools__identify_tech_debt '{}'
+mcp-cli call plugin_goodvibes_project-engine/analyze_dependencies '{}'
 
 # Find dead code
-mcp__plugin_goodvibes_goodvibes-tools__find_dead_code '{}'
+mcp-cli call plugin_goodvibes_analysis-engine/find_dead_code '{}'
 
 # Get test coverage
-mcp__plugin_goodvibes_goodvibes-tools__get_test_coverage '{}'
+mcp-cli call plugin_goodvibes_project-engine/get_test_coverage '{}'
 ```
 
 ### Review Categories
@@ -68,16 +62,16 @@ Analyze ALL code for these 10 dimensions (no area skipped):
 
 | Category | MCP Tools to Use | Check For |
 |----------|------------------|-----------|
-| **Quality** | `find_dead_code`, `scan_patterns` | Anti-patterns, dead code, duplication, cognitive complexity |
-| **Architecture** | `find_circular_deps`, `get_call_hierarchy` | Coupling, cohesion, module boundaries, dependency violations |
-| **Security** | `scan_for_secrets`, `check_permissions` | Hardcoded secrets, injection vectors, auth gaps, input validation |
-| **Performance** | `get_prisma_operations`, `profile_function` | N+1 queries, memory leaks, algorithm efficiency |
-| **Documentation** | `explain_codebase`, `get_document_symbols` | Missing docs, stale comments, API coverage |
-| **Testing** | `get_test_coverage`, `find_tests_for_file` | Coverage gaps, missing edge cases, fragile tests |
-| **Config** | `get_env_config`, `validate_env_complete` | Hardcoded values, env drift, missing vars |
-| **Dependencies** | `analyze_dependencies` | Outdated, unused, security vulnerabilities |
-| **Errors** | `get_diagnostics`, `parse_error_stack` | Unhandled exceptions, empty catches, logging gaps |
-| **Style** | `scan_patterns`, `get_conventions` | Naming violations, formatting, organization |
+| **Quality** | `plugin_goodvibes_analysis-engine/find_dead_code`, `plugin_goodvibes_analysis-engine/scan_patterns` | Anti-patterns, dead code, duplication, cognitive complexity |
+| **Architecture** | `plugin_goodvibes_analysis-engine/find_circular_deps` | Coupling, cohesion, module boundaries, dependency violations |
+| **Security** | `plugin_goodvibes_analysis-engine/scan_for_secrets`, `plugin_goodvibes_analysis-engine/check_permissions` | Hardcoded secrets, injection vectors, auth gaps, input validation |
+| **Performance** | `plugin_goodvibes_project-engine/get_prisma_operations` | N+1 queries, memory leaks, algorithm efficiency |
+| **Documentation** | `plugin_goodvibes_project-engine/explain_codebase` | Missing docs, stale comments, API coverage |
+| **Testing** | `plugin_goodvibes_project-engine/get_test_coverage`, `plugin_goodvibes_project-engine/find_tests_for_file` | Coverage gaps, missing edge cases, fragile tests |
+| **Config** | `plugin_goodvibes_analysis-engine/env_audit` | Hardcoded values, env drift, missing vars |
+| **Dependencies** | `plugin_goodvibes_project-engine/analyze_dependencies` | Outdated, unused, security vulnerabilities |
+| **Errors** | `plugin_goodvibes_analysis-engine/parse_error_stack` | Unhandled exceptions, empty catches, logging gaps |
+| **Style** | `plugin_goodvibes_analysis-engine/scan_patterns`, `plugin_goodvibes_analysis-engine/get_conventions` | Naming violations, formatting, organization |
 
 ---
 
@@ -177,50 +171,71 @@ Generate `remediation-plan.md`:
 
 ---
 
-## Phase 4: Parallel Execution
+## Phase 4: Parallel Agent Execution
+
+### WORK-REVIEW-FIX-CHECK Workflow
+
+For each remediation task:
+
+1. **WORK**: Spawn `goodvibes:engineer` agent (background) to implement fix
+2. **REVIEW**: Spawn `goodvibes:reviewer` agent (background) to verify
+3. **If PASS**: Commit changes, update remediation-log.md, proceed to next task
+4. **If FAIL**: Enter FIX-CHECK loop
+   - **FIX**: Spawn `goodvibes:engineer` agent to address issues
+   - **CHECK**: Spawn `goodvibes:reviewer` agent to re-verify
+   - Repeat until PASS
+
+### Agent Constraints
+
+| Rule | Value |
+|------|-------|
+| Max concurrent agents | 6 |
+| Completion requirement | 100% (no partial) |
+| Polling | PROHIBITED (no tail, no TaskOutput) |
+| Waiting | SubagentStop hook notifies on completion |
 
 ### Spawn Protocol
 
 ```
 WHILE tasks_remaining:
     active = count_active_goodvibes_agents()
-    
+
     IF active < 6:
         task = get_next_unclaimed_task()
-        
-        # Spawn goodvibes background agent with Task tool
+
+        # WORK: Spawn engineer agent to implement fix
         Task(
-            description="REMEDIATION: {task.id} - {task.description}",
-            prompt=AGENT_PROMPT.format(task),
+            description="WORK: {task.id} - {task.description}",
+            agent="goodvibes:engineer",
+            prompt=ENGINEER_PROMPT.format(task),
             background=true
         )
-        
+
         mark_in_progress(task)
         log_start(task)
-    
+
     # SubagentStop hook handles completion notification
     # No polling - agents self-report
 ```
 
-### Agent Task Prompt
+### Engineer Agent Prompt
 
-Each spawned agent receives:
+Each spawned engineer agent receives:
 
 ```markdown
-# Goodvibes Remediation Agent
+# Goodvibes Engineer: Remediation Task
 
 ## MCP Tool Checklist (MANDATORY)
 
 Before ANY edit:
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__scan_patterns '{}'
-mcp__plugin_goodvibes_goodvibes-tools__find_tests_for_file '{"file":"TARGET_FILE"}'
+mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
+mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"TARGET_FILE"}'
 ```
 
 After EVERY edit:
 ```bash
-mcp__plugin_goodvibes_goodvibes-tools__check_types '{}'
-mcp__plugin_goodvibes_goodvibes-tools__get_diagnostics '{"file":"EDITED_FILE"}'
+mcp-cli call plugin_goodvibes_analysis-engine/validate_edits_preview '{"files":["EDITED_FILE"]}'
 ```
 
 ## Assignment
@@ -239,16 +254,15 @@ mcp__plugin_goodvibes_goodvibes-tools__get_diagnostics '{"file":"EDITED_FILE"}'
 ## Instructions
 
 1. Complete ONLY this assigned task
-2. Use goodvibes MCP tools before falling back to bash
+2. Use MCP tools via `mcp-cli call` before falling back to bash
 3. Run validation tools after every edit
 4. Report completion status when done
 5. Do NOT accept additional tasks
-6. Use ONLY goodvibes agents
 
 ## Tool Priority (MANDATORY)
 
 Check in this order:
-1. `mcp__plugin_goodvibes_goodvibes-tools__*` - Use if applicable
+1. `mcp-cli call plugin_goodvibes_*` - Use if applicable
 2. `bash` - Only if no MCP tool exists
 
 ## Completion
@@ -256,9 +270,45 @@ Check in this order:
 When done, output:
 ```
 TASK_COMPLETE: {TASK_ID}
-STATUS: success|failed|partial
+STATUS: success|failed
 CHANGES: [list of files modified]
 NOTES: [any relevant context]
+```
+```
+
+### Reviewer Agent Prompt
+
+Each spawned reviewer agent receives:
+
+```markdown
+# Goodvibes Reviewer: Verify Remediation
+
+## Assignment
+
+**Task ID**: {TASK_ID}
+**Engineer Changes**: {FILES_MODIFIED}
+
+## Instructions
+
+1. Review ONLY the changes for this task
+2. Use MCP tools for validation
+3. Check against original finding
+4. Report PASS or FAIL with specific issues
+
+## MCP Tool Checklist (MANDATORY)
+
+```bash
+mcp-cli call plugin_goodvibes_analysis-engine/validate_implementation '{"files":{FILES_MODIFIED},"requirements":{REQUIREMENTS}}'
+mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"CHANGED_FILE"}'
+```
+
+## Completion
+
+When done, output:
+```
+REVIEW_COMPLETE: {TASK_ID}
+STATUS: PASS|FAIL
+ISSUES: [list of specific problems if FAIL]
 ```
 ```
 
@@ -292,6 +342,7 @@ Maintain `remediation-log.md`:
 | Max concurrent agents | 6 | Prevent resource exhaustion |
 | Agent type | goodvibes background | Proper telemetry via SubagentStart/SubagentStop hooks |
 | Tasks per agent | 1 | Clean context, no accumulated state |
+| Workflow | WORK-REVIEW-FIX-CHECK | Engineer implements, reviewer verifies, loop on failures |
 | Monitoring | None | Agents self-report, SubagentStop hook logs completion |
 | Tool priority | MCP > bash | Leverage goodvibes tooling for consistency |
 
