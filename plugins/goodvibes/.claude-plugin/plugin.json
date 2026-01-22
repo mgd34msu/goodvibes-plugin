@@ -22,7 +22,6 @@
     "./agents/integrator.md"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "lspServers": "./.lsp.json"
 }
