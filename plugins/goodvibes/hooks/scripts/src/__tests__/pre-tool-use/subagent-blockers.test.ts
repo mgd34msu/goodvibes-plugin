@@ -13,8 +13,8 @@ import {
   BLOCKED_NATIVE_TOOLS,
   formatBlockMessage,
   isBlockedNativeTool,
-  handleSubagentToolBlocking,
-  validateSubagentToolUsage,
+  handleNativeToolBlocking,
+  validateToolUsage,
   getBatchProcessingReminder,
 } from '../../pre-tool-use/subagent-blockers.js';
 import { respond, blockTool, debug } from '../../shared/index.js';
@@ -46,35 +46,35 @@ describe('subagent-blockers', () => {
   describe('TOOL_REPLACEMENTS', () => {
     it('should define replacement for Read tool', () => {
       expect(TOOL_REPLACEMENTS.Read).toBeDefined();
-      expect(TOOL_REPLACEMENTS.Read.replacement).toBe('batch_read');
-      expect(TOOL_REPLACEMENTS.Read.usage).toContain('batch_read');
-      expect(TOOL_REPLACEMENTS.Read.capabilities).toContain('offset/limit');
+      expect(TOOL_REPLACEMENTS.Read.replacement).toBe('precision_read');
+      expect(TOOL_REPLACEMENTS.Read.usage).toContain('precision_read');
+      expect(TOOL_REPLACEMENTS.Read.capabilities).toContain('extract modes');
     });
 
     it('should define replacement for Edit tool', () => {
       expect(TOOL_REPLACEMENTS.Edit).toBeDefined();
-      expect(TOOL_REPLACEMENTS.Edit.replacement).toBe('atomic_multi_edit');
-      expect(TOOL_REPLACEMENTS.Edit.usage).toContain('atomic_multi_edit');
-      expect(TOOL_REPLACEMENTS.Edit.capabilities).toContain('atomically');
+      expect(TOOL_REPLACEMENTS.Edit.replacement).toBe('precision_edit');
+      expect(TOOL_REPLACEMENTS.Edit.usage).toContain('precision_edit');
+      expect(TOOL_REPLACEMENTS.Edit.capabilities).toContain('atomic');
     });
 
     it('should define replacement for Write tool', () => {
       expect(TOOL_REPLACEMENTS.Write).toBeDefined();
-      expect(TOOL_REPLACEMENTS.Write.replacement).toBe('atomic_multi_edit');
-      expect(TOOL_REPLACEMENTS.Write.usage).toContain('create');
+      expect(TOOL_REPLACEMENTS.Write.replacement).toBe('precision_write');
+      expect(TOOL_REPLACEMENTS.Write.usage).toContain('precision_write');
     });
 
     it('should define replacement for Glob tool', () => {
       expect(TOOL_REPLACEMENTS.Glob).toBeDefined();
-      expect(TOOL_REPLACEMENTS.Glob.replacement).toBe('smart_glob');
-      expect(TOOL_REPLACEMENTS.Glob.usage).toContain('smart_glob');
-      expect(TOOL_REPLACEMENTS.Glob.capabilities).toContain('node_modules');
+      expect(TOOL_REPLACEMENTS.Glob.replacement).toBe('precision_glob');
+      expect(TOOL_REPLACEMENTS.Glob.usage).toContain('precision_glob');
+      expect(TOOL_REPLACEMENTS.Glob.capabilities).toContain('patterns');
     });
 
     it('should define replacement for Grep tool', () => {
       expect(TOOL_REPLACEMENTS.Grep).toBeDefined();
-      expect(TOOL_REPLACEMENTS.Grep.replacement).toBe('grep_with_content');
-      expect(TOOL_REPLACEMENTS.Grep.usage).toContain('grep_with_content');
+      expect(TOOL_REPLACEMENTS.Grep.replacement).toBe('precision_grep');
+      expect(TOOL_REPLACEMENTS.Grep.usage).toContain('precision_grep');
       expect(TOOL_REPLACEMENTS.Grep.capabilities).toContain('regex');
     });
   });
@@ -98,23 +98,25 @@ describe('subagent-blockers', () => {
       const message = formatBlockMessage('Read', TOOL_REPLACEMENTS.Read);
 
       expect(message).toContain('BLOCKED');
-      expect(message).toContain("'batch_read'");
+      expect(message).toContain('precision_read');
       expect(message).toContain("'Read'");
-      expect(message).toContain('mcp-cli call');
-      expect(message).toContain('offset/limit');
+      expect(message).toContain('mcp-cli');
+      expect(message).toContain('discover -> batch');
     });
 
     it('should include MCP tool invocation syntax', () => {
       const message = formatBlockMessage('Edit', TOOL_REPLACEMENTS.Edit);
 
-      expect(message).toContain('plugin_goodvibes_goodvibes-tools/atomic_multi_edit');
-      expect(message).toContain('"operation": "replace"');
+      expect(message).toContain('plugin_goodvibes_precision-engine/precision_edit');
+      expect(message).toContain('mcp-cli info');
+      expect(message).toContain('discover');
+      expect(message).toContain('batch');
     });
 
     it('should include capabilities description', () => {
       const message = formatBlockMessage('Glob', TOOL_REPLACEMENTS.Glob);
 
-      expect(message).toContain('node_modules/.git');
+      expect(message).toContain('patterns');
     });
   });
 
@@ -156,8 +158,8 @@ describe('subagent-blockers', () => {
     });
   });
 
-  describe('handleSubagentToolBlocking', () => {
-    it('should return false when is_subagent is false', () => {
+  describe('handleNativeToolBlocking', () => {
+    it('should block Read tool for main agent', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -168,29 +170,20 @@ describe('subagent-blockers', () => {
         is_subagent: false,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
-      expect(result).toBe(false);
-      expect(mockedRespond).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+      expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
+        expect.stringContaining('precision_read')
+      );
+      expect(mockedRespond).toHaveBeenCalledWith(
+        expect.objectContaining({ continue: false }),
+        true
+      );
     });
 
-    it('should return false when is_subagent is undefined', () => {
-      const input: PreToolUseInput = {
-        session_id: 'test',
-        transcript_path: '/path',
-        cwd: '/test',
-        permission_mode: 'default',
-        hook_event_name: 'PreToolUse',
-        tool_name: 'Read',
-      };
-
-      const result = handleSubagentToolBlocking(input);
-
-      expect(result).toBe(false);
-      expect(mockedRespond).not.toHaveBeenCalled();
-    });
-
-    it('should block Read tool for subagent and return true', () => {
+    it('should block Read tool for subagent', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -202,12 +195,12 @@ describe('subagent-blockers', () => {
         agent_type: 'backend-engineer',
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
         'PreToolUse',
-        expect.stringContaining('batch_read')
+        expect.stringContaining('precision_read')
       );
       expect(mockedRespond).toHaveBeenCalledWith(
         expect.objectContaining({ continue: false }),
@@ -219,7 +212,7 @@ describe('subagent-blockers', () => {
       );
     });
 
-    it('should block Edit tool for subagent', () => {
+    it('should block Edit tool', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -230,16 +223,16 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
         'PreToolUse',
-        expect.stringContaining('atomic_multi_edit')
+        expect.stringContaining('precision_edit')
       );
     });
 
-    it('should block Write tool for subagent', () => {
+    it('should block Write tool', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -250,16 +243,16 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
         'PreToolUse',
-        expect.stringContaining('atomic_multi_edit')
+        expect.stringContaining('precision_write')
       );
     });
 
-    it('should block Glob tool for subagent', () => {
+    it('should block Glob tool', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -270,16 +263,16 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
         'PreToolUse',
-        expect.stringContaining('smart_glob')
+        expect.stringContaining('precision_glob')
       );
     });
 
-    it('should block Grep tool for subagent', () => {
+    it('should block Grep tool', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -290,16 +283,16 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
         'PreToolUse',
-        expect.stringContaining('grep_with_content')
+        expect.stringContaining('precision_grep')
       );
     });
 
-    it('should return false for non-blocked tool even if subagent', () => {
+    it('should return false for non-blocked tool', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -310,13 +303,13 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(false);
       expect(mockedRespond).not.toHaveBeenCalled();
     });
 
-    it('should handle empty tool_name for subagent', () => {
+    it('should handle empty tool_name', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -327,12 +320,12 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(false);
     });
 
-    it('should handle undefined tool_name for subagent', () => {
+    it('should handle undefined tool_name', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -342,14 +335,14 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      const result = handleSubagentToolBlocking(input);
+      const result = handleNativeToolBlocking(input);
 
       expect(result).toBe(false);
     });
   });
 
-  describe('validateSubagentToolUsage', () => {
-    it('should not respond when tool is blocked (response handled by handleSubagentToolBlocking)', async () => {
+  describe('validateToolUsage', () => {
+    it('should not respond when tool is blocked (response handled by handleNativeToolBlocking)', async () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -360,13 +353,13 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      await validateSubagentToolUsage(input);
+      await validateToolUsage(input);
 
-      // The respond is called by handleSubagentToolBlocking, not validateSubagentToolUsage
+      // The respond is called by handleNativeToolBlocking, not validateToolUsage
       expect(mockedRespond).toHaveBeenCalledTimes(1);
     });
 
-    it('should log debug when subagent uses allowed tool', async () => {
+    it('should log debug when allowed tool is used', async () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
@@ -377,27 +370,27 @@ describe('subagent-blockers', () => {
         is_subagent: true,
       };
 
-      await validateSubagentToolUsage(input);
+      await validateToolUsage(input);
 
       expect(mockedDebug).toHaveBeenCalledWith(
         expect.stringContaining("Allowing tool 'Bash'")
       );
     });
 
-    it('should not log for non-subagent context', async () => {
+    it('should log debug for any non-blocked tool', async () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
         cwd: '/test',
         permission_mode: 'default',
         hook_event_name: 'PreToolUse',
-        tool_name: 'Read',
+        tool_name: 'Bash',
         is_subagent: false,
       };
 
-      await validateSubagentToolUsage(input);
+      await validateToolUsage(input);
 
-      expect(mockedDebug).not.toHaveBeenCalledWith(
+      expect(mockedDebug).toHaveBeenCalledWith(
         expect.stringContaining("Allowing tool")
       );
     });
@@ -408,16 +401,19 @@ describe('subagent-blockers', () => {
       const reminder = getBatchProcessingReminder();
 
       expect(reminder).toContain('REMINDER');
-      expect(reminder).toContain('batch_read');
-      expect(reminder).toContain('atomic_multi_edit');
-      expect(reminder).toContain('smart_glob');
-      expect(reminder).toContain('grep_with_content');
-      expect(reminder).toContain('output_mode: "minimal"');
+      expect(reminder).toContain('precision_read');
+      expect(reminder).toContain('precision_edit');
+      expect(reminder).toContain('precision_write');
+      expect(reminder).toContain('precision_glob');
+      expect(reminder).toContain('precision_grep');
+      expect(reminder).toContain('discover');
+      expect(reminder).toContain('batch');
+      expect(reminder).toContain('output.mode: "minimal"');
     });
   });
 
   describe('integration scenarios', () => {
-    it('should handle complete blocking flow for Read in subagent', () => {
+    it('should handle complete blocking flow for Read', () => {
       const input: PreToolUseInput = {
         session_id: 'session-123',
         transcript_path: '/path/to/transcript',
@@ -430,14 +426,14 @@ describe('subagent-blockers', () => {
         agent_type: 'test-engineer',
       };
 
-      const wasBlocked = handleSubagentToolBlocking(input);
+      const wasBlocked = handleNativeToolBlocking(input);
 
       expect(wasBlocked).toBe(true);
 
       // Verify the block message contains proper usage instructions
       expect(mockedBlockTool).toHaveBeenCalledWith(
         'PreToolUse',
-        expect.stringMatching(/batch_read.*output_mode/s)
+        expect.stringMatching(/precision_read.*discover.*batch/s)
       );
 
       // Verify debug was called with proper context
@@ -445,23 +441,23 @@ describe('subagent-blockers', () => {
         expect.any(String),
         expect.objectContaining({
           agent_type: 'test-engineer',
-          replacement: 'batch_read',
+          replacement: 'precision_read',
         })
       );
     });
 
-    it('should allow MCP tools for subagents', () => {
+    it('should allow MCP tools', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
         transcript_path: '/path',
         cwd: '/test',
         permission_mode: 'default',
         hook_event_name: 'PreToolUse',
-        tool_name: 'mcp__plugin_goodvibes_goodvibes-tools__batch_read',
+        tool_name: 'mcp__plugin_goodvibes_precision-engine__precision_read',
         is_subagent: true,
       };
 
-      const wasBlocked = handleSubagentToolBlocking(input);
+      const wasBlocked = handleNativeToolBlocking(input);
 
       expect(wasBlocked).toBe(false);
       expect(mockedRespond).not.toHaveBeenCalled();

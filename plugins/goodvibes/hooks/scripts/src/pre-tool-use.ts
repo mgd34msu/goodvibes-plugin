@@ -2,9 +2,9 @@
 /**
  * Pre Tool Use Hook Entry Point
  *
- * This is a thin entry point that re-exports from the pre-tool-use module.
- * The actual implementation lives in src/pre-tool-use/index.ts
+ * This is a thin entry point that executes the pre-tool-use hook.
+ * The actual implementation lives in src/pre-tool-use/hook.ts
  */
 
-// Re-export and execute the pre-tool-use hook
-import './pre-tool-use/index.js';
+// Import and execute the pre-tool-use hook
+import './pre-tool-use/hook.js';

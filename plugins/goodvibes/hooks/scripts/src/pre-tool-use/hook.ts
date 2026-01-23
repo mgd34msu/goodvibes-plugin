@@ -4,14 +4,14 @@
  * Main router/dispatcher for pre-tool-use validations.
  *
  * Validates prerequisites before tool execution:
- * - Native tools (Read, Edit, Glob, Grep): Block for subagents, redirect to MCP
+ * - Native tools (Read, Edit, Write, Glob, Grep): Block for ALL agents, redirect to precision-engine
  * - Bash tool: Git command detection and quality gates
  * - MCP tools: Resource availability checks
  *
- * Subagent Blocking:
- * - Subagents must use batch MCP tools for efficiency
- * - Read -> batch_read, Edit/Write -> atomic_multi_edit
- * - Glob -> smart_glob, Grep -> grep_with_content
+ * Native Tool Blocking (ALL AGENTS):
+ * - All agents must use precision-engine tools for efficiency
+ * - Read -> precision_read, Edit -> precision_edit, Write -> precision_write
+ * - Glob -> precision_glob, Grep -> precision_grep
  *
  * Quality Gates (for git commit):
  * - TypeScript check (tsc --noEmit)
@@ -40,7 +40,7 @@ import {
 } from './git-handlers.js';
 import { isCommitCommand } from './quality-gates.js';
 import {
-  handleSubagentToolBlocking,
+  handleNativeToolBlocking,
   isBlockedNativeTool,
 } from './subagent-blockers.js';
 import { TOOL_VALIDATORS } from './tool-validators.js';
@@ -85,7 +85,7 @@ async function handleBashTool(input: HookInput): Promise<void> {
  * Validates tool prerequisites and runs quality gates.
  *
  * Priority order:
- * 1. Subagent blocking for native tools (Read, Edit, Write, Glob, Grep)
+ * 1. Native tool blocking for ALL agents (Read, Edit, Write, Glob, Grep)
  * 2. Bash tool handling (git commands, quality gates)
  * 3. MCP tool validators
  *
@@ -102,11 +102,11 @@ export async function runPreToolUseHook(): Promise<void> {
       is_subagent: input.is_subagent,
     });
 
-    // FIRST: Check for subagent native tool blocking
+    // FIRST: Check for native tool blocking (ALL AGENTS)
     // This must happen before any other processing
-    if (input.is_subagent && isBlockedNativeTool(input.tool_name ?? '')) {
-      // handleSubagentToolBlocking will respond and exit if blocked
-      const wasBlocked = handleSubagentToolBlocking(input);
+    if (isBlockedNativeTool(input.tool_name ?? '')) {
+      // handleNativeToolBlocking will respond and exit if blocked
+      const wasBlocked = handleNativeToolBlocking(input);
       if (wasBlocked) {
         return; // Already responded with block
       }
@@ -115,14 +115,6 @@ export async function runPreToolUseHook(): Promise<void> {
     // Handle Bash tool specially for git command detection
     if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
       await handleBashTool(input);
-      return;
-    }
-
-    // Handle other native tools (non-subagent context)
-    // These are allowed for the main agent
-    if (isBlockedNativeTool(input.tool_name ?? '')) {
-      debug(`Allowing native tool '${input.tool_name}' for main agent`);
-      respond(allowTool('PreToolUse'));
       return;
     }
 

@@ -1,13 +1,14 @@
 /**
- * Subagent Native Tool Blockers
+ * Native Tool Blockers
  *
- * Blocks native Claude Code tools (Read, Edit, Glob, Grep) for subagents
- * and redirects them to use MCP batch tools instead for efficiency.
+ * Blocks native Claude Code tools (Read, Edit, Write, Glob, Grep) for ALL agents
+ * and redirects them to use precision-engine tools instead for efficiency.
  *
- * This module enforces the batch processing pattern by:
- * - Detecting when a tool is called from a subagent context
- * - Blocking inefficient single-file operations
+ * This module enforces the precision tool pattern by:
+ * - Blocking native tools for all agent contexts (main and subagents)
+ * - Redirecting to precision-engine equivalents
  * - Providing clear guidance on the MCP tool alternatives
+ * - Promoting discover -> batch workflow
  *
  * @module pre-tool-use/subagent-blockers
  */
@@ -46,71 +47,76 @@ interface ToolReplacement {
  */
 export const TOOL_REPLACEMENTS: Record<string, ToolReplacement> = {
   Read: {
-    replacement: 'batch_read',
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/batch_read '{
-  "files": [
-    "path/to/file1.ts",
-    {"path": "path/to/file2.ts", "offset": 50, "limit": 30}
-  ],
-  "output_mode": "minimal"
+    replacement: 'precision_read',
+    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_read '{
+  "files": ["path/to/file1.ts", "path/to/file2.ts"],
+  "extract": "full",
+  "output": {"mode": "minimal"}
 }'`,
     capabilities:
-      'Supports: per-file offset/limit, output_mode (minimal/standard/verbose)',
+      'Supports: extract modes (full/outline/lines), line ranges, output modes (minimal/standard/verbose)',
   },
 
   Edit: {
-    replacement: 'atomic_multi_edit',
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
+    replacement: 'precision_edit',
+    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{
   "edits": [
-    {"file": "path/to/file.ts", "operation": "replace", "old_content": "original", "new_content": "replacement"}
+    {"file": "path/to/file.ts", "find": "original", "replace": "replacement"}
   ],
-  "output_mode": "minimal"
+  "transaction": {"mode": "atomic", "rollback_on_fail": true},
+  "output": {"mode": "minimal"}
 }'`,
-    capabilities: 'Supports: multiple file edits atomically, validation, dry_run',
+    capabilities: 'Supports: atomic transactions, validation, hints, batch edits',
   },
 
   Write: {
-    replacement: 'atomic_multi_edit',
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/atomic_multi_edit '{
-  "edits": [
-    {"file": "path/to/file.ts", "operation": "create", "new_content": "file content here"}
+    replacement: 'precision_write',
+    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_write '{
+  "files": [
+    {"path": "path/to/file.ts", "content": "file content here"}
   ],
-  "output_mode": "minimal"
+  "transaction": {"mode": "atomic"},
+  "output": {"mode": "minimal"}
 }'`,
     capabilities:
-      'Supports: create/replace operations, multiple files, validation',
+      'Supports: create/overwrite operations, multiple files, atomic transactions, validation',
   },
 
   Glob: {
-    replacement: 'smart_glob',
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/smart_glob '{
+    replacement: 'precision_glob',
+    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_glob '{
   "patterns": ["**/*.ts", "**/*.tsx"],
   "exclude": ["**/*.test.ts"],
-  "output_mode": "minimal",
-  "limit": 50
+  "output": {"mode": "minimal"}
 }'`,
     capabilities:
-      'Supports: multiple patterns, exclusions, auto-ignores node_modules/.git',
+      'Supports: multiple patterns, exclusions, filters, output modes',
   },
 
   Grep: {
-    replacement: 'grep_with_content',
-    usage: `mcp-cli call plugin_goodvibes_goodvibes-tools/grep_with_content '{
-  "pattern": "searchPattern",
-  "glob": "**/*.ts",
-  "output_mode": "minimal",
-  "max_matches": 50
+    replacement: 'precision_grep',
+    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{
+  "queries": [
+    {"pattern": "searchPattern", "glob": "**/*.ts"}
+  ],
+  "output": {"mode": "files_only"}
 }'`,
     capabilities:
-      'Supports: regex patterns, file filtering, context lines, case insensitive',
+      'Supports: batch queries, regex patterns, file filtering, context control, output modes',
   },
 };
 
 /**
- * List of native tools that should be blocked for subagents.
- * DISABLED: Allowing all native tools for subagents to fix tool execution issues.
+ * List of native tools that should be blocked for ALL agents.
+ * These tools are replaced with precision-engine equivalents for better efficiency.
  */
-export const BLOCKED_NATIVE_TOOLS: string[] = [];
+export const BLOCKED_NATIVE_TOOLS: string[] = [
+  'Read',
+  'Edit',
+  'Write',
+  'Glob',
+  'Grep',
+];
 
 /**
  * Formats a blocking message with the replacement tool and usage.
@@ -123,10 +129,19 @@ export function formatBlockMessage(
   toolName: string,
   replacement: ToolReplacement
 ): string {
+  const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
+
   return (
-    `BLOCKED: Subagents must use '${replacement.replacement}' MCP tool instead of '${toolName}'.\n\n` +
-    `${replacement.usage}\n\n` +
-    `${replacement.capabilities}`
+    `⛔ BLOCKED: Native tool '${toolName}' is disabled.\n\n` +
+    `Use precision tool instead: ${toolPath}\n\n` +
+    `To see schema: mcp-cli info ${toolPath}\n\n` +
+    `Example usage:\n${replacement.usage}\n\n` +
+    `Capabilities: ${replacement.capabilities}\n\n` +
+    `💡 WORKFLOW TIP: Use discover -> batch process:\n` +
+    `1. Use 'discover' tool to find files/patterns in parallel\n` +
+    `2. Then use 'batch' tool to process operations atomically\n\n` +
+    `mcp-cli info plugin_goodvibes_precision-engine/discover\n` +
+    `mcp-cli info plugin_goodvibes_batch-engine/batch`
   );
 }
 
@@ -141,26 +156,26 @@ export function isBlockedNativeTool(toolName: string): boolean {
 }
 
 /**
- * Handles blocking of native tools for subagent contexts.
- * Only blocks when is_subagent is explicitly true.
+ * Handles blocking of native tools for ALL agent contexts.
+ * Blocks native tools and redirects to precision-engine equivalents.
  *
  * @param input - The hook input containing tool information
  * @returns True if the tool was blocked, false if it should continue
  */
-export function handleSubagentToolBlocking(input: PreToolUseInput): boolean {
-  // Only block for explicit subagent context
-  if (!input.is_subagent) {
-    return false;
-  }
-
+export function handleNativeToolBlocking(input: PreToolUseInput): boolean {
   const toolName = input.tool_name ?? '';
 
   // Check if this is a blocked native tool
+  if (!isBlockedNativeTool(toolName)) {
+    return false;
+  }
+
   const replacement = TOOL_REPLACEMENTS[toolName];
   if (replacement) {
     const blockMessage = formatBlockMessage(toolName, replacement);
-    debug(`Blocking native tool '${toolName}' for subagent`, {
+    debug(`Blocking native tool '${toolName}'`, {
       agent_type: input.agent_type,
+      is_subagent: input.is_subagent,
       replacement: replacement.replacement,
     });
 
@@ -172,43 +187,44 @@ export function handleSubagentToolBlocking(input: PreToolUseInput): boolean {
 }
 
 /**
- * Validates that subagents are using appropriate tools.
+ * Validates that agents are using appropriate tools.
  * This is the main entry point called from the pre-tool-use hook.
  *
  * @param input - The hook input containing tool information
  * @returns Promise that resolves when validation is complete
  */
-export async function validateSubagentToolUsage(
+export async function validateToolUsage(
   input: PreToolUseInput
 ): Promise<void> {
   // Check if tool should be blocked
-  if (handleSubagentToolBlocking(input)) {
+  if (handleNativeToolBlocking(input)) {
     // Already responded with block, nothing more to do
     return;
   }
 
-  // If not a subagent or not a blocked tool, allow it
-  if (input.is_subagent) {
-    debug(`Allowing tool '${input.tool_name}' for subagent`);
-  }
+  // If not a blocked tool, allow it
+  debug(`Allowing tool '${input.tool_name}'`);
 
   // Don't respond here - let the caller handle the response
   // This allows other validators to run
 }
 
 /**
- * Provides a warning message for subagents about batch processing.
+ * Provides a warning message about batch processing.
  * This can be injected as a system message when allowing tools.
  *
  * @returns Warning message about batch processing efficiency
  */
 export function getBatchProcessingReminder(): string {
   return (
-    'REMINDER: For efficiency, prefer batch operations:\n' +
-    '- batch_read for multiple file reads\n' +
-    '- atomic_multi_edit for multiple file edits\n' +
-    '- smart_glob for pattern matching\n' +
-    '- grep_with_content for searching\n' +
-    'Always use output_mode: "minimal" to reduce context size.'
+    'REMINDER: For efficiency, prefer precision tools and batch operations:\n' +
+    '- precision_read for multiple file reads with extract modes\n' +
+    '- precision_edit for atomic multi-file edits\n' +
+    '- precision_write for creating multiple files\n' +
+    '- precision_glob for pattern matching\n' +
+    '- precision_grep for batch queries\n' +
+    '- discover tool for parallel discovery queries\n' +
+    '- batch tool for complex multi-operation workflows\n' +
+    'Always use output.mode: "minimal" to reduce context size.'
   );
 }
