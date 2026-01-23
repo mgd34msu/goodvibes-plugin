@@ -160,6 +160,8 @@ export class AgentPool {
   private agents: Map<string, PoolAgent>;
   private queue: string[]; // Agent IDs in queue order
   private totalSpent: number = 0;
+  private recentSpawns: Array<{ id: string; timestamp: number }> = [];
+  private lastSequentialWarningTime: number = 0;
 
   // Event callbacks
   private onAgentStart: AgentCallback | null = null;
@@ -167,6 +169,7 @@ export class AgentPool {
   private onAgentFail: AgentCallback | null = null;
   private onBudgetWarning: AgentCallback | null = null;
   private onBudgetExhausted: AgentCallback | null = null;
+  private onSequentialSpawnDetected: ((data: { count: number; suggestion: string }) => void) | null = null;
 
   /**
    * Creates a new AgentPool instance.
@@ -183,6 +186,26 @@ export class AgentPool {
    */
   spawn(spec: AgentSpec): string {
     const id = randomUUID();
+    
+    // Track spawn timing for sequential detection
+    const now = Date.now();
+    
+    // Clean old entries first (older than 5 seconds)
+    this.recentSpawns = this.recentSpawns.filter(s => now - s.timestamp < 5000);
+    this.recentSpawns.push({ id, timestamp: now });
+    
+    // Detect sequential pattern (multiple spawns in quick succession)
+    if (this.recentSpawns.length >= 2 && this.onSequentialSpawnDetected) {
+      // Debounce: only warn once per 5-second window
+      if (now - this.lastSequentialWarningTime >= 5000) {
+        this.lastSequentialWarningTime = now;
+        this.onSequentialSpawnDetected({
+          count: this.recentSpawns.length,
+          suggestion: 'Spawn independent agents in a single Task() call batch for parallel execution',
+        });
+      }
+    }
+    
     const budget = spec.budget || this.config.default_budget;
 
     const agent: PoolAgent = {
@@ -609,6 +632,13 @@ export class AgentPool {
   }
 
   /**
+   * Sets callback for sequential spawn detection warnings.
+   */
+  onSequentialSpawn(callback: (data: { count: number; suggestion: string }) => void): void {
+    this.onSequentialSpawnDetected = callback;
+  }
+
+  /**
    * Gets the current configuration.
    */
   getConfig(): AgentPoolConfig {
@@ -633,6 +663,8 @@ export class AgentPool {
         pruned++;
       }
     }
+    // Clear spawn tracking on prune
+    this.recentSpawns = [];
     return pruned;
   }
 }
