@@ -117,6 +117,13 @@ interface Backup {
   path: string;
   content: string | null;
 }
+// === Constants ===
+
+const DEFAULT_MATCH_CONFIG: MatchConfig = {
+  mode: 'exact' as const,
+  case_sensitive: true,
+  whitespace_sensitive: true,
+};
 
 // === Helper Functions ===
 
@@ -187,6 +194,98 @@ function regexMatch(content: string, pattern: string, caseSensitive: boolean): {
 function isJavaScriptFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
   return ['.ts', '.tsx', '.js', '.jsx'].includes(ext);
+}
+
+/**
+ * Calculate Levenshtein distance between two strings
+ * Used for finding similar content when pattern matching fails
+ */
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Calculate similarity score between two strings (0-1 range)
+ * Higher score means more similar
+ */
+function calculateSimilarity(a: string, b: string): number {
+  if (a === b) return 1;
+  if (!a || !b) return 0;
+
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+
+  if (longer.length === 0) return 1;
+  if (longer.length > 500) return 0; // Skip expensive comparison for very long strings
+
+  const editDistance = levenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+
+interface ClosestMatch {
+  line: number;
+  similarity: number;
+  preview: string;
+}
+
+/**
+ * Find the closest matching content when a pattern is not found
+ * Returns up to maxResults matches sorted by similarity score
+ */
+function findClosestMatch(content: string, pattern: string, maxResults = 3): ClosestMatch[] {
+  const lines = content.split('\n');
+  const patternLines = pattern.split('\n');
+  const patternFirstLine = patternLines[0].trim();
+
+  const matches: ClosestMatch[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineTrimmed = line.trim();
+
+    if (lineTrimmed.length === 0) continue;
+
+    const similarity = calculateSimilarity(lineTrimmed, patternFirstLine);
+
+    if (similarity > 0.4) {
+      matches.push({
+        line: i + 1,
+        similarity,
+        preview: line.slice(0, 80) + (line.length > 80 ? '...' : '')
+      });
+    }
+  }
+
+  return matches
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, maxResults);
 }
 
 function getScriptKind(filePath: string): ts.ScriptKind {
@@ -557,7 +656,19 @@ async function applyEdit(
   const matches = findInContext(filePath, content, edit.find, edit.hints ?? {}, matchConfig);
 
   if (matches.length === 0) {
-    return { newContent: content, status: 'not_found', editsApplied: 0, error: 'Pattern not found' };
+    const closestMatches = findClosestMatch(content, edit.find);
+    const errorDetails: any = {
+      message: 'Pattern not found',
+      pattern_length: edit.find.length,
+      file_length: content.length,
+      closest_matches: closestMatches.length > 0 ? closestMatches : 'No similar content found'
+    };
+    return {
+      newContent: content,
+      status: 'not_found',
+      editsApplied: 0,
+      error: JSON.stringify(errorDetails, null, 2)
+    };
   }
 
   // Determine which occurrences to replace
@@ -617,9 +728,6 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
       return toCallToolResult(errorResult('transaction configuration is required', outputMode, getElapsed()));
     }
 
-    if (!input.match) {
-      return toCallToolResult(errorResult('match configuration is required', outputMode, getElapsed()));
-    }
 
     if (!input.output) {
       return toCallToolResult(errorResult('output configuration is required', outputMode, getElapsed()));
@@ -628,6 +736,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     const dryRun = input.dry_run ?? false;
     const diffContext = input.output.diff_context ?? 3;
     const rollbackId = generateRollbackId();
+    const matchConfig = input.match ?? DEFAULT_MATCH_CONFIG;
 
     // Run before validation
     const beforeValidation: ValidationResult[] = [];
@@ -673,7 +782,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
         filePath,
         currentContent,
         edit,
-        input.match
+        matchConfig
       );
 
       const result: EditResult = {
