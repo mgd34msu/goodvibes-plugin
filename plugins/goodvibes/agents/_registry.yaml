@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-01-23T06:10:25.401Z'
-total: 8
+generated: '2026-01-23T08:57:31.599Z'
+total: 9
 categories:
   _items:
     - name: agent-factory
@@ -303,13 +303,53 @@ categories:
         - accept
         - payments
         - files
+    - name: planner
+      path: planner
+      description: >-
+        GoodVibes planning expert. Use PROACTIVELY when designing implementation strategies, breaking down complex
+        tasks, planning batch operations, orchestrating multi-agent workflows, or when the user needs a detailed
+        execution plan. Triggers on plan, strategy, breakdown, orchestrate, design approach, batch planning, workflow
+        design, execution plan, parallel execution, agent coordination.
+      triggers: &ref_5
+        - planner
+        - goodvibes
+        - planning
+        - expert
+        - proactively
+        - designing
+        - implementation
+        - strategies
+        - breaking
+        - down
+        - complex
+        - tasks
+        - batch
+        - operations
+        - orchestrating
+        - multi
+        - agent
+        - workflows
+        - user
+        - needs
+        - detailed
+        - execution
+        - plan
+        - triggers
+        - strategy
+        - breakdown
+        - orchestrate
+        - design
+        - approach
+        - workflow
+        - parallel
+        - coordination
     - name: reviewer
       path: reviewer
       description: >-
         Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
         changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
         performance, and adherence to project patterns.
-      triggers: &ref_5
+      triggers: &ref_6
         - reviewer
         - code
         - review
@@ -342,7 +382,7 @@ categories:
         Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
         update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge,
         workflows, or tool integrations.
-      triggers: &ref_6
+      triggers: &ref_7
         - skill
         - factory
         - creates
@@ -375,7 +415,7 @@ categories:
         E2E), improving test coverage, fixing failing tests, setting up test infrastructure, mocking APIs/data,
         debugging flaky tests, or when user mentions Vitest, Jest, Playwright, Cypress, Testing Library, MSW, coverage,
         TDD, fixtures, snapshots, or assertions. Enforces 100% coverage goal with no skips and no auto-pass.
-      triggers: &ref_7
+      triggers: &ref_8
         - tester
         - testing
         - specialist
@@ -465,22 +505,30 @@ search_index:
       updates", "WebSocket connection", "integrate AI", "add chat", "LLM feature", "setup CMS", "content management",
       "send emails", "email templates", "payment integration", "accept payments", "subscription billing", "upload
       files", "image upload", "media management".
-  - name: reviewer
+  - name: planner
     keywords: *ref_5
+    path: planner
+    description: >-
+      GoodVibes planning expert. Use PROACTIVELY when designing implementation strategies, breaking down complex tasks,
+      planning batch operations, orchestrating multi-agent workflows, or when the user needs a detailed execution plan.
+      Triggers on plan, strategy, breakdown, orchestrate, design approach, batch planning, workflow design, execution
+      plan, parallel execution, agent coordination.
+  - name: reviewer
+    keywords: *ref_6
     path: reviewer
     description: >-
       Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
       changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
       performance, and adherence to project patterns.
   - name: skill-factory
-    keywords: *ref_6
+    keywords: *ref_7
     path: skill-factory
     description: >-
       Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
       update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows,
       or tool integrations.
   - name: tester
-    keywords: *ref_7
+    keywords: *ref_8
     path: tester
     description: >-
       Testing specialist for comprehensive test coverage. Use PROACTIVELY when: writing tests (unit, integration, E2E),
