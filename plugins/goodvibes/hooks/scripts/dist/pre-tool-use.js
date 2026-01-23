@@ -135,7 +135,11 @@ function blockTool(hookEventName, reason) {
       hookEventName,
       permissionDecision: "deny",
       permissionDecisionReason: reason
-    }
+    },
+    continue: false,
+    systemMessage: "ERROR: Non-preferred tool used.",
+    stopReason: reason,
+    suppressOutput: false
   };
 }
 function formatResponse(response) {
