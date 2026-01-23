@@ -14882,7 +14882,7 @@ var require_typescript = __commonJS({
         nodeStartsNewLexicalEnvironment: () => nodeStartsNewLexicalEnvironment,
         noop: () => noop,
         noopFileWatcher: () => noopFileWatcher,
-        normalizePath: () => normalizePath,
+        normalizePath: () => normalizePath2,
         normalizeSlashes: () => normalizeSlashes,
         normalizeSpans: () => normalizeSpans,
         not: () => not,
@@ -21547,7 +21547,7 @@ ${lanes.join("\n")}
           const parentWatcher = cache2.get(parentDirPath);
           if (!parentWatcher)
             return false;
-          const target = normalizePath(realpath(parentDir));
+          const target = normalizePath2(realpath(parentDir));
           let hasChanges;
           let newChildWatches;
           if (filePathComparer(target, parentDir) === 0) {
@@ -21558,7 +21558,7 @@ ${lanes.join("\n")}
                 /* Directory */
               ) ? mapDefined(getAccessibleSortedChildDirectories(parentDir), (child) => {
                 const childFullName = getNormalizedAbsolutePath(child, parentDir);
-                return !isIgnoredPath(childFullName, options) && filePathComparer(childFullName, normalizePath(realpath(childFullName))) === 0 ? childFullName : void 0;
+                return !isIgnoredPath(childFullName, options) && filePathComparer(childFullName, normalizePath2(realpath(childFullName))) === 0 ? childFullName : void 0;
               }) : emptyArray,
               parentWatcher.childWatches,
               (child, childWatcher) => filePathComparer(child, childWatcher.dirName),
@@ -21635,7 +21635,7 @@ ${lanes.join("\n")}
       function createFsWatchCallbackForDirectoryWatcherCallback(directoryName, callback, options, useCaseSensitiveFileNames2, getCurrentDirectory) {
         return (eventName, relativeFileName) => {
           if (eventName === "rename") {
-            const fileName = !relativeFileName ? directoryName : normalizePath(combinePaths(directoryName, relativeFileName));
+            const fileName = !relativeFileName ? directoryName : normalizePath2(combinePaths(directoryName, relativeFileName));
             if (!relativeFileName || !isIgnoredByWatchOptions(fileName, options, useCaseSensitiveFileNames2, getCurrentDirectory)) {
               callback(fileName);
             }
@@ -22715,7 +22715,7 @@ ${lanes.join("\n")}
       }
       __name(combinePaths, "combinePaths");
       function resolvePath(path7, ...paths) {
-        return normalizePath(some(paths) ? combinePaths(path7, ...paths) : normalizeSlashes(path7));
+        return normalizePath2(some(paths) ? combinePaths(path7, ...paths) : normalizeSlashes(path7));
       }
       __name(resolvePath, "resolvePath");
       function getNormalizedPathComponents(path7, currentDirectory) {
@@ -22798,7 +22798,7 @@ ${lanes.join("\n")}
         return normalized ?? (length2 > rootLength ? removeTrailingDirectorySeparator(path7) : path7);
       }
       __name(getNormalizedAbsolutePath, "getNormalizedAbsolutePath");
-      function normalizePath(path7) {
+      function normalizePath2(path7) {
         path7 = normalizeSlashes(path7);
         let normalized = simpleNormalizePath(path7);
         if (normalized !== void 0) {
@@ -22807,7 +22807,7 @@ ${lanes.join("\n")}
         normalized = getNormalizedAbsolutePath(path7, "");
         return normalized && hasTrailingDirectorySeparator(path7) ? ensureTrailingDirectorySeparator(normalized) : normalized;
       }
-      __name(normalizePath, "normalizePath");
+      __name(normalizePath2, "normalizePath");
       function simpleNormalizePath(path7) {
         if (!relativePathSegmentRegExp.test(path7)) {
           return path7;
@@ -22836,7 +22836,7 @@ ${lanes.join("\n")}
       }
       __name(getNormalizedAbsolutePathWithoutRoot, "getNormalizedAbsolutePathWithoutRoot");
       function toPath(fileName, basePath, getCanonicalFileName) {
-        const nonCanonicalizedPath = isRootedDiskPath(fileName) ? normalizePath(fileName) : getNormalizedAbsolutePath(fileName, basePath);
+        const nonCanonicalizedPath = isRootedDiskPath(fileName) ? normalizePath2(fileName) : getNormalizedAbsolutePath(fileName, basePath);
         return getCanonicalFileName(nonCanonicalizedPath);
       }
       __name(toPath, "toPath");
@@ -29031,7 +29031,7 @@ ${lanes.join("\n")}
         }
         setUILocale(locale);
         function trySetLanguageAndTerritory(language2, territory2, errors2) {
-          const compilerFilePath = normalizePath(sys2.getExecutingFilePath());
+          const compilerFilePath = normalizePath2(sys2.getExecutingFilePath());
           const containingDirectoryPath = getDirectoryPath(compilerFilePath);
           let filePath = combinePaths(containingDirectoryPath, language2);
           if (territory2) {
@@ -35286,7 +35286,7 @@ ${lanes.join("\n")}
         try {
           writeFile22(path7, data, writeByteOrderMark);
         } catch {
-          ensureDirectoriesExist(getDirectoryPath(normalizePath(path7)), createDirectory, directoryExists);
+          ensureDirectoriesExist(getDirectoryPath(normalizePath2(path7)), createDirectory, directoryExists);
           writeFile22(path7, data, writeByteOrderMark);
         }
       }
@@ -37569,8 +37569,8 @@ ${lanes.join("\n")}
       }
       __name(replaceWildcardCharacter, "replaceWildcardCharacter");
       function getFileMatcherPatterns(path7, excludes, includes, useCaseSensitiveFileNames2, currentDirectory) {
-        path7 = normalizePath(path7);
-        currentDirectory = normalizePath(currentDirectory);
+        path7 = normalizePath2(path7);
+        currentDirectory = normalizePath2(currentDirectory);
         const absolutePath = combinePaths(currentDirectory, path7);
         return {
           includeFilePatterns: map2(getRegularExpressionsForWildcards(includes, absolutePath, "files"), (pattern) => `^${pattern}$`),
@@ -37586,8 +37586,8 @@ ${lanes.join("\n")}
       }
       __name(getRegexFromPattern, "getRegexFromPattern");
       function matchFiles(path7, extensions, excludes, includes, useCaseSensitiveFileNames2, currentDirectory, depth, getFileSystemEntries, realpath) {
-        path7 = normalizePath(path7);
-        currentDirectory = normalizePath(currentDirectory);
+        path7 = normalizePath2(path7);
+        currentDirectory = normalizePath2(currentDirectory);
         const patterns = getFileMatcherPatterns(path7, excludes, includes, useCaseSensitiveFileNames2, currentDirectory);
         const includeFileRegexes = patterns.includeFilePatterns && patterns.includeFilePatterns.map((pattern) => getRegexFromPattern(pattern, useCaseSensitiveFileNames2));
         const includeDirectoryRegex = patterns.includeDirectoryPattern && getRegexFromPattern(patterns.includeDirectoryPattern, useCaseSensitiveFileNames2);
@@ -37643,7 +37643,7 @@ ${lanes.join("\n")}
         if (includes) {
           const includeBasePaths = [];
           for (const include of includes) {
-            const absolute = isRootedDiskPath(include) ? include : normalizePath(combinePaths(path7, include));
+            const absolute = isRootedDiskPath(include) ? include : normalizePath2(combinePaths(path7, include));
             includeBasePaths.push(getIncludeBasePath(absolute));
           }
           includeBasePaths.sort(getStringComparer(!useCaseSensitiveFileNames2));
@@ -51246,7 +51246,7 @@ ${lanes.join("\n")}
           IdentifierConstructor2 = objectAllocator.getIdentifierConstructor();
           PrivateIdentifierConstructor2 = objectAllocator.getPrivateIdentifierConstructor();
           SourceFileConstructor2 = objectAllocator.getSourceFileConstructor();
-          fileName = normalizePath(_fileName);
+          fileName = normalizePath2(_fileName);
           sourceText = _sourceText;
           languageVersion = _languageVersion;
           syntaxCursor = _syntaxCursor;
@@ -62695,7 +62695,7 @@ ${lanes.join("\n")}
           basePath
         );
         options.configFilePath = configFileName && normalizeSlashes(configFileName);
-        const basePathForFileNames = normalizePath(configFileName ? directoryOfCombinedPath(configFileName, basePath) : basePath);
+        const basePathForFileNames = normalizePath2(configFileName ? directoryOfCombinedPath(configFileName, basePath) : basePath);
         const configFileSpecs = getConfigFileSpecs();
         if (sourceFile)
           sourceFile.configFileSpecs = configFileSpecs;
@@ -63368,7 +63368,7 @@ ${lanes.join("\n")}
       var invalidTrailingRecursionPattern = /(?:^|\/)\*\*\/?$/;
       var wildcardDirectoryPattern = /^[^*?]*(?=\/[^/]*[*?])/;
       function getFileNamesFromConfigSpecs(configFileSpecs, basePath, options, host, extraFileExtensions = emptyArray) {
-        basePath = normalizePath(basePath);
+        basePath = normalizePath2(basePath);
         const keyMapper = createGetCanonicalFileName(host.useCaseSensitiveFileNames);
         const literalFileMap = /* @__PURE__ */ new Map();
         const wildcardFileMap = /* @__PURE__ */ new Map();
@@ -63434,7 +63434,7 @@ ${lanes.join("\n")}
         const { validatedFilesSpec, validatedIncludeSpecs, validatedExcludeSpecs } = spec;
         if (!length(validatedIncludeSpecs) || !length(validatedExcludeSpecs))
           return false;
-        basePath = normalizePath(basePath);
+        basePath = normalizePath2(basePath);
         const keyMapper = createGetCanonicalFileName(useCaseSensitiveFileNames2);
         if (validatedFilesSpec) {
           for (const fileName of validatedFilesSpec) {
@@ -63464,7 +63464,7 @@ ${lanes.join("\n")}
       }
       __name(matchesExclude, "matchesExclude");
       function matchesExcludeWorker(pathToCheck, excludeSpecs, useCaseSensitiveFileNames2, currentDirectory, basePath) {
-        const excludePattern = getRegularExpressionForWildcard(excludeSpecs, combinePaths(normalizePath(currentDirectory), basePath), "exclude");
+        const excludePattern = getRegularExpressionForWildcard(excludeSpecs, combinePaths(normalizePath2(currentDirectory), basePath), "exclude");
         const excludeRegex = excludePattern && getRegexFromPattern(excludePattern, useCaseSensitiveFileNames2);
         if (!excludeRegex)
           return false;
@@ -63507,7 +63507,7 @@ ${lanes.join("\n")}
         if (include !== void 0) {
           const recursiveKeys = [];
           for (const file2 of include) {
-            const spec = normalizePath(combinePaths(basePath, file2));
+            const spec = normalizePath2(combinePaths(basePath, file2));
             if (excludeRegex && excludeRegex.test(spec)) {
               continue;
             }
@@ -63833,7 +63833,7 @@ ${lanes.join("\n")}
           }
           return;
         }
-        const path7 = normalizePath(combinePaths(baseDirectory, fileName));
+        const path7 = normalizePath2(combinePaths(baseDirectory, fileName));
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.package_json_has_0_field_1_that_references_2, fieldName, fileName, path7);
         }
@@ -63924,7 +63924,7 @@ ${lanes.join("\n")}
       __name(getEffectiveTypeRoots, "getEffectiveTypeRoots");
       function getDefaultTypeRoots(currentDirectory) {
         let typeRoots;
-        forEachAncestorDirectory(normalizePath(currentDirectory), (directory) => {
+        forEachAncestorDirectory(normalizePath2(currentDirectory), (directory) => {
           const atTypes = combinePaths(directory, nodeModulesAtTypes);
           (typeRoots ?? (typeRoots = [])).push(atTypes);
         });
@@ -64222,7 +64222,7 @@ ${lanes.join("\n")}
             for (const root of typeRoots) {
               if (host.directoryExists(root)) {
                 for (const typeDirectivePath of host.getDirectories(root)) {
-                  const normalized = normalizePath(typeDirectivePath);
+                  const normalized = normalizePath2(typeDirectivePath);
                   const packageJsonPath = combinePaths(root, normalized, "package.json");
                   const isNotNeededPackage = host.fileExists(packageJsonPath) && readJson(packageJsonPath, host).typings === null;
                   if (!isNotNeededPackage) {
@@ -64744,11 +64744,11 @@ ${lanes.join("\n")}
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.rootDirs_option_is_set_using_it_to_resolve_relative_module_name_0, moduleName);
         }
-        const candidate = normalizePath(combinePaths(containingDirectory, moduleName));
+        const candidate = normalizePath2(combinePaths(containingDirectory, moduleName));
         let matchedRootDir;
         let matchedNormalizedPrefix;
         for (const rootDir of state.compilerOptions.rootDirs) {
-          let normalizedRoot = normalizePath(rootDir);
+          let normalizedRoot = normalizePath2(rootDir);
           if (!endsWith(normalizedRoot, directorySeparator)) {
             normalizedRoot += directorySeparator;
           }
@@ -64780,7 +64780,7 @@ ${lanes.join("\n")}
             if (rootDir === matchedRootDir) {
               continue;
             }
-            const candidate2 = combinePaths(normalizePath(rootDir), suffix);
+            const candidate2 = combinePaths(normalizePath2(rootDir), suffix);
             if (state.traceEnabled) {
               trace(state.host, Diagnostics.Loading_0_from_the_root_dir_1_candidate_location_2, suffix, rootDir, candidate2);
             }
@@ -64805,7 +64805,7 @@ ${lanes.join("\n")}
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.baseUrl_option_is_set_to_0_using_this_value_to_resolve_non_relative_module_name_1, baseUrl, moduleName);
         }
-        const candidate = normalizePath(combinePaths(baseUrl, moduleName));
+        const candidate = normalizePath2(combinePaths(baseUrl, moduleName));
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.Resolving_module_name_0_relative_to_base_url_1_2, moduleName, baseUrl, candidate);
         }
@@ -65104,7 +65104,7 @@ ${lanes.join("\n")}
         const combined = combinePaths(containingDirectory, moduleName);
         const parts = getPathComponents(combined);
         const lastPart = lastOrUndefined(parts);
-        const path7 = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath(combined)) : normalizePath(combined);
+        const path7 = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath2(combined)) : normalizePath2(combined);
         return { path: path7, parts };
       }
       __name(normalizePathForCJSResolution, "normalizePathForCJSResolution");
@@ -65112,7 +65112,7 @@ ${lanes.join("\n")}
         if (!host.realpath) {
           return path7;
         }
-        const real = normalizePath(host.realpath(path7));
+        const real = normalizePath2(host.realpath(path7));
         if (traceEnabled) {
           trace(host, Diagnostics.Resolving_real_path_for_0_result_1, path7, real);
         }
@@ -65166,7 +65166,7 @@ ${lanes.join("\n")}
       }
       __name(pathContainsNodeModules, "pathContainsNodeModules");
       function parseNodeModuleFromPath(resolved, isFolder) {
-        const path7 = normalizePath(resolved);
+        const path7 = normalizePath2(resolved);
         const idx = path7.lastIndexOf(nodeModulesPathPart);
         if (idx === -1) {
           return void 0;
@@ -66280,7 +66280,7 @@ ${lanes.join("\n")}
       __name(loadModuleFromImmediateNodeModulesDirectory, "loadModuleFromImmediateNodeModulesDirectory");
       function loadModuleFromSpecificNodeModulesDirectory(extensions, moduleName, nodeModulesDirectory, nodeModulesDirectoryExists, state, cache2, redirectedReference) {
         var _a2, _b;
-        const candidate = normalizePath(combinePaths(nodeModulesDirectory, moduleName));
+        const candidate = normalizePath2(combinePaths(nodeModulesDirectory, moduleName));
         const { packageName, rest } = parsePackageName(moduleName);
         const packageDirectory = combinePaths(nodeModulesDirectory, packageName);
         let rootPackageInfo;
@@ -66346,7 +66346,7 @@ ${lanes.join("\n")}
           }
           const resolved = forEach(paths[matchedPatternText], (subst) => {
             const path7 = matchedStar ? replaceFirstStar(subst, matchedStar) : subst;
-            const candidate = normalizePath(combinePaths(baseDirectory, path7));
+            const candidate = normalizePath2(combinePaths(baseDirectory, path7));
             if (state.traceEnabled) {
               trace(state.host, Diagnostics.Trying_substitution_0_candidate_module_location_Colon_1, subst, path7);
             }
@@ -66474,7 +66474,7 @@ ${lanes.join("\n")}
                 if (resolutionFromCache) {
                   return resolutionFromCache;
                 }
-                const searchName = normalizePath(combinePaths(directory, moduleName));
+                const searchName = normalizePath2(combinePaths(directory, moduleName));
                 return toSearchResult(loadModuleFromFileNoPackageId(
                   extensions,
                   searchName,
@@ -66493,7 +66493,7 @@ ${lanes.join("\n")}
               return resolved3;
             }
           } else {
-            const candidate = normalizePath(combinePaths(containingDirectory, moduleName));
+            const candidate = normalizePath2(combinePaths(containingDirectory, moduleName));
             return toSearchResult(loadModuleFromFileNoPackageId(
               extensions,
               candidate,
@@ -70941,7 +70941,7 @@ ${lanes.join("\n")}
       function tryGetModuleNameFromPaths(relativeToBaseUrl, paths, allowedEndings, baseDirectory, getCanonicalFileName, host, compilerOptions) {
         for (const key in paths) {
           for (const patternText2 of paths[key]) {
-            const normalized = normalizePath(patternText2);
+            const normalized = normalizePath2(patternText2);
             const pattern = getRelativePathIfInSameVolume(normalized, baseDirectory, getCanonicalFileName) ?? normalized;
             const indexOfStar = pattern.indexOf("*");
             const candidates = allowedEndings.map((ending) => ({
@@ -150665,7 +150665,7 @@ ${lanes.join("\n")}
       }
       __name(getAllProjectOutputs, "getAllProjectOutputs");
       function getOutputFileNames(commandLine, inputFileName, ignoreCase) {
-        inputFileName = normalizePath(inputFileName);
+        inputFileName = normalizePath2(inputFileName);
         Debug.assert(contains(commandLine.fileNames, inputFileName), `Expected fileName to be present in command line`);
         const { addOutput, getOutputs } = createAddOutput();
         if (commandLine.options.outFile) {
@@ -151029,7 +151029,7 @@ ${lanes.join("\n")}
             }
             return sourceMapDir;
           }
-          return getDirectoryPath(normalizePath(filePath));
+          return getDirectoryPath(normalizePath2(filePath));
         }
         __name(getSourceMapDirectory, "getSourceMapDirectory");
         function getSourceMappingURL(mapOptions, sourceMapGenerator, filePath, sourceMapFilePath, sourceFile) {
@@ -151048,7 +151048,7 @@ ${lanes.join("\n")}
               sourceMapDir = combinePaths(host.getCommonSourceDirectory(), sourceMapDir);
               return encodeURI(
                 getRelativePathToDirectoryOrUrl(
-                  getDirectoryPath(normalizePath(filePath)),
+                  getDirectoryPath(normalizePath2(filePath)),
                   // get the relative sourceMapDir path based on jsFilePath
                   combinePaths(sourceMapDir, sourceMapFile),
                   // this is where user expects to see sourceMap
@@ -156254,7 +156254,7 @@ ${lanes.join("\n")}
         }
         __name(getCachedFileSystemEntriesForBaseDir, "getCachedFileSystemEntriesForBaseDir");
         function getBaseNameOfFileName(fileName) {
-          return getBaseFileName(normalizePath(fileName));
+          return getBaseFileName(normalizePath2(fileName));
         }
         __name(getBaseNameOfFileName, "getBaseNameOfFileName");
         function createCachedFileSystemEntries(rootDir, rootDirPath) {
@@ -156789,7 +156789,7 @@ ${lanes.join("\n")}
       function resolveTripleslashReference(moduleName, containingFile) {
         const basePath = getDirectoryPath(containingFile);
         const referencedFileName = isRootedDiskPath(moduleName) ? moduleName : combinePaths(basePath, moduleName);
-        return normalizePath(referencedFileName);
+        return normalizePath2(referencedFileName);
       }
       __name(resolveTripleslashReference, "resolveTripleslashReference");
       function computeCommonSourceDirectoryOfFilenames(fileNames, currentDirectory, getCanonicalFileName) {
@@ -156883,7 +156883,7 @@ ${lanes.join("\n")}
         }
         __name(directoryExists, "directoryExists");
         function getDefaultLibLocation() {
-          return getDirectoryPath(normalizePath(system.getExecutingFilePath()));
+          return getDirectoryPath(normalizePath2(system.getExecutingFilePath()));
         }
         __name(getDefaultLibLocation, "getDefaultLibLocation");
         const newLine = getNewLineCharacter(options);
@@ -159203,7 +159203,7 @@ ${lanes.join("\n")}
         __name(getConfigFileParsingDiagnostics2, "getConfigFileParsingDiagnostics2");
         function processRootFile(fileName, isDefaultLib, ignoreNoDefaultLib, reason) {
           processSourceFile(
-            normalizePath(fileName),
+            normalizePath2(fileName),
             isDefaultLib,
             ignoreNoDefaultLib,
             /*packageId*/
@@ -160790,7 +160790,7 @@ ${lanes.join("\n")}
           const directoryPath = ensureTrailingDirectorySeparator(host.toPath(directory));
           if ((_a2 = symlinkCache.getSymlinkedDirectories()) == null ? void 0 : _a2.has(directoryPath))
             return;
-          const real = normalizePath(originalRealpath.call(host.compilerHost, directory));
+          const real = normalizePath2(originalRealpath.call(host.compilerHost, directory));
           let realPath2;
           if (real === directory || (realPath2 = ensureTrailingDirectorySeparator(host.toPath(real))) === directoryPath) {
             symlinkCache.setSymlinkedDirectory(directoryPath, false);
@@ -163528,7 +163528,7 @@ ${lanes.join("\n")}
       __name(canWatchAffectingLocation, "canWatchAffectingLocation");
       function getDirectoryToWatchFailedLookupLocation(failedLookupLocation, failedLookupLocationPath, rootDir, rootPath, rootPathComponents, isRootWatchable, getCurrentDirectory, preferNonRecursiveWatch) {
         const failedLookupPathComponents = getPathComponents(failedLookupLocationPath);
-        failedLookupLocation = isRootedDiskPath(failedLookupLocation) ? normalizePath(failedLookupLocation) : getNormalizedAbsolutePath(failedLookupLocation, getCurrentDirectory());
+        failedLookupLocation = isRootedDiskPath(failedLookupLocation) ? normalizePath2(failedLookupLocation) : getNormalizedAbsolutePath(failedLookupLocation, getCurrentDirectory());
         const failedLookupComponents = getPathComponents(failedLookupLocation);
         const perceivedOsRootLength = perceivedOsRootLengthForWatching(failedLookupPathComponents, failedLookupPathComponents.length);
         if (failedLookupPathComponents.length <= perceivedOsRootLength + 1)
@@ -163617,7 +163617,7 @@ ${lanes.join("\n")}
         if (isRootWatchable && isInDirectoryPath(rootPathComponents, typeRootPathComponents)) {
           return rootPath;
         }
-        typeRoot = isRootedDiskPath(typeRoot) ? normalizePath(typeRoot) : getNormalizedAbsolutePath(typeRoot, getCurrentDirectory());
+        typeRoot = isRootedDiskPath(typeRoot) ? normalizePath2(typeRoot) : getNormalizedAbsolutePath(typeRoot, getCurrentDirectory());
         const toWatch = getDirectoryToWatchFromFailedLookupLocationDirectory(
           getPathComponents(typeRoot),
           typeRootPathComponents,
@@ -165298,7 +165298,7 @@ ${lanes.join("\n")}
       }
       __name(setGetSourceFileAsHashVersioned, "setGetSourceFileAsHashVersioned");
       function createProgramHost(system, createProgram2) {
-        const getDefaultLibLocation = memoize(() => getDirectoryPath(normalizePath(system.getExecutingFilePath())));
+        const getDefaultLibLocation = memoize(() => getDirectoryPath(normalizePath2(system.getExecutingFilePath())));
         return {
           useCaseSensitiveFileNames: () => system.useCaseSensitiveFileNames,
           getNewLine: () => system.newLine,
@@ -168690,7 +168690,7 @@ ${lanes.join("\n")}
               /* DiagnosticsPresent_OutputsSkipped */
             );
           }
-          const fileOrDirectory = normalizePath(commandLine.options.project);
+          const fileOrDirectory = normalizePath2(commandLine.options.project);
           if (!fileOrDirectory || sys2.directoryExists(fileOrDirectory)) {
             configFileName = combinePaths(fileOrDirectory, "tsconfig.json");
             if (!sys2.fileExists(configFileName)) {
@@ -168711,12 +168711,12 @@ ${lanes.join("\n")}
             }
           }
         } else if (commandLine.fileNames.length === 0) {
-          const searchPath = normalizePath(sys2.getCurrentDirectory());
+          const searchPath = normalizePath2(sys2.getCurrentDirectory());
           configFileName = findConfigFile(searchPath, (fileName) => sys2.fileExists(fileName));
         }
         if (commandLine.fileNames.length === 0 && !configFileName) {
           if (commandLine.options.showConfig) {
-            reportDiagnostic(createCompilerDiagnostic(Diagnostics.Cannot_find_a_tsconfig_json_file_at_the_current_directory_Colon_0, normalizePath(sys2.getCurrentDirectory())));
+            reportDiagnostic(createCompilerDiagnostic(Diagnostics.Cannot_find_a_tsconfig_json_file_at_the_current_directory_Colon_0, normalizePath2(sys2.getCurrentDirectory())));
           } else {
             printVersion(sys2);
             printHelp(sys2, commandLine);
@@ -169417,7 +169417,7 @@ ${lanes.join("\n")}
       __name(statisticValue, "statisticValue");
       function writeConfigFile(sys2, reportDiagnostic, options) {
         const currentDirectory = sys2.getCurrentDirectory();
-        const file2 = normalizePath(combinePaths(currentDirectory, "tsconfig.json"));
+        const file2 = normalizePath2(combinePaths(currentDirectory, "tsconfig.json"));
         if (sys2.fileExists(file2)) {
           reportDiagnostic(createCompilerDiagnostic(Diagnostics.A_tsconfig_json_file_is_already_defined_at_Colon_0, file2));
         } else {
@@ -170863,7 +170863,7 @@ ${lanes.join("\n")}
         }
         const inferredTypings = /* @__PURE__ */ new Map();
         fileNames = mapDefined(fileNames, (fileName) => {
-          const path7 = normalizePath(fileName);
+          const path7 = normalizePath2(fileName);
           if (hasJSFileExtension(path7)) {
             return path7;
           }
@@ -170959,7 +170959,7 @@ ${lanes.join("\n")}
             if (getBaseFileName(manifestPath2) !== manifestName) {
               return false;
             }
-            const pathComponents2 = getPathComponents(normalizePath(manifestPath2));
+            const pathComponents2 = getPathComponents(normalizePath2(manifestPath2));
             const isScoped = pathComponents2[pathComponents2.length - 3][0] === "@";
             return isScoped && toFileNameLowerCase(pathComponents2[pathComponents2.length - 4]) === modulesDirName || // `node_modules/@foo/bar`
             !isScoped && toFileNameLowerCase(pathComponents2[pathComponents2.length - 3]) === modulesDirName;
@@ -170967,7 +170967,7 @@ ${lanes.join("\n")}
           if (log2)
             log2(`Searching for typing names in ${packagesFolderPath}; all files: ${JSON.stringify(dependencyManifestNames)}`);
           for (const manifestPath2 of dependencyManifestNames) {
-            const normalizedFileName = normalizePath(manifestPath2);
+            const normalizedFileName = normalizePath2(manifestPath2);
             const result2 = readConfigFile(normalizedFileName, (path7) => host.readFile(path7));
             const manifest2 = result2.config;
             if (!manifest2.name) {
@@ -173249,7 +173249,7 @@ ${lanes.join("\n")}
       __name(isTextWhiteSpaceLike, "isTextWhiteSpaceLike");
       function getMappedLocation(location, sourceMapper, fileExists2) {
         const mapsTo = sourceMapper.tryGetSourcePosition(location);
-        return mapsTo && (!fileExists2 || fileExists2(normalizePath(mapsTo.fileName)) ? mapsTo : void 0);
+        return mapsTo && (!fileExists2 || fileExists2(normalizePath2(mapsTo.fileName)) ? mapsTo : void 0);
       }
       __name(getMappedLocation, "getMappedLocation");
       function getMappedDocumentSpan(documentSpan, sourceMapper, fileExists2) {
@@ -177015,7 +177015,7 @@ ${lanes.join("\n")}
       }
       __name(updateImports, "updateImports");
       function combineNormal(pathA, pathB) {
-        return normalizePath(combinePaths(pathA, pathB));
+        return normalizePath2(combinePaths(pathA, pathB));
       }
       __name(combineNormal, "combineNormal");
       function combinePathsSafe(pathA, pathB) {
@@ -178307,7 +178307,7 @@ interface Symbol {
         }
         const newLine = getNewLineCharacter(options);
         const compilerHost = {
-          getSourceFile: (fileName) => fileName === normalizePath(inputFileName) ? sourceFile : fileName === normalizePath(barebonesLibName) ? barebonesLibSourceFile : void 0,
+          getSourceFile: (fileName) => fileName === normalizePath2(inputFileName) ? sourceFile : fileName === normalizePath2(barebonesLibName) ? barebonesLibSourceFile : void 0,
           writeFile: (name, text) => {
             if (fileExtensionIs(name, ".map")) {
               Debug.assertEqual(sourceMapText, void 0, "Unexpected multiple source map outputs, file:", name);
@@ -179158,7 +179158,7 @@ interface Symbol {
         switch (node.kind) {
           case 308:
             const sourceFile = node;
-            return isExternalModule(sourceFile) ? `"${escapeString(getBaseFileName(removeFileExtension(normalizePath(sourceFile.fileName))))}"` : "<global>";
+            return isExternalModule(sourceFile) ? `"${escapeString(getBaseFileName(removeFileExtension(normalizePath2(sourceFile.fileName))))}"` : "<global>";
           case 278:
             return isExportAssignment(node) && node.isExportEquals ? "export=" : "default";
           case 220:
@@ -180440,7 +180440,7 @@ interface Symbol {
         const cfg = program.getCompilerOptions().configFile;
         if (!cfg)
           return;
-        const newFileAbsolutePath = normalizePath(combinePaths(oldFileName, "..", newFileNameWithExtension));
+        const newFileAbsolutePath = normalizePath2(combinePaths(oldFileName, "..", newFileNameWithExtension));
         const newFilePath = getRelativePathFromFile(cfg.fileName, newFileAbsolutePath, getCanonicalFileName);
         const cfgObject = cfg.statements[0] && tryCast(cfg.statements[0].expression, isObjectLiteralExpression);
         const filesProp = cfgObject && find(cfgObject.properties, (prop) => isPropertyAssignment(prop) && isStringLiteral(prop.name) && prop.name.text === "files");
@@ -187056,8 +187056,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         __name(getImplementationAtPosition, "getImplementationAtPosition");
         function getDocumentHighlights(fileName, position, filesToSearch) {
-          const normalizedFileName = normalizePath(fileName);
-          Debug.assert(filesToSearch.some((f) => normalizePath(f) === normalizedFileName));
+          const normalizedFileName = normalizePath2(fileName);
+          Debug.assert(filesToSearch.some((f) => normalizePath2(f) === normalizedFileName));
           synchronizeHostData();
           const sourceFilesToSearch = mapDefined(filesToSearch, (fileName2) => program.getSourceFile(fileName2));
           const sourceFile = getValidSourceFile(fileName);
@@ -187997,7 +187997,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       __name(isArgumentOfElementAccessExpression, "isArgumentOfElementAccessExpression");
       function getDefaultLibFilePath(options) {
         if (sys) {
-          return combinePaths(getDirectoryPath(normalizePath(sys.getExecutingFilePath())), getDefaultLibFileName(options));
+          return combinePaths(getDirectoryPath(normalizePath2(sys.getExecutingFilePath())), getDefaultLibFileName(options));
         }
         throw new Error("getDefaultLibFilePath is only supported when consumed as a node module. ");
       }
@@ -206685,7 +206685,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       }
       __name(getSupportedExtensionsForModuleResolution, "getSupportedExtensionsForModuleResolution");
       function getBaseDirectoriesFromRootDirs(rootDirs, basePath, scriptDirectory, ignoreCase) {
-        rootDirs = rootDirs.map((rootDirectory) => ensureTrailingDirectorySeparator(normalizePath(isRootedDiskPath(rootDirectory) ? rootDirectory : combinePaths(basePath, rootDirectory))));
+        rootDirs = rootDirs.map((rootDirectory) => ensureTrailingDirectorySeparator(normalizePath2(isRootedDiskPath(rootDirectory) ? rootDirectory : combinePaths(basePath, rootDirectory))));
         const relativeDirectory = firstDefined(rootDirs, (rootDirectory) => containsPath(rootDirectory, scriptDirectory, basePath, ignoreCase) ? scriptDirectory.substr(rootDirectory.length) : void 0);
         return deduplicate(
           [...rootDirs.map((rootDirectory) => combinePaths(rootDirectory, relativeDirectory)), scriptDirectory].map((baseDir) => removeTrailingDirectorySeparator(baseDir)),
@@ -206761,7 +206761,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         );
         if (files) {
           for (let filePath of files) {
-            filePath = normalizePath(filePath);
+            filePath = normalizePath2(filePath);
             if (exclude && comparePaths(filePath, exclude, scriptDirectory, ignoreCase) === 0) {
               continue;
             }
@@ -206778,7 +206778,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const directories = tryGetDirectories(host, baseDirectory);
         if (directories) {
           for (const directory of directories) {
-            const directoryName = getBaseFileName(normalizePath(directory));
+            const directoryName = getBaseFileName(normalizePath2(directory));
             if (directoryName !== "@types") {
               result.add(directoryResult(directoryName));
             }
@@ -206892,7 +206892,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const result = createNameAndKindSet();
         const moduleResolution = getEmitModuleResolutionKind(compilerOptions);
         if (baseUrl) {
-          const absolute = normalizePath(combinePaths(host.getCurrentDirectory(), baseUrl));
+          const absolute = normalizePath2(combinePaths(host.getCurrentDirectory(), baseUrl));
           getCompletionEntriesForDirectoryFragment(
             fragment,
             absolute,
@@ -207116,10 +207116,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const outDir = program.getCompilerOptions().outDir;
         const declarationDir = program.getCompilerOptions().declarationDir;
         const expandedPrefixDirectory = fragmentHasPath ? combinePaths(normalizedPrefixDirectory, normalizedPrefixBase + fragmentDirectory) : normalizedPrefixDirectory;
-        const baseDirectory = normalizePath(combinePaths(packageDirectory, expandedPrefixDirectory));
+        const baseDirectory = normalizePath2(combinePaths(packageDirectory, expandedPrefixDirectory));
         const possibleInputBaseDirectoryForOutDir = isImports && outDir && getPossibleOriginalInputPathWithoutChangingExt(baseDirectory, ignoreCase, outDir, getCommonSourceDirectory2);
         const possibleInputBaseDirectoryForDeclarationDir = isImports && declarationDir && getPossibleOriginalInputPathWithoutChangingExt(baseDirectory, ignoreCase, declarationDir, getCommonSourceDirectory2);
-        const normalizedSuffix = normalizePath(parsed.suffix);
+        const normalizedSuffix = normalizePath2(parsed.suffix);
         const declarationExtension = normalizedSuffix && getDeclarationEmitExtensionForPath("_" + normalizedSuffix);
         const inputExtension = normalizedSuffix ? getPossibleOriginalInputExtensionForExtension("_" + normalizedSuffix) : void 0;
         const matchingSuffixes = [
@@ -207173,7 +207173,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         __name(getDirectoryMatches, "getDirectoryMatches");
         function trimPrefixAndSuffix(path7, prefix) {
           return firstDefined(matchingSuffixes, (suffix) => {
-            const inner = withoutStartAndEnd(normalizePath(path7), prefix, suffix);
+            const inner = withoutStartAndEnd(normalizePath2(path7), prefix, suffix);
             return inner === void 0 ? void 0 : removeLeadingDirectorySeparator(inner);
           });
         }
@@ -222982,7 +222982,7 @@ ${options.prefix}` : "\n" : options.prefix
         nodeStartsNewLexicalEnvironment: () => nodeStartsNewLexicalEnvironment,
         noop: () => noop,
         noopFileWatcher: () => noopFileWatcher,
-        normalizePath: () => normalizePath,
+        normalizePath: () => normalizePath2,
         normalizeSlashes: () => normalizeSlashes,
         normalizeSpans: () => normalizeSpans,
         not: () => not,
@@ -224044,7 +224044,7 @@ ${options.prefix}` : "\n" : options.prefix
         Errors2.ThrowProjectDoesNotContainDocument = ThrowProjectDoesNotContainDocument;
       })(Errors || (Errors = {}));
       function toNormalizedPath(fileName) {
-        return normalizePath(fileName);
+        return normalizePath2(fileName);
       }
       __name(toNormalizedPath, "toNormalizedPath");
       function normalizedPathToPath(normalizedPath, currentDirectory, getCanonicalFileName) {
@@ -225261,7 +225261,7 @@ ${options.prefix}` : "\n" : options.prefix
           return this.currentDirectory;
         }
         getDefaultLibFileName() {
-          const nodeModuleBinDir = getDirectoryPath(normalizePath(this.projectService.getExecutingFilePath()));
+          const nodeModuleBinDir = getDirectoryPath(normalizePath2(this.projectService.getExecutingFilePath()));
           return combinePaths(nodeModuleBinDir, getDefaultLibFileName(this.compilerOptions));
         }
         useCaseSensitiveFileNames() {
@@ -234874,7 +234874,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
           if (!fileName) {
             return;
           }
-          const file2 = normalizePath(fileName);
+          const file2 = normalizePath2(fileName);
           this.projectService.closeClientFile(file2);
         }
         mapLocationNavigationBarItems(items, scriptInfo) {
@@ -235417,7 +235417,7 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         }
         getCanonicalFileName(fileName) {
           const name = this.host.useCaseSensitiveFileNames ? fileName : toFileNameLowerCase(fileName);
-          return normalizePath(name);
+          return normalizePath2(name);
         }
         exit() {
         }
@@ -253681,6 +253681,13 @@ var handleDiscover = /* @__PURE__ */ __name(async (args) => {
 var fs5 = __toESM(require("fs/promises"), 1);
 var path5 = __toESM(require("path"), 1);
 var ts2 = __toESM(require_typescript(), 1);
+function normalizePath(inputPath) {
+  if (/^\/[a-z]\//i.test(inputPath)) {
+    return inputPath[1].toUpperCase() + ":" + inputPath.slice(2);
+  }
+  return inputPath;
+}
+__name(normalizePath, "normalizePath");
 function estimateTokens5(str) {
   return Math.ceil(str.length / 4);
 }
@@ -253857,7 +253864,8 @@ function extractAst(sourceFile) {
 }
 __name(extractAst, "extractAst");
 async function readSingleFile(spec, globalExtract, output, symbolFilter, defaultRange, workDir = process.cwd()) {
-  const filePath = path5.isAbsolute(spec.path) ? spec.path : path5.join(workDir, spec.path);
+  const normalizedPath = normalizePath(spec.path);
+  const filePath = path5.isAbsolute(normalizedPath) ? normalizedPath : path5.join(workDir, normalizedPath);
   const relativePath = path5.relative(workDir, filePath);
   const extract = spec.extract ?? globalExtract;
   const maxLinesPerFile = output.max_lines_per_file ?? Infinity;
@@ -254310,6 +254318,11 @@ __name(tokenize, "tokenize");
 // src/handlers/precision-edit.ts
 var ts3 = __toESM(require_typescript(), 1);
 var execAsync = (0, import_util6.promisify)(import_child_process3.exec);
+var DEFAULT_MATCH_CONFIG = {
+  mode: "exact",
+  case_sensitive: true,
+  whitespace_sensitive: true
+};
 function estimateTokens6(str) {
   return Math.ceil(str.length / 4);
 }
@@ -254371,6 +254384,71 @@ function isJavaScriptFile(filePath) {
   return [".ts", ".tsx", ".js", ".jsx"].includes(ext);
 }
 __name(isJavaScriptFile, "isJavaScriptFile");
+function levenshteinDistance(a, b) {
+  if (a.length === 0)
+    return b.length;
+  if (b.length === 0)
+    return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+__name(levenshteinDistance, "levenshteinDistance");
+function calculateSimilarity(a, b) {
+  if (a === b)
+    return 1;
+  if (!a || !b)
+    return 0;
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+  if (longer.length === 0)
+    return 1;
+  if (longer.length > 500)
+    return 0;
+  const editDistance = levenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+__name(calculateSimilarity, "calculateSimilarity");
+function findClosestMatch(content, pattern, maxResults = 3) {
+  const lines = content.split("\n");
+  const patternLines = pattern.split("\n");
+  const patternFirstLine = patternLines[0].trim();
+  const matches = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineTrimmed = line.trim();
+    if (lineTrimmed.length === 0)
+      continue;
+    const similarity = calculateSimilarity(lineTrimmed, patternFirstLine);
+    if (similarity > 0.4) {
+      matches.push({
+        line: i + 1,
+        similarity,
+        preview: line.slice(0, 80) + (line.length > 80 ? "..." : "")
+      });
+    }
+  }
+  return matches.sort((a, b) => b.similarity - a.similarity).slice(0, maxResults);
+}
+__name(findClosestMatch, "findClosestMatch");
 function getScriptKind(filePath) {
   const ext = path6.extname(filePath).toLowerCase();
   switch (ext) {
@@ -254615,7 +254693,19 @@ async function applyEdit(filePath, content, edit, matchConfig) {
   }
   const matches = findInContext(filePath, content, edit.find, edit.hints ?? {}, matchConfig);
   if (matches.length === 0) {
-    return { newContent: content, status: "not_found", editsApplied: 0, error: "Pattern not found" };
+    const closestMatches = findClosestMatch(content, edit.find);
+    const errorDetails = {
+      message: "Pattern not found",
+      pattern_length: edit.find.length,
+      file_length: content.length,
+      closest_matches: closestMatches.length > 0 ? closestMatches : "No similar content found"
+    };
+    return {
+      newContent: content,
+      status: "not_found",
+      editsApplied: 0,
+      error: JSON.stringify(errorDetails, null, 2)
+    };
   }
   let matchesToReplace;
   const occurrence = edit.occurrence ?? "first";
@@ -254656,15 +254746,13 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     if (!input.transaction) {
       return toCallToolResult(errorResult("transaction configuration is required", outputMode, getElapsed()));
     }
-    if (!input.match) {
-      return toCallToolResult(errorResult("match configuration is required", outputMode, getElapsed()));
-    }
     if (!input.output) {
       return toCallToolResult(errorResult("output configuration is required", outputMode, getElapsed()));
     }
     const dryRun = input.dry_run ?? false;
     const diffContext = input.output.diff_context ?? 3;
     const rollbackId = generateRollbackId();
+    const matchConfig = input.match ?? DEFAULT_MATCH_CONFIG;
     const beforeValidation = [];
     if (input.validate?.before) {
       for (const step of input.validate.before) {
@@ -254701,7 +254789,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
         filePath,
         currentContent,
         edit,
-        input.match
+        matchConfig
       );
       const result = {
         id: edit.id,

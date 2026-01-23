@@ -1,0 +1,16 @@
+{
+  "queries": [
+    {
+      "id": "find-scripts",
+      "type": "glob",
+      "patterns": ["scripts/**/*.cjs"]
+    },
+    {
+      "id": "find-wrappers",
+      "type": "grep",
+      "pattern": "wrapper",
+      "glob": "scripts/**/*.cjs"
+    }
+  ],
+  "output_mode": "files_only"
+}

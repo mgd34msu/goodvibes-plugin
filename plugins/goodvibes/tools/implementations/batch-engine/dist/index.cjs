@@ -10805,13 +10805,31 @@ var init_mode_configs = __esm({
           auto_chain: false,
           max_autonomous_batches: 1,
           checkpoint_frequency: "per_batch",
-          parallel_agents: 3
+          parallel_agents: 6,
+          auto_recovery_on_blocker: true
+        },
+        blockers: {
+          issues: [
+            "major_issue",
+            "minor_issue",
+            "nitpick_issue"
+          ],
+          errors: [
+            "tool_failure",
+            "agent_failure",
+            "general_error"
+          ],
+          other: [
+            "workflow_ambiguity",
+            "workflow_question",
+            "other_undefined"
+          ]
         },
         recovery: {
-          on_error: "ask_user",
-          on_ambiguity: "ask_user",
-          on_risk: "ask_user",
-          max_fix_attempts: 2
+          on_issue: "ask_user_with_options",
+          on_error: "ask_user_with_options",
+          on_other: "ask_user",
+          max_fix_attempts: 3
         },
         output: {
           default_mode: "standard",
@@ -10838,12 +10856,30 @@ var init_mode_configs = __esm({
           auto_chain: true,
           max_autonomous_batches: "unlimited",
           checkpoint_frequency: "per_phase",
-          parallel_agents: 6
+          parallel_agents: 6,
+          auto_recovery_on_blocker: true
+        },
+        blockers: {
+          issues: [
+            "major_issue",
+            "minor_issue",
+            "nitpick_issue"
+          ],
+          errors: [
+            "tool_failure",
+            "agent_failure",
+            "general_error"
+          ],
+          other: [
+            "workflow_ambiguity",
+            "workflow_question",
+            "other_undefined"
+          ]
         },
         recovery: {
-          on_error: "fix_and_continue",
-          on_ambiguity: "best_guess",
-          on_risk: "proceed_with_checkpoint",
+          on_issue: "fix_review_loop",
+          on_error: "fix_review_loop",
+          on_other: "choose_best_option_silent",
           max_fix_attempts: 3
         },
         output: {
@@ -11013,9 +11049,9 @@ var init_mode = __esm({
           case "ambiguous_requirement":
             return this.currentMode.communication.ask_on_ambiguity;
           case "high_risk_operation":
-            return this.currentMode.recovery.on_risk === "ask_user";
+            return this.currentMode.recovery.on_other === "ask_user";
           case "error_occurred":
-            return this.currentMode.recovery.on_error === "ask_user";
+            return this.currentMode.recovery.on_error === "ask_user" || this.currentMode.recovery.on_error === "ask_user_with_options";
           case "batch_complete":
             return !this.currentMode.execution.auto_chain;
           default:
@@ -11031,6 +11067,8 @@ var init_mode = __esm({
             return { action: "halt", notify: true };
           case "ask_user":
             return { action: "ask_user", options: ["retry", "skip", "abort"] };
+          case "ask_user_with_options":
+            return { action: "ask_user", options: ["retry", "skip", "abort", "fix_and_continue"] };
           case "log_and_continue":
             return { action: "log", continue: true };
           case "fix_and_continue":
@@ -11038,6 +11076,14 @@ var init_mode = __esm({
               action: "fix_loop",
               max_attempts: this.currentMode.recovery.max_fix_attempts
             };
+          case "fix_review_loop":
+            return {
+              action: "fix_loop",
+              max_attempts: this.currentMode.recovery.max_fix_attempts,
+              notify: true
+            };
+          default:
+            return { action: "halt", notify: true };
         }
       }
       formatResult(result) {

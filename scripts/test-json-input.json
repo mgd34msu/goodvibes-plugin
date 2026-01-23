@@ -1,0 +1,10 @@
+{
+  "queries": [
+    {
+      "id": "test-query",
+      "type": "glob",
+      "patterns": ["*.json"]
+    }
+  ],
+  "output_mode": "count_only"
+}
