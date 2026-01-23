@@ -87,6 +87,19 @@ interface FileReadResult {
 
 // === Helper Functions ===
 
+/**
+ * Normalizes a path to handle both Unix-style Git Bash paths and Windows paths.
+ * Converts /c/Users/... to C:/Users/...
+ */
+function normalizePath(inputPath: string): string {
+  // Convert Unix-style Git Bash paths (/c/Users/...) to Windows paths (C:/Users/...)
+  if (/^\/[a-z]\//i.test(inputPath)) {
+    return inputPath[1].toUpperCase() + ':' + inputPath.slice(2);
+  }
+  return inputPath;
+}
+
+
 function estimateTokens(str: string): number {
   return Math.ceil(str.length / 4);
 }
@@ -299,7 +312,8 @@ async function readSingleFile(
   defaultRange?: { start: number; end: number },
   workDir: string = process.cwd()
 ): Promise<FileReadResult> {
-  const filePath = path.isAbsolute(spec.path) ? spec.path : path.join(workDir, spec.path);
+  const normalizedPath = normalizePath(spec.path);
+  const filePath = path.isAbsolute(normalizedPath) ? normalizedPath : path.join(workDir, normalizedPath);
   const relativePath = path.relative(workDir, filePath);
   const extract = spec.extract ?? globalExtract;
   const maxLinesPerFile = output.max_lines_per_file ?? Infinity;
