@@ -119,6 +119,48 @@ export const BLOCKED_NATIVE_TOOLS: string[] = [
 ];
 
 /**
+ * Bash command patterns that should be blocked.
+ * These patterns detect attempts to circumvent native tool blocking
+ * by using shell commands that replicate blocked tool functionality.
+ */
+export const BLOCKED_BASH_PATTERNS: Array<{
+  pattern: RegExp;
+  replacementKey: string;
+  description: string;
+}> = [
+  {
+    pattern: /\bcat\b[^|]*\|\s*grep\b/i,
+    replacementKey: 'Grep',
+    description: 'cat piped to grep',
+  },
+  {
+    pattern: /(?:^|[|;&]\s*)grep\s+/i,
+    replacementKey: 'Grep',
+    description: 'grep command',
+  },
+  {
+    pattern: /(?:^|[|;&]\s*)cat\s+[^|>]/i,
+    replacementKey: 'Read',
+    description: 'cat command (use precision_read)',
+  },
+  {
+    pattern: /(?:^|[|;&]\s*)(?:head|tail)\s+/i,
+    replacementKey: 'Read',
+    description: 'head/tail command (use precision_read with line ranges)',
+  },
+  {
+    pattern: /(?:^|[|;&]\s*)find\s+\S/i,
+    replacementKey: 'Glob',
+    description: 'find command (use precision_glob)',
+  },
+  {
+    pattern: /\bcat\b.*>\s*\S+/i,
+    replacementKey: 'Write',
+    description: 'cat redirect to file (use precision_write)',
+  },
+];
+
+/**
  * Formats a blocking message with the replacement tool and usage.
  *
  * @param toolName - The native tool that was blocked
@@ -144,11 +186,47 @@ export function formatBlockMessage(
 }
 
 /**
- * Checks if the given tool should be blocked for subagents.
+ * Checks if a Bash command matches any blocked pattern.
  *
- * @param toolName - The name of the tool being invoked
- * @returns True if the tool is in the blocked list
+ * @param command - The bash command string to check
+ * @returns Block message if pattern matches, null otherwise
  */
+export function checkBashCommand(command: string): string | null {
+  for (const { pattern, replacementKey, description } of BLOCKED_BASH_PATTERNS) {
+    if (pattern.test(command)) {
+      const replacement = TOOL_REPLACEMENTS[replacementKey];
+      if (replacement) {
+        return formatBlockMessage(description, replacement);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Handles blocking of Bash commands that circumvent tool blocking.
+ *
+ * @param input - The hook input containing tool information
+ * @returns True if the command was blocked, false otherwise
+ */
+export function handleBashBlocking(input: PreToolUseInput): boolean {
+  if (input.tool_name !== 'Bash') return false;
+
+  const command = (input.tool_input?.command as string) || '';
+  const blockMessage = checkBashCommand(command);
+
+  if (blockMessage) {
+    debug(`Blocking Bash command pattern`, {
+      command: command.slice(0, 100),
+      agent_type: input.agent_type,
+      is_subagent: input.is_subagent,
+    });
+    blockTool(blockMessage);
+    return true;
+  }
+  return false;
+}
+
 export function isBlockedNativeTool(toolName: string): boolean {
   return BLOCKED_NATIVE_TOOLS.includes(toolName);
 }
@@ -194,9 +272,13 @@ export function handleNativeToolBlocking(input: PreToolUseInput): boolean {
 export async function validateToolUsage(
   input: PreToolUseInput
 ): Promise<void> {
-  // Check if tool should be blocked
+  // Check if native tool should be blocked
   if (handleNativeToolBlocking(input)) {
-    // Already responded with block, nothing more to do
+    return;
+  }
+
+  // Check if Bash command pattern should be blocked
+  if (handleBashBlocking(input)) {
     return;
   }
 
