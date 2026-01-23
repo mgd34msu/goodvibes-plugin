@@ -29,13 +29,8 @@ import type { HookInput } from '../shared/index.js';
 export async function validateDetectStack(input: HookInput): Promise<void> {
   const cwd = input.cwd || process.cwd();
   if (!(await fileExists(path.join(cwd, 'package.json')))) {
-    respond(
-      blockTool(
-        'PreToolUse',
-        'No package.json found in project root. Cannot detect stack.'
-      ),
-      true
-    );
+    blockTool('No package.json found in project root. Cannot detect stack.'
+      );
     return;
   }
   respond(allowTool('PreToolUse'));
@@ -81,10 +76,7 @@ export async function validateRunSmokeTest(input: HookInput): Promise<void> {
   const cwd = input.cwd || process.cwd();
   // Check if package.json exists
   if (!(await fileExists(path.join(cwd, 'package.json')))) {
-    respond(
-      blockTool('PreToolUse', 'No package.json found. Cannot run smoke tests.'),
-      true
-    );
+    blockTool('No package.json found. Cannot run smoke tests.');
     return;
   }
 
@@ -118,13 +110,8 @@ export async function validateCheckTypes(input: HookInput): Promise<void> {
   const cwd = input.cwd || process.cwd();
   // Check for TypeScript config
   if (!(await fileExists(path.join(cwd, 'tsconfig.json')))) {
-    respond(
-      blockTool(
-        'PreToolUse',
-        'No tsconfig.json found. TypeScript not configured.'
-      ),
-      true
-    );
+    blockTool('No tsconfig.json found. TypeScript not configured.'
+      );
     return;
   }
 

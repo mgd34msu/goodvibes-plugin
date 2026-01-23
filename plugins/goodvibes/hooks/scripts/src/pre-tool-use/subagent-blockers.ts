@@ -179,7 +179,7 @@ export function handleNativeToolBlocking(input: PreToolUseInput): boolean {
       replacement: replacement.replacement,
     });
 
-    respond(blockTool('PreToolUse', blockMessage), true);
+    blockTool(blockMessage);
     return true;
   }
 

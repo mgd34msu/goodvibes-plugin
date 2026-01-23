@@ -81,13 +81,8 @@ export async function handleGitCommit(
 
   if (gateResult.blocking) {
     // Block the commit if there are blocking failures
-    respond(
-      blockTool(
-        'PreToolUse',
-        `Quality gates failed: ${resultSummary}. Fix issues before committing.`
-      ),
-      true
-    );
+    blockTool(`Quality gates failed: ${resultSummary}. Fix issues before committing.`
+      );
     return;
   }
 
@@ -128,10 +123,7 @@ export async function handleGitCommand(
   const branchGuard = await checkBranchGuard(command, cwd, state);
 
   if (!branchGuard.allowed) {
-    respond(
-      blockTool('PreToolUse', branchGuard.reason ?? 'Git operation blocked'),
-      true
-    );
+    blockTool(branchGuard.reason ?? 'Git operation blocked');
     return;
   }
 
@@ -140,10 +132,7 @@ export async function handleGitCommand(
     const mergeGuard = checkMergeReadiness(cwd, state);
 
     if (!mergeGuard.allowed) {
-      respond(
-        blockTool('PreToolUse', mergeGuard.reason ?? 'Merge blocked'),
-        true
-      );
+      blockTool(mergeGuard.reason ?? 'Merge blocked');
       return;
     }
 

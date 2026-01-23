@@ -99,7 +99,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Read",
+        "matcher": "Read|Edit|Write|Glob|Grep",
         "hooks": [
           {
             "type": "command",

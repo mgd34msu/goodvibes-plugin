@@ -129,18 +129,9 @@ function allowTool(hookEventName, systemMessage) {
     }
   };
 }
-function blockTool(hookEventName, reason) {
-  return {
-    hookSpecificOutput: {
-      hookEventName,
-      permissionDecision: "deny",
-      permissionDecisionReason: reason
-    },
-    continue: false,
-    systemMessage: "ERROR: Non-preferred tool used.",
-    stopReason: reason,
-    suppressOutput: false
-  };
+function blockTool(reason) {
+  console.error(reason);
+  process.exit(2);
 }
 function formatResponse(response) {
   return JSON.stringify(response);
@@ -762,12 +753,8 @@ async function handleGitCommit(input, command) {
     results: gateResult.results
   });
   if (gateResult.blocking) {
-    respond(
-      blockTool(
-        "PreToolUse",
-        `Quality gates failed: ${resultSummary}. Fix issues before committing.`
-      ),
-      true
+    blockTool(
+      `Quality gates failed: ${resultSummary}. Fix issues before committing.`
     );
     return;
   }
@@ -790,19 +777,13 @@ async function handleGitCommand(input, command) {
   debug("Git command detected, checking guards", { command });
   const branchGuard = await checkBranchGuard(command, cwd, state);
   if (!branchGuard.allowed) {
-    respond(
-      blockTool("PreToolUse", branchGuard.reason ?? "Git operation blocked"),
-      true
-    );
+    blockTool(branchGuard.reason ?? "Git operation blocked");
     return;
   }
   if (isMergeCommand(command)) {
     const mergeGuard = checkMergeReadiness(cwd, state);
     if (!mergeGuard.allowed) {
-      respond(
-        blockTool("PreToolUse", mergeGuard.reason ?? "Merge blocked"),
-        true
-      );
+      blockTool(mergeGuard.reason ?? "Merge blocked");
       return;
     }
     if (mergeGuard.warning) {
@@ -913,7 +894,7 @@ function handleNativeToolBlocking(input) {
       is_subagent: input.is_subagent,
       replacement: replacement.replacement
     });
-    respond(blockTool("PreToolUse", blockMessage), true);
+    blockTool(blockMessage);
     return true;
   }
   return false;
@@ -924,12 +905,8 @@ import path4 from "node:path";
 async function validateDetectStack(input) {
   const cwd = input.cwd || process.cwd();
   if (!await fileExists(path4.join(cwd, "package.json"))) {
-    respond(
-      blockTool(
-        "PreToolUse",
-        "No package.json found in project root. Cannot detect stack."
-      ),
-      true
+    blockTool(
+      "No package.json found in project root. Cannot detect stack."
     );
     return;
   }
@@ -957,10 +934,7 @@ async function validateGetSchema(input) {
 async function validateRunSmokeTest(input) {
   const cwd = input.cwd || process.cwd();
   if (!await fileExists(path4.join(cwd, "package.json"))) {
-    respond(
-      blockTool("PreToolUse", "No package.json found. Cannot run smoke tests."),
-      true
-    );
+    blockTool("No package.json found. Cannot run smoke tests.");
     return;
   }
   const [hasPnpm, hasYarn, hasNpm] = await Promise.all([
@@ -982,12 +956,8 @@ async function validateRunSmokeTest(input) {
 async function validateCheckTypes(input) {
   const cwd = input.cwd || process.cwd();
   if (!await fileExists(path4.join(cwd, "tsconfig.json"))) {
-    respond(
-      blockTool(
-        "PreToolUse",
-        "No tsconfig.json found. TypeScript not configured."
-      ),
-      true
+    blockTool(
+      "No tsconfig.json found. TypeScript not configured."
     );
     return;
   }

@@ -82,7 +82,7 @@ export declare function allowTool(hookEventName: string, systemMessage?: string)
  * const response = blockTool('PreToolUse', 'rm -rf commands are not permitted');
  * // => { continue: false, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: '...' } }
  */
-export declare function blockTool(hookEventName: string, reason: string): HookResponse;
+export declare function blockTool(reason: string): never;
 /**
  * Formats a hook response as JSON string (pure function).
  *

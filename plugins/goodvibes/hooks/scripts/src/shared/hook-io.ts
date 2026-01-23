@@ -161,18 +161,9 @@ export function allowTool(
  * const response = blockTool('PreToolUse', 'rm -rf commands are not permitted');
  * // => { continue: false, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: '...' } }
  */
-export function blockTool(hookEventName: string, reason: string): HookResponse {
-  return {
-    hookSpecificOutput: {
-      hookEventName,
-      permissionDecision: 'deny',
-      permissionDecisionReason: reason,
-    },
-    continue: false,
-    systemMessage: 'ERROR: Non-preferred tool used.',
-    stopReason: reason,
-    suppressOutput: false
-  };
+export function blockTool(reason: string): never {
+  console.error(reason);
+  process.exit(2);
 }
 
 /**
