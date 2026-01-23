@@ -146,7 +146,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 - **Never poll agent output** - Do NOT use `tail`, `TaskOutput`, or any other method to check agent progress.
 - **Wait for agent signals** - Agents will notify you when they finish. Only proceed after receiving completion notification.
 
-### Step-by-Step Process
+### WRFC Loop [Step-by-Step Process - vibecoding] (MANDATORY)
 
 1. **Spawn WORK agent** (background) - Performs the assigned task.
 2. **Spawn REVIEW agent** (background) - Checks the work that was done.

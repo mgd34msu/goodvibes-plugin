@@ -36557,6 +36557,7 @@ var toolDefinitions = [
         output_mode: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
           description: "Output verbosity level"
         }
       }
@@ -36582,7 +36583,9 @@ var toolDefinitions = [
         },
         output_mode: {
           type: "string",
-          enum: ["count_only", "minimal", "standard", "verbose"]
+          enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
+          description: "Output verbosity level"
         }
       }
     }
@@ -36606,7 +36609,9 @@ var toolDefinitions = [
         until: { type: "string", description: "ISO timestamp - only batches before this time" },
         output_mode: {
           type: "string",
-          enum: ["count_only", "minimal", "standard", "verbose"]
+          enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
+          description: "Output verbosity level"
         }
       }
     }
@@ -36673,7 +36678,9 @@ var toolDefinitions = [
         },
         output_mode: {
           type: "string",
-          enum: ["count_only", "minimal", "standard", "verbose"]
+          enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
+          description: "Output verbosity level"
         }
       }
     }
@@ -36689,7 +36696,9 @@ var toolDefinitions = [
         include_expired: { type: "boolean", description: "Include expired checkpoints" },
         output_mode: {
           type: "string",
-          enum: ["count_only", "minimal", "standard", "verbose"]
+          enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
+          description: "Output verbosity level"
         }
       }
     }
@@ -36787,7 +36796,9 @@ var toolDefinitions = [
         },
         output_mode: {
           type: "string",
-          enum: ["count_only", "minimal", "standard", "verbose"]
+          enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
+          description: "Output verbosity level"
         }
       }
     }

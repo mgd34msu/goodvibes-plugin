@@ -596,27 +596,32 @@ This is a resource limitation. Plans must respect this constraint.
 ```yaml
 # WRONG - 8 concurrent agents (EXCEEDS LIMIT)
 agents:
-  - { id: eng1, agent: engineer, parallel: true }
-  - { id: eng2, agent: engineer, parallel: true }
-  - { id: eng3, agent: engineer, parallel: true }
-  - { id: eng4, agent: engineer, parallel: true }
-  - { id: test1, agent: tester, parallel: true }
-  - { id: test2, agent: tester, parallel: true }
-  - { id: rev1, agent: reviewer, parallel: true }
-  - { id: rev2, agent: reviewer, parallel: true }
+  - { id: eng01, agent: engineer, parallel: true, task: work, phase_point: 1 }
+  - { id: eng02, agent: engineer, parallel: true, task: work, phase_point: 2 }
+  - { id: eng03, agent: engineer, parallel: true, task: work, phase_point: 3 }
+  - { id: eng04, agent: engineer, parallel: true, task: work, phase_point: 4 }
+  - { id: eng05, agent: reviewer, parallel: true, task: work, phase_point: 5 }
+  - { id: eng06, agent: reviewer, parallel: true, task: work, phase_point: 6 }
+  - { id: eng07, agent: reviewer, parallel: true, task: work, phase_point: 7 }
+  - { id: eng08, agent: reviewer, parallel: true, task: work, phase_point: 8 }
 
 # CORRECT - Phased with max 6
-phase_1:  # 4 concurrent
-  - { id: eng1, agent: engineer, parallel: true }
-  - { id: eng2, agent: engineer, parallel: true }
-  - { id: eng3, agent: engineer, parallel: true }
-  - { id: eng4, agent: engineer, parallel: true }
+phase_1:  # 6 concurrent
+  - { id: eng01, agent: engineer, parallel: true, task: work, phase_point: 1 }
+  - { id: eng02, agent: engineer, parallel: true, task: work, phase_point: 2 }
+  - { id: eng03, agent: engineer, parallel: true, task: work, phase_point: 3 }
+  - { id: eng04, agent: engineer, parallel: true, task: work, phase_point: 4 }
+  - { id: eng05, agent: engineer, parallel: true, task: work, phase_point: 5 }
+  - { id: eng06, agent: engineer, parallel: true, task: work, phase_point: 6 }
 
-phase_2:  # After phase_1, 4 concurrent
-  - { id: test1, agent: tester, depends_on: [eng1, eng2] }
-  - { id: test2, agent: tester, depends_on: [eng3, eng4] }
-  - { id: rev1, agent: reviewer, depends_on: [eng1, eng2] }
-  - { id: rev2, agent: reviewer, depends_on: [eng3, eng4] }
+# CORRECT - After phase_1 worker finishes, reviewer spawns, then fixer if needed, then checker, etc
+phase_1:  # work on phase_point 8 will start as soon as a space opens up 
+  - { id: eng06, agent: engineer, parallel: true, task: work, phase_point: 6 }
+  - { id: rev04, agent: reviewer, parallel: true, depends_on: [eng04], task: review, phase_point: 4 }
+  - { id: rev05, agent: reviewer, parallel: true, depends_on: [eng05], task: review, phase_point: 5 }
+  - { id: eng08, agent: engineer, parallel: true, depends_on: [rev03], task: fix, phase_point: 3 }
+  - { id: rev06, agent: reviewer, parallel: true, depends_on: [eng07], task: check, phase_point: 2 }
+  - { id: eng09, agent: engineer, parallel: true, task: work, phase_point: 7 }
 ```
 
 ### Dependency Syntax
@@ -648,180 +653,23 @@ phase_2:  # After phase_1, 4 concurrent
   task: "Write tests for implementation"
 ```
 
-### Budget Allocation
-
-Each agent invocation should have explicit budgets:
-
-```yaml
-- id: engineer_backend
-  agent: goodvibes:engineer
-  task: "Implement REST API endpoints"
-  budget:
-    max_tokens: 50000
-    max_turns: 30
-    timeout_ms: 300000
-```
-
-**Budget Guidelines:**
-
-| Task Complexity | Max Tokens | Max Turns | Timeout |
-|-----------------|------------|-----------|---------|
-| Simple (1-2 files) | 20,000 | 10 | 2 min |
-| Medium (3-5 files) | 50,000 | 30 | 5 min |
-| Complex (6+ files) | 100,000 | 50 | 10 min |
-
 ### WRFC Loop (Work-Review-Fix-Check)
 
 Integrate quality assurance into agent workflows:
 
-```
-WORK -> REVIEW -> FIX -> CHECK
-  |        |        |       |
-  |        |        |       +-> Validation passes?
-  |        |        |             Yes -> Complete
-  |        |        |             No -> Back to FIX
-  |        |        |
-  |        |        +-> Engineer fixes issues
-  |        |
-  |        +-> Reviewer identifies issues
-  |
-  +-> Engineer implements feature
-```
-
-**WRFC in Agent Coordination:**
-
-```yaml
-agents:
-  # WORK phase
-  - id: work
-    agent: goodvibes:engineer
-    task: "Implement user authentication"
-    budget: { max_tokens: 50000, max_turns: 30 }
-
-  # REVIEW phase
-  - id: review
-    agent: goodvibes:reviewer
-    depends_on: [work]
-    inject:
-      changes: "{{work.outputs.files}}"
-    task: "Review authentication implementation"
-    budget: { max_tokens: 30000, max_turns: 20 }
-
-  # FIX phase (conditional)
-  - id: fix
-    agent: goodvibes:engineer
-    depends_on: [review]
-    condition: "{{review.outputs.issues_count}} > 0"
-    inject:
-      issues: "{{review.outputs.issues}}"
-    task: "Fix issues identified in review"
-    budget: { max_tokens: 30000, max_turns: 20 }
-
-  # CHECK phase
-  - id: check
-    agent: goodvibes:tester
-    depends_on: [fix, work]
-    task: "Run tests to verify implementation"
-    budget: { max_tokens: 30000, max_turns: 20 }
-```
-
----
-
-## Mode-Aware Behavior
-
-### Vibecoding Mode Planning
-
-When planning for vibecoding (interactive) mode:
-
-**Characteristics:**
-- User is actively engaged
-- Explanations and confirmations are expected
-- Incremental progress reporting
-- Decision points for user input
-
-**Plan Structure:**
-
-```yaml
-mode: vibecoding
-
-interactive_points:
-  - after: discovery
-    ask: "Found {{count}} files. Proceed with analysis?"
-  - after: analysis
-    show: "Architecture summary"
-    ask: "Approve implementation approach?"
-  - before: destructive_operations
-    ask: "About to modify {{count}} files. Continue?"
-
-output:
-  verbosity: standard
-  show_diffs: true
-  explain_decisions: true
-
-checkpoints:
-  frequency: per_phase
-  user_confirmation: true
-```
-
-### Justvibes Mode Planning
-
-When planning for justvibes (autonomous) mode:
-
-**Characteristics:**
-- Fully autonomous execution
-- No user interaction expected
-- Best-guess decisions
-- Auto-recovery on failures
-- Minimal output
-
-**Plan Structure:**
-
-```yaml
-mode: justvibes
-
-autonomous:
-  decision_strategy: best_guess
-  on_ambiguity: proceed_conservative
-  on_failure: auto_recover
-  max_recovery_attempts: 3
-
-output:
-  verbosity: minimal
-  show_diffs: false
-  log_to: ".goodvibes/logs/activity.md"
-
-checkpoints:
-  frequency: per_phase
-  user_confirmation: false
-  auto_rollback_on_fail: true
-```
-
-### Mode Detection and Adaptation
-
-```yaml
-# Check current mode
-mode_detection:
-  check_file: ".goodvibes/state/session.json"
-  check_field: "output_style"
-  values:
-    vibecoding: "goodvibes:vibecoding"
-    justvibes: "goodvibes:justvibes"
-
-# Adapt plan based on mode
-adaptation:
-  vibecoding:
-    output_mode: standard
-    checkpoints: per_phase
-    ask_on_ambiguity: true
-    show_progress: true
-
-  justvibes:
-    output_mode: minimal
-    checkpoints: per_batch
-    ask_on_ambiguity: false
-    show_progress: false
-    log_activity: true
-```
+1. **Spawn WORK agent** (background) - Performs the assigned task.
+2. **Spawn REVIEW agent** (background) - Checks the work that was done.
+3. **Evaluate REVIEW result:**
+   - **PASS**: Proceed to Step 4.
+   - **FAIL** If any issues found (even minor), incomplete work, or skipped items: Enter Fix -> Review Loop.
+        - **Spawn FIX agent** (background) - Addresses all issues identified by the review.
+        - **Spawn CHECK agent** (background) - Re-reviews the fixed work.
+            - **Evaluate REVIEW result:**
+                - **PASS**: Proceed to Step 4.
+                - **FAIL**: Repeat Fix -> Review Loop (spawn another FIX agent).
+4. **Commit Verified Work**
+5. **Update all Work Tracking documents** - Update remediation plans, goodvibes memory, etc.
+6. **Repeat as necessary** - Continue until all work is done.
 
 ---
 
@@ -1050,16 +898,6 @@ agents:
 | cp_2 | Phase 1 | Restore files |
 | cp_3 | Phase 2 | Restore files + undo state |
 
-### Token Budget
-
-| Phase | Operation | Estimate |
-|-------|-----------|----------|
-| Discovery | discover | ~200 |
-| Phase 1 | read files | ~500 |
-| Phase 2 | write files | ~300 |
-| Validation | exec commands | ~100 |
-| **Total** | | **~1,100** |
-
 ### Risk Assessment
 
 | Risk | Probability | Impact | Mitigation |
@@ -1079,43 +917,6 @@ agents:
 2. [Step 2]
 3. [Step 3]
 ```
-
-### Compact Plan Format (for justvibes)
-
-When mode is justvibes, use condensed format:
-
-```yaml
-plan:
-  id: plan_[timestamp]
-  mode: justvibes
-  task: "[description]"
-
-  discovery:
-    queries: [...]
-    output_mode: count_only
-
-  phases:
-    - name: read
-      ops: [...]
-    - name: write
-      ops: [...]
-      checkpoint: true
-    - name: validate
-      ops: [...]
-
-  agents:
-    - { id: eng1, agent: engineer, task: "...", budget: 50000 }
-
-  config:
-    transaction: atomic
-    checkpoint: per_phase
-    fix_loop: { max: 3 }
-
-  estimates:
-    tokens: 1100
-    duration: "5m"
-```
-
 ---
 
 ## Planning Workflows
@@ -1472,25 +1273,6 @@ checkpoint_strategy:
 | Run validation | precision_exec | minimal |
 | Multi-query discovery | discover | files_only |
 
-### Token Budget Guidelines
-
-| Operation | Typical Tokens |
-|-----------|----------------|
-| discover (count_only) | ~50 |
-| discover (files_only) | ~100-500 |
-| precision_read (outline) | ~100-300 |
-| precision_read (content) | ~500-2000 |
-| precision_grep (files_only) | ~100-300 |
-| precision_edit (minimal) | ~200-500 |
-| precision_exec (minimal) | ~100-300 |
-
-### Output Mode Recommendations
-
-| Mode | Output Mode | Checkpoint | Ask User |
-|------|-------------|------------|----------|
-| vibecoding | standard | per_phase | yes |
-| justvibes | minimal | per_batch | no |
-
 ### Dependency Syntax Cheat Sheet
 
 ```yaml
@@ -1528,9 +1310,9 @@ condition: "{{prior_id.outputs.count}} > 0"
 ### WRFC Loop Quick Reference
 
 ```
-WORK (engineer) -> REVIEW (reviewer) -> FIX (engineer) -> CHECK (tester)
-     |                  |                    |                |
-     +------------------+--------------------+----------------+
+WORK (engineer) -> REVIEW (reviewer) -> FIX (engineer) -> CHECK (reviewer)
+                                             ^                |
+                                             +----------------+
                         Iterate until CHECK passes
 ```
 
