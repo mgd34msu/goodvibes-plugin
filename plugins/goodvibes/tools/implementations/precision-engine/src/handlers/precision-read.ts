@@ -16,6 +16,7 @@ import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode, SymbolKind as GoodVibesSymbolKind } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -434,14 +435,13 @@ async function readSingleFile(
 export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionReadInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_read");
   const workDir = process.cwd();
 
   try {
     // Validate input
     if (!input.files || !Array.isArray(input.files) || input.files.length === 0) {
-      return toCallToolResult(errorResult(`Missing required parameter 'files'. Expected: array of file paths or file specs.
-Example: {"files": [{"path": "src/index.ts"}], "extract": "content", "output": {"mode": "standard"}}`, outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_read', 'files', 'array of file paths or file specs'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)

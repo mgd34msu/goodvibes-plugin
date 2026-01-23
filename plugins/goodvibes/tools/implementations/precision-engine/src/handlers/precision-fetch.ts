@@ -14,6 +14,7 @@
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
+import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 
 // Simple in-memory cache
 interface CacheEntry {
@@ -416,7 +417,7 @@ function normalizeUrlRequest(input: string | FetchSpec): FetchSpec {
 export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionFetchInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_fetch");
 
   // Parse options with defaults
   const parallel = input.parallel ?? true;
@@ -428,7 +429,7 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
 
   try {
     if (!input.urls || !Array.isArray(input.urls) || input.urls.length === 0) {
-      return toCallToolResult(errorResult('urls array is required', outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_fetch', 'urls', 'array of URL strings or request objects'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     // Normalize and validate URLs
@@ -436,7 +437,7 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
     for (const req of input.urls) {
       const normalized = normalizeUrlRequest(req);
       if (!normalized.url) {
-        return toCallToolResult(errorResult('Each request must have a url', outputMode, getElapsed()));
+        return toCallToolResult(createErrorResult(formatMissingParamError('precision_fetch', 'urls[].url', 'URL string for each request'), { output_mode: outputMode, execution_ms: getElapsed() }));
       }
       try {
         new URL(normalized.url);

@@ -5,6 +5,8 @@
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
+import { TOOL_SPECIFIC_DEFAULTS } from '../utils/index.js';
+import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { handlePrecisionGrep } from './precision-grep.js';
 import { handlePrecisionGlob } from './precision-glob.js';
 import { handlePrecisionSymbols } from './precision-symbols.js';
@@ -367,12 +369,12 @@ async function executeQuery(
 export const handleDiscover: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as DiscoverInput;
-  const outputMode: DiscoverOutputMode = (input.output_mode as DiscoverOutputMode) || 'files_only';
+  const outputMode: DiscoverOutputMode = (input.output_mode as DiscoverOutputMode) || (TOOL_SPECIFIC_DEFAULTS.discover?.output_mode as DiscoverOutputMode) || 'files_only';
   const projectRoot = process.cwd();
 
   try {
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
-      return toCallToolResult(errorResult('queries array is required', 'standard', getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('discover', 'queries', 'array of query objects'), { output_mode: 'standard', execution_ms: getElapsed() }));
     }
 
     // Validate and resolve base_path if provided

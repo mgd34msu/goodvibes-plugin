@@ -102,6 +102,7 @@ export const toolDefinitions = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
           description: 'Output verbosity level',
         },
       },
@@ -128,6 +129,8 @@ export const toolDefinitions = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
+          description: 'Output verbosity level',
         },
       },
     },
@@ -152,6 +155,8 @@ export const toolDefinitions = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
+          description: 'Output verbosity level',
         },
       },
     },
@@ -219,6 +224,8 @@ export const toolDefinitions = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
+          description: 'Output verbosity level',
         },
       },
     },
@@ -235,6 +242,8 @@ export const toolDefinitions = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
+          description: 'Output verbosity level',
         },
       },
     },
@@ -333,6 +342,8 @@ export const toolDefinitions = [
         output_mode: {
           type: 'string',
           enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
+          description: 'Output verbosity level',
         },
       },
     },

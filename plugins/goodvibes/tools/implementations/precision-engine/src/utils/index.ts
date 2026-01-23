@@ -70,9 +70,44 @@ export function errorResult(
 }
 
 /**
- * Parse output mode from arguments, defaulting to "standard".
+ * Standard defaults for most tools.
  */
-export function parseOutputMode(args: unknown): OutputMode {
+export const STANDARD_DEFAULTS = {
+  output_mode: 'standard' as OutputMode,
+  extract: 'content' as const,
+};
+
+/**
+ * Tool-specific defaults that override standard defaults.
+ */
+export const TOOL_SPECIFIC_DEFAULTS: Record<string, Partial<typeof STANDARD_DEFAULTS & { output_mode: string }>> = {
+  discover: { output_mode: 'files_only' },
+  precision_symbols: { output_mode: 'signatures' },
+  precision_edit: { output_mode: 'with_diff' },
+  precision_glob: { output_mode: 'paths_only' },
+  precision_grep: { output_mode: 'files_only' },
+};
+
+/**
+ * Apply defaults to input, with optional tool-specific overrides.
+ * @param input - The input object to apply defaults to
+ * @param defaults - The defaults to apply
+ * @returns Input with defaults applied (defaults do not override existing values)
+ */
+export function applyDefaults<T extends Record<string, unknown>>(
+  input: T,
+  defaults: Partial<T>
+): T {
+  return { ...defaults, ...input };
+}
+
+/**
+ * Parse output mode from arguments, with optional tool-specific defaults.
+ * @param args - The arguments object containing output_mode or output.mode
+ * @param toolName - Optional tool name for tool-specific defaults
+ * @returns The output mode to use
+ */
+export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
   if (
     typeof args === 'object' &&
     args !== null &&
@@ -80,7 +115,7 @@ export function parseOutputMode(args: unknown): OutputMode {
     typeof (args as Record<string, unknown>).output_mode === 'string'
   ) {
     const mode = (args as Record<string, unknown>).output_mode as string;
-    if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(mode)) {
+    if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context'].includes(mode)) {
       return mode as OutputMode;
     }
   }
@@ -97,7 +132,13 @@ export function parseOutputMode(args: unknown): OutputMode {
       return output.mode as OutputMode;
     }
   }
-  return 'standard';
+  // Apply tool-specific default if provided
+  if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.output_mode) {
+    return TOOL_SPECIFIC_DEFAULTS[toolName].output_mode as OutputMode;
+  }
+
+  // Fall back to standard default
+  return STANDARD_DEFAULTS.output_mode;
 }
 
 /**
@@ -142,3 +183,6 @@ export function isTextFile(filePath: string): boolean {
   ]);
   return textExtensions.has(ext);
 }
+
+// Export error formatting utilities
+export * from './errors.js';

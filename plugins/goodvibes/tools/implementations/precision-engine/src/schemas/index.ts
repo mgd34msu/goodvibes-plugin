@@ -1,11 +1,22 @@
 /**
  * Tool schema definitions for precision-engine.
+ *
+ * OUTPUT MODE STANDARDIZATION:
+ * - All tools use `output_mode` at top-level (not nested in output.mode)
+ * - Standard output modes: [count_only, minimal, standard, verbose]
+ * - Tool-specific output modes (intentional deviations):
+ *   - discover: [count_only, files_only, locations] - file discovery context
+ *   - precision_symbols: [count_only, names_only, locations, signatures, full] - symbol analysis
+ *   - precision_edit: [count_only, minimal, with_diff, verbose] - edit results with diffs
+ * - All output-related parameters are optional with sensible defaults
+ * - Default output_mode: 'standard' (or tool-specific default)
  */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Common output mode schema.
+ * Common output mode schema for standard tools.
+ * Default: 'standard'
  */
 const outputModeSchema = {
   type: 'string' as const,
@@ -131,6 +142,11 @@ export const precisionFetchSchema: Tool = {
 
 /**
  * discover - Lightweight parallel query execution.
+ *
+ * OUTPUT MODE DEVIATION: Uses file-discovery specific modes:
+ * - count_only: Just counts
+ * - files_only: File paths only (default) - optimized for discovery
+ * - locations: File paths with line numbers
  */
 export const discoverSchema: Tool = {
   name: 'discover',
@@ -225,12 +241,11 @@ export const precisionGrepSchema: Tool = {
           max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap' },
           max_line_length: { type: 'integer', minimum: 1, description: 'Truncate lines longer than this (default: no truncation)' },
         },
-        required: ['mode'],
       },
       parallel: { type: 'boolean', default: true, description: 'Run queries in parallel (default: true)' },
       output_mode: outputModeSchema,
     },
-    required: ['queries', 'output'],
+    required: ['queries'],
   },
 };
 
@@ -292,10 +307,9 @@ export const precisionReadSchema: Tool = {
           max_lines_per_file: { type: 'integer', minimum: 1 },
           max_tokens: { type: 'integer', minimum: 1 },
         },
-        required: ['mode'],
       },
     },
-    required: ['files', 'output'],
+    required: ['files'],
   },
 };
 
@@ -346,6 +360,13 @@ export const precisionGlobSchema: Tool = {
 /**
  * precision_symbols - Search and analyze code symbols.
  * SPEC-v2 Section 13.1.4 compliant.
+ *
+ * OUTPUT MODE DEVIATION: Uses symbol-analysis specific modes:
+ * - count_only: Just counts
+ * - names_only: Symbol names only
+ * - locations: Names with file:line (default)
+ * - signatures: Includes type signatures
+ * - full: Complete symbol information
  */
 export const precisionSymbolsSchema: Tool = {
   name: 'precision_symbols',
@@ -372,10 +393,9 @@ export const precisionSymbolsSchema: Tool = {
           group_by: { type: 'string', enum: ['file', 'kind', 'none'], default: 'none' },
           max_tokens: { type: 'integer', minimum: 1 },
         },
-        required: ['mode'],
       },
     },
-    required: ['output'],
+    required: [],
   },
 };
 
@@ -393,6 +413,12 @@ const validationStepSchema = {
  *
  * SPEC-v2 Section 13.1.5 compliant.
  * Replaces: System `Edit` tool
+ *
+ * OUTPUT MODE DEVIATION: Uses edit-specific modes:
+ * - count_only: Just counts
+ * - minimal: Summary only (default for dry_run=false)
+ * - with_diff: Includes unified diff (default for dry_run=true)
+ * - verbose: Full details with validation results
  */
 export const precisionEditSchema: Tool = {
   name: 'precision_edit',
@@ -437,7 +463,6 @@ export const precisionEditSchema: Tool = {
           mode: { type: 'string', enum: ['atomic', 'partial', 'none'], default: 'atomic' },
           rollback_on_fail: { type: 'boolean', default: true },
         },
-        required: ['mode'],
       },
       match: {
         type: 'object',
@@ -462,7 +487,6 @@ export const precisionEditSchema: Tool = {
           diff_context: { type: 'integer', minimum: 0, default: 3 },
           max_tokens: { type: 'integer', minimum: 1 },
         },
-        required: ['mode'],
       },
     },
     required: ['edits'],

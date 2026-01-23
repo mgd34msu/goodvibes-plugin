@@ -17,6 +17,7 @@ import { spawn } from 'child_process';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
+import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -304,7 +305,7 @@ async function executeCommand(
 export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionExecInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_exec");
 
   // Parse options with defaults
   const parallel = input.parallel ?? false;
@@ -321,7 +322,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
 
   try {
     if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
-      return toCallToolResult(errorResult('commands array is required', outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_exec', 'commands', 'array of command objects'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     // Safe mode: Check for destructive commands

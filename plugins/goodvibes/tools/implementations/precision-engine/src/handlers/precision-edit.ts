@@ -36,6 +36,7 @@ import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 
 const execAsync = promisify(exec);
 
@@ -715,7 +716,7 @@ async function applyEdit(
 export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionEditInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_edit");
   const workDir = process.cwd();
 
   try {

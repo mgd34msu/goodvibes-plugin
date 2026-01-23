@@ -17,6 +17,7 @@ import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 
 // === Interfaces per SPEC-v2 ===
@@ -96,7 +97,7 @@ async function getFilePreview(filePath: string, lines: number): Promise<string[]
 export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionGlobInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_glob");
   const workDir = process.cwd();
 
   try {

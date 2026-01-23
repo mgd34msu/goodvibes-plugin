@@ -16,6 +16,7 @@ import { spawn } from 'child_process';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode, ValidationStep, ValidationResult } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
+import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
 
 // Simple template engines - inline to avoid extra dependencies
@@ -324,7 +325,7 @@ async function performRollback(rollbackId: string): Promise<void> {
 export const handlePrecisionWrite: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionWriteInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_write");
   const workDir = process.cwd();
   const dryRun = input.dry_run ?? false;
 
@@ -337,7 +338,7 @@ export const handlePrecisionWrite: ToolHandler = async (args: unknown) => {
 
   try {
     if (!input.files || !Array.isArray(input.files) || input.files.length === 0) {
-      return toCallToolResult(errorResult('files array is required', outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_write', 'files', 'array of file specifications'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     const results: WriteResult[] = [];

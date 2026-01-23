@@ -16,6 +16,7 @@ import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 
 // === Interfaces per SPEC-v2 ===
@@ -293,21 +294,21 @@ async function processFile(
 export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionSymbolsInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_symbols");
   const workDir = process.cwd();
 
   try {
     // Validate input
     if (!input.mode) {
-      return toCallToolResult(errorResult('mode is required (workspace or document)', outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'mode', 'workspace or document'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     if (!input.output) {
-      return toCallToolResult(errorResult('output configuration is required', outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'output', 'output configuration object'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     if (input.mode === 'document' && (!input.files || input.files.length === 0)) {
-      return toCallToolResult(errorResult('files array is required for document mode', outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'files', 'array of file paths (required for document mode)'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     const maxResults = input.output.max_results ?? 100;

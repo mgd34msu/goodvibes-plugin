@@ -430,14 +430,13 @@ async function executeQuery(
 export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionGrepInput;
-  const outputMode = parseOutputMode(args);
+  const outputMode = parseOutputMode(args, "precision_grep");
   const workDir = process.cwd();
 
   try {
     // Validate input
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
-      return toCallToolResult(errorResult(`Missing required parameter 'queries'. Expected: array of search queries.
-Example: {"queries": [{"id": "find-exports", "pattern": "export"}], "output": {"mode": "files_only"}}`, outputMode, getElapsed()));
+      return toCallToolResult(createErrorResult(formatMissingParamError('precision_grep', 'queries', 'array of search queries'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
@@ -454,10 +453,10 @@ Example: {"queries": [{"id": "find-exports", "pattern": "export"}], "output": {"
     // Validate each query
     for (const query of input.queries) {
       if (!query.id) {
-        return toCallToolResult(errorResult('Each query must have id', outputMode, getElapsed()));
+        return toCallToolResult(createErrorResult(formatMissingParamError('precision_grep', 'queries[].id', 'string identifier for each query'), { output_mode: outputMode, execution_ms: getElapsed() }));
       }
       if (!query.pattern && !query.pattern_base64) {
-        return toCallToolResult(errorResult('Each query must have either pattern or pattern_base64', outputMode, getElapsed()));
+        return toCallToolResult(createErrorResult(formatMissingParamError('precision_grep', 'queries[].pattern', 'search pattern (string or base64)'), { output_mode: outputMode, execution_ms: getElapsed() }));
       }
     }
 
