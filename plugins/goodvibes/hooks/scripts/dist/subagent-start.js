@@ -830,23 +830,28 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
   contextParts.push(`[GoodVibes] Project: ${projectName}`);
   contextParts.push(`Mode: ${automationConfig.automation.mode}`);
   contextParts.push(
-    "IMPORTANT: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands. Only use commands outside of MCP tools or skills when there is absolutely no other way to accomplish a specific part of the task. Even if the entire task cannot be completed with skills/MCP tools, use them for every part where they apply."
+    "MANDATORY: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands.\nCRITICAL: Only use commands outside of MCP tools or skills when there is absolutely no other way to accomplish a specific part of the task. Even if the entire task cannot be completed with skills/MCP tools, use them for every part where they apply."
   );
   contextParts.push(
-    'BATCH PROCESSING: For efficiency, use batch operations when possible:\n  - Use `atomic_multi_edit` MCP tool for 3+ file edits (instead of individual Edit calls)\n  - Use `batch_read` MCP tool for 3+ file reads (instead of individual Read calls)\n  - Use `workspace_symbols` MCP tool for searching code symbols (instead of multiple Grep calls)\n  - Default to `output_mode: "minimal"` on MCP tool calls to reduce context size'
+    `MANDATORY: If multiple tool uses are planned, you MUST use "discover -> batch" process.
+ - INFO: mcp-cli info plugin_goodvibes_precision-engine/discover
+ - INFO: mcp-cli info plugin_goodvibes_batch-engine/batch
+`
   );
-  if (agentType.includes("backend")) {
+  if (agentType.includes("engineer")) {
     contextParts.push(
-      "Remember: Write-local only. All changes must be in the project root."
+      "Remember: Write-local only. All changes must be in the project root or directories within the project root."
     );
   }
-  if (agentType.includes("test")) {
+  if (agentType.includes("tester")) {
     contextParts.push(
       "Remember: Tests must actually verify behavior, not just exist."
     );
   }
-  if (agentType.includes("brutal-reviewer")) {
-    contextParts.push("Remember: Be brutally honest. Score out of 10.");
+  if (agentType.includes("reviewer")) {
+    contextParts.push(
+      "Remember: Be completely honest, regardless of how harsh the truth would be. Never sugar coat or take feelings into account."
+    );
   }
   return {
     additionalContext: contextParts.join("\n")

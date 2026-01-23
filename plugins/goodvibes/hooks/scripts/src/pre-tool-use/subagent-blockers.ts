@@ -128,35 +128,55 @@ export const BLOCKED_BASH_PATTERNS: Array<{
   replacementKey: string;
   description: string;
 }> = [
+  // Order matters: check most specific patterns first
+
+  // 1. cat with pipe to grep (most specific cat usage)
   {
     pattern: /\bcat\b[^|]*\|\s*grep\b/i,
     replacementKey: 'Grep',
     description: 'cat piped to grep',
   },
+
+  // 2. cat with any pipe (e.g., cat file | head)
+  {
+    pattern: /(?:^|[|;&]\s*)cat\b[^|]*\|/i,
+    replacementKey: 'Read',
+    description: 'cat piped to other command (use precision_read)',
+  },
+
+  // 3. cat with redirect output (e.g., cat > file, cat << EOF > file)
+  {
+    pattern: /(?:^|[|;&])\s*cat\b.*>\s*\S+/i,
+    replacementKey: 'Write',
+    description: 'cat redirect to file (use precision_write)',
+  },
+
+  // 4. Plain cat without pipe or redirect (most general cat usage)
+  {
+    pattern: /(?:^|[|;&])\s*cat\s+(?!-file\b)[^|>&]/i,
+    replacementKey: 'Read',
+    description: 'cat command (use precision_read)',
+  },
+
+  // 5. Standalone grep command
   {
     pattern: /(?:^|[|;&]\s*)grep\s+/i,
     replacementKey: 'Grep',
     description: 'grep command',
   },
-  {
-    pattern: /(?:^|[|;&]\s*)cat\s+[^|>]/i,
-    replacementKey: 'Read',
-    description: 'cat command (use precision_read)',
-  },
+
+  // 6. head/tail commands
   {
     pattern: /(?:^|[|;&]\s*)(?:head|tail)\s+/i,
     replacementKey: 'Read',
     description: 'head/tail command (use precision_read with line ranges)',
   },
+
+  // 7. find command
   {
     pattern: /(?:^|[|;&]\s*)find\s+\S/i,
     replacementKey: 'Glob',
     description: 'find command (use precision_glob)',
-  },
-  {
-    pattern: /\bcat\b.*>\s*\S+/i,
-    replacementKey: 'Write',
-    description: 'cat redirect to file (use precision_write)',
   },
 ];
 
