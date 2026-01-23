@@ -1,5 +1,4 @@
 {
-  "description": "GoodVibes plugin hooks - minimal set for core functionality",
   "hooks": {
     "SessionStart": [
       {
@@ -109,5 +108,6 @@
         ]
       }
     ]
-  }
+  },
+  "description": "Claude Code hooks (includes GoodVibes plugin hooks)"
 }

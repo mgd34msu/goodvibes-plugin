@@ -8,9 +8,10 @@
     "build:registries": "npx tsx scripts/build-registries.ts",
     "build:server": "cd tools/implementations/tool-search-server && npm install && npm run build",
     "build:hooks": "cd hooks/scripts && npm install && npm run build",
+    "install:hooks": "node scripts/install-hooks.js",
     "migrate": "npx tsx scripts/migrate-content.ts",
     "validate": "npx tsx scripts/validate.ts",
-    "postinstall": "npm run build"
+    "postinstall": "npm run build && npm run install:hooks"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

@@ -129,9 +129,9 @@ async function readHookInput() {
 function formatResponse(response) {
   return JSON.stringify(response);
 }
-function respond(response, block = false) {
+function respond(response, _block = false) {
   console.log(formatResponse(response));
-  process.exit(block ? 2 : 0);
+  process.exit(0);
 }
 
 // src/shared/index.ts

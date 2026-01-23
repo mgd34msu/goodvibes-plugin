@@ -163,7 +163,6 @@ export function allowTool(
  */
 export function blockTool(hookEventName: string, reason: string): HookResponse {
   return {
-    continue: false,
     hookSpecificOutput: {
       hookEventName,
       permissionDecision: 'deny',
@@ -210,9 +209,10 @@ export function formatResponse(response: HookResponse): string {
  * respond(blockTool('PreToolUse', 'Operation not permitted'), true);
  * // Outputs JSON to stdout and exits with code 2
  */
-export function respond(response: HookResponse, block: boolean = false): never {
+export function respond(response: HookResponse, _block: boolean = false): never {
   console.log(formatResponse(response));
-  process.exit(block ? 2 : 0);
+  // Always exit 0 - blocking is handled by permissionDecision: 'deny' in the JSON response
+  process.exit(0);
 }
 
 /**

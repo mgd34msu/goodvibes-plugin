@@ -118,7 +118,7 @@ export declare function formatResponse(response: HookResponse): string;
  * respond(blockTool('PreToolUse', 'Operation not permitted'), true);
  * // Outputs JSON to stdout and exits with code 2
  */
-export declare function respond(response: HookResponse, block?: boolean): never;
+export declare function respond(response: HookResponse, _block?: boolean): never;
 /**
  * Options for creating a hook response.
  */
