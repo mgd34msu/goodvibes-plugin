@@ -66,6 +66,12 @@ export interface AgentBudgetState {
   input_tokens: number;
   /** Output tokens used */
   output_tokens: number;
+  /** Cache write tokens (5-minute ephemeral) */
+  cache5m_tokens?: number;
+  /** Cache write tokens (1-hour ephemeral) */
+  cache1h_tokens?: number;
+  /** Cache read/hit tokens */
+  cache_read_tokens?: number;
   /** Estimated cost in USD */
   cost_usd: number;
 }
@@ -78,6 +84,12 @@ export interface TokenPricing {
   input_per_million: number;
   /** Cost per 1M output tokens in USD */
   output_per_million: number;
+  /** Cost per 1M cache write tokens (5-minute ephemeral) in USD */
+  cache5m_per_million?: number;
+  /** Cost per 1M cache write tokens (1-hour ephemeral) in USD */
+  cache1h_per_million?: number;
+  /** Cost per 1M cache read/hit tokens in USD */
+  cache_read_per_million?: number;
 }
 
 /**
@@ -128,6 +140,12 @@ export interface AgentPoolStats {
   total_input_tokens: number;
   /** Total output tokens used */
   total_output_tokens: number;
+  /** Total cache write tokens (5-minute ephemeral) */
+  total_cache5m_tokens: number;
+  /** Total cache write tokens (1-hour ephemeral) */
+  total_cache1h_tokens: number;
+  /** Total cache read/hit tokens */
+  total_cache_read_tokens: number;
   /** Total cost in USD */
   total_cost_usd: number;
 }
@@ -137,6 +155,36 @@ export interface AgentPoolStats {
  */
 export type AgentCallback = (agent: PoolAgent) => void | Promise<void>;
 
+/**
+ * Pricing for Claude models (per 1M tokens in USD).
+ */
+export const MODEL_PRICING = {
+  "claude-opus-4.5": {
+    input_per_million: 15.0,
+    output_per_million: 75.0,
+    cache5m_per_million: 18.75,
+    cache1h_per_million: 30.0,
+    cache_read_per_million: 1.5,
+  },
+  "claude-sonnet-4.5": {
+    input_per_million: 3.0,
+    output_per_million: 15.0,
+    cache5m_per_million: 3.75,
+    cache1h_per_million: 6.0,
+    cache_read_per_million: 0.3,
+  },
+  "claude-haiku-4.5": {
+    input_per_million: 1.0,
+    output_per_million: 5.0,
+    cache5m_per_million: 1.25,
+    cache1h_per_million: 2.0,
+    cache_read_per_million: 0.1,
+  },
+} as const;
+
+/** Type for model names */
+export type ClaudeModel = keyof typeof MODEL_PRICING;
+
 /** Default configuration */
 const DEFAULT_CONFIG: AgentPoolConfig = {
   max_concurrent: 6,
@@ -145,9 +193,12 @@ const DEFAULT_CONFIG: AgentPoolConfig = {
   auto_start: true,
   budget_warning_threshold: 0.8,
   pricing: {
-    // Claude Sonnet 3.5 pricing as default
+    // Claude Sonnet 4.5 pricing as default
     input_per_million: 3.0,
     output_per_million: 15.0,
+    cache5m_per_million: 3.75,
+    cache1h_per_million: 6.0,
+    cache_read_per_million: 0.3,
   },
   auto_pause_on_exhaustion: true,
 };
@@ -221,6 +272,9 @@ export class AgentPool {
         usage_percent: 0,
         input_tokens: 0,
         output_tokens: 0,
+        cache5m_tokens: 0,
+        cache1h_tokens: 0,
+        cache_read_tokens: 0,
         cost_usd: 0,
       },
     };
@@ -314,10 +368,20 @@ export class AgentPool {
   /**
    * Calculates cost from token counts.
    */
-  private calculateCost(inputTokens: number, outputTokens: number): number {
+  private calculateCost(
+    inputTokens: number,
+    outputTokens: number,
+    cache5mTokens: number = 0,
+    cache1hTokens: number = 0,
+    cacheReadTokens: number = 0
+  ): number {
     const inputCost = (inputTokens / 1_000_000) * this.config.pricing.input_per_million;
     const outputCost = (outputTokens / 1_000_000) * this.config.pricing.output_per_million;
-    return Math.round((inputCost + outputCost) * 10000) / 10000; // Round to 4 decimal places
+    const cache5mCost = (cache5mTokens / 1_000_000) * (this.config.pricing.cache5m_per_million || 0);
+    const cache1hCost = (cache1hTokens / 1_000_000) * (this.config.pricing.cache1h_per_million || 0);
+    const cacheReadCost = (cacheReadTokens / 1_000_000) * (this.config.pricing.cache_read_per_million || 0);
+    const totalCost = inputCost + outputCost + cache5mCost + cache1hCost + cacheReadCost;
+    return Math.round(totalCost * 10000) / 10000; // Round to 4 decimal places
   }
 
   /**
@@ -332,16 +396,32 @@ export class AgentPool {
 
   /**
    * Updates an agent's token usage with detailed input/output breakdown.
+   * @param agentId Agent ID
+   * @param inputTokens Base input tokens
+   * @param outputTokens Output tokens
+   * @param cache5mTokens Cache write tokens (5-minute ephemeral)
+   * @param cache1hTokens Cache write tokens (1-hour ephemeral)
+   * @param cacheReadTokens Cache read/hit tokens
    */
-  updateBudgetDetailed(agentId: string, inputTokens: number, outputTokens: number): void {
+  updateBudgetDetailed(
+    agentId: string,
+    inputTokens: number,
+    outputTokens: number,
+    cache5mTokens: number = 0,
+    cache1hTokens: number = 0,
+    cacheReadTokens: number = 0
+  ): void {
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
-    const totalTokens = inputTokens + outputTokens;
-    const cost = this.calculateCost(inputTokens, outputTokens);
+    const totalTokens = inputTokens + outputTokens + cache5mTokens + cache1hTokens + cacheReadTokens;
+    const cost = this.calculateCost(inputTokens, outputTokens, cache5mTokens, cache1hTokens, cacheReadTokens);
 
     agent.budget.input_tokens = inputTokens;
     agent.budget.output_tokens = outputTokens;
+    agent.budget.cache5m_tokens = cache5mTokens;
+    agent.budget.cache1h_tokens = cache1hTokens;
+    agent.budget.cache_read_tokens = cacheReadTokens;
     agent.budget.spent = totalTokens;
     agent.budget.remaining = agent.budget.allocated - totalTokens;
     agent.budget.usage_percent = (totalTokens / agent.budget.allocated) * 100;
@@ -552,6 +632,9 @@ export class AgentPool {
     const totalSpent = agents.reduce((sum, a) => sum + a.budget.spent, 0);
     const totalInputTokens = agents.reduce((sum, a) => sum + a.budget.input_tokens, 0);
     const totalOutputTokens = agents.reduce((sum, a) => sum + a.budget.output_tokens, 0);
+    const totalCache5m = agents.reduce((sum, a) => sum + (a.budget.cache5m_tokens || 0), 0);
+    const totalCache1h = agents.reduce((sum, a) => sum + (a.budget.cache1h_tokens || 0), 0);
+    const totalCacheRead = agents.reduce((sum, a) => sum + (a.budget.cache_read_tokens || 0), 0);
     const totalCost = agents.reduce((sum, a) => sum + a.budget.cost_usd, 0);
 
     return {
@@ -567,6 +650,9 @@ export class AgentPool {
       budget_remaining: this.config.total_budget - totalSpent,
       total_input_tokens: totalInputTokens,
       total_output_tokens: totalOutputTokens,
+      total_cache5m_tokens: totalCache5m,
+      total_cache1h_tokens: totalCache1h,
+      total_cache_read_tokens: totalCacheRead,
       total_cost_usd: Math.round(totalCost * 10000) / 10000,
     };
   }
@@ -650,6 +736,23 @@ export class AgentPool {
    */
   updateConfig(config: Partial<AgentPoolConfig>): void {
     this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Sets pricing based on a Claude model name.
+   * @param model The Claude model to use for pricing
+   */
+  setModelPricing(model: ClaudeModel): void {
+    this.config.pricing = { ...MODEL_PRICING[model] };
+  }
+
+  /**
+   * Gets pricing for a specific Claude model.
+   * @param model The Claude model
+   * @returns Pricing configuration for the model
+   */
+  static getModelPricing(model: ClaudeModel): TokenPricing {
+    return { ...MODEL_PRICING[model] };
   }
 
   /**
