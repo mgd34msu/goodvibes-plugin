@@ -202,11 +202,17 @@ async function executeGlobQuery(
     } else {
       mode = 'paths_only';
     }
-    console.error("DEBUG discover executeGlobQuery: searchRoot =", searchRoot, "process.cwd() =", process.cwd());
+
+    // If searchRoot is different from cwd, we need to adjust patterns
+    // by temporarily changing cwd during the glob operation.
+    // However, handlePrecisionGlob uses process.cwd() internally.
+    // We'll prepend searchRoot to patterns if searchRoot differs from cwd.
+    const patterns = searchRoot !== process.cwd()
+      ? query.patterns.map(p => path.join(searchRoot, p))
+      : query.patterns;
 
     const result = await handlePrecisionGlob({
-      patterns: query.patterns,
-      cwd: searchRoot !== process.cwd() ? searchRoot : undefined,
+      patterns,
       output: {
         mode,
         max_files: 100,

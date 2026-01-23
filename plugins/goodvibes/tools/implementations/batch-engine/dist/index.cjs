@@ -19676,7 +19676,13 @@ async function executeValidateOperation(operation, runtime) {
   if (operation.type !== "validate")
     throw new Error("Invalid operation type");
   const results = [];
+  if (!operation.validations || operation.validations.length === 0) {
+    return { validations: results, total: 0 };
+  }
   for (const validation of operation.validations) {
+    if (!validation.checks || validation.checks.length === 0) {
+      continue;
+    }
     for (const check2 of validation.checks) {
       try {
         let command;
@@ -19856,6 +19862,9 @@ function evaluateExpectation(expression, data, context) {
 }
 async function runValidation(checks, runtime) {
   const errors = [];
+  if (!checks || checks.length === 0) {
+    return { passed: true, errors: [] };
+  }
   for (const check2 of checks) {
     try {
       let command;
@@ -19985,8 +19994,12 @@ var init_batch = __esm({
         impact: true
       },
       validation: {
-        before: ["typecheck"],
-        after: ["typecheck", "lint"],
+        enabled: true,
+        // Can be disabled with {"validation": {"enabled": false}}
+        before: [],
+        // Empty by default to avoid failing on non-TS projects
+        after: [],
+        // Empty by default
         on_fail: "rollback"
       },
       recovery: {
@@ -20061,8 +20074,18 @@ var init_batch = __esm({
         const runtime = createRuntimeContext();
         await initializeRuntime(runtime);
         const config2 = {
-          ...DEFAULT_BATCH_CONFIG,
-          ...input.config || {}
+          transaction: { ...DEFAULT_BATCH_CONFIG.transaction, ...input.config?.transaction || {} },
+          execution: {
+            ...DEFAULT_BATCH_CONFIG.execution,
+            ...input.config?.execution || {},
+            retry: {
+              ...DEFAULT_BATCH_CONFIG.execution.retry,
+              ...input.config?.execution?.retry || {}
+            }
+          },
+          preview: { ...DEFAULT_BATCH_CONFIG.preview, ...input.config?.preview || {} },
+          validation: { ...DEFAULT_BATCH_CONFIG.validation, ...input.config?.validation || {} },
+          recovery: { ...DEFAULT_BATCH_CONFIG.recovery, ...input.config?.recovery || {} }
         };
         const batch = {
           id: batchId,
@@ -20090,7 +20113,10 @@ var init_batch = __esm({
           checkpointId = checkpoint.id;
           context.checkpoint_id = checkpointId;
         }
-        const beforeValidation = await runValidation(config2.validation.before, runtime);
+        let beforeValidation = { passed: true, errors: [] };
+        if (config2.validation.enabled !== false && config2.validation.before.length > 0) {
+          beforeValidation = await runValidation(config2.validation.before, runtime);
+        }
         if (!beforeValidation.passed && config2.validation.on_fail === "rollback") {
           const output2 = {
             batch_id: batchId,
@@ -20146,7 +20172,10 @@ var init_batch = __esm({
             break;
           }
         }
-        const afterValidation = await runValidation(config2.validation.after, runtime);
+        let afterValidation = { passed: true, errors: [] };
+        if (config2.validation.enabled !== false && config2.validation.after.length > 0) {
+          afterValidation = await runValidation(config2.validation.after, runtime);
+        }
         let status;
         if (failedOperations === 0 && afterValidation.passed) {
           status = "success";

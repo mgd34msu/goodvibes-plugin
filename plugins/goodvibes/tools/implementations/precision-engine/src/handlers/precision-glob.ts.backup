@@ -51,7 +51,6 @@ interface PrecisionGlobInput {
   output?: GlobOutput;
   respect_gitignore?: boolean;
   follow_symlinks?: boolean;
-  cwd?: string;
   output_mode?: OutputMode;
 }
 
@@ -99,8 +98,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionGlobInput;
   const outputMode = parseOutputMode(args, "precision_glob");
-  const workDir = input.cwd ?? process.cwd();
-  console.error("DEBUG precision-glob: cwd =", workDir, "input.cwd =", input.cwd);
+  const workDir = process.cwd();
 
   try {
     // Validate input

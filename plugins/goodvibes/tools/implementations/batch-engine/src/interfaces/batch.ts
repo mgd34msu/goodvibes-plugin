@@ -51,6 +51,7 @@ export interface BatchConfig {
   };
 
   validation: {
+    enabled?: boolean; // If false, skip all validation
     before: ValidationStep[];
     after: ValidationStep[];
     on_fail: 'rollback' | 'warn' | 'ignore';

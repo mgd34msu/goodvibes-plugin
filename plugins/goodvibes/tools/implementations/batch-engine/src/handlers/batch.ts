@@ -162,8 +162,9 @@ const DEFAULT_BATCH_CONFIG: BatchConfig = {
     impact: true,
   },
   validation: {
-    before: ['typecheck'],
-    after: ['typecheck', 'lint'],
+    enabled: true, // Can be disabled with {"validation": {"enabled": false}}
+    before: [],    // Empty by default to avoid failing on non-TS projects
+    after: [],     // Empty by default
     on_fail: 'rollback',
   },
   recovery: {
@@ -1395,7 +1396,17 @@ async function executeValidateOperation(operation: QueryOperation, runtime: Runt
 
   const results: Array<{ check: string; passed: boolean; errors?: string[] }> = [];
 
+  // Handle missing or empty validations
+  if (!operation.validations || operation.validations.length === 0) {
+    return { validations: results, total: 0 };
+  }
+
   for (const validation of operation.validations) {
+    // Handle missing or empty checks array
+    if (!validation.checks || validation.checks.length === 0) {
+      continue;
+    }
+
     for (const check of validation.checks) {
       try {
         let command: string;
@@ -1678,6 +1689,11 @@ async function runValidation(
 ): Promise<ValidationResult> {
   const errors: string[] = [];
 
+  // Handle empty or undefined checks array
+  if (!checks || checks.length === 0) {
+    return { passed: true, errors: [] };
+  }
+
   for (const check of checks) {
     try {
       let command: string;
@@ -1806,10 +1822,20 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
     const runtime = createRuntimeContext();
     await initializeRuntime(runtime);
 
-    // Create batch configuration
+    // Create batch configuration with deep merge
     const config: BatchConfig = {
-      ...DEFAULT_BATCH_CONFIG,
-      ...(input.config || {}),
+      transaction: { ...DEFAULT_BATCH_CONFIG.transaction, ...(input.config?.transaction || {}) },
+      execution: {
+        ...DEFAULT_BATCH_CONFIG.execution,
+        ...(input.config?.execution || {}),
+        retry: {
+          ...DEFAULT_BATCH_CONFIG.execution.retry,
+          ...(input.config?.execution?.retry || {}),
+        },
+      },
+      preview: { ...DEFAULT_BATCH_CONFIG.preview, ...(input.config?.preview || {}) },
+      validation: { ...DEFAULT_BATCH_CONFIG.validation, ...(input.config?.validation || {}) },
+      recovery: { ...DEFAULT_BATCH_CONFIG.recovery, ...(input.config?.recovery || {}) },
     };
 
     // Create batch object
@@ -1848,8 +1874,11 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
       context.checkpoint_id = checkpointId;
     }
 
-    // Run before validation
-    const beforeValidation = await runValidation(config.validation.before, runtime);
+    // Run before validation (skip if disabled)
+    let beforeValidation: ValidationResult = { passed: true, errors: [] };
+    if (config.validation.enabled !== false && config.validation.before.length > 0) {
+      beforeValidation = await runValidation(config.validation.before, runtime);
+    }
 
     if (!beforeValidation.passed && config.validation.on_fail === 'rollback') {
       // Validation failed, abort
@@ -1924,7 +1953,10 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
     }
 
     // Run after validation
-    const afterValidation = await runValidation(config.validation.after, runtime);
+    let afterValidation: ValidationResult = { passed: true, errors: [] };
+    if (config.validation.enabled !== false && config.validation.after.length > 0) {
+      afterValidation = await runValidation(config.validation.after, runtime);
+    }
 
     // Determine overall status
     let status: 'success' | 'partial' | 'failed' | 'rolled_back';

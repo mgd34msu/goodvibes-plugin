@@ -253076,19 +253076,26 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
   const getElapsed = startTimer();
   const input = args;
   const outputMode = parseOutputMode(args, "precision_glob");
-  const workDir = process.cwd();
+  const workDir = input.cwd ?? process.cwd();
+  console.error("DEBUG precision-glob: cwd =", workDir, "input.cwd =", input.cwd);
   try {
     if (!input.patterns || !Array.isArray(input.patterns) || input.patterns.length === 0) {
       return toCallToolResult(errorResult("patterns array is required", outputMode, getElapsed()));
     }
-    if (!input.output) {
-      return toCallToolResult(errorResult("output configuration is required", outputMode, getElapsed()));
-    }
-    const maxFiles = input.output.max_files ?? 100;
-    const sortBy = input.output.sort_by ?? "name";
-    const sortOrder = input.output.sort_order ?? "asc";
-    const previewLines = input.output.preview_lines ?? 3;
-    const maxTokens = input.output.max_tokens ?? Infinity;
+    const output = {
+      mode: input.output?.mode ?? "paths_only",
+      max_files: input.output?.max_files ?? 100,
+      sort_by: input.output?.sort_by,
+      sort_order: input.output?.sort_order ?? "asc",
+      preview_lines: input.output?.preview_lines ?? 3,
+      max_tokens: input.output?.max_tokens,
+      ...input.output
+    };
+    const maxFiles = output.max_files;
+    const sortBy = output.sort_by ?? "name";
+    const sortOrder = output.sort_order;
+    const previewLines = output.preview_lines;
+    const maxTokens = output.max_tokens ?? Infinity;
     const respectGitignore = input.respect_gitignore ?? true;
     const followSymlinks = input.follow_symlinks ?? false;
     const excludePatterns = [
@@ -253174,7 +253181,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
       const relativePath = path3.relative(workDir, file2.path);
       const result = { path: relativePath };
       totalSize += file2.stats?.size ?? 0;
-      if (input.output.mode === "with_stats" || input.output.mode === "with_preview") {
+      if (output.mode === "with_stats" || output.mode === "with_preview") {
         if (file2.stats) {
           result.stats = {
             size: file2.stats.size,
@@ -253184,7 +253191,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
           };
         }
       }
-      if (input.output.mode === "with_preview") {
+      if (output.mode === "with_preview") {
         result.preview = await getFilePreview(file2.path, previewLines);
         totalTokens += estimateTokens3(result.preview.join("\n"));
       }
@@ -253197,7 +253204,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
       truncated
     };
     let data;
-    switch (input.output.mode) {
+    switch (output.mode) {
       case "count_only":
         data = {
           summary,
@@ -253671,9 +253678,10 @@ async function executeGlobQuery(query, outputMode, searchRoot) {
     } else {
       mode = "paths_only";
     }
-    const patterns = searchRoot !== process.cwd() ? query.patterns.map((p) => path5.join(searchRoot, p)) : query.patterns;
+    console.error("DEBUG discover executeGlobQuery: searchRoot =", searchRoot, "process.cwd() =", process.cwd());
     const result = await handlePrecisionGlob({
-      patterns,
+      patterns: query.patterns,
+      cwd: searchRoot !== process.cwd() ? searchRoot : void 0,
       output: {
         mode,
         max_files: 100
@@ -254899,14 +254907,29 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     if (!input.edits || !Array.isArray(input.edits) || input.edits.length === 0) {
       return toCallToolResult(errorResult("edits array is required", outputMode, getElapsed()));
     }
-    if (!input.transaction) {
-      return toCallToolResult(errorResult("transaction configuration is required", outputMode, getElapsed()));
+    for (let i = 0; i < input.edits.length; i++) {
+      const edit = input.edits[i];
+      if (!edit.file || typeof edit.file !== "string") {
+        return toCallToolResult(errorResult(`edits[${i}].file is required and must be a string`, outputMode, getElapsed()));
+      }
+      if (edit.find === void 0 || edit.find === null) {
+        return toCallToolResult(errorResult(`edits[${i}].find is required`, outputMode, getElapsed()));
+      }
+      if (edit.replace === void 0 || edit.replace === null) {
+        return toCallToolResult(errorResult(`edits[${i}].replace is required`, outputMode, getElapsed()));
+      }
     }
-    if (!input.output) {
-      return toCallToolResult(errorResult("output configuration is required", outputMode, getElapsed()));
-    }
+    const transaction = {
+      mode: input.transaction?.mode ?? "atomic",
+      rollback_on_fail: input.transaction?.rollback_on_fail ?? true
+    };
+    const output = {
+      mode: input.output?.mode ?? "with_diff",
+      diff_context: input.output?.diff_context ?? 3,
+      max_tokens: input.output?.max_tokens
+    };
     const dryRun = input.dry_run ?? false;
-    const diffContext = input.output.diff_context ?? 3;
+    const diffContext = output.diff_context ?? 3;
     const rollbackId = generateRollbackId();
     const matchConfig = input.match ?? DEFAULT_MATCH_CONFIG;
     const beforeValidation = [];
@@ -254956,7 +254979,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
       if (status === "applied") {
         newContents.set(filePath, newContent);
         totalEditsApplied += editsApplied;
-        if (input.output.mode === "with_diff" || input.output.mode === "verbose") {
+        if (output.mode === "with_diff" || output.mode === "verbose") {
           result.diff = generateDiff(currentContent ?? "", newContent, diffContext);
         }
       } else {
@@ -254965,11 +254988,11 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
         result.error = error2;
       }
       results.push(result);
-      if (input.transaction.mode === "atomic" && hasFailures) {
+      if (transaction.mode === "atomic" && hasFailures) {
         break;
       }
     }
-    if (input.transaction.mode === "atomic" && hasFailures) {
+    if (transaction.mode === "atomic" && hasFailures) {
       const data2 = {
         edits: results,
         summary: {
@@ -255004,7 +255027,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
       for (const step of input.validate.after) {
         const result = await runValidation2(step, workDir);
         afterValidation.push(result);
-        if (!result.passed && input.transaction.rollback_on_fail) {
+        if (!result.passed && transaction.rollback_on_fail) {
           for (const backup of backups) {
             if (backup.content === null) {
               await fs7.unlink(backup.path).catch(() => {
@@ -255019,7 +255042,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     }
     const filesModified = new Set(results.filter((r) => r.status === "applied").map((r) => r.file)).size;
     let data;
-    switch (input.output.mode) {
+    switch (output.mode) {
       case "count_only":
         data = {
           summary: {
