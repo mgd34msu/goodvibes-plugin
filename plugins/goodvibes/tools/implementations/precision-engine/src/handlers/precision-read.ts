@@ -440,16 +440,18 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
   try {
     // Validate input
     if (!input.files || !Array.isArray(input.files) || input.files.length === 0) {
-      return toCallToolResult(errorResult('files array is required', outputMode, getElapsed()));
+      return toCallToolResult(errorResult(`Missing required parameter 'files'. Expected: array of file paths or file specs.
+Example: {"files": [{"path": "src/index.ts"}], "extract": "content", "output": {"mode": "standard"}}`, outputMode, getElapsed()));
     }
 
-    if (!input.extract) {
-      return toCallToolResult(errorResult('extract mode is required', outputMode, getElapsed()));
-    }
-
-    if (!input.output) {
-      return toCallToolResult(errorResult('output configuration is required', outputMode, getElapsed()));
-    }
+    // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
+    const extract: ExtractMode = input.extract ?? 'content';
+    const output: ReadOutput = {
+      mode: input.output?.mode ?? 'standard',
+      include_line_numbers: input.output?.include_line_numbers ?? true,
+      include_metadata: input.output?.include_metadata ?? false,
+      ...input.output
+    };
 
     // Normalize file specs
     const fileSpecs: FileReadSpec[] = input.files.map(f =>
@@ -459,7 +461,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
     // Read all files in parallel
     const results = await Promise.all(
       fileSpecs.map(spec =>
-        readSingleFile(spec, input.extract, input.output, input.symbol_filter, input.default_range, workDir)
+        readSingleFile(spec, extract, output, input.symbol_filter, input.default_range, workDir)
       )
     );
 
@@ -478,7 +480,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       truncated: anyTruncated,
     };
 
-    switch (input.output.mode) {
+    switch (output.mode) {
       case 'count_only':
         data = { summary };
         break;

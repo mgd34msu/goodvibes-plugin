@@ -25,7 +25,8 @@ type ExpandTo = 'line' | 'block' | 'function' | 'class';
 
 interface GrepQuery {
   id: string;
-  pattern: string;
+  pattern?: string;
+  pattern_base64?: string;
   glob?: string;
   path?: string;
   exclude?: string[];
@@ -44,6 +45,7 @@ interface GrepOutput {
   max_matches_per_file?: number;
   max_total_matches?: number;
   max_tokens?: number;
+  max_line_length?: number;
 }
 
 interface PrecisionGrepInput {
@@ -73,13 +75,39 @@ interface GrepResult {
   file_count?: number;
   match_count?: number;
   truncated?: boolean;
+  lines_truncated?: number;
+  note?: string;
 }
 
 // === Helper Functions ===
 
+function decodePattern(query: GrepQuery): string {
+  if (query.pattern && query.pattern_base64) {
+    throw new Error("Cannot specify both 'pattern' and 'pattern_base64'. Use one or the other.");
+  }
+  if (query.pattern_base64) {
+    try {
+      return Buffer.from(query.pattern_base64, 'base64').toString('utf-8');
+    } catch (e) {
+      throw new Error(`Invalid base64 in pattern_base64: ${(e as Error).message}`);
+    }
+  }
+  if (!query.pattern) {
+    throw new Error("Either 'pattern' or 'pattern_base64' is required.");
+  }
+  return query.pattern;
+}
+
 function estimateTokens(str: string): number {
   // Rough estimate: ~4 chars per token
   return Math.ceil(str.length / 4);
+}
+
+function truncateLine(line: string, maxLength: number | undefined): string {
+  if (!maxLength || line.length <= maxLength) {
+    return line;
+  }
+  return line.substring(0, maxLength) + '... [truncated]';
 }
 
 function isBinaryContent(buffer: Buffer): boolean {
@@ -209,7 +237,7 @@ async function executeQuery(
   const includeBinary = query.include_binary ?? false;
 
   // Build regex with multiline support
-  let patternStr = query.pattern;
+  let patternStr = decodePattern(query);
   if (query.whole_word) {
     patternStr = `\\b${patternStr}\\b`;
   }
@@ -235,6 +263,7 @@ async function executeQuery(
   let totalMatches = 0;
   let totalTokens = 0;
   let truncated = false;
+  let linesTruncated = 0;
 
   for (const filePath of files) {
     if (results.length >= maxFiles || totalMatches >= maxTotalMatches || totalTokens >= maxTokens) {
@@ -288,10 +317,14 @@ async function executeQuery(
 
           // Add content and highlight for matches mode and above
           if (output.mode === 'matches' || output.mode === 'context') {
-            grepMatch.content = line;
+            const originalLine = line;
+            grepMatch.content = truncateLine(line, output.max_line_length);
+            if (grepMatch.content !== originalLine) {
+              linesTruncated++;
+            }
             // highlight: [start, end] position of match within content
             grepMatch.highlight = [match.index, match.index + match[0].length];
-            totalTokens += estimateTokens(line);
+            totalTokens += estimateTokens(grepMatch.content);
           }
 
           // Add context for context mode
@@ -319,11 +352,21 @@ async function executeQuery(
             }
 
             if (start < i) {
-              grepMatch.before = lines.slice(start, i);
+              const beforeLines = lines.slice(start, i);
+              grepMatch.before = beforeLines.map(l => {
+                const truncated = truncateLine(l, output.max_line_length);
+                if (truncated !== l) linesTruncated++;
+                return truncated;
+              });
               totalTokens += estimateTokens(grepMatch.before.join('\n'));
             }
             if (end > i) {
-              grepMatch.after = lines.slice(i + 1, end + 1);
+              const afterLines = lines.slice(i + 1, end + 1);
+              grepMatch.after = afterLines.map(l => {
+                const truncated = truncateLine(l, output.max_line_length);
+                if (truncated !== l) linesTruncated++;
+                return truncated;
+              });
               totalTokens += estimateTokens(grepMatch.after.join('\n'));
             }
           }
@@ -373,6 +416,12 @@ async function executeQuery(
       result.match_count = totalMatches;
   }
 
+  // Add truncation info if lines were truncated
+  if (linesTruncated > 0) {
+    result.lines_truncated = linesTruncated;
+    result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Use max_line_length: null for full content.`;
+  }
+
   return result;
 }
 
@@ -387,17 +436,28 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
   try {
     // Validate input
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
-      return toCallToolResult(errorResult('queries array is required', outputMode, getElapsed()));
+      return toCallToolResult(errorResult(`Missing required parameter 'queries'. Expected: array of search queries.
+Example: {"queries": [{"id": "find-exports", "pattern": "export"}], "output": {"mode": "files_only"}}`, outputMode, getElapsed()));
     }
 
-    if (!input.output) {
-      return toCallToolResult(errorResult('output configuration is required', outputMode, getElapsed()));
-    }
+    // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
+    const output: GrepOutput = {
+      mode: input.output?.mode ?? 'files_only',
+      context_before: input.output?.context_before ?? 0,
+      context_after: input.output?.context_after ?? 0,
+      max_files: input.output?.max_files ?? 100,
+      max_matches_per_file: input.output?.max_matches_per_file ?? 10,
+      max_total_matches: input.output?.max_total_matches ?? 100,
+      ...input.output
+    };
 
     // Validate each query
     for (const query of input.queries) {
-      if (!query.id || !query.pattern) {
-        return toCallToolResult(errorResult('Each query must have id and pattern', outputMode, getElapsed()));
+      if (!query.id) {
+        return toCallToolResult(errorResult('Each query must have id', outputMode, getElapsed()));
+      }
+      if (!query.pattern && !query.pattern_base64) {
+        return toCallToolResult(errorResult('Each query must have either pattern or pattern_base64', outputMode, getElapsed()));
       }
     }
 
@@ -407,14 +467,14 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
 
     if (parallel) {
       const results = await Promise.all(
-        input.queries.map(q => executeQuery(q, input.output, workDir))
+        input.queries.map(q => executeQuery(q, output, workDir))
       );
       input.queries.forEach((q, i) => {
         queryResults[q.id] = results[i];
       });
     } else {
       for (const query of input.queries) {
-        queryResults[query.id] = await executeQuery(query, input.output, workDir);
+        queryResults[query.id] = await executeQuery(query, output, workDir);
       }
     }
 

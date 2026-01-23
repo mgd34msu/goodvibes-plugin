@@ -33,6 +33,8 @@ export const precisionWriteSchema: Tool = {
           properties: {
             path: { type: 'string', description: 'Path to the file to write' },
             content: { type: 'string', description: 'Content to write to the file' },
+            content_base64: { type: 'string', description: 'Base64-encoded content (use instead of content for complex content)' },
+            content_file: { type: 'string', description: 'Path to file containing content to write (use instead of content)' },
             encoding: { type: 'string', description: 'File encoding (default: utf-8)' },
             mode: {
               type: 'string',
@@ -40,7 +42,7 @@ export const precisionWriteSchema: Tool = {
               description: 'Behavior when file exists (default: fail_if_exists)',
             },
           },
-          required: ['path', 'content'],
+          required: ['path'],
         },
       },
       dry_run: { type: 'boolean', default: false, description: 'Preview changes without writing' },
@@ -161,6 +163,10 @@ export const discoverSchema: Tool = {
         default: 'files_only',
         description: 'Output mode: count_only, files_only (default), or locations',
       },
+      base_path: {
+        type: 'string',
+        description: 'Base directory for searches (default: cwd). Must be within project root. Path traversal is not allowed.',
+      },
     },
     required: ['queries'],
   },
@@ -169,6 +175,14 @@ export const discoverSchema: Tool = {
 /**
  * precision_grep - Token-efficient search with precise output control.
  * SPEC-v2 Section 13.1.1
+ * 
+ * IMPORTANT: Handlers must apply schema defaults at runtime, not just define them here.
+ * - output.mode: defaults to "files_only" if not provided
+ * - output.context_before: defaults to 0
+ * - output.context_after: defaults to 0
+ * - output.max_files: defaults to 100
+ * - output.max_matches_per_file: defaults to 10
+ * - output.max_total_matches: defaults to 100
  */
 export const precisionGrepSchema: Tool = {
   name: 'precision_grep',
@@ -186,6 +200,7 @@ export const precisionGrepSchema: Tool = {
           properties: {
             id: { type: 'string', description: 'Query identifier' },
             pattern: { type: 'string', description: 'Regex pattern to search for' },
+            pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern (use instead of pattern for complex patterns)' },
             glob: { type: 'string', description: 'File pattern to search in' },
             path: { type: 'string', description: 'Directory path to search' },
             exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
@@ -194,7 +209,7 @@ export const precisionGrepSchema: Tool = {
             multiline: { type: 'boolean', description: 'Allow multiline matches (default: false)' },
             include_binary: { type: 'boolean', description: 'Search binary files (default: false)' },
           },
-          required: ['id', 'pattern'],
+          required: ['id'],
         },
       },
       output: {
@@ -208,6 +223,7 @@ export const precisionGrepSchema: Tool = {
           max_matches_per_file: { type: 'integer', minimum: 1, description: 'Cap per file (default: 10)' },
           max_total_matches: { type: 'integer', minimum: 1, description: 'Total cap (default: 100)' },
           max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap' },
+          max_line_length: { type: 'integer', minimum: 1, description: 'Truncate lines longer than this (default: no truncation)' },
         },
         required: ['mode'],
       },
@@ -221,6 +237,12 @@ export const precisionGrepSchema: Tool = {
 /**
  * precision_read - Read files with precise extraction modes.
  * SPEC-v2 Section 13.1.2
+ * 
+ * IMPORTANT: Handlers must apply schema defaults at runtime, not just define them here.
+ * - extract: defaults to "content" if not provided
+ * - output.mode: defaults to "standard" if not provided
+ * - output.include_line_numbers: defaults to true
+ * - output.include_metadata: defaults to false
  */
 export const precisionReadSchema: Tool = {
   name: 'precision_read',

@@ -8,6 +8,8 @@ import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputM
 import { handlePrecisionGrep } from './precision-grep.js';
 import { handlePrecisionGlob } from './precision-glob.js';
 import { handlePrecisionSymbols } from './precision-symbols.js';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -27,6 +29,7 @@ interface QuerySpec {
 interface DiscoverInput {
   queries: QuerySpec[];
   output_mode?: DiscoverOutputMode;
+  base_path?: string;
 }
 
 interface LocationInfo {
@@ -44,9 +47,46 @@ interface QueryResult {
   error?: string;
 }
 
+/**
+ * Validates and resolves base_path to ensure it stays within project boundaries.
+ * Prevents path traversal attacks and ensures the path is a valid directory.
+ */
+async function validateBasePath(basePath: string, projectRoot: string): Promise<string> {
+  // Resolve to absolute path
+  const absolutePath = path.isAbsolute(basePath) 
+    ? basePath 
+    : path.resolve(projectRoot, basePath);
+  
+  // Resolve symlinks to get real path
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(absolutePath);
+  } catch (e) {
+    throw new Error(`Invalid base_path: '${basePath}' does not exist or is not accessible.`);
+  }
+  
+  // Normalize for consistent comparison
+  const normalizedReal = path.normalize(realPath);
+  const normalizedRoot = path.normalize(projectRoot);
+  
+  // Verify path is within allowed boundaries
+  if (!normalizedReal.startsWith(normalizedRoot)) {
+    throw new Error(`base_path '${basePath}' is outside project root. Path traversal is not allowed.`);
+  }
+  
+  // Verify it's a directory
+  const stats = await fs.stat(realPath);
+  if (!stats.isDirectory()) {
+    throw new Error(`base_path '${basePath}' is not a directory.`);
+  }
+  
+  return realPath;
+}
+
 async function executeGrepQuery(
   query: QuerySpec,
-  outputMode: DiscoverOutputMode
+  outputMode: DiscoverOutputMode,
+  searchRoot: string
 ): Promise<QueryResult> {
   if (!query.pattern) {
     return { type: 'grep', count: 0, error: "Missing 'pattern' for grep query" };
@@ -67,6 +107,7 @@ async function executeGrepQuery(
         id: 'discover-grep',
         pattern: query.pattern,
         glob: query.glob,
+        path: searchRoot !== process.cwd() ? searchRoot : undefined,
       }],
       output: {
         mode,
@@ -143,7 +184,8 @@ async function executeGrepQuery(
 
 async function executeGlobQuery(
   query: QuerySpec,
-  outputMode: DiscoverOutputMode
+  outputMode: DiscoverOutputMode,
+  searchRoot: string
 ): Promise<QueryResult> {
   if (!query.patterns || query.patterns.length === 0) {
     return { type: 'glob', count: 0, error: "Missing 'patterns' for glob query" };
@@ -159,8 +201,16 @@ async function executeGlobQuery(
       mode = 'paths_only';
     }
 
+    // If searchRoot is different from cwd, we need to adjust patterns
+    // by temporarily changing cwd during the glob operation.
+    // However, handlePrecisionGlob uses process.cwd() internally.
+    // We'll prepend searchRoot to patterns if searchRoot differs from cwd.
+    const patterns = searchRoot !== process.cwd()
+      ? query.patterns.map(p => path.join(searchRoot, p))
+      : query.patterns;
+
     const result = await handlePrecisionGlob({
-      patterns: query.patterns,
+      patterns,
       output: {
         mode,
         max_files: 100,
@@ -220,7 +270,8 @@ async function executeGlobQuery(
 
 async function executeSymbolsQuery(
   query: QuerySpec,
-  outputMode: DiscoverOutputMode
+  outputMode: DiscoverOutputMode,
+  searchRoot: string
 ): Promise<QueryResult> {
   if (!query.query) {
     return { type: 'symbols', count: 0, error: "Missing 'query' for symbols query" };
@@ -296,15 +347,18 @@ async function executeSymbolsQuery(
 
 async function executeQuery(
   query: QuerySpec,
-  outputMode: DiscoverOutputMode
+  outputMode: DiscoverOutputMode,
+  searchRoot: string
 ): Promise<QueryResult> {
   switch (query.type) {
     case 'grep':
-      return executeGrepQuery(query, outputMode);
+      return executeGrepQuery(query, outputMode, searchRoot);
     case 'glob':
-      return executeGlobQuery(query, outputMode);
+      return executeGlobQuery(query, outputMode, searchRoot);
     case 'symbols':
-      return executeSymbolsQuery(query, outputMode);
+      // Note: symbols search currently uses process.cwd() internally
+      // and doesn't support base_path override
+      return executeSymbolsQuery(query, outputMode, searchRoot);
     default:
       return { count: 0, error: `Unknown query type: ${query.type}` };
   }
@@ -314,15 +368,21 @@ export const handleDiscover: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as DiscoverInput;
   const outputMode: DiscoverOutputMode = (input.output_mode as DiscoverOutputMode) || 'files_only';
+  const projectRoot = process.cwd();
 
   try {
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
       return toCallToolResult(errorResult('queries array is required', 'standard', getElapsed()));
     }
 
+    // Validate and resolve base_path if provided
+    const searchRoot = input.base_path
+      ? await validateBasePath(input.base_path, projectRoot)
+      : projectRoot;
+
     // Execute all queries in parallel
     const queryPromises = input.queries.map(async (query) => {
-      const result = await executeQuery(query, outputMode);
+      const result = await executeQuery(query, outputMode, searchRoot);
       return { id: query.id, result };
     });
 

@@ -37,7 +37,9 @@ function renderEjs(template: string, data: Record<string, unknown>): string {
 
 interface WriteSpec {
   path: string;
-  content: string;
+  content?: string;
+  content_base64?: string;
+  content_file?: string;
   encoding?: BufferEncoding;
 }
 
@@ -97,6 +99,31 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function resolveContent(spec: WriteSpec): Promise<string> {
+  const sources = [spec.content, spec.content_base64, spec.content_file].filter(Boolean);
+  if (sources.length > 1) {
+    throw new Error("Cannot specify multiple content sources. Use only one of: content, content_base64, content_file");
+  }
+  if (spec.content_base64) {
+    try {
+      return Buffer.from(spec.content_base64, 'base64').toString('utf-8');
+    } catch (e) {
+      throw new Error(`Invalid base64 in content_base64: ${(e as Error).message}`);
+    }
+  }
+  if (spec.content_file) {
+    try {
+      return await fs.readFile(spec.content_file, 'utf-8');
+    } catch (e) {
+      throw new Error(`Failed to read content_file '${spec.content_file}': ${(e as Error).message}`);
+    }
+  }
+  if (!spec.content) {
+    throw new Error("One of 'content', 'content_base64', or 'content_file' is required.");
+  }
+  return spec.content;
 }
 
 function generateBackupPath(filePath: string): string {
@@ -207,8 +234,11 @@ async function writeFile(
   try {
     const exists = await fileExists(filePath);
 
+    // Resolve content from spec
+    const resolvedContent = await resolveContent(spec);
+
     // Apply template
-    const content = applyTemplate(spec.content, options.template);
+    const content = applyTemplate(resolvedContent, options.template);
     const size = Buffer.byteLength(content, encoding);
 
     // Generate preview
