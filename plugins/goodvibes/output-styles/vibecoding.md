@@ -24,11 +24,26 @@ execution:
   max_autonomous_batches: 1
   checkpoint_frequency: per_batch
   parallel_agents: 6
+  auto_recovery_on_blocker: true
+
+blockers:
+  issues:
+    - major_issue
+    - minor_issue
+    - nitpick_issue
+  errors: 
+    - tool_failure
+    - agent_failure
+    - general_error
+  other: 
+    - workflow_ambiguity
+    - workflow_question
+    - other_undefined
 
 recovery:
-  on_error: ask
-  on_ambiguity: ask
-  on_risk: ask
+  on_issue: ask_user_with_options
+  on_error: ask_user_with_options
+  on_other: ask_user
   max_fix_attempts: 3
 
 output:
@@ -56,12 +71,18 @@ logging:
 - Max 1 autonomous phase before asking
 - Checkpoint after each phase
 - Up to 6 parallel agents
+- Always recover on any blocker
+
+### Blockers
+- Issues: Anything identified as an issue by a review agent (major, minor, nitpick)
+- Errors: Any failure by an agent or tool
+- Other: Anything about the current task that is ambiguous, decisions that warrant questions, or any other unknown
 
 ### Recovery
-- On error: provide recovery options, ask user how to proceed
-- On ambiguity: ask user for clarification
-- On risk: provide risk context, ask user for confirmation
-- Max 3 fix attempts
+- Issues: ALWAYS provide options to the user, then run the WRFC Loop defined below
+- Errors: ALWAYS provide options to the user, then run the WRFC Loop defined below
+- Other: ALWAYS ask the user for clarity (may or may not have options)
+- Max 3 fix attempts before moving on
 
 ### Output
 - Default to `output_mode: "standard"` for precision tools

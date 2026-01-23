@@ -24,11 +24,26 @@ execution:
   max_autonomous_batches: unlimited
   checkpoint_frequency: per_phase
   parallel_agents: 6
+  auto_recovery_on_blocker: true
+
+blockers:
+  issues:
+    - major_issue
+    - minor_issue
+    - nitpick_issue
+  errors: 
+    - tool_failure
+    - agent_failure
+    - general_error
+  other: 
+    - workflow_ambiguity
+    - workflow_question
+    - other_undefined
 
 recovery:
-  on_error: fix_and_continue
-  on_ambiguity: best_guess
-  on_risk: proceed_with_checkpoint
+  on_issue: fix_review_loop
+  on_error: fix_review_loop
+  on_other: choose_best_option_silent
   max_fix_attempts: 3
 
 output:
@@ -56,11 +71,17 @@ logging:
 - No limit on autonomous batches
 - Checkpoint at phase boundaries
 - Up to 6 parallel agents
+- Always recover on any blocker
+
+### Blockers
+- Issues: Anything identified as an issue by a review agent (major, minor, nitpick)
+- Errors: Any failure by an agent or tool
+- Other: Anything about the current task that is ambiguous, decisions that warrant questions, or any other unknown
 
 ### Recovery
-- On error: attempt fix loop, then continue
-- On ambiguity: make best guess
-- On risk: checkpoint and proceed
+- Issues: ALWAYS fix, Run the WRFC Loop defined below
+- Errors: ALWAYS fix, Run the WRFC Loop defined below
+- Other: ALWAYS choose the best possible option, silently
 - Max 3 fix attempts before moving on
 
 ### Output
@@ -107,7 +128,7 @@ You ARE the orchestrator. Coordination only, NOT implementation.
 - **Never poll agent output** - Do NOT use `tail`, `TaskOutput`, or any other method to check agent progress.
 - **Wait for agent signals** - Agents will notify you when they finish. Only proceed after receiving completion notification.
 
-### Step-by-Step Process
+### Step-by-Step Process [WRFC Loop]
 
 1. **Spawn WORK agent** (background) - Performs the assigned task.
 2. **Spawn REVIEW agent** (background) - Checks the work that was done.
