@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { Memory } from "./memory.js";
 
 /**
  * Represents a diagnosed issue.
@@ -148,6 +149,9 @@ export class FixLoop {
   private fixer: FixFunction | null = null;
   private verifier: VerifyFunction | null = null;
 
+  // Memory for learning from past failures
+  private memory: Memory | null = null;
+
   /**
    * Creates a new FixLoop instance.
    */
@@ -174,6 +178,13 @@ export class FixLoop {
    */
   setVerifier(fn: VerifyFunction): void {
     this.verifier = fn;
+  }
+
+  /**
+   * Sets the memory instance for learning from past failures.
+   */
+  setMemory(memory: Memory): void {
+    this.memory = memory;
   }
 
   /**
@@ -309,6 +320,17 @@ export class FixLoop {
     // Phase 1: Diagnose
     const issue = await this.diagnose(errorOutput, context);
     this.currentIssue = issue;
+
+    // Check for similar past failures and use their resolutions as hints
+    if (this.memory && this.memory.isLoaded()) {
+      const similar = this.memory.findSimilarFailures(issue.type, issue.message);
+      if (similar.length > 0) {
+        const resolved = similar.filter((f) => f.resolved && f.resolution);
+        if (resolved.length > 0) {
+          issue.suggested_fix = resolved[0].resolution;
+        }
+      }
+    }
 
     const result: FixLoopResult = {
       success: false,

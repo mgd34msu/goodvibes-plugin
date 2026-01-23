@@ -128,6 +128,7 @@ export class GoodVibesRuntime {
       total_budget: config.totalBudget || 500000,
     });
     this.memory = new Memory(config.projectRoot);
+    this.fixLoop.setMemory(this.memory);
     this.telemetry = new Telemetry({ tracing_enabled: config.telemetryEnabled ?? true });
     this.modeSystem = new ModeSystem({ current_mode: config.mode || "vibecoding" });
     this.contextInjector = new ContextInjector();
