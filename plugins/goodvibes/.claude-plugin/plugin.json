@@ -19,7 +19,8 @@
     "./agents/tester.md",
     "./agents/architect.md",
     "./agents/deployer.md",
-    "./agents/integrator.md"
+    "./agents/integrator.md",
+    "./agents/planner.md"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

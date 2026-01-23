@@ -112,7 +112,7 @@ Output has been saved to C:\...\tool-results\mcp-cli-....txt
 
 ### Suggested Fix
 1. Add `max_line_length` option to truncate matched lines
-2. Better default limits for `max_total_matches`
+2. Better default limits for `max_total_matches`, inform user/agent that additional results may exist.
 3. Consider streaming output for large results
 
 ---
@@ -131,7 +131,10 @@ SyntaxError: Bad escaped character in JSON at position 2490
 - Same class of issue as precision_grep
 
 ### Workaround
-- Used Bash heredoc instead of precision_write for complex content
+- Used Bash heredoc instead of precision_write for complex content (NOT preferred solution)
+  
+### Suggested Fix
+- implement a way to consume unescaped content, and deploy better internal parsing so nightmare scenarios like this can be easily consumed
 
 ---
 
@@ -144,10 +147,12 @@ SyntaxError: Bad escaped character in JSON at position 2490
 
 ### Recommendations for Tool Improvement
 
-1. **Consistent Parameter Naming**: Standardize on either `output_mode` (flat) or `output.mode` (nested) across all precision tools
+1. **Consistent Parameter Naming**: Standardize all batch and precision tools on parameter names, command structure, and values they take (ie: content, standard, minimal, etc).
+   - `output_mode` (top-level) is different from `output.mode` (nested), rename one or both to be more easily understood and differentiated between
+   - The schema of each tool should be nearly identical, making using the tool extremely intuitive. Where there are deviations, make them in a way that preserves what is common between all precision tools.
 
 2. **Better Defaults**:
-   - `extract: "content"` should be default for precision_read
+   - `extract: "content"` (or whatever these become) should be default for precision_read
    - `output.mode: "standard"` should be default (not minimal)
 
 3. **Improved Error Messages**:
@@ -168,65 +173,14 @@ SyntaxError: Bad escaped character in JSON at position 2490
 
 ## Summary Table
 
-| Tool | Error Type | Severity | Workaround Available |
-|------|-----------|----------|---------------------|
-| precision_read | Parameter structure | Medium | Yes - use correct nesting |
-| precision_grep | JSON escaping | High | Partial - simplify patterns |
-| precision_write | JSON escaping | High | Yes - use Bash heredoc |
-| discover | Path scope | Medium | Yes - use direct commands |
-| precision_grep | Output size | Low | Yes - use count_only mode |
+| Tool | Error Type | Severity |
+|------|-----------|----------|
+| precision_read | Parameter structure | Medium |
+| precision_grep | JSON escaping | High |
+| precision_write | JSON escaping | High |
+| discover | Path scope | Medium |
+| precision_grep | Output size | Low |
 
 ---
 
 *Generated: 2026-01-23*
-
----
-
-## 7. Write Tool Blocked by Hook
-
-### Error Observed
-```
-BLOCKED: 'Write' - MANDATORY: Use plugin_goodvibes_precision-engine/precision_write instead.
-```
-
-### Context
-- Attempted to use native `Write` tool to create this markdown file
-- Hook system blocked the tool, requiring precision_write
-- But precision_write has the same JSON escaping issues for complex content
-
-### Root Cause
-- Plugin hook enforces precision_write usage
-- Creates a catch-22: forced to use a tool that can't handle the content
-
-### Workaround
-- Used Bash with heredoc (`cat > file << 'EOF'`) to bypass both tools
-- This works because heredoc preserves content exactly without JSON escaping
-
-### Suggested Fix
-1. Allow fallback to native tools when precision tools fail on content
-2. Add a `content_file` parameter to precision_write to read content from a file
-3. Support base64-encoded content for complex strings
-
----
-
-## 8. Glob Tool Blocked by Hook
-
-### Error Observed
-```
-BLOCKED: 'Glob' - MANDATORY: Use plugin_goodvibes_precision-engine/precision_glob instead.
-```
-
-### Context
-- First tool call in session tried to use native Glob
-- Hook blocked it requiring precision_glob
-
-### Impact
-- Minor - just need to use the MCP tool instead
-- Adds latency due to MCP server communication
-
-### Suggested Fix
-- This is working as designed, just requires awareness of the hook system
-
----
-
-*Updated: 2026-01-23*
