@@ -245512,7 +245512,7 @@ var PROJECT_SCHEMAS = [
         },
         database_url: {
           type: "string",
-          description: "Database connection URL. Formats: postgresql://<user>:<pass>@host:port/db, mysql://<user>:<pass>@host:port/db, sqlite:///path/to/file.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3."
+          description: "Database connection URL. Example formats (replace with actual values): postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>, mysql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>, sqlite:///<PATH_TO_FILE>.db, sqlite::memory: (or just :memory: for in-memory), or bare paths ending in .db/.sqlite/.sqlite3."
         },
         params: {
           type: "array",
@@ -253038,9 +253038,9 @@ async function handleQueryDatabase(args) {
   if (connectionInfo.type === "unknown") {
     return formatErrorResponse(
       `Unable to parse database URL. Supported formats:
-  - PostgreSQL: postgresql://<user>:<pass>@host:port/database
-  - MySQL: mysql://<user>:<pass>@host:port/database
-  - SQLite: sqlite:///path/to/db.sqlite or file:./db.sqlite`
+  - PostgreSQL: postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+  - MySQL: mysql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+  - SQLite: sqlite:///<PATH_TO_DB> or file:./<DB_FILE>`
     );
   }
   const readonly2 = args.readonly !== false;
