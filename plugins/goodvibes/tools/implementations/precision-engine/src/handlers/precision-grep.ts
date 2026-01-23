@@ -15,7 +15,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
 import { createErrorResult, formatMissingParamError } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 
@@ -82,22 +82,6 @@ interface GrepResult {
 
 // === Helper Functions ===
 
-function decodePattern(query: GrepQuery): string {
-  if (query.pattern && query.pattern_base64) {
-    throw new Error("Cannot specify both 'pattern' and 'pattern_base64'. Use one or the other.");
-  }
-  if (query.pattern_base64) {
-    try {
-      return Buffer.from(query.pattern_base64, 'base64').toString('utf-8');
-    } catch (e) {
-      throw new Error(`Invalid base64 in pattern_base64: ${(e as Error).message}`);
-    }
-  }
-  if (!query.pattern) {
-    throw new Error("Either 'pattern' or 'pattern_base64' is required.");
-  }
-  return query.pattern;
-}
 
 function estimateTokens(str: string): number {
   // Rough estimate: ~4 chars per token
@@ -238,7 +222,12 @@ async function executeQuery(
   const includeBinary = query.include_binary ?? false;
 
   // Build regex with multiline support
-  let patternStr = decodePattern(query);
+  let patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
+    allowFile: true,
+    basePath: process.cwd(),
+    required: true,
+    fieldName: 'pattern'
+  });
   if (query.whole_word) {
     patternStr = `\\b${patternStr}\\b`;
   }

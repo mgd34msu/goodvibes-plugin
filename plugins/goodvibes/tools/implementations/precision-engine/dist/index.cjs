@@ -15001,7 +15001,7 @@ var require_typescript = __commonJS({
         resolveModuleName: () => resolveModuleName,
         resolveModuleNameFromCache: () => resolveModuleNameFromCache,
         resolvePackageNameToPackageJson: () => resolvePackageNameToPackageJson,
-        resolvePath: () => resolvePath,
+        resolvePath: () => resolvePath2,
         resolveProjectReferencePath: () => resolveProjectReferencePath,
         resolveTripleslashReference: () => resolveTripleslashReference,
         resolveTypeReferenceDirective: () => resolveTypeReferenceDirective,
@@ -22714,10 +22714,10 @@ ${lanes.join("\n")}
         return path8;
       }
       __name(combinePaths, "combinePaths");
-      function resolvePath(path8, ...paths) {
+      function resolvePath2(path8, ...paths) {
         return normalizePath2(some(paths) ? combinePaths(path8, ...paths) : normalizeSlashes(path8));
       }
-      __name(resolvePath, "resolvePath");
+      __name(resolvePath2, "resolvePath");
       function getNormalizedPathComponents(path8, currentDirectory) {
         return reducePathComponents(getPathComponents(path8, currentDirectory));
       }
@@ -22999,8 +22999,8 @@ ${lanes.join("\n")}
       __name(getRelativePathFromFile, "getRelativePathFromFile");
       function getRelativePathToDirectoryOrUrl(directoryPathOrUrl, relativeOrAbsolutePath, currentDirectory, getCanonicalFileName, isAbsolutePathAnUrl) {
         const pathComponents2 = getPathComponentsRelativeTo(
-          resolvePath(currentDirectory, directoryPathOrUrl),
-          resolvePath(currentDirectory, relativeOrAbsolutePath),
+          resolvePath2(currentDirectory, directoryPathOrUrl),
+          resolvePath2(currentDirectory, relativeOrAbsolutePath),
           equateStringsCaseSensitive,
           getCanonicalFileName
         );
@@ -35190,7 +35190,7 @@ ${lanes.join("\n")}
       }
       __name(getPossibleOriginalInputExtensionForExtension, "getPossibleOriginalInputExtensionForExtension");
       function getPossibleOriginalInputPathWithoutChangingExt(filePath, ignoreCase, outputDir, getCommonSourceDirectory2) {
-        return outputDir ? resolvePath(
+        return outputDir ? resolvePath2(
           getCommonSourceDirectory2(),
           getRelativePathFromDirectory(outputDir, filePath, ignoreCase)
         ) : filePath;
@@ -70787,7 +70787,7 @@ ${lanes.join("\n")}
               }
               const relative5 = getRelativePathFromDirectory(realPathDirectory, target, getCanonicalFileName);
               for (const symlinkDirectory of symlinkDirectories) {
-                const option = resolvePath(symlinkDirectory, relative5);
+                const option = resolvePath2(symlinkDirectory, relative5);
                 const result2 = cb(option, target === referenceRedirect);
                 shouldFilterIgnoredPaths = true;
                 if (result2)
@@ -150474,7 +150474,7 @@ ${lanes.join("\n")}
           if (!configFile)
             return void 0;
           const configFileExtensionLess = removeFileExtension(configFile);
-          buildInfoExtensionLess = options.outDir ? options.rootDir ? resolvePath(options.outDir, getRelativePathFromDirectory(
+          buildInfoExtensionLess = options.outDir ? options.rootDir ? resolvePath2(options.outDir, getRelativePathFromDirectory(
             options.rootDir,
             configFileExtensionLess,
             /*ignoreCase*/
@@ -150538,7 +150538,7 @@ ${lanes.join("\n")}
       }
       __name(getOutputExtension, "getOutputExtension");
       function getOutputPathWithoutChangingExt(inputFileName, ignoreCase, outputDir, getCommonSourceDirectory2) {
-        return outputDir ? resolvePath(
+        return outputDir ? resolvePath2(
           outputDir,
           getRelativePathFromDirectory(getCommonSourceDirectory2(), inputFileName, ignoreCase)
         ) : inputFileName;
@@ -166500,7 +166500,7 @@ ${lanes.join("\n")}
       }
       __name(parseConfigFile, "parseConfigFile");
       function resolveProjectName(state, name) {
-        return resolveConfigFileProjectName(resolvePath(state.compilerHost.getCurrentDirectory(), name));
+        return resolveConfigFileProjectName(resolvePath2(state.compilerHost.getCurrentDirectory(), name));
       }
       __name(resolveProjectName, "resolveProjectName");
       function createBuildOrder(state, roots) {
@@ -180503,7 +180503,7 @@ interface Symbol {
                 return !!symbol2 && movedSymbols.has(symbol2);
               }, "shouldMove");
               deleteUnusedImports(sourceFile, importNode, changes, shouldMove);
-              const pathToTargetFileWithExtension = resolvePath(getDirectoryPath(getNormalizedAbsolutePath(oldFile.fileName, program.getCurrentDirectory())), targetFileName);
+              const pathToTargetFileWithExtension = resolvePath2(getDirectoryPath(getNormalizedAbsolutePath(oldFile.fileName, program.getCurrentDirectory())), targetFileName);
               if (getStringComparer(!program.useCaseSensitiveFileNames())(pathToTargetFileWithExtension, sourceFile.fileName) === 0)
                 return;
               const newModuleSpecifier = ts_moduleSpecifiers_exports.getModuleSpecifier(program.getCompilerOptions(), sourceFile, sourceFile.fileName, pathToTargetFileWithExtension, createModuleSpecifierResolutionHost(program, host));
@@ -206728,7 +206728,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           fragment = "." + directorySeparator;
         }
         fragment = ensureTrailingDirectorySeparator(fragment);
-        const absolutePath = resolvePath(scriptDirectory, fragment);
+        const absolutePath = resolvePath2(scriptDirectory, fragment);
         const baseDirectory = hasTrailingDirectorySeparator(absolutePath) ? absolutePath : getDirectoryPath(absolutePath);
         if (!moduleSpecifierIsRelative) {
           const packageJsonPath = findPackageJson(baseDirectory, host);
@@ -207106,7 +207106,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (parsed === void 0 || isString(parsed)) {
           return void 0;
         }
-        const normalizedPrefix = resolvePath(parsed.prefix);
+        const normalizedPrefix = resolvePath2(parsed.prefix);
         const normalizedPrefixDirectory = hasTrailingDirectorySeparator(parsed.prefix) ? normalizedPrefix : getDirectoryPath(normalizedPrefix);
         const normalizedPrefixBase = hasTrailingDirectorySeparator(parsed.prefix) ? "" : getBaseFileName(normalizedPrefix);
         const fragmentHasPath = containsSlash(fragment);
@@ -210337,7 +210337,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           let resolution;
           if (isModuleSpecifierLike(node) && isExternalModuleNameRelative(node.text) && (resolution = program.getResolvedModuleFromModuleSpecifier(node, sourceFile))) {
             const verifiedFileName = (_b = resolution.resolvedModule) == null ? void 0 : _b.resolvedFileName;
-            const fileName = verifiedFileName || resolvePath(getDirectoryPath(sourceFile.fileName), node.text);
+            const fileName = verifiedFileName || resolvePath2(getDirectoryPath(sourceFile.fileName), node.text);
             return {
               file: program.getSourceFile(fileName),
               fileName,
@@ -223101,7 +223101,7 @@ ${options.prefix}` : "\n" : options.prefix
         resolveModuleName: () => resolveModuleName,
         resolveModuleNameFromCache: () => resolveModuleNameFromCache,
         resolvePackageNameToPackageJson: () => resolvePackageNameToPackageJson,
-        resolvePath: () => resolvePath,
+        resolvePath: () => resolvePath2,
         resolveProjectReferencePath: () => resolveProjectReferencePath,
         resolveTripleslashReference: () => resolveTripleslashReference,
         resolveTypeReferenceDirective: () => resolveTypeReferenceDirective,
@@ -251595,8 +251595,20 @@ function createErrorResult(error2, meta3) {
   };
 }
 __name(createErrorResult, "createErrorResult");
+function formatMutualExclusivityError(fieldName, providedSources) {
+  return `Multiple input sources provided for '${fieldName}'.
+Found: ${providedSources.join(", ")}
+Please provide only ONE of:
+  - ${fieldName}: Direct string value
+  - ${fieldName}_base64: Base64-encoded value
+  - ${fieldName}_file: Path to file containing value
+`;
+}
+__name(formatMutualExclusivityError, "formatMutualExclusivityError");
 
 // src/utils/index.ts
+var import_fs = require("fs");
+var import_path = require("path");
 function toCallToolResult(result) {
   const content = {
     type: "text",
@@ -251665,6 +251677,57 @@ function parseOutputMode(args, toolName) {
   return STANDARD_DEFAULTS.output_mode;
 }
 __name(parseOutputMode, "parseOutputMode");
+function resolveStringField(obj, fieldName, options) {
+  const { allowFile = false, basePath = process.cwd(), required: required2 = false } = options;
+  const directValue = obj[fieldName];
+  const base64Value = obj[`${fieldName}_base64`];
+  const fileValue = obj[`${fieldName}_file`];
+  const providedSources = [];
+  if (directValue !== void 0)
+    providedSources.push(fieldName);
+  if (base64Value !== void 0)
+    providedSources.push(`${fieldName}_base64`);
+  if (fileValue !== void 0)
+    providedSources.push(`${fieldName}_file`);
+  if (providedSources.length > 1) {
+    throw new Error(formatMutualExclusivityError(fieldName, providedSources));
+  }
+  if (base64Value !== void 0) {
+    if (typeof base64Value !== "string") {
+      throw new Error(`${fieldName}_base64 must be a string, got ${typeof base64Value}`);
+    }
+    try {
+      return Buffer.from(base64Value, "base64").toString("utf-8");
+    } catch (e) {
+      throw new Error(`Invalid base64 in ${fieldName}_base64: ${e.message}`);
+    }
+  }
+  if (fileValue !== void 0) {
+    if (!allowFile) {
+      throw new Error(`${fieldName}_file is not supported for this field`);
+    }
+    if (typeof fileValue !== "string") {
+      throw new Error(`${fieldName}_file must be a string path, got ${typeof fileValue}`);
+    }
+    const filePath = (0, import_path.resolve)(basePath, fileValue);
+    try {
+      return (0, import_fs.readFileSync)(filePath, "utf-8");
+    } catch (e) {
+      throw new Error(`Failed to read ${fieldName}_file at '${filePath}': ${e.message}`);
+    }
+  }
+  if (directValue !== void 0) {
+    if (typeof directValue !== "string") {
+      throw new Error(`${fieldName} must be a string, got ${typeof directValue}`);
+    }
+    return directValue;
+  }
+  if (required2) {
+    throw new Error(`Missing required field: '${fieldName}'. Provide one of: ${fieldName}, ${fieldName}_base64${allowFile ? `, ${fieldName}_file` : ""}`);
+  }
+  return "";
+}
+__name(resolveStringField, "resolveStringField");
 
 // src/handlers/precision-write.ts
 var import_crypto = require("crypto");
@@ -252703,23 +252766,6 @@ var handlePrecisionFetch = /* @__PURE__ */ __name(async (args) => {
 var import_fast_glob = __toESM(require_out4(), 1);
 var fs2 = __toESM(require("fs/promises"), 1);
 var path2 = __toESM(require("path"), 1);
-function decodePattern(query) {
-  if (query.pattern && query.pattern_base64) {
-    throw new Error("Cannot specify both 'pattern' and 'pattern_base64'. Use one or the other.");
-  }
-  if (query.pattern_base64) {
-    try {
-      return Buffer.from(query.pattern_base64, "base64").toString("utf-8");
-    } catch (e) {
-      throw new Error(`Invalid base64 in pattern_base64: ${e.message}`);
-    }
-  }
-  if (!query.pattern) {
-    throw new Error("Either 'pattern' or 'pattern_base64' is required.");
-  }
-  return query.pattern;
-}
-__name(decodePattern, "decodePattern");
 function estimateTokens2(str) {
   return Math.ceil(str.length / 4);
 }
@@ -252829,7 +252875,12 @@ async function executeQuery(query, output, workDir) {
   const contextBefore = output.context_before ?? 0;
   const contextAfter = output.context_after ?? 0;
   const includeBinary = query.include_binary ?? false;
-  let patternStr = decodePattern(query);
+  let patternStr = resolveStringField(query, "pattern", {
+    allowFile: true,
+    basePath: process.cwd(),
+    required: true,
+    fieldName: "pattern"
+  });
   if (query.whole_word) {
     patternStr = `\\b${patternStr}\\b`;
   }
@@ -253586,8 +253637,16 @@ async function validateBasePath(basePath, projectRoot) {
 }
 __name(validateBasePath, "validateBasePath");
 async function executeGrepQuery(query, outputMode, searchRoot) {
-  if (!query.pattern) {
-    return { type: "grep", count: 0, error: "Missing 'pattern' for grep query" };
+  let patternValue;
+  try {
+    patternValue = resolveStringField(query, "pattern", {
+      allowFile: true,
+      basePath: process.cwd(),
+      required: true,
+      fieldName: "pattern"
+    });
+  } catch (error2) {
+    return { type: "grep", count: 0, error: error2.message };
   }
   try {
     let mode;
@@ -253601,7 +253660,7 @@ async function executeGrepQuery(query, outputMode, searchRoot) {
     const result = await handlePrecisionGrep({
       queries: [{
         id: "discover-grep",
-        pattern: query.pattern,
+        pattern: patternValue,
         glob: query.glob,
         path: searchRoot !== process.cwd() ? searchRoot : void 0
       }],
@@ -254856,12 +254915,24 @@ async function applyEdit(filePath, content, edit, matchConfig) {
   if (content === null) {
     return { newContent: "", status: "not_found", editsApplied: 0, error: "File does not exist" };
   }
-  const matches = findInContext(filePath, content, edit.find, edit.hints ?? {}, matchConfig);
+  const findValue = resolveStringField(edit, "find", {
+    allowFile: true,
+    basePath: process.cwd(),
+    required: true,
+    fieldName: "find"
+  });
+  const replaceValue = resolveStringField(edit, "replace", {
+    allowFile: true,
+    basePath: process.cwd(),
+    required: true,
+    fieldName: "replace"
+  });
+  const matches = findInContext(filePath, content, findValue, edit.hints ?? {}, matchConfig);
   if (matches.length === 0) {
-    const closestMatches = findClosestMatch(content, edit.find);
+    const closestMatches = findClosestMatch(content, findValue);
     const errorDetails = {
       message: "Pattern not found",
-      pattern_length: edit.find.length,
+      pattern_length: findValue.length,
       file_length: content.length,
       closest_matches: closestMatches.length > 0 ? closestMatches : "No similar content found"
     };
@@ -254894,7 +254965,7 @@ async function applyEdit(filePath, content, edit, matchConfig) {
   let newContent = content;
   const sortedMatches = [...matchesToReplace].sort((a, b) => b.index - a.index);
   for (const match of sortedMatches) {
-    newContent = newContent.slice(0, match.index) + edit.replace + newContent.slice(match.index + match.length);
+    newContent = newContent.slice(0, match.index) + replaceValue + newContent.slice(match.index + match.length);
   }
   return { newContent, status: "applied", editsApplied: matchesToReplace.length };
 }

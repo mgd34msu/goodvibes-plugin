@@ -4,7 +4,7 @@
 
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, resolveStringField } from '../utils/index.js';
 import { TOOL_SPECIFIC_DEFAULTS } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { handlePrecisionGrep } from './precision-grep.js';
@@ -90,8 +90,17 @@ async function executeGrepQuery(
   outputMode: DiscoverOutputMode,
   searchRoot: string
 ): Promise<QueryResult> {
-  if (!query.pattern) {
-    return { type: 'grep', count: 0, error: "Missing 'pattern' for grep query" };
+  // Resolve pattern (supports regular strings, base64, and file paths)
+  let patternValue: string;
+  try {
+    patternValue = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
+      allowFile: true,
+      basePath: process.cwd(),
+      required: true,
+      fieldName: 'pattern'
+    });
+  } catch (error) {
+    return { type: 'grep', count: 0, error: (error as Error).message };
   }
 
   try {
@@ -107,7 +116,7 @@ async function executeGrepQuery(
     const result = await handlePrecisionGrep({
       queries: [{
         id: 'discover-grep',
-        pattern: query.pattern,
+        pattern: patternValue,
         glob: query.glob,
         path: searchRoot !== process.cwd() ? searchRoot : undefined,
       }],

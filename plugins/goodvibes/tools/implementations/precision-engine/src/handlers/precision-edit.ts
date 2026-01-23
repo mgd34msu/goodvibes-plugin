@@ -35,7 +35,7 @@ import { diffLines } from 'diff';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 
 const execAsync = promisify(exec);
@@ -653,14 +653,28 @@ async function applyEdit(
     return { newContent: '', status: 'not_found', editsApplied: 0, error: 'File does not exist' };
   }
 
+  // Resolve find and replace values (supports regular strings, base64, and file paths)
+  const findValue = resolveStringField(edit as unknown as Record<string, unknown>, 'find', {
+    allowFile: true,
+    basePath: process.cwd(),
+    required: true,
+    fieldName: 'find'
+  });
+  const replaceValue = resolveStringField(edit as unknown as Record<string, unknown>, 'replace', {
+    allowFile: true,
+    basePath: process.cwd(),
+    required: true,
+    fieldName: 'replace'
+  });
+
   // Find matches using hints and match mode
-  const matches = findInContext(filePath, content, edit.find, edit.hints ?? {}, matchConfig);
+  const matches = findInContext(filePath, content, findValue, edit.hints ?? {}, matchConfig);
 
   if (matches.length === 0) {
-    const closestMatches = findClosestMatch(content, edit.find);
+    const closestMatches = findClosestMatch(content, findValue);
     const errorDetails: any = {
       message: 'Pattern not found',
-      pattern_length: edit.find.length,
+      pattern_length: findValue.length,
       file_length: content.length,
       closest_matches: closestMatches.length > 0 ? closestMatches : 'No similar content found'
     };
@@ -705,7 +719,7 @@ async function applyEdit(
     // Use the match.length property which is set correctly for each match mode
     // For AST mode, this will be the entire node length
     // For other modes, this will be the matched string length
-    newContent = newContent.slice(0, match.index) + edit.replace + newContent.slice(match.index + match.length);
+    newContent = newContent.slice(0, match.index) + replaceValue + newContent.slice(match.index + match.length);
   }
 
   return { newContent, status: 'applied', editsApplied: matchesToReplace.length };

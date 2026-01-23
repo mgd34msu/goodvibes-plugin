@@ -186,3 +186,103 @@ export function isTextFile(filePath: string): boolean {
 
 // Export error formatting utilities
 export * from './errors.js';
+
+// === String Field Resolution Utilities ===
+
+import { readFileSync } from 'fs';
+import { resolve as resolvePath } from 'path';
+import { formatMutualExclusivityError } from './errors.js';
+
+export interface ResolveStringFieldOptions {
+  allowFile?: boolean;
+  basePath?: string;
+  required?: boolean;
+  fieldName: string;
+}
+
+/**
+ * Resolve a string field that can be provided as:
+ * - Direct value: { fieldName: "value" }
+ * - Base64-encoded: { fieldName_base64: "base64string" }
+ * - File path: { fieldName_file: "/path/to/file.txt" }
+ *
+ * Ensures mutual exclusivity and handles all three sources.
+ */
+export function resolveStringField(
+  obj: Record<string, unknown>,
+  fieldName: string,
+  options: ResolveStringFieldOptions
+): string {
+  const { allowFile = false, basePath = process.cwd(), required = false } = options;
+
+  const directValue = obj[fieldName];
+  const base64Value = obj[`${fieldName}_base64`];
+  const fileValue = obj[`${fieldName}_file`];
+
+  // Check mutual exclusivity
+  const providedSources: string[] = [];
+  if (directValue !== undefined) providedSources.push(fieldName);
+  if (base64Value !== undefined) providedSources.push(`${fieldName}_base64`);
+  if (fileValue !== undefined) providedSources.push(`${fieldName}_file`);
+
+  if (providedSources.length > 1) {
+    throw new Error(formatMutualExclusivityError(fieldName, providedSources));
+  }
+
+  // Handle base64
+  if (base64Value !== undefined) {
+    if (typeof base64Value !== 'string') {
+      throw new Error(`${fieldName}_base64 must be a string, got ${typeof base64Value}`);
+    }
+    try {
+      return Buffer.from(base64Value, 'base64').toString('utf-8');
+    } catch (e) {
+      throw new Error(`Invalid base64 in ${fieldName}_base64: ${(e as Error).message}`);
+    }
+  }
+
+  // Handle file
+  if (fileValue !== undefined) {
+    if (!allowFile) {
+      throw new Error(`${fieldName}_file is not supported for this field`);
+    }
+    if (typeof fileValue !== 'string') {
+      throw new Error(`${fieldName}_file must be a string path, got ${typeof fileValue}`);
+    }
+    const filePath = resolvePath(basePath, fileValue);
+    try {
+      return readFileSync(filePath, 'utf-8');
+    } catch (e) {
+      throw new Error(`Failed to read ${fieldName}_file at '${filePath}': ${(e as Error).message}`);
+    }
+  }
+
+  // Handle direct value
+  if (directValue !== undefined) {
+    if (typeof directValue !== 'string') {
+      throw new Error(`${fieldName} must be a string, got ${typeof directValue}`);
+    }
+    return directValue;
+  }
+
+  // No value provided
+  if (required) {
+    throw new Error(`Missing required field: '${fieldName}'. Provide one of: ${fieldName}, ${fieldName}_base64${allowFile ? `, ${fieldName}_file` : ''}`);
+  }
+
+  return '';
+}
+
+/**
+ * Async version of resolveStringField for use in async contexts.
+ * Currently uses sync file reading, but structured for future async file operations.
+ */
+export async function resolveStringFieldAsync(
+  obj: Record<string, unknown>,
+  fieldName: string,
+  options: ResolveStringFieldOptions
+): Promise<string> {
+  // For now, just call the sync version
+  // In the future, this could use fs.promises.readFile for true async
+  return resolveStringField(obj, fieldName, options);
+}

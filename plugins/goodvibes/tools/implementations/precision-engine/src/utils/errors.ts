@@ -82,3 +82,80 @@ export function createErrorResult(error: string, meta?: Record<string, unknown>)
     },
   };
 }
+
+/**
+ * Enhances a JSON parse error with helpful context
+ */
+export function enhanceJsonParseError(
+  error: SyntaxError,
+  jsonString: string
+): string {
+  const message = error.message;
+
+  // Extract position from error message like "at position 104"
+  const posMatch = message.match(/position (\d+)/i);
+  const position = posMatch ? parseInt(posMatch[1], 10) : -1;
+
+  let enhanced = `JSON Parse Error: ${message}
+`;
+
+  if (position >= 0 && position < jsonString.length) {
+    // Show context around error
+    const start = Math.max(0, position - 30);
+    const end = Math.min(jsonString.length, position + 30);
+    const before = jsonString.slice(start, position);
+    const after = jsonString.slice(position, end);
+    const char = jsonString[position] || 'EOF';
+
+    enhanced += `
+Error at position ${position}:
+`;
+    enhanced += `  ...${before}[HERE -> '${char}']${after}...
+`;
+  }
+
+  // Detect common escaping issues
+  if (message.includes('escape') || message.includes('backslash')) {
+    enhanced += formatEscapingSuggestion();
+  }
+
+  return enhanced;
+}
+
+/**
+ * Formats a suggestion for using base64 encoding
+ */
+export function formatEscapingSuggestion(): string {
+  return `
+Suggestion: Use base64 encoding for patterns with special characters.
+
+Example - encode your pattern:
+  echo -n 'your-pattern\.here' | base64
+
+Then use the *_base64 field instead:
+  {
+    "pattern_base64": "eW91ci1wYXR0ZXJuXC5oZXJl"
+  }
+
+Alternatively, use a file reference:
+  {
+    "pattern_file": "/path/to/pattern.txt"
+  }
+`;
+}
+
+/**
+ * Formats an error for mutual exclusivity violations
+ */
+export function formatMutualExclusivityError(
+  fieldName: string,
+  providedSources: string[]
+): string {
+  return `Multiple input sources provided for '${fieldName}'.
+Found: ${providedSources.join(', ')}
+Please provide only ONE of:
+  - ${fieldName}: Direct string value
+  - ${fieldName}_base64: Base64-encoded value
+  - ${fieldName}_file: Path to file containing value
+`;
+}
