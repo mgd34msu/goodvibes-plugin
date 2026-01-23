@@ -412,18 +412,15 @@ var BLOCKED_NATIVE_TOOLS = [
 ];
 function formatBlockMessage(toolName, replacement) {
   const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
-  return `\u26D4 BLOCKED: Native tool '${toolName}' is disabled.
-
-Use precision tool instead: ${toolPath}
-
-To see schema: mcp-cli info ${toolPath}
-
-Example usage:
+  return `BLOCKED: Native tool '${toolName}' is disabled.
+MANDATORY: Use precision tool: ${toolPath}
+TOOL INFO: 
 ${replacement.usage}
 
-Capabilities: ${replacement.capabilities}
+TOOL INFO: ${replacement.capabilities}
+MORE INFO: mcp-cli info ${toolPath}
 
-\u{1F4A1} WORKFLOW TIP: Use discover -> batch process:
+CRITICAL: Use discover -> batch process:
 1. Use 'discover' tool to find files/patterns in parallel
 2. Then use 'batch' tool to process operations atomically
 
