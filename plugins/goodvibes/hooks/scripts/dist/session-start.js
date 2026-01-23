@@ -141,14 +141,14 @@ var LOCKFILES = [
   "package-lock.json",
   "bun.lockb"
 ];
-function resolvePluginRootFromDirname(dirname2) {
+function resolvePluginRootFromDirname(dirname3) {
   if (process.env.CLAUDE_PLUGIN_ROOT) {
     return process.env.CLAUDE_PLUGIN_ROOT;
   }
-  if (dirname2 !== void 0 && dirname2.includes("hooks")) {
-    const hooksIndex = dirname2.indexOf("hooks");
+  if (dirname3 !== void 0 && dirname3.includes("hooks")) {
+    const hooksIndex = dirname3.indexOf("hooks");
     if (hooksIndex > 0) {
-      return dirname2.substring(0, hooksIndex - 1);
+      return dirname3.substring(0, hooksIndex - 1);
     }
   }
   const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
@@ -4524,6 +4524,177 @@ function buildSystemMessage(sessionId, context) {
   return parts.join(" ");
 }
 
+// src/session-start/pricing-fetcher.ts
+import { readFile as readFile9, writeFile as writeFile5, mkdir as mkdir5 } from "node:fs/promises";
+import { join as join17, dirname as dirname2 } from "node:path";
+import { existsSync } from "node:fs";
+var PLUGIN_ROOT2 = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+var CONFIG_PATH = join17(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
+var CACHE_PATH = join17(PLUGIN_ROOT2, ".cache", "model-pricing.json");
+async function loadConfig() {
+  try {
+    const content = await readFile9(CONFIG_PATH, "utf-8");
+    return JSON.parse(content);
+  } catch (error) {
+    debug("Failed to load pricing config, using defaults", { error });
+    return {
+      pricingUrl: "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      cacheTtlHours: 24
+    };
+  }
+}
+async function isCacheStale(ttlHours) {
+  try {
+    if (!existsSync(CACHE_PATH)) {
+      debug("Cache file does not exist");
+      return true;
+    }
+    const content = await readFile9(CACHE_PATH, "utf-8");
+    const cache = JSON.parse(content);
+    const fetchedAt = new Date(cache.fetchedAt);
+    const now = /* @__PURE__ */ new Date();
+    const ageHours = (now.getTime() - fetchedAt.getTime()) / (1e3 * 60 * 60);
+    const isStale = ageHours >= ttlHours;
+    debug("Cache age check", { ageHours, ttlHours, isStale });
+    return isStale;
+  } catch (error) {
+    logError("Cache staleness check failed", error);
+    return true;
+  }
+}
+async function fetchPricingMarkdown(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3e4);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await response.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+function parsePrice(priceStr) {
+  const match = priceStr.match(/\$(\d+(?:\.\d+)?)\s*\/\s*MTok/i);
+  if (!match) {
+    throw new Error(`Invalid price format: ${priceStr}`);
+  }
+  return parseFloat(match[1]);
+}
+function parseModelName(name) {
+  const cleanName = name.replace(/\s*\(.*\)/, "").trim();
+  const match = cleanName.match(/Claude\s+(Opus|Sonnet|Haiku)\s+([\d.]+)/i);
+  if (!match) {
+    return null;
+  }
+  const family = match[1].toLowerCase();
+  const version = parseFloat(match[2]);
+  return { family, version };
+}
+function parsePricingTable(markdown) {
+  const models = [];
+  const pricingMatch = markdown.match(/##\s*Model pricing[\s\S]*?(?=##|$)/i);
+  if (!pricingMatch) {
+    throw new Error('Could not find "Model pricing" section');
+  }
+  const pricingSection = pricingMatch[0];
+  const lines = pricingSection.split("\n");
+  let inTable = false;
+  for (const line of lines) {
+    if (line.includes("| Model |") || line.includes("|---")) {
+      inTable = true;
+      continue;
+    }
+    if (!inTable || !line.trim().startsWith("|")) {
+      continue;
+    }
+    const cells = line.split("|").map((c) => c.trim()).filter((c) => c);
+    if (cells.length < 6) {
+      continue;
+    }
+    const [modelName, baseInput, cache5m, cache1h, cacheHits, output] = cells;
+    const parsed = parseModelName(modelName);
+    if (!parsed) {
+      debug("Skipping unrecognized model", { modelName });
+      continue;
+    }
+    try {
+      models.push({
+        family: parsed.family,
+        version: parsed.version,
+        name: modelName,
+        inputPrice: parsePrice(baseInput),
+        outputPrice: parsePrice(output),
+        cacheWrite5Min: parsePrice(cache5m),
+        cacheWrite1Hour: parsePrice(cache1h),
+        cacheHits: parsePrice(cacheHits)
+      });
+    } catch (error) {
+      logError(`Failed to parse row for ${modelName}`, error);
+    }
+  }
+  return models;
+}
+function filterLatestVersions(models) {
+  const latestByFamily = /* @__PURE__ */ new Map();
+  for (const model of models) {
+    const existing = latestByFamily.get(model.family);
+    if (!existing || model.version > existing.version) {
+      latestByFamily.set(model.family, model);
+    }
+  }
+  return Array.from(latestByFamily.values());
+}
+function toCacheFormat(models) {
+  const cacheModels = {};
+  for (const model of models) {
+    const key = `claude-${model.family}-${model.version}`;
+    cacheModels[key] = {
+      name: model.name,
+      inputPrice: model.inputPrice,
+      outputPrice: model.outputPrice,
+      cacheWrite5Min: model.cacheWrite5Min,
+      cacheWrite1Hour: model.cacheWrite1Hour,
+      cacheHits: model.cacheHits
+    };
+  }
+  return {
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    models: cacheModels
+  };
+}
+async function saveCache(cache) {
+  const dir = dirname2(CACHE_PATH);
+  if (!existsSync(dir)) {
+    await mkdir5(dir, { recursive: true });
+  }
+  await writeFile5(CACHE_PATH, JSON.stringify(cache, null, 2), "utf-8");
+  debug("Pricing cache saved", { path: CACHE_PATH, modelCount: Object.keys(cache.models).length });
+}
+async function fetchPricingIfStale() {
+  try {
+    const config = await loadConfig();
+    const isStale = await isCacheStale(config.cacheTtlHours);
+    if (!isStale) {
+      debug("Pricing cache is fresh, skipping fetch");
+      return;
+    }
+    debug("Fetching pricing data", { url: config.pricingUrl });
+    const markdown = await fetchPricingMarkdown(config.pricingUrl);
+    debug("Parsing pricing table");
+    const allModels = parsePricingTable(markdown);
+    debug("Parsed models", { count: allModels.length });
+    const latestModels = filterLatestVersions(allModels);
+    debug("Filtered to latest versions", { count: latestModels.length });
+    const cache = toCacheFormat(latestModels);
+    await saveCache(cache);
+    debug("Pricing fetch completed successfully");
+  } catch (error) {
+    logError("Pricing fetch failed (non-blocking)", error);
+  }
+}
+
 // src/session-start/index.ts
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
@@ -4619,6 +4790,9 @@ async function runSessionStartHook() {
       return;
     }
     const recoveryInfo = await performCrashRecoveryCheck(projectDir);
+    fetchPricingIfStale().catch(
+      (err) => logError("Pricing fetch failed in background", err)
+    );
     const contextResult = await gatherContextSafely(
       projectDir,
       recoveryInfo,

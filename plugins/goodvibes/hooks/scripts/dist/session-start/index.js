@@ -21,6 +21,7 @@ import { createDefaultState } from '../types/state.js';
 import { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
 import { checkCrashRecovery, } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
+import { fetchPricingIfStale } from './pricing-fetcher.js';
 /**
  * Default recovery info when crash recovery check fails.
  * Used as a fallback to ensure the hook continues gracefully.
@@ -136,6 +137,8 @@ async function runSessionStartHook() {
         }
         // Step 2: Check for crash recovery scenario
         const recoveryInfo = await performCrashRecoveryCheck(projectDir);
+        // Step 2.5: Fetch pricing data if stale (async, non-blocking)
+        fetchPricingIfStale().catch((err) => logError('Pricing fetch failed in background', err));
         // Step 3: Gather all context
         const contextResult = await gatherContextSafely(projectDir, recoveryInfo, startTime);
         // Step 4: Update session state

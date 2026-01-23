@@ -46,6 +46,7 @@ import {
   type RecoveryInfo,
 } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
+import { fetchPricingIfStale } from './pricing-fetcher.js';
 // NOTE: injectSettings removed - hook registration handled by plugin.json -> hooks/hooks.json
 
 import type { HooksState } from '../types/state.js';
@@ -192,6 +193,10 @@ async function runSessionStartHook(): Promise<void> {
 
     // Step 2: Check for crash recovery scenario
     const recoveryInfo = await performCrashRecoveryCheck(projectDir);
+    // Step 2.5: Fetch pricing data if stale (async, non-blocking)
+    fetchPricingIfStale().catch((err) =>
+      logError('Pricing fetch failed in background', err)
+    );
 
     // Step 3: Gather all context
     const contextResult = await gatherContextSafely(
