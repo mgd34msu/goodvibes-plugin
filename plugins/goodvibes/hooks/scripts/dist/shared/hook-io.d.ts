@@ -5,9 +5,6 @@
  */
 /**
  * Checks if the current process is running in a test environment.
- * This is used to prevent hook scripts from executing when being imported by tests.
- *
- * @returns true if running in test mode, false otherwise
  */
 export declare function isTestEnvironment(): boolean;
 /** Hook input from stdin (provided by Claude Code). */
@@ -37,95 +34,29 @@ export interface HookResponse {
 }
 /**
  * Reads and parses hook input from stdin provided by Claude Code.
- *
- * Waits for JSON input on stdin, parses it, and validates the structure.
- * If no input is received within the timeout period, rejects with an error.
- *
- * @returns A promise that resolves to the parsed hook input
- * @throws Error if the JSON is malformed, doesn't match the HookInput structure, or timeout occurs
- *
- * @example
- * const input = await readHookInput();
- * // => { session_id: '123', cwd: '/project', hook_event_name: 'PreToolUse', tool_name: 'Bash', ... }
  */
 export declare function readHookInput(): Promise<HookInput>;
 /**
  * Creates a hook response that allows the tool to proceed with execution.
- *
- * Use this when the hook determines the tool operation should be permitted.
- * Optionally includes a system message that will be shown to the AI.
- *
- * @param hookEventName - The name of the hook event (e.g., 'PreToolUse', 'PermissionRequest')
- * @param systemMessage - Optional message to inject into the conversation context
- * @returns A HookResponse object with continue=true and allow decision
- *
- * @example
- * const response = allowTool('PreToolUse');
- * // => { continue: true, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } }
- *
- * @example
- * const response = allowTool('PreToolUse', 'Remember to run tests');
- * // => { continue: true, systemMessage: 'Remember...', hookSpecificOutput: {...} }
  */
 export declare function allowTool(hookEventName: string, systemMessage?: string): HookResponse;
 /**
- * Creates a hook response that blocks the tool from executing.
- *
- * Use this when the hook determines the tool operation should be denied.
- * The reason is displayed to explain why the operation was blocked.
- *
- * @param hookEventName - The name of the hook event (e.g., 'PreToolUse', 'PermissionRequest')
- * @param reason - Human-readable explanation for why the tool was blocked
- * @returns A HookResponse object with continue=false and deny decision
- *
- * @example
- * const response = blockTool('PreToolUse', 'rm -rf commands are not permitted');
- * // => { continue: false, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: '...' } }
+ * Blocks the tool from executing.
  */
 export declare function blockTool(reason: string): never;
 /**
- * Formats a hook response as JSON string (pure function).
- *
- * This is a pure formatting function that converts a HookResponse object
- * to its JSON string representation. Use this when you need to format
- * a response without side effects (no console output or process exit).
- *
- * @param response - The HookResponse object to format
- * @returns JSON string representation of the response
- *
- * @example
- * const jsonString = formatResponse(allowTool('PreToolUse'));
- * // => '{"continue":true,"hookSpecificOutput":{...}}'
+ * Formats a hook response as JSON string.
  */
 export declare function formatResponse(response: HookResponse): string;
 /**
- * Outputs the hook response as JSON to stdout and exits the process.
- *
- * This is the final call in any hook script. It serializes the response
- * to JSON and exits with the appropriate code:
- * - Exit 0: Success (tool proceeds or is allowed)
- * - Exit 2: Blocking error (tool is denied)
- *
- * @param response - The HookResponse object to output
- * @param block - If true, exits with code 2 to indicate a blocking action
- * @returns never - This function exits the process and never returns
- *
- * @example
- * respond(allowTool('PreToolUse'));
- * // Outputs JSON to stdout and exits with code 0
- *
- * @example
- * respond(blockTool('PreToolUse', 'Operation not permitted'), true);
- * // Outputs JSON to stdout and exits with code 2
+ * Outputs the hook response as JSON to stdout and exits.
  */
 export declare function respond(response: HookResponse, _block?: boolean): never;
 /**
  * Options for creating a hook response.
  */
 export interface CreateResponseOptions {
-    /** Optional system message to inject into conversation context. */
     systemMessage?: string;
-    /** Optional additional context (used by some hooks like session-start). */
     additionalContext?: string;
 }
 /**
@@ -136,25 +67,6 @@ export interface ExtendedHookResponse extends HookResponse {
 }
 /**
  * Creates a standard hook response that allows the hook to continue.
- *
- * This is a unified utility for creating hook responses across all hook types.
- * Use this for hooks that don't need permission decisions (session-start,
- * pre-compact, user-prompt-submit, post-tool-use-failure, stop, etc.).
- *
- * @param options - Optional configuration for the response
- * @returns A HookResponse object with continue=true
- *
- * @example
- * const response = createResponse();
- * // => { continue: true }
- *
- * @example
- * const response = createResponse({ systemMessage: 'Plugin initialized' });
- * // => { continue: true, systemMessage: 'Plugin initialized' }
- *
- * @example
- * const response = createResponse({ additionalContext: '# Project Context\n...' });
- * // => { continue: true, additionalContext: '# Project Context\n...' }
  */
 export declare function createResponse(options?: CreateResponseOptions): ExtendedHookResponse;
 /**
@@ -163,20 +75,5 @@ export declare function createResponse(options?: CreateResponseOptions): Extende
 export type PermissionDecision = 'allow' | 'deny' | 'ask';
 /**
  * Creates a hook response for permission request hooks.
- *
- * Use this for the permission-request hook which needs to return
- * a hookSpecificOutput with the permission decision.
- *
- * @param decision - The permission decision ('allow', 'deny', or 'ask')
- * @param reason - Optional reason for the decision (useful for 'deny')
- * @returns A HookResponse object with the permission decision
- *
- * @example
- * const response = createPermissionResponse('allow');
- * // => { continue: true, hookSpecificOutput: { hookEventName: 'PermissionRequest', permissionDecision: 'allow' } }
- *
- * @example
- * const response = createPermissionResponse('deny', 'Tool not permitted');
- * // => { continue: true, hookSpecificOutput: { ..., permissionDecision: 'deny', permissionDecisionReason: '...' } }
  */
 export declare function createPermissionResponse(decision?: PermissionDecision, reason?: string): HookResponse;

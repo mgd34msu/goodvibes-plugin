@@ -65,6 +65,59 @@ var init_gitignore = __esm({
 // src/subagent-start/index.ts
 import * as path9 from "path";
 
+// src/shared/hook-io.ts
+import { stdin } from "process";
+function isTestEnvironment() {
+  return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
+}
+function isValidHookInput(value) {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const obj = value;
+  return typeof obj.session_id === "string" && typeof obj.cwd === "string" && typeof obj.hook_event_name === "string";
+}
+async function readHookInput() {
+  const chunks = [];
+  for await (const chunk of stdin) {
+    chunks.push(chunk);
+  }
+  const parsed = JSON.parse(Buffer.concat(chunks).toString());
+  if (!isValidHookInput(parsed)) {
+    throw new Error("Invalid hook input structure");
+  }
+  return parsed;
+}
+function formatResponse(response) {
+  return JSON.stringify(response);
+}
+function respond(response, _block = false) {
+  console.log(formatResponse(response));
+  process.exit(0);
+}
+
+// src/shared/logging.ts
+function debug(message, data) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  if (data !== void 0) {
+    console.error(
+      `[GoodVibes ${timestamp}] ${message}:`,
+      JSON.stringify(data, null, 2)
+    );
+  } else {
+    console.error(`[GoodVibes ${timestamp}] ${message}`);
+  }
+}
+function logError(context, error) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : void 0;
+  console.error(`[GoodVibes ${timestamp}] ERROR in ${context}: ${message}`);
+  if (stack) {
+    console.error(stack);
+  }
+}
+
 // src/shared/config.ts
 import * as fs3 from "fs/promises";
 import * as path4 from "path";
@@ -98,28 +151,6 @@ var PLUGIN_ROOT = resolvePluginRoot();
 var PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 var CACHE_DIR = path.join(PLUGIN_ROOT, ".cache");
 var ANALYTICS_FILE = path.join(CACHE_DIR, "analytics.json");
-
-// src/shared/logging.ts
-function debug(message, data) {
-  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-  if (data !== void 0) {
-    console.error(
-      `[GoodVibes ${timestamp}] ${message}:`,
-      JSON.stringify(data, null, 2)
-    );
-  } else {
-    console.error(`[GoodVibes ${timestamp}] ${message}`);
-  }
-}
-function logError(context, error) {
-  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-  const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : void 0;
-  console.error(`[GoodVibes ${timestamp}] ERROR in ${context}: ${message}`);
-  if (stack) {
-    console.error(stack);
-  }
-}
 
 // src/shared/file-utils.ts
 var exec = promisify(execCallback);
@@ -230,56 +261,6 @@ async function loadSharedConfig(cwd) {
     debug("loadSharedConfig failed", { error: String(error) });
     return defaults;
   }
-}
-
-// src/shared/hook-io.ts
-function isTestEnvironment() {
-  return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
-}
-function isValidHookInput(value) {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const obj = value;
-  return typeof obj.session_id === "string" && typeof obj.cwd === "string" && typeof obj.hook_event_name === "string";
-}
-async function readHookInput() {
-  return new Promise((resolve2, reject) => {
-    let data = "";
-    process.stdin.setEncoding("utf-8");
-    process.stdin.on("data", (chunk) => {
-      data += chunk;
-    });
-    process.stdin.on("end", () => {
-      try {
-        const parsed = JSON.parse(data);
-        if (!isValidHookInput(parsed)) {
-          reject(new Error("Invalid hook input structure"));
-          return;
-        }
-        resolve2(parsed);
-      } catch {
-        reject(new Error("Failed to parse hook input from stdin"));
-      }
-    });
-    process.stdin.on("error", reject);
-    setTimeout(() => {
-      if (!data) {
-        reject(
-          new Error(
-            "Hook input timeout: no data received within configured timeout"
-          )
-        );
-      }
-    }, STDIN_TIMEOUT_MS);
-  });
-}
-function formatResponse(response) {
-  return JSON.stringify(response);
-}
-function respond(response, _block = false) {
-  console.log(formatResponse(response));
-  process.exit(0);
 }
 
 // src/shared/index.ts

@@ -1,7 +1,8 @@
 /**
  * Pre Tool Use Hook Entry Point
  *
- * This is a thin entry point that executes the pre-tool-use hook.
- * The actual implementation lives in src/pre-tool-use/hook.ts
+ * Blocks native tools (Read, Edit, Write, Glob, Grep) and redirects to precision-engine.
+ * Exit code 2 + stderr = blocks tool, message shown to Claude
+ * Exit code 0 + no output = allows tool to proceed
  */
-import './pre-tool-use/hook.js';
+export {};

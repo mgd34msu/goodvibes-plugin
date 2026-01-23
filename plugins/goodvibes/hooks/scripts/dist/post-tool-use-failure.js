@@ -363,13 +363,8 @@ function formatFailure(failure) {
   return md;
 }
 
-// src/shared/config.ts
-var STDIN_TIMEOUT_MS = parseInt(
-  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? "1000",
-  10
-);
-
 // src/shared/hook-io.ts
+import { stdin } from "process";
 function isTestEnvironment() {
   return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
 }
@@ -381,35 +376,15 @@ function isValidHookInput(value) {
   return typeof obj.session_id === "string" && typeof obj.cwd === "string" && typeof obj.hook_event_name === "string";
 }
 async function readHookInput() {
-  return new Promise((resolve2, reject) => {
-    let data = "";
-    process.stdin.setEncoding("utf-8");
-    process.stdin.on("data", (chunk) => {
-      data += chunk;
-    });
-    process.stdin.on("end", () => {
-      try {
-        const parsed = JSON.parse(data);
-        if (!isValidHookInput(parsed)) {
-          reject(new Error("Invalid hook input structure"));
-          return;
-        }
-        resolve2(parsed);
-      } catch {
-        reject(new Error("Failed to parse hook input from stdin"));
-      }
-    });
-    process.stdin.on("error", reject);
-    setTimeout(() => {
-      if (!data) {
-        reject(
-          new Error(
-            "Hook input timeout: no data received within configured timeout"
-          )
-        );
-      }
-    }, STDIN_TIMEOUT_MS);
-  });
+  const chunks = [];
+  for await (const chunk of stdin) {
+    chunks.push(chunk);
+  }
+  const parsed = JSON.parse(Buffer.concat(chunks).toString());
+  if (!isValidHookInput(parsed)) {
+    throw new Error("Invalid hook input structure");
+  }
+  return parsed;
 }
 function formatResponse(response) {
   return JSON.stringify(response);
@@ -430,6 +405,12 @@ function createResponse(options = {}) {
   }
   return response;
 }
+
+// src/shared/config.ts
+var STDIN_TIMEOUT_MS = parseInt(
+  process.env.GOODVIBES_STDIN_TIMEOUT_MS ?? "1000",
+  10
+);
 
 // src/shared/index.ts
 init_gitignore();
