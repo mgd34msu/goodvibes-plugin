@@ -202,7 +202,6 @@ async function executeGlobQuery(
     } else {
       mode = 'paths_only';
     }
-    console.error("DEBUG discover executeGlobQuery: searchRoot =", searchRoot, "process.cwd() =", process.cwd());
 
     const result = await handlePrecisionGlob({
       patterns: query.patterns,

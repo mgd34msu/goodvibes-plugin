@@ -14,26 +14,12 @@ describe('precision_read handler', () => {
         output: { mode: 'standard' },
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('files array is required');
+      expect(parsed.error).toContain("Missing required parameter 'files'");
     });
 
-    it('should return error when extract mode is missing', async () => {
-      const result = await handlePrecisionRead({
-        files: ['file.ts'],
-        output: { mode: 'standard' },
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('extract mode is required');
-    });
+    // Extract parameter now has defaults, no longer required
 
-    it('should return error when output is missing', async () => {
-      const result = await handlePrecisionRead({
-        files: ['file.ts'],
-        extract: 'content',
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('output configuration is required');
-    });
+    // Output parameter now has defaults, no longer required
   });
 
   describe('extract mode: content', () => {

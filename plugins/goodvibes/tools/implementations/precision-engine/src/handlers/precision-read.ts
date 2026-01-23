@@ -516,6 +516,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               const entry: Record<string, unknown> = { exists: r.exists };
               if (r.content !== undefined) entry.content = r.content;
               if (r.lines !== undefined) entry.lines = r.lines;
+              if (r.line_count !== undefined) entry.line_count = r.line_count;
               if (r.symbols !== undefined) entry.symbols = r.symbols;
               if (r.outline !== undefined) entry.outline = r.outline;
               if (r.ast !== undefined) entry.ast = r.ast;

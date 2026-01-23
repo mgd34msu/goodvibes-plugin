@@ -11,13 +11,13 @@ describe('precision_exec handler', () => {
     it('should return error when commands array is missing', async () => {
       const result = await handlePrecisionExec({});
       const parsed = expectError(result);
-      expect(parsed.error).toContain('commands array is required');
+      expect(parsed.error).toContain("Missing required parameter 'commands'");
     });
 
     it('should return error when commands array is empty', async () => {
       const result = await handlePrecisionExec({ commands: [] });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('commands array is required');
+      expect(parsed.error).toContain("Missing required parameter 'commands'");
     });
   });
 
@@ -311,8 +311,9 @@ describe('precision_exec handler', () => {
     it('should truncate long output', async () => {
       const result = await handlePrecisionExec({
         commands: [{
-          cmd: 'node',
-          args: ['-e', 'for(let i=0;i<1000;i++)console.log("line"+i)'],
+          cmd: process.platform === 'win32'
+            ? 'for /L %i in (1,1,100) do @echo line%i'
+            : 'for i in {1..100}; do echo line$i; done',
         }],
         output: { max_output_lines: 10 },
         output_mode: 'verbose',

@@ -18,35 +18,7 @@ describe('precision_edit handler', () => {
       expect(parsed.error).toContain('edits array is required');
     });
 
-    it('should return error when transaction is missing', async () => {
-      const result = await handlePrecisionEdit({
-        edits: [{ file: 'test.ts', find: 'a', replace: 'b' }],
-        match: { mode: 'exact' },
-        output: { mode: 'minimal' },
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('transaction configuration is required');
-    });
 
-    it('should return error when match is missing', async () => {
-      const result = await handlePrecisionEdit({
-        edits: [{ file: 'test.ts', find: 'a', replace: 'b' }],
-        transaction: { mode: 'atomic', rollback_on_fail: true },
-        output: { mode: 'minimal' },
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('match configuration is required');
-    });
-
-    it('should return error when output is missing', async () => {
-      const result = await handlePrecisionEdit({
-        edits: [{ file: 'test.ts', find: 'a', replace: 'b' }],
-        transaction: { mode: 'atomic', rollback_on_fail: true },
-        match: { mode: 'exact' },
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('output configuration is required');
-    });
   });
 
   describe('exact match mode', () => {

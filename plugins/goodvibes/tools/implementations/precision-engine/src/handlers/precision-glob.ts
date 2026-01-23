@@ -100,7 +100,6 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const input = args as PrecisionGlobInput;
   const outputMode = parseOutputMode(args, "precision_glob");
   const workDir = input.cwd ?? process.cwd();
-  console.error("DEBUG precision-glob: cwd =", workDir, "input.cwd =", input.cwd);
 
   try {
     // Validate input

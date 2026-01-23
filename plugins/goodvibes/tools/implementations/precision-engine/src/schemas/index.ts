@@ -342,7 +342,7 @@ export const precisionGlobSchema: Tool = {
       output: {
         type: 'object',
         properties: {
-          mode: { type: 'string', enum: ['count_only', 'paths_only', 'with_stats', 'with_preview'], description: 'Output verbosity mode' },
+          mode: { type: 'string', enum: ['count_only', 'paths_only', 'with_stats', 'with_preview'], default: 'paths_only', description: 'Output verbosity mode' },
           max_files: { type: 'integer', minimum: 1, default: 100, description: 'Maximum files to return' },
           sort_by: { type: 'string', enum: ['name', 'size', 'modified'], description: 'Sort results by field' },
           sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'asc', description: 'Sort order (ascending or descending)' },
@@ -352,6 +352,7 @@ export const precisionGlobSchema: Tool = {
       },
       respect_gitignore: { type: 'boolean', default: true, description: 'Respect .gitignore rules' },
       follow_symlinks: { type: 'boolean', default: false, description: 'Follow symbolic links' },
+      cwd: { type: 'string', description: 'Working directory for glob patterns (defaults to process.cwd())' },
       output_mode: outputModeSchema,
     },
   },

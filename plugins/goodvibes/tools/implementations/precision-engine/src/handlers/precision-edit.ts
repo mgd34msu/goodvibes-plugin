@@ -753,7 +753,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     };
 
     const dryRun = input.dry_run ?? false;
-    const diffContext = output.diff_context ?? 3;
+    const diffContext = output.diff_context;
     const rollbackId = generateRollbackId();
     const matchConfig = input.match ?? DEFAULT_MATCH_CONFIG;
 

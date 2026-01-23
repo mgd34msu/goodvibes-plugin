@@ -20073,6 +20073,14 @@ var init_batch = __esm({
         }
         const runtime = createRuntimeContext();
         await initializeRuntime(runtime);
+        const userValidation = input.config?.validation || {};
+        const validationConfig = {
+          ...DEFAULT_BATCH_CONFIG.validation,
+          ...userValidation,
+          // Explicitly ensure arrays exist (defensive against undefined from partial objects)
+          before: userValidation.before ?? DEFAULT_BATCH_CONFIG.validation.before ?? [],
+          after: userValidation.after ?? DEFAULT_BATCH_CONFIG.validation.after ?? []
+        };
         const config2 = {
           transaction: { ...DEFAULT_BATCH_CONFIG.transaction, ...input.config?.transaction || {} },
           execution: {
@@ -20084,7 +20092,7 @@ var init_batch = __esm({
             }
           },
           preview: { ...DEFAULT_BATCH_CONFIG.preview, ...input.config?.preview || {} },
-          validation: { ...DEFAULT_BATCH_CONFIG.validation, ...input.config?.validation || {} },
+          validation: validationConfig,
           recovery: { ...DEFAULT_BATCH_CONFIG.recovery, ...input.config?.recovery || {} }
         };
         const batch = {
@@ -20114,7 +20122,7 @@ var init_batch = __esm({
           context.checkpoint_id = checkpointId;
         }
         let beforeValidation = { passed: true, errors: [] };
-        if (config2.validation.enabled !== false && config2.validation.before.length > 0) {
+        if (config2.validation.enabled !== false && (config2.validation.before?.length ?? 0) > 0) {
           beforeValidation = await runValidation(config2.validation.before, runtime);
         }
         if (!beforeValidation.passed && config2.validation.on_fail === "rollback") {
@@ -20173,7 +20181,7 @@ var init_batch = __esm({
           }
         }
         let afterValidation = { passed: true, errors: [] };
-        if (config2.validation.enabled !== false && config2.validation.after.length > 0) {
+        if (config2.validation.enabled !== false && (config2.validation.after?.length ?? 0) > 0) {
           afterValidation = await runValidation(config2.validation.after, runtime);
         }
         let status;

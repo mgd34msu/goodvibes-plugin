@@ -11,13 +11,13 @@ describe('discover handler', () => {
     it('should return error when queries array is missing', async () => {
       const result = await handleDiscover({});
       const parsed = expectError(result);
-      expect(parsed.error).toContain('queries array is required');
+      expect(parsed.error).toContain("Missing required parameter 'queries'");
     });
 
     it('should return error when queries array is empty', async () => {
       const result = await handleDiscover({ queries: [] });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('queries array is required');
+      expect(parsed.error).toContain("Missing required parameter 'queries'");
     });
   });
 

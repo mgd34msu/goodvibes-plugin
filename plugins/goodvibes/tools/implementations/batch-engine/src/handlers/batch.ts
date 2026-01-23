@@ -1823,6 +1823,16 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
     await initializeRuntime(runtime);
 
     // Create batch configuration with deep merge
+    // Ensure validation arrays are always initialized
+    const userValidation = input.config?.validation || {};
+    const validationConfig = {
+      ...DEFAULT_BATCH_CONFIG.validation,
+      ...userValidation,
+      // Explicitly ensure arrays exist (defensive against undefined from partial objects)
+      before: userValidation.before ?? DEFAULT_BATCH_CONFIG.validation.before ?? [],
+      after: userValidation.after ?? DEFAULT_BATCH_CONFIG.validation.after ?? [],
+    };
+
     const config: BatchConfig = {
       transaction: { ...DEFAULT_BATCH_CONFIG.transaction, ...(input.config?.transaction || {}) },
       execution: {
@@ -1834,7 +1844,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
         },
       },
       preview: { ...DEFAULT_BATCH_CONFIG.preview, ...(input.config?.preview || {}) },
-      validation: { ...DEFAULT_BATCH_CONFIG.validation, ...(input.config?.validation || {}) },
+      validation: validationConfig,
       recovery: { ...DEFAULT_BATCH_CONFIG.recovery, ...(input.config?.recovery || {}) },
     };
 
@@ -1876,7 +1886,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
 
     // Run before validation (skip if disabled)
     let beforeValidation: ValidationResult = { passed: true, errors: [] };
-    if (config.validation.enabled !== false && config.validation.before.length > 0) {
+    if (config.validation.enabled !== false && (config.validation.before?.length ?? 0) > 0) {
       beforeValidation = await runValidation(config.validation.before, runtime);
     }
 
@@ -1954,7 +1964,7 @@ export const handleBatch: ToolHandler = async (args: unknown) => {
 
     // Run after validation
     let afterValidation: ValidationResult = { passed: true, errors: [] };
-    if (config.validation.enabled !== false && config.validation.after.length > 0) {
+    if (config.validation.enabled !== false && (config.validation.after?.length ?? 0) > 0) {
       afterValidation = await runValidation(config.validation.after, runtime);
     }
 

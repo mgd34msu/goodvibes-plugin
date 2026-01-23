@@ -11,13 +11,13 @@ describe('precision_write handler', () => {
     it('should return error when files array is missing', async () => {
       const result = await handlePrecisionWrite({});
       const parsed = expectError(result);
-      expect(parsed.error).toContain('files array is required');
+      expect(parsed.error).toContain("Missing required parameter 'files'");
     });
 
     it('should return error when files array is empty', async () => {
       const result = await handlePrecisionWrite({ files: [] });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('files array is required');
+      expect(parsed.error).toContain("Missing required parameter 'files'");
     });
   });
 

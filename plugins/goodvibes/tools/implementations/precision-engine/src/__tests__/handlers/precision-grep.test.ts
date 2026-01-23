@@ -13,16 +13,10 @@ describe('precision_grep handler', () => {
         output: { mode: 'count_only' },
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('queries array is required');
+      expect(parsed.error).toContain("Missing required parameter 'queries'");
     });
 
-    it('should return error when output is missing', async () => {
-      const result = await handlePrecisionGrep({
-        queries: [{ id: 'q1', pattern: 'test' }],
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('output configuration is required');
-    });
+    // Output parameter now has defaults, no longer required
 
     it('should return error when query missing id or pattern', async () => {
       const result = await handlePrecisionGrep({
@@ -30,7 +24,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'count_only' },
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('id and pattern');
+      expect(parsed.error).toContain("Missing required parameter 'queries[].id'");
     });
   });
 

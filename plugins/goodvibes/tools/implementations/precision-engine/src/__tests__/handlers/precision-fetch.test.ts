@@ -25,13 +25,13 @@ describe('precision_fetch handler', () => {
     it('should return error when urls array is missing', async () => {
       const result = await handlePrecisionFetch({});
       const parsed = expectError(result);
-      expect(parsed.error).toContain('urls array is required');
+      expect(parsed.error).toContain("Missing required parameter 'urls'");
     });
 
     it('should return error when urls array is empty', async () => {
       const result = await handlePrecisionFetch({ urls: [] });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('urls array is required');
+      expect(parsed.error).toContain("Missing required parameter 'urls'");
     });
 
     it('should return error for invalid URL', async () => {

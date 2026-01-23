@@ -13,7 +13,7 @@ describe('precision_symbols handler', () => {
         output: { mode: 'names_only' },
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('mode is required');
+      expect(parsed.error).toContain("Missing required parameter 'mode'");
     });
 
     it('should return error when output is missing', async () => {
@@ -22,7 +22,7 @@ describe('precision_symbols handler', () => {
         query: 'test',
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('output configuration is required');
+      expect(parsed.error).toContain("Missing required parameter 'output'");
     });
 
     it('should return error for document mode without files', async () => {
@@ -31,7 +31,7 @@ describe('precision_symbols handler', () => {
         output: { mode: 'names_only' },
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('files array is required');
+      expect(parsed.error).toContain("Missing required parameter 'files'");
     });
   });
 

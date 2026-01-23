@@ -16,6 +16,7 @@ import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { createErrorResult, formatMissingParamError } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 
 // === Interfaces per SPEC-v2 ===

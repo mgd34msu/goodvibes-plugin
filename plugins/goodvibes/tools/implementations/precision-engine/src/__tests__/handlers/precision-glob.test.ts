@@ -16,13 +16,7 @@ describe('precision_glob handler', () => {
       expect(parsed.error).toContain('patterns array is required');
     });
 
-    it('should return error when output is missing', async () => {
-      const result = await handlePrecisionGlob({
-        patterns: ['*.ts'],
-      });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain('output configuration is required');
-    });
+    // Output parameter now has defaults, no longer required
   });
 
   describe('basic glob functionality', () => {

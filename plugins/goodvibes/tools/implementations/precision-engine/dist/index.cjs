@@ -251434,7 +251434,7 @@ var precisionGlobSchema = {
       output: {
         type: "object",
         properties: {
-          mode: { type: "string", enum: ["count_only", "paths_only", "with_stats", "with_preview"], description: "Output verbosity mode" },
+          mode: { type: "string", enum: ["count_only", "paths_only", "with_stats", "with_preview"], default: "paths_only", description: "Output verbosity mode" },
           max_files: { type: "integer", minimum: 1, default: 100, description: "Maximum files to return" },
           sort_by: { type: "string", enum: ["name", "size", "modified"], description: "Sort results by field" },
           sort_order: { type: "string", enum: ["asc", "desc"], default: "asc", description: "Sort order (ascending or descending)" },
@@ -251444,6 +251444,7 @@ var precisionGlobSchema = {
       },
       respect_gitignore: { type: "boolean", default: true, description: "Respect .gitignore rules" },
       follow_symlinks: { type: "boolean", default: false, description: "Follow symbolic links" },
+      cwd: { type: "string", description: "Working directory for glob patterns (defaults to process.cwd())" },
       output_mode: outputModeSchema
     }
   }
@@ -251575,13 +251576,13 @@ var TOOL_EXAMPLES = {
   precision_fetch: '{"url": "https://example.com", "output_mode": "standard"}',
   discover: '{"queries": [{"id": "find", "type": "glob", "patterns": ["**/*.ts"]}], "output_mode": "files_only"}'
 };
-function formatMissingParamError2(toolName, paramName, expectedType) {
+function formatMissingParamError(toolName, paramName, expectedType) {
   const example = TOOL_EXAMPLES[toolName] || "{}";
   return `Missing required parameter '${paramName}'. Expected: ${expectedType}.
 Example: ${example}`;
 }
-__name(formatMissingParamError2, "formatMissingParamError");
-function createErrorResult2(error2, meta3) {
+__name(formatMissingParamError, "formatMissingParamError");
+function createErrorResult(error2, meta3) {
   return {
     success: false,
     error: error2,
@@ -251593,7 +251594,7 @@ function createErrorResult2(error2, meta3) {
     }
   };
 }
-__name(createErrorResult2, "createErrorResult");
+__name(createErrorResult, "createErrorResult");
 
 // src/utils/index.ts
 function toCallToolResult(result) {
@@ -251709,7 +251710,7 @@ async function resolveContent(spec) {
       throw new Error(`Failed to read content_file '${spec.content_file}': ${e.message}`);
     }
   }
-  if (!spec.content) {
+  if (spec.content === void 0) {
     throw new Error("One of 'content', 'content_base64', or 'content_file' is required.");
   }
   return spec.content;
@@ -251868,7 +251869,7 @@ var handlePrecisionWrite = /* @__PURE__ */ __name(async (args) => {
   const previewLines = input.output?.preview_lines ?? 10;
   try {
     if (!input.files || !Array.isArray(input.files) || input.files.length === 0) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_write", "files", "array of file specifications"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_write", "files", "array of file specifications"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     const results = [];
     const rollbackInfos = [];
@@ -252210,7 +252211,7 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args) => {
   const maxOutputLines = input.output?.max_output_lines ?? DEFAULT_MAX_OUTPUT_LINES;
   try {
     if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_exec", "commands", "array of command objects"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_exec", "commands", "array of command objects"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     if (safeMode) {
       for (const cmd of input.commands) {
@@ -252580,13 +252581,13 @@ var handlePrecisionFetch = /* @__PURE__ */ __name(async (args) => {
   const maxContentLength = input.output?.max_content_length;
   try {
     if (!input.urls || !Array.isArray(input.urls) || input.urls.length === 0) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_fetch", "urls", "array of URL strings or request objects"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_fetch", "urls", "array of URL strings or request objects"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     const requests = [];
     for (const req of input.urls) {
       const normalized = normalizeUrlRequest(req);
       if (!normalized.url) {
-        return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_fetch", "urls[].url", "URL string for each request"), { output_mode: outputMode, execution_ms: getElapsed() }));
+        return toCallToolResult(createErrorResult(formatMissingParamError("precision_fetch", "urls[].url", "URL string for each request"), { output_mode: outputMode, execution_ms: getElapsed() }));
       }
       try {
         new URL(normalized.url);
@@ -253077,7 +253078,6 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
   const input = args;
   const outputMode = parseOutputMode(args, "precision_glob");
   const workDir = input.cwd ?? process.cwd();
-  console.error("DEBUG precision-glob: cwd =", workDir, "input.cwd =", input.cwd);
   try {
     if (!input.patterns || !Array.isArray(input.patterns) || input.patterns.length === 0) {
       return toCallToolResult(errorResult("patterns array is required", outputMode, getElapsed()));
@@ -253440,13 +253440,13 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args) => {
   const workDir = process.cwd();
   try {
     if (!input.mode) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_symbols", "mode", "workspace or document"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_symbols", "mode", "workspace or document"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     if (!input.output) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_symbols", "output", "output configuration object"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_symbols", "output", "output configuration object"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     if (input.mode === "document" && (!input.files || input.files.length === 0)) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_symbols", "files", "array of file paths (required for document mode)"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_symbols", "files", "array of file paths (required for document mode)"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     const maxResults = input.output.max_results ?? 100;
     const maxTokens = input.output.max_tokens ?? Infinity;
@@ -253678,7 +253678,6 @@ async function executeGlobQuery(query, outputMode, searchRoot) {
     } else {
       mode = "paths_only";
     }
-    console.error("DEBUG discover executeGlobQuery: searchRoot =", searchRoot, "process.cwd() =", process.cwd());
     const result = await handlePrecisionGlob({
       patterns: query.patterns,
       cwd: searchRoot !== process.cwd() ? searchRoot : void 0,
@@ -253809,7 +253808,7 @@ var handleDiscover = /* @__PURE__ */ __name(async (args) => {
   const projectRoot = process.cwd();
   try {
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("discover", "queries", "array of query objects"), { output_mode: "standard", execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("discover", "queries", "array of query objects"), { output_mode: "standard", execution_ms: getElapsed() }));
     }
     const searchRoot = input.base_path ? await validateBasePath(input.base_path, projectRoot) : projectRoot;
     const queryPromises = input.queries.map(async (query) => {
@@ -254131,7 +254130,7 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args) => {
   const workDir = process.cwd();
   try {
     if (!input.files || !Array.isArray(input.files) || input.files.length === 0) {
-      return toCallToolResult(createErrorResult2(formatMissingParamError2("precision_read", "files", "array of file paths or file specs"), { output_mode: outputMode, execution_ms: getElapsed() }));
+      return toCallToolResult(createErrorResult(formatMissingParamError("precision_read", "files", "array of file paths or file specs"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
     const extract = input.extract ?? "content";
     const output = {
@@ -254194,6 +254193,8 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args) => {
                 entry.content = r.content;
               if (r.lines !== void 0)
                 entry.lines = r.lines;
+              if (r.line_count !== void 0)
+                entry.line_count = r.line_count;
               if (r.symbols !== void 0)
                 entry.symbols = r.symbols;
               if (r.outline !== void 0)
@@ -254929,7 +254930,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
       max_tokens: input.output?.max_tokens
     };
     const dryRun = input.dry_run ?? false;
-    const diffContext = output.diff_context ?? 3;
+    const diffContext = output.diff_context;
     const rollbackId = generateRollbackId();
     const matchConfig = input.match ?? DEFAULT_MATCH_CONFIG;
     const beforeValidation = [];

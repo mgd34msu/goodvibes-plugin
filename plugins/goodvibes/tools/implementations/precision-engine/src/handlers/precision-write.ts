@@ -121,7 +121,7 @@ async function resolveContent(spec: WriteSpec): Promise<string> {
       throw new Error(`Failed to read content_file '${spec.content_file}': ${(e as Error).message}`);
     }
   }
-  if (!spec.content) {
+  if (spec.content === undefined) {
     throw new Error("One of 'content', 'content_base64', or 'content_file' is required.");
   }
   return spec.content;
