@@ -132,16 +132,14 @@ export function formatBlockMessage(
   const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
 
   return (
-    `BLOCKED: Native tool '${toolName}' is disabled.\n` +
-    `MANDATORY: Use precision tool: ${toolPath}\n` +
+    `BLOCKED: '${toolName}' - MANDATORY: Use ${toolPath} instead.\n` +
+    `CRITICAL: If multiple tool uses are planned, "discover -> batch" process is MANDATORY:\n` +
+    `mcp-cli info plugin_goodvibes_precision-engine/discover\n` +
+    `mcp-cli info plugin_goodvibes_batch-engine/batch\n\n` +
+    `** ${toolPath} **` +
     `TOOL INFO: \n${replacement.usage}\n\n` +
     `TOOL INFO: ${replacement.capabilities}\n` +
-    `MORE INFO: mcp-cli info ${toolPath}\n\n` +
-    `CRITICAL: Use discover -> batch process:\n` +
-    `1. Use 'discover' tool to find files/patterns in parallel\n` +
-    `2. Then use 'batch' tool to process operations atomically\n\n` +
-    `mcp-cli info plugin_goodvibes_precision-engine/discover\n` +
-    `mcp-cli info plugin_goodvibes_batch-engine/batch`
+    `MORE INFO: mcp-cli info ${toolPath}\n\n`
   );
 }
 

@@ -412,20 +412,18 @@ var BLOCKED_NATIVE_TOOLS = [
 ];
 function formatBlockMessage(toolName, replacement) {
   const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
-  return `BLOCKED: Native tool '${toolName}' is disabled.
-MANDATORY: Use precision tool: ${toolPath}
-TOOL INFO: 
+  return `BLOCKED: '${toolName}' - MANDATORY: Use ${toolPath} instead.
+CRITICAL: If multiple tool uses are planned, "discover -> batch" process is MANDATORY:
+mcp-cli info plugin_goodvibes_precision-engine/discover
+mcp-cli info plugin_goodvibes_batch-engine/batch
+
+** ${toolPath} **TOOL INFO: 
 ${replacement.usage}
 
 TOOL INFO: ${replacement.capabilities}
 MORE INFO: mcp-cli info ${toolPath}
 
-CRITICAL: Use discover -> batch process:
-1. Use 'discover' tool to find files/patterns in parallel
-2. Then use 'batch' tool to process operations atomically
-
-mcp-cli info plugin_goodvibes_precision-engine/discover
-mcp-cli info plugin_goodvibes_batch-engine/batch`;
+`;
 }
 function isBlockedNativeTool(toolName) {
   return BLOCKED_NATIVE_TOOLS.includes(toolName);
