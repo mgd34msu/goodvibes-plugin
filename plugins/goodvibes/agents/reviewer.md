@@ -194,6 +194,86 @@ Check `.goodvibes/state/session.json` for current mode, or infer from context:
 
 ---
 
+## Reality Checks
+
+Before scoring code quality, verify the code is actually integrated:
+
+### 1. File Existence Verification
+- Confirm all reviewed files exist on disk
+- Flag any referenced files that don't exist
+
+### 2. Usage Verification
+For each exported function/class/constant:
+- Search codebase for imports of this module
+- Search for calls to exported functions
+- Flag exports with zero usage as "potentially dead code"
+
+### 3. Import Chain Verification
+- Verify the file is imported somewhere (directly or transitively)
+- Trace import chain to an entry point (main, index, test file)
+- Flag orphaned modules with no import path to entry points
+
+### 4. Placeholder Detection
+- Check for TODO/FIXME/PLACEHOLDER comments
+- Detect stub implementations:
+  - Functions that only `throw new Error('Not implemented')`
+  - Functions that only `return null/undefined/{}`
+  - Functions with `// placeholder` or similar comments
+- Detect mock data masquerading as real implementation
+
+### 5. Integration Verification
+- For new functions: verify they're called somewhere
+- For new exports: verify they're imported somewhere
+- For new files: verify they're part of the build/bundle
+
+### Reality Check Scoring
+
+| Check | Status | Impact |
+|-------|--------|--------|
+| Files exist | PASS/FAIL | Blocker if FAIL |
+| Exports used | X of Y used | Warning if <50% |
+| Import chain valid | PASS/WARN | Warning if orphaned |
+| No placeholders | PASS/FAIL | Major issue if FAIL |
+| Integration verified | PASS/WARN | Warning if unverified |
+
+If any reality check fails critically, the review should note:
+"⚠️ REALITY CHECK FAILED: This code may not be integrated into the application."
+
+### How to Perform Reality Checks
+
+1. Use precision_grep to search for imports:
+   ```yaml
+   precision_grep:
+     queries:
+       - pattern: "from ['\"].*<module-name>"
+         glob: "**/*.{ts,tsx,js,jsx}"
+   ```
+
+2. Use precision_grep to search for function calls:
+   ```yaml
+   precision_grep:
+     queries:
+       - pattern: "<functionName>\("
+         glob: "**/*.{ts,tsx,js,jsx}"
+   ```
+
+3. Check for entry point connection:
+   - Find files that import this module
+   - Recursively check if those files are imported
+   - Stop when reaching known entry points (index.ts, main.ts, *.test.ts)
+
+4. Check for placeholder patterns:
+   ```yaml
+   precision_grep:
+     queries:
+       - pattern: "TODO|FIXME|PLACEHOLDER"
+       - pattern: "throw new Error\(['\"]Not implemented"
+       - pattern: "return null\s*;\s*//.*placeholder"
+   ```
+
+---
+
+
 ## Review Dimensions
 
 ### The 10-Category Framework
@@ -229,19 +309,23 @@ Check `.goodvibes/state/session.json` for current mode, or infer from context:
 For small PRs or single-file changes.
 
 ```
-1. SCAN - Get file structure and changed lines
+1. REALITY CHECKS - Quick integration verification
+   - Verify files exist
+   - Check for placeholder patterns (TODO, Not implemented)
+
+2. SCAN - Get file structure and changed lines
    precision_read: extract=outline, files=[changed_files]
 
-2. HOTSPOTS - Check complexity indicators
+3. HOTSPOTS - Check complexity indicators
    precision_grep: pattern="TODO|FIXME|HACK|XXX"
    precision_grep: pattern="catch\\s*\\(.*\\)\\s*\\{\\s*\\}"  # Empty catches
 
-3. TOP 3 - Identify critical issues
+4. TOP 3 - Identify critical issues
    - Security: hardcoded secrets, injection risks
    - Logic: null checks, edge cases
    - Performance: loops with DB calls
 
-4. OUTPUT - Brief assessment with line numbers
+5. OUTPUT - Brief assessment with line numbers (note any reality check failures)
 ```
 
 ### Standard Review (15-30 min)
@@ -249,24 +333,30 @@ For small PRs or single-file changes.
 For typical PRs.
 
 ```
-1. CONTEXT - Understand scope
+1. REALITY CHECKS - Verify code integration
+   - Check file existence
+   - Verify exports are imported/used
+   - Detect placeholder/stub implementations
+   - Trace import chain to entry points
+
+2. CONTEXT - Understand scope
    precision_read: extract=outline, files=[all_changed]
    precision_grep: pattern changes to understand intent
 
-2. CATEGORY SCAN - Each of 10 categories
+3. CATEGORY SCAN - Each of 10 categories
    For each category:
    - Run detection patterns
    - Note issues with line numbers
    - Classify severity
 
-3. PATTERN CHECK - Compare to project conventions
+4. PATTERN CHECK - Compare to project conventions
    Load memory: .goodvibes/memory/patterns.md
    Check: naming, file structure, error handling approach
 
-4. SCORE - Calculate weighted score
+5. SCORE - Calculate weighted score
    Apply formula: 10 - SUM(category_deductions * weights)
 
-5. OUTPUT - Full report with prioritized fixes
+6. OUTPUT - Full report with prioritized fixes (include reality check results)
 ```
 
 ### Deep Audit (1-2 hours)
@@ -274,24 +364,30 @@ For typical PRs.
 For critical paths, security-sensitive code, or baseline assessments.
 
 ```
-1. INVENTORY - Map entire codebase
+1. REALITY CHECKS - Comprehensive integration audit
+   - Verify all files exist and are accessible
+   - Map all exports and their usage
+   - Identify orphaned modules with no import path
+   - Detect all placeholder/stub code
+
+2. INVENTORY - Map entire codebase
    precision_glob: pattern="**/*.{ts,tsx,js,jsx}"
    precision_read: extract=symbols for all files
 
-2. DEPENDENCY ANALYSIS
+3. DEPENDENCY ANALYSIS
    Check circular dependencies
    Review package.json for CVEs
    Map import graph
 
-3. FULL CATEGORY ANALYSIS
+4. FULL CATEGORY ANALYSIS
    Each category with evidence gathering
    Line-by-line for critical files
 
-4. TECHNICAL DEBT QUANTIFICATION
+5. TECHNICAL DEBT QUANTIFICATION
    Estimate remediation effort per issue
    Calculate debt ratio
 
-5. OUTPUT - Comprehensive report with roadmap
+6. OUTPUT - Comprehensive report with roadmap (include reality check summary)
 ```
 
 ---
@@ -434,6 +530,18 @@ Before reviewing, check for project conventions:
 
 **Score: X.X/10** | **Issues: N critical, M major, P minor**
 
+### Reality Check Results
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| Files exist | ✅ PASS | All files found |
+| Exports used | ⚠️ WARN | 3 of 5 exports unused |
+| Import chain valid | ✅ PASS | All modules connected to entry points |
+| No placeholders | ❌ FAIL | 2 functions with 'Not implemented' |
+| Integration verified | ✅ PASS | All exports imported/called |
+
+⚠️ **REALITY CHECK WARNING:** 2 placeholder implementations found - see details below.
+
 ### Critical Issues (Fix Before Merge)
 
 | # | Location | Issue | Category |
@@ -483,6 +591,13 @@ const result = await db.query(query, [userId]);
   "review_id": "rev_abc123",
   "scope": "src/api/",
   "score": 6.5,
+  "reality_checks": {
+    "files_exist": { "status": "pass", "details": "All files found" },
+    "exports_used": { "status": "warn", "used": 3, "total": 5, "unused": ["func1", "func2"] },
+    "import_chain_valid": { "status": "pass", "orphaned_files": [] },
+    "no_placeholders": { "status": "fail", "count": 2, "locations": ["file.ts:42", "api.ts:89"] },
+    "integration_verified": { "status": "pass" }
+  },
   "issues": {
     "critical": [
       {
