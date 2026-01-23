@@ -27,9 +27,9 @@ export function shouldAskUser(mode: ModeConfig, situation: Situation): boolean {
     case 'ambiguous_requirement':
       return mode.communication.ask_on_ambiguity;
     case 'high_risk_operation':
-      return mode.recovery.on_risk === 'ask_user';
+      return mode.recovery.on_other === 'ask_user';
     case 'error_occurred':
-      return mode.recovery.on_error === 'ask_user';
+      return mode.recovery.on_error === 'ask_user' || mode.recovery.on_error === 'ask_user_with_options';
     case 'batch_complete':
       return !mode.execution.auto_chain;
     default:
@@ -47,10 +47,16 @@ export function handleError(mode: ModeConfig, _error: Error): ErrorAction {
       return { action: 'halt', notify: true };
     case 'ask_user':
       return { action: 'ask_user', options: ['retry', 'skip', 'abort'] };
+    case 'ask_user_with_options':
+      return { action: 'ask_user', options: ['retry', 'skip', 'abort', 'fix_and_continue'] };
     case 'log_and_continue':
       return { action: 'log', continue: true };
     case 'fix_and_continue':
       return { action: 'fix_loop', max_attempts: mode.recovery.max_fix_attempts };
+    case 'fix_review_loop':
+      return { action: 'fix_loop', max_attempts: mode.recovery.max_fix_attempts, notify: true };
+    default:
+      return { action: 'halt', notify: true };
   }
 }
 

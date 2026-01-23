@@ -21,14 +21,33 @@ export const MODES: Record<ModeName, ModeConfig> = {
       auto_chain: false,
       max_autonomous_batches: 1,
       checkpoint_frequency: 'per_batch',
-      parallel_agents: 3
+      parallel_agents: 6,
+      auto_recovery_on_blocker: true
+    },
+
+    blockers: {
+      issues: [
+        'major_issue',
+        'minor_issue',
+        'nitpick_issue'
+      ],
+      errors: [
+        'tool_failure',
+        'agent_failure',
+        'general_error'
+      ],
+      other: [
+        'workflow_ambiguity',
+        'workflow_question',
+        'other_undefined'
+      ]
     },
 
     recovery: {
-      on_error: 'ask_user',
-      on_ambiguity: 'ask_user',
-      on_risk: 'ask_user',
-      max_fix_attempts: 2
+      on_issue: 'ask_user_with_options',
+      on_error: 'ask_user_with_options',
+      on_other: 'ask_user',
+      max_fix_attempts: 3
     },
 
     output: {
@@ -60,13 +79,32 @@ export const MODES: Record<ModeName, ModeConfig> = {
       auto_chain: true,
       max_autonomous_batches: 'unlimited',
       checkpoint_frequency: 'per_phase',
-      parallel_agents: 6
+      parallel_agents: 6,
+      auto_recovery_on_blocker: true
+    },
+
+    blockers: {
+      issues: [
+        'major_issue',
+        'minor_issue',
+        'nitpick_issue'
+      ],
+      errors: [
+        'tool_failure',
+        'agent_failure',
+        'general_error'
+      ],
+      other: [
+        'workflow_ambiguity',
+        'workflow_question',
+        'other_undefined'
+      ]
     },
 
     recovery: {
-      on_error: 'fix_and_continue',
-      on_ambiguity: 'best_guess',
-      on_risk: 'proceed_with_checkpoint',
+      on_issue: 'fix_review_loop',
+      on_error: 'fix_review_loop',
+      on_other: 'choose_best_option_silent',
       max_fix_attempts: 3
     },
 

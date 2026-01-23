@@ -21,12 +21,19 @@ export interface ModeConfig {
     max_autonomous_batches: number | 'unlimited';
     checkpoint_frequency: 'never' | 'per_batch' | 'per_phase' | 'per_operation';
     parallel_agents: number;
+    auto_recovery_on_blocker: boolean;
+  };
+
+  blockers: {
+    issues: string[];
+    errors: string[];
+    other: string[];
   };
 
   recovery: {
-    on_error: 'halt' | 'ask_user' | 'log_and_continue' | 'fix_and_continue';
-    on_ambiguity: 'ask_user' | 'best_guess';
-    on_risk: 'halt' | 'ask_user' | 'proceed_with_checkpoint';
+    on_issue: 'halt' | 'ask_user' | 'ask_user_with_options' | 'fix_review_loop' | 'log_and_continue';
+    on_error: 'halt' | 'ask_user' | 'ask_user_with_options' | 'fix_review_loop' | 'log_and_continue' | 'fix_and_continue';
+    on_other: 'halt' | 'ask_user' | 'choose_best_option_silent';
     max_fix_attempts: number;
   };
 
