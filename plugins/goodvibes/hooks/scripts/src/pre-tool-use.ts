@@ -22,8 +22,8 @@ async function main() {
     const result = checkAndFixMcpCliJson(command);
     if (result && result.executed) {
       // Output the result directly and exit - this IS the command output
-      process.stdout.write(result.output);
-      process.exit(0);
+      process.stderr.write(result.output);
+      process.exit(2);
     }
   }
 

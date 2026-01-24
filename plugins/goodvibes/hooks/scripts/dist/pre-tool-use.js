@@ -575,8 +575,8 @@ async function main() {
     const command = input.tool_input?.command || "";
     const result = checkAndFixMcpCliJson(command);
     if (result && result.executed) {
-      process.stdout.write(result.output);
-      process.exit(0);
+      process.stderr.write(result.output);
+      process.exit(2);
     }
   }
   if (isBlockedNativeTool(toolName)) {
