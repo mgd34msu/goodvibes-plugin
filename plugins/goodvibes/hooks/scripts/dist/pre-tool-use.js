@@ -430,6 +430,7 @@ function isBlockedNativeTool(toolName) {
 }
 
 // src/pre-tool-use/json-auto-escape.ts
+import { execSync } from "child_process";
 var VALID_JSON_ESCAPES = /* @__PURE__ */ new Set([
   '"',
   // quote
@@ -550,16 +551,18 @@ function checkAndFixMcpCliJson(command) {
   const result = fixJsonEscaping(json);
   if (result.wasFixed) {
     const correctedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
-    return `JSON escape error detected in mcp-cli call.
-
-Invalid escape sequences found: ${result.fixCount}
-Common issue: Regex patterns like . d w need double escaping in JSON.
-
-Fixed command:
-${correctedCommand}
-
-Please use the corrected command above.
-`;
+    try {
+      const output = execSync(correctedCommand, {
+        encoding: "utf-8",
+        timeout: 12e4,
+        maxBuffer: 10 * 1024 * 1024,
+        cwd: process.cwd()
+      });
+      return { output, executed: true };
+    } catch (error) {
+      const errorOutput = error.stdout || error.stderr || error.message || "Command failed";
+      return { output: errorOutput, executed: true };
+    }
   }
   return null;
 }
@@ -570,9 +573,10 @@ async function main() {
   const toolName = input.tool_name ?? "";
   if (toolName === "Bash") {
     const command = input.tool_input?.command || "";
-    const jsonFixMessage = checkAndFixMcpCliJson(command);
-    if (jsonFixMessage) {
-      blockTool(jsonFixMessage);
+    const result = checkAndFixMcpCliJson(command);
+    if (result && result.executed) {
+      process.stdout.write(result.output);
+      process.exit(0);
     }
   }
   if (isBlockedNativeTool(toolName)) {

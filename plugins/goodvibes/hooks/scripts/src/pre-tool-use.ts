@@ -16,12 +16,14 @@ async function main() {
   const input = await readHookInput();
   const toolName = input.tool_name ?? '';
 
-  // Check for mcp-cli call with invalid JSON escapes (Bash tool only)
+  // Check for mcp-cli call with invalid JSON - auto-fix and execute transparently
   if (toolName === 'Bash') {
     const command = (input.tool_input?.command as string) || '';
-    const jsonFixMessage = checkAndFixMcpCliJson(command);
-    if (jsonFixMessage) {
-      blockTool(jsonFixMessage);
+    const result = checkAndFixMcpCliJson(command);
+    if (result && result.executed) {
+      // Output the result directly and exit - this IS the command output
+      process.stdout.write(result.output);
+      process.exit(0);
     }
   }
 
