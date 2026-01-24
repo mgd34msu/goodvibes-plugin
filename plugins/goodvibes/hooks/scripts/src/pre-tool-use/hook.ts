@@ -28,6 +28,7 @@ import {
   respond,
   readHookInput,
   allowTool,
+  blockTool,
   debug,
   logError,
 } from '../shared/index.js';
@@ -47,6 +48,7 @@ import { TOOL_VALIDATORS } from './tool-validators.js';
 
 import type { HookInput } from '../shared/index.js';
 import type { PreToolUseInput } from './subagent-blockers.js';
+import { checkAndFixMcpCliJson } from './json-auto-escape.js';
 
 /**
  * Handles Bash tool invocations with git command detection.
@@ -73,6 +75,15 @@ async function handleBashTool(input: HookInput): Promise<void> {
   // Check for other git commands - run git guards
   if (isGitCommand(command)) {
     await handleGitCommand(input, command);
+    return;
+  }
+
+  // NEW: Check for mcp-cli calls with invalid JSON
+  const jsonFix = checkAndFixMcpCliJson(command);
+  if (jsonFix) { 
+    respond(blockTool(
+      `Invalid JSON escape sequences detected. Use this corrected command:\n\n${jsonFix.fixedCommand}`
+    ));
     return;
   }
 
