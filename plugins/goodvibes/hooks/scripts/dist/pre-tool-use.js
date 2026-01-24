@@ -1,6 +1,12 @@
 /* Bundled with esbuild */
 
 // src/pre-tool-use.ts
+import { appendFileSync } from "fs";
+var LOG_FILE = "C:/Users/buzzkill/Documents/vibeplug/hook-debug.log";
+function log(msg) {
+  appendFileSync(LOG_FILE, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
+`);
+}
 var VALID_JSON_ESCAPES = /* @__PURE__ */ new Set(['"', "\\", "/", "b", "f", "n", "r", "t", "u"]);
 function fixJsonEscaping(jsonString) {
   try {
@@ -52,10 +58,14 @@ function fixJsonEscaping(jsonString) {
   }
 }
 function extractAndFixMcpCliJson(command) {
+  log(`extractAndFixMcpCliJson input: ${command}`);
   const match = /^(mcp-cli\s+call\s+\S+\s+)(['"])(.+)\2\s*$/.exec(command);
+  log(`regex match: ${match ? "yes" : "no"}`);
   if (!match) return null;
   const [, prefix, quote, json] = match;
+  log(`extracted json: ${json}`);
   const { fixed, wasFixed } = fixJsonEscaping(json);
+  log(`fixed: ${fixed}, wasFixed: ${wasFixed}`);
   if (wasFixed) {
     return `${prefix}${quote}${fixed}${quote}`;
   }
@@ -65,18 +75,23 @@ var chunks = [];
 process.stdin.on("data", (chunk) => chunks.push(chunk));
 process.stdin.on("end", () => {
   const input = JSON.parse(Buffer.concat(chunks).toString());
+  log(`tool_name: ${input.tool_name}`);
+  log(`command: ${input.tool_input?.command}`);
   if (input.tool_name === "Bash") {
     const command = input.tool_input?.command || "";
     const fixedCommand = extractAndFixMcpCliJson(command);
+    log(`fixedCommand: ${fixedCommand}`);
     if (fixedCommand) {
-      console.log(JSON.stringify({
+      const response = {
         continue: true,
         hookSpecificOutput: {
           hookEventName: "PreToolUse",
           permissionDecision: "allow",
           updatedInput: { command: fixedCommand }
         }
-      }));
+      };
+      log(`response with updatedInput: ${JSON.stringify(response)}`);
+      console.log(JSON.stringify(response));
       return;
     }
   }
