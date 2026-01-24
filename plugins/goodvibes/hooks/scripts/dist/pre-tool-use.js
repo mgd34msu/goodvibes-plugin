@@ -35,6 +35,13 @@ function blockTool(reason) {
   console.error(reason);
   process.exit(2);
 }
+function formatResponse(response) {
+  return JSON.stringify(response);
+}
+function respond(response, _block = false) {
+  console.log(formatResponse(response));
+  process.exit(0);
+}
 
 // src/shared/file-utils.ts
 import { exec as execCallback } from "child_process";
@@ -558,15 +565,13 @@ function checkAndFixMcpCliJson(command) {
 // src/pre-tool-use.ts
 async function main() {
   const input = await readHookInput();
-  console.error("[HOOK START] toolName:", input.tool_name);
   const toolName = input.tool_name ?? "";
   if (toolName === "Bash") {
     const command = input.tool_input?.command || "";
-    console.error("[DEBUG] Command:", command);
     const result = checkAndFixMcpCliJson(command);
-    console.error("[DEBUG] Result:", JSON.stringify(result));
     if (result && result.fixedCommand) {
-      const response = {
+      respond({
+        continue: true,
         hookSpecificOutput: {
           hookEventName: "PreToolUse",
           permissionDecision: "allow",
@@ -574,9 +579,7 @@ async function main() {
             command: result.fixedCommand
           }
         }
-      };
-      process.stdout.write(JSON.stringify(response));
-      process.exit(0);
+      });
     }
   }
   if (isBlockedNativeTool(toolName)) {

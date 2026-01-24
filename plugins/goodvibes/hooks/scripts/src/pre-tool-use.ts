@@ -8,7 +8,7 @@
  * Exit code 0 + no output = allows tool to proceed
  */
 
-import { readHookInput, blockTool } from './shared/hook-io.js';
+import { readHookInput, blockTool, respond } from './shared/hook-io.js';
 import { TOOL_REPLACEMENTS, formatBlockMessage, isBlockedNativeTool } from './pre-tool-use/subagent-blockers.js';
 import { checkAndFixMcpCliJson } from './pre-tool-use/json-auto-escape.js';
 
