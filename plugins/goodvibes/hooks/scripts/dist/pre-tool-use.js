@@ -561,7 +561,9 @@ async function main() {
   const toolName = input.tool_name ?? "";
   if (toolName === "Bash") {
     const command = input.tool_input?.command || "";
+    console.error("[DEBUG] Command:", command);
     const result = checkAndFixMcpCliJson(command);
+    console.error("[DEBUG] Result:", JSON.stringify(result));
     if (result && result.fixedCommand) {
       const response = {
         hookSpecificOutput: {

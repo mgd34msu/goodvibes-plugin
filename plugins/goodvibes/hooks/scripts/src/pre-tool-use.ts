@@ -19,7 +19,10 @@ async function main() {
   // Check for mcp-cli call with invalid JSON - auto-fix and execute transparently
   if (toolName === 'Bash') {
     const command = (input.tool_input?.command as string) || '';
+    // DEBUG
+    console.error('[DEBUG] Command:', command);
     const result = checkAndFixMcpCliJson(command);
+    console.error('[DEBUG] Result:', JSON.stringify(result));
     if (result && result.fixedCommand) {
       // Return the fixed command via updatedInput - Claude Code will execute it
       const response = {
