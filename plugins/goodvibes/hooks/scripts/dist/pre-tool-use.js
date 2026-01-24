@@ -31,9 +31,16 @@ async function readHookInput() {
   }
   return parsed;
 }
-function blockTool(reason) {
-  console.error(reason);
-  process.exit(2);
+function blockTool(reason, hookEventName = "PreToolUse") {
+  return {
+    continue: false,
+    stopReason: reason,
+    hookSpecificOutput: {
+      hookEventName,
+      permissionDecision: "deny",
+      permissionDecisionReason: reason
+    }
+  };
 }
 function formatResponse(response) {
   return JSON.stringify(response);

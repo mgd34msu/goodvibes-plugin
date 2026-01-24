@@ -41,9 +41,11 @@ export declare function readHookInput(): Promise<HookInput>;
  */
 export declare function allowTool(hookEventName: string, systemMessage?: string): HookResponse;
 /**
- * Blocks the tool from executing.
+ * Blocks the tool from executing with a deny response.
+ * @param reason - The reason for blocking (shown to user)
+ * @param hookEventName - The hook event name (defaults to 'PreToolUse')
  */
-export declare function blockTool(reason: string): never;
+export declare function blockTool(reason: string, hookEventName?: string): HookResponse;
 /**
  * Formats a hook response as JSON string.
  */

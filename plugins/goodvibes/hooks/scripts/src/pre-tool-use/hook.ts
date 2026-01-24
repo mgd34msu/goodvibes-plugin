@@ -82,9 +82,9 @@ async function handleBashTool(input: HookInput): Promise<void> {
   const jsonFix = checkAndFixMcpCliJson(command);
   if (jsonFix) { 
     respond(blockTool(
+      'PreToolUse',
       `Invalid JSON escape sequences detected. Use this corrected command:\n\n${jsonFix.fixedCommand}`
     ));
-    return;
   }
 
   // Allow other bash commands

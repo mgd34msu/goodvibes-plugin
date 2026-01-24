@@ -94,11 +94,23 @@ export function allowTool(
 }
 
 /**
- * Blocks the tool from executing.
+ * Blocks the tool from executing with a deny response.
+ * @param reason - The reason for blocking (shown to user)
+ * @param hookEventName - The hook event name (defaults to 'PreToolUse')
  */
-export function blockTool(reason: string): never {
-  console.error(reason);
-  process.exit(2);
+export function blockTool(
+  reason: string,
+  hookEventName: string = 'PreToolUse'
+): HookResponse {
+  return {
+    continue: false,
+    stopReason: reason,
+    hookSpecificOutput: {
+      hookEventName,
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  };
 }
 
 /**
