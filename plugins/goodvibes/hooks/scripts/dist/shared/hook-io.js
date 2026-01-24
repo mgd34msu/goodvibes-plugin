@@ -49,7 +49,7 @@ export function allowTool(hookEventName, systemMessage, updatedInput) {
         hookSpecificOutput: {
             hookEventName,
             permissionDecision: 'allow',
-            ...(updatedInput && { updatedInput }),
+            updatedInput,
         },
     };
 }

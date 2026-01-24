@@ -90,7 +90,7 @@ export function allowTool(
     hookSpecificOutput: {
       hookEventName,
       permissionDecision: 'allow',
-      ...(updatedInput && { updatedInput }),
+      updatedInput,
     },
   };
 }

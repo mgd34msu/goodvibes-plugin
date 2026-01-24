@@ -28,7 +28,6 @@ import {
   respond,
   readHookInput,
   allowTool,
-  blockTool,
   debug,
   logError,
 } from '../shared/index.js';
@@ -44,12 +43,12 @@ import {
   handleNativeToolBlocking,
   isBlockedNativeTool,
 } from './subagent-blockers.js';
-import { TOOL_VALIDATORS } from './tool-validators.js';
 
 import type { HookInput } from '../shared/index.js';
 import type { PreToolUseInput } from './subagent-blockers.js';
 import { checkAndFixMcpCliJson } from './json-auto-escape.js';
 import { writeFileSync } from 'fs';
+import { TOOL_VALIDATORS } from './tool-validators.js';
 /**
  * Handles Bash tool invocations with git command detection.
  * Routes git commits through quality gates, other git commands through
@@ -69,6 +68,19 @@ async function handleBashTool(input: HookInput): Promise<void> {
     return;
   }
 
+  // Check for mcp-cli calls with invalid JSON
+  const jsonFix = checkAndFixMcpCliJson(command);
+  console.error('[DEBUG] JSON fix result:', jsonFix);
+  if (jsonFix) {
+    // Instead of blocking, allow with the fixed command
+    respond(allowTool(
+      'PreToolUse',
+      `Auto-fixed ${jsonFix.fixCount} invalid JSON escape sequences`,
+      { command: jsonFix.fixedCommand }  // ← updatedInput for Bash tool
+    ));
+    return;
+  }
+
   // Check for git commit - run quality gates
   if (isCommitCommand(command)) {
     await handleGitCommit(input, command);
@@ -80,19 +92,6 @@ async function handleBashTool(input: HookInput): Promise<void> {
     await handleGitCommand(input, command);
     return;
   }
-
-// Check for mcp-cli calls with invalid JSON
-const jsonFix = checkAndFixMcpCliJson(command);
-console.error('[DEBUG] JSON fix result:', jsonFix);
-if (jsonFix) {
-  // Instead of blocking, allow with the fixed command
-  respond(allowTool(
-    'PreToolUse',
-    `Auto-fixed ${jsonFix.fixCount} invalid JSON escape sequences`,
-    { command: jsonFix.fixedCommand }  // ← updatedInput for Bash tool
-  ));
-  return;
-}
 
   // Allow other bash commands
   respond(allowTool('PreToolUse'));
@@ -123,6 +122,12 @@ export async function runPreToolUseHook(): Promise<void> {
       is_subagent: input.is_subagent,
     });
 
+    // Handle Bash tool specially for git command detection
+    if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
+      await handleBashTool(input);
+      return;
+    }
+
     // FIRST: Check for native tool blocking (ALL AGENTS)
     // This must happen before any other processing
     if (isBlockedNativeTool(input.tool_name ?? '')) {
@@ -131,12 +136,6 @@ export async function runPreToolUseHook(): Promise<void> {
       if (wasBlocked) {
         return; // Already responded with block
       }
-    }
-
-    // Handle Bash tool specially for git command detection
-    if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
-      await handleBashTool(input);
-      return;
     }
 
     // Extract tool name from the full MCP tool name (e.g., "mcp__goodvibes-tools__detect_stack")
