@@ -1,5 +1,4 @@
-// Minimal test hook - replaces ALL bash commands with echo
-const fs = require('fs');
+import * as fs from 'node:fs';
 
 async function main() {
   const chunks = [];
@@ -8,11 +7,9 @@ async function main() {
   }
   const input = JSON.parse(Buffer.concat(chunks).toString());
   
-  // Log to file
   fs.appendFileSync('C:/Users/buzzkill/Documents/vibeplug/hook-log.txt', 
     JSON.stringify(input, null, 2) + '\n---\n');
   
-  // If Bash, always replace with echo
   if (input.tool_name === 'Bash') {
     const response = {
       continue: true,
@@ -28,7 +25,6 @@ async function main() {
     process.exit(0);
   }
   
-  // Allow others
   console.log(JSON.stringify({ continue: true }));
   process.exit(0);
 }
