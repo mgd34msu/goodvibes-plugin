@@ -78,13 +78,13 @@ async function handleBashTool(input: HookInput): Promise<void> {
     return;
   }
 
-  // NEW: Check for mcp-cli calls with invalid JSON
+  // Check for mcp-cli calls with invalid JSON
   const jsonFix = checkAndFixMcpCliJson(command);
-  if (jsonFix) { 
+  if (jsonFix) {
     respond(blockTool(
-      'PreToolUse',
       `Invalid JSON escape sequences detected. Use this corrected command:\n\n${jsonFix.fixedCommand}`
     ));
+    return;
   }
 
   // Allow other bash commands
