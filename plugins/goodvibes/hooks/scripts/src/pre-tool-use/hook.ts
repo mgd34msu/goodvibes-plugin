@@ -63,6 +63,8 @@ import { checkAndFixMcpCliJson } from './json-auto-escape.js';
 async function handleBashTool(input: HookInput): Promise<void> {
   const command = extractBashCommand(input);
 
+  console.error('[DEBUG] Bash command:', command);
+
   if (!command) {
     respond(allowTool('PreToolUse'));
     return;
@@ -82,6 +84,7 @@ async function handleBashTool(input: HookInput): Promise<void> {
 
 // Check for mcp-cli calls with invalid JSON
 const jsonFix = checkAndFixMcpCliJson(command);
+console.error('[DEBUG] JSON fix result:', jsonFix);
 if (jsonFix) {
   // Instead of blocking, allow with the fixed command
   respond(allowTool(
