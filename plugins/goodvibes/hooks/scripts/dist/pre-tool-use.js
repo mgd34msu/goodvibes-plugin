@@ -14,7 +14,7 @@ process.stdin.on("end", () => {
           hookEventName: "PreToolUse",
           permissionDecision: "allow",
           updatedInput: {
-            command: `mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries": [{"id": "test", "pattern": "model-pricing\\\\.json"}]}'`
+            command: `mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries": [{"id": "test", "pattern": "model-pricing\\\\\\\\.json"}]}'`
           }
         }
       }));
