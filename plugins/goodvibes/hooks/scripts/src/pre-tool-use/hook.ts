@@ -51,7 +51,7 @@ import { TOOL_VALIDATORS } from './tool-validators.js';
 import type { HookInput } from '../shared/index.js';
 import type { PreToolUseInput } from './subagent-blockers.js';
 import { checkAndFixMcpCliJson } from './json-auto-escape.js';
-
+import { writeFileSync } from 'fs';
 /**
  * Handles Bash tool invocations with git command detection.
  * Routes git commits through quality gates, other git commands through
@@ -62,7 +62,8 @@ import { checkAndFixMcpCliJson } from './json-auto-escape.js';
  */
 async function handleBashTool(input: HookInput): Promise<void> {
   const command = extractBashCommand(input);
-
+  
+  writeFileSync('/tmp/hook-debug.log', `Command: ${JSON.stringify(command)}\n`, { flag: 'a' });
   console.error('[DEBUG] Bash command:', command);
 
   if (!command) {

@@ -147,49 +147,63 @@ export function extractMcpCliJson(command: string): {
   json: string;
   format: 'inline' | 'stdin' | 'file';
   serverTool: string;
+  fullMatch: string;
 } | null {
-  // Match: mcp-cli call server/tool ...
-  const mcpCallMatch = /mcp-cli\s+call\s+([\w_-]+\/[\w_-]+)(.*)$/i.exec(command);
+  // Match: mcp-cli call server/tool '...' or "..."
+  // Use a more robust approach - find the JSON by matching balanced quotes
+  
+  const mcpCallMatch = /mcp-cli\s+call\s+([\w_-]+\/[\w_-]+)\s+/.exec(command);
   if (!mcpCallMatch) {
     return null;
   }
 
   const serverTool = mcpCallMatch[1];
-  const argsSection = mcpCallMatch[2].trim();
-
-  // Format 1: Inline JSON - look for quoted JSON object/array
-  // Match single-quoted or double-quoted JSON
-  const inlineMatch = /['"]([{\[].*)['"]\s*$/.exec(argsSection);
-  if (inlineMatch) {
-    return {
-      json: inlineMatch[1],
-      format: 'inline',
-      serverTool,
-    };
+  const afterServerTool = command.slice(mcpCallMatch.index + mcpCallMatch[0].length);
+  
+  // Determine quote type (single or double)
+  const quoteChar = afterServerTool[0];
+  if (quoteChar !== "'" && quoteChar !== '"') {
+    return null;
   }
 
-  // Format 2: Stdin - command ends with '-' or contains heredoc/pipe
-  if (/\s+-\s*$/.test(argsSection) || /<</.test(command) || /\|/.test(command)) {
-    // Can't extract JSON from stdin in pre-tool-use hook
-    // We'd need to parse heredoc or wait for pipe input
-    return {
-      json: '',
-      format: 'stdin',
-      serverTool,
-    };
+  // Find the matching closing quote
+  // Need to handle the case where the JSON itself contains escaped quotes
+  let depth = 0;
+  let inString = false;
+  let jsonEnd = -1;
+  
+  for (let i = 1; i < afterServerTool.length; i++) {
+    const char = afterServerTool[i];
+    const prevChar = afterServerTool[i - 1];
+    
+    // If we hit the closing quote at depth 0 and not escaped
+    if (char === quoteChar && depth === 0 && !inString) {
+      jsonEnd = i;
+      break;
+    }
+    
+    // Track JSON structure
+    if (char === '{' || char === '[') depth++;
+    if (char === '}' || char === ']') depth--;
+    
+    // Track string state within JSON (for double-quoted JSON strings)
+    if (char === '"' && prevChar !== '\\') {
+      inString = !inString;
+    }
   }
 
-  // Format 3: File - --json-file flag
-  if (/--json-file/.test(argsSection)) {
-    // Can't extract JSON from file without reading it
-    return {
-      json: '',
-      format: 'file',
-      serverTool,
-    };
+  if (jsonEnd === -1) {
+    return null;
   }
 
-  return null;
+  const json = afterServerTool.slice(1, jsonEnd);
+  
+  return {
+    json,
+    format: 'inline',
+    serverTool,
+    fullMatch: `mcp-cli call ${serverTool} ${quoteChar}${json}${quoteChar}`,
+  };
 }
 
 /**
@@ -200,12 +214,13 @@ export function extractMcpCliJson(command: string): {
  * @returns Block message with corrected command, or null if no fix needed
  */
 export function checkAndFixMcpCliJson(command: string): { 
-  fixedCommand: string; 
-  fixCount: number; 
+  fixedCommand: string;
+  fixCount: number;
 } | null {
   const extracted = extractMcpCliJson(command);
 
-  // Not an mcp-cli call, or using stdin/file (can't validate here)
+  console.error('Extracted:', extracted);  // Debug
+
   if (!extracted || !extracted.json || extracted.format !== 'inline') {
     return null;
   }
@@ -213,14 +228,12 @@ export function checkAndFixMcpCliJson(command: string): {
   const { json, serverTool } = extracted;
   const result = fixJsonEscaping(json);
 
-  // JSON was invalid and we fixed it - return the fixed command
+  console.error('Fix result:', result);  // Debug
+
   if (result.wasFixed) {
-    return {
-      fixedCommand: `mcp-cli call ${serverTool} '${result.fixed}'`,
-      fixCount: result.fixCount
-    };
+    const fixedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
+    return { fixedCommand, fixCount: result.fixCount };
   }
-  // JSON is valid, no fix needed
+
   return null;
 }
-

@@ -518,48 +518,55 @@ function fixJsonEscaping(jsonString) {
   }
 }
 function extractMcpCliJson(command) {
-  const mcpCallMatch = /mcp-cli\s+call\s+([\w_-]+\/[\w_-]+)(.*)$/i.exec(command);
+  const mcpCallMatch = /mcp-cli\s+call\s+([\w_-]+\/[\w_-]+)\s+/.exec(command);
   if (!mcpCallMatch) {
     return null;
   }
   const serverTool = mcpCallMatch[1];
-  const argsSection = mcpCallMatch[2].trim();
-  const inlineMatch = /['"]([{\[].*)['"]\s*$/.exec(argsSection);
-  if (inlineMatch) {
-    return {
-      json: inlineMatch[1],
-      format: "inline",
-      serverTool
-    };
+  const afterServerTool = command.slice(mcpCallMatch.index + mcpCallMatch[0].length);
+  const quoteChar = afterServerTool[0];
+  if (quoteChar !== "'" && quoteChar !== '"') {
+    return null;
   }
-  if (/\s+-\s*$/.test(argsSection) || /<</.test(command) || /\|/.test(command)) {
-    return {
-      json: "",
-      format: "stdin",
-      serverTool
-    };
+  let depth = 0;
+  let inString = false;
+  let jsonEnd = -1;
+  for (let i = 1; i < afterServerTool.length; i++) {
+    const char = afterServerTool[i];
+    const prevChar = afterServerTool[i - 1];
+    if (char === quoteChar && depth === 0 && !inString) {
+      jsonEnd = i;
+      break;
+    }
+    if (char === "{" || char === "[") depth++;
+    if (char === "}" || char === "]") depth--;
+    if (char === '"' && prevChar !== "\\") {
+      inString = !inString;
+    }
   }
-  if (/--json-file/.test(argsSection)) {
-    return {
-      json: "",
-      format: "file",
-      serverTool
-    };
+  if (jsonEnd === -1) {
+    return null;
   }
-  return null;
+  const json = afterServerTool.slice(1, jsonEnd);
+  return {
+    json,
+    format: "inline",
+    serverTool,
+    fullMatch: `mcp-cli call ${serverTool} ${quoteChar}${json}${quoteChar}`
+  };
 }
 function checkAndFixMcpCliJson(command) {
   const extracted = extractMcpCliJson(command);
+  console.error("Extracted:", extracted);
   if (!extracted || !extracted.json || extracted.format !== "inline") {
     return null;
   }
   const { json, serverTool } = extracted;
   const result = fixJsonEscaping(json);
+  console.error("Fix result:", result);
   if (result.wasFixed) {
-    return {
-      fixedCommand: `mcp-cli call ${serverTool} '${result.fixed}'`,
-      fixCount: result.fixCount
-    };
+    const fixedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
+    return { fixedCommand, fixCount: result.fixCount };
   }
   return null;
 }
