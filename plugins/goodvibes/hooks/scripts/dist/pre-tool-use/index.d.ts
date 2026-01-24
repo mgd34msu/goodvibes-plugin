@@ -9,7 +9,4 @@
  * - Git operation guards (prevent destructive operations, detect secrets)
  * - Command validation and safety checks
  */
-export * from './json-auto-escape.js';
-export * from './subagent-blockers.js';
-export * from './quality-gates.js';
-export * from './git-guards.js';
+export * from './log-tool.js';

@@ -8,14 +8,23 @@
  * Exit code 0 + no output = allows tool to proceed
  */
 
-import { readHookInput, blockTool, respond } from './shared/hook-io.js';
-import { TOOL_REPLACEMENTS, formatBlockMessage, isBlockedNativeTool } from './pre-tool-use/subagent-blockers.js';
-import { checkAndFixMcpCliJson } from './pre-tool-use/json-auto-escape.js';
+import { readHookInput, allowTool, blockTool, respond } from './shared/hook-io.js';
+
+//import { TOOL_REPLACEMENTS, formatBlockMessage, isBlockedNativeTool } from './pre-tool-use/subagent-blockers.js';
+//import { checkAndFixMcpCliJson } from './pre-tool-use/json-auto-escape.js';
 
 async function main() {
   const input = await readHookInput();
   const toolName = input.tool_name ?? '';
 
+  const chunks: Buffer[] = [];
+  process.stdin.on('data', (chunk: Buffer) => chunks.push(chunk));
+  process.stdin.on('end', () => {
+    const input = JSON.parse(Buffer.concat(chunks).toString());
+    console.error(`[TOOL] ${input.tool_name}`);
+    console.log(JSON.stringify(allowTool('PreToolUse')));
+  });
+/**
   // Check for mcp-cli call with invalid JSON - auto-fix via updatedInput
   if (toolName === 'Bash') {
     const command = (input.tool_input?.command as string) || '';
@@ -42,9 +51,9 @@ async function main() {
       blockTool(formatBlockMessage(toolName, replacement));
     }
   }
-  
+  */
   // Tool not blocked - exit 0 with no output to allow
-  process.exit(0);
+  //process.exit(0);
 }
 
 main();
