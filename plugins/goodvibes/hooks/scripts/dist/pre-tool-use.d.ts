@@ -4,4 +4,4 @@
  * This is a thin entry point that executes the pre-tool-use hook.
  * The actual implementation lives in src/pre-tool-use/hook.ts
  */
-import './pre-tool-use/hook.js';
+export {};

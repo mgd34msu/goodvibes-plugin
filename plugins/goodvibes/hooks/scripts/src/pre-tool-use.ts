@@ -6,5 +6,6 @@
  * The actual implementation lives in src/pre-tool-use/hook.ts
  */
 
-// Import and execute the pre-tool-use hook
-import './pre-tool-use/hook.js';
+import { runPreToolUseHook } from './pre-tool-use/hook.js';
+
+void runPreToolUseHook();
