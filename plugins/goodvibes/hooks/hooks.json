@@ -1,6 +1,26 @@
 {
   "description": "GoodVibes plugin hooks - minimal set for core functionality",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Edit|Write|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\""
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "*",
@@ -93,17 +113,6 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/user-prompt-submit.js\"",
             "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Read|Edit|Write|Glob|Grep|Bash|mcp-cli",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\""
           }
         ]
       }
