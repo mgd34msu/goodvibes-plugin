@@ -58,12 +58,19 @@ function fixJsonEscaping(jsonString: string): { fixed: string; wasFixed: boolean
 }
 
 function extractAndFixMcpCliJson(command: string): string | null {
+  console.error('[DEBUG] extractAndFixMcpCliJson input:', command);
+
   // Match: mcp-cli call server/tool '{...}' or mcp-cli call server/tool "{...}"
   const match = /^(mcp-cli\s+call\s+\S+\s+)(['"])(.+)\2\s*$/.exec(command);
+  console.error('[DEBUG] regex match:', match);
+
   if (!match) return null;
 
   const [, prefix, quote, json] = match;
+  console.error('[DEBUG] extracted json:', json);
+
   const { fixed, wasFixed } = fixJsonEscaping(json);
+  console.error('[DEBUG] fixed:', fixed, 'wasFixed:', wasFixed);
 
   if (wasFixed) {
     return `${prefix}${quote}${fixed}${quote}`;
@@ -75,11 +82,16 @@ const chunks: Buffer[] = [];
 process.stdin.on('data', (chunk: Buffer) => chunks.push(chunk));
 process.stdin.on('end', () => {
   const input = JSON.parse(Buffer.concat(chunks).toString());
+  console.error('[DEBUG] tool_name:', input.tool_name);
+  console.error('[DEBUG] command:', input.tool_input?.command);
+
   let updatedInput: Record<string, unknown> | undefined;
 
   if (input.tool_name === 'Bash') {
     const command = input.tool_input?.command || '';
     const fixedCommand = extractAndFixMcpCliJson(command);
+    console.error('[DEBUG] fixedCommand:', fixedCommand);
+
     if (fixedCommand) {
       updatedInput = { command: fixedCommand };
     }
@@ -98,5 +110,6 @@ process.stdin.on('end', () => {
     (response.hookSpecificOutput as Record<string, unknown>).updatedInput = updatedInput;
   }
 
+  console.error('[DEBUG] response:', JSON.stringify(response));
   console.log(JSON.stringify(response));
 });
