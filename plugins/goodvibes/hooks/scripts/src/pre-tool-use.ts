@@ -57,15 +57,16 @@ function fixJsonEscaping(jsonString: string): { fixed: string; wasFixed: boolean
   }
 }
 
-function extractAndFixJson(command: string): string | null {
-  const match = /^(\S+)\s+(.+)$/.exec(command);
+function extractAndFixMcpCliJson(command: string): string | null {
+  // Match: mcp-cli call server/tool '{...}' or mcp-cli call server/tool "{...}"
+  const match = /^(mcp-cli\s+call\s+\S+\s+)(['"])(.+)\2\s*$/.exec(command);
   if (!match) return null;
 
-  const [, tool, arg] = match;
-  const { fixed, wasFixed } = fixJsonEscaping(arg);
+  const [, prefix, quote, json] = match;
+  const { fixed, wasFixed } = fixJsonEscaping(json);
 
   if (wasFixed) {
-    return `${tool} ${fixed}`;
+    return `${prefix}${quote}${fixed}${quote}`;
   }
   return null;
 }
@@ -74,22 +75,28 @@ const chunks: Buffer[] = [];
 process.stdin.on('data', (chunk: Buffer) => chunks.push(chunk));
 process.stdin.on('end', () => {
   const input = JSON.parse(Buffer.concat(chunks).toString());
-  let updatedInput = input.tool_input;
+  let updatedInput: Record<string, unknown> | undefined;
 
   if (input.tool_name === 'Bash') {
     const command = input.tool_input?.command || '';
-    const fixedCommand = extractAndFixJson(command);
+    const fixedCommand = extractAndFixMcpCliJson(command);
     if (fixedCommand) {
       updatedInput = { command: fixedCommand };
     }
   }
 
-  console.log(JSON.stringify({
+  // Only include updatedInput if we actually fixed something
+  const response: Record<string, unknown> = {
     continue: true,
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'allow',
-      updatedInput,
     },
-  }));
+  };
+
+  if (updatedInput) {
+    (response.hookSpecificOutput as Record<string, unknown>).updatedInput = updatedInput;
+  }
+
+  console.log(JSON.stringify(response));
 });

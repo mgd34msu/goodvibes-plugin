@@ -3,5 +3,5 @@ declare function fixJsonEscaping(jsonString: string): {
     fixed: string;
     wasFixed: boolean;
 };
-declare function extractAndFixJson(command: string): string | null;
+declare function extractAndFixMcpCliJson(command: string): string | null;
 declare const chunks: Buffer[];
