@@ -20,10 +20,19 @@ async function main() {
   if (toolName === 'Bash') {
     const command = (input.tool_input?.command as string) || '';
     const result = checkAndFixMcpCliJson(command);
-    if (result && result.executed) {
-      // Output the result directly and exit - this IS the command output
-      process.stderr.write(result.output);
-      process.exit(2);
+    if (result && result.fixedCommand) {
+      // Return the fixed command via updatedInput - Claude Code will execute it
+      const response = {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "allow",
+          updatedInput: {
+            command: result.fixedCommand
+          }
+        }
+      };
+      process.stdout.write(JSON.stringify(response));
+      process.exit(0);
     }
   }
 

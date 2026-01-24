@@ -430,7 +430,6 @@ function isBlockedNativeTool(toolName) {
 }
 
 // src/pre-tool-use/json-auto-escape.ts
-import { execSync } from "child_process";
 var VALID_JSON_ESCAPES = /* @__PURE__ */ new Set([
   '"',
   // quote
@@ -550,19 +549,8 @@ function checkAndFixMcpCliJson(command) {
   const { json, serverTool } = extracted;
   const result = fixJsonEscaping(json);
   if (result.wasFixed) {
-    const correctedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
-    try {
-      const output = execSync(correctedCommand, {
-        encoding: "utf-8",
-        timeout: 12e4,
-        maxBuffer: 10 * 1024 * 1024,
-        cwd: process.cwd()
-      });
-      return { output, executed: true };
-    } catch (error) {
-      const errorOutput = error.stdout || error.stderr || error.message || "Command failed";
-      return { output: errorOutput, executed: true };
-    }
+    const fixedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
+    return { fixedCommand };
   }
   return null;
 }
@@ -574,9 +562,18 @@ async function main() {
   if (toolName === "Bash") {
     const command = input.tool_input?.command || "";
     const result = checkAndFixMcpCliJson(command);
-    if (result && result.executed) {
-      process.stderr.write(result.output);
-      process.exit(2);
+    if (result && result.fixedCommand) {
+      const response = {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "allow",
+          updatedInput: {
+            command: result.fixedCommand
+          }
+        }
+      };
+      process.stdout.write(JSON.stringify(response));
+      process.exit(0);
     }
   }
   if (isBlockedNativeTool(toolName)) {

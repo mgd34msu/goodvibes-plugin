@@ -1,5 +1,3 @@
-import { execSync } from "child_process";
-
 /**
  * JSON Auto-Escape for mcp-cli calls
  *
@@ -199,7 +197,7 @@ export function extractMcpCliJson(command: string): {
  * @param command - The bash command to check
  * @returns Block message with corrected command, or null if no fix needed
  */
-export function checkAndFixMcpCliJson(command: string): { output: string; executed: boolean } | null {
+export function checkAndFixMcpCliJson(command: string): { fixedCommand: string } | null {
   const extracted = extractMcpCliJson(command);
 
   // Not an mcp-cli call, or using stdin/file (can't validate here)
@@ -210,22 +208,10 @@ export function checkAndFixMcpCliJson(command: string): { output: string; execut
   const { json, serverTool } = extracted;
   const result = fixJsonEscaping(json);
 
-  // JSON was invalid and we fixed it - EXECUTE the fixed command
+  // JSON was invalid and we fixed it - return the fixed command
   if (result.wasFixed) {
-    const correctedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
-    
-    try {
-      const output = execSync(correctedCommand, {
-        encoding: 'utf-8',
-        timeout: 120000,
-        maxBuffer: 10 * 1024 * 1024,
-        cwd: process.cwd(),
-      });
-      return { output, executed: true };
-    } catch (error: any) {
-      const errorOutput = error.stdout || error.stderr || error.message || 'Command failed';
-      return { output: errorOutput, executed: true };
-    }
+    const fixedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
+    return { fixedCommand };
   }
 
   // JSON is valid, no fix needed
