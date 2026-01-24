@@ -12,7 +12,7 @@ import { readHookInput, allowTool, blockTool, respond } from './shared/hook-io.j
 
 //import { TOOL_REPLACEMENTS, formatBlockMessage, isBlockedNativeTool } from './pre-tool-use/subagent-blockers.js';
 //import { checkAndFixMcpCliJson } from './pre-tool-use/json-auto-escape.js';
-
+import { writeFileSync } from 'fs';
 async function main() {
   const input = await readHookInput();
   const toolName = input.tool_name ?? '';
@@ -24,6 +24,7 @@ async function main() {
     console.error(`[TOOL] ${input.tool_name}`);
     console.log(JSON.stringify(allowTool('PreToolUse')));
   });
+  writeFileSync('/tmp/hook-debug.log', `Tool Name: ${JSON.stringify(toolName)}\n`, { flag: 'a' });
 /**
   // Check for mcp-cli call with invalid JSON - auto-fix via updatedInput
   if (toolName === 'Bash') {

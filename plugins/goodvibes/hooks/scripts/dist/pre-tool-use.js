@@ -33,6 +33,7 @@ function allowTool(hookEventName, systemMessage, updatedInput) {
 }
 
 // src/pre-tool-use.ts
+import { writeFileSync } from "fs";
 async function main() {
   const input = await readHookInput();
   const toolName = input.tool_name ?? "";
@@ -43,5 +44,7 @@ async function main() {
     console.error(`[TOOL] ${input2.tool_name}`);
     console.log(JSON.stringify(allowTool("PreToolUse")));
   });
+  writeFileSync("/tmp/hook-debug.log", `Tool Name: ${JSON.stringify(toolName)}
+`, { flag: "a" });
 }
 main();
