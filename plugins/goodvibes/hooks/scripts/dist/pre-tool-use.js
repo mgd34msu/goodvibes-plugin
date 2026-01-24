@@ -999,14 +999,14 @@ function fixJsonEscaping(jsonString) {
     }
     if (inString && char === "\\" && nextChar !== void 0) {
       if (!VALID_JSON_ESCAPES.has(nextChar)) {
-        result += "\\\\\\\\";
+        result += "\\\\";
         fixCount++;
         continue;
       }
       if (nextChar === "u") {
         const hex = jsonString.slice(i + 2, i + 6);
         if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
-          result += "\\\\\\\\";
+          result += "\\\\";
           fixCount++;
           continue;
         }

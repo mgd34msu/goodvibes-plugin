@@ -134,9 +134,9 @@ export function fixJsonEscaping(jsonString: string): JsonFixResult {
     if (inString && char === '\\' && nextChar !== undefined) {
       // Check if next character is a valid JSON escape
       if (!VALID_JSON_ESCAPES.has(nextChar)) {
-        // Invalid escape - add double backslash
-        // 8 backslashes in source = 2 in final command due to escaping layers
-        result += '\\\\\\\\';
+        // Invalid escape - add escaped backslash for valid JSON
+        // 4 backslashes in source = 2 in string = valid JSON \\ = 1 backslash in parsed value
+        result += '\\\\';
         fixCount++;
         continue;
       }
@@ -145,8 +145,8 @@ export function fixJsonEscaping(jsonString: string): JsonFixResult {
       if (nextChar === 'u') {
         const hex = jsonString.slice(i + 2, i + 6);
         if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
-          // Invalid unicode escape - add double backslash
-          result += '\\\\\\\\';
+          // Invalid unicode escape - add escaped backslash
+          result += '\\\\';
           fixCount++;
           continue;
         }
