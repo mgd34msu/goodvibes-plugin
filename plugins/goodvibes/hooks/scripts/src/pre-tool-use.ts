@@ -1,3 +1,77 @@
+const VALID_JSON_ESCAPES = new Set(['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']);
+
+function fixJsonEscaping(jsonString: string): { fixed: string; wasFixed: boolean } {
+  try {
+    JSON.parse(jsonString);
+    return { fixed: jsonString, wasFixed: false };
+  } catch {
+    // Continue to fix
+  }
+
+  let result = '';
+  let inString = false;
+  let wasFixed = false;
+
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString[i];
+    const nextChar = jsonString[i + 1];
+
+    if (char === '"') {
+      let backslashCount = 0;
+      let j = i - 1;
+      while (j >= 0 && jsonString[j] === '\\') {
+        backslashCount++;
+        j--;
+      }
+      if (backslashCount % 2 === 0) {
+        inString = !inString;
+      }
+      result += char;
+      continue;
+    }
+
+    if (inString && char === '\\' && nextChar !== undefined) {
+      if (!VALID_JSON_ESCAPES.has(nextChar)) {
+        // Add double backslash (8 backslashes in source = 2 in final command)
+        result += '\\\\\\\\';
+        wasFixed = true;
+        continue;
+      }
+      if (nextChar === 'u') {
+        const hex = jsonString.slice(i + 2, i + 6);
+        if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
+          result += '\\\\\\\\';
+          wasFixed = true;
+          continue;
+        }
+      }
+    }
+
+    result += char;
+  }
+
+  try {
+    JSON.parse(result);
+    return { fixed: result, wasFixed };
+  } catch {
+    return { fixed: jsonString, wasFixed: false };
+  }
+}
+
+function extractAndFixMcpCliJson(command: string): string | null {
+  // Match: mcp-cli call server/tool '{...}' or mcp-cli call server/tool "{...}"
+  const match = /^(mcp-cli\s+call\s+\S+\s+)(['"])(.+)\2\s*$/.exec(command);
+  if (!match) return null;
+
+  const [, prefix, quote, json] = match;
+  const { fixed, wasFixed } = fixJsonEscaping(json);
+
+  if (wasFixed) {
+    return `${prefix}${quote}${fixed}${quote}`;
+  }
+  return null;
+}
+
 const chunks: Buffer[] = [];
 process.stdin.on('data', (chunk: Buffer) => chunks.push(chunk));
 process.stdin.on('end', () => {
@@ -5,24 +79,22 @@ process.stdin.on('end', () => {
 
   if (input.tool_name === 'Bash') {
     const command = input.tool_input?.command || '';
+    const fixedCommand = extractAndFixMcpCliJson(command);
 
-    // If it's the specific mcp-cli command with bad escape, replace with fixed version
-    if (command.includes('model-pricing') && command.includes('mcp-cli')) {
+    if (fixedCommand) {
       console.log(JSON.stringify({
         continue: true,
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
           permissionDecision: 'allow',
-          updatedInput: {
-            command: 'mcp-cli call plugin_goodvibes_precision-engine/precision_grep \'{"queries": [{"id": "test", "pattern": "model-pricing\\\\\\\\.json"}]}\''
-          }
+          updatedInput: { command: fixedCommand }
         }
       }));
       return;
     }
   }
 
-  // Allow other tools
+  // Allow without modification
   console.log(JSON.stringify({
     continue: true,
     hookSpecificOutput: {
