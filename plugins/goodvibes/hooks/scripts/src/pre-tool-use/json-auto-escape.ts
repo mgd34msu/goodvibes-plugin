@@ -1,6 +1,4 @@
 /**
- * pre-tool-use/json-auto-escape.ts
- * 
  * JSON Auto-Escape for mcp-cli calls
  * pre-tool-use/json-auto-escape.ts
  * Automatically detects and fixes invalid JSON escape sequences in mcp-cli call commands.

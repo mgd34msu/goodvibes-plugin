@@ -1,6 +1,4 @@
-/**
- * pre-tool-use/hook.ts
- * 
+/** 
  * Pre-Tool-Use Hook (GoodVibes)
  *
  * Main router/dispatcher for pre-tool-use validations.
