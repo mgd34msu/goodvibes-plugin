@@ -14,29 +14,24 @@ import { checkAndFixMcpCliJson } from './pre-tool-use/json-auto-escape.js';
 
 async function main() {
   const input = await readHookInput();
-  console.error('[HOOK START] toolName:', input.tool_name);
   const toolName = input.tool_name ?? '';
 
-  // Check for mcp-cli call with invalid JSON - auto-fix and execute transparently
+  // Check for mcp-cli call with invalid JSON - auto-fix via updatedInput
   if (toolName === 'Bash') {
     const command = (input.tool_input?.command as string) || '';
-    // DEBUG
-    console.error('[DEBUG] Command:', command);
     const result = checkAndFixMcpCliJson(command);
-    console.error('[DEBUG] Result:', JSON.stringify(result));
     if (result && result.fixedCommand) {
-      // Return the fixed command via updatedInput - Claude Code will execute it
-      const response = {
+      // Use respond() with updatedInput to transparently fix the command
+      respond({
+        continue: true,
         hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "allow",
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'allow',
           updatedInput: {
             command: result.fixedCommand
           }
         }
-      };
-      process.stdout.write(JSON.stringify(response));
-      process.exit(0);
+      });
     }
   }
 
