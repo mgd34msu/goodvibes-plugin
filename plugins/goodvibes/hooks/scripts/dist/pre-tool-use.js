@@ -558,6 +558,7 @@ function checkAndFixMcpCliJson(command) {
 // src/pre-tool-use.ts
 async function main() {
   const input = await readHookInput();
+  console.error("[HOOK START] toolName:", input.tool_name);
   const toolName = input.tool_name ?? "";
   if (toolName === "Bash") {
     const command = input.tool_input?.command || "";

@@ -14,6 +14,7 @@ import { checkAndFixMcpCliJson } from './pre-tool-use/json-auto-escape.js';
 
 async function main() {
   const input = await readHookInput();
+  console.error('[HOOK START] toolName:', input.tool_name);
   const toolName = input.tool_name ?? '';
 
   // Check for mcp-cli call with invalid JSON - auto-fix and execute transparently
