@@ -31,16 +31,9 @@ async function readHookInput() {
   }
   return parsed;
 }
-function blockTool(reason, hookEventName = "PreToolUse") {
-  return {
-    continue: false,
-    stopReason: reason,
-    hookSpecificOutput: {
-      hookEventName,
-      permissionDecision: "deny",
-      permissionDecisionReason: reason
-    }
-  };
+function blockTool(reason) {
+  console.error(reason);
+  process.exit(2);
 }
 function formatResponse(response) {
   return JSON.stringify(response);
@@ -563,8 +556,10 @@ function checkAndFixMcpCliJson(command) {
   const { json, serverTool } = extracted;
   const result = fixJsonEscaping(json);
   if (result.wasFixed) {
-    const fixedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
-    return { fixedCommand };
+    return {
+      fixedCommand: `mcp-cli call ${serverTool} '${result.fixed}'`,
+      fixCount: result.fixCount
+    };
   }
   return null;
 }

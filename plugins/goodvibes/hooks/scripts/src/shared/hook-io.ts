@@ -81,7 +81,8 @@ export async function readHookInput(): Promise<HookInput> {
  */
 export function allowTool(
   hookEventName: string,
-  systemMessage?: string
+  systemMessage?: string,
+  updatedInput?: Record<string, unknown>
 ): HookResponse {
   return {
     continue: true,
@@ -89,28 +90,17 @@ export function allowTool(
     hookSpecificOutput: {
       hookEventName,
       permissionDecision: 'allow',
+      ...(updatedInput && { updatedInput }),
     },
   };
 }
 
 /**
- * Blocks the tool from executing with a deny response.
- * @param reason - The reason for blocking (shown to user)
- * @param hookEventName - The hook event name (defaults to 'PreToolUse')
+ * Blocks the tool from executing.
  */
-export function blockTool(
-  reason: string,
-  hookEventName: string = 'PreToolUse'
-): HookResponse {
-  return {
-    continue: false,
-    stopReason: reason,
-    hookSpecificOutput: {
-      hookEventName,
-      permissionDecision: 'deny',
-      permissionDecisionReason: reason,
-    },
-  };
+export function blockTool(reason: string): never {
+  console.error(reason);
+  process.exit(2);
 }
 
 /**

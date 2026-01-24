@@ -42,31 +42,23 @@ export async function readHookInput() {
 /**
  * Creates a hook response that allows the tool to proceed with execution.
  */
-export function allowTool(hookEventName, systemMessage) {
+export function allowTool(hookEventName, systemMessage, updatedInput) {
     return {
         continue: true,
         systemMessage,
         hookSpecificOutput: {
             hookEventName,
             permissionDecision: 'allow',
+            ...(updatedInput && { updatedInput }),
         },
     };
 }
 /**
- * Blocks the tool from executing with a deny response.
- * @param reason - The reason for blocking (shown to user)
- * @param hookEventName - The hook event name (defaults to 'PreToolUse')
+ * Blocks the tool from executing.
  */
-export function blockTool(reason, hookEventName = 'PreToolUse') {
-    return {
-        continue: false,
-        stopReason: reason,
-        hookSpecificOutput: {
-            hookEventName,
-            permissionDecision: 'deny',
-            permissionDecisionReason: reason,
-        },
-    };
+export function blockTool(reason) {
+    console.error(reason);
+    process.exit(2);
 }
 /**
  * Formats a hook response as JSON string.

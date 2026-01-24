@@ -1,4 +1,6 @@
 /**
+ * pre-tool-use/hook.ts
+ * 
  * Pre-Tool-Use Hook (GoodVibes)
  *
  * Main router/dispatcher for pre-tool-use validations.
@@ -78,14 +80,17 @@ async function handleBashTool(input: HookInput): Promise<void> {
     return;
   }
 
-  // Check for mcp-cli calls with invalid JSON
-  const jsonFix = checkAndFixMcpCliJson(command);
-  if (jsonFix) {
-    respond(blockTool(
-      `Invalid JSON escape sequences detected. Use this corrected command:\n\n${jsonFix.fixedCommand}`
-    ));
-    return;
-  }
+// Check for mcp-cli calls with invalid JSON
+const jsonFix = checkAndFixMcpCliJson(command);
+if (jsonFix) {
+  // Instead of blocking, allow with the fixed command
+  respond(allowTool(
+    'PreToolUse',
+    `Auto-fixed ${jsonFix.fixCount} invalid JSON escape sequences`,
+    { command: jsonFix.fixedCommand }  // ← updatedInput for Bash tool
+  ));
+  return;
+}
 
   // Allow other bash commands
   respond(allowTool('PreToolUse'));
@@ -106,6 +111,9 @@ export async function runPreToolUseHook(): Promise<void> {
   try {
     const rawInput = await readHookInput();
     const input = rawInput as PreToolUseInput;
+
+    // Add this line for debugging
+    console.error('Hook triggered for:', input.tool_name);
 
     debug('PreToolUse hook received input', {
       tool_name: input.tool_name,

@@ -1,6 +1,8 @@
 /**
+ * pre-tool-use/json-auto-escape.ts
+ * 
  * JSON Auto-Escape for mcp-cli calls
- *
+ * pre-tool-use/json-auto-escape.ts
  * Automatically detects and fixes invalid JSON escape sequences in mcp-cli call commands.
  * When a Bash command contains `mcp-cli call` with malformed JSON, this module:
  * 1. Extracts the JSON argument (inline, stdin, or file)
@@ -197,7 +199,10 @@ export function extractMcpCliJson(command: string): {
  * @param command - The bash command to check
  * @returns Block message with corrected command, or null if no fix needed
  */
-export function checkAndFixMcpCliJson(command: string): { fixedCommand: string } | null {
+export function checkAndFixMcpCliJson(command: string): { 
+  fixedCommand: string; 
+  fixCount: number; 
+} | null {
   const extracted = extractMcpCliJson(command);
 
   // Not an mcp-cli call, or using stdin/file (can't validate here)
@@ -210,10 +215,11 @@ export function checkAndFixMcpCliJson(command: string): { fixedCommand: string }
 
   // JSON was invalid and we fixed it - return the fixed command
   if (result.wasFixed) {
-    const fixedCommand = `mcp-cli call ${serverTool} '${result.fixed}'`;
-    return { fixedCommand };
+    return {
+      fixedCommand: `mcp-cli call ${serverTool} '${result.fixed}'`,
+      fixCount: result.fixCount
+    };
   }
-
   // JSON is valid, no fix needed
   return null;
 }
