@@ -363,3 +363,650 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 - Errors that need user input
 - Feature set complete
 - User said "stop" or "wait"
+
+## precision_write
+
+**Description**: Create or write files with encoding support and multiple overwrite modes. Supports batch writes, automatic parent directory creation, and dry_run mode.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "files": {
+      "type": "array",
+      "description": "Array of files to write",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to the file to write"
+          },
+          "content": {
+            "type": "string",
+            "description": "Content to write to the file"
+          },
+          "content_base64": {
+            "type": "string",
+            "description": "Base64-encoded content (use instead of content for complex content)"
+          },
+          "content_file": {
+            "type": "string",
+            "description": "Path to file containing content to write (use instead of content)"
+          },
+          "encoding": {
+            "type": "string",
+            "description": "File encoding (default: utf-8)"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["fail_if_exists", "overwrite", "backup"],
+            "description": "Behavior when file exists (default: fail_if_exists)"
+          }
+        },
+        "required": ["path"]
+      }
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": false,
+      "description": "Preview changes without writing"
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "standard", "verbose"],
+      "default": "standard",
+      "description": "Response verbosity"
+    }
+  },
+  "required": ["files"]
+}
+```
+
+---
+
+## precision_edit
+
+**Description**: Token-efficient file editing with atomic transactions, conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching formats.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "edits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "path": {
+            "type": "string",
+            "description": "Path to the file to edit"
+          },
+          "file": {
+            "type": "string",
+            "description": "DEPRECATED: Use path instead"
+          },
+          "find": { "type": "string" },
+          "replace": { "type": "string" },
+          "find_base64": {
+            "type": "string",
+            "description": "Base64-encoded text to find"
+          },
+          "replace_base64": {
+            "type": "string",
+            "description": "Base64-encoded replacement text"
+          },
+          "occurrence": {
+            "oneOf": [
+              { "type": "string", "enum": ["first", "last", "all"] },
+              { "type": "integer", "minimum": 1 }
+            ]
+          },
+          "hints": {
+            "type": "object",
+            "properties": {
+              "near_line": { "type": "integer" },
+              "in_function": { "type": "string" },
+              "in_class": { "type": "string" },
+              "after": { "type": "string" },
+              "before": { "type": "string" }
+            }
+          }
+        },
+        "required": ["file", "find", "replace"]
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["atomic", "partial", "none"],
+          "default": "atomic"
+        },
+        "rollback_on_fail": { "type": "boolean", "default": true }
+      }
+    },
+    "match": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["exact", "fuzzy", "regex", "ast"],
+          "default": "exact"
+        },
+        "case_sensitive": { "type": "boolean", "default": true },
+        "whitespace_sensitive": { "type": "boolean", "default": true }
+      }
+    },
+    "validate": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["typecheck", "lint", "test", "build"] }
+        },
+        "after": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["typecheck", "lint", "test", "build"] }
+        }
+      }
+    },
+    "dry_run": { "type": "boolean", "default": false },
+    "output": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["count_only", "minimal", "with_diff", "verbose"],
+          "default": "minimal"
+        },
+        "diff_context": { "type": "integer", "minimum": 0, "default": 3 },
+        "max_tokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "with_diff", "verbose"],
+      "default": "with_diff"
+    }
+  },
+  "required": ["edits"]
+}
+```
+
+---
+
+## precision_read
+
+**Description**: Token-efficient file reading with extraction formats. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "extract": {
+            "type": "string",
+            "enum": ["content", "outline", "symbols", "ast", "lines"]
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "start": { "type": "integer", "minimum": 1 },
+              "end": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "required": ["path"]
+      }
+    },
+    "extract": {
+      "type": "string",
+      "enum": ["content", "outline", "symbols", "ast", "lines"],
+      "default": "content"
+    },
+    "symbol_filter": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"]
+      }
+    },
+    "default_range": {
+      "type": "object",
+      "properties": {
+        "start": { "type": "integer", "minimum": 1 },
+        "end": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["count_only", "minimal", "standard", "verbose"],
+          "default": "standard"
+        },
+        "include_line_numbers": { "type": "boolean", "default": true },
+        "include_metadata": { "type": "boolean", "default": false },
+        "max_per_item": { "type": "integer", "minimum": 1 },
+        "max_tokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "standard", "verbose"],
+      "default": "standard"
+    }
+  },
+  "required": ["files"]
+}
+```
+
+---
+
+## precision_exec
+
+**Description**: Execute shell commands with batch support, timeout, and expectations checking. Captures stdout, stderr, and exit code.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "commands": {
+      "type": "array",
+      "description": "Array of commands to execute",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "description": "Command to execute"
+          },
+          "cmd_base64": {
+            "type": "string",
+            "description": "Base64-encoded command"
+          },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Command arguments"
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Working directory"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Timeout in ms (default: 60000)"
+          },
+          "env": {
+            "type": "object",
+            "description": "Additional environment variables"
+          },
+          "expect": {
+            "type": "object",
+            "properties": {
+              "exit_code": { "type": "integer" },
+              "stdout_contains": { "type": "string" },
+              "stderr_contains": { "type": "string" }
+            }
+          }
+        },
+        "required": ["cmd"]
+      }
+    },
+    "parallel": {
+      "type": "boolean",
+      "default": false,
+      "description": "Execute commands in parallel"
+    },
+    "stop_on_error": {
+      "type": "boolean",
+      "default": true,
+      "description": "Stop on first error (sequential only)"
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "standard", "verbose"],
+      "default": "standard"
+    }
+  },
+  "required": ["commands"]
+}
+```
+
+---
+
+## precision_fetch
+
+**Description**: Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), custom headers, method override, and timeout.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "urls": {
+      "type": "array",
+      "description": "Array of URL requests to fetch",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "URL to fetch"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE"],
+            "description": "HTTP method (default: GET)"
+          },
+          "headers": {
+            "type": "object",
+            "description": "Custom headers to send"
+          },
+          "body": {
+            "type": "string",
+            "description": "Request body (for POST/PUT)"
+          },
+          "body_base64": {
+            "type": "string",
+            "description": "Base64-encoded request body"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Timeout in ms (default: 30000)"
+          },
+          "extract": {
+            "type": "string",
+            "enum": ["raw", "text", "json"],
+            "description": "Extraction mode (default: text)"
+          }
+        },
+        "required": ["url"]
+      }
+    },
+    "parallel": {
+      "type": "boolean",
+      "default": true,
+      "description": "Fetch URLs in parallel"
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "standard", "verbose"],
+      "default": "standard"
+    }
+  },
+  "required": ["urls"]
+}
+```
+
+---
+
+## discover
+
+**Description**: Execute multiple grep, glob, or symbol queries in parallel. Returns results keyed by query ID for efficient batch discovery.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "queries": {
+      "type": "array",
+      "description": "Array of queries to execute",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique ID for this query"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["grep", "glob", "symbols"],
+            "description": "Query type"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Regex pattern (for grep)"
+          },
+          "pattern_base64": {
+            "type": "string",
+            "description": "Base64-encoded regex pattern"
+          },
+          "glob": {
+            "type": "string",
+            "description": "File filter (for grep)"
+          },
+          "patterns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Glob patterns (for glob)"
+          },
+          "query": {
+            "type": "string",
+            "description": "Symbol name (for symbols)"
+          },
+          "kinds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Symbol kinds (for symbols)"
+          }
+        },
+        "required": ["id", "type"]
+      }
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "files_only", "locations"],
+      "default": "files_only"
+    },
+    "base_path": {
+      "type": "string",
+      "description": "Base directory for searches (default: cwd)"
+    }
+  },
+  "required": ["queries"]
+}
+```
+
+---
+
+## precision_grep
+
+**Description**: Search for patterns with batch queries and precise output control. Supports count_only, files_only, locations, matches, and context modes.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "queries": {
+      "type": "array",
+      "description": "Array of search queries to execute",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Query identifier" },
+          "pattern": { "type": "string", "description": "Regex pattern to search for" },
+          "pattern_base64": { "type": "string", "description": "Base64-encoded regex pattern" },
+          "glob": { "type": "string", "description": "File pattern to search in" },
+          "path": { "type": "string", "description": "Directory path to search" },
+          "exclude": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Patterns to exclude"
+          },
+          "case_sensitive": { "type": "boolean", "description": "Case sensitive (default: true)" },
+          "whole_word": { "type": "boolean", "description": "Match whole words only" },
+          "multiline": { "type": "boolean", "description": "Allow multiline matches (default: false)" },
+          "include_binary": { "type": "boolean", "description": "Search binary files (default: false)" }
+        },
+        "required": ["id"]
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["count_only", "files_only", "locations", "matches", "context"]
+        },
+        "context_before": { "type": "integer", "minimum": 0, "default": 0 },
+        "context_after": { "type": "integer", "minimum": 0, "default": 0 },
+        "expand_to": {
+          "type": "string",
+          "enum": ["line", "block", "function", "class"]
+        },
+        "max_results": { "type": "integer", "minimum": 1 },
+        "max_per_item": { "type": "integer", "minimum": 1 },
+        "max_total_matches": { "type": "integer", "minimum": 1 },
+        "max_tokens": { "type": "integer", "minimum": 1 },
+        "max_line_length": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "parallel": { "type": "boolean", "default": true },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "standard", "verbose"],
+      "default": "standard"
+    }
+  },
+  "required": ["queries"]
+}
+```
+
+---
+
+## precision_glob
+
+**Description**: Token-efficient file finding with filters and optional preview. Supports size/date filters, content matching, sorting, and gitignore.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "patterns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Glob patterns to match"
+    },
+    "patterns_base64": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Base64-encoded glob patterns"
+    },
+    "preset": {
+      "type": "string",
+      "enum": ["typescript", "javascript", "styles", "config", "tests", "all"]
+    },
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Patterns to exclude"
+    },
+    "filters": {
+      "type": "object",
+      "properties": {
+        "min_size": { "type": "integer", "minimum": 0 },
+        "max_size": { "type": "integer", "minimum": 0 },
+        "modified_after": { "type": "string", "format": "date-time" },
+        "modified_before": { "type": "string", "format": "date-time" },
+        "has_content": { "type": "string", "description": "Regex to match in file content" },
+        "is_empty": { "type": "boolean" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["count_only", "paths_only", "with_stats", "with_preview"],
+          "default": "paths_only"
+        },
+        "max_results": { "type": "integer", "minimum": 1, "default": 100 },
+        "sort_by": { "type": "string", "enum": ["name", "size", "modified"] },
+        "sort_order": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
+        "preview_lines": { "type": "integer", "minimum": 1, "default": 3 },
+        "max_tokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "respect_gitignore": { "type": "boolean", "default": true },
+    "follow_symlinks": { "type": "boolean", "default": false },
+    "base_path": { "type": "string", "description": "Base directory for glob patterns" },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "minimal", "standard", "verbose"],
+      "default": "standard"
+    }
+  }
+}
+```
+
+---
+
+## precision_symbols
+
+**Description**: Token-efficient symbol search across workspace or specific files. Supports workspace-wide symbol search and per-file symbol extraction.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["workspace", "document"],
+      "default": "workspace"
+    },
+    "query": {
+      "type": "string",
+      "description": "Symbol name pattern (workspace mode)"
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files to analyze (document mode)"
+    },
+    "kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"]
+      }
+    },
+    "exported_only": { "type": "boolean", "default": false },
+    "include_private": { "type": "boolean", "default": false },
+    "output": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["count_only", "names_only", "locations", "signatures", "full"],
+          "default": "locations"
+        },
+        "max_results": { "type": "integer", "minimum": 1, "default": 100 },
+        "group_by": {
+          "type": "string",
+          "enum": ["file", "kind", "none"],
+          "default": "none"
+        },
+        "max_tokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "verbosity": {
+      "type": "string",
+      "enum": ["count_only", "names_only", "locations", "signatures", "full"],
+      "default": "locations"
+    }
+  },
+  "required": []
+}
+```
