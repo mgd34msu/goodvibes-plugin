@@ -9,6 +9,15 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/bash-json-escape.mjs\""
           }
         ]
+      },
+      {
+        "matcher": "Read|Edit|Write|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\""
+          }
+        ]
       }
     ]
   }
