@@ -171,11 +171,4 @@ export async function runPreToolUseHook(): Promise<void> {
   }
 }
 
-// Only run when executed directly, not when imported for testing
-/* v8 ignore start -- @preserve: module entry point, not testable in unit tests */
-const isMainModule =
-  import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
-if (isMainModule) {
-  void runPreToolUseHook();
-}
-/* v8 ignore stop */
+// Entry point is handled by pre-tool-use.ts - do not call here to avoid duplicate execution

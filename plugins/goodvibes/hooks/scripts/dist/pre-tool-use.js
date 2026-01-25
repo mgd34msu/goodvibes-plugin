@@ -1105,12 +1105,7 @@ async function runPreToolUseHook() {
     );
   }
 }
-var isMainModule2 = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`;
-if (isMainModule2) {
-  void runPreToolUseHook();
-}
 
 // src/pre-tool-use.ts
 void runPreToolUseHook();
 /* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */
-/* v8 ignore start -- @preserve: module entry point, not testable in unit tests */
