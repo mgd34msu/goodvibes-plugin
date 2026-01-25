@@ -39,7 +39,6 @@ import {
   respond,
   readHookInput,
   allowTool,
-  debug,
   logError,
 } from '../shared/index.js';
 
@@ -72,9 +71,7 @@ import type { PreToolUseInput } from './subagent-blockers.js';
  * @returns Promise that resolves when validation is complete
  */
 async function handleBashTool(input: HookInput): Promise<void> {
-  debug('handleBashTool ENTRY', { tool_input: input.tool_input });
   const command = extractBashCommand(input);
-  debug('extractBashCommand result', { command: command?.substring(0, 100), hasCommand: !!command });
 
   if (!command) {
     respond(allowTool('PreToolUse'));
@@ -109,18 +106,10 @@ async function handleBashTool(input: HookInput): Promise<void> {
  * @returns Promise that resolves when the hook completes
  */
 export async function runPreToolUseHook(): Promise<void> {
-  debug('runPreToolUseHook STARTED');
   try {
-    debug('About to read hook input');
   const rawInput = await readHookInput();
-  debug('Hook input received', { tool_name: rawInput.tool_name });
     const input = rawInput as PreToolUseInput;
 
-    debug('PreToolUse hook received input', {
-      tool_name: input.tool_name,
-      cwd: input.cwd,
-      is_subagent: input.is_subagent,
-    });
 
     // FIRST: Handle Bash tool (JSON auto-escape uses updatedInput, must be first)
     if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
@@ -138,13 +127,11 @@ export async function runPreToolUseHook(): Promise<void> {
 
     // THIRD: MCP tool validators
     const toolName = input.tool_name?.split('__').pop() ?? '';
-    debug(`Extracted tool name: ${toolName}`);
 
     const validator = TOOL_VALIDATORS[toolName];
     if (validator) {
       await validator(input);
     } else {
-      debug(`Unknown tool '${toolName}', allowing by default`);
       respond(allowTool('PreToolUse'));
     }
   } catch (error: unknown) {

@@ -953,9 +953,7 @@ var TOOL_VALIDATORS = {
 
 // src/pre-tool-use/hook.ts
 async function handleBashTool(input) {
-  debug("handleBashTool ENTRY", { tool_input: input.tool_input });
   const command = extractBashCommand(input);
-  debug("extractBashCommand result", { command: command?.substring(0, 100), hasCommand: !!command });
   if (!command) {
     respond(allowTool("PreToolUse"));
     return;
@@ -971,17 +969,9 @@ async function handleBashTool(input) {
   respond(allowTool("PreToolUse"));
 }
 async function runPreToolUseHook() {
-  debug("runPreToolUseHook STARTED");
   try {
-    debug("About to read hook input");
     const rawInput = await readHookInput();
-    debug("Hook input received", { tool_name: rawInput.tool_name });
     const input = rawInput;
-    debug("PreToolUse hook received input", {
-      tool_name: input.tool_name,
-      cwd: input.cwd,
-      is_subagent: input.is_subagent
-    });
     if (input.tool_name === "Bash" || input.tool_name?.endsWith("__Bash")) {
       await handleBashTool(input);
       return;
@@ -993,12 +983,10 @@ async function runPreToolUseHook() {
       }
     }
     const toolName = input.tool_name?.split("__").pop() ?? "";
-    debug(`Extracted tool name: ${toolName}`);
     const validator = TOOL_VALIDATORS[toolName];
     if (validator) {
       await validator(input);
     } else {
-      debug(`Unknown tool '${toolName}', allowing by default`);
       respond(allowTool("PreToolUse"));
     }
   } catch (error) {
