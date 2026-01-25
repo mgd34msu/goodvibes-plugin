@@ -550,48 +550,20 @@ export class ContextGathererImpl implements ContextGatherer {
   ): Promise<{ decisions: Decision[]; patterns: Pattern[]; failures: Failure[] }> {
     const memory = this.memoryManager.getMemory();
 
-    // Filter and map decisions relevant to the scope
+    // Filter decisions relevant to the scope (return full objects, not partial)
     const decisions: Decision[] = memory.decisions
       .filter(d =>
         d.status === 'active' &&
         (d.files?.some(f => files.includes(f)) || d.symbols?.some(s => symbols.includes(s)))
-      )
-      .map(d => ({
-        id: d.id,
-        what: d.what,
-        why: d.why,
-        category: d.category,
-        confidence: d.confidence === 'high' ? 1.0 : d.confidence === 'medium' ? 0.5 : 0.25,
-        files: d.files || [],
-        symbols: d.symbols || [],
-        status: d.status === 'active' ? 'active' : 'superseded',
-        timestamp: d.timestamp,
-      }));
+      );
 
-    // Filter and map patterns with examples in the scope
+    // Filter patterns with examples in the scope (return full objects, not partial)
     const patterns: Pattern[] = memory.patterns
-      .filter(p => p.examples.some(e => files.includes(e.file)))
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        examples: p.examples.map(e => `${e.file}:${e.lines[0]}-${e.lines[1]}`),
-        when_to_use: p.when_to_use,
-        usage_count: p.usage_count,
-      }));
+      .filter(p => p.examples.some(e => files.includes(e.file)));
 
-    // Filter and map unresolved failures in the scope
+    // Filter unresolved failures in the scope (return full objects, not partial)
     const failures: Failure[] = memory.failures
-      .filter(f => !f.resolved && f.files?.some(file => files.includes(file)))
-      .map(f => ({
-        id: f.id,
-        error_type: f.error_type,
-        error_message: f.error_message,
-        resolution: f.resolution,
-        root_cause: f.root_cause,
-        prevention: f.prevention,
-        timestamp: f.timestamp,
-      }));
+      .filter(f => !f.resolved && f.files?.some(file => files.includes(file)));
 
     return { decisions, patterns, failures };
   }

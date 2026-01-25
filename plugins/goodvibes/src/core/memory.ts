@@ -1,100 +1,85 @@
-import { randomUUID } from "crypto";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { getMemoryDir, MEMORY_FILES, SUBDIRS } from "./paths.js";
 
 /**
+ * Generates a timestamp-based ID with the given prefix.
+ * Format: prefix_YYYYMMDD_HHMMSS
+ */
+function generateId(prefix: "dec" | "pat" | "fail"): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
+  const ms = String(now.getMilliseconds()).padStart(3, "0");
+  // Add milliseconds and random suffix for uniqueness
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+  return `${prefix}_${year}${month}${day}_${hours}${minutes}${seconds}${ms}${random}`;
+}
+
+/**
  * Represents a recorded decision.
  */
 export interface Decision {
-  /** Unique decision identifier */
+  /** Unique decision identifier - Format: dec_YYYYMMDD_HHMMSS */
   id: string;
   /** ISO timestamp when made */
-  timestamp: string;
-  /** What was decided */
-  decision: string;
-  /** Why this decision was made */
-  rationale: string;
-  /** Context when decision was made */
-  context: string;
-  /** Outcome of the decision (if known) */
-  outcome?: "success" | "failure" | "unknown";
-  /** Tags for categorization */
-  tags: string[];
-  /** Related file paths */
-  files?: string[];
-  /** Session ID when made */
-  session_id?: string;
+  date: string;
+  /** Category of decision */
+  category: "library" | "architecture" | "pattern" | "convention";
+  /** Brief description of what was decided */
+  what: string;
+  /** Rationale for the decision */
+  why: string;
+  /** Affected files/directories */
+  scope: string[];
+  /** Confidence level */
+  confidence: "high" | "medium" | "low";
+  /** Current status */
+  status: "active" | "superseded" | "reverted";
 }
 
 /**
  * Represents a discovered code pattern.
  */
 export interface Pattern {
-  /** Unique pattern identifier */
+  /** Unique pattern identifier - Format: pat_YYYYMMDD_HHMMSS */
   id: string;
-  /** ISO timestamp when discovered */
-  timestamp: string;
   /** Pattern name */
   name: string;
   /** Pattern description */
   description: string;
-  /** Example code snippet */
-  example: string;
-  /** Anti-pattern to avoid */
-  anti_pattern?: string;
   /** When to use this pattern */
-  use_when: string;
-  /** When NOT to use this pattern */
-  avoid_when?: string;
-  /** Tags for categorization */
-  tags: string[];
-  /** Related file paths where pattern was found */
-  files?: string[];
-  /** How many times this pattern has been applied */
-  usage_count: number;
+  when_to_use: string;
+  /** Example file paths where pattern is found */
+  example_files: string[];
+  /** Keywords for categorization */
+  keywords: string[];
 }
 
 /**
  * Represents a recorded failure.
  */
 export interface Failure {
-  /** Unique failure identifier */
+  /** Unique failure identifier - Format: fail_YYYYMMDD_HHMMSS */
   id: string;
   /** ISO timestamp when occurred */
-  timestamp: string;
-  /** Error type */
-  error_type: string;
+  date: string;
   /** Error message */
-  error_message: string;
-  /** Stack trace if available */
-  stack_trace?: string;
+  error: string;
   /** Context when failure occurred */
   context: string;
-  /** Attempted fixes */
-  attempted_fixes: AttemptedFix[];
-  /** What ultimately resolved it */
-  resolution?: string;
-  /** Whether it was resolved */
-  resolved: boolean;
-  /** Tags for categorization */
-  tags: string[];
-  /** Related file paths */
-  files?: string[];
-  /** Session ID when occurred */
-  session_id?: string;
-}
-
-/**
- * Represents an attempted fix for a failure.
- */
-export interface AttemptedFix {
-  /** What was tried */
-  description: string;
-  /** Whether it worked */
-  success: boolean;
-  /** ISO timestamp when attempted */
-  timestamp: string;
+  /** Root cause analysis */
+  root_cause: string;
+  /** How it was resolved */
+  resolution: string;
+  /** How to prevent in future */
+  prevention: string;
+  /** Keywords for categorization */
+  keywords: string[];
 }
 
 /**
@@ -262,25 +247,24 @@ export class Memory {
    * Records a new decision.
    */
   async recordDecision(
-    decision: string,
-    rationale: string,
-    context: string,
+    what: string,
+    why: string,
+    category: Decision["category"],
     options: {
-      tags?: string[];
-      files?: string[];
-      session_id?: string;
+      scope?: string[];
+      confidence?: Decision["confidence"];
+      status?: Decision["status"];
     } = {}
   ): Promise<Decision> {
     const record: Decision = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
-      decision,
-      rationale,
-      context,
-      outcome: "unknown",
-      tags: options.tags || [],
-      files: options.files,
-      session_id: options.session_id,
+      id: generateId("dec"),
+      date: new Date().toISOString(),
+      category,
+      what,
+      why,
+      scope: options.scope || [],
+      confidence: options.confidence || "medium",
+      status: options.status || "active",
     };
 
     this.decisions.set(record.id, record);
@@ -291,16 +275,16 @@ export class Memory {
   }
 
   /**
-   * Updates a decision's outcome.
+   * Updates a decision's status.
    */
-  async updateDecisionOutcome(
+  async updateDecisionStatus(
     id: string,
-    outcome: Decision["outcome"]
+    status: Decision["status"]
   ): Promise<boolean> {
     const decision = this.decisions.get(id);
     if (!decision) return false;
 
-    decision.outcome = outcome;
+    decision.status = status;
     await this.autoSave();
     return true;
   }
@@ -318,27 +302,20 @@ export class Memory {
   searchDecisions(options: MemorySearchOptions = {}): Decision[] {
     let results = Array.from(this.decisions.values());
 
-    // Filter by tags
-    if (options.tags && options.tags.length > 0) {
-      results = results.filter((d) =>
-        options.tags!.some((tag) => d.tags.includes(tag))
-      );
-    }
-
-    // Filter by file
+    // Filter by file (check scope)
     if (options.file) {
-      results = results.filter((d) => d.files?.includes(options.file!));
+      results = results.filter((d) => d.scope.includes(options.file!));
     }
 
     // Filter by date range
     if (options.since) {
       results = results.filter(
-        (d) => new Date(d.timestamp) >= options.since!
+        (d) => new Date(d.date) >= options.since!
       );
     }
     if (options.until) {
       results = results.filter(
-        (d) => new Date(d.timestamp) <= options.until!
+        (d) => new Date(d.date) <= options.until!
       );
     }
 
@@ -347,15 +324,15 @@ export class Memory {
       const query = options.query.toLowerCase();
       results = results.filter(
         (d) =>
-          d.decision.toLowerCase().includes(query) ||
-          d.rationale.toLowerCase().includes(query) ||
-          d.context.toLowerCase().includes(query)
+          d.what.toLowerCase().includes(query) ||
+          d.why.toLowerCase().includes(query) ||
+          d.category.toLowerCase().includes(query)
       );
     }
 
-    // Sort by timestamp (newest first)
+    // Sort by date (newest first)
     results.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     // Apply limit
@@ -373,7 +350,7 @@ export class Memory {
     if (this.decisions.size <= this.config.max_decisions) return;
 
     const sorted = Array.from(this.decisions.values()).sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     const toDelete = sorted.slice(this.config.max_decisions);
@@ -390,27 +367,19 @@ export class Memory {
   async recordPattern(
     name: string,
     description: string,
-    example: string,
-    use_when: string,
+    when_to_use: string,
     options: {
-      anti_pattern?: string;
-      avoid_when?: string;
-      tags?: string[];
-      files?: string[];
+      example_files?: string[];
+      keywords?: string[];
     } = {}
   ): Promise<Pattern> {
     const record: Pattern = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
+      id: generateId("pat"),
       name,
       description,
-      example,
-      use_when,
-      anti_pattern: options.anti_pattern,
-      avoid_when: options.avoid_when,
-      tags: options.tags || [],
-      files: options.files,
-      usage_count: 0,
+      when_to_use,
+      example_files: options.example_files || [],
+      keywords: options.keywords || [],
     };
 
     this.patterns.set(record.id, record);
@@ -420,17 +389,6 @@ export class Memory {
     return record;
   }
 
-  /**
-   * Increments the usage count for a pattern.
-   */
-  async incrementPatternUsage(id: string): Promise<boolean> {
-    const pattern = this.patterns.get(id);
-    if (!pattern) return false;
-
-    pattern.usage_count++;
-    await this.autoSave();
-    return true;
-  }
 
   /**
    * Gets a pattern by ID.
@@ -455,16 +413,16 @@ export class Memory {
   searchPatterns(options: MemorySearchOptions = {}): Pattern[] {
     let results = Array.from(this.patterns.values());
 
-    // Filter by tags
+    // Filter by tags (using keywords)
     if (options.tags && options.tags.length > 0) {
       results = results.filter((p) =>
-        options.tags!.some((tag) => p.tags.includes(tag))
+        options.tags!.some((tag) => p.keywords.includes(tag))
       );
     }
 
-    // Filter by file
+    // Filter by file (check example_files)
     if (options.file) {
-      results = results.filter((p) => p.files?.includes(options.file!));
+      results = results.filter((p) => p.example_files.includes(options.file!));
     }
 
     // Text search
@@ -474,12 +432,12 @@ export class Memory {
         (p) =>
           p.name.toLowerCase().includes(query) ||
           p.description.toLowerCase().includes(query) ||
-          p.example.toLowerCase().includes(query)
+          p.when_to_use.toLowerCase().includes(query)
       );
     }
 
-    // Sort by usage count (most used first)
-    results.sort((a, b) => b.usage_count - a.usage_count);
+    // Sort by name (alphabetical)
+    results.sort((a, b) => a.name.localeCompare(b.name));
 
     // Apply limit
     if (options.limit) {
@@ -495,9 +453,9 @@ export class Memory {
   private prunePatterns(): void {
     if (this.patterns.size <= this.config.max_patterns) return;
 
-    // Keep most recently used patterns
+    // Keep patterns by name (alphabetical order)
     const sorted = Array.from(this.patterns.values()).sort(
-      (a, b) => b.usage_count - a.usage_count
+      (a, b) => a.name.localeCompare(b.name)
     );
 
     const toDelete = sorted.slice(this.config.max_patterns);
@@ -512,28 +470,24 @@ export class Memory {
    * Records a new failure.
    */
   async recordFailure(
-    error_type: string,
-    error_message: string,
+    error: string,
     context: string,
+    root_cause: string,
+    resolution: string,
+    prevention: string,
     options: {
-      stack_trace?: string;
-      tags?: string[];
-      files?: string[];
-      session_id?: string;
+      keywords?: string[];
     } = {}
   ): Promise<Failure> {
     const record: Failure = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
-      error_type,
-      error_message,
+      id: generateId("fail"),
+      date: new Date().toISOString(),
+      error,
       context,
-      stack_trace: options.stack_trace,
-      attempted_fixes: [],
-      resolved: false,
-      tags: options.tags || [],
-      files: options.files,
-      session_id: options.session_id,
+      root_cause,
+      resolution,
+      prevention,
+      keywords: options.keywords || [],
     };
 
     this.failures.set(record.id, record);
@@ -543,44 +497,6 @@ export class Memory {
     return record;
   }
 
-  /**
-   * Records an attempted fix for a failure.
-   */
-  async recordAttemptedFix(
-    failure_id: string,
-    description: string,
-    success: boolean
-  ): Promise<boolean> {
-    const failure = this.failures.get(failure_id);
-    if (!failure) return false;
-
-    failure.attempted_fixes.push({
-      description,
-      success,
-      timestamp: new Date().toISOString(),
-    });
-
-    if (success) {
-      failure.resolved = true;
-      failure.resolution = description;
-    }
-
-    await this.autoSave();
-    return true;
-  }
-
-  /**
-   * Marks a failure as resolved.
-   */
-  async resolveFailure(id: string, resolution: string): Promise<boolean> {
-    const failure = this.failures.get(id);
-    if (!failure) return false;
-
-    failure.resolved = true;
-    failure.resolution = resolution;
-    await this.autoSave();
-    return true;
-  }
 
   /**
    * Gets a failure by ID.
@@ -595,27 +511,22 @@ export class Memory {
   searchFailures(options: MemorySearchOptions = {}): Failure[] {
     let results = Array.from(this.failures.values());
 
-    // Filter by tags
+    // Filter by tags (using keywords)
     if (options.tags && options.tags.length > 0) {
       results = results.filter((f) =>
-        options.tags!.some((tag) => f.tags.includes(tag))
+        options.tags!.some((tag) => f.keywords.includes(tag))
       );
-    }
-
-    // Filter by file
-    if (options.file) {
-      results = results.filter((f) => f.files?.includes(options.file!));
     }
 
     // Filter by date range
     if (options.since) {
       results = results.filter(
-        (f) => new Date(f.timestamp) >= options.since!
+        (f) => new Date(f.date) >= options.since!
       );
     }
     if (options.until) {
       results = results.filter(
-        (f) => new Date(f.timestamp) <= options.until!
+        (f) => new Date(f.date) <= options.until!
       );
     }
 
@@ -624,15 +535,15 @@ export class Memory {
       const query = options.query.toLowerCase();
       results = results.filter(
         (f) =>
-          f.error_type.toLowerCase().includes(query) ||
-          f.error_message.toLowerCase().includes(query) ||
-          f.context.toLowerCase().includes(query)
+          f.error.toLowerCase().includes(query) ||
+          f.context.toLowerCase().includes(query) ||
+          f.root_cause.toLowerCase().includes(query)
       );
     }
 
-    // Sort by timestamp (newest first)
+    // Sort by date (newest first)
     results.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     // Apply limit
@@ -644,15 +555,12 @@ export class Memory {
   }
 
   /**
-   * Finds similar failures based on error type and message.
+   * Finds similar failures based on error message.
    */
-  findSimilarFailures(error_type: string, error_message: string): Failure[] {
+  findSimilarFailures(error: string): Failure[] {
+    const errorSubstring = error.slice(0, 50).toLowerCase();
     return Array.from(this.failures.values())
-      .filter(
-        (f) =>
-          f.error_type === error_type ||
-          f.error_message.includes(error_message.slice(0, 50))
-      )
+      .filter((f) => f.error.toLowerCase().includes(errorSubstring))
       .slice(0, 10);
   }
 
@@ -663,7 +571,7 @@ export class Memory {
     if (this.failures.size <= this.config.max_failures) return;
 
     const sorted = Array.from(this.failures.values()).sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     const toDelete = sorted.slice(this.config.max_failures);
@@ -681,18 +589,17 @@ export class Memory {
     decisions: number;
     patterns: number;
     failures: number;
-    resolved_failures: number;
-    successful_decisions: number;
+    active_decisions: number;
+    superseded_decisions: number;
   } {
     const decisions = Array.from(this.decisions.values());
-    const failures = Array.from(this.failures.values());
 
     return {
       decisions: this.decisions.size,
       patterns: this.patterns.size,
       failures: this.failures.size,
-      resolved_failures: failures.filter((f) => f.resolved).length,
-      successful_decisions: decisions.filter((d) => d.outcome === "success").length,
+      active_decisions: decisions.filter((d) => d.status === "active").length,
+      superseded_decisions: decisions.filter((d) => d.status === "superseded").length,
     };
   }
 

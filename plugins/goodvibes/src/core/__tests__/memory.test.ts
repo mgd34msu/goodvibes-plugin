@@ -15,6 +15,7 @@ describe("Memory", () => {
     // Create temp directory for tests
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "memory-test-"));
     memory = new Memory(tempDir);
+    await memory.load();
   });
 
   afterEach(async () => {
@@ -31,58 +32,60 @@ describe("Memory", () => {
       const decision = await memory.recordDecision(
         "Use TypeScript for the project",
         "Better type safety and IDE support",
-        "Starting new project",
-        { tags: ["language", "typescript"] }
+        "library",
+        { scope: ["src/"], confidence: "high" }
       );
 
       expect(decision.id).toBeDefined();
-      expect(decision.decision).toBe("Use TypeScript for the project");
-      expect(decision.rationale).toBe("Better type safety and IDE support");
-      expect(decision.tags).toContain("typescript");
+      expect(decision.id).toMatch(/^dec_\d{8}_\d{12}$/);
+      expect(decision.what).toBe("Use TypeScript for the project");
+      expect(decision.why).toBe("Better type safety and IDE support");
+      expect(decision.category).toBe("library");
+      expect(decision.confidence).toBe("high");
     });
 
     it("should retrieve a decision by ID", async () => {
       const created = await memory.recordDecision(
         "Decision 1",
         "Rationale 1",
-        "Context 1"
+        "pattern"
       );
 
       const retrieved = memory.getDecision(created.id);
       expect(retrieved).toBeDefined();
-      expect(retrieved?.decision).toBe("Decision 1");
+      expect(retrieved?.what).toBe("Decision 1");
     });
 
-    it("should update decision outcome", async () => {
+    it("should update decision status", async () => {
       const decision = await memory.recordDecision(
         "Try new approach",
         "Might work better",
-        "Testing"
+        "architecture"
       );
 
-      const updated = await memory.updateDecisionOutcome(decision.id, "success");
+      const updated = await memory.updateDecisionStatus(decision.id, "superseded");
       expect(updated).toBe(true);
 
       const retrieved = memory.getDecision(decision.id);
-      expect(retrieved?.outcome).toBe("success");
+      expect(retrieved?.status).toBe("superseded");
     });
 
-    it("should search decisions by tags", async () => {
-      await memory.recordDecision("Decision 1", "R1", "C1", { tags: ["api"] });
-      await memory.recordDecision("Decision 2", "R2", "C2", { tags: ["frontend"] });
-      await memory.recordDecision("Decision 3", "R3", "C3", { tags: ["api", "rest"] });
+    it("should search decisions by file scope", async () => {
+      await memory.recordDecision("Decision 1", "R1", "library", { scope: ["src/api/"] });
+      await memory.recordDecision("Decision 2", "R2", "library", { scope: ["src/frontend/"] });
+      await memory.recordDecision("Decision 3", "R3", "library", { scope: ["src/api/", "src/utils/"] });
 
-      const results = memory.searchDecisions({ tags: ["api"] });
+      const results = memory.searchDecisions({ file: "src/api/" });
       expect(results.length).toBe(2);
     });
 
     it("should search decisions by query", async () => {
-      await memory.recordDecision("Use React", "Popular framework", "Frontend");
-      await memory.recordDecision("Use Vue", "Easy learning curve", "Frontend");
+      await memory.recordDecision("Use React", "Popular framework", "library");
+      await memory.recordDecision("Use Vue", "Easy learning curve", "library");
 
       const results = memory.searchDecisions({ query: "React" });
       expect(results.length).toBe(1);
-      expect(results[0].decision).toBe("Use React");
+      expect(results[0].what).toBe("Use React");
     });
   });
 
@@ -91,21 +94,20 @@ describe("Memory", () => {
       const pattern = await memory.recordPattern(
         "Singleton",
         "Ensures single instance",
-        "class Singleton { private static instance; }",
         "When you need global state",
-        { tags: ["design-pattern", "creational"] }
+        { example_files: ["src/singleton.ts"], keywords: ["design-pattern", "creational"] }
       );
 
       expect(pattern.id).toBeDefined();
+      expect(pattern.id).toMatch(/^pat_\d{8}_\d{12}$/);
       expect(pattern.name).toBe("Singleton");
-      expect(pattern.usage_count).toBe(0);
+      expect(pattern.keywords).toContain("creational");
     });
 
     it("should retrieve pattern by name", async () => {
       await memory.recordPattern(
         "Factory",
         "Creates objects",
-        "interface Factory { create(): Product }",
         "When object creation is complex"
       );
 
@@ -114,24 +116,9 @@ describe("Memory", () => {
       expect(pattern?.description).toBe("Creates objects");
     });
 
-    it("should increment usage count", async () => {
-      const pattern = await memory.recordPattern(
-        "Observer",
-        "Subscribe to changes",
-        "subject.subscribe(observer)",
-        "When objects need to react to changes"
-      );
-
-      await memory.incrementPatternUsage(pattern.id);
-      await memory.incrementPatternUsage(pattern.id);
-
-      const updated = memory.getPattern(pattern.id);
-      expect(updated?.usage_count).toBe(2);
-    });
-
-    it("should search patterns by tags", async () => {
-      await memory.recordPattern("P1", "D1", "E1", "W1", { tags: ["structural"] });
-      await memory.recordPattern("P2", "D2", "E2", "W2", { tags: ["behavioral"] });
+    it("should search patterns by keywords", async () => {
+      await memory.recordPattern("P1", "D1", "W1", { keywords: ["structural"] });
+      await memory.recordPattern("P2", "D2", "W2", { keywords: ["behavioral"] });
 
       const results = memory.searchPatterns({ tags: ["structural"] });
       expect(results.length).toBe(1);
@@ -141,61 +128,35 @@ describe("Memory", () => {
   describe("Failure Storage", () => {
     it("should record a failure", async () => {
       const failure = await memory.recordFailure(
-        "type_error",
         "Cannot read property 'x' of undefined",
         "Running API tests",
-        { tags: ["runtime", "null-reference"] }
+        "Null reference in API handler",
+        "Added null check before accessing property",
+        "Always validate objects before property access",
+        { keywords: ["runtime", "null-reference"] }
       );
 
       expect(failure.id).toBeDefined();
-      expect(failure.error_type).toBe("type_error");
-      expect(failure.resolved).toBe(false);
-    });
-
-    it("should record attempted fixes", async () => {
-      const failure = await memory.recordFailure(
-        "build_error",
-        "Module not found",
-        "Building project"
-      );
-
-      await memory.recordAttemptedFix(failure.id, "Added missing import", false);
-      await memory.recordAttemptedFix(failure.id, "Installed missing package", true);
-
-      const updated = memory.getFailure(failure.id);
-      expect(updated?.attempted_fixes.length).toBe(2);
-      expect(updated?.resolved).toBe(true);
-    });
-
-    it("should resolve a failure", async () => {
-      const failure = await memory.recordFailure(
-        "test_failure",
-        "Assertion failed",
-        "Running unit tests"
-      );
-
-      await memory.resolveFailure(failure.id, "Fixed assertion condition");
-
-      const updated = memory.getFailure(failure.id);
-      expect(updated?.resolved).toBe(true);
-      expect(updated?.resolution).toBe("Fixed assertion condition");
+      expect(failure.id).toMatch(/^fail_\d{8}_\d{12}$/);
+      expect(failure.error).toBe("Cannot read property 'x' of undefined");
+      expect(failure.root_cause).toBe("Null reference in API handler");
     });
 
     it("should find similar failures", async () => {
-      await memory.recordFailure("type_error", "Cannot read property 'foo' of undefined", "C1");
-      await memory.recordFailure("type_error", "Cannot read property 'bar' of undefined", "C2");
-      await memory.recordFailure("runtime_error", "Stack overflow", "C3");
+      await memory.recordFailure("Cannot read property 'foo' of undefined", "C1", "RC1", "Res1", "Prev1");
+      await memory.recordFailure("Cannot read property 'bar' of undefined", "C2", "RC2", "Res2", "Prev2");
+      await memory.recordFailure("Stack overflow", "C3", "RC3", "Res3", "Prev3");
 
-      const similar = memory.findSimilarFailures("type_error", "Cannot read property");
+      const similar = memory.findSimilarFailures("Cannot read property");
       expect(similar.length).toBe(2);
     });
   });
 
   describe("Persistence", () => {
     it("should save and load memory", async () => {
-      await memory.recordDecision("Test decision", "Test rationale", "Test context");
-      await memory.recordPattern("Test pattern", "Desc", "Example", "Use when");
-      await memory.recordFailure("test_error", "Test message", "Test context");
+      await memory.recordDecision("Test decision", "Test rationale", "library");
+      await memory.recordPattern("Test pattern", "Desc", "Use when");
+      await memory.recordFailure("Test error", "Test context", "Root cause", "Resolution", "Prevention");
 
       await memory.save();
 
@@ -217,17 +178,17 @@ describe("Memory", () => {
 
   describe("Statistics", () => {
     it("should track statistics", async () => {
-      await memory.recordDecision("D1", "R1", "C1");
-      await memory.recordDecision("D2", "R2", "C2");
-      await memory.recordPattern("P1", "D1", "E1", "W1");
-      const failure = await memory.recordFailure("E1", "M1", "C1");
-      await memory.resolveFailure(failure.id, "Fixed");
+      await memory.recordDecision("D1", "R1", "library");
+      await memory.recordDecision("D2", "R2", "pattern", { status: "superseded" });
+      await memory.recordPattern("P1", "D1", "W1");
+      await memory.recordFailure("E1", "C1", "RC1", "Res1", "Prev1");
 
       const stats = memory.getStats();
       expect(stats.decisions).toBe(2);
       expect(stats.patterns).toBe(1);
       expect(stats.failures).toBe(1);
-      expect(stats.resolved_failures).toBe(1);
+      expect(stats.active_decisions).toBe(1);
+      expect(stats.superseded_decisions).toBe(1);
     });
   });
 
@@ -239,8 +200,8 @@ describe("Memory", () => {
     });
 
     it("should clear all memory", async () => {
-      await memory.recordDecision("D1", "R1", "C1");
-      await memory.recordPattern("P1", "D1", "E1", "W1");
+      await memory.recordDecision("D1", "R1", "library");
+      await memory.recordPattern("P1", "D1", "W1");
 
       await memory.clear();
 

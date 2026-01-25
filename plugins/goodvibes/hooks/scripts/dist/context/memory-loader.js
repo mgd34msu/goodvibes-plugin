@@ -2,13 +2,14 @@
  * Memory Loader
  *
  * Loads persisted context from .goodvibes/memory/ directory.
- * This includes decisions, patterns, failures, and preferences.
+ * Uses the core Memory class at runtime via dynamic import to avoid tsconfig issues.
+ * This provides a unified interface to memory across the system.
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/logging.js';
-import { getMemoryDir, MEMORY_FILES } from '../memory/paths.js';
+import { getMemoryDir } from '../memory/paths.js';
 /**
  * Check if a path is a directory (async).
  * Used to filter out non-directory paths when loading memory files.
@@ -43,15 +44,14 @@ const MAX_PATTERNS_DISPLAY = 5;
  */
 const RECENT_FAILURES_LIMIT = 2;
 /**
- * Load a JSON file from the memory directory.
- * Safely handles missing files by returning null.
+ * Load preferences from JSON file.
+ * Preferences are not yet part of core Memory class.
  *
  * @param cwd - The current working directory (project root)
- * @param filename - The JSON file name to load (relative to .goodvibes/memory/)
- * @returns Promise resolving to parsed JSON object, or null if file doesn't exist or parse fails
+ * @returns Promise resolving to parsed JSON object, or empty object if file doesn't exist
  */
-async function loadJsonFile(cwd, filename) {
-    const filePath = path.join(getMemoryDir(cwd), filename);
+async function loadPreferences(cwd) {
+    const filePath = path.join(getMemoryDir(cwd), 'preferences.json');
     try {
         if (await fileExists(filePath)) {
             const content = await fs.readFile(filePath, 'utf-8');
@@ -59,9 +59,9 @@ async function loadJsonFile(cwd, filename) {
         }
     }
     catch (error) {
-        debug('memory-loader failed', { error: String(error) });
+        debug('Failed to load preferences', { error: String(error) });
     }
-    return null;
+    return {};
 }
 /**
  * Load text files from a subdirectory.
@@ -95,7 +95,7 @@ async function loadTextFiles(cwd, subdir) {
 }
 /**
  * Load all project memory from the .goodvibes/memory directory.
- * Aggregates decisions, patterns, failures, preferences, and custom context.
+ * Uses the core Memory class for decisions, patterns, and failures via dynamic import.
  *
  * @param cwd - The current working directory (project root)
  * @returns Promise resolving to ProjectMemory with all persisted context
@@ -118,19 +118,33 @@ export async function loadMemory(cwd) {
             customContext: [],
         };
     }
-    // Load structured data
-    const [decisions, patterns, failures, preferences, customContext] = await Promise.all([
-        loadJsonFile(cwd, MEMORY_FILES.decisions),
-        loadJsonFile(cwd, MEMORY_FILES.patterns),
-        loadJsonFile(cwd, MEMORY_FILES.failures),
-        loadJsonFile(cwd, MEMORY_FILES.preferences),
+    // Try to use core Memory class, fall back to empty arrays if it fails
+    let decisions = [];
+    let patterns = [];
+    let failures = [];
+    try {
+        // Dynamic import to avoid TypeScript cross-module issues
+        const corePath = path.resolve(path.dirname(import.meta.url.replace('file:///', '')), '../../../src/core/memory.js');
+        const { Memory } = await import(corePath);
+        const memory = new Memory(cwd);
+        await memory.load();
+        decisions = memory.searchDecisions();
+        patterns = memory.searchPatterns();
+        failures = memory.searchFailures();
+    }
+    catch (error) {
+        debug('Failed to load core Memory class, using empty arrays', { error: String(error) });
+    }
+    // Load preferences and custom context (not yet in core Memory)
+    const [preferences, customContext] = await Promise.all([
+        loadPreferences(cwd),
         loadTextFiles(cwd, 'context'),
     ]);
     return {
-        decisions: decisions ?? [],
-        patterns: patterns ?? [],
-        failures: failures ?? [],
-        preferences: preferences ?? {},
+        decisions,
+        patterns,
+        failures,
+        preferences,
         customContext,
     };
 }
@@ -147,20 +161,20 @@ export async function loadMemory(cwd) {
  */
 export function formatMemory(memory) {
     const sections = [];
-    // Recent decisions
+    // Recent decisions (core Decision type: id, date, category, what, why, scope, confidence, status)
     if (memory.decisions.length > 0) {
         const recent = memory.decisions.slice(-RECENT_DECISIONS_LIMIT);
-        const decisionLines = recent.map((d) => `- ${d.description}${d.rationale ? ` (${d.rationale})` : ''}`);
+        const decisionLines = recent.map((d) => `- ${d.what}${d.why ? ` (${d.why})` : ''} [${d.category}]`);
         sections.push(`**Recent Decisions:**\n${decisionLines.join('\n')}`);
     }
-    // Active patterns
+    // Active patterns (core Pattern type: id, name, description, when_to_use, example_files, keywords)
     if (memory.patterns.length > 0) {
         const patternLines = memory.patterns
             .slice(0, MAX_PATTERNS_DISPLAY)
             .map((pattern) => `- **${pattern.name}:** ${pattern.description}`);
         sections.push(`**Project Patterns:**\n${patternLines.join('\n')}`);
     }
-    // Recent failures
+    // Recent failures (core Failure type: id, date, error, context, root_cause, resolution, prevention, keywords)
     if (memory.failures.length > 0) {
         const recent = memory.failures.slice(-RECENT_FAILURES_LIMIT);
         const failureLines = recent.map((failure) => {

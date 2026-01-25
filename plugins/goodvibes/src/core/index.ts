@@ -56,7 +56,6 @@ export type {
   Decision,
   Pattern,
   Failure,
-  AttemptedFix,
   MemoryConfig,
   MemorySearchOptions,
 } from "./memory.js";

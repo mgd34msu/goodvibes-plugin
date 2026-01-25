@@ -1,7 +1,20 @@
 /* v8 ignore file */
 /**
  * Memory module - aggregates all memory subsystems.
- * Provides backward compatibility with the old memory.ts API.
+ *
+ * IMPORTANT: This module maintains markdown-based memory files for human readability.
+ * The canonical memory system is in src/core/memory.ts which uses JSON format.
+ *
+ * This hooks memory system provides:
+ * - Markdown-based read/write for decisions, patterns, failures (human-readable)
+ * - Backward compatibility with existing markdown files
+ * - Migration path to core Memory class
+ *
+ * For new code: Use src/core/memory.ts Memory class directly.
+ * This module exists for:
+ * - Legacy markdown file support
+ * - Human-readable memory files in .goodvibes/memory/
+ * - Hook scripts that need markdown output
  */
 
 // Path utilities

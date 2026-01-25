@@ -1,7 +1,15 @@
 /**
  * Context Structure interfaces for Batch Engine
  * @see SPEC-v2 Section 6.1
+ *
+ * CONSOLIDATED: Now imports Decision, Pattern, Failure from memory.ts
+ * which extends core types from plugins/goodvibes/src/core/memory.ts
  */
+
+import type { Decision, Pattern, Failure } from './memory.js';
+
+// Re-export for backwards compatibility
+export type { Decision, Pattern, Failure };
 
 export interface Context {
   session: SessionContext;
@@ -49,7 +57,3 @@ export interface AgentContext {
   prior_results: Record<string, unknown>;
   budget: { tokens_remaining: number; turns_remaining: number; };
 }
-
-export interface Decision { id: string; what: string; why: string; category: string; confidence: number; files: string[]; symbols: string[]; status: 'active' | 'superseded'; timestamp: string; }
-export interface Pattern { id: string; name: string; description: string; examples: string[]; when_to_use: string; usage_count: number; }
-export interface Failure { id: string; error_type: string; error_message: string; resolution?: string; root_cause?: string; prevention?: string; timestamp: string; }

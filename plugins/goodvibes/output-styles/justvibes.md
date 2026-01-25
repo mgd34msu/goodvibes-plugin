@@ -124,6 +124,12 @@ Two-tier system: **logs/** for session details (Markdown), **memory/** for cross
 - Both use paths from `src/core/paths.ts`
 - See `.goodvibes/logs/LOGGING-SPEC.md` for full format guidelines
 
+**Usage Notes:**
+- Orchestrator writes directly to files using `precision_write` and `precision_edit` tools
+- Memory/LogsManager classes are for hooks and batch-engine internal use
+- ID format: Use `YYYYMMDD_HHMMSS` suffix (e.g., `dec_20260125_143052`) to avoid needing to read existing entries
+- Before first write to a file, check if it exists; if not, create with appropriate header
+
 #### Log Entry Templates
 
 **logs/decisions.md:**
@@ -204,7 +210,7 @@ Error categories: `TOOL_FAILURE`, `AGENT_FAILURE`, `BUILD_ERROR`, `TEST_FAILURE`
 **memory/decisions.json** (array of objects):
 ```json
 {
-  "id": "dec_YYYYMMDD_NNN",
+  "id": "dec_YYYYMMDD_HHMMSS",
   "date": "YYYY-MM-DDTHH:MM:SSZ",
   "category": "library|architecture|pattern|convention",
   "what": "Brief description of the decision",
@@ -218,7 +224,7 @@ Error categories: `TOOL_FAILURE`, `AGENT_FAILURE`, `BUILD_ERROR`, `TEST_FAILURE`
 **memory/patterns.json** (array of objects):
 ```json
 {
-  "id": "pat_YYYYMMDD_NNN",
+  "id": "pat_YYYYMMDD_HHMMSS",
   "name": "PatternName",
   "description": "What this pattern does and why it's used",
   "when_to_use": "Conditions or triggers for applying this pattern",
@@ -230,7 +236,7 @@ Error categories: `TOOL_FAILURE`, `AGENT_FAILURE`, `BUILD_ERROR`, `TEST_FAILURE`
 **memory/failures.json** (array of objects):
 ```json
 {
-  "id": "fail_YYYYMMDD_NNN",
+  "id": "fail_YYYYMMDD_HHMMSS",
   "date": "YYYY-MM-DDTHH:MM:SSZ",
   "error": "Error message or description",
   "context": "What was being attempted when this occurred",
@@ -361,7 +367,3 @@ Tests: All passing
 
 git diff HEAD~N to review
 ```
-
-## Precision Tools
-
-All file operations use precision tools with `output_mode: "minimal"`.

@@ -180,10 +180,12 @@ export class GoodVibesRuntime {
 
       // Record failure in memory
       void this.memory.recordFailure(
-        "agent_failure",
         agent.error || "unknown",
         `Agent ${agent.spec.type} failed: ${agent.spec.task}`,
-        { tags: ["agent", agent.spec.type] }
+        "agent_failure",
+        "See agent logs for details",
+        "Review agent task definition and input context",
+        { keywords: ["agent", agent.spec.type] }
       );
 
       // Remove from mode system
@@ -201,8 +203,11 @@ export class GoodVibesRuntime {
       void this.memory.recordDecision(
         `Switch mode from ${oldMode} to ${newMode}`,
         "User or system requested mode change",
-        `Active agents: ${this.modeSystem.getPreservedState().active_agents.length}`,
-        { tags: ["mode", "switch"] }
+        "pattern",
+        {
+          scope: [`Active agents: ${this.modeSystem.getPreservedState().active_agents.length}`],
+          confidence: "high"
+        }
       );
 
       // External callback
@@ -358,17 +363,20 @@ export class GoodVibesRuntime {
         await this.memory.recordDecision(
           `Fixed: ${result.original_issue.type}`,
           result.status_message,
-          `Attempts: ${result.attempts.length}`,
-          { tags: ["fix", "success", result.original_issue.type] }
+          "pattern",
+          {
+            scope: [`Attempts: ${result.attempts.length}`],
+            confidence: "high"
+          }
         );
       } else {
         await this.memory.recordFailure(
-          result.original_issue.type,
           result.original_issue.message,
+          `Fix loop for ${result.original_issue.type}`,
+          result.original_issue.type,
           result.status_message,
-          {
-            tags: ["fix", "failure", result.original_issue.type],
-          }
+          "Review fix strategy and increase max attempts if needed",
+          { keywords: ["fix", "failure", result.original_issue.type] }
         );
       }
 
@@ -433,12 +441,15 @@ export class GoodVibesRuntime {
    * Records a decision.
    */
   async recordDecision(
-    decision: string,
-    rationale: string,
-    context: string,
-    tags: string[] = []
+    what: string,
+    why: string,
+    category: "library" | "architecture" | "pattern" | "convention",
+    options: {
+      scope?: string[];
+      confidence?: "high" | "medium" | "low";
+    } = {}
   ): Promise<void> {
-    await this.memory.recordDecision(decision, rationale, context, { tags });
+    await this.memory.recordDecision(what, why, category, options);
   }
 
   /**
@@ -447,11 +458,13 @@ export class GoodVibesRuntime {
   async recordPattern(
     name: string,
     description: string,
-    example: string,
-    useWhen: string,
-    tags: string[] = []
+    when_to_use: string,
+    options: {
+      example_files?: string[];
+      keywords?: string[];
+    } = {}
   ): Promise<void> {
-    await this.memory.recordPattern(name, description, example, useWhen, { tags });
+    await this.memory.recordPattern(name, description, when_to_use, options);
   }
 
   // ============ Telemetry Wiring ============

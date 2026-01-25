@@ -2,8 +2,11 @@
  * Memory Loader
  *
  * Loads persisted context from .goodvibes/memory/ directory.
- * This includes decisions, patterns, failures, and preferences.
+ * Uses the core Memory class at runtime via dynamic import to avoid tsconfig issues.
+ * This provides a unified interface to memory across the system.
  */
+import type { Decision, Pattern, Failure } from '../types/memory.js';
+export type { Decision, Pattern, Failure };
 /** Aggregated project memory including decisions, patterns, and preferences. */
 export interface ProjectMemory {
     decisions: Decision[];
@@ -11,26 +14,6 @@ export interface ProjectMemory {
     failures: Failure[];
     preferences: Preferences;
     customContext: string[];
-}
-/** A recorded architectural or implementation decision. */
-export interface Decision {
-    date: string;
-    description: string;
-    rationale?: string;
-    tags?: string[];
-}
-/** A code or design pattern used in the project. */
-export interface Pattern {
-    name: string;
-    description: string;
-    examples?: string[];
-}
-/** A recorded failure or error with optional resolution. */
-export interface Failure {
-    date: string;
-    error: string;
-    context?: string;
-    resolution?: string;
 }
 /** Project-specific coding preferences and conventions. */
 export interface Preferences {
@@ -41,7 +24,7 @@ export interface Preferences {
 }
 /**
  * Load all project memory from the .goodvibes/memory directory.
- * Aggregates decisions, patterns, failures, preferences, and custom context.
+ * Uses the core Memory class for decisions, patterns, and failures via dynamic import.
  *
  * @param cwd - The current working directory (project root)
  * @returns Promise resolving to ProjectMemory with all persisted context

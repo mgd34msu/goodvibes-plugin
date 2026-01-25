@@ -323,12 +323,9 @@ export class FixLoop {
 
     // Check for similar past failures and use their resolutions as hints
     if (this.memory && this.memory.isLoaded()) {
-      const similar = this.memory.findSimilarFailures(issue.type, issue.message);
-      if (similar.length > 0) {
-        const resolved = similar.filter((f) => f.resolved && f.resolution);
-        if (resolved.length > 0) {
-          issue.suggested_fix = resolved[0].resolution;
-        }
+      const similar = this.memory.findSimilarFailures(issue.message);
+      if (similar.length > 0 && similar[0].resolution) {
+        issue.suggested_fix = similar[0].resolution;
       }
     }
 
