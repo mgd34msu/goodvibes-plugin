@@ -197,6 +197,7 @@ export function formatBlockMessage(
   const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
 
   return (
+    `\n` +
     `BLOCKED: '${toolName}' - MANDATORY: Use ${toolPath} instead.\n` +
     `CRITICAL: If multiple tool uses are planned, "discover -> batch" process is MANDATORY:\n` +
     `mcp-cli info plugin_goodvibes_precision-engine/discover\n` +

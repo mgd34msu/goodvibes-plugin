@@ -842,7 +842,8 @@ var BLOCKED_NATIVE_TOOLS = [
 ];
 function formatBlockMessage(toolName, replacement) {
   const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
-  return `BLOCKED: '${toolName}' - MANDATORY: Use ${toolPath} instead.
+  return `
+BLOCKED: '${toolName}' - MANDATORY: Use ${toolPath} instead.
 CRITICAL: If multiple tool uses are planned, "discover -> batch" process is MANDATORY:
 mcp-cli info plugin_goodvibes_precision-engine/discover
 mcp-cli info plugin_goodvibes_batch-engine/batch
