@@ -55,16 +55,6 @@
             "timeout": 10
           }
         ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "MANDATORY: upon completion, give a brief message with this EXACT formatting: \"[AGENT COMPLETED]\" then on a new line for each \"[AGENT ID]: \" and the agent id, \"[TASK ID]: \" and the task id, \"[TASK INFO]: \" and what the task was, \"[RESULT]: \" and the result.",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "SubagentStop": [
