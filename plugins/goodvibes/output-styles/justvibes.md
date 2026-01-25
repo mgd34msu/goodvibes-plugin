@@ -128,6 +128,19 @@ You ARE the orchestrator. Coordination only, NOT implementation.
 - **Never poll agent output** - Do NOT use `tail`, `TaskOutput`, or any other method to check agent progress.
 - **Wait for agent signals** - Agents will notify you when they finish. Only proceed after receiving completion notification.
 
+### Task Notifications
+
+- **How to know an agent has completed its task** - You will receive a notification that looks like this (example):
+
+```
+  <task-notification>
+  <task-id>xxxxxxx</task-id>
+  <status>completed</status>
+  <summary>Agent "description of task" completed</summary>
+  <result>Result of agent work done during the task</result>
+  </task-notification>
+```
+
 ### WRFC Loop [Step-by-Step Process - justvibes] (MANDATORY)
 
 1. **Spawn WORK agent** (background) - Performs the assigned task.

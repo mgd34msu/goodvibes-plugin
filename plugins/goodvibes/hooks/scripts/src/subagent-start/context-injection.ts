@@ -85,10 +85,6 @@ export async function buildSubagentContext(
     );
   }
 
-  contextParts.push(
-    'MANDATORY: upon completion, give a brief message with this EXACT formatting: \"[AGENT COMPLETED]\" then on a new line for each \"[AGENT ID]: \" and the agent id, \"[TASK ID]: \" and the task id, \"[TASK INFO]: \" and what the task was, \"[RESULT]: \" and the result.'
-  );
-
   // contextParts always has at least 2 elements (project name and mode)
   return {
     additionalContext: contextParts.join('\n'),

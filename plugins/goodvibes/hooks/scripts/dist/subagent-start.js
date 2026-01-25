@@ -854,9 +854,6 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
       "Remember: Be completely honest, regardless of how harsh the truth would be. Never sugar coat or take feelings into account.\n\n"
     );
   }
-  contextParts.push(
-    'MANDATORY: upon completion, give a brief message with this EXACT formatting: "[AGENT COMPLETED]" then on a new line for each "[AGENT ID]: " and the agent id, "[TASK ID]: " and the task id, "[TASK INFO]: " and what the task was, "[RESULT]: " and the result.'
-  );
   return {
     additionalContext: contextParts.join("\n")
   };
