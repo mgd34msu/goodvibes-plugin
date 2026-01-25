@@ -285,11 +285,51 @@
     passThrough();
   }
 
-  // Reassemble command and double ALL backslashes
-  // (Claude Code strips one layer when applying updatedInput)
-  const fixedCommand = prefix + finalJson + suffix;
-  const doubledCommand = fixedCommand.replace(/\\/g, '\\\\');
-  log(`Final command: ${doubledCommand}`);
+  // Reassemble command by working with actual JSON values, not regex on JSON text.
+  // This correctly handles all escape sequences including edge cases like \\"
+  //
+  // Approach:
+  // 1. Parse the JSON
+  // 2. Transform all string VALUES: double backslashes, escape quotes
+  // 3. Re-serialize with JSON.stringify (handles escaping correctly)
+  // 4. No additional doubling needed - JSON.stringify does it right
+
+  function transformForStripping(value) {
+    if (typeof value === 'string') {
+      // Double ALL escape sequences so they survive Claude's stripping
+      // After Claude strips one layer: \\ → \, \n → n, etc.
+      // So we need: \ → \\, newline → \n (as two chars), etc.
+      return value
+        .replace(/\\/g, '\\\\')           // \ → \\
+        .replace(/"/g, '\\"')             // " → \"
+        .replace(/\n/g, '\\n')            // newline char → \n (two chars)
+        .replace(/\r/g, '\\r')            // carriage return → \r
+        .replace(/\t/g, '\\t')            // tab → \t
+        .replace(/[\b]/g, '\\b')          // backspace → \b ([\b] matches backspace, not word boundary)
+        .replace(/\f/g, '\\f')            // form feed → \f
+        .replace(/\//g, '\\/')            // / → \/ (optional but valid JSON escape)
+        // Handle remaining control chars (0x00-0x1F) as \uXXXX
+        .replace(/[\x00-\x07\x0B\x0E-\x1F]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+    }
+    if (Array.isArray(value)) {
+      return value.map(transformForStripping);
+    }
+    if (value && typeof value === 'object') {
+      const result = {};
+      for (const [k, v] of Object.entries(value)) {
+        result[k] = transformForStripping(v);
+      }
+      return result;
+    }
+    return value;
+  }
+
+  const parsed = JSON.parse(finalJson);
+  const transformed = transformForStripping(parsed);
+  const newJson = JSON.stringify(transformed);
+
+  const result = prefix + newJson + suffix;
+  log(`Final command: ${result}`);
 
   // Send the fixed command
-  sendUpdatedCommand(doubledCommand);
+  sendUpdatedCommand(result);
