@@ -866,11 +866,6 @@ function handleNativeToolBlocking(input) {
   const replacement = TOOL_REPLACEMENTS[toolName];
   if (replacement) {
     const blockMessage = formatBlockMessage(toolName, replacement);
-    debug(`Blocking native tool '${toolName}'`, {
-      agent_type: input.agent_type,
-      is_subagent: input.is_subagent,
-      replacement: replacement.replacement
-    });
     blockTool(blockMessage);
     return true;
   }

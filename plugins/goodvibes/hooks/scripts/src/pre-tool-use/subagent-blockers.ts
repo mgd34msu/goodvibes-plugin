@@ -13,7 +13,7 @@
  * @module pre-tool-use/subagent-blockers
  */
 
-import { respond, blockTool, allowTool, debug } from '../shared/index.js';
+import { respond, blockTool, allowTool } from '../shared/index.js';
 
 import type { HookInput } from '../shared/index.js';
 
@@ -244,12 +244,6 @@ export function handleBashBlocking(input: PreToolUseInput): boolean {
   const blockMessage = checkBashCommand(command);
 
   if (blockMessage) {
-    debug(`Blocking Bash command pattern`, {
-      command: command.slice(0, 100),
-      agent_type: input.agent_type,
-      is_subagent: input.is_subagent,
-    });
-    blockTool(blockMessage);
     return true;
   }
   return false;
@@ -278,12 +272,6 @@ export function handleNativeToolBlocking(input: PreToolUseInput): boolean {
   const replacement = TOOL_REPLACEMENTS[toolName];
   if (replacement) {
     const blockMessage = formatBlockMessage(toolName, replacement);
-    debug(`Blocking native tool '${toolName}'`, {
-      agent_type: input.agent_type,
-      is_subagent: input.is_subagent,
-      replacement: replacement.replacement,
-    });
-
     blockTool(blockMessage);
     return true;
   }
@@ -312,7 +300,6 @@ export async function validateToolUsage(
   //}
 
   // If not a blocked tool, allow it
-  debug(`Allowing tool '${input.tool_name}'`);
 
   // Don't respond here - let the caller handle the response
   // This allows other validators to run
