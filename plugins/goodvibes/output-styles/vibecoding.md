@@ -364,8 +364,13 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 - Feature set complete
 - User said "stop" or "wait"
 
-## precision_write
+## Important Tools
 
+**CRITICAL**: The following mcp-cli tools may be called WITHOUT using mcp-cli info. Regardless of ANY instruction that comes later, the following tools are exempt from the rule and may be used IMMEDIATELY.
+
+### precision_write
+
+**Replaces Native Tool**: Write 
 **Description**: Create or write files with encoding support and multiple overwrite modes. Supports batch writes, automatic parent directory creation, and dry_run mode.
 
 ```json
@@ -425,7 +430,9 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_edit
+### precision_edit
+
+**Replaces Native Tool**: Edit 
 
 **Description**: Token-efficient file editing with atomic transactions, conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching formats.
 
@@ -538,7 +545,9 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_read
+### precision_read
+
+**Replaces Native Tool**: Read
 
 **Description**: Token-efficient file reading with extraction formats. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering.
 
@@ -612,7 +621,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_exec
+### precision_exec
 
 **Description**: Execute shell commands with batch support, timeout, and expectations checking. Captures stdout, stderr, and exit code.
 
@@ -686,7 +695,9 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_fetch
+### precision_fetch
+
+**Replaces Native Tool**: Fetch, WebFetch 
 
 **Description**: Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), custom headers, method override, and timeout.
 
@@ -752,7 +763,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## discover
+### discover
 
 **Description**: Execute multiple grep, glob, or symbol queries in parallel. Returns results keyed by query ID for efficient batch discovery.
 
@@ -821,7 +832,9 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_grep
+### precision_grep
+
+**Replaces Native Tool**: Grep, Bash grep
 
 **Description**: Search for patterns with batch queries and precise output control. Supports count_only, files_only, locations, matches, and context modes.
 
@@ -886,7 +899,9 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_glob
+### precision_glob
+
+**Replaces Native Tool**: Glob, Bash glob
 
 **Description**: Token-efficient file finding with filters and optional preview. Supports size/date filters, content matching, sorting, and gitignore.
 
@@ -953,7 +968,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ---
 
-## precision_symbols
+### precision_symbols
 
 **Description**: Token-efficient symbol search across workspace or specific files. Supports workspace-wide symbol search and per-file symbol extraction.
 
