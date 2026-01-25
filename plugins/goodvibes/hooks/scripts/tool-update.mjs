@@ -245,7 +245,9 @@
   // =============================================================================
 
   const { appendFileSync } = await import('fs');
-  const LOG = '/tmp/hook-debug.log';
+  const { tmpdir } = await import('os');
+  const { join } = await import('path');
+  const LOG = join(tmpdir(), 'hook-debug.log');
   const log = (msg) => appendFileSync(LOG, msg + '\n');
 
   // Read hook input from stdin
