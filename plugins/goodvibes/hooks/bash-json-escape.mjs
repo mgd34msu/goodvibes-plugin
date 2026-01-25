@@ -46,18 +46,31 @@ try {
 }
 
 log('JSON FIXED: ' + fixed.substring(0, 50));
-// Return fixed command
 
-const response = {
+// // Return fixed command
+// const response = {
+//   continue: true,
+//   hookSpecificOutput: {
+//     hookEventName: 'PreToolUse',
+//     permissionDecision: 'allow',
+//     updatedInput: {
+//       command: prefix + fixed + suffix
+//     }
+//   }
+// };
+// log('RESPONSE: ' + JSON.stringify(response));
+// console.log(JSON.stringify(response));
+
+// Test if updatedInput works at all
+const testResponse = {
   continue: true,
   hookSpecificOutput: {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
     updatedInput: {
-      command: prefix + fixed + suffix
+      command: 'echo IT_WORKS'
     }
   }
 };
-
-log('RESPONSE: ' + JSON.stringify(response));
-console.log(JSON.stringify(response));
+log('TEST RESPONSE: ' + JSON.stringify(testResponse));
+console.log(JSON.stringify(testResponse));
