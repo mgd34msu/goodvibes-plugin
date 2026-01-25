@@ -2,11 +2,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Read|Edit|Write|Glob|Grep",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/pre-tool-use.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/bash-json-escape.mjs\""
           }
         ]
       }
