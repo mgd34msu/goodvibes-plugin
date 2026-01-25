@@ -13,7 +13,8 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
       const parsed = expectError(result);
-      expect(parsed.error).toContain('patterns array is required');
+      expect(parsed.error).toContain('patterns');
+      expect(parsed.error).toContain('required');
     });
 
     // Output parameter now has defaults, no longer required
@@ -356,6 +357,150 @@ describe('precision_glob handler', () => {
 
       const parsed = expectSuccess(result);
       expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('base64 alternatives', () => {
+    beforeEach(async () => {
+      await createTestFile('test-file.ts', 'content');
+      await createTestFile('special[chars].ts', 'content');
+    });
+
+    it('should decode patterns_base64 parameter', async () => {
+      const pattern = '*.ts';
+      const patternBase64 = Buffer.from(pattern).toString('base64');
+
+      const result = await handlePrecisionGlob({
+        patterns_base64: [patternBase64],
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeGreaterThan(0);
+      expect(parsed.data.files.every((f: string) => f.endsWith('.ts'))).toBe(true);
+    });
+
+    it('should handle multiple patterns_base64', async () => {
+      await createTestFile('test.js', 'content');
+
+      const pattern1 = '*.ts';
+      const pattern2 = '*.js';
+      const pattern1Base64 = Buffer.from(pattern1).toString('base64');
+      const pattern2Base64 = Buffer.from(pattern2).toString('base64');
+
+      const result = await handlePrecisionGlob({
+        patterns_base64: [pattern1Base64, pattern2Base64],
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.some((f: string) => f.endsWith('.ts'))).toBe(true);
+      expect(parsed.data.files.some((f: string) => f.endsWith('.js'))).toBe(true);
+    });
+
+    it('should use patterns_base64 when provided', async () => {
+      const patternBase64 = Buffer.from('*.ts').toString('base64');
+
+      const result = await handlePrecisionGlob({
+        patterns_base64: [patternBase64],
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.some((f: string) => f.endsWith('.ts'))).toBe(true);
+    });
+
+    it('should handle complex glob patterns with special characters via base64', async () => {
+      const pattern = 'special[chars].ts';
+      const patternBase64 = Buffer.from(pattern).toString('base64');
+
+      const result = await handlePrecisionGlob({
+        patterns_base64: [patternBase64],
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.some((f: string) => f.includes('[chars]'))).toBe(true);
+    });
+  });
+
+  describe('parameter aliasing - base_path vs cwd', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'content');
+    });
+
+    it('should accept base_path parameter (new name)', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        base_path: process.cwd(),
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeGreaterThan(0);
+    });
+
+    it('should accept cwd parameter (deprecated name)', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        cwd: process.cwd(),
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeGreaterThan(0);
+    });
+
+    it('should prefer base_path when both base_path and cwd are provided', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        base_path: process.cwd(), // Should be used
+        cwd: '/nonexistent/path', // Should be ignored
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('parameter aliasing - max_results vs max_files', () => {
+    beforeEach(async () => {
+      const files: Record<string, string> = {};
+      for (let i = 0; i < 20; i++) {
+        files[`file${i}.ts`] = 'content';
+      }
+      await createTestFiles(files);
+    });
+
+    it('should accept max_results parameter (new name)', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { mode: 'paths_only', max_results: 5 },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should accept max_files parameter (deprecated name)', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { mode: 'paths_only', max_files: 5 },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should prefer max_results when both max_results and max_files are provided', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { mode: 'paths_only', max_results: 5, max_files: 15 },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files.length).toBeLessThanOrEqual(5);
     });
   });
 });

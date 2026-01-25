@@ -757,11 +757,26 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
         console.warn(`[precision_edit] DEPRECATION WARNING: edits[${i}].file is deprecated. Use edits[${i}].path instead.`);
       }
 
-      if (edit.find === undefined || edit.find === null) {
-        return toCallToolResult(errorResult(`edits[${i}].find is required`, outputMode, getElapsed()));
+      // Check for find value via any supported source
+      const hasFindValue = edit.find !== undefined ||
+                           edit.find_base64 !== undefined ||
+                           edit.find_file !== undefined;
+      if (!hasFindValue) {
+        return toCallToolResult(errorResult(
+          `edits[${i}].find is required (provide find, find_base64, or find_file)`,
+          outputMode, getElapsed()
+        ));
       }
-      if (edit.replace === undefined || edit.replace === null) {
-        return toCallToolResult(errorResult(`edits[${i}].replace is required`, outputMode, getElapsed()));
+
+      // Check for replace value via any supported source
+      const hasReplaceValue = edit.replace !== undefined ||
+                              edit.replace_base64 !== undefined ||
+                              edit.replace_file !== undefined;
+      if (!hasReplaceValue) {
+        return toCallToolResult(errorResult(
+          `edits[${i}].replace is required (provide replace, replace_base64, or replace_file)`,
+          outputMode, getElapsed()
+        ));
       }
     }
 

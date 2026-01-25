@@ -355,4 +355,98 @@ describe('precision_exec handler', () => {
       expect(parsed.data.summary.total_duration_ms).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('base64 alternatives', () => {
+    it('should decode cmd_base64 parameter', async () => {
+      const cmdText = 'echo';
+      const cmdBase64 = Buffer.from(cmdText).toString('base64');
+
+      const result = await handlePrecisionExec({
+        commands: [{
+          cmd_base64: cmdBase64,
+          args: ['base64 test']
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.commands[0].exit_code).toBe(0);
+    });
+
+    it('should prefer cmd_base64 over cmd when both provided', async () => {
+      const cmdBase64 = Buffer.from('echo').toString('base64');
+
+      const result = await handlePrecisionExec({
+        commands: [{
+          cmd: 'invalidcmd',
+          cmd_base64: cmdBase64,
+          args: ['test']
+        }],
+        output_mode: 'verbose',
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.commands[0].exit_code).toBe(0);
+      expect(parsed.data.commands[0].stdout).toContain('test');
+    });
+
+    it('should handle complex commands with special characters via base64', async () => {
+      const cmdText = 'echo';
+      const cmdBase64 = Buffer.from(cmdText).toString('base64');
+
+      const result = await handlePrecisionExec({
+        commands: [{
+          cmd_base64: cmdBase64,
+          args: ['test output']
+        }],
+        output_mode: 'verbose',
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.commands[0].exit_code).toBe(0);
+      expect(parsed.data.commands[0].stdout).toContain('test output');
+    });
+  });
+
+  describe('parameter aliasing - timeout', () => {
+    it('should accept timeout_ms parameter (new name)', async () => {
+      const result = await handlePrecisionExec({
+        commands: [{
+          cmd: 'node',
+          args: ['-e', 'setTimeout(() => {}, 10000)'],
+          timeout_ms: 100,
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.commands[0].timed_out).toBe(true);
+    });
+
+    it('should accept timeout parameter (deprecated name)', async () => {
+      const result = await handlePrecisionExec({
+        commands: [{
+          cmd: 'node',
+          args: ['-e', 'setTimeout(() => {}, 10000)'],
+          timeout: 100,
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.commands[0].timed_out).toBe(true);
+    });
+
+    it('should prefer timeout_ms when both timeout and timeout_ms are provided', async () => {
+      const result = await handlePrecisionExec({
+        commands: [{
+          cmd: 'echo',
+          args: ['test'],
+          timeout: 10000, // Should be ignored
+          timeout_ms: 5000, // Should be used - needs to be long enough for echo on Windows
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      // Command should complete quickly, not timeout
+      expect(parsed.data.commands[0].exit_code).toBe(0);
+    });
+  });
 });

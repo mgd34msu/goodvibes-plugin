@@ -349,4 +349,111 @@ describe('discover handler', () => {
       expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('base64 alternatives', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'const foo = 1;');
+      await createTestFile('special[chars].ts', 'content');
+    });
+
+    it('should decode pattern_base64 for grep queries', async () => {
+      const pattern = 'foo';
+      const patternBase64 = Buffer.from(pattern).toString('base64');
+
+      const result = await handleDiscover({
+        queries: [{
+          id: 'grep-base64',
+          type: 'grep',
+          pattern_base64: patternBase64,
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['grep-base64'].count).toBeGreaterThan(0);
+    });
+
+    it('should use pattern_base64 when provided', async () => {
+      const patternBase64 = Buffer.from('foo').toString('base64');
+
+      const result = await handleDiscover({
+        queries: [{
+          id: 'grep-base64-only',
+          type: 'grep',
+          pattern_base64: patternBase64,
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['grep-base64-only'].count).toBeGreaterThan(0);
+    });
+
+    it('should decode patterns_base64 for glob queries', async () => {
+      const pattern = '*.ts';
+      const patternBase64 = Buffer.from(pattern).toString('base64');
+
+      const result = await handleDiscover({
+        queries: [{
+          id: 'glob-base64',
+          type: 'glob',
+          patterns_base64: [patternBase64],
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['glob-base64'].count).toBeGreaterThan(0);
+    });
+
+    it('should use patterns_base64 when provided', async () => {
+      const patternBase64 = Buffer.from('*.ts').toString('base64');
+
+      const result = await handleDiscover({
+        queries: [{
+          id: 'glob-base64-only',
+          type: 'glob',
+          patterns_base64: [patternBase64],
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['glob-base64-only'].count).toBeGreaterThan(0);
+    });
+
+    it('should handle multiple patterns_base64 for glob', async () => {
+      await createTestFile('test.js', 'content');
+
+      const pattern1Base64 = Buffer.from('*.ts').toString('base64');
+      const pattern2Base64 = Buffer.from('*.js').toString('base64');
+
+      const result = await handleDiscover({
+        queries: [{
+          id: 'glob-multi-base64',
+          type: 'glob',
+          patterns_base64: [pattern1Base64, pattern2Base64],
+        }],
+        output_mode: 'files_only',
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['glob-multi-base64'].count).toBeGreaterThan(0);
+      expect(parsed.data.results['glob-multi-base64'].files).toBeDefined();
+    });
+
+    it('should handle complex regex patterns via pattern_base64', async () => {
+      await createTestFile('regex-test.ts', 'test123');
+
+      const pattern = 'test\\d+';
+      const patternBase64 = Buffer.from(pattern).toString('base64');
+
+      const result = await handleDiscover({
+        queries: [{
+          id: 'regex-base64',
+          type: 'grep',
+          pattern_base64: patternBase64,
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['regex-base64'].count).toBeGreaterThan(0);
+    });
+  });
 });

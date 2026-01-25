@@ -407,4 +407,135 @@ describe('precision_fetch handler', () => {
       expect(parsed.data.summary.total_size).toBeGreaterThan(0);
     });
   });
+
+  describe('base64 alternatives', () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: () => Promise.resolve('{"success": true}'),
+      });
+    });
+
+    it('should decode body_base64 parameter', async () => {
+      const bodyContent = '{"test": "data", "special": "\\n\\t"}';
+      const bodyBase64 = Buffer.from(bodyContent).toString('base64');
+
+      const result = await handlePrecisionFetch({
+        urls: [{
+          url: 'https://api.example.com/post',
+          method: 'POST',
+          body_base64: bodyBase64,
+          headers: { 'Content-Type': 'application/json' },
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.urls[0].status).toBe('success');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/post',
+        expect.objectContaining({
+          method: 'POST',
+          body: bodyContent,
+        })
+      );
+    });
+
+    it('should prefer body_base64 over body when both provided', async () => {
+      const correctBody = '{"correct": true}';
+      const bodyBase64 = Buffer.from(correctBody).toString('base64');
+
+      const result = await handlePrecisionFetch({
+        urls: [{
+          url: 'https://api.example.com/post',
+          method: 'POST',
+          body: '{"wrong": true}', // Should be ignored
+          body_base64: bodyBase64, // Should be used
+          headers: { 'Content-Type': 'application/json' },
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.urls[0].status).toBe('success');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/post',
+        expect.objectContaining({
+          body: correctBody,
+        })
+      );
+    });
+
+    it('should handle complex JSON with special characters via base64', async () => {
+      const bodyContent = JSON.stringify({
+        message: 'Line 1\nLine 2\tTabbed',
+        unicode: '你好',
+        quotes: 'He said "hello"',
+      });
+      const bodyBase64 = Buffer.from(bodyContent).toString('base64');
+
+      const result = await handlePrecisionFetch({
+        urls: [{
+          url: 'https://api.example.com/complex',
+          method: 'POST',
+          body_base64: bodyBase64,
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.urls[0].status).toBe('success');
+    });
+  });
+
+  describe('parameter aliasing - timeout', () => {
+    it('should accept timeout_ms parameter (new name)', async () => {
+      mockFetch.mockImplementation(() => {
+        const error = new Error('Timeout');
+        error.name = 'AbortError';
+        return Promise.reject(error);
+      });
+
+      const result = await handlePrecisionFetch({
+        urls: [{ url: 'https://example.com', timeout_ms: 100 }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.urls[0].status).toBe('timeout');
+    });
+
+    it('should accept timeout parameter (deprecated name)', async () => {
+      mockFetch.mockImplementation(() => {
+        const error = new Error('Timeout');
+        error.name = 'AbortError';
+        return Promise.reject(error);
+      });
+
+      const result = await handlePrecisionFetch({
+        urls: [{ url: 'https://example.com', timeout: 100 }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.urls[0].status).toBe('timeout');
+    });
+
+    it('should prefer timeout_ms when both timeout and timeout_ms are provided', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/plain' }),
+        text: () => Promise.resolve('Content'),
+      });
+
+      const result = await handlePrecisionFetch({
+        urls: [{
+          url: 'https://example.com',
+          timeout: 1, // Would timeout immediately if used
+          timeout_ms: 30000, // Should be used instead
+        }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.urls[0].status).toBe('success');
+    });
+  });
 });

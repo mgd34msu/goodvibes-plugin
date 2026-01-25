@@ -477,4 +477,129 @@ function bar() {
       expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('base64 alternatives', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'const foo = "special chars: \\n\\t";');
+    });
+
+    it('should decode find_base64 parameter', async () => {
+      const findText = 'const foo = "special chars: \\n\\t";';
+      const findBase64 = Buffer.from(findText).toString('base64');
+
+      const result = await handlePrecisionEdit({
+        edits: [{
+          file: 'file.ts',
+          find_base64: findBase64,
+          replace: 'const bar = "replaced";'
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.edits[0].status).toBe('applied');
+
+      const content = await readTestFile('file.ts');
+      expect(content).toContain('const bar');
+    });
+
+    it('should decode replace_base64 parameter', async () => {
+      const replaceText = 'const bar = "complex: \\n\\t\\"quotes\\"";';
+      const replaceBase64 = Buffer.from(replaceText).toString('base64');
+
+      const result = await handlePrecisionEdit({
+        edits: [{
+          file: 'file.ts',
+          find: 'const foo = "special chars: \\n\\t";',
+          replace_base64: replaceBase64,
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.edits[0].status).toBe('applied');
+
+      const content = await readTestFile('file.ts');
+      expect(content).toBe(replaceText);
+    });
+
+    it('should decode both find_base64 and replace_base64', async () => {
+      const findText = 'const foo = "special chars: \\n\\t";';
+      const replaceText = 'const bar = "new: \\r\\n";';
+      const findBase64 = Buffer.from(findText).toString('base64');
+      const replaceBase64 = Buffer.from(replaceText).toString('base64');
+
+      const result = await handlePrecisionEdit({
+        edits: [{
+          file: 'file.ts',
+          find_base64: findBase64,
+          replace_base64: replaceBase64,
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.edits[0].status).toBe('applied');
+
+      const content = await readTestFile('file.ts');
+      expect(content).toBe(replaceText);
+    });
+  });
+
+  describe('parameter aliasing', () => {
+    beforeEach(async () => {
+      await createTestFile('file.ts', 'content');
+    });
+
+    it('should accept path parameter (new name)', async () => {
+      const result = await handlePrecisionEdit({
+        edits: [{ path: 'file.ts', find: 'content', replace: 'new content' }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.edits[0].status).toBe('applied');
+    });
+
+    it('should accept file parameter (deprecated name)', async () => {
+      const result = await handlePrecisionEdit({
+        edits: [{ file: 'file.ts', find: 'content', replace: 'new content' }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.edits[0].status).toBe('applied');
+    });
+
+    it('should prefer path when both path and file are provided', async () => {
+      await createTestFile('correct.ts', 'correct content');
+      await createTestFile('wrong.ts', 'wrong content');
+
+      const result = await handlePrecisionEdit({
+        edits: [{
+          path: 'correct.ts',
+          file: 'wrong.ts',
+          find: 'correct content',
+          replace: 'updated'
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.edits[0].file).toBe('correct.ts');
+      expect(parsed.data.edits[0].status).toBe('applied');
+    });
+  });
 });

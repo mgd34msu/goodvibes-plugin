@@ -255059,11 +255059,21 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
       if (edit.file && !edit.path) {
         console.warn(`[precision_edit] DEPRECATION WARNING: edits[${i}].file is deprecated. Use edits[${i}].path instead.`);
       }
-      if (edit.find === void 0 || edit.find === null) {
-        return toCallToolResult(errorResult(`edits[${i}].find is required`, outputMode, getElapsed()));
+      const hasFindValue = edit.find !== void 0 || edit.find_base64 !== void 0 || edit.find_file !== void 0;
+      if (!hasFindValue) {
+        return toCallToolResult(errorResult(
+          `edits[${i}].find is required (provide find, find_base64, or find_file)`,
+          outputMode,
+          getElapsed()
+        ));
       }
-      if (edit.replace === void 0 || edit.replace === null) {
-        return toCallToolResult(errorResult(`edits[${i}].replace is required`, outputMode, getElapsed()));
+      const hasReplaceValue = edit.replace !== void 0 || edit.replace_base64 !== void 0 || edit.replace_file !== void 0;
+      if (!hasReplaceValue) {
+        return toCallToolResult(errorResult(
+          `edits[${i}].replace is required (provide replace, replace_base64, or replace_file)`,
+          outputMode,
+          getElapsed()
+        ));
       }
     }
     const transaction = {
