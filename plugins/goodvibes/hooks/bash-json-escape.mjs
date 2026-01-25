@@ -54,10 +54,10 @@ const response = {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
     updatedInput: { 
-      command: prefix + fixed + suffix 
+      command: JSON.stringify( prefix + fixed + suffix )
     }
   }
 };
 
-log('RESPONSE: ' + response);
-console.log(response);
+log('RESPONSE: ' + JSON.stringify(response));
+console.log(JSON.stringify(response));
