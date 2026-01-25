@@ -1,1 +1,0 @@
-{"session_id":"test","cwd":"/test","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"mcp-cli call server/tool '{\"pattern\": \"test\\.json\"}'"}}

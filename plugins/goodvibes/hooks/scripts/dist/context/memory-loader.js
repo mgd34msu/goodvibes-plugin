@@ -8,6 +8,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/logging.js';
+import { getMemoryDir, MEMORY_FILES } from '../memory/paths.js';
 /**
  * Check if a path is a directory (async).
  * Used to filter out non-directory paths when loading memory files.
@@ -25,7 +26,7 @@ async function isDirectory(filePath) {
         return false;
     }
 }
-const MEMORY_DIR = '.goodvibes/memory';
+// MEMORY_DIR imported from ../memory/paths.js via getMemoryDir()
 /**
  * Number of recent decisions to display.
  * Limits decision history in formatted output to keep it concise.
@@ -50,7 +51,7 @@ const RECENT_FAILURES_LIMIT = 2;
  * @returns Promise resolving to parsed JSON object, or null if file doesn't exist or parse fails
  */
 async function loadJsonFile(cwd, filename) {
-    const filePath = path.join(cwd, MEMORY_DIR, filename);
+    const filePath = path.join(getMemoryDir(cwd), filename);
     try {
         if (await fileExists(filePath)) {
             const content = await fs.readFile(filePath, 'utf-8');
@@ -71,7 +72,7 @@ async function loadJsonFile(cwd, filename) {
  * @returns Promise resolving to array of file contents as strings
  */
 async function loadTextFiles(cwd, subdir) {
-    const dirPath = path.join(cwd, MEMORY_DIR, subdir);
+    const dirPath = path.join(getMemoryDir(cwd), subdir);
     const results = [];
     try {
         if ((await fileExists(dirPath)) && (await isDirectory(dirPath))) {
@@ -106,7 +107,7 @@ async function loadTextFiles(cwd, subdir) {
  * }
  */
 export async function loadMemory(cwd) {
-    const memoryPath = path.join(cwd, MEMORY_DIR);
+    const memoryPath = getMemoryDir(cwd);
     // Check if memory directory exists
     if (!(await fileExists(memoryPath))) {
         return {
@@ -119,10 +120,10 @@ export async function loadMemory(cwd) {
     }
     // Load structured data
     const [decisions, patterns, failures, preferences, customContext] = await Promise.all([
-        loadJsonFile(cwd, 'decisions.json'),
-        loadJsonFile(cwd, 'patterns.json'),
-        loadJsonFile(cwd, 'failures.json'),
-        loadJsonFile(cwd, 'preferences.json'),
+        loadJsonFile(cwd, MEMORY_FILES.decisions),
+        loadJsonFile(cwd, MEMORY_FILES.patterns),
+        loadJsonFile(cwd, MEMORY_FILES.failures),
+        loadJsonFile(cwd, MEMORY_FILES.preferences),
         loadTextFiles(cwd, 'context'),
     ]);
     return {

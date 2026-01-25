@@ -11209,133 +11209,299 @@ var init_mode = __esm({
   }
 });
 
-// src/runtime/logs.ts
+// ../../../src/core/paths.js
+function getLogsDir(cwd) {
+  return path7.join(cwd, GOODVIBES_DIR, SUBDIRS.logs);
+}
+function getLogFilePath(cwd, type) {
+  return path7.join(getLogsDir(cwd), LOG_FILES[type]);
+}
+var path7, GOODVIBES_DIR, SUBDIRS, LOG_FILES;
+var init_paths = __esm({
+  "../../../src/core/paths.js"() {
+    "use strict";
+    path7 = __toESM(require("path"), 1);
+    GOODVIBES_DIR = ".goodvibes";
+    SUBDIRS = {
+      memory: "memory",
+      logs: "logs",
+      state: "state",
+      telemetry: "telemetry",
+      plans: "plans"
+    };
+    LOG_FILES = {
+      decisions: "decisions.md",
+      errors: "errors.md",
+      activity: "activity.md",
+      spec: "LOGGING-SPEC.md"
+    };
+    __name(getLogsDir, "getLogsDir");
+    __name(getLogFilePath, "getLogFilePath");
+  }
+});
+
+// ../../../src/core/logs.ts
 function createLogsManager(projectRoot) {
-  return new LogsManagerImpl(projectRoot);
+  return new LogsManager(projectRoot);
+}
+var fs7, LogsManager;
+var init_logs = __esm({
+  "../../../src/core/logs.ts"() {
+    "use strict";
+    fs7 = __toESM(require("fs/promises"), 1);
+    init_paths();
+    LogsManager = class {
+      static {
+        __name(this, "LogsManager");
+      }
+      projectRoot;
+      constructor(projectRoot) {
+        this.projectRoot = projectRoot;
+      }
+      /**
+       * Ensures the logs directory exists.
+       */
+      async ensureLogsDir() {
+        const logsDir = getLogsDir(this.projectRoot);
+        await fs7.mkdir(logsDir, { recursive: true });
+      }
+      /**
+       * Initializes the logs system by creating directory and empty log files if needed.
+       */
+      async initialize() {
+        await this.ensureLogsDir();
+        const logTypes = ["decisions", "errors", "activity"];
+        for (const type of logTypes) {
+          const filePath = getLogFilePath(this.projectRoot, type);
+          try {
+            await fs7.access(filePath);
+          } catch {
+            const header = this.getLogHeader(type);
+            await fs7.writeFile(filePath, header, "utf8");
+          }
+        }
+      }
+      /**
+       * Logs a decision entry to decisions.md.
+       */
+      async logDecision(entry) {
+        const formatted = this.formatDecisionEntry(entry);
+        await this.appendToLog("decisions", formatted);
+      }
+      /**
+       * Logs an error entry to errors.md.
+       */
+      async logError(entry) {
+        const formatted = this.formatErrorEntry(entry);
+        await this.appendToLog("errors", formatted);
+      }
+      /**
+       * Logs an activity entry to activity.md.
+       */
+      async logActivity(entry) {
+        const formatted = this.formatActivityEntry(entry);
+        await this.appendToLog("activity", formatted);
+      }
+      /**
+       * Reads the entire contents of a log file.
+       */
+      async readLog(type) {
+        const filePath = getLogFilePath(this.projectRoot, type);
+        try {
+          return await fs7.readFile(filePath, "utf8");
+        } catch (error2) {
+          if (error2.code === "ENOENT") {
+            return "";
+          }
+          throw error2;
+        }
+      }
+      // ============================================================================
+      // Private Formatting Methods
+      // ============================================================================
+      /**
+       * Returns the header for a log file type.
+       */
+      getLogHeader(type) {
+        const headers = {
+          decisions: "# Decisions Log\n\nArchitectural choices and trade-off resolutions.\n\n---\n\n",
+          errors: "# Errors Log\n\nFailures, blockers, and recovery actions.\n\n---\n\n",
+          activity: "# Activity Log\n\nCompleted work that passed review.\n\n---\n\n"
+        };
+        return headers[type];
+      }
+      /**
+       * Formats a decision entry as markdown matching LOGGING-SPEC.md.
+       */
+      formatDecisionEntry(entry) {
+        const date4 = this.getDateStamp();
+        const lines = [];
+        lines.push(`## ${date4}: ${entry.title}`);
+        lines.push("");
+        lines.push(`**Context**: ${entry.context}`);
+        lines.push("");
+        lines.push("**Options Considered**:");
+        entry.options.forEach((option, index) => {
+          lines.push(`${index + 1}. **${option.name}**`);
+          lines.push(`   - Pros: ${option.pros.join(", ")}`);
+          lines.push(`   - Cons: ${option.cons.join(", ")}`);
+        });
+        lines.push("");
+        lines.push(`**Decision**: ${entry.decision}`);
+        lines.push("");
+        lines.push(`**Rationale**: ${entry.rationale}`);
+        lines.push("");
+        lines.push(`**Implications**: ${entry.implications}`);
+        lines.push("");
+        lines.push("---");
+        lines.push("");
+        return lines.join("\n");
+      }
+      /**
+       * Formats an error entry as markdown matching LOGGING-SPEC.md.
+       */
+      formatErrorEntry(entry) {
+        const timestamp = this.getTimestamp();
+        const lines = [];
+        lines.push(`## ${timestamp} - ${entry.category}`);
+        lines.push("");
+        lines.push(`**Error**: ${entry.error}`);
+        lines.push("");
+        lines.push("**Context**:");
+        lines.push(`- Task: ${entry.context.task}`);
+        if (entry.context.agent) {
+          lines.push(`- Agent: ${entry.context.agent}`);
+        }
+        if (entry.context.files && entry.context.files.length > 0) {
+          lines.push(`- File(s): ${entry.context.files.join(", ")}`);
+        }
+        lines.push("");
+        lines.push(`**Root Cause**: ${entry.rootCause}`);
+        lines.push("");
+        lines.push(`**Resolution**: ${entry.resolution}`);
+        lines.push("");
+        if (entry.prevention) {
+          lines.push(`**Prevention**: ${entry.prevention}`);
+          lines.push("");
+        }
+        lines.push(`**Status**: ${entry.status}`);
+        lines.push("");
+        lines.push("---");
+        lines.push("");
+        return lines.join("\n");
+      }
+      /**
+       * Formats an activity entry as markdown matching LOGGING-SPEC.md.
+       */
+      formatActivityEntry(entry) {
+        const date4 = this.getDateStamp();
+        const lines = [];
+        lines.push(`## ${date4}: ${entry.title}`);
+        lines.push("");
+        lines.push(`**Task**: ${entry.task}`);
+        lines.push("");
+        if (entry.plan) {
+          lines.push(`**Plan**: ${entry.plan}`);
+          lines.push("");
+        }
+        lines.push(`**Status**: ${entry.status}`);
+        lines.push("");
+        lines.push("**Completed Items**:");
+        entry.completedItems.forEach((item) => {
+          lines.push(`- ${item}`);
+        });
+        lines.push("");
+        lines.push("**Files Modified**:");
+        entry.filesModified.forEach((file2) => {
+          lines.push(`- ${file2}`);
+        });
+        lines.push("");
+        if (entry.reviewScore) {
+          lines.push(`**Review Score**: ${entry.reviewScore}`);
+          lines.push("");
+        }
+        if (entry.commit) {
+          lines.push(`**Commit**: ${entry.commit}`);
+          lines.push("");
+        }
+        lines.push("---");
+        lines.push("");
+        return lines.join("\n");
+      }
+      /**
+       * Appends content to a log file (newest first - prepends after header).
+       */
+      async appendToLog(type, content) {
+        const filePath = getLogFilePath(this.projectRoot, type);
+        let existingContent = "";
+        try {
+          existingContent = await fs7.readFile(filePath, "utf8");
+        } catch (error2) {
+          if (error2.code === "ENOENT") {
+            existingContent = this.getLogHeader(type);
+          } else {
+            throw error2;
+          }
+        }
+        const headerEndMatch = existingContent.match(/^#[^\n]*\n\n[^\n]*\n\n---\n\n/);
+        let newContent;
+        if (headerEndMatch) {
+          const headerEnd = headerEndMatch[0].length;
+          const header = existingContent.slice(0, headerEnd);
+          const body = existingContent.slice(headerEnd);
+          newContent = header + content + body;
+        } else {
+          newContent = content + existingContent;
+        }
+        await fs7.writeFile(filePath, newContent, "utf8");
+      }
+      /**
+       * Gets current date in YYYY-MM-DD format.
+       */
+      getDateStamp() {
+        const now = /* @__PURE__ */ new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+      /**
+       * Gets current timestamp in YYYY-MM-DD HH:MM format.
+       */
+      getTimestamp() {
+        const now = /* @__PURE__ */ new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+      }
+    };
+    __name(createLogsManager, "createLogsManager");
+  }
+});
+
+// src/runtime/logs.ts
+function createLogsManager2(projectRoot) {
+  return createLogsManager(projectRoot ?? process.cwd());
 }
 function getLogsManager(projectRoot) {
   if (!globalLogsManager) {
-    globalLogsManager = createLogsManager(projectRoot);
+    globalLogsManager = createLogsManager2(projectRoot);
   }
   return globalLogsManager;
 }
 function resetGlobalLogsManager() {
   globalLogsManager = null;
 }
-var fs7, path7, LOGS_PATHS, LogsManagerImpl, globalLogsManager;
-var init_logs = __esm({
+var globalLogsManager;
+var init_logs2 = __esm({
   "src/runtime/logs.ts"() {
     "use strict";
-    fs7 = __toESM(require("fs/promises"), 1);
-    path7 = __toESM(require("path"), 1);
-    LOGS_PATHS = {
-      LOGS_DIR: ".goodvibes/logs",
-      JUSTVIBES_LOG: ".goodvibes/logs/justvibes-log.md",
-      JUSTVIBES_ERRORS: ".goodvibes/logs/justvibes-errors.md",
-      ACTIVITY_LOG: ".goodvibes/logs/activity.log",
-      DECISIONS_LOG: ".goodvibes/logs/decisions.log"
-    };
-    LogsManagerImpl = class {
-      static {
-        __name(this, "LogsManagerImpl");
-      }
-      projectRoot;
-      constructor(projectRoot = process.cwd()) {
-        this.projectRoot = projectRoot;
-      }
-      async ensureLogsDir() {
-        const absPath = this.getAbsolutePath(LOGS_PATHS.LOGS_DIR);
-        try {
-          await fs7.mkdir(absPath, { recursive: true });
-        } catch {
-        }
-      }
-      async initialize() {
-        await this.ensureLogsDir();
-        const logFiles = [
-          { path: LOGS_PATHS.JUSTVIBES_LOG, content: "# JustVibes Activity Log\n\n" },
-          { path: LOGS_PATHS.JUSTVIBES_ERRORS, content: "# JustVibes Errors Log\n\n" },
-          { path: LOGS_PATHS.ACTIVITY_LOG, content: "" },
-          { path: LOGS_PATHS.DECISIONS_LOG, content: "" }
-        ];
-        for (const logFile of logFiles) {
-          const absPath = this.getAbsolutePath(logFile.path);
-          try {
-            await fs7.access(absPath);
-          } catch {
-            await fs7.writeFile(absPath, logFile.content, "utf-8");
-          }
-        }
-      }
-      async appendJustvibesLog(message) {
-        const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-        const logEntry = `## ${timestamp}
-
-${message}
-
----
-
-`;
-        await this.appendToFile(LOGS_PATHS.JUSTVIBES_LOG, logEntry);
-      }
-      async appendJustvibesError(error2) {
-        const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-        const logEntry = `## ${timestamp}
-
-${error2}
-
----
-
-`;
-        await this.appendToFile(LOGS_PATHS.JUSTVIBES_ERRORS, logEntry);
-      }
-      async appendActivity(activity) {
-        const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-        const logEntry = `[${timestamp}] ${activity}
-`;
-        await this.appendToFile(LOGS_PATHS.ACTIVITY_LOG, logEntry);
-      }
-      async appendDecision(decision) {
-        const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-        const logEntry = `[${timestamp}] ${decision}
-`;
-        await this.appendToFile(LOGS_PATHS.DECISIONS_LOG, logEntry);
-      }
-      async readLog(logPath) {
-        const absPath = this.getAbsolutePath(logPath);
-        try {
-          return await fs7.readFile(absPath, "utf-8");
-        } catch {
-          return "";
-        }
-      }
-      async clearLog(logPath) {
-        const absPath = this.getAbsolutePath(logPath);
-        let initialContent = "";
-        if (logPath === LOGS_PATHS.JUSTVIBES_LOG) {
-          initialContent = "# JustVibes Activity Log\n\n";
-        } else if (logPath === LOGS_PATHS.JUSTVIBES_ERRORS) {
-          initialContent = "# JustVibes Errors Log\n\n";
-        }
-        await fs7.writeFile(absPath, initialContent, "utf-8");
-      }
-      // =========================================================================
-      // Helper Methods
-      // =========================================================================
-      getAbsolutePath(relativePath) {
-        return path7.join(this.projectRoot, relativePath);
-      }
-      async appendToFile(relativePath, content) {
-        const absPath = this.getAbsolutePath(relativePath);
-        try {
-          await fs7.appendFile(absPath, content, "utf-8");
-        } catch {
-          await this.initialize();
-          await fs7.appendFile(absPath, content, "utf-8");
-        }
-      }
-    };
-    __name(createLogsManager, "createLogsManager");
+    init_logs();
+    init_paths();
+    __name(createLogsManager2, "createLogsManager");
     globalLogsManager = null;
     __name(getLogsManager, "getLogsManager");
     __name(resetGlobalLogsManager, "resetGlobalLogsManager");
@@ -11869,7 +12035,7 @@ var init_runtime = __esm({
     init_context();
     init_template_resolver();
     init_mode();
-    init_logs();
+    init_logs2();
     init_state();
     init_memory();
     init_telemetry();
@@ -11881,7 +12047,7 @@ var init_runtime = __esm({
     init_context();
     init_template_resolver();
     init_mode();
-    init_logs();
+    init_logs2();
     init_agent_pool();
     __name(createRuntimeContext, "createRuntimeContext");
     __name(initializeRuntime, "initializeRuntime");

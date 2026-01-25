@@ -10,6 +10,7 @@ import * as path from 'path';
 
 import { fileExists } from '../shared/file-utils.js';
 import { debug } from '../shared/logging.js';
+import { getMemoryDir, MEMORY_FILES } from '../memory/paths.js';
 
 /**
  * Check if a path is a directory (async).
@@ -68,7 +69,7 @@ export interface Preferences {
   preferredLibraries?: Record<string, string>;
 }
 
-const MEMORY_DIR = '.goodvibes/memory';
+// MEMORY_DIR imported from ../memory/paths.js via getMemoryDir()
 
 /**
  * Number of recent decisions to display.
@@ -98,7 +99,7 @@ async function loadJsonFile<T>(
   cwd: string,
   filename: string
 ): Promise<T | null> {
-  const filePath = path.join(cwd, MEMORY_DIR, filename);
+  const filePath = path.join(getMemoryDir(cwd), filename);
   try {
     if (await fileExists(filePath)) {
       const content = await fs.readFile(filePath, 'utf-8');
@@ -119,7 +120,7 @@ async function loadJsonFile<T>(
  * @returns Promise resolving to array of file contents as strings
  */
 async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
-  const dirPath = path.join(cwd, MEMORY_DIR, subdir);
+  const dirPath = path.join(getMemoryDir(cwd), subdir);
   const results: string[] = [];
 
   try {
@@ -156,7 +157,7 @@ async function loadTextFiles(cwd: string, subdir: string): Promise<string[]> {
  * }
  */
 export async function loadMemory(cwd: string): Promise<ProjectMemory> {
-  const memoryPath = path.join(cwd, MEMORY_DIR);
+  const memoryPath = getMemoryDir(cwd);
 
   // Check if memory directory exists
   if (!(await fileExists(memoryPath))) {
@@ -172,10 +173,10 @@ export async function loadMemory(cwd: string): Promise<ProjectMemory> {
   // Load structured data
   const [decisions, patterns, failures, preferences, customContext] =
     await Promise.all([
-      loadJsonFile<Decision[]>(cwd, 'decisions.json'),
-      loadJsonFile<Pattern[]>(cwd, 'patterns.json'),
-      loadJsonFile<Failure[]>(cwd, 'failures.json'),
-      loadJsonFile<Preferences>(cwd, 'preferences.json'),
+      loadJsonFile<Decision[]>(cwd, MEMORY_FILES.decisions),
+      loadJsonFile<Pattern[]>(cwd, MEMORY_FILES.patterns),
+      loadJsonFile<Failure[]>(cwd, MEMORY_FILES.failures),
+      loadJsonFile<Preferences>(cwd, MEMORY_FILES.preferences),
       loadTextFiles(cwd, 'context'),
     ]);
 

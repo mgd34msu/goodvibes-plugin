@@ -2,13 +2,13 @@
  * Patterns memory module - stores project-specific code patterns.
  */
 
-import * as path from 'path';
-
 import {
   parseMemoryFile,
   ensureMemoryFile,
   appendMemoryEntry,
 } from './parser.js';
+
+import { getMemoryFilePath } from './paths.js';
 
 import type { MemoryPattern } from '../types/memory.js';
 
@@ -38,7 +38,7 @@ These patterns help maintain consistency across the codebase.
  * // ]
  */
 export async function readPatterns(cwd: string): Promise<MemoryPattern[]> {
-  const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
+  const filePath = getMemoryFilePath(cwd, 'patterns');
 
   return parseMemoryFile<MemoryPattern>(filePath, {
     primaryField: 'name',
@@ -83,7 +83,7 @@ export async function writePattern(
   cwd: string,
   pattern: MemoryPattern
 ): Promise<void> {
-  const filePath = path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
+  const filePath = getMemoryFilePath(cwd, 'patterns');
 
   await ensureMemoryFile(filePath, PATTERNS_HEADER);
 

@@ -2,13 +2,13 @@
  * Failures memory module - stores failed approaches to avoid repeating.
  */
 
-import * as path from 'path';
-
 import {
   parseMemoryFile,
   ensureMemoryFile,
   appendMemoryEntry,
 } from './parser.js';
+
+import { getMemoryFilePath } from './paths.js';
 
 import type { MemoryFailure } from '../types/memory.js';
 
@@ -38,7 +38,7 @@ Reference this to avoid repeating unsuccessful strategies.
  * // ]
  */
 export async function readFailures(cwd: string): Promise<MemoryFailure[]> {
-  const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
+  const filePath = getMemoryFilePath(cwd, 'failures');
 
   return parseMemoryFile<MemoryFailure>(filePath, {
     primaryField: 'approach',
@@ -83,7 +83,7 @@ export async function writeFailure(
   cwd: string,
   failure: MemoryFailure
 ): Promise<void> {
-  const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
+  const filePath = getMemoryFilePath(cwd, 'failures');
 
   await ensureMemoryFile(filePath, FAILURES_HEADER);
 

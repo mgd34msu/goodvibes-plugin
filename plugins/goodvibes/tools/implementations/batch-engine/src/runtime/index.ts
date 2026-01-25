@@ -265,11 +265,19 @@ export {
   createLogsManager,
   getLogsManager,
   resetGlobalLogsManager,
-  LOGS_PATHS,
+  getLogsDir,
+  getLogFilePath,
 } from './logs.js';
 
-// Re-export logs interfaces
-export type { LogsManager, LogsPath } from './logs.js';
+// Re-export logs types
+export type {
+  LogsManager,
+  DecisionLogEntry,
+  ErrorLogEntry,
+  ActivityLogEntry,
+  ErrorCategory,
+  LogFileType,
+} from './logs.js';
 
 // ============================================================================
 // Agent Coordination System (SPEC-v2 Section 12)

@@ -226,9 +226,6 @@ function buildFixContext(state, error) {
   return parts.join("\n");
 }
 
-// src/memory/failures.ts
-import * as path5 from "path";
-
 // src/memory/parser.ts
 import * as fs3 from "fs/promises";
 import * as path4 from "path";
@@ -324,6 +321,24 @@ async function appendMemoryEntry(filePath, entry) {
   await fs3.appendFile(filePath, entry);
 }
 
+// src/memory/paths.ts
+import * as path5 from "path";
+var GOODVIBES_DIR = ".goodvibes";
+var MEMORY_DIR = "memory";
+var MEMORY_FILES = {
+  decisions: "decisions.json",
+  patterns: "patterns.json",
+  failures: "failures.json",
+  preferences: "preferences.json",
+  index: "index.json"
+};
+function getMemoryDir(cwd) {
+  return path5.join(cwd, GOODVIBES_DIR, MEMORY_DIR);
+}
+function getMemoryFilePath(cwd, type) {
+  return path5.join(getMemoryDir(cwd), MEMORY_FILES[type]);
+}
+
 // src/memory/failures.ts
 var FAILURES_HEADER = `# Failed Approaches
 
@@ -334,7 +349,7 @@ Reference this to avoid repeating unsuccessful strategies.
 
 `;
 async function writeFailure(cwd, failure) {
-  const filePath = path5.join(cwd, ".goodvibes", "memory", "failures.md");
+  const filePath = getMemoryFilePath(cwd, "failures");
   await ensureMemoryFile(filePath, FAILURES_HEADER);
   const entry = formatFailure(failure);
   await appendMemoryEntry(filePath, entry);

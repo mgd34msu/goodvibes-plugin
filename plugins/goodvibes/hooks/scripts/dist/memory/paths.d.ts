@@ -8,12 +8,17 @@
 export declare const GOODVIBES_DIR = ".goodvibes";
 /** The name of the memory subdirectory. */
 export declare const MEMORY_DIR = "memory";
-/** Mapping of memory types to their file names. */
+/**
+ * Mapping of memory types to their file names.
+ * Uses JSON format for structured data enabling programmatic search/query operations.
+ * SYNCHRONIZED WITH: plugins/goodvibes/src/core/paths.ts
+ */
 export declare const MEMORY_FILES: {
-    readonly decisions: "decisions.md";
-    readonly patterns: "patterns.md";
-    readonly failures: "failures.md";
-    readonly preferences: "preferences.md";
+    readonly decisions: "decisions.json";
+    readonly patterns: "patterns.json";
+    readonly failures: "failures.json";
+    readonly preferences: "preferences.json";
+    readonly index: "index.json";
 };
 /** Type representing the valid memory file types. */
 export type MemoryFileType = keyof typeof MEMORY_FILES;
@@ -57,6 +62,6 @@ export declare function getMemoryDir(cwd: string): string;
  *
  * @example
  * const filePath = getMemoryFilePath('/path/to/project', 'decisions');
- * // => '/path/to/project/.goodvibes/memory/decisions.md'
+ * // => '/path/to/project/.goodvibes/memory/decisions.json'
  */
 export declare function getMemoryFilePath(cwd: string, type: MemoryFileType): string;

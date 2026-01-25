@@ -1,8 +1,8 @@
 /**
  * Decisions memory module - stores architectural decisions with rationale.
  */
-import * as path from 'path';
 import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
+import { getMemoryFilePath } from './paths.js';
 const DECISIONS_HEADER = `# Architectural Decisions
 
 This file records architectural decisions made for this project.
@@ -28,7 +28,7 @@ Each decision includes the date, alternatives considered, rationale, and the age
  * // ]
  */
 export async function readDecisions(cwd) {
-    const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
+    const filePath = getMemoryFilePath(cwd, 'decisions');
     return parseMemoryFile(filePath, {
         primaryField: 'title',
         fields: {
@@ -68,7 +68,7 @@ export async function readDecisions(cwd) {
  * // => undefined (decision appended to decisions.md)
  */
 export async function writeDecision(cwd, decision) {
-    const filePath = path.join(cwd, '.goodvibes', 'memory', 'decisions.md');
+    const filePath = getMemoryFilePath(cwd, 'decisions');
     await ensureMemoryFile(filePath, DECISIONS_HEADER);
     const entry = formatDecision(decision);
     await appendMemoryEntry(filePath, entry);

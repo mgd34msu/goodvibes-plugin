@@ -91,3 +91,38 @@ export type {
   DetectionResult,
   ContextInjectorConfig,
 } from "./context-injector.js";
+
+// Logs Manager
+export { LogsManager, createLogsManager } from "./logs.js";
+export type {
+  ILogsManager,
+  DecisionLogEntry,
+  ErrorLogEntry,
+  ActivityLogEntry,
+  ErrorCategory,
+} from "./logs.js";
+
+// Path Utilities
+export {
+  GOODVIBES_DIR,
+  SUBDIRS,
+  LOG_FILES,
+  MEMORY_FILES,
+  STATE_FILES,
+  getGoodVibesDir,
+  getLogsDir,
+  getLogFilePath,
+  getMemoryDir,
+  getMemoryFilePath,
+  getStateDir,
+  getStateFilePath,
+  getTelemetryDir,
+  getTelemetryFilePath,
+  getPlansDir,
+  getAllGoodVibesDirs,
+} from "./paths.js";
+export type {
+  LogFileType,
+  MemoryFileType,
+  StateFileType,
+} from "./paths.js";

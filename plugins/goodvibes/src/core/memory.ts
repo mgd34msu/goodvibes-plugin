@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { getMemoryDir, MEMORY_FILES, SUBDIRS } from "./paths.js";
 
 /**
  * Represents a recorded decision.
@@ -132,18 +133,11 @@ export interface MemorySearchOptions {
 
 /** Default configuration */
 const DEFAULT_CONFIG: MemoryConfig = {
-  storage_dir: ".goodvibes/memory",
+  storage_dir: path.join(".goodvibes", SUBDIRS.memory),
   max_decisions: 1000,
   max_patterns: 500,
   max_failures: 500,
   auto_save: true,
-};
-
-/** File names for storage */
-const FILES = {
-  decisions: "decisions.json",
-  patterns: "patterns.json",
-  failures: "failures.json",
 };
 
 /**
@@ -172,7 +166,7 @@ export class Memory {
    * Gets the full storage directory path.
    */
   private getStoragePath(): string {
-    return path.join(this.projectRoot, this.config.storage_dir);
+    return getMemoryDir(this.projectRoot);
   }
 
   /**
@@ -190,7 +184,7 @@ export class Memory {
 
     // Load decisions
     try {
-      const decisionsPath = path.join(this.getStoragePath(), FILES.decisions);
+      const decisionsPath = path.join(this.getStoragePath(), MEMORY_FILES.decisions);
       const data = await fs.readFile(decisionsPath, "utf8");
       const decisions: Decision[] = JSON.parse(data);
       this.decisions = new Map(decisions.map((d) => [d.id, d]));
@@ -201,7 +195,7 @@ export class Memory {
 
     // Load patterns
     try {
-      const patternsPath = path.join(this.getStoragePath(), FILES.patterns);
+      const patternsPath = path.join(this.getStoragePath(), MEMORY_FILES.patterns);
       const data = await fs.readFile(patternsPath, "utf8");
       const patterns: Pattern[] = JSON.parse(data);
       this.patterns = new Map(patterns.map((p) => [p.id, p]));
@@ -211,7 +205,7 @@ export class Memory {
 
     // Load failures
     try {
-      const failuresPath = path.join(this.getStoragePath(), FILES.failures);
+      const failuresPath = path.join(this.getStoragePath(), MEMORY_FILES.failures);
       const data = await fs.readFile(failuresPath, "utf8");
       const failures: Failure[] = JSON.parse(data);
       this.failures = new Map(failures.map((f) => [f.id, f]));
@@ -229,7 +223,7 @@ export class Memory {
     await this.ensureStorageDir();
 
     // Save decisions
-    const decisionsPath = path.join(this.getStoragePath(), FILES.decisions);
+    const decisionsPath = path.join(this.getStoragePath(), MEMORY_FILES.decisions);
     await fs.writeFile(
       decisionsPath,
       JSON.stringify(Array.from(this.decisions.values()), null, 2),
@@ -237,7 +231,7 @@ export class Memory {
     );
 
     // Save patterns
-    const patternsPath = path.join(this.getStoragePath(), FILES.patterns);
+    const patternsPath = path.join(this.getStoragePath(), MEMORY_FILES.patterns);
     await fs.writeFile(
       patternsPath,
       JSON.stringify(Array.from(this.patterns.values()), null, 2),
@@ -245,7 +239,7 @@ export class Memory {
     );
 
     // Save failures
-    const failuresPath = path.join(this.getStoragePath(), FILES.failures);
+    const failuresPath = path.join(this.getStoragePath(), MEMORY_FILES.failures);
     await fs.writeFile(
       failuresPath,
       JSON.stringify(Array.from(this.failures.values()), null, 2),

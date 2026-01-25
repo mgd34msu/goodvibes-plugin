@@ -1,8 +1,8 @@
 /**
  * Failures memory module - stores failed approaches to avoid repeating.
  */
-import * as path from 'path';
 import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
+import { getMemoryFilePath } from './paths.js';
 const FAILURES_HEADER = `# Failed Approaches
 
 This file records approaches that were tried and failed.
@@ -28,7 +28,7 @@ Reference this to avoid repeating unsuccessful strategies.
  * // ]
  */
 export async function readFailures(cwd) {
-    const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
+    const filePath = getMemoryFilePath(cwd, 'failures');
     return parseMemoryFile(filePath, {
         primaryField: 'approach',
         fields: {
@@ -68,7 +68,7 @@ export async function readFailures(cwd) {
  * // => undefined (failure appended to failures.md)
  */
 export async function writeFailure(cwd, failure) {
-    const filePath = path.join(cwd, '.goodvibes', 'memory', 'failures.md');
+    const filePath = getMemoryFilePath(cwd, 'failures');
     await ensureMemoryFile(filePath, FAILURES_HEADER);
     const entry = formatFailure(failure);
     await appendMemoryEntry(filePath, entry);

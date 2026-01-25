@@ -1336,8 +1336,23 @@ function formatPortStatus(ports) {
   return `Active ports: ${portList}`;
 }
 
-// src/memory/decisions.ts
+// src/memory/paths.ts
 import * as path11 from "path";
+var GOODVIBES_DIR = ".goodvibes";
+var MEMORY_DIR = "memory";
+var MEMORY_FILES = {
+  decisions: "decisions.json",
+  patterns: "patterns.json",
+  failures: "failures.json",
+  preferences: "preferences.json",
+  index: "index.json"
+};
+function getMemoryDir(cwd) {
+  return path11.join(cwd, GOODVIBES_DIR, MEMORY_DIR);
+}
+function getMemoryFilePath(cwd, type2) {
+  return path11.join(getMemoryDir(cwd), MEMORY_FILES[type2]);
+}
 
 // src/memory/parser.ts
 import * as fs11 from "fs/promises";
@@ -1486,7 +1501,7 @@ function parseBlock(block, parser) {
 
 // src/memory/decisions.ts
 async function readDecisions(cwd) {
-  const filePath = path11.join(cwd, ".goodvibes", "memory", "decisions.md");
+  const filePath = getMemoryFilePath(cwd, "decisions");
   return parseMemoryFile(filePath, {
     primaryField: "title",
     fields: {
@@ -1509,9 +1524,8 @@ async function readDecisions(cwd) {
 }
 
 // src/memory/patterns.ts
-import * as path12 from "path";
 async function readPatterns(cwd) {
-  const filePath = path12.join(cwd, ".goodvibes", "memory", "patterns.md");
+  const filePath = getMemoryFilePath(cwd, "patterns");
   return parseMemoryFile(filePath, {
     primaryField: "name",
     fields: {
@@ -1532,9 +1546,8 @@ async function readPatterns(cwd) {
 }
 
 // src/memory/failures.ts
-import * as path13 from "path";
 async function readFailures(cwd) {
-  const filePath = path13.join(cwd, ".goodvibes", "memory", "failures.md");
+  const filePath = getMemoryFilePath(cwd, "failures");
   return parseMemoryFile(filePath, {
     primaryField: "approach",
     fields: {
@@ -1555,9 +1568,8 @@ async function readFailures(cwd) {
 }
 
 // src/memory/preferences.ts
-import * as path14 from "path";
 async function readPreferences(cwd) {
-  const filePath = path14.join(cwd, ".goodvibes", "memory", "preferences.md");
+  const filePath = getMemoryFilePath(cwd, "preferences");
   return parseMemoryFile(filePath, {
     primaryField: "key",
     fields: {
@@ -1610,7 +1622,7 @@ function formatMemoryContext(memory) {
 }
 
 // src/session-start/crash-recovery.ts
-import * as path15 from "path";
+import * as path12 from "path";
 
 // src/automation/git-operations.ts
 import { exec as exec4 } from "child_process";
@@ -1643,7 +1655,7 @@ async function getUncommittedFiles(cwd) {
 
 // src/session-start/crash-recovery.ts
 async function checkCrashRecovery(cwd) {
-  const stateFile = path15.join(cwd, ".goodvibes", "state", "hooks-state.json");
+  const stateFile = path12.join(cwd, ".goodvibes", "state", "hooks-state.json");
   if (!await fileExists(stateFile)) {
     return {
       needsRecovery: false,
@@ -1895,7 +1907,7 @@ async function gatherProjectContext(projectDir, recoveryInfo, startTime) {
 
 // src/session-start/response-formatter.ts
 import * as fs12 from "fs";
-import * as path16 from "path";
+import * as path13 from "path";
 
 // node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
@@ -4487,7 +4499,7 @@ var safeDump = renamed("safeDump", "dump");
 var SESSION_ID_DISPLAY_LENGTH = 8;
 function getPluginVersion() {
   try {
-    const manifestPath = path16.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
+    const manifestPath = path13.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
     const content = fs12.readFileSync(manifestPath, "utf-8");
     const manifest = JSON.parse(content);
     return manifest.version ? `v${manifest.version}` : "v0.0.0";
@@ -4497,7 +4509,7 @@ function getPluginVersion() {
 }
 function getToolCount() {
   try {
-    const registryPath = path16.join(PLUGIN_ROOT, "tools", "_registry.yaml");
+    const registryPath = path13.join(PLUGIN_ROOT, "tools", "_registry.yaml");
     const content = fs12.readFileSync(registryPath, "utf-8");
     const registry = load(content);
     return registry.total ?? 0;
@@ -4526,11 +4538,11 @@ function buildSystemMessage(sessionId, context) {
 
 // src/session-start/pricing-fetcher.ts
 import { readFile as readFile9, writeFile as writeFile5, mkdir as mkdir5 } from "node:fs/promises";
-import { join as join17, dirname as dirname2 } from "node:path";
+import { join as join14, dirname as dirname2 } from "node:path";
 import { existsSync } from "node:fs";
 var PLUGIN_ROOT2 = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
-var CONFIG_PATH = join17(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
-var CACHE_PATH = join17(PLUGIN_ROOT2, ".cache", "model-pricing.json");
+var CONFIG_PATH = join14(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
+var CACHE_PATH = join14(PLUGIN_ROOT2, ".cache", "model-pricing.json");
 async function loadConfig() {
   try {
     const content = await readFile9(CONFIG_PATH, "utf-8");

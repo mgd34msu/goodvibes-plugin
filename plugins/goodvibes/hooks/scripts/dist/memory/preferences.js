@@ -1,8 +1,8 @@
 /**
  * Preferences memory module - stores user preferences for the project.
  */
-import * as path from 'path';
 import { parseMemoryFile, ensureMemoryFile, appendMemoryEntry, } from './parser.js';
+import { getMemoryFilePath } from './paths.js';
 const PREFERENCES_HEADER = `# User Preferences
 
 This file stores user preferences for this project.
@@ -28,7 +28,7 @@ These preferences guide agent behavior and decision-making.
  * // ]
  */
 export async function readPreferences(cwd) {
-    const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
+    const filePath = getMemoryFilePath(cwd, 'preferences');
     return parseMemoryFile(filePath, {
         primaryField: 'key',
         fields: {
@@ -65,7 +65,7 @@ export async function readPreferences(cwd) {
  * // => undefined (preference appended to preferences.md)
  */
 export async function writePreference(cwd, preference) {
-    const filePath = path.join(cwd, '.goodvibes', 'memory', 'preferences.md');
+    const filePath = getMemoryFilePath(cwd, 'preferences');
     await ensureMemoryFile(filePath, PREFERENCES_HEADER);
     const entry = formatPreference(preference);
     await appendMemoryEntry(filePath, entry);
