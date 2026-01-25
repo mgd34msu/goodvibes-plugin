@@ -47,11 +47,17 @@ try {
 
 log('JSON FIXED: ' + fixed.substring(0, 50));
 // Return fixed command
-console.log(JSON.stringify({
+
+const response = {
   continue: true,
   hookSpecificOutput: {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
-    updatedInput: { command: prefix + fixed + suffix }
+    updatedInput: { 
+      command: prefix + fixed + suffix 
+    }
   }
-}));
+};
+
+log('RESPONSE: ' + response);
+console.log(response);
