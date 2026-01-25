@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/bash-json-escape.mjs\""
+            "command": "node \"C:/Users/buzzkill/Documents/vibeplug/plugins/goodvibes/hooks/bash-json-escape.mjs\""
           }
         ]
       }
