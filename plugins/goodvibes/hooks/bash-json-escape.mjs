@@ -103,29 +103,30 @@ if (!match) {
 
 const [, prefix, json, suffix] = match;
 
-// If JSON is already valid, pass through
+// Check if JSON is already valid
+let finalJson;
 try {
   JSON.parse(json);
   log('JSON ALREADY VALID');
-  passThrough();
-} catch {}
-
-// Part 1: Fix invalid escape sequences (\s -> \\s)
-const fixed = fixInvalidEscapes(json);
-
-// Verify the fix produces valid JSON
-try {
-  JSON.parse(fixed);
+  finalJson = json;
 } catch {
-  log('FIX FAILED: ' + fixed.substring(0, 50));
-  passThrough();
-}
+  // Part 1: Fix invalid escape sequences (\s -> \\s)
+  const fixed = fixInvalidEscapes(json);
 
-log('JSON FIXED: ' + fixed.substring(0, 50));
+  // Verify the fix produces valid JSON
+  try {
+    JSON.parse(fixed);
+    log('JSON FIXED: ' + fixed.substring(0, 50));
+    finalJson = fixed;
+  } catch {
+    log('FIX FAILED: ' + fixed.substring(0, 50));
+    passThrough();
+  }
+}
 
 // Part 2: Reassemble command and double ALL backslashes
 // (Claude Code strips one layer when applying updatedInput)
-const fixedCommand = prefix + fixed + suffix;
+const fixedCommand = prefix + finalJson + suffix;
 const doubledCommand = fixedCommand.replace(/\\/g, '\\\\');
 
 log('DOUBLED COMMAND: ' + doubledCommand.substring(0, 80));
