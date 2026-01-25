@@ -53,8 +53,8 @@ const response = {
   hookSpecificOutput: {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
-    updatedInput: { 
-      command: JSON.stringify( prefix + fixed + suffix )
+    updatedInput: {
+      command: prefix + fixed + suffix
     }
   }
 };
