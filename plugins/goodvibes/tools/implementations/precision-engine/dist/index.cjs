@@ -14295,8 +14295,8 @@ var require_typescript = __commonJS({
         isExcludedFile: () => isExcludedFile,
         isExclusivelyTypeOnlyImportOrExport: () => isExclusivelyTypeOnlyImportOrExport,
         isExpandoPropertyDeclaration: () => isExpandoPropertyDeclaration,
-        isExportAssignment: () => isExportAssignment,
-        isExportDeclaration: () => isExportDeclaration,
+        isExportAssignment: () => isExportAssignment2,
+        isExportDeclaration: () => isExportDeclaration2,
         isExportModifier: () => isExportModifier,
         isExportName: () => isExportName,
         isExportNamespaceAsDefaultDeclaration: () => isExportNamespaceAsDefaultDeclaration,
@@ -14550,7 +14550,7 @@ var require_typescript = __commonJS({
         isNamedEvaluation: () => isNamedEvaluation,
         isNamedEvaluationSource: () => isNamedEvaluationSource,
         isNamedExportBindings: () => isNamedExportBindings,
-        isNamedExports: () => isNamedExports,
+        isNamedExports: () => isNamedExports2,
         isNamedImportBindings: () => isNamedImportBindings,
         isNamedImports: () => isNamedImports,
         isNamedImportsOrExports: () => isNamedImportsOrExports,
@@ -30172,7 +30172,7 @@ ${lanes.join("\n")}
       }
       __name(isIterationStatement, "isIterationStatement");
       function isScopeMarker(node) {
-        return isExportAssignment(node) || isExportDeclaration(node);
+        return isExportAssignment2(node) || isExportDeclaration2(node);
       }
       __name(isScopeMarker, "isScopeMarker");
       function hasScopeMarker(statements) {
@@ -30180,7 +30180,7 @@ ${lanes.join("\n")}
       }
       __name(hasScopeMarker, "hasScopeMarker");
       function needsScopeMarker(result) {
-        return !isAnyImportOrReExport(result) && !isExportAssignment(result) && !hasSyntacticModifier(
+        return !isAnyImportOrReExport(result) && !isExportAssignment2(result) && !hasSyntacticModifier(
           result,
           32
           /* Export */
@@ -30188,7 +30188,7 @@ ${lanes.join("\n")}
       }
       __name(needsScopeMarker, "needsScopeMarker");
       function isExternalModuleIndicator(result) {
-        return isAnyImportOrReExport(result) || isExportAssignment(result) || hasSyntacticModifier(
+        return isAnyImportOrReExport(result) || isExportAssignment2(result) || hasSyntacticModifier(
           result,
           32
           /* Export */
@@ -31088,7 +31088,7 @@ ${lanes.join("\n")}
       }
       __name(isJSDocTypeExpressionOrChild, "isJSDocTypeExpressionOrChild");
       function isExportNamespaceAsDefaultDeclaration(node) {
-        return !!(isExportDeclaration(node) && node.exportClause && isNamespaceExport(node.exportClause) && moduleExportNameIsDefault(node.exportClause.name));
+        return !!(isExportDeclaration2(node) && node.exportClause && isNamespaceExport(node.exportClause) && moduleExportNameIsDefault(node.exportClause.name));
       }
       __name(isExportNamespaceAsDefaultDeclaration, "isExportNamespaceAsDefaultDeclaration");
       function moduleExportNameTextUnescaped(node) {
@@ -31956,7 +31956,7 @@ ${lanes.join("\n")}
       }
       __name(hasPossibleExternalModuleReference, "hasPossibleExternalModuleReference");
       function isAnyImportOrReExport(node) {
-        return isAnyImportSyntax(node) || isExportDeclaration(node);
+        return isAnyImportSyntax(node) || isExportDeclaration2(node);
       }
       __name(isAnyImportOrReExport, "isAnyImportOrReExport");
       function getEnclosingContainer(node) {
@@ -34128,7 +34128,7 @@ ${lanes.join("\n")}
       }
       __name(exportAssignmentIsAlias, "exportAssignmentIsAlias");
       function getExportAssignmentExpression(node) {
-        return isExportAssignment(node) ? node.expression : node.right;
+        return isExportAssignment2(node) ? node.expression : node.right;
       }
       __name(getExportAssignmentExpression, "getExportAssignmentExpression");
       function getPropertyAssignmentAliasLikeExpression(node) {
@@ -45810,7 +45810,7 @@ ${lanes.join("\n")}
           } else {
             modifierArray = modifiers;
           }
-          return isTypeParameterDeclaration(node) ? updateTypeParameterDeclaration(node, modifierArray, node.name, node.constraint, node.default) : isParameter(node) ? updateParameterDeclaration(node, modifierArray, node.dotDotDotToken, node.name, node.questionToken, node.type, node.initializer) : isConstructorTypeNode(node) ? updateConstructorTypeNode1(node, modifierArray, node.typeParameters, node.parameters, node.type) : isPropertySignature(node) ? updatePropertySignature(node, modifierArray, node.name, node.questionToken, node.type) : isPropertyDeclaration(node) ? updatePropertyDeclaration2(node, modifierArray, node.name, node.questionToken ?? node.exclamationToken, node.type, node.initializer) : isMethodSignature(node) ? updateMethodSignature(node, modifierArray, node.name, node.questionToken, node.typeParameters, node.parameters, node.type) : isMethodDeclaration2(node) ? updateMethodDeclaration(node, modifierArray, node.asteriskToken, node.name, node.questionToken, node.typeParameters, node.parameters, node.type, node.body) : isConstructorDeclaration(node) ? updateConstructorDeclaration(node, modifierArray, node.parameters, node.body) : isGetAccessorDeclaration(node) ? updateGetAccessorDeclaration(node, modifierArray, node.name, node.parameters, node.type, node.body) : isSetAccessorDeclaration(node) ? updateSetAccessorDeclaration(node, modifierArray, node.name, node.parameters, node.body) : isIndexSignatureDeclaration(node) ? updateIndexSignature(node, modifierArray, node.parameters, node.type) : isFunctionExpression(node) ? updateFunctionExpression(node, modifierArray, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, node.body) : isArrowFunction(node) ? updateArrowFunction(node, modifierArray, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, node.body) : isClassExpression(node) ? updateClassExpression(node, modifierArray, node.name, node.typeParameters, node.heritageClauses, node.members) : isVariableStatement(node) ? updateVariableStatement(node, modifierArray, node.declarationList) : isFunctionDeclaration2(node) ? updateFunctionDeclaration(node, modifierArray, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, node.body) : isClassDeclaration2(node) ? updateClassDeclaration(node, modifierArray, node.name, node.typeParameters, node.heritageClauses, node.members) : isInterfaceDeclaration2(node) ? updateInterfaceDeclaration(node, modifierArray, node.name, node.typeParameters, node.heritageClauses, node.members) : isTypeAliasDeclaration2(node) ? updateTypeAliasDeclaration(node, modifierArray, node.name, node.typeParameters, node.type) : isEnumDeclaration2(node) ? updateEnumDeclaration(node, modifierArray, node.name, node.members) : isModuleDeclaration(node) ? updateModuleDeclaration(node, modifierArray, node.name, node.body) : isImportEqualsDeclaration(node) ? updateImportEqualsDeclaration(node, modifierArray, node.isTypeOnly, node.name, node.moduleReference) : isImportDeclaration2(node) ? updateImportDeclaration(node, modifierArray, node.importClause, node.moduleSpecifier, node.attributes) : isExportAssignment(node) ? updateExportAssignment(node, modifierArray, node.expression) : isExportDeclaration(node) ? updateExportDeclaration(node, modifierArray, node.isTypeOnly, node.exportClause, node.moduleSpecifier, node.attributes) : Debug.assertNever(node);
+          return isTypeParameterDeclaration(node) ? updateTypeParameterDeclaration(node, modifierArray, node.name, node.constraint, node.default) : isParameter(node) ? updateParameterDeclaration(node, modifierArray, node.dotDotDotToken, node.name, node.questionToken, node.type, node.initializer) : isConstructorTypeNode(node) ? updateConstructorTypeNode1(node, modifierArray, node.typeParameters, node.parameters, node.type) : isPropertySignature(node) ? updatePropertySignature(node, modifierArray, node.name, node.questionToken, node.type) : isPropertyDeclaration(node) ? updatePropertyDeclaration2(node, modifierArray, node.name, node.questionToken ?? node.exclamationToken, node.type, node.initializer) : isMethodSignature(node) ? updateMethodSignature(node, modifierArray, node.name, node.questionToken, node.typeParameters, node.parameters, node.type) : isMethodDeclaration2(node) ? updateMethodDeclaration(node, modifierArray, node.asteriskToken, node.name, node.questionToken, node.typeParameters, node.parameters, node.type, node.body) : isConstructorDeclaration(node) ? updateConstructorDeclaration(node, modifierArray, node.parameters, node.body) : isGetAccessorDeclaration(node) ? updateGetAccessorDeclaration(node, modifierArray, node.name, node.parameters, node.type, node.body) : isSetAccessorDeclaration(node) ? updateSetAccessorDeclaration(node, modifierArray, node.name, node.parameters, node.body) : isIndexSignatureDeclaration(node) ? updateIndexSignature(node, modifierArray, node.parameters, node.type) : isFunctionExpression(node) ? updateFunctionExpression(node, modifierArray, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, node.body) : isArrowFunction(node) ? updateArrowFunction(node, modifierArray, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, node.body) : isClassExpression(node) ? updateClassExpression(node, modifierArray, node.name, node.typeParameters, node.heritageClauses, node.members) : isVariableStatement(node) ? updateVariableStatement(node, modifierArray, node.declarationList) : isFunctionDeclaration2(node) ? updateFunctionDeclaration(node, modifierArray, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, node.body) : isClassDeclaration2(node) ? updateClassDeclaration(node, modifierArray, node.name, node.typeParameters, node.heritageClauses, node.members) : isInterfaceDeclaration2(node) ? updateInterfaceDeclaration(node, modifierArray, node.name, node.typeParameters, node.heritageClauses, node.members) : isTypeAliasDeclaration2(node) ? updateTypeAliasDeclaration(node, modifierArray, node.name, node.typeParameters, node.type) : isEnumDeclaration2(node) ? updateEnumDeclaration(node, modifierArray, node.name, node.members) : isModuleDeclaration(node) ? updateModuleDeclaration(node, modifierArray, node.name, node.body) : isImportEqualsDeclaration(node) ? updateImportEqualsDeclaration(node, modifierArray, node.isTypeOnly, node.name, node.moduleReference) : isImportDeclaration2(node) ? updateImportDeclaration(node, modifierArray, node.importClause, node.moduleSpecifier, node.attributes) : isExportAssignment2(node) ? updateExportAssignment(node, modifierArray, node.expression) : isExportDeclaration2(node) ? updateExportDeclaration(node, modifierArray, node.isTypeOnly, node.exportClause, node.moduleSpecifier, node.attributes) : Debug.assertNever(node);
         }
         __name(replaceModifiers, "replaceModifiers");
         function replaceDecoratorsAndModifiers(node, modifierArray) {
@@ -48221,18 +48221,18 @@ ${lanes.join("\n")}
         return node.kind === 277;
       }
       __name(isImportSpecifier, "isImportSpecifier");
-      function isExportAssignment(node) {
+      function isExportAssignment2(node) {
         return node.kind === 278;
       }
-      __name(isExportAssignment, "isExportAssignment");
-      function isExportDeclaration(node) {
+      __name(isExportAssignment2, "isExportAssignment");
+      function isExportDeclaration2(node) {
         return node.kind === 279;
       }
-      __name(isExportDeclaration, "isExportDeclaration");
-      function isNamedExports(node) {
+      __name(isExportDeclaration2, "isExportDeclaration");
+      function isNamedExports2(node) {
         return node.kind === 280;
       }
-      __name(isNamedExports, "isNamedExports");
+      __name(isNamedExports2, "isNamedExports");
       function isExportSpecifier(node) {
         return node.kind === 282;
       }
@@ -49805,7 +49805,7 @@ ${lanes.join("\n")}
           node,
           95
           /* ExportKeyword */
-        ) || isImportEqualsDeclaration(node) && isExternalModuleReference(node.moduleReference) || isImportDeclaration2(node) || isExportAssignment(node) || isExportDeclaration(node) ? node : void 0;
+        ) || isImportEqualsDeclaration(node) && isExternalModuleReference(node.moduleReference) || isImportDeclaration2(node) || isExportAssignment2(node) || isExportDeclaration2(node) ? node : void 0;
       }
       __name(isAnExternalModuleIndicatorNode, "isAnExternalModuleIndicatorNode");
       function getImportMetaIfNecessary(sourceFile) {
@@ -68359,7 +68359,7 @@ ${lanes.join("\n")}
         __name(declareSourceFileMember, "declareSourceFileMember");
         function hasExportDeclarations(node) {
           const body = isSourceFile(node) ? node : tryCast(node.body, isModuleBlock);
-          return !!body && body.statements.some((s) => isExportDeclaration(s) || isExportAssignment(s));
+          return !!body && body.statements.some((s) => isExportDeclaration2(s) || isExportAssignment2(s));
         }
         __name(hasExportDeclarations, "hasExportDeclarations");
         function setExportContextFlag(node) {
@@ -73988,7 +73988,7 @@ ${lanes.join("\n")}
         }
         __name(resolveExportByName, "resolveExportByName");
         function isSyntacticDefault(node) {
-          return isExportAssignment(node) && !node.isExportEquals || hasSyntacticModifier(
+          return isExportAssignment2(node) && !node.isExportEquals || hasSyntacticModifier(
             node,
             2048
             /* Default */
@@ -74188,7 +74188,7 @@ ${lanes.join("\n")}
               const defaultExport = (_c = exportStar.declarations) == null ? void 0 : _c.find(
                 (decl) => {
                   var _a22, _b2;
-                  return !!(isExportDeclaration(decl) && decl.moduleSpecifier && ((_b2 = (_a22 = resolveExternalModuleName(decl, decl.moduleSpecifier)) == null ? void 0 : _a22.exports) == null ? void 0 : _b2.has(
+                  return !!(isExportDeclaration2(decl) && decl.moduleSpecifier && ((_b2 = (_a22 = resolveExternalModuleName(decl, decl.moduleSpecifier)) == null ? void 0 : _a22.exports) == null ? void 0 : _b2.has(
                     "default"
                     /* Default */
                   )));
@@ -74488,7 +74488,7 @@ ${lanes.join("\n")}
         }
         __name(getTargetOfExportSpecifier, "getTargetOfExportSpecifier");
         function getTargetOfExportAssignment(node, dontResolveAlias) {
-          const expression = isExportAssignment(node) ? node.expression : node.right;
+          const expression = isExportAssignment2(node) ? node.expression : node.right;
           const resolved = getTargetOfAliasLikeExpression(expression, dontResolveAlias);
           markSymbolOfAliasDeclarationIfTypeOnly(
             node,
@@ -74608,7 +74608,7 @@ ${lanes.join("\n")}
         __name(tryResolveAlias, "tryResolveAlias");
         function getSymbolFlags(symbol2, excludeTypeOnlyMeanings, excludeLocalMeanings) {
           const typeOnlyDeclaration = excludeTypeOnlyMeanings && getTypeOnlyAliasDeclaration(symbol2);
-          const typeOnlyDeclarationIsExportStar = typeOnlyDeclaration && isExportDeclaration(typeOnlyDeclaration);
+          const typeOnlyDeclarationIsExportStar = typeOnlyDeclaration && isExportDeclaration2(typeOnlyDeclaration);
           const typeOnlyResolution = typeOnlyDeclaration && (typeOnlyDeclarationIsExportStar ? resolveExternalModuleName(
             typeOnlyDeclaration.moduleSpecifier,
             typeOnlyDeclaration.moduleSpecifier,
@@ -74986,7 +74986,7 @@ ${lanes.join("\n")}
             location.initializer,
             /*requireStringLiteralLikeArgument*/
             true
-          ) ? location.initializer.arguments[0] : void 0) || ((_c = findAncestor(location, isImportCall)) == null ? void 0 : _c.arguments[0]) || ((_d = findAncestor(location, or(isImportDeclaration2, isJSDocImportTag, isExportDeclaration))) == null ? void 0 : _d.moduleSpecifier) || ((_e = findAncestor(location, isExternalModuleImportEqualsDeclaration)) == null ? void 0 : _e.moduleReference.expression);
+          ) ? location.initializer.arguments[0] : void 0) || ((_c = findAncestor(location, isImportCall)) == null ? void 0 : _c.arguments[0]) || ((_d = findAncestor(location, or(isImportDeclaration2, isJSDocImportTag, isExportDeclaration2))) == null ? void 0 : _d.moduleSpecifier) || ((_e = findAncestor(location, isExternalModuleImportEqualsDeclaration)) == null ? void 0 : _e.moduleReference.expression);
           const mode = contextSpecifier && isStringLiteralLike(contextSpecifier) ? host.getModeForUsageLocation(currentSourceFile, contextSpecifier) : host.getDefaultResolutionModeForFile(currentSourceFile);
           const moduleResolutionKind = getEmitModuleResolutionKind(compilerOptions);
           const resolvedModule = (_f = host.getResolvedModule(currentSourceFile, moduleReference, mode)) == null ? void 0 : _f.resolvedModule;
@@ -74997,7 +74997,7 @@ ${lanes.join("\n")}
               error22(errorNode, resolutionDiagnostic, moduleReference, resolvedModule.resolvedFileName);
             }
             if (resolvedModule.resolvedUsingTsExtension && isDeclarationFileName(moduleReference)) {
-              const importOrExport = ((_g = findAncestor(location, isImportDeclaration2)) == null ? void 0 : _g.importClause) || findAncestor(location, or(isImportEqualsDeclaration, isExportDeclaration));
+              const importOrExport = ((_g = findAncestor(location, isImportDeclaration2)) == null ? void 0 : _g.importClause) || findAncestor(location, or(isImportEqualsDeclaration, isExportDeclaration2));
               if (errorNode && importOrExport && !importOrExport.isTypeOnly || findAncestor(location, isImportCall)) {
                 error22(
                   errorNode,
@@ -75006,7 +75006,7 @@ ${lanes.join("\n")}
                 );
               }
             } else if (resolvedModule.resolvedUsingTsExtension && !shouldAllowImportingTsExtension(compilerOptions, currentSourceFile.fileName)) {
-              const importOrExport = ((_h = findAncestor(location, isImportDeclaration2)) == null ? void 0 : _h.importClause) || findAncestor(location, or(isImportEqualsDeclaration, isExportDeclaration));
+              const importOrExport = ((_h = findAncestor(location, isImportDeclaration2)) == null ? void 0 : _h.importClause) || findAncestor(location, or(isImportEqualsDeclaration, isExportDeclaration2));
               if (errorNode && !((importOrExport == null ? void 0 : importOrExport.isTypeOnly) || findAncestor(location, isImportTypeNode))) {
                 const tsExtension = Debug.checkDefined(tryExtractTSExtension(moduleReference));
                 error22(errorNode, Diagnostics.An_import_path_can_only_end_with_a_0_extension_when_allowImportingTsExtensions_is_enabled, tsExtension);
@@ -75056,7 +75056,7 @@ ${lanes.join("\n")}
               }
               if (errorNode && (moduleKind === 100 || moduleKind === 101)) {
                 const isSyncImport = currentSourceFile.impliedNodeFormat === 1 && !findAncestor(location, isImportCall) || !!findAncestor(location, isImportEqualsDeclaration);
-                const overrideHost = findAncestor(location, (l) => isImportTypeNode(l) || isExportDeclaration(l) || isImportDeclaration2(l) || isJSDocImportTag(l));
+                const overrideHost = findAncestor(location, (l) => isImportTypeNode(l) || isExportDeclaration2(l) || isImportDeclaration2(l) || isJSDocImportTag(l));
                 if (isSyncImport && sourceFile.impliedNodeFormat === 99 && !hasResolutionModeOverride(overrideHost)) {
                   if (findAncestor(location, isImportEqualsDeclaration)) {
                     error22(errorNode, Diagnostics.Module_0_cannot_be_imported_using_this_construct_The_specifier_only_resolves_to_an_ES_module_which_cannot_be_imported_with_require_Use_an_ECMAScript_import_instead, moduleReference);
@@ -79875,7 +79875,7 @@ ${lanes.join("\n")}
             }
             __name(getNamesOfDeclaration, "getNamesOfDeclaration");
             function flattenExportAssignedNamespace(statements) {
-              const exportAssignment = find(statements, isExportAssignment);
+              const exportAssignment = find(statements, isExportAssignment2);
               const nsIndex = findIndex(statements, isModuleDeclaration);
               let ns = nsIndex !== -1 ? statements[nsIndex] : void 0;
               if (ns && exportAssignment && exportAssignment.isExportEquals && isIdentifier3(exportAssignment.expression) && isIdentifier3(ns.name) && idText(ns.name) === idText(exportAssignment.expression) && ns.body && isModuleBlock(ns.body)) {
@@ -79917,7 +79917,7 @@ ${lanes.join("\n")}
                     s,
                     32
                     /* Export */
-                  ) || isExportAssignment(s) || isExportDeclaration(s));
+                  ) || isExportAssignment2(s) || isExportDeclaration2(s));
                   forEach(body.statements, (s) => {
                     addResult(
                       s,
@@ -79932,9 +79932,9 @@ ${lanes.join("\n")}
             }
             __name(flattenExportAssignedNamespace, "flattenExportAssignedNamespace");
             function mergeExportDeclarations(statements) {
-              const exports22 = filter(statements, (d) => isExportDeclaration(d) && !d.moduleSpecifier && !!d.exportClause && isNamedExports(d.exportClause));
+              const exports22 = filter(statements, (d) => isExportDeclaration2(d) && !d.moduleSpecifier && !!d.exportClause && isNamedExports2(d.exportClause));
               if (length(exports22) > 1) {
-                const nonExports = filter(statements, (d) => !isExportDeclaration(d) || !!d.moduleSpecifier || !d.exportClause);
+                const nonExports = filter(statements, (d) => !isExportDeclaration2(d) || !!d.moduleSpecifier || !d.exportClause);
                 statements = [
                   ...nonExports,
                   factory.createExportDeclaration(
@@ -79942,13 +79942,13 @@ ${lanes.join("\n")}
                     void 0,
                     /*isTypeOnly*/
                     false,
-                    factory.createNamedExports(flatMap(exports22, (e) => cast(e.exportClause, isNamedExports).elements)),
+                    factory.createNamedExports(flatMap(exports22, (e) => cast(e.exportClause, isNamedExports2).elements)),
                     /*moduleSpecifier*/
                     void 0
                   )
                 ];
               }
-              const reexports = filter(statements, (d) => isExportDeclaration(d) && !!d.moduleSpecifier && !!d.exportClause && isNamedExports(d.exportClause));
+              const reexports = filter(statements, (d) => isExportDeclaration2(d) && !!d.moduleSpecifier && !!d.exportClause && isNamedExports2(d.exportClause));
               if (length(reexports) > 1) {
                 const groups = group(reexports, (decl) => isStringLiteral(decl.moduleSpecifier) ? ">" + decl.moduleSpecifier.text : ">");
                 if (groups.length !== reexports.length) {
@@ -79961,7 +79961,7 @@ ${lanes.join("\n")}
                           void 0,
                           /*isTypeOnly*/
                           false,
-                          factory.createNamedExports(flatMap(group2, (e) => cast(e.exportClause, isNamedExports).elements)),
+                          factory.createNamedExports(flatMap(group2, (e) => cast(e.exportClause, isNamedExports2).elements)),
                           group2[0].moduleSpecifier
                         )
                       ];
@@ -79973,7 +79973,7 @@ ${lanes.join("\n")}
             }
             __name(mergeExportDeclarations, "mergeExportDeclarations");
             function inlineExportModifiers(statements) {
-              const index = findIndex(statements, (d) => isExportDeclaration(d) && !d.moduleSpecifier && !d.attributes && !!d.exportClause && isNamedExports(d.exportClause));
+              const index = findIndex(statements, (d) => isExportDeclaration2(d) && !d.moduleSpecifier && !d.attributes && !!d.exportClause && isNamedExports2(d.exportClause));
               if (index >= 0) {
                 const exportDecl = statements[index];
                 const replacements = mapDefined(exportDecl.exportClause.elements, (e) => {
@@ -80296,7 +80296,7 @@ ${lanes.join("\n")}
                 return;
               Debug.assertIsDefined(deferredPrivatesStack[deferredPrivatesStack.length - 1]);
               getUnusedName(unescapeLeadingUnderscores(symbol2.escapedName), symbol2);
-              const isExternalImportAlias = !!(symbol2.flags & 2097152) && !some(symbol2.declarations, (d) => !!findAncestor(d, isExportDeclaration) || isNamespaceExport(d) || isImportEqualsDeclaration(d) && !isExternalModuleReference(d.moduleReference));
+              const isExternalImportAlias = !!(symbol2.flags & 2097152) && !some(symbol2.declarations, (d) => !!findAncestor(d, isExportDeclaration2) || isNamespaceExport(d) || isImportEqualsDeclaration(d) && !isExternalModuleReference(d.moduleReference));
               deferredPrivatesStack[isExternalImportAlias ? 0 : deferredPrivatesStack.length - 1].set(getSymbolId(symbol2), symbol2);
             }
             __name(includePrivateSymbol, "includePrivateSymbol");
@@ -80685,7 +80685,7 @@ ${lanes.join("\n")}
                 addingDeclare = oldAddingDeclare;
                 const declarations = results;
                 results = oldResults;
-                const defaultReplaced = map2(declarations, (d) => isExportAssignment(d) && !d.isExportEquals && isIdentifier3(d.expression) ? factory.createExportDeclaration(
+                const defaultReplaced = map2(declarations, (d) => isExportAssignment2(d) && !d.isExportEquals && isIdentifier3(d.expression) ? factory.createExportDeclaration(
                   /*modifiers*/
                   void 0,
                   /*isTypeOnly*/
@@ -80875,8 +80875,8 @@ ${lanes.join("\n")}
                 if (isImportSpecifier(d) || isExportSpecifier(d)) {
                   return moduleExportNameTextUnescaped(d.propertyName || d.name);
                 }
-                if (isBinaryExpression(d) || isExportAssignment(d)) {
-                  const expression = isExportAssignment(d) ? d.expression : d.right;
+                if (isBinaryExpression(d) || isExportAssignment2(d)) {
+                  const expression = isExportAssignment2(d) ? d.expression : d.right;
                   if (isPropertyAccessExpression(expression)) {
                     return idText(expression.name);
                   }
@@ -81180,7 +81180,7 @@ ${lanes.join("\n")}
                 true
               );
               if (target && length(target.declarations) && some(target.declarations, (d) => getSourceFileOfNode(d) === getSourceFileOfNode(enclosingDeclaration))) {
-                const expr = aliasDecl && (isExportAssignment(aliasDecl) || isBinaryExpression(aliasDecl) ? getExportAssignmentExpression(aliasDecl) : getPropertyAssignmentAliasLikeExpression(aliasDecl));
+                const expr = aliasDecl && (isExportAssignment2(aliasDecl) || isBinaryExpression(aliasDecl) ? getExportAssignmentExpression(aliasDecl) : getPropertyAssignmentAliasLikeExpression(aliasDecl));
                 const first2 = expr && isEntityNameExpression(expr) ? getFirstNonModuleExportsIdentifier(expr) : void 0;
                 const referenced = first2 && resolveEntityName(
                   first2,
@@ -83368,7 +83368,7 @@ ${lanes.join("\n")}
               /*dontRecursivelyResolve*/
               true
             );
-            const declaredType = firstDefined(exportSymbol == null ? void 0 : exportSymbol.declarations, (d) => isExportAssignment(d) ? tryGetTypeFromEffectiveTypeNode(d) : void 0);
+            const declaredType = firstDefined(exportSymbol == null ? void 0 : exportSymbol.declarations, (d) => isExportAssignment2(d) ? tryGetTypeFromEffectiveTypeNode(d) : void 0);
             links.type ?? (links.type = (exportSymbol == null ? void 0 : exportSymbol.declarations) && isDuplicatedCommonJSExport(exportSymbol.declarations) && symbol2.declarations.length ? getFlowTypeFromCommonJSExport(exportSymbol) : isDuplicatedCommonJSExport(symbol2.declarations) ? autoType : declaredType ? declaredType : getSymbolFlags(targetSymbol) & 111551 ? getTypeOfSymbol(targetSymbol) : errorType);
             if (!popTypeResolution()) {
               reportCircularityError(exportSymbol ?? symbol2);
@@ -100105,7 +100105,7 @@ ${lanes.join("\n")}
             if (parent2 === void 0) {
               return "quit";
             }
-            if (isExportAssignment(parent2)) {
+            if (isExportAssignment2(parent2)) {
               return parent2.expression === n && isEntityNameExpression(n);
             }
             if (isExportSpecifier(parent2)) {
@@ -100158,7 +100158,7 @@ ${lanes.join("\n")}
                 }
                 return markPropertyAliasReferenced(location);
               }
-              if (isExportAssignment(location)) {
+              if (isExportAssignment2(location)) {
                 return markExportAssignmentAliasReferenced(location);
               }
               if (isJsxOpeningLikeElement(location) || isJsxOpeningFragment(location)) {
@@ -100725,7 +100725,7 @@ ${lanes.join("\n")}
               return false;
             }
             const greatGrandparent = (_a2 = parent2.parent) == null ? void 0 : _a2.parent;
-            if (greatGrandparent && isExportDeclaration(greatGrandparent) && greatGrandparent.isTypeOnly) {
+            if (greatGrandparent && isExportDeclaration2(greatGrandparent) && greatGrandparent.isTypeOnly) {
               return false;
             }
           }
@@ -112154,7 +112154,7 @@ ${lanes.join("\n")}
               case 278:
               case 227:
                 const node2 = d;
-                const expression = isExportAssignment(node2) ? node2.expression : node2.right;
+                const expression = isExportAssignment2(node2) ? node2.expression : node2.right;
                 if (!isEntityNameExpression(expression)) {
                   return 1;
                 }
@@ -118007,7 +118007,7 @@ ${lanes.join("\n")}
             case 206:
               return isLiteralImportTypeNode(node) ? getSymbolAtLocation(node.argument.literal, ignoreErrors) : void 0;
             case 95:
-              return isExportAssignment(node.parent) ? Debug.checkDefined(node.parent.symbol) : void 0;
+              return isExportAssignment2(node.parent) ? Debug.checkDefined(node.parent.symbol) : void 0;
             case 102:
               if (isMetaProperty(node.parent) && node.parent.name.escapedText === "defer") {
                 return void 0;
@@ -123840,7 +123840,7 @@ ${lanes.join("\n")}
       function containsDefaultReference(node) {
         if (!node)
           return false;
-        if (!isNamedImports(node) && !isNamedExports(node))
+        if (!isNamedImports(node) && !isNamedExports2(node))
           return false;
         return some(node.elements, isNamedDefaultReference);
       }
@@ -123925,7 +123925,7 @@ ${lanes.join("\n")}
                   hasExportStarsToExportValues = true;
                 } else {
                   externalImports.push(node);
-                  if (isNamedExports(node.exportClause)) {
+                  if (isNamedExports2(node.exportClause)) {
                     addExportedNamesForExportDeclaration(node);
                     hasImportDefault || (hasImportDefault = containsDefaultReference(node.exportClause));
                   } else {
@@ -124010,7 +124010,7 @@ ${lanes.join("\n")}
         }
         return { externalImports, exportSpecifiers, exportEquals, hasExportStarsToExportValues, exportedBindings, exportedNames, exportedFunctions, externalHelpersImportDeclaration };
         function addExportedNamesForExportDeclaration(node) {
-          for (const specifier of cast(node.exportClause, isNamedExports).elements) {
+          for (const specifier of cast(node.exportClause, isNamedExports2).elements) {
             const specifierNameText = moduleExportNameTextUnescaped(specifier.name);
             if (!uniqueExports.get(specifierNameText)) {
               const name = specifier.propertyName || specifier.name;
@@ -125391,7 +125391,7 @@ ${lanes.join("\n")}
         __name(sourceElementVisitorWorker, "sourceElementVisitorWorker");
         function isElisionBlocked(node) {
           const parsed = getParseTreeNode(node);
-          if (parsed === node || isExportAssignment(node)) {
+          if (parsed === node || isExportAssignment2(node)) {
             return false;
           }
           if (!parsed || parsed.kind !== node.kind) {
@@ -125420,7 +125420,7 @@ ${lanes.join("\n")}
               }
               break;
             case 279:
-              Debug.assertNode(parsed, isExportDeclaration);
+              Debug.assertNode(parsed, isExportDeclaration2);
               if (node.exportClause !== parsed.exportClause) {
                 return true;
               }
@@ -143910,7 +143910,7 @@ ${lanes.join("\n")}
         }
         __name(collectAsynchronousDependencies, "collectAsynchronousDependencies");
         function getAMDImportExpressionForImport(node) {
-          if (isImportEqualsDeclaration(node) || isExportDeclaration(node) || !getExternalModuleNameLiteral(factory2, node, currentSourceFile, host, resolver, compilerOptions)) {
+          if (isImportEqualsDeclaration(node) || isExportDeclaration2(node) || !getExternalModuleNameLiteral(factory2, node, currentSourceFile, host, resolver, compilerOptions)) {
             return void 0;
           }
           const name = getLocalNameForExternalImport(factory2, node, currentSourceFile);
@@ -144865,7 +144865,7 @@ ${lanes.join("\n")}
             return void 0;
           }
           const generatedName = factory2.getGeneratedNameForNode(node);
-          if (node.exportClause && isNamedExports(node.exportClause)) {
+          if (node.exportClause && isNamedExports2(node.exportClause)) {
             const statements = [];
             if (moduleKind !== 2) {
               statements.push(
@@ -146030,7 +146030,7 @@ ${lanes.join("\n")}
                 case 279:
                   Debug.assert(importVariableName !== void 0);
                   if (entry.exportClause) {
-                    if (isNamedExports(entry.exportClause)) {
+                    if (isNamedExports2(entry.exportClause)) {
                       const properties = [];
                       for (const e of entry.exportClause.elements) {
                         properties.push(
@@ -147970,10 +147970,10 @@ ${lanes.join("\n")}
         }
         __name(getDiagnostic2, "getDiagnostic2");
         function findNearestDeclaration(node) {
-          const result = findAncestor(node, (n) => isExportAssignment(n) || isStatement(n) || isVariableDeclaration2(n) || isPropertyDeclaration(n) || isParameter(n));
+          const result = findAncestor(node, (n) => isExportAssignment2(n) || isStatement(n) || isVariableDeclaration2(n) || isPropertyDeclaration(n) || isParameter(n));
           if (!result)
             return void 0;
-          if (isExportAssignment(result))
+          if (isExportAssignment2(result))
             return result;
           if (isReturnStatement(result)) {
             return findAncestor(result, (n) => isFunctionLikeDeclaration(n) && !isConstructorDeclaration(n));
@@ -147997,7 +147997,7 @@ ${lanes.join("\n")}
         function addParentDeclarationRelatedInfo(node, diag2) {
           const parentDeclaration = findNearestDeclaration(node);
           if (parentDeclaration) {
-            const targetStr = isExportAssignment(parentDeclaration) || !parentDeclaration.name ? "" : getTextOfNode(
+            const targetStr = isExportAssignment2(parentDeclaration) || !parentDeclaration.name ? "" : getTextOfNode(
               parentDeclaration.name,
               /*includeTrivia*/
               false
@@ -148078,12 +148078,12 @@ ${lanes.join("\n")}
           const parentDeclaration = findNearestDeclaration(node);
           let diag2;
           if (parentDeclaration) {
-            const targetStr = isExportAssignment(parentDeclaration) || !parentDeclaration.name ? "" : getTextOfNode(
+            const targetStr = isExportAssignment2(parentDeclaration) || !parentDeclaration.name ? "" : getTextOfNode(
               parentDeclaration.name,
               /*includeTrivia*/
               false
             );
-            const parent2 = findAncestor(node.parent, (n) => isExportAssignment(n) || (isStatement(n) ? "quit" : !isParenthesizedExpression(n) && !isTypeAssertionExpression(n) && !isAsExpression(n)));
+            const parent2 = findAncestor(node.parent, (n) => isExportAssignment2(n) || (isStatement(n) ? "quit" : !isParenthesizedExpression(n) && !isTypeAssertionExpression(n) && !isAsExpression(n)));
             if (parentDeclaration === parent2) {
               diag2 = createDiagnosticForNode(node, diagnosticMessage ?? errorByDeclarationKind[parentDeclaration.kind]);
               addRelatedInfo(diag2, createDiagnosticForNode(parentDeclaration, relatedSuggestionByDeclarationKind[parentDeclaration.kind], targetStr));
@@ -148242,7 +148242,7 @@ ${lanes.join("\n")}
         }
         __name(reportPrivateInBaseOfClassExpression, "reportPrivateInBaseOfClassExpression");
         function errorDeclarationNameWithFallback() {
-          return errorNameNode ? declarationNameToString(errorNameNode) : errorFallbackNode && getNameOfDeclaration(errorFallbackNode) ? declarationNameToString(getNameOfDeclaration(errorFallbackNode)) : errorFallbackNode && isExportAssignment(errorFallbackNode) ? errorFallbackNode.isExportEquals ? "export=" : "default" : "(Missing)";
+          return errorNameNode ? declarationNameToString(errorNameNode) : errorFallbackNode && getNameOfDeclaration(errorFallbackNode) ? declarationNameToString(getNameOfDeclaration(errorFallbackNode)) : errorFallbackNode && isExportAssignment2(errorFallbackNode) ? errorFallbackNode.isExportEquals ? "export=" : "default" : "(Missing)";
         }
         __name(errorDeclarationNameWithFallback, "errorDeclarationNameWithFallback");
         function reportInaccessibleUniqueSymbolError() {
@@ -148581,7 +148581,7 @@ ${lanes.join("\n")}
           if (shouldPrintWithInitializer(node)) {
             return;
           }
-          if (!isExportAssignment(node) && !isBindingElement(node) && node.type && (!isParameter(node) || !resolver.requiresAddingImplicitUndefined(node, enclosingDeclaration))) {
+          if (!isExportAssignment2(node) && !isBindingElement(node) && node.type && (!isParameter(node) || !resolver.requiresAddingImplicitUndefined(node, enclosingDeclaration))) {
             return visitNode(node.type, visitDeclarationSubtree, isTypeNode);
           }
           const oldErrorNameNode = errorNameNode;
@@ -149809,7 +149809,7 @@ ${lanes.join("\n")}
         }
         __name(shouldStripInternal, "shouldStripInternal");
         function isScopeMarker2(node) {
-          return isExportAssignment(node) || isExportDeclaration(node);
+          return isExportAssignment2(node) || isExportDeclaration2(node);
         }
         __name(isScopeMarker2, "isScopeMarker2");
         function hasScopeMarker2(statements) {
@@ -150908,7 +150908,7 @@ ${lanes.join("\n")}
         }
         __name(emitDeclarationFileOrBundle, "emitDeclarationFileOrBundle");
         function collectLinkedAliases(node) {
-          if (isExportAssignment(node)) {
+          if (isExportAssignment2(node)) {
             if (node.expression.kind === 80) {
               resolver.collectLinkedAliases(
                 node.expression,
@@ -157220,7 +157220,7 @@ ${lanes.join("\n")}
       __name(getModeForResolutionAtIndex, "getModeForResolutionAtIndex");
       function isExclusivelyTypeOnlyImportOrExport(decl) {
         var _a2;
-        if (isExportDeclaration(decl)) {
+        if (isExportDeclaration2(decl)) {
           return decl.isTypeOnly;
         }
         if ((_a2 = decl.importClause) == null ? void 0 : _a2.isTypeOnly) {
@@ -157234,7 +157234,7 @@ ${lanes.join("\n")}
       }
       __name(getModeForUsageLocation, "getModeForUsageLocation");
       function getModeForUsageLocationWorker(file2, usage, compilerOptions) {
-        if (isImportDeclaration2(usage.parent) || isExportDeclaration(usage.parent) || isJSDocImportTag(usage.parent)) {
+        if (isImportDeclaration2(usage.parent) || isExportDeclaration2(usage.parent) || isJSDocImportTag(usage.parent)) {
           const isTypeOnly = isExclusivelyTypeOnlyImportOrExport(usage.parent);
           if (isTypeOnly) {
             const override = getResolutionModeOverride(usage.parent.attributes);
@@ -171489,7 +171489,7 @@ ${lanes.join("\n")}
         const parent2 = node.parent;
         if (node.kind === 308) {
           return 1;
-        } else if (isExportAssignment(parent2) || isExportSpecifier(parent2) || isExternalModuleReference(parent2) || isImportSpecifier(parent2) || isImportClause(parent2) || isImportEqualsDeclaration(parent2) && node === parent2.name) {
+        } else if (isExportAssignment2(parent2) || isExportSpecifier(parent2) || isExternalModuleReference(parent2) || isImportSpecifier(parent2) || isImportClause(parent2) || isImportEqualsDeclaration(parent2) && node === parent2.name) {
           return 7;
         } else if (isInRightSideOfInternalImportEqualsDeclaration(node)) {
           return getMeaningFromRightHandSideOfImportEquals(node);
@@ -172160,7 +172160,7 @@ ${lanes.join("\n")}
       __name(getAdjustedLocationForImportDeclaration, "getAdjustedLocationForImportDeclaration");
       function getAdjustedLocationForExportDeclaration(node, forRename) {
         if (node.exportClause) {
-          if (isNamedExports(node.exportClause)) {
+          if (isNamedExports2(node.exportClause)) {
             const onlyBinding = singleOrUndefined(node.exportClause.elements);
             if (!onlyBinding) {
               return;
@@ -172202,7 +172202,7 @@ ${lanes.join("\n")}
               return location;
             }
           }
-          if (isExportDeclaration(parent2) && parent2.isTypeOnly) {
+          if (isExportDeclaration2(parent2) && parent2.isTypeOnly) {
             const location = getAdjustedLocationForExportDeclaration(parent2, forRename);
             if (location) {
               return location;
@@ -172213,7 +172213,7 @@ ${lanes.join("\n")}
           if (isImportSpecifier(parent2) && parent2.propertyName || isExportSpecifier(parent2) && parent2.propertyName || isNamespaceImport(parent2) || isNamespaceExport(parent2)) {
             return parent2.name;
           }
-          if (isExportDeclaration(parent2) && parent2.exportClause && isNamespaceExport(parent2.exportClause)) {
+          if (isExportDeclaration2(parent2) && parent2.exportClause && isNamespaceExport(parent2.exportClause)) {
             return parent2.exportClause.name;
           }
         }
@@ -172224,20 +172224,20 @@ ${lanes.join("\n")}
           }
         }
         if (node.kind === 95) {
-          if (isExportDeclaration(parent2)) {
+          if (isExportDeclaration2(parent2)) {
             const location = getAdjustedLocationForExportDeclaration(parent2, forRename);
             if (location) {
               return location;
             }
           }
-          if (isExportAssignment(parent2)) {
+          if (isExportAssignment2(parent2)) {
             return skipOuterExpressions(parent2.expression);
           }
         }
         if (node.kind === 149 && isExternalModuleReference(parent2)) {
           return parent2.expression;
         }
-        if (node.kind === 161 && (isImportDeclaration2(parent2) || isExportDeclaration(parent2)) && parent2.moduleSpecifier) {
+        if (node.kind === 161 && (isImportDeclaration2(parent2) || isExportDeclaration2(parent2)) && parent2.moduleSpecifier) {
           return parent2.moduleSpecifier;
         }
         if ((node.kind === 96 || node.kind === 119) && isHeritageClause(parent2) && parent2.token === node.kind) {
@@ -174356,7 +174356,7 @@ ${lanes.join("\n")}
       function getDefaultLikeExportNameFromDeclaration(symbol2) {
         return firstDefined(symbol2.declarations, (d) => {
           var _a2, _b, _c;
-          if (isExportAssignment(d)) {
+          if (isExportAssignment2(d)) {
             return (_a2 = tryCast(skipOuterExpressions(d.expression), isIdentifier3)) == null ? void 0 : _a2.text;
           }
           if (isExportSpecifier(d) && d.symbol.flags === 2097152) {
@@ -178025,7 +178025,7 @@ ${lanes.join("\n")}
               continue;
             const module22 = (_a2 = program.getResolvedModuleFromModuleSpecifier(moduleSpecifier, sourceFile)) == null ? void 0 : _a2.resolvedModule;
             const resolvedFile = module22 && program.getSourceFile(module22.resolvedFileName);
-            if (resolvedFile && resolvedFile.externalModuleIndicator && resolvedFile.externalModuleIndicator !== true && isExportAssignment(resolvedFile.externalModuleIndicator) && resolvedFile.externalModuleIndicator.isExportEquals) {
+            if (resolvedFile && resolvedFile.externalModuleIndicator && resolvedFile.externalModuleIndicator !== true && isExportAssignment2(resolvedFile.externalModuleIndicator) && resolvedFile.externalModuleIndicator.isExportEquals) {
               diags.push(createDiagnosticForNode(name, Diagnostics.Import_may_be_converted_to_a_default_import));
             }
           }
@@ -179160,7 +179160,7 @@ interface Symbol {
             const sourceFile = node;
             return isExternalModule(sourceFile) ? `"${escapeString(getBaseFileName(removeFileExtension(normalizePath2(sourceFile.fileName))))}"` : "<global>";
           case 278:
-            return isExportAssignment(node) && node.isExportEquals ? "export=" : "default";
+            return isExportAssignment2(node) && node.isExportEquals ? "export=" : "default";
           case 220:
           case 263:
           case 219:
@@ -179479,7 +179479,7 @@ interface Symbol {
         }
         const checker = program.getTypeChecker();
         const exportingModuleSymbol = getExportingModuleSymbol(exportNode.parent, checker);
-        const flags = getSyntacticModifierFlags(exportNode) || (isExportAssignment(exportNode) && !exportNode.isExportEquals ? 2080 : 0);
+        const flags = getSyntacticModifierFlags(exportNode) || (isExportAssignment2(exportNode) && !exportNode.isExportEquals ? 2080 : 0);
         const wasDefault = !!(flags & 2048);
         if (!(flags & 32) || !wasDefault && exportingModuleSymbol.exports.has(
           "default"
@@ -179529,7 +179529,7 @@ interface Symbol {
       __name(doChange, "doChange");
       function changeExport(exportingSourceFile, { wasDefault, exportNode, exportName }, changes, checker) {
         if (wasDefault) {
-          if (isExportAssignment(exportNode) && !exportNode.isExportEquals) {
+          if (isExportAssignment2(exportNode) && !exportNode.isExportEquals) {
             const exp = exportNode.expression;
             const spec = makeExportSpecifier(exp.text, exp.text);
             changes.replaceNode(exportingSourceFile, exportNode, factory.createExportDeclaration(
@@ -181168,7 +181168,7 @@ interface Symbol {
               forEachTopLevelDeclaration(node, (declaration) => {
                 var _a22;
                 const targetDeclarations = canHaveSymbol(declaration) ? (_a22 = targetExports.get(declaration.symbol.escapedName)) == null ? void 0 : _a22.declarations : void 0;
-                const exportDeclaration = firstDefined(targetDeclarations, (d) => isExportDeclaration(d) ? d : isExportSpecifier(d) ? tryCast(d.parent.parent, isExportDeclaration) : void 0);
+                const exportDeclaration = firstDefined(targetDeclarations, (d) => isExportDeclaration2(d) ? d : isExportSpecifier(d) ? tryCast(d.parent.parent, isExportDeclaration2) : void 0);
                 if (exportDeclaration && exportDeclaration.moduleSpecifier) {
                   targetToSourceExports.set(exportDeclaration, (targetToSourceExports.get(exportDeclaration) || /* @__PURE__ */ new Set()).add(declaration));
                 }
@@ -181176,7 +181176,7 @@ interface Symbol {
             }
           }
           for (const [exportDeclaration, topLevelDeclarations] of arrayFrom(targetToSourceExports)) {
-            if (exportDeclaration.exportClause && isNamedExports(exportDeclaration.exportClause) && length(exportDeclaration.exportClause.elements)) {
+            if (exportDeclaration.exportClause && isNamedExports2(exportDeclaration.exportClause) && length(exportDeclaration.exportClause.elements)) {
               const elements = exportDeclaration.exportClause.elements;
               const updatedElements = filter(elements, (elem) => find(skipAlias(elem.symbol, checker).declarations, (d) => isTopLevelDeclaration(d) && topLevelDeclarations.has(d)) === void 0);
               if (length(updatedElements) === 0) {
@@ -181190,7 +181190,7 @@ interface Symbol {
             }
           }
         }
-        const lastReExport = findLast(targetFile.statements, (n) => isExportDeclaration(n) && !!n.moduleSpecifier && !removedExports.has(n));
+        const lastReExport = findLast(targetFile.statements, (n) => isExportDeclaration2(n) && !!n.moduleSpecifier && !removedExports.has(n));
         if (lastReExport) {
           changes.insertNodesBefore(
             targetFile,
@@ -181416,7 +181416,7 @@ interface Symbol {
           if (ts_FindAllReferences_exports.isWriteAccessForReference(ref) && !isShorthandPropertyAssignment(ref.parent)) {
             return true;
           }
-          if (isExportSpecifier(ref.parent) || isExportAssignment(ref.parent)) {
+          if (isExportSpecifier(ref.parent) || isExportAssignment2(ref.parent)) {
             return true;
           }
           if (isTypeQueryNode(ref.parent)) {
@@ -182320,7 +182320,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (isImportSpecifier(node.parent) || isImportClause(node.parent) || isImportEqualsDeclaration(node.parent) || isNamespaceImport(node.parent)) {
           return node;
         }
-        if (isExportSpecifier(node.parent) || isExportAssignment(node.parent)) {
+        if (isExportSpecifier(node.parent) || isExportAssignment2(node.parent)) {
           return node;
         }
         return void 0;
@@ -186114,7 +186114,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               case 279:
                 const exportDeclaration = node;
                 if (exportDeclaration.exportClause) {
-                  if (isNamedExports(exportDeclaration.exportClause)) {
+                  if (isNamedExports2(exportDeclaration.exportClause)) {
                     forEach(exportDeclaration.exportClause.elements, visit);
                   } else {
                     visit(exportDeclaration.exportClause.name);
@@ -194681,12 +194681,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       }
       __name(doChanges, "doChanges");
       function tryGetExportDeclaration(sourceFile, isTypeOnly) {
-        const predicate = /* @__PURE__ */ __name((node) => isExportDeclaration(node) && (isTypeOnly && node.isTypeOnly || !node.isTypeOnly), "predicate");
+        const predicate = /* @__PURE__ */ __name((node) => isExportDeclaration2(node) && (isTypeOnly && node.isTypeOnly || !node.isTypeOnly), "predicate");
         return findLast(sourceFile.statements, predicate);
       }
       __name(tryGetExportDeclaration, "tryGetExportDeclaration");
       function updateExport(changes, program, sourceFile, node, names) {
-        const namedExports = node.exportClause && isNamedExports(node.exportClause) ? node.exportClause.elements : factory.createNodeArray([]);
+        const namedExports = node.exportClause && isNamedExports2(node.exportClause) ? node.exportClause.elements : factory.createNodeArray([]);
         const allowTypeModifier = !node.isTypeOnly && !!(getIsolatedModules(program.getCompilerOptions()) || find(namedExports, (e) => e.isTypeOnly));
         changes.replaceNode(
           sourceFile,
@@ -203590,7 +203590,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         function shouldIncludeSymbol(symbol2, symbolToSortTextMap2) {
           var _a2;
           let allFlags = symbol2.flags;
-          if (location.parent && isExportAssignment(location.parent)) {
+          if (location.parent && isExportAssignment2(location.parent)) {
             return true;
           }
           if (closestSymbolDeclaration && tryCast(closestSymbolDeclaration, isVariableDeclaration2)) {
@@ -205110,7 +205110,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         __name(tryGetImportAttributesCompletionSymbols, "tryGetImportAttributesCompletionSymbols");
         function tryGetLocalNamedExportCompletionSymbols() {
           var _a2;
-          const namedExports = contextToken && (contextToken.kind === 19 || contextToken.kind === 28) ? tryCast(contextToken.parent, isNamedExports) : void 0;
+          const namedExports = contextToken && (contextToken.kind === 19 || contextToken.kind === 28) ? tryCast(contextToken.parent, isNamedExports2) : void 0;
           if (!namedExports) {
             return 0;
           }
@@ -205762,7 +205762,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           const parent2 = contextToken.parent;
           const tokenLine = file2.getLineAndCharacterOfPosition(contextToken.end).line;
           const currentLine = file2.getLineAndCharacterOfPosition(position).line;
-          if ((isImportDeclaration2(parent2) || isExportDeclaration(parent2) && parent2.moduleSpecifier) && contextToken === parent2.moduleSpecifier && tokenLine === currentLine) {
+          if ((isImportDeclaration2(parent2) || isExportDeclaration2(parent2) && parent2.moduleSpecifier) && contextToken === parent2.moduleSpecifier && tokenLine === currentLine) {
             entries.push({
               name: tokenToString(
                 132
@@ -206039,7 +206039,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             }
             return void 0;
           }
-          if (isExportDeclaration(parent2) && contextToken.kind === 42 || isNamedExports(parent2) && contextToken.kind === 20) {
+          if (isExportDeclaration2(parent2) && contextToken.kind === 42 || isNamedExports2(parent2) && contextToken.kind === 20) {
             isKeywordOnlyCompletion = true;
             keywordCompletion = 161;
             return void 0;
@@ -207598,7 +207598,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             return;
           }
           if (decl.kind === 279) {
-            if (decl.exportClause && isNamedExports(decl.exportClause)) {
+            if (decl.exportClause && isNamedExports2(decl.exportClause)) {
               searchForNamedImport(decl.exportClause);
             }
             return;
@@ -207660,10 +207660,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function findNamespaceReExports(sourceFileLike, name, checker) {
         const namespaceImportSymbol = checker.getSymbolAtLocation(name);
         return !!forEachPossibleImportOrExportStatement(sourceFileLike, (statement) => {
-          if (!isExportDeclaration(statement))
+          if (!isExportDeclaration2(statement))
             return;
           const { exportClause, moduleSpecifier } = statement;
-          return !moduleSpecifier && exportClause && isNamedExports(exportClause) && exportClause.elements.some((element) => checker.getExportSpecifierLocalTargetSymbol(element) === namespaceImportSymbol);
+          return !moduleSpecifier && exportClause && isNamedExports2(exportClause) && exportClause.elements.some((element) => checker.getExportSpecifierLocalTargetSymbol(element) === namespaceImportSymbol);
         });
       }
       __name(findNamespaceReExports, "findNamespaceReExports");
@@ -207789,9 +207789,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 0
                 /* Named */
               );
-            } else if (isExportAssignment(parent2)) {
+            } else if (isExportAssignment2(parent2)) {
               return getExportAssignmentExport(parent2);
-            } else if (isExportAssignment(grandparent)) {
+            } else if (isExportAssignment2(grandparent)) {
               return getExportAssignmentExport(grandparent);
             } else if (isBinaryExpression(parent2)) {
               return getSpecialPropertyExport(
@@ -207878,7 +207878,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return checker.getImmediateAliasedSymbol(importedSymbol);
         }
         const decl = Debug.checkDefined(importedSymbol.valueDeclaration);
-        if (isExportAssignment(decl)) {
+        if (isExportAssignment2(decl)) {
           return (_a2 = tryCast(decl.expression, canHaveSymbol)) == null ? void 0 : _a2.symbol;
         } else if (isBinaryExpression(decl)) {
           return (_b = tryCast(decl.right, canHaveSymbol)) == null ? void 0 : _b.symbol;
@@ -208000,7 +208000,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         if (!node.parent)
           return void 0;
-        if (!isDeclaration(node.parent) && !isExportAssignment(node.parent)) {
+        if (!isDeclaration(node.parent) && !isExportAssignment2(node.parent)) {
           if (isInJSFile(node)) {
             const binaryExpression = isBinaryExpression(node.parent) ? node.parent : isAccessExpression(node.parent) && isBinaryExpression(node.parent.parent) && node.parent.parent.left === node.parent ? node.parent.parent : void 0;
             if (binaryExpression && getAssignmentDeclarationKind(binaryExpression) !== 0) {
@@ -208022,7 +208022,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return propertyName ? getContextNode(propertyName.parent) : void 0;
         }
         if (node.parent.name === node || // node is name of declaration, use parent
-        isConstructorDeclaration(node.parent) || isExportAssignment(node.parent) || // Property name of the import export specifier or binding pattern, use parent
+        isConstructorDeclaration(node.parent) || isExportAssignment2(node.parent) || // Property name of the import export specifier or binding pattern, use parent
         (isImportOrExportSpecifier(node.parent) || isBindingElement(node.parent)) && node.parent.propertyName === node || // Is default export
         node.kind === 90 && hasSyntacticModifier(
           node.parent,
@@ -208752,7 +208752,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             for (const decl of exported.declarations) {
               const sourceFile = decl.getSourceFile();
               if (sourceFilesSet.has(sourceFile.fileName)) {
-                const node = isBinaryExpression(decl) && isPropertyAccessExpression(decl.left) ? decl.left.expression : isExportAssignment(decl) ? Debug.checkDefined(findChildOfKind(decl, 95, sourceFile)) : getNameOfDeclaration(decl) || decl;
+                const node = isBinaryExpression(decl) && isPropertyAccessExpression(decl.left) ? decl.left.expression : isExportAssignment2(decl) ? Debug.checkDefined(findChildOfKind(decl, 95, sourceFile)) : getNameOfDeclaration(decl) || decl;
                 references.push(nodeEntry(node));
               }
             }
@@ -209046,7 +209046,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           for (const indirectUser of indirectUsers) {
             for (const node of getPossibleSymbolReferenceNodes(indirectUser, isDefaultExport ? "default" : exportName)) {
               const symbol2 = checker.getSymbolAtLocation(node);
-              const hasExportAssignmentDeclaration = some(symbol2 == null ? void 0 : symbol2.declarations, (d) => tryCast(d, isExportAssignment) ? true : false);
+              const hasExportAssignmentDeclaration = some(symbol2 == null ? void 0 : symbol2.declarations, (d) => tryCast(d, isExportAssignment2) ? true : false);
               if (isIdentifier3(node) && !isImportOrExportSpecifier(node.parent) && (symbol2 === exportSymbol || hasExportAssignmentDeclaration)) {
                 cb(node);
               }
@@ -212280,7 +212280,7 @@ ${content}
           const ambientModuleImportGroupDecls = groupByNewlineContiguous(sourceFile, ambientModule.body.statements.filter(isImportDeclaration2));
           ambientModuleImportGroupDecls.forEach((importGroupDecl) => organizeImportsWorker(importGroupDecl, comparer));
           if (mode !== "RemoveUnused") {
-            const ambientModuleExportDecls = ambientModule.body.statements.filter(isExportDeclaration);
+            const ambientModuleExportDecls = ambientModule.body.statements.filter(isExportDeclaration2);
             organizeExportsWorker(ambientModuleExportDecls, comparer.namedImportComparer);
           }
         }
@@ -212407,7 +212407,7 @@ ${content}
         let i = 0;
         let groupIndex = 0;
         while (i < len) {
-          if (isExportDeclaration(statements[i])) {
+          if (isExportDeclaration2(statements[i])) {
             if (topLevelExportGroups[groupIndex] === void 0) {
               topLevelExportGroups[groupIndex] = [];
             }
@@ -212416,7 +212416,7 @@ ${content}
               topLevelExportGroups[groupIndex].push(exportDecl);
               i++;
             } else {
-              while (i < len && isExportDeclaration(statements[i])) {
+              while (i < len && isExportDeclaration2(statements[i])) {
                 topLevelExportGroups[groupIndex].push(statements[i++]);
               }
               groupIndex++;
@@ -212633,7 +212633,7 @@ ${content}
             continue;
           }
           const newExportSpecifiers = [];
-          newExportSpecifiers.push(...flatMap(exportGroup2, (i) => i.exportClause && isNamedExports(i.exportClause) ? i.exportClause.elements : emptyArray));
+          newExportSpecifiers.push(...flatMap(exportGroup2, (i) => i.exportClause && isNamedExports2(i.exportClause) ? i.exportClause.elements : emptyArray));
           const sortedExportSpecifiers = toSorted(newExportSpecifiers, specifierComparer);
           const exportDecl = exportGroup2[0];
           coalescedExports.push(
@@ -212641,7 +212641,7 @@ ${content}
               exportDecl,
               exportDecl.modifiers,
               exportDecl.isTypeOnly,
-              exportDecl.exportClause && (isNamedExports(exportDecl.exportClause) ? factory.updateNamedExports(exportDecl.exportClause, sortedExportSpecifiers) : factory.updateNamespaceExport(exportDecl.exportClause, exportDecl.exportClause.name)),
+              exportDecl.exportClause && (isNamedExports2(exportDecl.exportClause) ? factory.updateNamedExports(exportDecl.exportClause, sortedExportSpecifiers) : factory.updateNamespaceExport(exportDecl.exportClause, exportDecl.exportClause.name)),
               exportDecl.moduleSpecifier,
               exportDecl.attributes
             )
@@ -222395,8 +222395,8 @@ ${options.prefix}` : "\n" : options.prefix
         isExcludedFile: () => isExcludedFile,
         isExclusivelyTypeOnlyImportOrExport: () => isExclusivelyTypeOnlyImportOrExport,
         isExpandoPropertyDeclaration: () => isExpandoPropertyDeclaration,
-        isExportAssignment: () => isExportAssignment,
-        isExportDeclaration: () => isExportDeclaration,
+        isExportAssignment: () => isExportAssignment2,
+        isExportDeclaration: () => isExportDeclaration2,
         isExportModifier: () => isExportModifier,
         isExportName: () => isExportName,
         isExportNamespaceAsDefaultDeclaration: () => isExportNamespaceAsDefaultDeclaration,
@@ -222650,7 +222650,7 @@ ${options.prefix}` : "\n" : options.prefix
         isNamedEvaluation: () => isNamedEvaluation,
         isNamedEvaluationSource: () => isNamedEvaluationSource,
         isNamedExportBindings: () => isNamedExportBindings,
-        isNamedExports: () => isNamedExports,
+        isNamedExports: () => isNamedExports2,
         isNamedImportBindings: () => isNamedImportBindings,
         isNamedImports: () => isNamedImports,
         isNamedImportsOrExports: () => isNamedImportsOrExports,
@@ -253473,9 +253473,36 @@ function getNodeName(node) {
   return null;
 }
 __name(getNodeName, "getNodeName");
-function isExported(node) {
+function collectExportedNames(sourceFile) {
+  const exportedNames = /* @__PURE__ */ new Set();
+  ts.forEachChild(sourceFile, (node) => {
+    if (ts.isExportDeclaration(node)) {
+      const exportClause = node.exportClause;
+      if (exportClause && ts.isNamedExports(exportClause)) {
+        for (const element of exportClause.elements) {
+          const localName = element.propertyName?.text ?? element.name.text;
+          exportedNames.add(localName);
+        }
+      }
+    }
+    if (ts.isExportAssignment(node)) {
+      if (ts.isIdentifier(node.expression)) {
+        exportedNames.add(node.expression.text);
+      }
+    }
+  });
+  return exportedNames;
+}
+__name(collectExportedNames, "collectExportedNames");
+function isExported(node, exportedNames) {
   const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : void 0;
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+  if (modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
+    return true;
+  }
+  const nodeName = getNodeName(node);
+  if (!nodeName)
+    return false;
+  return exportedNames.has(nodeName);
 }
 __name(isExported, "isExported");
 function isPrivate(node) {
@@ -253517,6 +253544,7 @@ __name(getJsDocComment, "getJsDocComment");
 function extractSymbols(sourceFile, filePath, options) {
   const symbols = [];
   const queryRegex = options.query ? new RegExp(options.query, "i") : null;
+  const exportedNames = collectExportedNames(sourceFile);
   function visit(node, container) {
     const kind = tsKindToSymbolKind(node.kind);
     if (kind !== null) {
@@ -253538,7 +253566,7 @@ function extractSymbols(sourceFile, filePath, options) {
           }
           return;
         }
-        const exported = isExported(node);
+        const exported = isExported(node, exportedNames);
         if (options.exportedOnly && !exported) {
           if (kind === "class" || kind === "interface" || kind === "namespace") {
             ts.forEachChild(node, (child) => visit(child, name));
@@ -253920,6 +253948,7 @@ async function executeSymbolsQuery(query, outputMode, searchRoot) {
   if (!query.query) {
     return { type: "symbols", count: 0, error: "Missing 'query' for symbols query" };
   }
+  let timeoutId;
   try {
     let mode;
     if (outputMode === "count_only") {
@@ -253938,10 +253967,11 @@ async function executeSymbolsQuery(query, outputMode, searchRoot) {
         max_results: 100
       }
     });
-    const timeoutPromise = new Promise(
-      (_, reject) => setTimeout(() => reject(new Error("Symbol search timeout after 30s")), SYMBOL_TIMEOUT)
-    );
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`Symbol search timeout after ${SYMBOL_TIMEOUT / 1e3}s`)), SYMBOL_TIMEOUT);
+    });
     const result = await Promise.race([symbolsPromise, timeoutPromise]);
+    clearTimeout(timeoutId);
     const content = result.content?.[0];
     if (!content || content.type !== "text") {
       return { type: "symbols", count: 0, files: [] };
@@ -253977,6 +254007,7 @@ async function executeSymbolsQuery(query, outputMode, searchRoot) {
     const files = [...new Set(symbols.map((s) => s.file).filter(Boolean))];
     return { type: "symbols", count: symbols.length, files };
   } catch (e) {
+    clearTimeout(timeoutId);
     return {
       type: "symbols",
       count: 0,
@@ -254040,6 +254071,17 @@ var handleDiscover = /* @__PURE__ */ __name(async (args) => {
 var fs6 = __toESM(require("fs/promises"), 1);
 var path6 = __toESM(require("path"), 1);
 var ts2 = __toESM(require_typescript(), 1);
+var MAX_BINARY_SIZE = 5 * 1024 * 1024;
+function isBinaryFile(buffer) {
+  const checkLength = Math.min(buffer.length, 8192);
+  for (let i = 0; i < checkLength; i++) {
+    if (buffer[i] === 0) {
+      return true;
+    }
+  }
+  return false;
+}
+__name(isBinaryFile, "isBinaryFile");
 function normalizePath(inputPath) {
   if (/^\/[a-z]\//i.test(inputPath)) {
     return inputPath[1].toUpperCase() + ":" + inputPath.slice(2);
@@ -254242,7 +254284,24 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         created: stats.birthtime?.toISOString()
       };
     }
-    const content = await fs6.readFile(filePath, "utf-8");
+    const buffer = await fs6.readFile(filePath);
+    const isBinary = isBinaryFile(buffer);
+    if (isBinary) {
+      if (buffer.length > MAX_BINARY_SIZE) {
+        result.error = `Binary file exceeds maximum size (${buffer.length} bytes > ${MAX_BINARY_SIZE} bytes)`;
+        result.is_binary = true;
+        if (output.include_metadata && result.metadata) {
+          result.metadata.size = buffer.length;
+        }
+        return result;
+      }
+      result.is_binary = true;
+      result.encoding = "base64";
+      result.content = buffer.toString("base64");
+      return result;
+    }
+    const content = buffer.toString("utf-8");
+    result.encoding = "utf-8";
     const allLines = content.split("\n");
     result.line_count = allLines.length;
     const lineRange = spec.range ?? spec.lines ?? defaultRange;
@@ -254353,7 +254412,8 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args) => {
       files_read: filesRead,
       files_not_found: filesNotFound,
       total_lines: totalLines,
-      truncated: anyTruncated
+      truncated: anyTruncated,
+      files_binary: results.filter((r) => r.is_binary).length
     };
     switch (output.mode) {
       case "count_only":
@@ -254367,7 +254427,8 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args) => {
               {
                 exists: r.exists,
                 line_count: r.line_count,
-                error: r.error
+                error: r.error,
+                is_binary: r.is_binary
               }
             ])
           ),
@@ -254400,6 +254461,10 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args) => {
                 entry.ast = r.ast;
               if (r.error)
                 entry.error = r.error;
+              if (r.encoding !== void 0)
+                entry.encoding = r.encoding;
+              if (r.is_binary !== void 0)
+                entry.is_binary = r.is_binary;
               return [r.path, entry];
             })
           ),
@@ -254916,6 +254981,10 @@ function astMatch(filePath, content, pattern) {
   }
 }
 __name(astMatch, "astMatch");
+function escapeRegex2(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+__name(escapeRegex2, "escapeRegex");
 function findInContext(filePath, content, find, hints, matchConfig) {
   const lines = content.split("\n");
   const candidates = [];
@@ -254970,39 +255039,13 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       searchFind = searchFind.toLowerCase();
     }
     if (matchConfig.whitespace_sensitive === false) {
-      const normalizedFind = normalizeWhitespace(searchFind);
-      let normalizedContent = "";
-      const positionMap = [];
-      let i = 0;
-      let lastWasSpace = false;
-      while (i < searchContent.length) {
-        const char = searchContent[i];
-        if (/\s/.test(char)) {
-          if (!lastWasSpace && normalizedContent.length > 0) {
-            positionMap.push(i);
-            normalizedContent += " ";
-            lastWasSpace = true;
-          }
-        } else {
-          positionMap.push(i);
-          normalizedContent += char;
-          lastWasSpace = false;
-        }
-        i++;
-      }
-      normalizedContent = normalizedContent.trim();
-      let pos = 0;
-      while ((pos = normalizedContent.indexOf(normalizedFind, pos)) !== -1) {
-        const originalIndex = positionMap[pos] ?? pos;
-        allMatches.push({ index: originalIndex, length: find.length });
-        pos++;
-      }
-    } else {
-      let pos = 0;
-      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-        allMatches.push({ index: pos, length: searchFind.length });
-        pos++;
-      }
+      searchContent = normalizeWhitespace(searchContent);
+      searchFind = normalizeWhitespace(searchFind);
+    }
+    let pos = 0;
+    while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+      allMatches.push({ index: pos, length: searchFind.length });
+      pos++;
     }
   }
   if (allMatches.length === 0)
@@ -255011,6 +255054,8 @@ function findInContext(filePath, content, find, hints, matchConfig) {
     return allMatches;
   }
   const scoredMatches = [];
+  const afterIdx = hints.after ? content.indexOf(hints.after) : -1;
+  const beforeIdx = hints.before ? content.indexOf(hints.before) : -1;
   for (const match of allMatches) {
     const lineNumber = content.substring(0, match.index).split("\n").length;
     let score = 100;
@@ -255020,8 +255065,9 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       score += Math.max(0, 50 - distance * 5);
     }
     if (hints.in_function) {
+      const safeFuncName = escapeRegex2(hints.in_function);
       const funcPattern = new RegExp(
-        `(function\\s+${hints.in_function}\\s*\\(|const\\s+${hints.in_function}\\s*=|let\\s+${hints.in_function}\\s*=|var\\s+${hints.in_function}\\s*=)`,
+        `(function\\s+${safeFuncName}\\s*\\(|const\\s+${safeFuncName}\\s*=|let\\s+${safeFuncName}\\s*=|var\\s+${safeFuncName}\\s*=)`,
         "g"
       );
       const beforeContent = content.substring(0, match.index);
@@ -255032,7 +255078,8 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       }
     }
     if (hints.in_class) {
-      const classPattern = new RegExp(`class\\s+${hints.in_class}\\b`, "g");
+      const safeClassName = escapeRegex2(hints.in_class);
+      const classPattern = new RegExp(`class\\s+${safeClassName}\\b`, "g");
       const beforeContent = content.substring(0, match.index);
       if (!classPattern.test(beforeContent)) {
         disqualified = true;
@@ -255041,7 +255088,6 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       }
     }
     if (hints.after) {
-      const afterIdx = content.indexOf(hints.after);
       if (afterIdx === -1 || match.index <= afterIdx + hints.after.length) {
         disqualified = true;
       } else {
@@ -255049,7 +255095,6 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       }
     }
     if (hints.before) {
-      const beforeIdx = content.indexOf(hints.before);
       if (beforeIdx === -1 || match.index >= beforeIdx) {
         disqualified = true;
       } else {

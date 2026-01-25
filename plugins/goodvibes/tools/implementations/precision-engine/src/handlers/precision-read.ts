@@ -87,9 +87,28 @@ interface FileReadResult {
   metadata?: FileMetadata;
   error?: string;
   truncated?: boolean;
+  encoding?: 'utf-8' | 'base64';
+  is_binary?: boolean;
 }
 
+// === Constants ===
+
+const MAX_BINARY_SIZE = 5 * 1024 * 1024; // 5MB
+
 // === Helper Functions ===
+
+/**
+ * Checks if a buffer contains binary data by looking for null bytes in the first 8KB
+ */
+function isBinaryFile(buffer: Buffer): boolean {
+  const checkLength = Math.min(buffer.length, 8192);
+  for (let i = 0; i < checkLength; i++) {
+    if (buffer[i] === 0) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Normalizes a path to handle both Unix-style Git Bash paths and Windows paths.
@@ -341,8 +360,31 @@ async function readSingleFile(
       };
     }
 
-    // Read file content
-    const content = await fs.readFile(filePath, 'utf-8');
+    // Read file as buffer first to check if binary
+    const buffer = await fs.readFile(filePath);
+    const isBinary = isBinaryFile(buffer);
+
+    // Handle binary files
+    if (isBinary) {
+      if (buffer.length > MAX_BINARY_SIZE) {
+        result.error = `Binary file exceeds maximum size (${buffer.length} bytes > ${MAX_BINARY_SIZE} bytes)`;
+        result.is_binary = true;
+        if (output.include_metadata && result.metadata) {
+          result.metadata.size = buffer.length;
+        }
+        return result;
+      }
+
+      // Return base64 encoded content for binary files
+      result.is_binary = true;
+      result.encoding = 'base64';
+      result.content = buffer.toString('base64');
+      return result;
+    }
+
+    // Handle text files - convert buffer to UTF-8 string
+    const content = buffer.toString('utf-8');
+    result.encoding = 'utf-8';
     const allLines = content.split('\n');
     result.line_count = allLines.length;
 
@@ -482,6 +524,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       files_not_found: filesNotFound,
       total_lines: totalLines,
       truncated: anyTruncated,
+      files_binary: results.filter(r => r.is_binary).length,
     };
 
     switch (output.mode) {
@@ -498,6 +541,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
                 exists: r.exists,
                 line_count: r.line_count,
                 error: r.error,
+                is_binary: r.is_binary,
               },
             ])
           ),
@@ -525,6 +569,8 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.outline !== undefined) entry.outline = r.outline;
               if (r.ast !== undefined) entry.ast = r.ast;
               if (r.error) entry.error = r.error;
+              if (r.encoding !== undefined) entry.encoding = r.encoding;
+              if (r.is_binary !== undefined) entry.is_binary = r.is_binary;
               return [r.path, entry];
             })
           ),

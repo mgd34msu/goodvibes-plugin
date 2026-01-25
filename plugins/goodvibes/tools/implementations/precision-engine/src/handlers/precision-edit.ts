@@ -479,6 +479,14 @@ interface MatchResult {
   length: number; // For AST mode, length of the matched node
 }
 
+/**
+ * Escapes special regex characters in a user-provided string
+ * to prevent regex injection vulnerabilities
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function findInContext(
   filePath: string,
   content: string,
@@ -553,51 +561,16 @@ function findInContext(
       searchFind = searchFind.toLowerCase();
     }
 
-    // Handle whitespace normalization for exact mode
     if (matchConfig.whitespace_sensitive === false) {
-      // For whitespace-insensitive exact matching, we need to:
-      // 1. Normalize both search and content
-      // 2. Track position mapping to get original indices
-      const normalizedFind = normalizeWhitespace(searchFind);
+      searchContent = normalizeWhitespace(searchContent);
+      searchFind = normalizeWhitespace(searchFind);
+    }
 
-      // Build a mapping from normalized position to original position
-      let normalizedContent = '';
-      const positionMap: number[] = []; // normalizedContent index -> original content index
-
-      let i = 0;
-      let lastWasSpace = false;
-      while (i < searchContent.length) {
-        const char = searchContent[i];
-        if (/\s/.test(char)) {
-          if (!lastWasSpace && normalizedContent.length > 0) {
-            positionMap.push(i);
-            normalizedContent += ' ';
-            lastWasSpace = true;
-          }
-        } else {
-          positionMap.push(i);
-          normalizedContent += char;
-          lastWasSpace = false;
-        }
-        i++;
-      }
-      normalizedContent = normalizedContent.trim();
-
-      // Search in normalized content
-      let pos = 0;
-      while ((pos = normalizedContent.indexOf(normalizedFind, pos)) !== -1) {
-        // Map back to original position
-        const originalIndex = positionMap[pos] ?? pos;
-        allMatches.push({ index: originalIndex, length: find.length });
-        pos++;
-      }
-    } else {
-      // Standard exact match
-      let pos = 0;
-      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-        allMatches.push({ index: pos, length: searchFind.length });
-        pos++;
-      }
+    // Standard exact match
+    let pos = 0;
+    while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+      allMatches.push({ index: pos, length: searchFind.length });
+      pos++;
     }
   }
 
@@ -615,6 +588,10 @@ function findInContext(
 
   const scoredMatches: ScoredMatch[] = [];
 
+  // Hoist indexOf calls outside loop for performance
+  const afterIdx = hints.after ? content.indexOf(hints.after) : -1;
+  const beforeIdx = hints.before ? content.indexOf(hints.before) : -1;
+
   for (const match of allMatches) {
     const lineNumber = content.substring(0, match.index).split('\n').length;
     let score = 100; // Base score
@@ -627,9 +604,13 @@ function findInContext(
     }
 
     // in_function hint - MUST be in function (hard constraint)
+    // LIMITATION: This only checks if the function declaration appears BEFORE the match,
+    // not if the match is truly INSIDE the function's scope (which would require AST analysis).
+    // For now, this provides a reasonable heuristic for most cases.
     if (hints.in_function) {
+      const safeFuncName = escapeRegex(hints.in_function);
       const funcPattern = new RegExp(
-        `(function\\s+${hints.in_function}\\s*\\(|const\\s+${hints.in_function}\\s*=|let\\s+${hints.in_function}\\s*=|var\\s+${hints.in_function}\\s*=)`,
+        `(function\\s+${safeFuncName}\\s*\\(|const\\s+${safeFuncName}\\s*=|let\\s+${safeFuncName}\\s*=|var\\s+${safeFuncName}\\s*=)`,
         'g'
       );
       const beforeContent = content.substring(0, match.index);
@@ -641,8 +622,12 @@ function findInContext(
     }
 
     // in_class hint - MUST be in class (hard constraint)
+    // LIMITATION: This only checks if the class declaration appears BEFORE the match,
+    // not if the match is truly INSIDE the class's scope (which would require AST analysis).
+    // For now, this provides a reasonable heuristic for most cases.
     if (hints.in_class) {
-      const classPattern = new RegExp(`class\\s+${hints.in_class}\\b`, 'g');
+      const safeClassName = escapeRegex(hints.in_class);
+      const classPattern = new RegExp(`class\\s+${safeClassName}\\b`, 'g');
       const beforeContent = content.substring(0, match.index);
       if (!classPattern.test(beforeContent)) {
         disqualified = true; // Not in specified class
@@ -653,7 +638,6 @@ function findInContext(
 
     // after hint - match MUST come after this text (hard constraint)
     if (hints.after) {
-      const afterIdx = content.indexOf(hints.after);
       if (afterIdx === -1 || match.index <= afterIdx + hints.after.length) {
         disqualified = true;
       } else {
@@ -663,7 +647,6 @@ function findInContext(
 
     // before hint - match MUST come before this text (hard constraint)
     if (hints.before) {
-      const beforeIdx = content.indexOf(hints.before);
       if (beforeIdx === -1 || match.index >= beforeIdx) {
         disqualified = true;
       } else {

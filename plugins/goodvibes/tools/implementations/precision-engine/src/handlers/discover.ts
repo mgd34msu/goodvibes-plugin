@@ -290,6 +290,7 @@ async function executeSymbolsQuery(
     return { type: 'symbols', count: 0, error: "Missing 'query' for symbols query" };
   }
 
+  let timeoutId: NodeJS.Timeout;
   try {
     let mode: 'count_only' | 'names_only' | 'locations';
     if (outputMode === 'count_only') {
@@ -311,11 +312,12 @@ async function executeSymbolsQuery(
       },
     });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Symbol search timeout after 30s')), SYMBOL_TIMEOUT)
-    );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`Symbol search timeout after ${SYMBOL_TIMEOUT / 1000}s`)), SYMBOL_TIMEOUT);
+    });
 
     const result = await Promise.race([symbolsPromise, timeoutPromise]);
+    clearTimeout(timeoutId); // Clean up on success
 
     const content = result.content?.[0];
     if (!content || content.type !== 'text') {
@@ -361,6 +363,7 @@ async function executeSymbolsQuery(
     const files = [...new Set(symbols.map((s: any) => s.file).filter(Boolean))] as string[];
     return { type: 'symbols', count: symbols.length, files };
   } catch (e) {
+    clearTimeout(timeoutId!); // Clean up on any error
     return {
       type: 'symbols',
       count: 0,

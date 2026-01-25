@@ -102,9 +102,59 @@ function getNodeName(node: ts.Node): string | null {
   return null;
 }
 
-function isExported(node: ts.Node): boolean {
+/**
+ * Collects all exported symbol names from a source file.
+ * Handles:
+ * - Named exports: export { foo, bar }
+ * - Aliased exports: export { foo as bar } (tracks local name "foo")
+ * - Default exports: export default foo
+ * - Direct exports: export function foo() {} (handled by isExported)
+ *
+ * Note: Does not support `export * from 'module'` (requires module resolution).
+ *
+ * @param sourceFile - TypeScript source file to analyze
+ * @returns Set of local names that are exported
+ */
+function collectExportedNames(sourceFile: ts.SourceFile): Set<string> {
+  const exportedNames = new Set<string>();
+
+  ts.forEachChild(sourceFile, (node) => {
+    // Handle: export { foo, bar } and export { foo as bar }
+    if (ts.isExportDeclaration(node)) {
+      const exportClause = node.exportClause;
+      if (exportClause && ts.isNamedExports(exportClause)) {
+        for (const element of exportClause.elements) {
+          // propertyName is the local name (foo), name is the exported name (bar)
+          // If no alias, propertyName is undefined and name is the local name
+          const localName = element.propertyName?.text ?? element.name.text;
+          exportedNames.add(localName);
+        }
+      }
+    }
+
+    // Handle: export default foo
+    if (ts.isExportAssignment(node)) {
+      if (ts.isIdentifier(node.expression)) {
+        exportedNames.add(node.expression.text);
+      }
+    }
+  });
+
+  return exportedNames;
+}
+
+function isExported(node: ts.Node, exportedNames: Set<string>): boolean {
+  // 1. Check direct export modifier (e.g., export function foo())
   const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
-  return modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+  if (modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+    return true;
+  }
+
+  // 2. Check if node name is in the exported names set (handles export { foo } and export default foo)
+  const nodeName = getNodeName(node);
+  if (!nodeName) return false;
+
+  return exportedNames.has(nodeName);
 }
 
 function isPrivate(node: ts.Node): boolean {
@@ -165,6 +215,9 @@ function extractSymbols(
   const symbols: SymbolResult[] = [];
   const queryRegex = options.query ? new RegExp(options.query, 'i') : null;
 
+  // Collect all exported names upfront
+  const exportedNames = collectExportedNames(sourceFile);
+
   function visit(node: ts.Node, container?: string) {
     const kind = tsKindToSymbolKind(node.kind);
 
@@ -191,7 +244,7 @@ function extractSymbols(
           return;
         }
 
-        const exported = isExported(node);
+        const exported = isExported(node, exportedNames);
         if (options.exportedOnly && !exported) {
           if (kind === 'class' || kind === 'interface' || kind === 'namespace') {
             ts.forEachChild(node, child => visit(child, name));
