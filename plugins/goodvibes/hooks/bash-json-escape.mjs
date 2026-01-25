@@ -60,7 +60,9 @@ log('JSON FIXED: ' + fixed.substring(0, 50));
 // };
 // log('RESPONSE: ' + JSON.stringify(response));
 // console.log(JSON.stringify(response));
-const response = `${prefix}${fixed}${suffix}`
+// Double backslashes again to compensate for Claude Code stripping a layer
+const doubleFixed = fixed.replace(/\\\\/g, '\\\\\\\\');
+const response = `${prefix}${doubleFixed}${suffix}`
 log('RESPONSE: ' + response);
 console.log(response);
 // Test if updatedInput works at all
