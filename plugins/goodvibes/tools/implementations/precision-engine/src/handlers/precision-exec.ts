@@ -13,7 +13,7 @@
  * - tokens_used tracking
  */
 
-import { spawn } from 'child_process';
+import { spawn, exec, execFile } from 'child_process';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
@@ -149,11 +149,27 @@ async function executeCommand(
     });
 
     const timeoutId = setTimeout(() => {
+      // Check if process already exited to prevent race condition
+      if (proc.exitCode !== null) return;
+
       timedOut = true;
-      proc.kill('SIGTERM');
-      setTimeout(() => {
-        if (!proc.killed) proc.kill('SIGKILL');
-      }, 5000);
+      if (process.platform === 'win32') {
+        // Use execFile instead of exec to avoid shell invocation (security)
+        execFile('taskkill', ['/pid', String(proc.pid), '/T', '/F'], (err) => {
+          if (err && !proc.killed) {
+            try {
+              proc.kill();
+            } catch {
+              // Process may have already exited
+            }
+          }
+        });
+      } else {
+        proc.kill('SIGTERM');
+        setTimeout(() => {
+          if (!proc.killed) proc.kill('SIGKILL');
+        }, 5000);
+      }
     }, timeout);
 
     if (captureStdout) {

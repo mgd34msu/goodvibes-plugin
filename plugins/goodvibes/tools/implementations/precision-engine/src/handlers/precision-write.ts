@@ -42,6 +42,7 @@ interface WriteSpec {
   content_base64?: string;
   content_file?: string;
   encoding?: BufferEncoding;
+  mode?: 'fail_if_exists' | 'overwrite' | 'backup';
 }
 
 interface TemplateConfig {
@@ -247,12 +248,40 @@ async function writeFile(
       ? content.split('\n').slice(0, options.previewLines)
       : undefined;
 
-    if (exists && !options.overwrite) {
+    // Determine effective overwrite/backup from spec.mode or global options
+    let effectiveOverwrite = options.overwrite;
+    let effectiveBackup = options.backup;
+
+    if (spec.mode) {
+      switch (spec.mode) {
+        case 'fail_if_exists':
+          effectiveOverwrite = false;
+          effectiveBackup = false;
+          break;
+        case 'overwrite':
+          effectiveOverwrite = true;
+          effectiveBackup = false;
+          break;
+        case 'backup':
+          effectiveOverwrite = true;
+          effectiveBackup = true;
+          break;
+        default:
+          // Exhaustiveness check - TypeScript will error if a case is missed
+          const _exhaustive: never = spec.mode;
+          throw new Error(`Unknown mode: ${_exhaustive}`);
+      }
+    }
+
+    if (exists && !effectiveOverwrite) {
+      const reason = spec.mode === 'fail_if_exists'
+        ? 'File exists and mode=fail_if_exists'
+        : 'File exists and overwrite=false';
       return {
         result: {
           path: spec.path,
           status: 'skipped',
-          error: 'File exists and overwrite=false',
+          error: reason,
         },
       };
     }
@@ -266,7 +295,7 @@ async function writeFile(
       }
 
       // Backup existing file
-      if (exists && options.backup) {
+      if (exists && effectiveBackup) {
         const backupPath = generateBackupPath(filePath);
         await fs.copyFile(filePath, backupPath);
         rollback = { path: filePath, backup_path: backupPath, was_new: false };

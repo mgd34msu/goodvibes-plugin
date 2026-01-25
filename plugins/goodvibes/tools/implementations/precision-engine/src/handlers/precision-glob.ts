@@ -25,6 +25,7 @@ import { DEFAULT_EXCLUDES } from '../config.js';
 type GlobOutputMode = 'count_only' | 'paths_only' | 'with_stats' | 'with_preview';
 type SortBy = 'name' | 'size' | 'modified';
 type SortOrder = 'asc' | 'desc';
+type GlobPreset = 'typescript' | 'javascript' | 'styles' | 'config' | 'tests' | 'all';
 
 interface GlobFilters {
   min_size?: number;
@@ -50,6 +51,7 @@ interface GlobOutput {
 interface PrecisionGlobInput {
   patterns?: string[];
   patterns_base64?: string[];
+  preset?: GlobPreset;
   exclude?: string[];
   filters?: GlobFilters;
   output?: GlobOutput;
@@ -98,6 +100,23 @@ async function getFilePreview(filePath: string, lines: number): Promise<string[]
   }
 }
 
+// === Preset Definitions ===
+
+const GLOB_PRESETS: Record<GlobPreset, string[]> = {
+  typescript: ['**/*.ts', '**/*.tsx'],
+  javascript: ['**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'],
+  styles: ['**/*.css', '**/*.scss', '**/*.sass', '**/*.less', '**/*.styl'],
+  config: ['**/*.json', '**/*.yaml', '**/*.yml', '**/*.toml', '**/*.xml', '**/*.ini'],
+  tests: [
+    '**/*.test.*',
+    '**/*.spec.*',
+    '**/__tests__/**/*',
+    '**/tests/**/*',      // Common convention
+    '**/test/**/*',       // Mocha/common convention
+  ],
+  all: ['**/*'],
+};
+
 // === Main Handler ===
 
 export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
@@ -115,13 +134,24 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
 
   try {
     // Decode patterns from base64 if provided
-    const patterns = input.patterns_base64
+    let patterns = input.patterns_base64
       ? input.patterns_base64.map(p => Buffer.from(p, 'base64').toString('utf-8'))
       : input.patterns;
 
-    // Validate input
+    // Expand preset if patterns not provided (empty array or undefined)
+    // Priority: patterns > patterns_base64 > preset
+    if ((!patterns || patterns.length === 0) && input.preset) {
+      patterns = GLOB_PRESETS[input.preset];
+    }
+
+    // Validate input - need either patterns or preset
     if (!patterns || !Array.isArray(patterns) || patterns.length === 0) {
-      return toCallToolResult(errorResult('patterns or patterns_base64 array is required', outputMode, getElapsed()));
+      return toCallToolResult(errorResult(
+        'One of patterns, patterns_base64, or preset is required. ' +
+        'Available presets: typescript, javascript, styles, config, tests, all',
+        outputMode,
+        getElapsed()
+      ));
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)

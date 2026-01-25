@@ -279,6 +279,8 @@ async function executeGlobQuery(
   }
 }
 
+const SYMBOL_TIMEOUT = 30000; // 30 second timeout for symbols
+
 async function executeSymbolsQuery(
   query: QuerySpec,
   outputMode: DiscoverOutputMode,
@@ -298,7 +300,8 @@ async function executeSymbolsQuery(
       mode = 'names_only';
     }
 
-    const result = await handlePrecisionSymbols({
+    // Add timeout protection
+    const symbolsPromise = handlePrecisionSymbols({
       mode: 'workspace',
       query: query.query,
       kinds: query.kinds as Array<'function' | 'method' | 'class' | 'interface' | 'type' | 'variable' | 'constant' | 'enum' | 'property' | 'namespace'>,
@@ -307,6 +310,12 @@ async function executeSymbolsQuery(
         max_results: 100,
       },
     });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Symbol search timeout after 30s')), SYMBOL_TIMEOUT)
+    );
+
+    const result = await Promise.race([symbolsPromise, timeoutPromise]);
 
     const content = result.content?.[0];
     if (!content || content.type !== 'text') {
@@ -352,7 +361,11 @@ async function executeSymbolsQuery(
     const files = [...new Set(symbols.map((s: any) => s.file).filter(Boolean))] as string[];
     return { type: 'symbols', count: symbols.length, files };
   } catch (e) {
-    return { type: 'symbols', count: 0, error: (e as Error).message };
+    return {
+      type: 'symbols',
+      count: 0,
+      error: `Symbol search failed: ${(e as Error).message}`
+    };
   }
 }
 

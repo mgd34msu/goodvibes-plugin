@@ -547,66 +547,139 @@ function findInContext(
     // exact match
     let searchContent = content;
     let searchFind = find;
+
     if (matchConfig.case_sensitive === false) {
-      searchContent = content.toLowerCase();
-      searchFind = find.toLowerCase();
+      searchContent = searchContent.toLowerCase();
+      searchFind = searchFind.toLowerCase();
     }
 
-    let pos = 0;
-    while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-      allMatches.push({ index: pos, length: searchFind.length });
-      pos++;
+    // Handle whitespace normalization for exact mode
+    if (matchConfig.whitespace_sensitive === false) {
+      // For whitespace-insensitive exact matching, we need to:
+      // 1. Normalize both search and content
+      // 2. Track position mapping to get original indices
+      const normalizedFind = normalizeWhitespace(searchFind);
+
+      // Build a mapping from normalized position to original position
+      let normalizedContent = '';
+      const positionMap: number[] = []; // normalizedContent index -> original content index
+
+      let i = 0;
+      let lastWasSpace = false;
+      while (i < searchContent.length) {
+        const char = searchContent[i];
+        if (/\s/.test(char)) {
+          if (!lastWasSpace && normalizedContent.length > 0) {
+            positionMap.push(i);
+            normalizedContent += ' ';
+            lastWasSpace = true;
+          }
+        } else {
+          positionMap.push(i);
+          normalizedContent += char;
+          lastWasSpace = false;
+        }
+        i++;
+      }
+      normalizedContent = normalizedContent.trim();
+
+      // Search in normalized content
+      let pos = 0;
+      while ((pos = normalizedContent.indexOf(normalizedFind, pos)) !== -1) {
+        // Map back to original position
+        const originalIndex = positionMap[pos] ?? pos;
+        allMatches.push({ index: originalIndex, length: find.length });
+        pos++;
+      }
+    } else {
+      // Standard exact match
+      let pos = 0;
+      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+        allMatches.push({ index: pos, length: searchFind.length });
+        pos++;
+      }
     }
   }
 
   if (allMatches.length === 0) return [];
 
-  // Apply hints to filter candidates
+  // If no hints provided, return all matches
+  if (!hints.near_line && !hints.in_function && !hints.in_class && !hints.after && !hints.before) {
+    return allMatches;
+  }
+
+  // Apply hints to score and filter candidates
+  interface ScoredMatch extends MatchResult {
+    score: number;
+  }
+
+  const scoredMatches: ScoredMatch[] = [];
+
   for (const match of allMatches) {
     const lineNumber = content.substring(0, match.index).split('\n').length;
-    let score = 0;
+    let score = 100; // Base score
+    let disqualified = false;
 
-    // near_line hint
+    // near_line hint - closer is better (soft constraint)
     if (hints.near_line !== undefined) {
       const distance = Math.abs(lineNumber - hints.near_line);
-      if (distance <= 10) score += (10 - distance);
+      score += Math.max(0, 50 - distance * 5);
     }
 
-    // in_function hint
+    // in_function hint - MUST be in function (hard constraint)
     if (hints.in_function) {
-      const funcPattern = new RegExp(`function\\s+${hints.in_function}|const\\s+${hints.in_function}\\s*=`, 'g');
-      const beforeIndex = content.substring(0, match.index);
-      if (funcPattern.test(beforeIndex)) score += 20;
+      const funcPattern = new RegExp(
+        `(function\\s+${hints.in_function}\\s*\\(|const\\s+${hints.in_function}\\s*=|let\\s+${hints.in_function}\\s*=|var\\s+${hints.in_function}\\s*=)`,
+        'g'
+      );
+      const beforeContent = content.substring(0, match.index);
+      if (!funcPattern.test(beforeContent)) {
+        disqualified = true; // Not in specified function
+      } else {
+        score += 50;
+      }
     }
 
-    // in_class hint
+    // in_class hint - MUST be in class (hard constraint)
     if (hints.in_class) {
-      const classPattern = new RegExp(`class\\s+${hints.in_class}`, 'g');
-      const beforeIndex = content.substring(0, match.index);
-      if (classPattern.test(beforeIndex)) score += 20;
+      const classPattern = new RegExp(`class\\s+${hints.in_class}\\b`, 'g');
+      const beforeContent = content.substring(0, match.index);
+      if (!classPattern.test(beforeContent)) {
+        disqualified = true; // Not in specified class
+      } else {
+        score += 50;
+      }
     }
 
-    // after hint
+    // after hint - match MUST come after this text (hard constraint)
     if (hints.after) {
-      const afterIndex = content.indexOf(hints.after);
-      if (afterIndex !== -1 && match.index > afterIndex) score += 15;
+      const afterIdx = content.indexOf(hints.after);
+      if (afterIdx === -1 || match.index <= afterIdx + hints.after.length) {
+        disqualified = true;
+      } else {
+        score += 30;
+      }
     }
 
-    // before hint
+    // before hint - match MUST come before this text (hard constraint)
     if (hints.before) {
-      const beforeIndex = content.indexOf(hints.before);
-      if (beforeIndex !== -1 && match.index < beforeIndex) score += 15;
+      const beforeIdx = content.indexOf(hints.before);
+      if (beforeIdx === -1 || match.index >= beforeIdx) {
+        disqualified = true;
+      } else {
+        score += 30;
+      }
     }
 
-    candidates.push(match);
+    if (!disqualified) {
+      scoredMatches.push({ ...match, score });
+    }
   }
 
-  // If hints were provided, sort by score (highest first)
-  if (hints.near_line || hints.in_function || hints.in_class || hints.after || hints.before) {
-    // For now, just return candidates in order; in production, would sort by score
-  }
-
-  return candidates;
+  // Sort by score (highest first) and return without score property
+  return scoredMatches
+    .sort((a, b) => b.score - a.score)
+    .map(({ score, ...match }) => match);
 }
 
 function generateDiff(original: string, modified: string, context: number = 3): string {

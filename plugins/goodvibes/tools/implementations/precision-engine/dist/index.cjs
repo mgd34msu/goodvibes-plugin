@@ -251915,12 +251915,34 @@ async function writeFile2(spec, dryRun, workDir, options) {
     const content = applyTemplate(resolvedContent, options.template);
     const size = Buffer.byteLength(content, encoding);
     const preview = options.previewLines ? content.split("\n").slice(0, options.previewLines) : void 0;
-    if (exists && !options.overwrite) {
+    let effectiveOverwrite = options.overwrite;
+    let effectiveBackup = options.backup;
+    if (spec.mode) {
+      switch (spec.mode) {
+        case "fail_if_exists":
+          effectiveOverwrite = false;
+          effectiveBackup = false;
+          break;
+        case "overwrite":
+          effectiveOverwrite = true;
+          effectiveBackup = false;
+          break;
+        case "backup":
+          effectiveOverwrite = true;
+          effectiveBackup = true;
+          break;
+        default:
+          const _exhaustive = spec.mode;
+          throw new Error(`Unknown mode: ${_exhaustive}`);
+      }
+    }
+    if (exists && !effectiveOverwrite) {
+      const reason = spec.mode === "fail_if_exists" ? "File exists and mode=fail_if_exists" : "File exists and overwrite=false";
       return {
         result: {
           path: spec.path,
           status: "skipped",
-          error: "File exists and overwrite=false"
+          error: reason
         }
       };
     }
@@ -251929,7 +251951,7 @@ async function writeFile2(spec, dryRun, workDir, options) {
       if (options.createDirs) {
         await fs.mkdir(path.dirname(filePath), { recursive: true });
       }
-      if (exists && options.backup) {
+      if (exists && effectiveBackup) {
         const backupPath = generateBackupPath(filePath);
         await fs.copyFile(filePath, backupPath);
         rollback = { path: filePath, backup_path: backupPath, was_new: false };
@@ -252173,12 +252195,25 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       windowsHide: true
     });
     const timeoutId = setTimeout(() => {
+      if (proc.exitCode !== null)
+        return;
       timedOut = true;
-      proc.kill("SIGTERM");
-      setTimeout(() => {
-        if (!proc.killed)
-          proc.kill("SIGKILL");
-      }, 5e3);
+      if (process.platform === "win32") {
+        (0, import_child_process2.execFile)("taskkill", ["/pid", String(proc.pid), "/T", "/F"], (err) => {
+          if (err && !proc.killed) {
+            try {
+              proc.kill();
+            } catch {
+            }
+          }
+        });
+      } else {
+        proc.kill("SIGTERM");
+        setTimeout(() => {
+          if (!proc.killed)
+            proc.kill("SIGKILL");
+        }, 5e3);
+      }
     }, timeout);
     if (captureStdout) {
       proc.stdout?.on("data", (data) => {
@@ -253188,6 +253223,22 @@ async function getFilePreview(filePath, lines) {
   }
 }
 __name(getFilePreview, "getFilePreview");
+var GLOB_PRESETS = {
+  typescript: ["**/*.ts", "**/*.tsx"],
+  javascript: ["**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
+  styles: ["**/*.css", "**/*.scss", "**/*.sass", "**/*.less", "**/*.styl"],
+  config: ["**/*.json", "**/*.yaml", "**/*.yml", "**/*.toml", "**/*.xml", "**/*.ini"],
+  tests: [
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/__tests__/**/*",
+    "**/tests/**/*",
+    // Common convention
+    "**/test/**/*"
+    // Mocha/common convention
+  ],
+  all: ["**/*"]
+};
 var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
   const getElapsed = startTimer();
   const input = args;
@@ -253197,9 +253248,16 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
     console.warn('[precision_glob] DEPRECATION WARNING: Parameter "cwd" is deprecated. Use "base_path" instead.');
   }
   try {
-    const patterns = input.patterns_base64 ? input.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : input.patterns;
+    let patterns = input.patterns_base64 ? input.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : input.patterns;
+    if ((!patterns || patterns.length === 0) && input.preset) {
+      patterns = GLOB_PRESETS[input.preset];
+    }
     if (!patterns || !Array.isArray(patterns) || patterns.length === 0) {
-      return toCallToolResult(errorResult("patterns or patterns_base64 array is required", outputMode, getElapsed()));
+      return toCallToolResult(errorResult(
+        "One of patterns, patterns_base64, or preset is required. Available presets: typescript, javascript, styles, config, tests, all",
+        outputMode,
+        getElapsed()
+      ));
     }
     const output = {
       mode: input.output?.mode ?? "paths_only",
@@ -253857,6 +253915,7 @@ async function executeGlobQuery(query, outputMode, searchRoot) {
   }
 }
 __name(executeGlobQuery, "executeGlobQuery");
+var SYMBOL_TIMEOUT = 3e4;
 async function executeSymbolsQuery(query, outputMode, searchRoot) {
   if (!query.query) {
     return { type: "symbols", count: 0, error: "Missing 'query' for symbols query" };
@@ -253870,7 +253929,7 @@ async function executeSymbolsQuery(query, outputMode, searchRoot) {
     } else {
       mode = "names_only";
     }
-    const result = await handlePrecisionSymbols({
+    const symbolsPromise = handlePrecisionSymbols({
       mode: "workspace",
       query: query.query,
       kinds: query.kinds,
@@ -253879,6 +253938,10 @@ async function executeSymbolsQuery(query, outputMode, searchRoot) {
         max_results: 100
       }
     });
+    const timeoutPromise = new Promise(
+      (_, reject) => setTimeout(() => reject(new Error("Symbol search timeout after 30s")), SYMBOL_TIMEOUT)
+    );
+    const result = await Promise.race([symbolsPromise, timeoutPromise]);
     const content = result.content?.[0];
     if (!content || content.type !== "text") {
       return { type: "symbols", count: 0, files: [] };
@@ -253914,7 +253977,11 @@ async function executeSymbolsQuery(query, outputMode, searchRoot) {
     const files = [...new Set(symbols.map((s) => s.file).filter(Boolean))];
     return { type: "symbols", count: symbols.length, files };
   } catch (e) {
-    return { type: "symbols", count: 0, error: e.message };
+    return {
+      type: "symbols",
+      count: 0,
+      error: `Symbol search failed: ${e.message}`
+    };
   }
 }
 __name(executeSymbolsQuery, "executeSymbolsQuery");
@@ -254436,13 +254503,13 @@ var Diff = class {
       editLength++;
     }, "execEditLength");
     if (callback) {
-      (/* @__PURE__ */ __name(function exec2() {
+      (/* @__PURE__ */ __name(function exec3() {
         setTimeout(function() {
           if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
             return callback(void 0);
           }
           if (!execEditLength()) {
-            exec2();
+            exec3();
           }
         }, 0);
       }, "exec"))();
@@ -254899,52 +254966,101 @@ function findInContext(filePath, content, find, hints, matchConfig) {
     let searchContent = content;
     let searchFind = find;
     if (matchConfig.case_sensitive === false) {
-      searchContent = content.toLowerCase();
-      searchFind = find.toLowerCase();
+      searchContent = searchContent.toLowerCase();
+      searchFind = searchFind.toLowerCase();
     }
-    let pos = 0;
-    while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-      allMatches.push({ index: pos, length: searchFind.length });
-      pos++;
+    if (matchConfig.whitespace_sensitive === false) {
+      const normalizedFind = normalizeWhitespace(searchFind);
+      let normalizedContent = "";
+      const positionMap = [];
+      let i = 0;
+      let lastWasSpace = false;
+      while (i < searchContent.length) {
+        const char = searchContent[i];
+        if (/\s/.test(char)) {
+          if (!lastWasSpace && normalizedContent.length > 0) {
+            positionMap.push(i);
+            normalizedContent += " ";
+            lastWasSpace = true;
+          }
+        } else {
+          positionMap.push(i);
+          normalizedContent += char;
+          lastWasSpace = false;
+        }
+        i++;
+      }
+      normalizedContent = normalizedContent.trim();
+      let pos = 0;
+      while ((pos = normalizedContent.indexOf(normalizedFind, pos)) !== -1) {
+        const originalIndex = positionMap[pos] ?? pos;
+        allMatches.push({ index: originalIndex, length: find.length });
+        pos++;
+      }
+    } else {
+      let pos = 0;
+      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+        allMatches.push({ index: pos, length: searchFind.length });
+        pos++;
+      }
     }
   }
   if (allMatches.length === 0)
     return [];
+  if (!hints.near_line && !hints.in_function && !hints.in_class && !hints.after && !hints.before) {
+    return allMatches;
+  }
+  const scoredMatches = [];
   for (const match of allMatches) {
     const lineNumber = content.substring(0, match.index).split("\n").length;
-    let score = 0;
+    let score = 100;
+    let disqualified = false;
     if (hints.near_line !== void 0) {
       const distance = Math.abs(lineNumber - hints.near_line);
-      if (distance <= 10)
-        score += 10 - distance;
+      score += Math.max(0, 50 - distance * 5);
     }
     if (hints.in_function) {
-      const funcPattern = new RegExp(`function\\s+${hints.in_function}|const\\s+${hints.in_function}\\s*=`, "g");
-      const beforeIndex = content.substring(0, match.index);
-      if (funcPattern.test(beforeIndex))
-        score += 20;
+      const funcPattern = new RegExp(
+        `(function\\s+${hints.in_function}\\s*\\(|const\\s+${hints.in_function}\\s*=|let\\s+${hints.in_function}\\s*=|var\\s+${hints.in_function}\\s*=)`,
+        "g"
+      );
+      const beforeContent = content.substring(0, match.index);
+      if (!funcPattern.test(beforeContent)) {
+        disqualified = true;
+      } else {
+        score += 50;
+      }
     }
     if (hints.in_class) {
-      const classPattern = new RegExp(`class\\s+${hints.in_class}`, "g");
-      const beforeIndex = content.substring(0, match.index);
-      if (classPattern.test(beforeIndex))
-        score += 20;
+      const classPattern = new RegExp(`class\\s+${hints.in_class}\\b`, "g");
+      const beforeContent = content.substring(0, match.index);
+      if (!classPattern.test(beforeContent)) {
+        disqualified = true;
+      } else {
+        score += 50;
+      }
     }
     if (hints.after) {
-      const afterIndex = content.indexOf(hints.after);
-      if (afterIndex !== -1 && match.index > afterIndex)
-        score += 15;
+      const afterIdx = content.indexOf(hints.after);
+      if (afterIdx === -1 || match.index <= afterIdx + hints.after.length) {
+        disqualified = true;
+      } else {
+        score += 30;
+      }
     }
     if (hints.before) {
-      const beforeIndex = content.indexOf(hints.before);
-      if (beforeIndex !== -1 && match.index < beforeIndex)
-        score += 15;
+      const beforeIdx = content.indexOf(hints.before);
+      if (beforeIdx === -1 || match.index >= beforeIdx) {
+        disqualified = true;
+      } else {
+        score += 30;
+      }
     }
-    candidates.push(match);
+    if (!disqualified) {
+      scoredMatches.push({ ...match, score });
+    }
   }
-  if (hints.near_line || hints.in_function || hints.in_class || hints.after || hints.before) {
-  }
-  return candidates;
+  return scoredMatches.sort((a, b) => b.score - a.score).map(({ score, ...match }) => match);
 }
 __name(findInContext, "findInContext");
 function generateDiff(original, modified, context = 3) {
