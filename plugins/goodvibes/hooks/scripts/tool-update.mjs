@@ -101,6 +101,52 @@
   }
 
   /**
+   * Recover lost backslashes in common regex patterns.
+   *
+   * When backslashes are stripped during JSON transport, patterns like:
+   * - \s becomes s, \d becomes d, \w becomes w
+   * - \S becomes S, \D becomes D, \W becomes W
+   * - \b becomes b (word boundary)
+   *
+   * This function detects likely regex quantifier patterns and restores backslashes.
+   * E.g., "s*:" likely was "\s*:", "w+" likely was "\w+"
+   *
+   * @param {string} json - JSON with potentially stripped backslashes
+   * @returns {string} JSON with recovered backslashes
+   */
+  function recoverLostBackslashes(json) {
+    // Common regex character classes that lose their backslash
+    // Pattern: letter followed by quantifier (*, +, ?, {n}) suggests it was \letter
+    const REGEX_CHARS = 'sdwSWDb';
+
+    let result = '';
+    let i = 0;
+
+    while (i < json.length) {
+      const char = json[i];
+      const nextChar = json[i + 1] || '';
+      const prevChar = json[i - 1] || '';
+
+      // Check if this looks like a stripped regex character class
+      // Pattern: [sdwSWDb] followed by quantifier [*+?{] or end of pattern context
+      if (REGEX_CHARS.includes(char) && prevChar !== '\\') {
+        // Check if followed by a quantifier
+        if (/[*+?{]/.test(nextChar)) {
+          // This is likely a stripped regex class - add backslash
+          result += '\\' + char;
+          i++;
+          continue;
+        }
+      }
+
+      result += char;
+      i++;
+    }
+
+    return result;
+  }
+
+  /**
    * Fix invalid JSON escape sequences by doubling backslashes.
    *
    * Valid JSON escapes per RFC 8259:
@@ -179,6 +225,13 @@
 
     // Try both: quotes first, then escapes
     fixed = fixInvalidEscapes(fixUnescapedQuotes(json));
+    try {
+      JSON.parse(fixed);
+      return fixed;
+    } catch {}
+
+    // Try recovering lost backslashes, then fix escapes
+    fixed = fixInvalidEscapes(recoverLostBackslashes(fixUnescapedQuotes(json)));
     try {
       JSON.parse(fixed);
       return fixed;
