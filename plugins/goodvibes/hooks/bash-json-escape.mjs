@@ -68,7 +68,7 @@ const testResponse = {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
     updatedInput: {
-      command: 'echo IT_WORKS'
+      command: `${prefix}${fixed}${suffix}`
     }
   }
 };
