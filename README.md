@@ -1,587 +1,993 @@
-# GoodVibes Plugin for Claude Code
+# GoodVibes Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)](https://github.com/anthropics/claude-code)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
+[![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://claude.com/claude-code)
 
-A comprehensive automation plugin that supercharges Claude Code with intelligent context injection, persistent memory, smart error recovery, automated quality gates, and a library of 170+ development skills.
+> Plug in. Receive good vibes.
 
-**Plug in. Receive good vibes.**
+GoodVibes is a comprehensive Claude Code plugin that transforms AI-assisted development through batch-first operations, precision tools, and autonomous execution. Built for enterprise-grade development, it provides a complete ecosystem of agents, skills, and tools for maximum efficiency and quality.
 
----
+## 📊 At a Glance
 
-## What's Inside
-
-| Category | Count | Description |
-|----------|-------|-------------|
-| **Skills** | 172 | Production-ready patterns for frameworks, libraries, and tools |
-| **MCP Tools** | 91 | Code intelligence, validation, and automation tools |
-| **Agents** | 11 | Specialized AI agents for different development domains |
-| **Hooks** | 12 | Lifecycle automation for sessions, tools, and agents |
-| **Output Styles** | 2 | Autonomous development modes |
-| **Templates** | 3 | Project scaffolding templates |
+| Component | Count | Description |
+|-----------|-------|-------------|
+| 🤖 **Agents** | 9 | Specialized roles (engineer, reviewer, tester, etc.) |
+| 📚 **Skills** | 173 | Reusable knowledge modules across all tech stacks |
+| 🔧 **MCP Tools** | 74 | Precision tools across 6 specialized engines |
+| 🪝 **Hooks** | 9 | Lifecycle event handlers for automation |
+| 🎨 **Output Styles** | 2 | vibecoding (interactive) and justvibes (autonomous) |
+| 📦 **Templates** | 3 | Production-ready project scaffolds |
 
 ---
 
 ## Table of Contents
 
-- [Features](#features)
+- [Features Overview](#features-overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [MCP Tools](#mcp-tools)
-- [Hook Events](#hook-events)
-- [Skills Library](#skills-library)
-- [Agents](#agents)
+- [Core Concepts](#core-concepts)
+  - [Batch-First Architecture](#batch-first-architecture)
+  - [WRFC Loop](#wrfc-loop-write-review-fix-check)
+  - [Output Modes](#output-modes)
+  - [Transaction Modes](#transaction-modes)
+  - [Execution Modes](#execution-modes)
+- [MCP Tools (74)](#mcp-tools)
+  - [Precision Engine (9)](#precision-engine-9-tools)
+  - [Batch Engine (6)](#batch-engine-6-tools)
+  - [Registry Engine (7)](#registry-engine-7-tools)
+  - [Analysis Engine (19)](#analysis-engine-19-tools)
+  - [Project Engine (22)](#project-engine-22-tools)
+  - [Frontend Engine (11)](#frontend-engine-11-tools)
+- [Agents (9)](#agents)
+- [Skills (173)](#skills)
 - [Slash Commands](#slash-commands)
+- [Hooks (9)](#hooks)
 - [Output Styles](#output-styles)
-- [Project Templates](#project-templates)
-- [Configuration](#configuration)
 - [Memory System](#memory-system)
-- [Directory Structure](#directory-structure)
-- [Development](#development)
+- [Templates](#templates)
+- [Configuration](#configuration)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
-## Features
+## Features Overview
 
-### Smart Context Injection
+GoodVibes provides:
 
-Automatically injects project context at session start:
+- **🚀 Batch-First Operations**: Execute multi-file operations atomically with automatic rollback
+- **🎯 Precision Tools**: Enhanced file operations with extract modes, context control, and validation
+- **🤖 Specialized Agents**: 9 role-specific agents (engineer, reviewer, tester, architect, deployer, integrator, planner, factories)
+- **📚 Massive Skills Library**: 173 curated skills covering modern web development, AI integration, databases, authentication, deployment, and more
+- **🔍 Advanced Analysis**: Stack detection, pattern scanning, breaking change detection, dependency analysis
+- **🎨 Frontend Mastery**: Component tree analysis, accessibility auditing, responsive breakpoint analysis, Tailwind conflict resolution
+- **💾 Persistent Memory**: Two-tier memory system (session logs + cross-session memory) for decision tracking and pattern recognition
+- **🔄 Quality Assurance**: Built-in WRFC loop (Write-Review-Fix-Check) with automatic validation
+- **⚡ Token Efficiency**: Output verbosity controls (count_only, minimal, standard, verbose) for optimal performance
+- **🛡️ Enterprise Standards**: No mocks, no placeholders, production-ready code only
 
-- **Stack Detection** - Identifies frameworks, languages, and tools (Next.js, Vite, TypeScript, etc.)
-- **Git Context** - Current branch, uncommitted changes, recent commits
-- **Environment Status** - Missing env vars, `.env` file presence
-- **Project Health** - `node_modules` status, lockfile issues, TypeScript config
-- **TODO Scanner** - Finds TODOs/FIXMEs in codebase
-- **Recent Activity** - Hotspots, recently modified files
-- **Port Checker** - Active dev servers on common ports
+### Philosophy
 
-### Persistent Memory System
+GoodVibes operates on three core principles:
 
-Cross-session memory stored in `.goodvibes/memory/`:
-
-| File | Purpose |
-|------|---------|
-| `decisions.md` | Architectural decisions and rationale |
-| `patterns.md` | Code patterns and conventions discovered |
-| `failures.md` | Past failures and solutions |
-| `preferences.md` | User preferences learned |
-
-### Smart Error Recovery
-
-3-phase error recovery with escalating research:
-
-1. **Phase 1** - Fix attempts with existing knowledge
-2. **Phase 2** - Search official documentation
-3. **Phase 3** - Search community solutions (Stack Overflow, GitHub)
-
-### Pre-Commit Quality Gates
-
-Automatic quality checks before commits:
-
-- TypeScript type checking
-- ESLint with auto-fix
-- Prettier formatting
-- Test runner integration
-
-### Subagent Telemetry
-
-Comprehensive tracking of subagent activity:
-
-- Start/stop timestamps and duration
-- Task descriptions and outcomes
-- Keyword extraction from transcripts
-- Monthly JSONL telemetry logs
-
-### Auto-Checkpoint Commits
-
-Automatic checkpoint commits based on:
-
-- File modification count thresholds
-- Time intervals
-- Agent completion events
-
-### Crash Recovery
-
-Detects unclean session terminations and provides recovery context.
+1. **Batch-First**: Multi-file operations are executed atomically for consistency and efficiency
+2. **Token-Efficient**: Configurable verbosity levels minimize token usage without sacrificing functionality
+3. **Autonomous**: justvibes mode enables fully autonomous execution with checkpoints and automatic recovery
 
 ---
 
 ## Installation
 
-### From Plugin Marketplace
+### Prerequisites
+
+- Claude Code CLI (latest version)
+- Node.js 18+ (for MCP servers)
+- Git (for version control integration)
+
+### Installation Steps
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/mgd34msu/goodvibes-plugin.git vibeplug
+   cd vibeplug
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Build the plugin**:
+   ```bash
+   npm run build
+   ```
+
+4. **Link to Claude Code**:
+   ```bash
+   # Link the plugin to Claude Code's plugin directory
+   claude plugin install ./plugins/goodvibes --scope project
+   ```
+
+5. **Verify installation**:
+   ```bash
+   # Check plugin is loaded
+   claude plugin list
+   ```
+
+### Verification
+
+Run the plugin status command to verify all engines are active:
 
 ```bash
-# Add the marketplace
-claude plugin marketplace add mgd34msu/goodvibes-plugin
-
-# Install the plugin
-claude plugin install goodvibes@goodvibes-market
+# In Claude Code, use the slash command
+/plugin-status
 ```
 
-### Manual Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/mgd34msu/goodvibes.sh vibeplug
-cd vibeplug
-
-# Install for current project
-claude plugin install ./plugins/goodvibes --scope project
-
-# Or install user-wide
-claude plugin install ./plugins/goodvibes --scope user
-```
-
-### Build from Source
-
-```bash
-cd plugins/goodvibes
-
-# Install dependencies and build everything
-npm install
-npm run build
-
-# Or build components individually:
-npm run build:registries    # Build skill/agent/tool registries
-npm run build:server        # Build MCP server
-npm run build:hooks         # Build hook scripts
-```
+You should see all 6 engines (precision, batch, registry, analysis, project, frontend) reporting as active.
 
 ---
 
 ## Quick Start
 
-Once installed, GoodVibes automatically enhances your Claude Code sessions:
+### Basic Usage Examples
 
-1. **Start a session** - Context is automatically injected
-2. **Use slash commands** - `/goodvibes:search`, `/goodvibes:load-skill`, `/goodvibes:plugin-status`
-3. **Let agents help** - Specialists are available for backend, frontend, testing, and more
-4. **Enable output styles** - Try `vibecoding` or `justvibes` for autonomous development
+**Example 1: Stack Detection**
+
+Before starting any task, detect the project's technology stack:
+
+```yaml
+# Ask Claude Code:
+"Detect the stack for this project"
+
+# Claude Code will use:
+mcp-cli call plugin_goodvibes_analysis-engine/detect_stack
+```
+
+**Example 2: Find Relevant Skills**
+
+Discover skills for your task:
+
+```yaml
+# Ask Claude Code:
+"Find skills related to authentication with NextAuth"
+
+# Claude Code will use:
+mcp-cli call plugin_goodvibes_registry-engine/search_skills '{"query": "nextauth authentication"}'
+```
+
+**Example 3: Run a Batch Operation**
+
+Execute multi-file changes atomically:
+
+```yaml
+# Ask Claude Code:
+"Create a new API route for user management with Prisma"
+
+# Claude Code will use the batch engine to:
+# 1. Read existing patterns
+# 2. Create route files
+# 3. Update database schema
+# 4. Validate with TypeScript
+# All in a single atomic transaction
+```
+
+### Running Your First Skill
+
+Load a skill to access specialized knowledge:
+
+```bash
+# In Claude Code:
+/load-skill nextjs
+
+# Or ask:
+"Load the Next.js skill and help me implement Server Actions"
+```
+
+### Using an Agent
+
+Delegate specialized work to an agent:
+
+```yaml
+# Ask Claude Code:
+"Use the reviewer agent to check this API endpoint for security issues"
+
+# The main agent will spawn the reviewer agent with:
+# - Focused context (the API file)
+# - Specialized instructions (security review)
+# - Budget limits (tokens and turns)
+```
+
+---
+
+## Core Concepts
+
+### Batch-First Architecture
+
+GoodVibes executes operations in **batches** rather than individual tool calls. This provides:
+
+- **Atomicity**: All operations succeed or all fail (with rollback)
+- **Efficiency**: Parallel execution where possible, sequential where dependencies exist
+- **Checkpoints**: Automatic state snapshots before critical operations
+- **Recovery**: Resume from last checkpoint on failure
+
+**Batch Structure**:
+
+```yaml
+batch:
+  id: implement-feature
+
+  operations:
+    read:      # Gather context
+      - id: analyze
+        type: files
+        targets: ["src/**/*.ts"]
+        extract: outline
+
+    write:     # Make changes
+      - id: create
+        type: create
+        files:
+          - path: "src/feature.ts"
+            content: "..."
+
+    exec:      # Validate
+      - id: validate
+        type: command
+        commands:
+          - cmd: "npm run typecheck"
+            expect: { exit_code: 0 }
+
+  config:
+    transaction:
+      mode: atomic           # atomic | partial | none
+    execution:
+      mode: parallel         # parallel | sequential
+    checkpoint:
+      enabled: true
+      before: ["write"]
+      after: ["validate"]
+```
+
+### WRFC Loop (Write-Review-Fix-Check)
+
+Every code change goes through a quality assurance cycle:
+
+```
+┌─────────────┐
+│   WRITE     │  Create/edit files
+└──────┬──────┘
+       │
+       v
+┌─────────────┐
+│   REVIEW    │  Apply review skills (type-safety, error-handling, etc.)
+└──────┬──────┘
+       │
+       v
+┌─────────────┐
+│    FIX      │  Auto-fix issues (ESLint, formatting)
+└──────┬──────┘
+       │
+       v
+┌─────────────┐
+│   CHECK     │  Validate (typecheck, lint, build)
+└─────────────┘
+```
+
+**Review Skills Applied by Edit Type**:
+
+| Edit Type | Review Skills |
+|-----------|---------------|
+| TypeScript/JavaScript | type-safety, error-handling, async-patterns |
+| API routes | type-safety, error-handling, async-patterns |
+| Components | type-safety, naming-conventions |
+| New files | import-ordering, documentation |
+| Configuration | config-hygiene |
+
+### Output Modes
+
+Control response verbosity to optimize token usage:
+
+| Mode | Use Case | Token Usage | Output Includes |
+|------|----------|-------------|------------------|
+| `count_only` | Quick validation, large datasets | Minimal | Counts, summaries only |
+| `minimal` | Batch operations, background tasks | Low | Essential results, no details |
+| `standard` | Normal operations | Medium | Full results, basic context |
+| `verbose` | Debugging, exploration | High | Complete details, context, metadata |
+
+**Example**:
+
+```yaml
+precision_grep:
+  queries:
+    - pattern: "export function"
+      glob: "src/**/*.ts"
+  output:
+    mode: count_only  # Returns: { count: 42 }
+```
+
+### Transaction Modes
+
+Control rollback behavior for batch operations:
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `atomic` | All succeed or all rollback | Critical changes, database migrations |
+| `partial` | Continue on failure, report errors | Independent operations, bulk updates |
+| `none` | No rollback, best effort | Read-only, exploratory operations |
+
+### Execution Modes
+
+GoodVibes supports two execution modes via output styles:
+
+| Mode | Communication | Decisions | Checkpoints | Output |
+|------|---------------|-----------|-------------|--------|
+| **vibecoding** | Verbose, explanatory | Ask user on ambiguity | Manual | Standard verbosity, show diffs |
+| **justvibes** | Silent, logs only | Autonomous, best-guess | Automatic | Minimal verbosity, no diffs |
+
+Switch modes with:
+
+```bash
+# In Claude Code settings or config
+"outputStyle": "goodvibes:vibecoding"  # or "goodvibes:justvibes"
+```
 
 ---
 
 ## MCP Tools
 
-GoodVibes provides **91 MCP tools** organized into categories:
+GoodVibes provides **74 MCP tools** across 6 specialized engines.
 
-### Discovery & Search (7 tools)
+### Precision Engine (9 tools)
 
-| Tool | Description |
-|------|-------------|
-| `search_skills` | Search skill registry by keyword |
-| `search_agents` | Search agent registry by expertise |
-| `search_tools` | Search available tools |
-| `recommend_skills` | Analyze task and recommend relevant skills |
-| `get_skill_content` | Load full skill content by path |
-| `get_agent_content` | Load full agent content by path |
-| `skill_dependencies` | Show skill relationships and dependencies |
+Enhanced file and command operations with advanced features:
 
-### Context Gathering (6 tools)
+| Tool | Purpose | Key Features |
+|------|---------|--------------|
+| `precision_read` | Read files with extract modes | outline, symbols, lines, full content |
+| `precision_write` | Create/write files | Batch writes, backup mode, encoding support |
+| `precision_edit` | Edit files atomically | Transaction support, validation, hints |
+| `precision_grep` | Advanced content search | Output modes, context control, multiline |
+| `precision_glob` | Pattern-based file finding | Filters, preview mode, sorted results |
+| `precision_symbols` | Extract code symbols | Functions, classes, interfaces, types |
+| `precision_exec` | Execute commands with validation | Expectations, batch commands, output control |
+| `precision_fetch` | Fetch web content | Markdown conversion, caching |
+| `discover` | Parallel discovery queries | Multi-query, aggregated results |
 
-| Tool | Description |
-|------|-------------|
-| `detect_stack` | Analyze project technology stack |
-| `check_versions` | Get installed package versions |
-| `scan_patterns` | Identify code patterns and conventions |
-| `fetch_docs` | Fetch library documentation |
-| `read_config` | Parse configuration files (JSON, YAML, JS, TS) |
-| `get_conventions` | LLM-powered convention analysis |
+**Example Usage**:
 
-### Schema & API (5 tools)
+```yaml
+# Read file structure without full content
+precision_read:
+  files: ["src/index.ts", "src/app.ts"]
+  extract: outline
+  output:
+    mode: minimal
 
-| Tool | Description |
-|------|-------------|
-| `generate_openapi` | Generate OpenAPI spec from routes |
-| `get_schema` | Introspect database schema |
-| `get_database_schema` | Auto-detect and extract DB schema |
-| `get_api_routes` | Extract API routes from frameworks |
-| `get_prisma_operations` | Find Prisma usages and N+1 patterns |
+# Batch edit with atomic transaction
+precision_edit:
+  edits:
+    - file: "src/api.ts"
+      find: "const API_URL = 'localhost'"
+      replace: "const API_URL = process.env.API_URL"
+    - file: "src/config.ts"
+      find: "debug: true"
+      replace: "debug: false"
+  transaction:
+    mode: atomic
+    rollback_on_fail: true
 
-### LSP Code Navigation (18 tools)
-
-| Tool | Description |
-|------|-------------|
-| `find_references` | Find all references to symbol |
-| `go_to_definition` | Go to symbol definition |
-| `get_implementations` | Find interface implementations |
-| `rename_symbol` | Get edits for safe rename |
-| `get_code_actions` | Get quick fixes and refactorings |
-| `apply_code_action` | Get file edits for code action |
-| `get_symbol_info` | Get detailed symbol information |
-| `get_call_hierarchy` | Get call hierarchy (incoming/outgoing) |
-| `get_type_hierarchy` | Get type inheritance hierarchy |
-| `get_document_symbols` | Get structural outline of document |
-| `get_signature_help` | Get signature help at call site |
-| `get_diagnostics` | Get TypeScript diagnostics |
-| `find_dead_code` | Find unused exports and functions |
-| `get_api_surface` | Analyze public vs internal API |
-| `safe_delete_check` | Confirm zero external usages |
-| `get_inlay_hints` | Get inferred types where implicit |
-| `workspace_symbols` | Search symbols across workspace |
-| `semantic_diff` | LLM-powered type-aware diff |
-
-### Frontend Analysis (11 tools)
-
-| Tool | Description |
-|------|-------------|
-| `get_react_component_tree` | Build React component hierarchy |
-| `analyze_stacking_context` | Analyze z-index and stacking contexts |
-| `analyze_responsive_breakpoints` | Analyze Tailwind responsive classes |
-| `trace_component_state` | Trace React state through component trees |
-| `analyze_render_triggers` | Analyze React re-render causes |
-| `analyze_layout_hierarchy` | Analyze CSS layout hierarchy |
-| `diagnose_overflow` | Diagnose CSS overflow issues |
-| `get_accessibility_tree` | Build a11y tree and detect WCAG issues |
-| `get_sizing_strategy` | Analyze element sizing strategy |
-| `analyze_event_flow` | Analyze event handling and propagation |
-| `analyze_tailwind_conflicts` | Detect conflicting Tailwind classes |
-
-### Validation & Testing (7 tools)
-
-| Tool | Description |
-|------|-------------|
-| `validate_implementation` | Check code matches skill patterns |
-| `run_smoke_test` | Quick verification of generated code |
-| `check_types` | Run TypeScript type checking |
-| `validate_edits_preview` | Preview edit impact before applying |
-| `find_tests_for_file` | Find tests covering a source file |
-| `get_test_coverage` | Parse test coverage reports |
-| `suggest_test_cases` | LLM-powered test case suggestions |
-
-### Error & Debugging (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `parse_error_stack` | Parse and analyze error stacks |
-| `explain_type_error` | Explain TS errors with fixes |
-| `detect_memory_leaks` | Monitor memory usage for leaks |
-| `log_analyzer` | Analyze logs for patterns and anomalies |
-
-### Dependency Analysis (3 tools)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_dependencies` | Find unused/missing/outdated packages |
-| `find_circular_deps` | Detect circular import dependencies |
-| `detect_breaking_changes` | LLM-powered breaking change detection |
-
-### Security (2 tools)
-
-| Tool | Description |
-|------|-------------|
-| `scan_for_secrets` | Scan for credentials and sensitive data |
-| `check_permissions` | Analyze file/network/system access |
-
-### Environment & Package (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `get_env_config` | Find all env variable usages |
-| `validate_env_complete` | Validate env vars complete and documented |
-| `upgrade_package` | Upgrade npm package with breaking change detection |
-| `query_database` | Execute SQL queries (PostgreSQL, MySQL, SQLite) |
-
-### Build & Performance (2 tools)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_bundle` | Analyze bundle size and tree-shaking |
-| `profile_function` | Profile function performance |
-
-### Process Management (3 tools)
-
-| Tool | Description |
-|------|-------------|
-| `start_dev_server` | Start dev server and return when ready |
-| `health_monitor` | Monitor URL endpoint health |
-| `watch_for_errors` | Monitor logs for errors |
-
-### Runtime Verification (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `browser_automation` | Automate browser with Puppeteer |
-| `verify_runtime_behavior` | Execute code and verify results |
-| `lighthouse_audit` | Run Lighthouse audits |
-| `visual_regression` | Visual regression testing |
-
-### Self-Correction (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `retry_with_learning` | Retry with progressive fix strategies |
-| `atomic_multi_edit` | Apply edits atomically with rollback |
-| `auto_rollback` | Automatically rollback on failure |
-| `validate_api_contract` | Validate API responses against OpenAPI |
-
-### Type Generation (3 tools)
-
-| Tool | Description |
-|------|-------------|
-| `sync_api_types` | Detect type drift between backend/frontend |
-| `generate_fixture` | Generate test fixtures from schemas |
-| `generate_types` | Generate TS types from various sources |
-
-### Git & Documentation (3 tools)
-
-| Tool | Description |
-|------|-------------|
-| `create_pull_request` | Create GitHub PR with auto-generated descriptions |
-| `resolve_merge_conflict` | Analyze and suggest merge conflict resolutions |
-| `explain_codebase` | Generate high-level codebase explanation |
-
-### Project Management (3 tools)
-
-| Tool | Description |
-|------|-------------|
-| `list_templates` | List available project templates |
-| `scaffold_project` | Create project from template |
-| `plugin_status` | Check GoodVibes plugin health |
-| `project_issues` | Get detailed project issues |
-| `identify_tech_debt` | Identify and grade technical debt |
-
----
-
-## Hook Events
-
-GoodVibes uses Claude Code's hook system to provide intelligent automation at key lifecycle moments:
-
-| Hook | Trigger | Purpose |
-|------|---------|---------|
-| `SessionStart` | Session startup/resume | Context injection, crash recovery, memory loading |
-| `SessionEnd` | Session termination | Cleanup, state persistence |
-| `PreToolUse` | Before MCP tool execution | Quality gates, validation, caching |
-| `PostToolUse` | After successful tool execution | File tracking, checkpoints, dev server monitoring |
-| `PostToolUseFailure` | After tool failure | 3-phase error recovery with escalating research |
-| `SubagentStart` | When subagent spawns | Telemetry capture, context injection |
-| `SubagentStop` | When subagent completes | Output validation, test verification, telemetry |
-| `PreCompact` | Before context compaction | State preservation, checkpoint creation |
-| `Stop` | When user stops execution | Graceful shutdown, state saving |
-| `UserPromptSubmit` | When user submits prompt | Input processing |
-| `PermissionRequest` | When permission is requested | Auto-approval for known-safe operations |
-| `Notification` | System notifications | Logging, monitoring |
-
-### Hook Configuration
-
-Hooks are configured in `plugins/goodvibes/hooks/hooks.json` and implemented as TypeScript scripts in `plugins/goodvibes/hooks/scripts/src/`.
-
----
-
-## Skills Library
-
-GoodVibes includes **172 skills** organized by domain:
-
-### Categories
-
-```
-skills/
-├── common/                   # Cross-cutting concerns (29 skills)
-│   ├── development/          # Architecture, code organization, debugging
-│   ├── quality/              # Code quality, security audits
-│   ├── review/               # Code review patterns
-│   ├── tooling/              # MCP mastery, tooling
-│   └── workflow/             # Git workflows, planning, documentation
-├── create/                   # Plugin creation skills (5 skills)
-└── webdev/                   # Web development (138 skills)
-    ├── ai-integration/       # Vercel AI SDK
-    ├── animation/            # Framer Motion, GSAP, CSS animations
-    ├── api-layer/            # REST, GraphQL, tRPC, Express, Fastify, Hono
-    ├── authentication/       # Clerk, NextAuth, Auth0, Firebase, Lucia
-    ├── build-tools/          # Vite, Webpack, esbuild, Turbopack
-    ├── cms-content/          # MDX, Sanity, Contentful, Strapi
-    ├── component-libraries/  # shadcn/ui, Radix, Chakra, MUI, Mantine
-    ├── databases-orms/       # Prisma, Drizzle, PostgreSQL, MongoDB
-    ├── deployment/           # Vercel, Netlify, Cloudflare, Docker, Railway
-    ├── email/                # Resend, SendGrid, Nodemailer
-    ├── forms/                # React Hook Form, Zod, Formik
-    ├── frontend-core/        # React, Vue, Svelte, SolidJS, TypeScript
-    ├── meta-frameworks/      # Next.js, Nuxt, Remix, Astro, SvelteKit
-    ├── monitoring-analytics/ # Sentry, PostHog, Vercel Analytics
-    ├── payments/             # Stripe, LemonSqueezy, Paddle
-    ├── realtime-websockets/  # Socket.IO, Pusher, PartyKit
-    ├── state-management/     # Zustand, TanStack Query, Jotai, Redux
-    ├── styling/              # Tailwind CSS, CSS Modules, styled-components
-    └── testing/              # Vitest, Playwright, Jest, Testing Library
+# Discover patterns across codebase
+discover:
+  queries:
+    - id: find_components
+      type: glob
+      patterns: ["src/components/**/*.tsx"]
+    - id: find_hooks
+      type: symbols
+      query: "use"
+      kinds: ["function"]
+  output_mode: files_only
 ```
 
-### Using Skills
+### Batch Engine (6 tools)
 
-```bash
-# Search for skills
-/goodvibes:search skills authentication
+Orchestrate multi-operation workflows:
 
-# Load a specific skill
-/goodvibes:load-skill webdev/authentication/clerk
+| Tool | Purpose |
+|------|----------|
+| `batch` | Execute batch operations (read, write, exec, query) |
+| `batch_status` | Check status of running batch |
+| `batch_list` | List all batches (active, completed, failed) |
+| `batch_recover` | Recover from checkpoint after failure |
+| `batch_checkpoints` | List checkpoints for a batch |
+| `batch_state` | Query batch execution state |
 
-# Let Claude recommend skills based on your task
-# (Uses recommend_skills MCP tool automatically)
+**Example**:
+
+```yaml
+batch:
+  id: refactor-imports
+  operations:
+    read:
+      - id: scan
+        type: grep
+        pattern: "^import"
+        glob: "src/**/*.ts"
+    write:
+      - id: update
+        type: edit
+        edits: [ ... ]
+    exec:
+      - id: validate
+        type: command
+        commands:
+          - cmd: "npm run lint -- --fix"
+  config:
+    transaction:
+      mode: atomic
+    checkpoint:
+      enabled: true
+      before: ["write"]
 ```
 
-### Skill Structure
+### Registry Engine (7 tools)
 
-Each skill is a markdown file containing:
+Discover and manage skills, agents, and tools:
 
-- Description and use cases
-- Prerequisites and dependencies
-- Implementation patterns
-- Code examples
-- Best practices
-- Common pitfalls
+| Tool | Purpose |
+|------|----------|
+| `search_skills` | Search skills by query |
+| `search_agents` | Search agents by capability |
+| `search_tools` | Search MCP tools |
+| `recommend_skills` | Get skill recommendations based on context |
+| `get_skill_content` | Load skill content |
+| `get_agent_content` | Load agent definition |
+| `skill_dependencies` | Find skill dependencies |
+
+**Example**:
+
+```yaml
+# Find authentication skills
+search_skills:
+  query: "authentication nextauth clerk"
+  filters:
+    category: ["webdev/auth"]
+    max_results: 5
+
+# Get recommendations for current task
+recommend_skills:
+  context:
+    task: "Implement OAuth with Google"
+    stack: ["nextjs", "prisma", "postgresql"]
+  max_recommendations: 3
+```
+
+### Analysis Engine (19 tools)
+
+Comprehensive codebase analysis and validation:
+
+| Tool | Category | Purpose |
+|------|----------|----------|
+| `detect_stack` | Detection | Identify frameworks, libraries, tools |
+| `check_versions` | Detection | Check dependency versions |
+| `scan_patterns` | Detection | Find code patterns |
+| `read_config` | Detection | Parse config files (tsconfig, eslint, etc.) |
+| `get_conventions` | Detection | Extract coding conventions |
+| `find_dead_code` | Code Quality | Identify unused exports |
+| `get_api_surface` | Code Quality | Extract public API |
+| `safe_delete_check` | Code Quality | Verify safe to delete |
+| `detect_breaking_changes` | Validation | Find breaking changes |
+| `semantic_diff` | Validation | Semantic code comparison |
+| `validate_implementation` | Validation | Verify implementation matches spec |
+| `validate_edits_preview` | Validation | Preview edit impact |
+| `validate_api_contract` | Validation | Check API contract compliance |
+| `env_audit` | Security | Audit environment variables |
+| `scan_for_secrets` | Security | Detect hardcoded secrets |
+| `check_permissions` | Security | Verify file permissions |
+| `parse_error_stack` | Debugging | Parse error stack traces |
+| `explain_type_error` | Debugging | Explain TypeScript errors |
+| `find_circular_deps` | Debugging | Detect circular dependencies |
+
+**Example**:
+
+```yaml
+# Detect project stack
+detect_stack:
+  path: "."
+  include_versions: true
+
+# Find breaking changes
+detect_breaking_changes:
+  base_ref: "main"
+  head_ref: "feature-branch"
+  scope: ["src/api/**/*.ts"]
+
+# Security audit
+env_audit:
+  check_missing: true
+  check_unused: true
+  suggest_defaults: true
+```
+
+### Project Engine (22 tools)
+
+Project scaffolding, database management, and workflow automation:
+
+| Tool | Category | Purpose |
+|------|----------|----------|
+| `scaffold_project` | Scaffolding | Create project from template |
+| `list_templates` | Scaffolding | List available templates |
+| `plugin_status` | Status | Check plugin health |
+| `project_issues` | Status | Find project issues |
+| `generate_openapi` | API | Generate OpenAPI spec |
+| `get_database_schema` | Database | Extract DB schema |
+| `get_api_routes` | API | List API routes |
+| `get_prisma_operations` | Database | List Prisma operations |
+| `query_database` | Database | Execute DB query |
+| `upgrade_package` | Maintenance | Upgrade dependencies |
+| `explain_codebase` | Documentation | Generate codebase overview |
+| `find_tests_for_file` | Testing | Find tests for file |
+| `get_test_coverage` | Testing | Get coverage report |
+| `suggest_test_cases` | Testing | Suggest test cases |
+| `generate_types` | TypeScript | Generate type definitions |
+| `generate_fixture` | Testing | Generate test fixtures |
+| `sync_api_types` | TypeScript | Sync API types between frontend/backend |
+| `create_pull_request` | Git | Create PR with analysis |
+| `resolve_merge_conflict` | Git | Assist merge conflict resolution |
+| `analyze_bundle` | Performance | Analyze bundle size |
+| `analyze_dependencies` | Maintenance | Analyze dependency tree |
+| `find_circular_deps` | Debugging | Find circular dependencies |
+
+**Example**:
+
+```yaml
+# Scaffold new project
+scaffold_project:
+  template: "next-saas"
+  name: "my-app"
+  options:
+    auth: "clerk"
+    database: "prisma"
+    styling: "tailwind"
+
+# Get database schema
+get_database_schema:
+  format: "prisma"
+  include_relations: true
+
+# Analyze bundle
+analyze_bundle:
+  build_command: "npm run build"
+  threshold_kb: 500
+```
+
+### Frontend Engine (11 tools)
+
+Specialized React/frontend analysis:
+
+| Tool | Purpose |
+|------|----------|
+| `get_react_component_tree` | Extract component hierarchy |
+| `analyze_stacking_context` | Debug z-index issues |
+| `analyze_responsive_breakpoints` | Audit responsive design |
+| `trace_component_state` | Trace state flow |
+| `analyze_render_triggers` | Find unnecessary re-renders |
+| `analyze_layout_hierarchy` | Debug layout issues |
+| `diagnose_overflow` | Find overflow causes |
+| `get_accessibility_tree` | Generate a11y tree |
+| `get_sizing_strategy` | Analyze sizing approach |
+| `analyze_event_flow` | Trace event propagation |
+| `analyze_tailwind_conflicts` | Find conflicting Tailwind classes |
+
+**Example**:
+
+```yaml
+# Analyze component tree
+get_react_component_tree:
+  entry_point: "src/app/page.tsx"
+  depth: 3
+  include_props: true
+
+# Debug Tailwind conflicts
+analyze_tailwind_conflicts:
+  component: "src/components/Button.tsx"
+  suggest_fixes: true
+
+# Accessibility audit
+get_accessibility_tree:
+  component: "src/components/Form.tsx"
+  check_aria: true
+```
 
 ---
 
 ## Agents
 
-GoodVibes provides **11 specialized agents** for different development tasks:
+GoodVibes provides **9 specialized agents** for different development tasks:
 
-### Meta Agents
+| Agent | Specialization | Use Cases | Key Capabilities |
+|-------|----------------|-----------|------------------|
+| **engineer** | Full-stack development | Features, APIs, components, DB schemas | Backend (APIs, databases, auth) + Frontend (components, routing, styling) |
+| **reviewer** | Code quality & security | Code review, security audit, type safety | WRFC loop, review skills, vulnerability detection |
+| **tester** | Testing & validation | Unit tests, integration tests, E2E tests | Test generation, coverage analysis, fixture creation |
+| **architect** | System design | Architecture decisions, patterns, refactoring | Design patterns, scalability analysis, tech stack recommendations |
+| **deployer** | Deployment & DevOps | CI/CD, containerization, cloud deployment | Docker, GitHub Actions, Vercel/Netlify, environment management |
+| **integrator** | Third-party integrations | API integration, SDK setup, webhooks | OAuth, webhooks, SDK configuration, API client generation |
+| **planner** | Project planning | Task breakdown, estimation, prioritization | Dependency analysis, milestone planning, risk assessment |
+| **agent-factory** | Agent creation | Create new specialized agents | Agent SDK, role definition, context injection |
+| **skill-factory** | Skill creation | Create new skills | Skill templates, knowledge extraction, dependency management |
 
-| Agent | Description |
-|-------|-------------|
-| `factory` | Creates new specialized agents for specific domains |
-| `skill-creator` | Creates and updates skills and slash commands |
+### Agent Spawning
 
-### Web Development Agents
+Agents are spawned with focused context and budget:
 
-| Agent | Description |
-|-------|-------------|
-| `backend-engineer` | API design, databases, authentication |
-| `frontend-architect` | UI components, styling, accessibility |
-| `fullstack-integrator` | State management, forms, real-time, AI integration |
-| `test-engineer` | Testing strategies and implementation |
-| `brutally-honest-reviewer` | Honest, detailed code reviews |
-| `code-architect` | Refactoring and architecture decisions |
-| `devops-deployer` | CI/CD, deployment, infrastructure |
-| `content-platform` | CMS, email, payments, uploads |
-| `workflow-planner` | Complex task breakdown and planning |
-
-### Using Agents
-
-Agents are spawned automatically based on task context, or explicitly via the Task tool:
-
+```yaml
+# Main agent spawns reviewer for focused task
+spawn:
+  agent: reviewer
+  task: "Review API endpoint for security issues"
+  scope:
+    files: ["src/app/api/users/route.ts"]
+  constraints:
+    focus: ["authentication", "input-validation", "sql-injection"]
+  budget:
+    tokens: 50000
+    turns: 10
+  relevant_decisions:
+    - "Using NextAuth for authentication"
+    - "Prisma for database access"
 ```
-Use the backend-engineer agent to design the API for user authentication.
+
+### When to Use Each Agent
+
+| Task | Agent | Why |
+|------|-------|-----|
+| Implement new feature | engineer | Full-stack implementation with validation |
+| Review PR | reviewer | Security, type safety, error handling checks |
+| Add test coverage | tester | Test generation with best practices |
+| Plan refactoring | architect | System design and pattern analysis |
+| Set up CI/CD | deployer | Deployment expertise |
+| Add Stripe integration | integrator | Third-party API integration |
+| Break down epic | planner | Task decomposition and estimation |
+| Create custom agent | agent-factory | Agent creation with SDK |
+| Document new framework | skill-factory | Knowledge capture as skill |
+
+---
+
+## Skills
+
+GoodVibes includes **173 curated skills** organized into categories:
+
+### Skills Overview
+
+**Total: 173 skills**
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| **Common** | 29 | Development, quality, review, tooling, workflow |
+| **WebDev** | 138 | Modern web development (frameworks, libraries, tools) |
+| **Special** | 1 | goodvibes-codebase-review (comprehensive codebase audit) |
+| **Creation** | 5 | Agent SDK, hooks, scripts, workflows, descriptions |
+
+### Common Skills (29)
+
+Foundational skills for all development:
+
+**Development (9)**:
+- architecture-assessment, code-critique, code-organization, code-scoring, debugging, dependency-management, improvement-roadmap, project-understanding, refactoring
+
+**Quality (5)**:
+- code-quality, code-smell-detector, review-scoring-rubric, security-audit-checklist, testing
+
+**Review (8)**:
+- async-patterns, code-organization, config-hygiene, documentation, error-handling, import-ordering, naming-conventions, type-safety
+
+**Tooling (1)**:
+- mcp-mastery
+
+**Workflow (6)**:
+- agent-monitoring, documentation, git-workflows, planning/dependency-mapping, planning/risk-assessment, planning/task-decomposition
+
+### WebDev Skills (138)
+
+Comprehensive modern web development:
+
+**AI Integration (1)**:
+- vercel-ai-sdk
+
+**Animation (1)**:
+- framer-motion
+
+**API Layer (8)**:
+- apollo-server, express, fastify, graphql, hono, openapi, rest-api-design, trpc
+
+**Authentication (7)**:
+- auth0, clerk, firebase-auth, lucia, nextauth, passport, supabase-auth
+
+**Build Tools (7)**:
+- bun, esbuild, rollup, tsup, turbopack, vite, webpack
+
+**CMS & Content (1)**:
+- mdx
+
+**Component Libraries (8)**:
+- ant-design, ark-ui, chakra-ui, headless-ui, mantine, material-ui, radix-ui, shadcn-ui
+
+**Databases & ORMs (10)**:
+- drizzle, kysely, mongodb, planetscale, postgresql, prisma, redis, sqlite, supabase-db, turso
+
+**Deployment (8)**:
+- aws-amplify, cloudflare-pages, docker-web, fly-io, netlify, railway, render, vercel
+
+**Email (1)**:
+- resend
+
+**Forms & Validation (6)**:
+- conform, formik, react-hook-form, valibot, yup, zod
+
+**Frontend Core (10)**:
+- alpine-js, htmx, javascript-modern, preact, react, solidjs, svelte, typescript, vue, web-components
+
+**Meta Frameworks (8)**:
+- astro, gatsby, nextjs, nuxt, qwik, remix, solidstart, sveltekit
+
+**Monitoring & Analytics (1)**:
+- sentry
+
+**Payments (1)**:
+- stripe
+
+**Real-time & WebSockets (1)**:
+- socket-io
+
+**State Management (7)**:
+- jotai, nanostores, pinia, redux-toolkit, tanstack-query, valtio, zustand
+
+**Styling (8)**:
+- css-modules, css-variables, panda-css, sass-scss, styled-components, tailwindcss, unocss, vanilla-extract
+
+**Testing (8)**:
+- chromatic, cypress, jest, msw, playwright, storybook, testing-library, vitest
+
+**Additional Skills (36)**:
+
+Located in webdev/skills subdirectory:
+- ably, anthropic-api, auto-animate, aws-s3, axiom, cloudinary, contentful, css-animations, gsap, huggingface-js, imgix, keystonejs, langchain-js, lemonsqueezy, liveblocks, logrocket, lottie, nodemailer, openai-api, paddle, partykit, and 15 more
+
+> Note: Skills are organized by technology. Each skill is defined in a SKILL.md file within its category directory. The "Additional Skills" category contains 36 specialized tools and libraries that don't fit neatly into the main categories above.
+
+### Creation Skills (5)
+
+Meta-skills for extending GoodVibes:
+
+- agent-sdk-definitions, hook-integration, script-best-practices, workflow-patterns, writing-descriptions
+
+### Special Skills
+
+**goodvibes-codebase-review**:
+
+Comprehensive codebase audit with parallel agent remediation:
+- Analyzes 10 quality dimensions
+- Generates master report with quantified metrics
+- Creates prioritized remediation plan
+- Executes fixes with max 6 parallel agents
+
+### Discovering Skills
+
+**Search by keyword**:
+```yaml
+search_skills:
+  query: "authentication oauth"
+  filters:
+    category: ["webdev/auth"]
+```
+
+**Get recommendations**:
+```yaml
+recommend_skills:
+  context:
+    task: "Build a SaaS with subscriptions"
+    stack: ["nextjs", "prisma", "stripe"]
+  max_recommendations: 5
+```
+
+### Using Skills
+
+**Load via slash command**:
+```bash
+/load-skill nextjs
+```
+
+**Load programmatically**:
+```yaml
+get_skill_content:
+  skill_id: "webdev/nextjs"
+  include_examples: true
 ```
 
 ---
 
 ## Slash Commands
 
-| Command | Description |
-|---------|-------------|
-| `/goodvibes:search [skills\|agents\|tools] <query>` | Search plugin resources |
-| `/goodvibes:load-skill <skill-name-or-path>` | Load a skill's full content |
-| `/goodvibes:plugin-status` | Show plugin health and statistics |
+GoodVibes provides 4 slash commands:
+
+| Command | Purpose | Usage |
+|---------|---------|-------|
+| `/codebase-review` | Full codebase audit with parallel remediation | `/codebase-review` |
+| `/load-skill` | Load skill content into context | `/load-skill <skill-name>` |
+| `/plugin-status` | Check GoodVibes plugin status | `/plugin-status` |
+| `/search` | Search skills, agents, or tools | `/search skills authentication` |
+
+**Examples**:
+
+```bash
+# Review entire codebase
+/codebase-review
+
+# Load Next.js skill
+/load-skill nextjs
+
+# Check plugin health
+/plugin-status
+
+# Search for auth skills
+/search skills auth
+```
+
+---
+
+## Hooks
+
+GoodVibes provides **9 lifecycle hooks** for automation:
+
+| Hook | Trigger | Purpose | Use Cases |
+|------|---------|---------|-----------|
+| `SessionStart` | Session begins | Initialize session context | Load preferences, detect stack, scan patterns |
+| `SessionEnd` | Session ends | Cleanup and persist state | Save decisions, update memory, generate summary |
+| `SubagentStart` | Subagent spawned | Initialize subagent context | Inject relevant decisions, load skills, set budget |
+| `SubagentStop` | Subagent completes | Harvest subagent results | Merge learnings, update memory, log results |
+| `PreToolUse` | Before tool execution | Validate/modify tool calls | Add default parameters, validate inputs |
+| `PreCompact` | Before context compaction | Preserve important context | Save key decisions, mark critical context |
+| `UserPromptSubmit` | User sends message | Pre-process user input | Detect task type, recommend skills/agents |
+| `Stop` | Stop button pressed | Handle interruption | Save state, create checkpoint |
+| `Notification` | External event | Handle notifications | Process GitHub webhooks, CI/CD events |
+
+### Hook Configuration
+
+Hooks are defined in `hooks.json`:
+
+```json
+{
+  "hooks": [
+    {
+      "name": "SessionStart",
+      "enabled": true,
+      "script": "hooks/session-start.js",
+      "priority": 1
+    },
+    {
+      "name": "PreToolUse",
+      "enabled": true,
+      "script": "hooks/pre-tool-use.js",
+      "filters": {
+        "tools": ["precision_write", "precision_edit"]
+      }
+    }
+  ]
+}
+```
+
+### Hook Execution Flow
+
+```
+User Input
+   |
+   v
+[UserPromptSubmit] ─> Process/enhance input
+   |
+   v
+Agent Processing
+   |
+   v
+[PreToolUse] ─> Validate tool call
+   |
+   v
+Tool Execution
+   |
+   v
+Result
+```
 
 ---
 
 ## Output Styles
 
-GoodVibes includes two autonomous development modes:
+GoodVibes provides two output styles for different workflows:
 
-### Vibecoding
+### vibecoding (Interactive)
 
-Autonomous orchestration mode with rapid agent delegation:
+**Best for**: Active development, learning, exploration
 
-- Makes reasonable assumptions instead of asking questions
-- Proactively spawns specialist agents
-- Ships enterprise-grade code (no mocks, no placeholders)
-- Automatic agent chaining for complete workflows
-- Context window management (keeps main context window clean)
+```yaml
+communication:
+  verbosity: standard
+  show_thinking: true
+  explain_decisions: true
+  ask_on_ambiguity: true
 
-### JustVibes
+execution:
+  checkpoints: manual
+  auto_chain: false
+  autonomous_decisions: false
 
-Fully autonomous silent execution mode:
+recovery:
+  on_error: ask
+  on_conflict: ask
 
-- No questions - makes best decisions and executes
-- No progress reports - user sees results when done
-- All activity logged to `.goodvibes/logs/`
-- Maximum autonomy for well-defined tasks
-
-### Enabling Output Styles
-
-Output styles are activated through Claude Code's output style settings.
-
----
-
-## Project Templates
-
-GoodVibes includes project templates for quick starts:
-
-### Minimal Templates
-
-| Template | Description |
-|----------|-------------|
-| `next-app` | Next.js 15 with TypeScript, Tailwind, ESLint |
-| `vite-react` | Vite + React 19 with TypeScript, Tailwind |
-
-### Full Templates
-
-| Template | Description |
-|----------|-------------|
-| `next-saas` | Full-stack SaaS with NextAuth, Prisma, Stripe, Tailwind |
-
-### Using Templates
-
-```bash
-# List available templates
-mcp-cli call goodvibes-tools/list_templates '{}'
-
-# Scaffold a new project
-mcp-cli call goodvibes-tools/scaffold_project '{"template": "next-saas", "name": "my-app"}'
+output:
+  default_mode: standard
+  show_diffs: true
+  show_validation: true
+  log_location: terminal
 ```
 
----
+### justvibes (Autonomous)
 
-## Configuration
+**Best for**: Large refactors, batch operations, background tasks
 
-### Plugin Configuration
+```yaml
+communication:
+  verbosity: minimal
+  show_thinking: false
+  explain_decisions: false
+  ask_on_ambiguity: false
 
-Configure via `.goodvibes/settings.json`:
+execution:
+  checkpoints: automatic
+  auto_chain: true
+  autonomous_decisions: true
+
+recovery:
+  on_error: checkpoint_and_retry
+  on_conflict: auto_resolve
+
+output:
+  default_mode: minimal
+  show_diffs: false
+  show_validation: false
+  log_location: .goodvibes/logs/activity.md
+```
+
+### Comparison
+
+| Aspect | vibecoding | justvibes |
+|--------|------------|------------|
+| **Communication** | Verbose, explanatory | Silent, logs only |
+| **Decisions** | Ask user on ambiguity | Autonomous, best-guess |
+| **Checkpoints** | Manual | Automatic |
+| **Auto-chain** | No, wait for confirmation | Yes, continue automatically |
+| **Output** | Standard verbosity, show diffs | Minimal verbosity, no diffs |
+| **Logging** | Terminal | `.goodvibes/logs/activity.md` |
+| **Best For** | Active development, learning | Large refactors, batch tasks |
+
+### Switching Modes
+
+Set in Claude Code configuration:
 
 ```json
 {
-  "autoCheckpoint": {
-    "enabled": true,
-    "fileThreshold": 5,
-    "timeThresholdMinutes": 30
-  },
-  "qualityGates": {
-    "typeCheck": true,
-    "lint": true,
-    "format": true,
-    "test": false
-  },
-  "contextInjection": {
-    "stackDetection": true,
-    "gitContext": true,
-    "todoScanner": true,
-    "healthCheck": true
-  },
-  "telemetry": {
-    "enabled": true,
-    "logPath": ".goodvibes/telemetry"
-  }
+  "outputStyle": "goodvibes:vibecoding"
 }
 ```
 
-### MCP Server Configuration
-
-The MCP server is configured in `plugins/goodvibes/.mcp.json`:
+Or:
 
 ```json
 {
-  "mcpServers": {
-    "goodvibes-tools": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/tool-search-server/dist/index.js"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    }
-  }
+  "outputStyle": "goodvibes:justvibes"
 }
 ```
 
@@ -589,137 +995,591 @@ The MCP server is configured in `plugins/goodvibes/.mcp.json`:
 
 ## Memory System
 
-GoodVibes maintains persistent memory across sessions in `.goodvibes/memory/`:
+GoodVibes uses a **two-tier memory system** for persistent knowledge:
 
-| File | Purpose |
-|------|---------|
-| `decisions.md` | Architectural decisions with rationale |
-| `patterns.md` | Code patterns and conventions discovered |
-| `failures.md` | Past failures and their solutions |
-| `preferences.md` | User preferences and settings |
+### Directory Structure
 
-Memory is automatically loaded at session start and updated as Claude learns about your project.
+```
+.goodvibes/
+├── logs/              # Session-level logs (cleared periodically)
+│   ├── decisions.md   # Decisions made in current session
+│   ├── errors.md      # Errors encountered in current session
+│   └── activity.md    # Activity log (justvibes mode)
+│
+└── memory/            # Cross-session memory (persistent)
+    ├── patterns.json  # Code patterns discovered
+    ├── failures.json  # Failed approaches to avoid
+    ├── decisions.json # Important decisions with context
+    └── preferences.json # User preferences and conventions
+```
+
+### Logs (Session-Level)
+
+**decisions.md**:
+```markdown
+# Decisions - 2026-01-25
+
+## Use Zustand for State Management
+- **When**: 14:32
+- **Why**: Simpler API than Redux, better TypeScript support
+- **Category**: library
+- **Confidence**: high
+```
+
+**errors.md**:
+```markdown
+# Errors - 2026-01-25
+
+## TypeScript Error in API Route
+- **When**: 15:45
+- **File**: src/app/api/users/route.ts
+- **Error**: Type 'string | undefined' not assignable to 'string'
+- **Fix**: Added null check with early return
+```
+
+**activity.md** (justvibes mode only):
+```markdown
+# Activity Log - 2026-01-25
+
+14:30 - Started batch: refactor-imports
+14:32 - Read 42 files
+14:33 - Updated 38 files
+14:35 - Validation passed
+14:35 - Batch completed successfully
+```
+
+### Memory (Cross-Session)
+
+**patterns.json**:
+```json
+{
+  "patterns": [
+    {
+      "id": "api-route-structure",
+      "pattern": "export async function GET/POST/PUT/DELETE",
+      "context": "Next.js App Router API routes",
+      "examples": ["src/app/api/users/route.ts"],
+      "confidence": 0.95,
+      "last_seen": "2026-01-25T14:30:00Z"
+    }
+  ]
+}
+```
+
+**failures.json**:
+```json
+{
+  "failures": [
+    {
+      "id": "prisma-client-import",
+      "approach": "Import PrismaClient in API route",
+      "why_failed": "Edge runtime doesn't support Prisma",
+      "alternative": "Use Prisma Data Proxy or switch to Node runtime",
+      "occurrences": 2,
+      "last_failed": "2026-01-25T15:00:00Z"
+    }
+  ]
+}
+```
+
+**decisions.json**:
+```json
+{
+  "decisions": [
+    {
+      "id": "auth-provider",
+      "what": "Use Clerk for authentication",
+      "why": "Fastest setup, includes UI components, supports all OAuth providers",
+      "category": "architecture",
+      "confidence": "high",
+      "alternatives_considered": ["NextAuth", "Lucia"],
+      "created": "2026-01-20T10:00:00Z"
+    }
+  ]
+}
+```
+
+**preferences.json**:
+```json
+{
+  "preferences": {
+    "code_style": {
+      "quotes": "single",
+      "semicolons": true,
+      "trailing_comma": "es5"
+    },
+    "naming": {
+      "components": "PascalCase",
+      "files": "kebab-case",
+      "functions": "camelCase"
+    },
+    "patterns": {
+      "prefer_named_exports": true,
+      "prefer_const": true
+    }
+  }
+}
+```
+
+### Memory Operations
+
+**Read memory**:
+```yaml
+state:
+  type: query
+  filters:
+    kinds: [decision, pattern]
+    keywords: ["authentication", "database"]
+```
+
+**Write memory**:
+```yaml
+state:
+  type: track
+  entries:
+    - kind: decision
+      data:
+        what: "Use tRPC for API layer"
+        why: "End-to-end type safety, same repo as frontend"
+        category: "architecture"
+        confidence: "high"
+```
 
 ---
 
-## Directory Structure
+## Templates
 
-```
-vibeplug/
-├── .claude/                    # Claude Code configuration
-├── .claude-plugin/             # Plugin marketplace configuration
-│   └── marketplace.json
-├── .goodvibes/                 # Local state (gitignored)
-│   ├── memory/                 # Persistent memory files
-│   ├── state/                  # Session state
-│   ├── logs/                   # Activity logs
-│   └── telemetry/              # Telemetry logs
-├── plugins/
-│   └── goodvibes/              # Main plugin directory
-│       ├── .claude-plugin/     # Plugin manifest
-│       ├── .mcp.json           # MCP server config
-│       ├── .lsp.json           # LSP server config
-│       ├── agents/             # 11 specialized agents
-│       │   ├── _registry.yaml  # Generated index (see File Conventions)
-│       │   ├── factory.md
-│       │   ├── skill-creator.md
-│       │   └── webdev/         # Web development agents
-│       ├── commands/           # 3 slash commands
-│       ├── hooks/              # Lifecycle hooks
-│       │   ├── hooks.json      # Hook configuration
-│       │   └── scripts/        # TypeScript implementations
-│       ├── output-styles/      # Vibecoding and JustVibes modes
-│       ├── skills/             # 172 development skills
-│       │   ├── _registry.yaml  # Generated index (see File Conventions)
-│       │   ├── common/
-│       │   ├── create/
-│       │   └── webdev/
-│       ├── templates/          # Project templates
-│       │   ├── minimal/
-│       │   └── full/
-│       └── tools/              # MCP tools
-│           ├── _registry.yaml  # Generated index (see File Conventions)
-│           ├── definitions/    # Tool definitions (YAML)
-│           └── implementations/
-│               └── tool-search-server/
-└── README.md
+GoodVibes includes **3 production-ready templates**:
+
+### 1. next-saas
+
+**Full-featured SaaS starter**
+
+```yaml
+Features:
+  - Next.js 14+ (App Router)
+  - Authentication (NextAuth)
+  - Database (Prisma + PostgreSQL)
+  - Payments (Stripe)
+  - UI (shadcn/ui + Tailwind)
+  - Email (Resend + React Email)
+  - Analytics (Vercel Analytics)
+  - Monitoring (Sentry)
+
+Structure:
+  src/
+    app/           # App Router pages
+    components/    # React components
+    lib/          # Utilities
+    server/       # tRPC API
+  prisma/         # Database schema
+  emails/         # Email templates
 ```
 
-### File Conventions
+**Use when**: Building a SaaS product from scratch
 
-**Underscore-Prefixed Files (`_registry.yaml`)**
+### 2. next-app
 
-Registry files use an underscore prefix (`_`) by convention to:
+**Minimal Next.js starter**
 
-1. **Exclude from content scanning** - The `build-registries.ts` script skips files/directories starting with `_` when scanning for agents, skills, and tools. This prevents the registry itself from being indexed as content.
+```yaml
+Features:
+  - Next.js 14+ (App Router)
+  - TypeScript
+  - Tailwind CSS
+  - ESLint + Prettier
 
-2. **Visual distinction** - The underscore prefix clearly indicates these are generated/metadata files, not user-editable content.
+Structure:
+  src/
+    app/           # App Router pages
+    components/    # React components
+    lib/          # Utilities
+```
 
-3. **Sort ordering** - In alphabetical directory listings, underscore-prefixed files appear first, making registry files easy to locate.
+**Use when**: Starting a simple Next.js project
 
-These registry files are auto-generated by running `npm run build:registries` and should not be manually edited.
+### 3. vite-react
+
+**Minimal Vite + React starter**
+
+```yaml
+Features:
+  - Vite 5+
+  - React 18+
+  - TypeScript
+  - Tailwind CSS (optional)
+  - Vitest (optional)
+
+Structure:
+  src/
+    components/
+    App.tsx
+    main.tsx
+```
+
+**Use when**: Building a client-side React app
+
+### Using Templates
+
+```yaml
+# Scaffold new project
+scaffold_project:
+  template: "next-saas"
+  name: "my-saas"
+  options:
+    auth: "clerk"
+    database: "prisma"
+    payments: "stripe"
+    styling: "tailwind"
+
+# List available templates
+list_templates: {}
+```
 
 ---
 
-## Development
+## Configuration
 
-### Prerequisites
+### plugin.json
 
-- Node.js 18+
-- npm 9+
-- Claude Code CLI
+Main plugin configuration:
 
-### Building
+```json
+{
+  "name": "goodvibes",
+  "version": "1.0.0",
+  "description": "Comprehensive Claude Code plugin",
+  "engines": [
+    {
+      "name": "precision-engine",
+      "command": "node",
+      "args": ["dist/precision-engine/server.js"],
+      "env": {}
+    },
+    {
+      "name": "batch-engine",
+      "command": "node",
+      "args": ["dist/batch-engine/server.js"],
+      "env": {}
+    }
+  ],
+  "agents": [
+    {
+      "id": "engineer",
+      "name": "Engineer",
+      "description": "Full-stack development",
+      "prompt_file": "agents/engineer.md"
+    }
+  ],
+  "outputStyles": [
+    {
+      "id": "goodvibes:vibecoding",
+      "name": "vibecoding",
+      "prompt_file": "output-styles/vibecoding.md"
+    },
+    {
+      "id": "goodvibes:justvibes",
+      "name": "justvibes",
+      "prompt_file": "output-styles/justvibes.md"
+    }
+  ]
+}
+```
+
+### .mcp.json
+
+MCP server configuration (auto-generated):
+
+```json
+{
+  "mcpServers": {
+    "plugin_goodvibes_precision-engine": {
+      "command": "node",
+      "args": ["dist/precision-engine/server.js"],
+      "env": {},
+      "disabled": false
+    },
+    "plugin_goodvibes_batch-engine": {
+      "command": "node",
+      "args": ["dist/batch-engine/server.js"],
+      "env": {},
+      "disabled": false
+    }
+  }
+}
+```
+
+### hooks.json
+
+Hook configuration:
+
+```json
+{
+  "hooks": [
+    {
+      "name": "SessionStart",
+      "enabled": true,
+      "script": "hooks/session-start.js",
+      "priority": 1,
+      "config": {
+        "auto_detect_stack": true,
+        "load_preferences": true
+      }
+    },
+    {
+      "name": "PreToolUse",
+      "enabled": true,
+      "script": "hooks/pre-tool-use.js",
+      "filters": {
+        "tools": ["precision_write", "precision_edit"]
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Best Practices
+
+### Before Any Task
+
+1. **Detect the stack**:
+   ```yaml
+   detect_stack:
+     path: "."
+     include_versions: true
+   ```
+
+2. **Find relevant skills**:
+   ```yaml
+   recommend_skills:
+     context:
+       task: "Your task description"
+       stack: ["detected", "frameworks"]
+   ```
+
+3. **Scan for patterns**:
+   ```yaml
+   scan_patterns:
+     scope: ["src/**/*.ts"]
+     patterns: ["api-routes", "components", "hooks"]
+   ```
+
+### During Execution
+
+1. **Use precision tools** instead of system tools:
+   - `precision_read` over `Read`
+   - `precision_grep` over `Grep`
+   - `precision_edit` over `Edit`
+   - `precision_exec` over `Bash`
+
+2. **Batch related operations**:
+   ```yaml
+   batch:
+     id: task-name
+     operations:
+       read: [ ... ]
+       write: [ ... ]
+       exec: [ ... ]
+   ```
+
+3. **Enable checkpoints** for critical operations:
+   ```yaml
+   config:
+     checkpoint:
+       enabled: true
+       before: ["write", "exec"]
+       after: ["validate"]
+   ```
+
+4. **Use appropriate output modes**:
+   - `count_only` for large scans
+   - `minimal` for batch operations
+   - `standard` for normal operations
+   - `verbose` for debugging
+
+### After Execution
+
+1. **Validate changes**:
+   ```yaml
+   precision_exec:
+     commands:
+       - cmd: "npm run typecheck"
+         expect: { exit_code: 0 }
+       - cmd: "npm run lint"
+         expect: { exit_code: 0 }
+       - cmd: "npm run build"
+         expect: { exit_code: 0 }
+   ```
+
+2. **Update memory**:
+   ```yaml
+   state:
+     type: track
+     entries:
+       - kind: decision
+         data: { ... }
+       - kind: pattern
+         data: { ... }
+   ```
+
+3. **Create meaningful commits**:
+   - Follow conventional commits
+   - Reference the batch ID in commit message
+   - Include co-author tag
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: MCP engine not starting**
 
 ```bash
-cd plugins/goodvibes
+# Check plugin status
+/plugin-status
 
-# Build everything
+# Rebuild engines
 npm run build
 
-# Build individual components
-npm run build:registries    # Rebuild skill/agent/tool registries
-npm run build:server        # Rebuild MCP server
-npm run build:hooks         # Rebuild hook scripts
+# Restart Claude Code
+```
+
+**Issue: Tool schema mismatch**
+
+```bash
+# Always check schema before calling
+mcp-cli info <server>/<tool>
+
+# Then make the call with correct parameters
+mcp-cli call <server>/<tool> '<json>'
+```
+
+**Issue: Batch operation failed**
+
+```yaml
+# Check batch status
+batch_status:
+  batch_id: "your-batch-id"
+
+# List checkpoints
+batch_checkpoints:
+  batch_id: "your-batch-id"
+
+# Recover from checkpoint
+batch_recover:
+  batch_id: "your-batch-id"
+  checkpoint_id: "checkpoint-id"
+```
+
+**Issue: Memory not persisting**
+
+```bash
+# Verify .goodvibes directory exists
+ls -la .goodvibes/
+
+# Check file permissions
+ls -la .goodvibes/memory/
+
+# Verify JSON is valid
+cat .goodvibes/memory/decisions.json | jq .
+```
+
+**Issue: Skill not found**
+
+```yaml
+# Search for skill
+search_skills:
+  query: "skill-name"
+
+# List all skills in category
+search_skills:
+  filters:
+    category: ["webdev"]
+    max_results: 100
+```
+
+### Getting Help
+
+1. Check plugin status: `/plugin-status`
+2. Review activity logs: `.goodvibes/logs/activity.md`
+3. Check error logs: `.goodvibes/logs/errors.md`
+4. Search issues: GitHub repository
+5. Ask in discussions: GitHub Discussions
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how to contribute:
+
+### Adding a Skill
+
+1. Create skill file in `plugins/goodvibes/skills/[category]/[skill-name].md`
+2. Follow skill template format
+3. Add to skill registry: `plugins/goodvibes/skills/registry.json`
+4. Test with `/load-skill [skill-name]`
+5. Submit PR with skill description and use cases
+
+### Adding an Agent
+
+1. Create agent prompt in `plugins/goodvibes/agents/[agent-name].md`
+2. Define agent in `plugin.json`
+3. Add agent to registry
+4. Test agent spawning
+5. Submit PR with agent capabilities and use cases
+
+### Adding a Tool
+
+1. Determine which engine the tool belongs to
+2. Add tool handler in `plugins/goodvibes/[engine]/tools/`
+3. Register tool in engine server
+4. Add JSON schema for parameters
+5. Test with `mcp-cli call`
+6. Submit PR with tool documentation
+
+### Development Setup
+
+```bash
+# Clone repo
+git clone https://github.com/mgd34msu/goodvibes-plugin.git
+cd vibeplug
+
+# Install dependencies
+npm install
+
+# Build all engines
+npm run build
+
+# Run in watch mode for development
+npm run dev
+
+# Link to Claude Code
+claude plugin install ./plugins/goodvibes --scope project
 ```
 
 ### Testing
 
 ```bash
-cd plugins/goodvibes/hooks/scripts
-
 # Run all tests
 npm test
 
-# Run tests with coverage
-npm run test:coverage
+# Test specific engine
+npm test -- precision-engine
+
+# Test specific tool
+mcp-cli call plugin_goodvibes_precision-engine/precision_read '{...}'
 ```
 
-The test suite includes 262+ tests covering:
+### Pull Request Guidelines
 
-- State management
-- Automation modules (fix-loop, git-operations, build/test runners)
-- Context modules (stack-detector, git-context, health-checker)
-- Memory system
-- Hook utilities
-- Telemetry
-
-### Validation
-
-```bash
-cd plugins/goodvibes
-
-# Validate plugin structure and registries
-npm run validate
-```
-
----
-
-## Resources
-
-- **Repository**: https://github.com/mgd34msu/goodvibes-plugin
-- **Website**: https://goodvibes.sh
-- **Issues**: https://github.com/mgd34msu/goodvibes-plugin/issues
+- Follow conventional commits
+- Add tests for new features
+- Update documentation
+- Ensure all engines build successfully
+- Test with both vibecoding and justvibes modes
 
 ---
 
@@ -727,7 +1587,7 @@ npm run validate
 
 MIT License
 
-Copyright (c) 2025 GoodVibes Contributors
+Copyright (c) 2026 GoodVibes Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -749,4 +1609,6 @@ SOFTWARE.
 
 ---
 
-**Built with good vibes for the Claude Code community.**
+**Built by the GoodVibes community**
+
+*Plug in. Receive good vibes.*
