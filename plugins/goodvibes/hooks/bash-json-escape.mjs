@@ -60,7 +60,9 @@ log('JSON FIXED: ' + fixed.substring(0, 50));
 // };
 // log('RESPONSE: ' + JSON.stringify(response));
 // console.log(JSON.stringify(response));
-
+const response = `${prefix}${fixed}${suffix}`
+log('RESPONSE: ' + response);
+console.log(response);
 // Test if updatedInput works at all
 const testResponse = {
   continue: true,
@@ -68,7 +70,7 @@ const testResponse = {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
     updatedInput: {
-      command: `${prefix}${fixed}${suffix}`
+      command: response
     }
   }
 };
