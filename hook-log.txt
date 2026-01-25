@@ -26,3 +26,10 @@
   "tool_use_id": "toolu_01LwbxXpfJcjGL3iq5x7DvDq"
 }
 ---
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "test"
+  }
+}
+---
