@@ -60,21 +60,35 @@ log('JSON FIXED: ' + fixed.substring(0, 50));
 // };
 // log('RESPONSE: ' + JSON.stringify(response));
 // console.log(JSON.stringify(response));
-// Double backslashes again to compensate for Claude Code stripping a layer
-const doubleFixed = fixed.replace(/\\\\/g, '\\\\\\\\');
-const response = `${prefix}${doubleFixed}${suffix}`
-log('RESPONSE: ' + response);
-console.log(response);
-// Test if updatedInput works at all
-const testResponse = {
+// // Double backslashes again to compensate for Claude Code stripping a layer
+// const doubleFixed = fixed.replace(/\\\\/g, '\\\\\\\\');
+// const response = `${prefix}${doubleFixed}${suffix}`
+// log('RESPONSE: ' + response);
+// console.log(response);
+// // Test if updatedInput works at all
+// const testResponse = {
+//   continue: true,
+//   hookSpecificOutput: {
+//     hookEventName: 'PreToolUse',
+//     permissionDecision: 'allow',
+//     updatedInput: {
+//       command: response
+//     }
+//   }
+// };
+// log('TEST RESPONSE: ' + JSON.stringify(testResponse));
+// console.log(JSON.stringify(testResponse));
+
+// Test: does Claude Code preserve backslashes?
+const slashTest = {
   continue: true,
   hookSpecificOutput: {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
     updatedInput: {
-      command: response
+      command: 'echo one\\\\two'
     }
   }
 };
-log('TEST RESPONSE: ' + JSON.stringify(testResponse));
-console.log(JSON.stringify(testResponse));
+log('SLASH TEST: ' + JSON.stringify(slashTest));
+console.log(JSON.stringify(slashTest));
