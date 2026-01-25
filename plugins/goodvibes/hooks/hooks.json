@@ -12,7 +12,7 @@
         ]
       },
       {
-        "matcher": "Read|Edit|Write|Glob|Grep",
+        "matcher": "xRead|xEdit|xWrite|xGlob|xGrep",
         "hooks": [
           {
             "type": "command",
