@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/tool-update.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-update.mjs\""
           }
         ]
       },

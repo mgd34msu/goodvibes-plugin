@@ -9,7 +9,6 @@
  * - Git operation guards (prevent destructive operations, detect secrets)
  * - Command validation and safety checks
  */
-export * from './tool-update.js';
 export * from './subagent-blockers.js';
 export * from './quality-gates.js';
 export * from './git-guards.js';

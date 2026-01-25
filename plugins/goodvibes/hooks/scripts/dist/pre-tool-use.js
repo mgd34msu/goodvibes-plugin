@@ -1013,6 +1013,5 @@ async function runPreToolUseHook() {
 }
 
 // src/pre-tool-use.ts
-console.error("[HOOK-DEBUG] Entry point executed");
 void runPreToolUseHook();
 /* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */
