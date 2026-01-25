@@ -8,4 +8,5 @@
 
 import { runPreToolUseHook } from './pre-tool-use/hook.js';
 
+console.error('[HOOK-DEBUG] Entry point executed');
 void runPreToolUseHook();

@@ -73,7 +73,9 @@ import type { PreToolUseInput } from './subagent-blockers.js';
  * @returns Promise that resolves when validation is complete
  */
 async function handleBashTool(input: HookInput): Promise<void> {
+  debug('handleBashTool ENTRY', { tool_input: input.tool_input });
   const command = extractBashCommand(input);
+  debug('extractBashCommand result', { command: command?.substring(0, 100), hasCommand: !!command });
 
   if (!command) {
     respond(allowTool('PreToolUse'));
@@ -82,7 +84,9 @@ async function handleBashTool(input: HookInput): Promise<void> {
 
   // FIRST: Check for mcp-cli calls with invalid JSON (uses updatedInput)
   // This MUST happen before any other processing due to updatedInput constraints
+  debug('About to call checkAndFixMcpCliJson', { commandStart: command.substring(0, 80) });
   const jsonFix = checkAndFixMcpCliJson(command);
+  debug('checkAndFixMcpCliJson result', { hasJsonFix: !!jsonFix, fixCount: jsonFix?.fixCount });
   if (jsonFix) {
     debug('JSON auto-escape applied', {
       fixCount: jsonFix.fixCount,
@@ -124,8 +128,11 @@ async function handleBashTool(input: HookInput): Promise<void> {
  * @returns Promise that resolves when the hook completes
  */
 export async function runPreToolUseHook(): Promise<void> {
+  debug('runPreToolUseHook STARTED');
   try {
-    const rawInput = await readHookInput();
+    debug('About to read hook input');
+  const rawInput = await readHookInput();
+  debug('Hook input received', { tool_name: rawInput.tool_name });
     const input = rawInput as PreToolUseInput;
 
     debug('PreToolUse hook received input', {

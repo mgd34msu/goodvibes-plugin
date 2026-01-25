@@ -1039,12 +1039,16 @@ function checkAndFixMcpCliJson(command) {
 
 // src/pre-tool-use/hook.ts
 async function handleBashTool(input) {
+  debug("handleBashTool ENTRY", { tool_input: input.tool_input });
   const command = extractBashCommand(input);
+  debug("extractBashCommand result", { command: command?.substring(0, 100), hasCommand: !!command });
   if (!command) {
     respond(allowTool("PreToolUse"));
     return;
   }
+  debug("About to call checkAndFixMcpCliJson", { commandStart: command.substring(0, 80) });
   const jsonFix = checkAndFixMcpCliJson(command);
+  debug("checkAndFixMcpCliJson result", { hasJsonFix: !!jsonFix, fixCount: jsonFix?.fixCount });
   if (jsonFix) {
     debug("JSON auto-escape applied", {
       fixCount: jsonFix.fixCount,
@@ -1068,8 +1072,11 @@ async function handleBashTool(input) {
   respond(allowTool("PreToolUse"));
 }
 async function runPreToolUseHook() {
+  debug("runPreToolUseHook STARTED");
   try {
+    debug("About to read hook input");
     const rawInput = await readHookInput();
+    debug("Hook input received", { tool_name: rawInput.tool_name });
     const input = rawInput;
     debug("PreToolUse hook received input", {
       tool_name: input.tool_name,
@@ -1107,5 +1114,6 @@ async function runPreToolUseHook() {
 }
 
 // src/pre-tool-use.ts
+console.error("[HOOK-DEBUG] Entry point executed");
 void runPreToolUseHook();
 /* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */
