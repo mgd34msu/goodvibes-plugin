@@ -36589,9 +36589,9 @@ var toolDefinitions = [
           description: "Batch configuration for transaction, execution, preview, validation, and recovery"
         },
         dry_run: { type: "boolean", description: "Preview without executing" },
-        preview: { type: "boolean", description: "Return preview of what would be done" },
+        preview: { type: "boolean", description: "DEPRECATED: Use dry_run instead. Alias for dry_run." },
         timeout_ms: { type: "number", description: "Timeout for batch execution" },
-        output_mode: {
+        verbosity: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           default: "standard",
@@ -36618,7 +36618,7 @@ var toolDefinitions = [
             agents: { type: "boolean" }
           }
         },
-        output_mode: {
+        verbosity: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           default: "standard",
@@ -36644,7 +36644,7 @@ var toolDefinitions = [
         limit: { type: "number", description: "Maximum number of batches to return" },
         since: { type: "string", description: "ISO timestamp - only batches after this time" },
         until: { type: "string", description: "ISO timestamp - only batches before this time" },
-        output_mode: {
+        verbosity: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           default: "standard",
@@ -36713,7 +36713,7 @@ var toolDefinitions = [
             max_attempts: { type: "number" }
           }
         },
-        output_mode: {
+        verbosity: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           default: "standard",
@@ -36731,7 +36731,7 @@ var toolDefinitions = [
         batch_id: { type: "string", description: "Filter by batch ID" },
         limit: { type: "number", description: "Maximum number of checkpoints to return" },
         include_expired: { type: "boolean", description: "Include expired checkpoints" },
-        output_mode: {
+        verbosity: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           default: "standard",
@@ -36831,7 +36831,7 @@ var toolDefinitions = [
             confirm: { type: "boolean", description: "Must be true to confirm clear" }
           }
         },
-        output_mode: {
+        verbosity: {
           type: "string",
           enum: ["count_only", "minimal", "standard", "verbose"],
           default: "standard",

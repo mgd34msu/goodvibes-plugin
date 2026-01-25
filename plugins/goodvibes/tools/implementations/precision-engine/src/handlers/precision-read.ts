@@ -36,6 +36,9 @@ interface ReadOutput {
   mode: ReadOutputMode;
   include_line_numbers?: boolean;
   include_metadata?: boolean;
+  // Standardized name (preferred)
+  max_per_item?: number;
+  // Deprecated name (backward compatibility)
   max_lines_per_file?: number;
   max_tokens?: number;
 }
@@ -317,7 +320,8 @@ async function readSingleFile(
   const filePath = path.isAbsolute(normalizedPath) ? normalizedPath : path.join(workDir, normalizedPath);
   const relativePath = path.relative(workDir, filePath);
   const extract = spec.extract ?? globalExtract;
-  const maxLinesPerFile = output.max_lines_per_file ?? Infinity;
+  // Support both new (max_per_item) and old (max_lines_per_file) parameter names
+  const maxLinesPerFile = output.max_per_item ?? output.max_lines_per_file ?? Infinity;
 
   const result: FileReadResult = {
     path: relativePath,

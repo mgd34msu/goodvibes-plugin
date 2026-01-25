@@ -1,11 +1,22 @@
 /**
  * Tool schema definitions for precision-engine.
+ *
+ * OUTPUT MODE STANDARDIZATION:
+ * - All tools use `output_mode` at top-level (not nested in output.mode)
+ * - Standard output modes: [count_only, minimal, standard, verbose]
+ * - Tool-specific output modes (intentional deviations):
+ *   - discover: [count_only, files_only, locations] - file discovery context
+ *   - precision_symbols: [count_only, names_only, locations, signatures, full] - symbol analysis
+ *   - precision_edit: [count_only, minimal, with_diff, verbose] - edit results with diffs
+ * - All output-related parameters are optional with sensible defaults
+ * - Default output_mode: 'standard' (or tool-specific default)
  */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Common output mode schema.
+ * Common output mode schema for standard tools.
+ * Default: 'standard'
  */
 const outputModeSchema = {
   type: 'string' as const,
@@ -70,6 +81,7 @@ export const precisionExecSchema: Tool = {
           type: 'object',
           properties: {
             cmd: { type: 'string', description: 'Command to execute' },
+            cmd_base64: { type: 'string', description: 'Base64-encoded command (use instead of cmd for complex commands)' },
             args: { type: 'array', items: { type: 'string' }, description: 'Command arguments' },
             cwd: { type: 'string', description: 'Working directory' },
             timeout: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 60000)' },
@@ -116,6 +128,7 @@ export const precisionFetchSchema: Tool = {
             method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method (default: GET)' },
             headers: { type: 'object', description: 'Custom headers to send' },
             body: { type: 'string', description: 'Request body (for POST/PUT)' },
+            body_base64: { type: 'string', description: 'Base64-encoded request body (use instead of body for complex content)' },
             timeout: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 30000)' },
             extract: { type: 'string', enum: ['raw', 'text', 'json'], description: 'Extraction mode (default: text)' },
           },
@@ -131,6 +144,11 @@ export const precisionFetchSchema: Tool = {
 
 /**
  * discover - Lightweight parallel query execution.
+ *
+ * OUTPUT MODE DEVIATION: Uses file-discovery specific modes:
+ * - count_only: Just counts
+ * - files_only: File paths only (default) - optimized for discovery
+ * - locations: File paths with line numbers
  */
 export const discoverSchema: Tool = {
   name: 'discover',
@@ -149,8 +167,10 @@ export const discoverSchema: Tool = {
             id: { type: 'string', description: 'Unique ID for this query' },
             type: { type: 'string', enum: ['grep', 'glob', 'symbols'], description: 'Query type' },
             pattern: { type: 'string', description: 'Regex pattern (for grep)' },
+            pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern for grep queries' },
             glob: { type: 'string', description: 'File filter (for grep)' },
             patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns (for glob)' },
+            patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns (for glob)' },
             query: { type: 'string', description: 'Symbol name (for symbols)' },
             kinds: { type: 'array', items: { type: 'string' }, description: 'Symbol kinds (for symbols)' },
           },
@@ -163,6 +183,10 @@ export const discoverSchema: Tool = {
         default: 'files_only',
         description: 'Output mode: count_only, files_only (default), or locations',
       },
+      base_path: {
+        type: 'string',
+        description: 'Base directory for searches (default: cwd). Must be within project root. Path traversal is not allowed.',
+      },
     },
     required: ['queries'],
   },
@@ -171,6 +195,14 @@ export const discoverSchema: Tool = {
 /**
  * precision_grep - Token-efficient search with precise output control.
  * SPEC-v2 Section 13.1.1
+ * 
+ * IMPORTANT: Handlers must apply schema defaults at runtime, not just define them here.
+ * - output.mode: defaults to "files_only" if not provided
+ * - output.context_before: defaults to 0
+ * - output.context_after: defaults to 0
+ * - output.max_files: defaults to 100
+ * - output.max_matches_per_file: defaults to 10
+ * - output.max_total_matches: defaults to 100
  */
 export const precisionGrepSchema: Tool = {
   name: 'precision_grep',
@@ -211,19 +243,25 @@ export const precisionGrepSchema: Tool = {
           max_matches_per_file: { type: 'integer', minimum: 1, description: 'Cap per file (default: 10)' },
           max_total_matches: { type: 'integer', minimum: 1, description: 'Total cap (default: 100)' },
           max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap' },
+          max_line_length: { type: 'integer', minimum: 1, description: 'Truncate lines longer than this (default: no truncation)' },
         },
-        required: ['mode'],
       },
       parallel: { type: 'boolean', default: true, description: 'Run queries in parallel (default: true)' },
       output_mode: outputModeSchema,
     },
-    required: ['queries', 'output'],
+    required: ['queries'],
   },
 };
 
 /**
  * precision_read - Read files with precise extraction modes.
  * SPEC-v2 Section 13.1.2
+ * 
+ * IMPORTANT: Handlers must apply schema defaults at runtime, not just define them here.
+ * - extract: defaults to "content" if not provided
+ * - output.mode: defaults to "standard" if not provided
+ * - output.include_line_numbers: defaults to true
+ * - output.include_metadata: defaults to false
  */
 export const precisionReadSchema: Tool = {
   name: 'precision_read',
@@ -273,10 +311,9 @@ export const precisionReadSchema: Tool = {
           max_lines_per_file: { type: 'integer', minimum: 1 },
           max_tokens: { type: 'integer', minimum: 1 },
         },
-        required: ['mode'],
       },
     },
-    required: ['files', 'output'],
+    required: ['files'],
   },
 };
 
@@ -293,6 +330,7 @@ export const precisionGlobSchema: Tool = {
     type: 'object',
     properties: {
       patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns to match' },
+      patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns' },
       preset: { type: 'string', enum: ['typescript', 'javascript', 'styles', 'config', 'tests', 'all'] },
       exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
       filters: {
@@ -309,7 +347,7 @@ export const precisionGlobSchema: Tool = {
       output: {
         type: 'object',
         properties: {
-          mode: { type: 'string', enum: ['count_only', 'paths_only', 'with_stats', 'with_preview'], description: 'Output verbosity mode' },
+          mode: { type: 'string', enum: ['count_only', 'paths_only', 'with_stats', 'with_preview'], default: 'paths_only', description: 'Output verbosity mode' },
           max_files: { type: 'integer', minimum: 1, default: 100, description: 'Maximum files to return' },
           sort_by: { type: 'string', enum: ['name', 'size', 'modified'], description: 'Sort results by field' },
           sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'asc', description: 'Sort order (ascending or descending)' },
@@ -319,6 +357,7 @@ export const precisionGlobSchema: Tool = {
       },
       respect_gitignore: { type: 'boolean', default: true, description: 'Respect .gitignore rules' },
       follow_symlinks: { type: 'boolean', default: false, description: 'Follow symbolic links' },
+      cwd: { type: 'string', description: 'Working directory for glob patterns (defaults to process.cwd())' },
       output_mode: outputModeSchema,
     },
   },
@@ -327,6 +366,13 @@ export const precisionGlobSchema: Tool = {
 /**
  * precision_symbols - Search and analyze code symbols.
  * SPEC-v2 Section 13.1.4 compliant.
+ *
+ * OUTPUT MODE DEVIATION: Uses symbol-analysis specific modes:
+ * - count_only: Just counts
+ * - names_only: Symbol names only
+ * - locations: Names with file:line (default)
+ * - signatures: Includes type signatures
+ * - full: Complete symbol information
  */
 export const precisionSymbolsSchema: Tool = {
   name: 'precision_symbols',
@@ -353,10 +399,9 @@ export const precisionSymbolsSchema: Tool = {
           group_by: { type: 'string', enum: ['file', 'kind', 'none'], default: 'none' },
           max_tokens: { type: 'integer', minimum: 1 },
         },
-        required: ['mode'],
       },
     },
-    required: ['output'],
+    required: [],
   },
 };
 
@@ -374,6 +419,12 @@ const validationStepSchema = {
  *
  * SPEC-v2 Section 13.1.5 compliant.
  * Replaces: System `Edit` tool
+ *
+ * OUTPUT MODE DEVIATION: Uses edit-specific modes:
+ * - count_only: Just counts
+ * - minimal: Summary only (default for dry_run=false)
+ * - with_diff: Includes unified diff (default for dry_run=true)
+ * - verbose: Full details with validation results
  */
 export const precisionEditSchema: Tool = {
   name: 'precision_edit',
@@ -418,7 +469,6 @@ export const precisionEditSchema: Tool = {
           mode: { type: 'string', enum: ['atomic', 'partial', 'none'], default: 'atomic' },
           rollback_on_fail: { type: 'boolean', default: true },
         },
-        required: ['mode'],
       },
       match: {
         type: 'object',
@@ -443,7 +493,6 @@ export const precisionEditSchema: Tool = {
           diff_context: { type: 'integer', minimum: 0, default: 3 },
           max_tokens: { type: 'integer', minimum: 1 },
         },
-        required: ['mode'],
       },
     },
     required: ['edits'],

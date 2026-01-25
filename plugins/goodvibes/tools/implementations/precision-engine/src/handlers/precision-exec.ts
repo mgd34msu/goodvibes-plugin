@@ -55,7 +55,8 @@ interface ExpectSpec {
 
 interface CommandSpec {
   id?: string;
-  cmd: string;
+  cmd?: string;
+  cmd_base64?: string;
   args?: string[];
   cwd?: string;
   timeout_ms?: number;
@@ -117,6 +118,22 @@ async function executeCommand(
   const args = spec.args ?? [];
   const cwd = spec.cwd ?? globalWorkDir;
 
+  // Decode cmd_base64 if provided, otherwise use cmd
+  const command = spec.cmd_base64
+    ? Buffer.from(spec.cmd_base64, 'base64').toString('utf-8')
+    : spec.cmd;
+
+  // Should never happen due to validation in handler, but TypeScript safety
+  if (!command) {
+    return Promise.resolve({
+      cmd: '(missing)',
+      exit_code: 1,
+      duration_ms: 0,
+      expectations_met: false,
+      expectation_failures: ['Command not provided'],
+    });
+  }
+
   return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
@@ -124,7 +141,7 @@ async function executeCommand(
     let truncatedStdout = false;
     let truncatedStderr = false;
 
-    const proc = spawn(spec.cmd, args, {
+    const proc = spawn(command, args, {
       cwd,
       env: { ...process.env, ...globalEnv, ...spec.env },
       shell: true,
@@ -242,7 +259,7 @@ async function executeCommand(
       }
 
       const result: CommandResult = {
-        cmd: spec.cmd,
+        cmd: command,
         exit_code: exitCode,
         duration_ms,
         expectations_met: expectationsMet,
@@ -278,7 +295,7 @@ async function executeCommand(
     proc.on('error', (err) => {
       clearTimeout(timeoutId);
       const result: CommandResult = {
-        cmd: spec.cmd,
+        cmd: command,
         exit_code: 1,
         duration_ms: Date.now() - startTime,
         expectations_met: false,
@@ -325,12 +342,25 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_exec', 'commands', 'array of command objects'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
-    // Safe mode: Check for destructive commands
-    if (safeMode) {
-      for (const cmd of input.commands) {
-        if (isDestructiveCommand(cmd.cmd, cmd.args)) {
+    // Validate commands and check for destructive commands
+    for (const cmd of input.commands) {
+      // Ensure either cmd or cmd_base64 is provided
+      if (!cmd.cmd && !cmd.cmd_base64) {
+        return toCallToolResult(createErrorResult(
+          formatMissingParamError('precision_exec', 'cmd or cmd_base64', 'at least one must be provided'),
+          { output_mode: outputMode, execution_ms: getElapsed() }
+        ));
+      }
+
+      // Safe mode: Check for destructive commands
+      if (safeMode) {
+        const command = cmd.cmd_base64
+          ? Buffer.from(cmd.cmd_base64, 'base64').toString('utf-8')
+          : cmd.cmd!;
+
+        if (isDestructiveCommand(command, cmd.args)) {
           return toCallToolResult(errorResult(
-            `Blocked by safe_mode: "${cmd.cmd}" appears destructive. Set safe_mode: false to override.`,
+            `Blocked by safe_mode: "${command}" appears destructive. Set safe_mode: false to override.`,
             outputMode,
             getElapsed()
           ));

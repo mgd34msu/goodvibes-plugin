@@ -37,6 +37,9 @@ interface GlobFilters {
 
 interface GlobOutput {
   mode: GlobOutputMode;
+  // Standardized name (preferred)
+  max_results?: number;
+  // Deprecated name (backward compatibility)
   max_files?: number;
   sort_by?: SortBy;
   sort_order?: SortOrder;
@@ -45,13 +48,15 @@ interface GlobOutput {
 }
 
 interface PrecisionGlobInput {
-  patterns: string[];
+  patterns?: string[];
+  patterns_base64?: string[];
   exclude?: string[];
   filters?: GlobFilters;
   output?: GlobOutput;
   respect_gitignore?: boolean;
   follow_symlinks?: boolean;
-  cwd?: string;
+  base_path?: string;
+  cwd?: string; // DEPRECATED: Use base_path instead
   output_mode?: OutputMode;
 }
 
@@ -99,17 +104,31 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const input = args as PrecisionGlobInput;
   const outputMode = parseOutputMode(args, "precision_glob");
-  const workDir = input.cwd ?? process.cwd();
+
+  // Use base_path if provided, fall back to cwd (deprecated), or default to process.cwd()
+  const workDir = input.base_path ?? input.cwd ?? process.cwd();
+
+  // Warn if deprecated cwd is used
+  if (input.cwd && !input.base_path) {
+    console.warn('[precision_glob] DEPRECATION WARNING: Parameter "cwd" is deprecated. Use "base_path" instead.');
+  }
 
   try {
+    // Decode patterns from base64 if provided
+    const patterns = input.patterns_base64
+      ? input.patterns_base64.map(p => Buffer.from(p, 'base64').toString('utf-8'))
+      : input.patterns;
+
     // Validate input
-    if (!input.patterns || !Array.isArray(input.patterns) || input.patterns.length === 0) {
-      return toCallToolResult(errorResult('patterns array is required', outputMode, getElapsed()));
+    if (!patterns || !Array.isArray(patterns) || patterns.length === 0) {
+      return toCallToolResult(errorResult('patterns or patterns_base64 array is required', outputMode, getElapsed()));
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
     const output: GlobOutput = {
       mode: input.output?.mode ?? 'paths_only',
+      // Support both new and old parameter names
+      max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
       max_files: input.output?.max_files ?? 100,
       sort_by: input.output?.sort_by,
       sort_order: input.output?.sort_order ?? 'asc',
@@ -118,7 +137,8 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       ...input.output
     };
 
-    const maxFiles = output.max_files!;
+    // Support both new (max_results) and old (max_files) parameter names
+    const maxFiles = output.max_results ?? output.max_files ?? 100;
     const sortBy = output.sort_by ?? 'name';
     const sortOrder = output.sort_order!;
     const previewLines = output.preview_lines!;
@@ -133,7 +153,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
     ];
 
     // Find files using fast-glob
-    const rawFiles = await fg(input.patterns, {
+    const rawFiles = await fg(patterns, {
       cwd: workDir,
       ignore: excludePatterns,
       absolute: true,

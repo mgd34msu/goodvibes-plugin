@@ -198,7 +198,9 @@ interface FetchSpec {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   headers?: Record<string, string>;
   body?: string;
-  timeout?: number;
+  body_base64?: string;
+  timeout_ms?: number;
+  timeout?: number;  // Legacy support
   extract?: ExtractMode;
   selectors?: string[];  // For structured extraction
 }
@@ -245,7 +247,7 @@ async function fetchSingleUrl(
   const startTime = Date.now();
   const url = request.url;
   const method = request.method ?? 'GET';
-  const timeout = request.timeout ?? DEFAULT_TIMEOUT;
+  const timeout = request.timeout_ms ?? request.timeout ?? DEFAULT_TIMEOUT;
   const extract = request.extract ?? globalExtract ?? 'text';
   const selectors = request.selectors ?? globalSelectors;
 
@@ -280,8 +282,14 @@ async function fetchSingleUrl(
       signal: controller.signal,
     };
 
-    if (request.body && method !== 'GET') {
-      fetchOptions.body = request.body;
+    if (method !== 'GET') {
+      const requestBody = request.body_base64
+        ? Buffer.from(request.body_base64, 'base64').toString('utf-8')
+        : request.body;
+
+      if (requestBody) {
+        fetchOptions.body = requestBody;
+      }
     }
 
     const response = await fetch(url, fetchOptions);

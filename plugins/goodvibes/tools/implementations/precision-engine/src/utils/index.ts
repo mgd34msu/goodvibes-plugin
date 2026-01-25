@@ -43,7 +43,7 @@ export function successResult<T>(
     success: true,
     data,
     meta: {
-      output_mode: outputMode,
+      verbosity: outputMode,
       token_estimate: adjustedTokens,
       execution_ms: executionMs,
     },
@@ -62,7 +62,7 @@ export function errorResult(
     success: false,
     error,
     meta: {
-      output_mode: outputMode,
+      verbosity: outputMode,
       token_estimate: estimateTokens(error),
       execution_ms: executionMs,
     },
@@ -73,19 +73,19 @@ export function errorResult(
  * Standard defaults for most tools.
  */
 export const STANDARD_DEFAULTS = {
-  output_mode: 'standard' as OutputMode,
+  verbosity: 'standard' as OutputMode,
   extract: 'content' as const,
 };
 
 /**
  * Tool-specific defaults that override standard defaults.
  */
-export const TOOL_SPECIFIC_DEFAULTS: Record<string, Partial<typeof STANDARD_DEFAULTS & { output_mode: string }>> = {
-  discover: { output_mode: 'files_only' },
-  precision_symbols: { output_mode: 'signatures' },
-  precision_edit: { output_mode: 'with_diff' },
-  precision_glob: { output_mode: 'paths_only' },
-  precision_grep: { output_mode: 'files_only' },
+export const TOOL_SPECIFIC_DEFAULTS: Record<string, Partial<typeof STANDARD_DEFAULTS & { verbosity: string }>> = {
+  discover: { verbosity: 'files_only' },
+  precision_symbols: { verbosity: 'signatures' },
+  precision_edit: { verbosity: 'with_diff' },
+  precision_glob: { verbosity: 'paths_only' },
+  precision_grep: { verbosity: 'files_only' },
 };
 
 /**
@@ -103,23 +103,40 @@ export function applyDefaults<T extends Record<string, unknown>>(
 
 /**
  * Parse output mode from arguments, with optional tool-specific defaults.
- * @param args - The arguments object containing output_mode or output.mode
+ * Supports both new (verbosity) and deprecated (output_mode) parameter names.
+ * @param args - The arguments object containing verbosity or output_mode (deprecated)
  * @param toolName - Optional tool name for tool-specific defaults
  * @returns The output mode to use
  */
 export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
+  // Check for new 'verbosity' parameter first
+  if (
+    typeof args === 'object' &&
+    args !== null &&
+    'verbosity' in args &&
+    typeof (args as Record<string, unknown>).verbosity === 'string'
+  ) {
+    const mode = (args as Record<string, unknown>).verbosity as string;
+    if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context'].includes(mode)) {
+      return mode as OutputMode;
+    }
+  }
+
+  // Check for deprecated 'output_mode' parameter (backward compatibility)
   if (
     typeof args === 'object' &&
     args !== null &&
     'output_mode' in args &&
     typeof (args as Record<string, unknown>).output_mode === 'string'
   ) {
+    console.warn('[DEPRECATED] "output_mode" parameter is deprecated. Use "verbosity" instead.');
     const mode = (args as Record<string, unknown>).output_mode as string;
     if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context'].includes(mode)) {
       return mode as OutputMode;
     }
   }
-  // Check for output.mode nested structure (SPEC-v2 format)
+
+  // Check for output.format nested structure (SPEC-v2 format)
   if (
     typeof args === 'object' &&
     args !== null &&
@@ -127,18 +144,29 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
     typeof (args as Record<string, unknown>).output === 'object' &&
     (args as Record<string, unknown>).output !== null
   ) {
-    const output = (args as Record<string, { mode?: string }>).output;
-    if (output.mode && ['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.mode)) {
-      return output.mode as OutputMode;
+    const output = (args as Record<string, { format?: string; mode?: string }>).output;
+
+    // Check for new 'format' property first
+    if (output.format && ['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.format)) {
+      return output.format as OutputMode;
+    }
+
+    // Check for deprecated 'mode' property (backward compatibility)
+    if (output.mode) {
+      console.warn('[DEPRECATED] "output.mode" parameter is deprecated. Use "output.format" instead.');
+      if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.mode)) {
+        return output.mode as OutputMode;
+      }
     }
   }
+
   // Apply tool-specific default if provided
-  if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.output_mode) {
-    return TOOL_SPECIFIC_DEFAULTS[toolName].output_mode as OutputMode;
+  if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.verbosity) {
+    return TOOL_SPECIFIC_DEFAULTS[toolName].verbosity as OutputMode;
   }
 
   // Fall back to standard default
-  return STANDARD_DEFAULTS.output_mode;
+  return STANDARD_DEFAULTS.verbosity;
 }
 
 /**
@@ -186,6 +214,9 @@ export function isTextFile(filePath: string): boolean {
 
 // Export error formatting utilities
 export * from './errors.js';
+
+// Export deprecation warning utilities
+export * from './deprecation.js';
 
 // === String Field Resolution Utilities ===
 

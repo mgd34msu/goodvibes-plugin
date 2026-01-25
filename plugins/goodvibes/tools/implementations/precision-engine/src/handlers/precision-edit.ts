@@ -58,9 +58,12 @@ interface EditHints {
 
 interface EditSpec {
   id?: string;
-  file: string;
+  path?: string;
+  file?: string; // DEPRECATED: Use path instead
   find: string;
+  find_base64?: string;
   replace: string;
+  replace_base64?: string;
   occurrence?: OccurrenceType;
   hints?: EditHints;
 }
@@ -742,9 +745,18 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     // Validate edit specs - ensure each has required fields
     for (let i = 0; i < input.edits.length; i++) {
       const edit = input.edits[i];
-      if (!edit.file || typeof edit.file !== 'string') {
-        return toCallToolResult(errorResult(`edits[${i}].file is required and must be a string`, outputMode, getElapsed()));
+
+      // Check for path or file (with fallback)
+      const filePath = edit.path ?? edit.file;
+      if (!filePath || typeof filePath !== 'string') {
+        return toCallToolResult(errorResult(`edits[${i}].path (or deprecated .file) is required and must be a string`, outputMode, getElapsed()));
       }
+
+      // Warn if deprecated file is used
+      if (edit.file && !edit.path) {
+        console.warn(`[precision_edit] DEPRECATION WARNING: edits[${i}].file is deprecated. Use edits[${i}].path instead.`);
+      }
+
       if (edit.find === undefined || edit.find === null) {
         return toCallToolResult(errorResult(`edits[${i}].find is required`, outputMode, getElapsed()));
       }
@@ -786,7 +798,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     // Read all files and create backups
     const backups: Backup[] = [];
     const fileContents = new Map<string, string | null>();
-    const uniqueFiles = [...new Set(input.edits.map(e => path.resolve(workDir, e.file)))];
+    const uniqueFiles = [...new Set(input.edits.map(e => path.resolve(workDir, e.path ?? e.file!)))];
 
     for (const filePath of uniqueFiles) {
       try {
@@ -807,7 +819,8 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     let hasFailures = false;
 
     for (const edit of input.edits) {
-      const filePath = path.resolve(workDir, edit.file);
+      const editFilePath = edit.path ?? edit.file!;
+      const filePath = path.resolve(workDir, editFilePath);
       const currentContent = newContents.get(filePath) ?? fileContents.get(filePath) ?? null;
       const originalContent = fileContents.get(filePath);
 
@@ -820,7 +833,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
 
       const result: EditResult = {
         id: edit.id,
-        file: edit.file,
+        file: editFilePath,
         status,
         edits_applied: editsApplied,
       };

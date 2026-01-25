@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-01-25T07:23:07.116Z'
+generated: '2026-01-25T08:02:54.964Z'
 total: 74
 servers:
   - name: precision-engine
@@ -33,7 +33,7 @@ servers:
       - name: precision_read
         path: precision-engine/precision-read.yaml
         description: >-
-          Token-efficient file reading with extraction modes. ' + 'Read full content, outlines, symbols, or specific
+          Token-efficient file reading with extraction formats. ' + 'Read full content, outlines, symbols, or specific
           line ranges. ' + 'Supports per-file range overrides and symbol filtering.
       - name: precision_glob
         path: precision-engine/precision-glob.yaml
@@ -49,7 +49,7 @@ servers:
         path: precision-engine/precision-edit.yaml
         description: >-
           Token-efficient file editing with atomic transactions, ' + 'conflict detection, and validation. Supports
-          exact, fuzzy, regex, and AST matching modes.
+          exact, fuzzy, regex, and AST matching formats.
   - name: batch-engine
     count: 6
     tools:
@@ -572,7 +572,7 @@ search_index:
       - file
       - reading
       - extraction
-      - modes
+      - formats
       - full
       - content
       - outlines
@@ -588,7 +588,7 @@ search_index:
       - filtering
     path: precision-engine/precision-read.yaml
     description: >-
-      Token-efficient file reading with extraction modes. ' + 'Read full content, outlines, symbols, or specific line
+      Token-efficient file reading with extraction formats. ' + 'Read full content, outlines, symbols, or specific line
       ranges. ' + 'Supports per-file range overrides and symbol filtering.
     server: precision-engine
   - name: precision_glob
@@ -655,11 +655,11 @@ search_index:
       - regex
       - ast
       - matching
-      - modes
+      - formats
     path: precision-engine/precision-edit.yaml
     description: >-
       Token-efficient file editing with atomic transactions, ' + 'conflict detection, and validation. Supports exact,
-      fuzzy, regex, and AST matching modes.
+      fuzzy, regex, and AST matching formats.
     server: precision-engine
   - name: batch
     keywords:

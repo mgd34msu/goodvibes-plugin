@@ -251175,11 +251175,11 @@ function estimateTokens(text) {
 __name(estimateTokens, "estimateTokens");
 
 // src/schemas/index.ts
-var outputModeSchema = {
+var verbositySchema = {
   type: "string",
   enum: ["count_only", "minimal", "standard", "verbose"],
   default: "standard",
-  description: "Output verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
+  description: "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
 };
 var precisionWriteSchema = {
   name: "precision_write",
@@ -251208,7 +251208,7 @@ var precisionWriteSchema = {
         }
       },
       dry_run: { type: "boolean", default: false, description: "Preview changes without writing" },
-      output_mode: outputModeSchema
+      verbosity: verbositySchema
     },
     required: ["files"]
   }
@@ -251226,9 +251226,11 @@ var precisionExecSchema = {
           type: "object",
           properties: {
             cmd: { type: "string", description: "Command to execute" },
+            cmd_base64: { type: "string", description: "Base64-encoded command (use instead of cmd for complex commands)" },
             args: { type: "array", items: { type: "string" }, description: "Command arguments" },
             cwd: { type: "string", description: "Working directory" },
-            timeout: { type: "integer", minimum: 1, description: "Timeout in ms (default: 60000)" },
+            timeout_ms: { type: "integer", minimum: 1, description: "Timeout in ms (default: 60000)" },
+            timeout: { type: "integer", minimum: 1, description: "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 60000)" },
             env: { type: "object", description: "Additional environment variables" },
             expect: {
               type: "object",
@@ -251245,7 +251247,7 @@ var precisionExecSchema = {
       },
       parallel: { type: "boolean", default: false, description: "Execute commands in parallel" },
       stop_on_error: { type: "boolean", default: true, description: "Stop on first error (sequential only)" },
-      output_mode: outputModeSchema
+      verbosity: verbositySchema
     },
     required: ["commands"]
   }
@@ -251266,14 +251268,16 @@ var precisionFetchSchema = {
             method: { type: "string", enum: ["GET", "POST", "PUT", "DELETE"], description: "HTTP method (default: GET)" },
             headers: { type: "object", description: "Custom headers to send" },
             body: { type: "string", description: "Request body (for POST/PUT)" },
-            timeout: { type: "integer", minimum: 1, description: "Timeout in ms (default: 30000)" },
+            body_base64: { type: "string", description: "Base64-encoded request body (use instead of body for complex content)" },
+            timeout_ms: { type: "integer", minimum: 1, description: "Timeout in ms (default: 30000)" },
+            timeout: { type: "integer", minimum: 1, description: "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 30000)" },
             extract: { type: "string", enum: ["raw", "text", "json"], description: "Extraction mode (default: text)" }
           },
           required: ["url"]
         }
       },
       parallel: { type: "boolean", default: true, description: "Fetch URLs in parallel" },
-      output_mode: outputModeSchema
+      verbosity: verbositySchema
     },
     required: ["urls"]
   }
@@ -251293,19 +251297,21 @@ var discoverSchema = {
             id: { type: "string", description: "Unique ID for this query" },
             type: { type: "string", enum: ["grep", "glob", "symbols"], description: "Query type" },
             pattern: { type: "string", description: "Regex pattern (for grep)" },
+            pattern_base64: { type: "string", description: "Base64-encoded regex pattern for grep queries" },
             glob: { type: "string", description: "File filter (for grep)" },
             patterns: { type: "array", items: { type: "string" }, description: "Glob patterns (for glob)" },
+            patterns_base64: { type: "array", items: { type: "string" }, description: "Base64-encoded glob patterns (for glob)" },
             query: { type: "string", description: "Symbol name (for symbols)" },
             kinds: { type: "array", items: { type: "string" }, description: "Symbol kinds (for symbols)" }
           },
           required: ["id", "type"]
         }
       },
-      output_mode: {
+      verbosity: {
         type: "string",
         enum: ["count_only", "files_only", "locations"],
         default: "files_only",
-        description: "Output mode: count_only, files_only (default), or locations"
+        description: "Response verbosity: count_only, files_only (default), or locations"
       },
       base_path: {
         type: "string",
@@ -251344,26 +251350,28 @@ var precisionGrepSchema = {
       output: {
         type: "object",
         properties: {
-          mode: { type: "string", enum: ["count_only", "files_only", "locations", "matches", "context"] },
+          format: { type: "string", description: "Output data format", enum: ["count_only", "files_only", "locations", "matches", "context"] },
           context_before: { type: "integer", minimum: 0, description: "Lines before match (default: 0)" },
           context_after: { type: "integer", minimum: 0, description: "Lines after match (default: 0)" },
           expand_to: { type: "string", enum: ["line", "block", "function", "class"], description: "Expand match context to enclosing scope" },
-          max_files: { type: "integer", minimum: 1, description: "Max files to return (default: 100)" },
-          max_matches_per_file: { type: "integer", minimum: 1, description: "Cap per file (default: 10)" },
+          max_results: { type: "integer", minimum: 1, description: "Max files to return (alias for max_files, default: 100)" },
+          max_files: { type: "integer", minimum: 1, description: "DEPRECATED: Use max_results. Max files to return (default: 100)" },
+          max_per_item: { type: "integer", minimum: 1, description: "Cap per file (alias for max_matches_per_file, default: 10)" },
+          max_matches_per_file: { type: "integer", minimum: 1, description: "DEPRECATED: Use max_per_item. Cap per file (default: 10)" },
           max_total_matches: { type: "integer", minimum: 1, description: "Total cap (default: 100)" },
           max_tokens: { type: "integer", minimum: 1, description: "Hard token cap" },
           max_line_length: { type: "integer", minimum: 1, description: "Truncate lines longer than this (default: no truncation)" }
         }
       },
       parallel: { type: "boolean", default: true, description: "Run queries in parallel (default: true)" },
-      output_mode: outputModeSchema
+      verbosity: verbositySchema
     },
     required: ["queries"]
   }
 };
 var precisionReadSchema = {
   name: "precision_read",
-  description: "Token-efficient file reading with extraction modes. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering.",
+  description: "Token-efficient file reading with extraction formats. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering.",
   inputSchema: {
     type: "object",
     properties: {
@@ -251400,13 +251408,15 @@ var precisionReadSchema = {
       output: {
         type: "object",
         properties: {
-          mode: { type: "string", enum: ["count_only", "minimal", "standard", "verbose"], default: "standard" },
+          format: { type: "string", enum: ["count_only", "minimal", "standard", "verbose"], default: "standard", description: "Output data format" },
           include_line_numbers: { type: "boolean", default: true },
           include_metadata: { type: "boolean", default: false },
-          max_lines_per_file: { type: "integer", minimum: 1 },
+          max_per_item: { type: "integer", minimum: 1, description: "Max lines per file (alias for max_lines_per_file)" },
+          max_lines_per_file: { type: "integer", minimum: 1, description: "DEPRECATED: Use max_per_item. Max lines per file" },
           max_tokens: { type: "integer", minimum: 1 }
         }
-      }
+      },
+      verbosity: verbositySchema
     },
     required: ["files"]
   }
@@ -251418,6 +251428,7 @@ var precisionGlobSchema = {
     type: "object",
     properties: {
       patterns: { type: "array", items: { type: "string" }, description: "Glob patterns to match" },
+      patterns_base64: { type: "array", items: { type: "string" }, description: "Base64-encoded glob patterns" },
       preset: { type: "string", enum: ["typescript", "javascript", "styles", "config", "tests", "all"] },
       exclude: { type: "array", items: { type: "string" }, description: "Patterns to exclude" },
       filters: {
@@ -251434,8 +251445,9 @@ var precisionGlobSchema = {
       output: {
         type: "object",
         properties: {
-          mode: { type: "string", enum: ["count_only", "paths_only", "with_stats", "with_preview"], default: "paths_only", description: "Output verbosity mode" },
-          max_files: { type: "integer", minimum: 1, default: 100, description: "Maximum files to return" },
+          format: { type: "string", enum: ["count_only", "paths_only", "with_stats", "with_preview"], default: "paths_only", description: "Output verbosity mode" },
+          max_results: { type: "integer", minimum: 1, default: 100, description: "Maximum files to return (alias for max_files)" },
+          max_files: { type: "integer", minimum: 1, default: 100, description: "DEPRECATED: Use max_results. Maximum files to return" },
           sort_by: { type: "string", enum: ["name", "size", "modified"], description: "Sort results by field" },
           sort_order: { type: "string", enum: ["asc", "desc"], default: "asc", description: "Sort order (ascending or descending)" },
           preview_lines: { type: "integer", minimum: 1, default: 3, description: "Lines to preview for with_preview mode" },
@@ -251444,8 +251456,9 @@ var precisionGlobSchema = {
       },
       respect_gitignore: { type: "boolean", default: true, description: "Respect .gitignore rules" },
       follow_symlinks: { type: "boolean", default: false, description: "Follow symbolic links" },
-      cwd: { type: "string", description: "Working directory for glob patterns (defaults to process.cwd())" },
-      output_mode: outputModeSchema
+      base_path: { type: "string", description: "Base directory for glob patterns (defaults to process.cwd())" },
+      cwd: { type: "string", description: "DEPRECATED: Use base_path instead. Working directory for glob patterns (defaults to process.cwd())" },
+      verbosity: verbositySchema
     }
   }
 };
@@ -251467,11 +251480,17 @@ var precisionSymbolsSchema = {
       output: {
         type: "object",
         properties: {
-          mode: { type: "string", enum: ["count_only", "names_only", "locations", "signatures", "full"], default: "locations" },
+          format: { type: "string", enum: ["count_only", "names_only", "locations", "signatures", "full"], default: "locations", description: "Output data format" },
           max_results: { type: "integer", minimum: 1, default: 100 },
           group_by: { type: "string", enum: ["file", "kind", "none"], default: "none" },
           max_tokens: { type: "integer", minimum: 1 }
         }
+      },
+      verbosity: {
+        type: "string",
+        enum: ["count_only", "names_only", "locations", "signatures", "full"],
+        default: "locations",
+        description: "Response verbosity for symbol output"
       }
     },
     required: []
@@ -251479,7 +251498,7 @@ var precisionSymbolsSchema = {
 };
 var precisionEditSchema = {
   name: "precision_edit",
-  description: "Token-efficient file editing with atomic transactions, conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching modes.",
+  description: "Token-efficient file editing with atomic transactions, conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching formats.",
   inputSchema: {
     type: "object",
     properties: {
@@ -251489,9 +251508,12 @@ var precisionEditSchema = {
           type: "object",
           properties: {
             id: { type: "string" },
-            file: { type: "string" },
+            path: { type: "string", description: "Path to the file to edit" },
+            file: { type: "string", description: "DEPRECATED: Use path instead. Path to the file to edit" },
             find: { type: "string" },
             replace: { type: "string" },
+            find_base64: { type: "string", description: "Base64-encoded text to find (use for complex patterns with special chars)" },
+            replace_base64: { type: "string", description: "Base64-encoded replacement text (use for complex content)" },
             occurrence: {
               oneOf: [
                 { type: "string", enum: ["first", "last", "all"] },
@@ -251538,10 +251560,16 @@ var precisionEditSchema = {
       output: {
         type: "object",
         properties: {
-          mode: { type: "string", enum: ["count_only", "minimal", "with_diff", "verbose"], default: "minimal" },
+          format: { type: "string", enum: ["count_only", "minimal", "with_diff", "verbose"], default: "minimal", description: "Output data format" },
           diff_context: { type: "integer", minimum: 0, default: 3 },
           max_tokens: { type: "integer", minimum: 1 }
         }
+      },
+      verbosity: {
+        type: "string",
+        enum: ["count_only", "minimal", "with_diff", "verbose"],
+        default: "with_diff",
+        description: "Response verbosity for edit output"
       }
     },
     required: ["edits"]
@@ -251628,7 +251656,7 @@ function successResult(data, outputMode, executionMs) {
     success: true,
     data,
     meta: {
-      output_mode: outputMode,
+      verbosity: outputMode,
       token_estimate: adjustedTokens,
       execution_ms: executionMs
     }
@@ -251640,7 +251668,7 @@ function errorResult(error2, outputMode, executionMs) {
     success: false,
     error: error2,
     meta: {
-      output_mode: outputMode,
+      verbosity: outputMode,
       token_estimate: estimateTokens(error2),
       execution_ms: executionMs
     }
@@ -251648,18 +251676,25 @@ function errorResult(error2, outputMode, executionMs) {
 }
 __name(errorResult, "errorResult");
 var STANDARD_DEFAULTS = {
-  output_mode: "standard",
+  verbosity: "standard",
   extract: "content"
 };
 var TOOL_SPECIFIC_DEFAULTS = {
-  discover: { output_mode: "files_only" },
-  precision_symbols: { output_mode: "signatures" },
-  precision_edit: { output_mode: "with_diff" },
-  precision_glob: { output_mode: "paths_only" },
-  precision_grep: { output_mode: "files_only" }
+  discover: { verbosity: "files_only" },
+  precision_symbols: { verbosity: "signatures" },
+  precision_edit: { verbosity: "with_diff" },
+  precision_glob: { verbosity: "paths_only" },
+  precision_grep: { verbosity: "files_only" }
 };
 function parseOutputMode(args, toolName) {
+  if (typeof args === "object" && args !== null && "verbosity" in args && typeof args.verbosity === "string") {
+    const mode = args.verbosity;
+    if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose", "paths_only", "files_only", "with_diff", "signatures", "locations", "matches", "context"].includes(mode)) {
+      return mode;
+    }
+  }
   if (typeof args === "object" && args !== null && "output_mode" in args && typeof args.output_mode === "string") {
+    console.warn('[DEPRECATED] "output_mode" parameter is deprecated. Use "verbosity" instead.');
     const mode = args.output_mode;
     if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose", "paths_only", "files_only", "with_diff", "signatures", "locations", "matches", "context"].includes(mode)) {
       return mode;
@@ -251667,14 +251702,20 @@ function parseOutputMode(args, toolName) {
   }
   if (typeof args === "object" && args !== null && "output" in args && typeof args.output === "object" && args.output !== null) {
     const output = args.output;
-    if (output.mode && ["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose"].includes(output.mode)) {
-      return output.mode;
+    if (output.format && ["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose"].includes(output.format)) {
+      return output.format;
+    }
+    if (output.mode) {
+      console.warn('[DEPRECATED] "output.mode" parameter is deprecated. Use "output.format" instead.');
+      if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose"].includes(output.mode)) {
+        return output.mode;
+      }
     }
   }
-  if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.output_mode) {
-    return TOOL_SPECIFIC_DEFAULTS[toolName].output_mode;
+  if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.verbosity) {
+    return TOOL_SPECIFIC_DEFAULTS[toolName].verbosity;
   }
-  return STANDARD_DEFAULTS.output_mode;
+  return STANDARD_DEFAULTS.verbosity;
 }
 __name(parseOutputMode, "parseOutputMode");
 function resolveStringField(obj, fieldName, options) {
@@ -252109,13 +252150,23 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? DEFAULT_TIMEOUT;
   const args = spec.args ?? [];
   const cwd = spec.cwd ?? globalWorkDir;
+  const command = spec.cmd_base64 ? Buffer.from(spec.cmd_base64, "base64").toString("utf-8") : spec.cmd;
+  if (!command) {
+    return Promise.resolve({
+      cmd: "(missing)",
+      exit_code: 1,
+      duration_ms: 0,
+      expectations_met: false,
+      expectation_failures: ["Command not provided"]
+    });
+  }
   return new Promise((resolve4) => {
     let stdout = "";
     let stderr = "";
     let timedOut = false;
     let truncatedStdout = false;
     let truncatedStderr = false;
-    const proc = (0, import_child_process2.spawn)(spec.cmd, args, {
+    const proc = (0, import_child_process2.spawn)(command, args, {
       cwd,
       env: { ...process.env, ...globalEnv, ...spec.env },
       shell: true,
@@ -252211,7 +252262,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         }
       }
       const result = {
-        cmd: spec.cmd,
+        cmd: command,
         exit_code: exitCode,
         duration_ms,
         expectations_met: expectationsMet
@@ -252239,7 +252290,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
     proc.on("error", (err) => {
       clearTimeout(timeoutId);
       const result = {
-        cmd: spec.cmd,
+        cmd: command,
         exit_code: 1,
         duration_ms: Date.now() - startTime,
         expectations_met: false,
@@ -252276,11 +252327,18 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args) => {
     if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
       return toCallToolResult(createErrorResult(formatMissingParamError("precision_exec", "commands", "array of command objects"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
-    if (safeMode) {
-      for (const cmd of input.commands) {
-        if (isDestructiveCommand(cmd.cmd, cmd.args)) {
+    for (const cmd of input.commands) {
+      if (!cmd.cmd && !cmd.cmd_base64) {
+        return toCallToolResult(createErrorResult(
+          formatMissingParamError("precision_exec", "cmd or cmd_base64", "at least one must be provided"),
+          { output_mode: outputMode, execution_ms: getElapsed() }
+        ));
+      }
+      if (safeMode) {
+        const command = cmd.cmd_base64 ? Buffer.from(cmd.cmd_base64, "base64").toString("utf-8") : cmd.cmd;
+        if (isDestructiveCommand(command, cmd.args)) {
           return toCallToolResult(errorResult(
-            `Blocked by safe_mode: "${cmd.cmd}" appears destructive. Set safe_mode: false to override.`,
+            `Blocked by safe_mode: "${command}" appears destructive. Set safe_mode: false to override.`,
             outputMode,
             getElapsed()
           ));
@@ -252500,7 +252558,7 @@ async function fetchSingleUrl(request, cacheTtl, globalExtract, globalSelectors,
   const startTime = Date.now();
   const url2 = request.url;
   const method = request.method ?? "GET";
-  const timeout = request.timeout ?? DEFAULT_TIMEOUT2;
+  const timeout = request.timeout_ms ?? request.timeout ?? DEFAULT_TIMEOUT2;
   const extract = request.extract ?? globalExtract ?? "text";
   const selectors = request.selectors ?? globalSelectors;
   if (method === "GET" && cacheTtl > 0) {
@@ -252527,8 +252585,11 @@ async function fetchSingleUrl(request, cacheTtl, globalExtract, globalSelectors,
       headers: request.headers,
       signal: controller.signal
     };
-    if (request.body && method !== "GET") {
-      fetchOptions.body = request.body;
+    if (method !== "GET") {
+      const requestBody = request.body_base64 ? Buffer.from(request.body_base64, "base64").toString("utf-8") : request.body;
+      if (requestBody) {
+        fetchOptions.body = requestBody;
+      }
     }
     const response = await fetch(url2, fetchOptions);
     clearTimeout(timeoutId);
@@ -252868,8 +252929,8 @@ function expandToClass(lines, lineIndex) {
 }
 __name(expandToClass, "expandToClass");
 async function executeQuery(query, output, workDir) {
-  const maxFiles = output.max_files ?? 100;
-  const maxMatchesPerFile = output.max_matches_per_file ?? 10;
+  const maxFiles = output.max_results ?? output.max_files ?? 100;
+  const maxMatchesPerFile = output.max_per_item ?? output.max_matches_per_file ?? 10;
   const maxTotalMatches = output.max_total_matches ?? 100;
   const maxTokens = output.max_tokens ?? Infinity;
   const contextBefore = output.context_before ?? 0;
@@ -253046,7 +253107,10 @@ var handlePrecisionGrep = /* @__PURE__ */ __name(async (args) => {
       mode: input.output?.mode ?? "files_only",
       context_before: input.output?.context_before ?? 0,
       context_after: input.output?.context_after ?? 0,
+      // Support both new and old parameter names
+      max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
       max_files: input.output?.max_files ?? 100,
+      max_per_item: input.output?.max_per_item ?? input.output?.max_matches_per_file ?? 10,
       max_matches_per_file: input.output?.max_matches_per_file ?? 10,
       max_total_matches: input.output?.max_total_matches ?? 100,
       ...input.output
@@ -253128,13 +253192,19 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
   const getElapsed = startTimer();
   const input = args;
   const outputMode = parseOutputMode(args, "precision_glob");
-  const workDir = input.cwd ?? process.cwd();
+  const workDir = input.base_path ?? input.cwd ?? process.cwd();
+  if (input.cwd && !input.base_path) {
+    console.warn('[precision_glob] DEPRECATION WARNING: Parameter "cwd" is deprecated. Use "base_path" instead.');
+  }
   try {
-    if (!input.patterns || !Array.isArray(input.patterns) || input.patterns.length === 0) {
-      return toCallToolResult(errorResult("patterns array is required", outputMode, getElapsed()));
+    const patterns = input.patterns_base64 ? input.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : input.patterns;
+    if (!patterns || !Array.isArray(patterns) || patterns.length === 0) {
+      return toCallToolResult(errorResult("patterns or patterns_base64 array is required", outputMode, getElapsed()));
     }
     const output = {
       mode: input.output?.mode ?? "paths_only",
+      // Support both new and old parameter names
+      max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
       max_files: input.output?.max_files ?? 100,
       sort_by: input.output?.sort_by,
       sort_order: input.output?.sort_order ?? "asc",
@@ -253142,7 +253212,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
       max_tokens: input.output?.max_tokens,
       ...input.output
     };
-    const maxFiles = output.max_files;
+    const maxFiles = output.max_results ?? output.max_files ?? 100;
     const sortBy = output.sort_by ?? "name";
     const sortOrder = output.sort_order;
     const previewLines = output.preview_lines;
@@ -253153,7 +253223,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args) => {
       ...respectGitignore ? DEFAULT_EXCLUDES : [],
       ...input.exclude ?? []
     ];
-    const rawFiles = await (0, import_fast_glob2.default)(input.patterns, {
+    const rawFiles = await (0, import_fast_glob2.default)(patterns, {
       cwd: workDir,
       ignore: excludePatterns,
       absolute: true,
@@ -253725,8 +253795,9 @@ async function executeGrepQuery(query, outputMode, searchRoot) {
 }
 __name(executeGrepQuery, "executeGrepQuery");
 async function executeGlobQuery(query, outputMode, searchRoot) {
-  if (!query.patterns || query.patterns.length === 0) {
-    return { type: "glob", count: 0, error: "Missing 'patterns' for glob query" };
+  const patterns = query.patterns_base64 ? query.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : query.patterns;
+  if (!patterns || patterns.length === 0) {
+    return { type: "glob", count: 0, error: "Missing 'patterns' or 'patterns_base64' for glob query" };
   }
   try {
     let mode;
@@ -253738,7 +253809,7 @@ async function executeGlobQuery(query, outputMode, searchRoot) {
       mode = "paths_only";
     }
     const result = await handlePrecisionGlob({
-      patterns: query.patterns,
+      patterns,
       cwd: searchRoot !== process.cwd() ? searchRoot : void 0,
       output: {
         mode,
@@ -254089,7 +254160,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
   const filePath = path6.isAbsolute(normalizedPath) ? normalizedPath : path6.join(workDir, normalizedPath);
   const relativePath = path6.relative(workDir, filePath);
   const extract = spec.extract ?? globalExtract;
-  const maxLinesPerFile = output.max_lines_per_file ?? Infinity;
+  const maxLinesPerFile = output.max_per_item ?? output.max_lines_per_file ?? Infinity;
   const result = {
     path: relativePath,
     exists: false
@@ -254981,8 +255052,12 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     }
     for (let i = 0; i < input.edits.length; i++) {
       const edit = input.edits[i];
-      if (!edit.file || typeof edit.file !== "string") {
-        return toCallToolResult(errorResult(`edits[${i}].file is required and must be a string`, outputMode, getElapsed()));
+      const filePath = edit.path ?? edit.file;
+      if (!filePath || typeof filePath !== "string") {
+        return toCallToolResult(errorResult(`edits[${i}].path (or deprecated .file) is required and must be a string`, outputMode, getElapsed()));
+      }
+      if (edit.file && !edit.path) {
+        console.warn(`[precision_edit] DEPRECATION WARNING: edits[${i}].file is deprecated. Use edits[${i}].path instead.`);
       }
       if (edit.find === void 0 || edit.find === null) {
         return toCallToolResult(errorResult(`edits[${i}].find is required`, outputMode, getElapsed()));
@@ -255016,7 +255091,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     }
     const backups = [];
     const fileContents = /* @__PURE__ */ new Map();
-    const uniqueFiles = [...new Set(input.edits.map((e) => path7.resolve(workDir, e.file)))];
+    const uniqueFiles = [...new Set(input.edits.map((e) => path7.resolve(workDir, e.path ?? e.file)))];
     for (const filePath of uniqueFiles) {
       try {
         const content = await fs7.readFile(filePath, "utf-8");
@@ -255033,7 +255108,8 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     let totalEditsFailed = 0;
     let hasFailures = false;
     for (const edit of input.edits) {
-      const filePath = path7.resolve(workDir, edit.file);
+      const editFilePath = edit.path ?? edit.file;
+      const filePath = path7.resolve(workDir, editFilePath);
       const currentContent = newContents.get(filePath) ?? fileContents.get(filePath) ?? null;
       const originalContent = fileContents.get(filePath);
       const { newContent, status, editsApplied, error: error2 } = await applyEdit(
@@ -255044,7 +255120,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
       );
       const result = {
         id: edit.id,
-        file: edit.file,
+        file: editFilePath,
         status,
         edits_applied: editsApplied
       };

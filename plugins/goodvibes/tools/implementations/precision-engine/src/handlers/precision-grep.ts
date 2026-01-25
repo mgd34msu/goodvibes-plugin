@@ -42,6 +42,10 @@ interface GrepOutput {
   context_before?: number;
   context_after?: number;
   expand_to?: ExpandTo;
+  // Standardized names (preferred)
+  max_results?: number;
+  max_per_item?: number;
+  // Deprecated names (backward compatibility)
   max_files?: number;
   max_matches_per_file?: number;
   max_total_matches?: number;
@@ -213,8 +217,10 @@ async function executeQuery(
   output: GrepOutput,
   workDir: string
 ): Promise<GrepResult> {
-  const maxFiles = output.max_files ?? 100;
-  const maxMatchesPerFile = output.max_matches_per_file ?? 10;
+  // Support both new (max_results) and old (max_files) parameter names
+  const maxFiles = output.max_results ?? output.max_files ?? 100;
+  // Support both new (max_per_item) and old (max_matches_per_file) parameter names
+  const maxMatchesPerFile = output.max_per_item ?? output.max_matches_per_file ?? 10;
   const maxTotalMatches = output.max_total_matches ?? 100;
   const maxTokens = output.max_tokens ?? Infinity;
   const contextBefore = output.context_before ?? 0;
@@ -434,7 +440,10 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
       mode: input.output?.mode ?? 'files_only',
       context_before: input.output?.context_before ?? 0,
       context_after: input.output?.context_after ?? 0,
+      // Support both new and old parameter names
+      max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
       max_files: input.output?.max_files ?? 100,
+      max_per_item: input.output?.max_per_item ?? input.output?.max_matches_per_file ?? 10,
       max_matches_per_file: input.output?.max_matches_per_file ?? 10,
       max_total_matches: input.output?.max_total_matches ?? 100,
       ...input.output

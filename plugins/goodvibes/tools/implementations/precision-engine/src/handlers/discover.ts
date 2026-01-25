@@ -20,9 +20,11 @@ interface QuerySpec {
   type: 'grep' | 'glob' | 'symbols';
   // For grep:
   pattern?: string;
+  pattern_base64?: string;
   glob?: string;
   // For glob:
   patterns?: string[];
+  patterns_base64?: string[];
   // For symbols:
   query?: string;
   kinds?: string[];
@@ -198,8 +200,13 @@ async function executeGlobQuery(
   outputMode: DiscoverOutputMode,
   searchRoot: string
 ): Promise<QueryResult> {
-  if (!query.patterns || query.patterns.length === 0) {
-    return { type: 'glob', count: 0, error: "Missing 'patterns' for glob query" };
+  // Decode patterns from base64 if provided
+  const patterns = query.patterns_base64
+    ? query.patterns_base64.map(p => Buffer.from(p, 'base64').toString('utf-8'))
+    : query.patterns;
+
+  if (!patterns || patterns.length === 0) {
+    return { type: 'glob', count: 0, error: "Missing 'patterns' or 'patterns_base64' for glob query" };
   }
 
   try {
@@ -213,7 +220,7 @@ async function executeGlobQuery(
     }
 
     const result = await handlePrecisionGlob({
-      patterns: query.patterns,
+      patterns: patterns,
       cwd: searchRoot !== process.cwd() ? searchRoot : undefined,
       output: {
         mode,
