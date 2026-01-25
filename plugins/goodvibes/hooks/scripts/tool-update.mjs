@@ -244,29 +244,42 @@
   // Main Hook Logic
   // =============================================================================
 
+  const { appendFileSync } = await import('fs');
+  const LOG = '/tmp/hook-debug.log';
+  const log = (msg) => appendFileSync(LOG, msg + '\n');
+
   // Read hook input from stdin
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
   const input = JSON.parse(Buffer.concat(chunks).toString());
 
+  log(`\n=== ${new Date().toISOString()} ===`);
+  log(`Tool: ${input.tool_name}`);
+
   // Only process Bash commands
   if (input.tool_name !== 'Bash') {
+    log('Not Bash, passing through');
     passThrough();
   }
 
   const cmd = input.tool_input?.command || '';
+  log(`Command: ${cmd}`);
 
   // Only process mcp-cli calls with JSON arguments
   const match = cmd.match(MCP_CLI_REGEX);
   if (!match) {
+    log('Regex did not match, passing through');
     passThrough();
   }
 
   const [, prefix, json, suffix] = match;
+  log(`Extracted JSON: ${json}`);
 
   // Try to fix the JSON
   const finalJson = tryFixJson(json);
+  log(`Fixed JSON: ${finalJson}`);
   if (!finalJson) {
+    log('Could not fix JSON, passing through');
     passThrough();
   }
 
@@ -274,6 +287,7 @@
   // (Claude Code strips one layer when applying updatedInput)
   const fixedCommand = prefix + finalJson + suffix;
   const doubledCommand = fixedCommand.replace(/\\/g, '\\\\');
+  log(`Final command: ${doubledCommand}`);
 
   // Send the fixed command
   sendUpdatedCommand(doubledCommand);
