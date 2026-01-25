@@ -1,15 +1,1 @@
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"C:/Users/buzzkill/Documents/vibeplug/plugins/goodvibes/hooks/bash-json-escape.mjs\""
-          }
-        ]
-      }
-    ]
-  }
-}
+{}
