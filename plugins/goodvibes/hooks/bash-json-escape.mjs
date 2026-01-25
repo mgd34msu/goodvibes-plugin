@@ -79,16 +79,37 @@ log('JSON FIXED: ' + fixed.substring(0, 50));
 // log('TEST RESPONSE: ' + JSON.stringify(testResponse));
 // console.log(JSON.stringify(testResponse));
 
-// Test: does Claude Code preserve backslashes?
-const slashTest = {
+// // Test: does Claude Code preserve backslashes?
+// const slashTest = {
+//   continue: true,
+//   hookSpecificOutput: {
+//     hookEventName: 'PreToolUse',
+//     permissionDecision: 'allow',
+//     updatedInput: {
+//       command: 'echo one\\\\\\\\two'
+//     }
+//   }
+// };
+// log('SLASH TEST: ' + JSON.stringify(slashTest));
+// console.log(JSON.stringify(slashTest));
+
+// Part 1: fixed already has the JSON fix (\s -> \\s)
+// Part 2: concatenate command, then double ALL backslashes
+const fixedCommand = prefix + fixed + suffix;
+log('FIXED COMMAND: ' + fixedCommand);
+
+const doubledCommand = fixedCommand.replace(/\\/g, '\\\\');
+log('DOUBLED COMMAND: ' + doubledCommand);
+
+const response = {
   continue: true,
   hookSpecificOutput: {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
     updatedInput: {
-      command: 'echo one\\\\two'
+      command: doubledCommand
     }
   }
 };
-log('SLASH TEST: ' + JSON.stringify(slashTest));
-console.log(JSON.stringify(slashTest));
+log('RESPONSE: ' + JSON.stringify(response));
+console.log(JSON.stringify(response));
