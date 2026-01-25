@@ -1,115 +1,134 @@
+/**
+ * @fileoverview Claude Code PreToolUse hook for auto-fixing invalid JSON escapes in mcp-cli commands.
+ *
+ * @description
+ * When Claude generates mcp-cli calls with regex patterns (e.g., `\s`, `\d`, `\w`),
+ * these are invalid JSON escape sequences. This hook intercepts Bash commands,
+ * detects mcp-cli calls, and fixes the JSON by doubling invalid backslash escapes.
+ *
+ * Additionally, Claude Code strips one layer of backslashes when applying `updatedInput`,
+ * so this hook doubles ALL backslashes in the final command to compensate.
+ *
+ * @example
+ * Input:  mcp-cli call server/tool '{"pattern": "function\s+\w+"}'
+ * Output: mcp-cli call server/tool '{"pattern": "function\\s+\\w+"}'
+ *
+ * @author GoodVibes
+ * @license MIT
+ */
+
 import * as fs from 'node:fs';
-const log = m => fs.appendFileSync('C:/Users/buzzkill/Documents/vibeplug/hook.log', new Date().toISOString() + ' ' + m + '\n');
+
+/** Log file path for debugging */
+const LOG_PATH = 'C:/Users/buzzkill/Documents/vibeplug/hook.log';
+
+/**
+ * Append a timestamped message to the log file.
+ * @param {string} msg - Message to log
+ */
+const log = msg => fs.appendFileSync(LOG_PATH, `${new Date().toISOString()} ${msg}\n`);
+
+/**
+ * Valid JSON escape characters (after backslash).
+ * @see https://www.json.org/json-en.html
+ */
+const VALID_JSON_ESCAPES = '"\\/bfnrtu';
+
+/**
+ * Regex to match mcp-cli call commands with JSON in single quotes.
+ * Captures: [1] prefix, [2] JSON content, [3] suffix
+ */
+const MCP_CLI_REGEX = /^(mcp-cli\s+call\s+\S+\s+')(.+)('\s*)$/;
+
+/**
+ * Send a pass-through response (allow original command to execute).
+ */
+function passThrough() {
+  console.log('{"continue":true}');
+  process.exit(0);
+}
+
+/**
+ * Send an updatedInput response with a modified command.
+ * @param {string} command - The modified command to execute
+ */
+function sendUpdatedCommand(command) {
+  const response = {
+    continue: true,
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'allow',
+      updatedInput: { command }
+    }
+  };
+  log('RESPONSE: ' + JSON.stringify(response));
+  console.log(JSON.stringify(response));
+}
+
+/**
+ * Fix invalid JSON escape sequences by doubling backslashes.
+ * Converts \s, \d, \w, etc. to \\s, \\d, \\w, etc.
+ * @param {string} json - JSON string with potentially invalid escapes
+ * @returns {string} Fixed JSON string
+ */
+function fixInvalidEscapes(json) {
+  return json.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+}
+
+// =============================================================================
+// Main Hook Logic
+// =============================================================================
+
 log('HOOK STARTED');
 
+// Read hook input from stdin
 const chunks = [];
 for await (const chunk of process.stdin) chunks.push(chunk);
 const input = JSON.parse(Buffer.concat(chunks).toString());
 
-// Only handle Bash
+// Only process Bash commands
 if (input.tool_name !== 'Bash') {
   log('OTHER TOOL: ' + input.tool_name);
-  console.log('{"continue":true}');
-  process.exit(0);
+  passThrough();
 }
 
 const cmd = input.tool_input?.command || '';
 
-// Match mcp-cli calls with JSON in single quotes
-const match = cmd.match(/^(mcp-cli\s+call\s+\S+\s+')(.+)('\s*)$/);
+// Only process mcp-cli calls with JSON arguments
+const match = cmd.match(MCP_CLI_REGEX);
 if (!match) {
   log('NOT MCP-CLI: ' + cmd.substring(0, 50));
-  console.log('{"continue":true}');
-  process.exit(0);
+  passThrough();
 }
 
 const [, prefix, json, suffix] = match;
 
-// If already valid, pass through
+// If JSON is already valid, pass through
 try {
   JSON.parse(json);
   log('JSON ALREADY VALID');
-  console.log('{"continue":true}');
-  process.exit(0);
+  passThrough();
 } catch {}
 
-// Fix invalid escapes: \x -> \\x when x is not a valid JSON escape char
-const fixed = json.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+// Part 1: Fix invalid escape sequences (\s -> \\s)
+const fixed = fixInvalidEscapes(json);
 
-// Verify fix worked, otherwise pass through original
+// Verify the fix produces valid JSON
 try {
   JSON.parse(fixed);
 } catch {
-  log('FIX FAILED');
-  console.log('{"continue":true}');
-  process.exit(0);
+  log('FIX FAILED: ' + fixed.substring(0, 50));
+  passThrough();
 }
 
 log('JSON FIXED: ' + fixed.substring(0, 50));
 
-// // Return fixed command
-// const response = {
-//   continue: true,
-//   hookSpecificOutput: {
-//     hookEventName: 'PreToolUse',
-//     permissionDecision: 'allow',
-//     updatedInput: {
-//       command: prefix + fixed + suffix
-//     }
-//   }
-// };
-// log('RESPONSE: ' + JSON.stringify(response));
-// console.log(JSON.stringify(response));
-// // Double backslashes again to compensate for Claude Code stripping a layer
-// const doubleFixed = fixed.replace(/\\\\/g, '\\\\\\\\');
-// const response = `${prefix}${doubleFixed}${suffix}`
-// log('RESPONSE: ' + response);
-// console.log(response);
-// // Test if updatedInput works at all
-// const testResponse = {
-//   continue: true,
-//   hookSpecificOutput: {
-//     hookEventName: 'PreToolUse',
-//     permissionDecision: 'allow',
-//     updatedInput: {
-//       command: response
-//     }
-//   }
-// };
-// log('TEST RESPONSE: ' + JSON.stringify(testResponse));
-// console.log(JSON.stringify(testResponse));
-
-// // Test: does Claude Code preserve backslashes?
-// const slashTest = {
-//   continue: true,
-//   hookSpecificOutput: {
-//     hookEventName: 'PreToolUse',
-//     permissionDecision: 'allow',
-//     updatedInput: {
-//       command: 'echo one\\\\\\\\two'
-//     }
-//   }
-// };
-// log('SLASH TEST: ' + JSON.stringify(slashTest));
-// console.log(JSON.stringify(slashTest));
-
-// Part 1: fixed already has the JSON fix (\s -> \\s)
-// Part 2: concatenate command, then double ALL backslashes
+// Part 2: Reassemble command and double ALL backslashes
+// (Claude Code strips one layer when applying updatedInput)
 const fixedCommand = prefix + fixed + suffix;
-log('FIXED COMMAND: ' + fixedCommand);
-
 const doubledCommand = fixedCommand.replace(/\\/g, '\\\\');
-log('DOUBLED COMMAND: ' + doubledCommand);
 
-const response = {
-  continue: true,
-  hookSpecificOutput: {
-    hookEventName: 'PreToolUse',
-    permissionDecision: 'allow',
-    updatedInput: {
-      command: doubledCommand
-    }
-  }
-};
-log('RESPONSE: ' + JSON.stringify(response));
-console.log(JSON.stringify(response));
+log('DOUBLED COMMAND: ' + doubledCommand.substring(0, 80));
+
+// Send the fixed command
+sendUpdatedCommand(doubledCommand);
