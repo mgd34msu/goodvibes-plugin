@@ -55,7 +55,6 @@ import {
   isBlockedNativeTool,
 } from './subagent-blockers.js';
 import { TOOL_VALIDATORS } from './tool-validators.js';
-import { checkAndFixMcpCliJson } from './json-auto-escape.js';
 
 import type { HookInput } from '../shared/index.js';
 import type { PreToolUseInput } from './subagent-blockers.js';
@@ -79,24 +78,6 @@ async function handleBashTool(input: HookInput): Promise<void> {
 
   if (!command) {
     respond(allowTool('PreToolUse'));
-    return;
-  }
-
-  // FIRST: Check for mcp-cli calls with invalid JSON (uses updatedInput)
-  // This MUST happen before any other processing due to updatedInput constraints
-  debug('About to call checkAndFixMcpCliJson', { commandStart: command.substring(0, 80) });
-  const jsonFix = checkAndFixMcpCliJson(command);
-  debug('checkAndFixMcpCliJson result', { hasJsonFix: !!jsonFix, fixCount: jsonFix?.fixCount });
-  if (jsonFix) {
-    debug('JSON auto-escape applied', {
-      fixCount: jsonFix.fixCount,
-      command: command.substring(0, 50) + '...',
-    });
-    respond(allowTool(
-      'PreToolUse',
-      undefined,
-      { command: jsonFix.fixedCommand }
-    ));
     return;
   }
 

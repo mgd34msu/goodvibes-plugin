@@ -17,23 +17,6 @@
  * @license MIT
  */
 
-import * as fs from 'node:fs';
-
-/** Log file path for debugging */
-const LOG_PATH = 'C:/Users/buzzkill/Documents/vibeplug/hook.log';
-
-/**
- * Append a timestamped message to the log file.
- * @param {string} msg - Message to log
- */
-const log = msg => fs.appendFileSync(LOG_PATH, `${new Date().toISOString()} ${msg}\n`);
-
-/**
- * Valid JSON escape characters (after backslash).
- * @see https://www.json.org/json-en.html
- */
-const VALID_JSON_ESCAPES = '"\\/bfnrtu';
-
 /**
  * Regex to match mcp-cli call commands with JSON in single quotes.
  * Captures: [1] prefix, [2] JSON content, [3] suffix
@@ -53,16 +36,14 @@ function passThrough() {
  * @param {string} command - The modified command to execute
  */
 function sendUpdatedCommand(command) {
-  const response = {
+  console.log(JSON.stringify({
     continue: true,
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'allow',
       updatedInput: { command }
     }
-  };
-  log('RESPONSE: ' + JSON.stringify(response));
-  console.log(JSON.stringify(response));
+  }));
 }
 
 /**
@@ -79,8 +60,6 @@ function fixInvalidEscapes(json) {
 // Main Hook Logic
 // =============================================================================
 
-log('HOOK STARTED');
-
 // Read hook input from stdin
 const chunks = [];
 for await (const chunk of process.stdin) chunks.push(chunk);
@@ -88,7 +67,6 @@ const input = JSON.parse(Buffer.concat(chunks).toString());
 
 // Only process Bash commands
 if (input.tool_name !== 'Bash') {
-  log('OTHER TOOL: ' + input.tool_name);
   passThrough();
 }
 
@@ -97,7 +75,6 @@ const cmd = input.tool_input?.command || '';
 // Only process mcp-cli calls with JSON arguments
 const match = cmd.match(MCP_CLI_REGEX);
 if (!match) {
-  log('NOT MCP-CLI: ' + cmd.substring(0, 50));
   passThrough();
 }
 
@@ -107,29 +84,24 @@ const [, prefix, json, suffix] = match;
 let finalJson;
 try {
   JSON.parse(json);
-  log('JSON ALREADY VALID');
   finalJson = json;
 } catch {
-  // Part 1: Fix invalid escape sequences (\s -> \\s)
+  // Fix invalid escape sequences (\s -> \\s)
   const fixed = fixInvalidEscapes(json);
 
   // Verify the fix produces valid JSON
   try {
     JSON.parse(fixed);
-    log('JSON FIXED: ' + fixed.substring(0, 50));
     finalJson = fixed;
   } catch {
-    log('FIX FAILED: ' + fixed.substring(0, 50));
     passThrough();
   }
 }
 
-// Part 2: Reassemble command and double ALL backslashes
+// Reassemble command and double ALL backslashes
 // (Claude Code strips one layer when applying updatedInput)
 const fixedCommand = prefix + finalJson + suffix;
 const doubledCommand = fixedCommand.replace(/\\/g, '\\\\');
-
-log('DOUBLED COMMAND: ' + doubledCommand.substring(0, 80));
 
 // Send the fixed command
 sendUpdatedCommand(doubledCommand);

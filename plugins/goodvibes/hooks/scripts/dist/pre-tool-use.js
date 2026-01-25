@@ -951,92 +951,6 @@ var TOOL_VALIDATORS = {
   validate_implementation: validateImplementation
 };
 
-// src/pre-tool-use/json-auto-escape.ts
-var VALID_JSON_ESCAPES = /* @__PURE__ */ new Set([
-  '"',
-  // double quote
-  "\\",
-  // backslash
-  "/",
-  // forward slash
-  "b",
-  // backspace
-  "f",
-  // form feed
-  "n",
-  // newline
-  "r",
-  // carriage return
-  "t",
-  // tab
-  "u"
-  // unicode (must be followed by 4 hex digits)
-]);
-function fixJsonEscaping(jsonString) {
-  try {
-    JSON.parse(jsonString);
-    return { fixed: jsonString, wasFixed: false, fixCount: 0 };
-  } catch {
-  }
-  let result = "";
-  let inString = false;
-  let fixCount = 0;
-  for (let i = 0; i < jsonString.length; i++) {
-    const char = jsonString[i];
-    const nextChar = jsonString[i + 1];
-    if (char === '"') {
-      let backslashCount = 0;
-      let j = i - 1;
-      while (j >= 0 && jsonString[j] === "\\") {
-        backslashCount++;
-        j--;
-      }
-      if (backslashCount % 2 === 0) {
-        inString = !inString;
-      }
-      result += char;
-      continue;
-    }
-    if (inString && char === "\\" && nextChar !== void 0) {
-      if (!VALID_JSON_ESCAPES.has(nextChar)) {
-        result += "\\\\";
-        fixCount++;
-        continue;
-      }
-      if (nextChar === "u") {
-        const hex = jsonString.slice(i + 2, i + 6);
-        if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
-          result += "\\\\";
-          fixCount++;
-          continue;
-        }
-      }
-    }
-    result += char;
-  }
-  try {
-    JSON.parse(result);
-    return { fixed: result, wasFixed: fixCount > 0, fixCount };
-  } catch {
-    return { fixed: jsonString, wasFixed: false, fixCount: 0 };
-  }
-}
-function checkAndFixMcpCliJson(command) {
-  const match = /^(mcp-cli\s+call\s+\S+\s+)(['"])(.+)\2\s*$/.exec(command);
-  if (!match) {
-    return null;
-  }
-  const [, prefix, quote, json] = match;
-  const { fixed, wasFixed, fixCount } = fixJsonEscaping(json);
-  if (wasFixed) {
-    return {
-      fixedCommand: `${prefix}${quote}${fixed}${quote}`,
-      fixCount
-    };
-  }
-  return null;
-}
-
 // src/pre-tool-use/hook.ts
 async function handleBashTool(input) {
   debug("handleBashTool ENTRY", { tool_input: input.tool_input });
@@ -1044,21 +958,6 @@ async function handleBashTool(input) {
   debug("extractBashCommand result", { command: command?.substring(0, 100), hasCommand: !!command });
   if (!command) {
     respond(allowTool("PreToolUse"));
-    return;
-  }
-  debug("About to call checkAndFixMcpCliJson", { commandStart: command.substring(0, 80) });
-  const jsonFix = checkAndFixMcpCliJson(command);
-  debug("checkAndFixMcpCliJson result", { hasJsonFix: !!jsonFix, fixCount: jsonFix?.fixCount });
-  if (jsonFix) {
-    debug("JSON auto-escape applied", {
-      fixCount: jsonFix.fixCount,
-      command: command.substring(0, 50) + "..."
-    });
-    respond(allowTool(
-      "PreToolUse",
-      void 0,
-      { command: jsonFix.fixedCommand }
-    ));
     return;
   }
   if (isCommitCommand(command)) {
