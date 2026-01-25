@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "give a brief message with \"[AGENT COMPLETED]\" then on a new line for each \"[AGENT ID]: \" and the agent id, \"[TASK ID]: \" and the task id, \"[TASK INFO]: \" and what the task was, \"[RESULT]: \" and the result.",
+            "prompt": "MANDATORY: give a brief message with this EXACT formatting: \"[AGENT COMPLETED]\" then on a new line for each \"[AGENT ID]: \" and the agent id, \"[TASK ID]: \" and the task id, \"[TASK INFO]: \" and what the task was, \"[RESULT]: \" and the result.",
             "timeout": 10
           }
         ]
