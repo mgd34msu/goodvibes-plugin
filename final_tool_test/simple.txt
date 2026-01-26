@@ -1,0 +1,6 @@
+
+This is a modified file
+First Only
+Another line
+Last Only
+End of file
