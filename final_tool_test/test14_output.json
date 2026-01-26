@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"success\": true,\n  \"data\": {\n    \"edits\": [\n      {\n        \"file\": \"C:/Users/buzzkill/Documents/vibeplug/final_tool_test/whitespace.txt\",\n        \"status\": \"not_found\",\n        \"edits_applied\": 0,\n        \"error\": \"{\\n  \\\"message\\\": \\\"Pattern not found\\\",\\n  \\\"pattern_length\\\": 15,\\n  \\\"file_length\\\": 75,\\n  \\\"closest_matches\\\": [\\n    {\\n      \\\"line\\\": 1,\\n      \\\"similarity\\\": 0.7142857142857143,\\n      \\\"preview\\\": \\\"No    Extra    Spaces\\\"\\n    }\\n  ]\\n}\"\n      }\n    ],\n    \"summary\": {\n      \"files_modified\": 0,\n      \"edits_applied\": 0,\n      \"edits_failed\": 1\n    },\n    \"tokens_used\": 95\n  },\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": null,\n    \"execution_ms\": 4\n  }\n}"
+    }
+  ],
+  "isError": false
+}

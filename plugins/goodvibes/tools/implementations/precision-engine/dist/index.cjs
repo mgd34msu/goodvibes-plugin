@@ -254811,39 +254811,68 @@ function findWhitespaceInsensitiveMatches(content, pattern) {
   return matches;
 }
 __name(findWhitespaceInsensitiveMatches, "findWhitespaceInsensitiveMatches");
-function fuzzyMatch(content, search, caseSensitive, whitespaceSensitive) {
-  const indices = [];
-  let searchStr = search;
-  let contentStr = content;
-  if (!caseSensitive) {
-    searchStr = searchStr.toLowerCase();
-    contentStr = contentStr.toLowerCase();
-  }
-  if (!whitespaceSensitive) {
-    const normalizedSearch = normalizeWhitespace(searchStr);
-    let pos = 0;
-    while (pos < contentStr.length) {
-      const segment = contentStr.slice(pos);
-      const normalizedSegment = normalizeWhitespace(segment);
-      if (normalizedSegment.startsWith(normalizedSearch)) {
-        indices.push(pos);
-        pos += search.length;
-      } else {
-        pos++;
+function findBestSubstringMatch(originalLine, lowerLine, searchStr, caseSensitive, minSimilarity) {
+  const searchLen = searchStr.length;
+  let bestMatch = null;
+  const minWindow = Math.max(1, Math.floor(searchLen * 0.7));
+  const maxWindow = Math.min(lowerLine.length, Math.ceil(searchLen * 1.3));
+  for (let windowSize = minWindow; windowSize <= maxWindow; windowSize++) {
+    for (let i = 0; i <= lowerLine.length - windowSize; i++) {
+      const substring = (caseSensitive ? originalLine : lowerLine).substring(i, i + windowSize);
+      const similarity = calculateSimilarity(substring.trim(), searchStr.trim());
+      if (similarity >= minSimilarity && (!bestMatch || similarity > bestMatch.similarity)) {
+        bestMatch = {
+          startIndex: i,
+          length: windowSize,
+          text: originalLine.substring(i, i + windowSize),
+          similarity
+        };
       }
     }
-  } else {
-    let pos = 0;
-    while ((pos = contentStr.indexOf(searchStr, pos)) !== -1) {
-      indices.push(pos);
-      pos++;
-    }
   }
-  return indices;
+  return bestMatch;
+}
+__name(findBestSubstringMatch, "findBestSubstringMatch");
+function fuzzyMatch(content, search, caseSensitive, minSimilarity = 0.7) {
+  const matches = [];
+  const searchStr = caseSensitive ? search : search.toLowerCase();
+  const lines = content.split("\n");
+  let currentIndex = 0;
+  for (const line of lines) {
+    const lineToMatch = caseSensitive ? line : line.toLowerCase();
+    const exactIndex = lineToMatch.indexOf(searchStr);
+    if (exactIndex !== -1) {
+      matches.push({
+        index: currentIndex + exactIndex,
+        length: search.length,
+        similarity: 1,
+        originalText: line.substring(exactIndex, exactIndex + search.length)
+      });
+    } else if (line.trim().length > 0) {
+      const lineSimilarity = calculateSimilarity(lineToMatch.trim(), searchStr.trim());
+      if (lineSimilarity >= minSimilarity) {
+        const bestMatch = findBestSubstringMatch(line, lineToMatch, searchStr, caseSensitive, minSimilarity);
+        if (bestMatch) {
+          matches.push({
+            index: currentIndex + bestMatch.startIndex,
+            length: bestMatch.length,
+            similarity: bestMatch.similarity,
+            originalText: bestMatch.text
+          });
+        }
+      }
+    }
+    currentIndex += line.length + 1;
+  }
+  return matches.sort((a, b) => b.similarity - a.similarity);
 }
 __name(fuzzyMatch, "fuzzyMatch");
-function regexMatch(content, pattern, caseSensitive) {
-  const flags = caseSensitive ? "g" : "gi";
+function regexMatch(content, pattern, caseSensitive, multiline = true) {
+  let flags = "g";
+  if (!caseSensitive)
+    flags += "i";
+  if (multiline)
+    flags += "m";
   const regex = new RegExp(pattern, flags);
   const matches = [];
   let match;
@@ -255070,16 +255099,17 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       allMatches = astMatches;
     }
   } else if (matchConfig.mode === "regex") {
-    const matches = regexMatch(content, find, matchConfig.case_sensitive ?? true);
+    const matches = regexMatch(content, find, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
     allMatches = matches.map((m) => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === "fuzzy") {
-    const indices = fuzzyMatch(
+    const threshold = matchConfig.fuzzy_threshold ?? 0.7;
+    const fuzzyResults = fuzzyMatch(
       content,
       find,
       matchConfig.case_sensitive ?? true,
-      matchConfig.whitespace_sensitive ?? true
+      threshold
     );
-    allMatches = indices.map((index) => ({ index, length: find.length }));
+    allMatches = fuzzyResults.map((r) => ({ index: r.index, length: r.length }));
   } else {
     let searchContent = content;
     let searchFind = find;
@@ -255119,7 +255149,7 @@ function findInContext(filePath, content, find, hints, matchConfig) {
     if (hints.in_function) {
       const safeFuncName = escapeRegex2(hints.in_function);
       const funcPattern = new RegExp(
-        `(function\\s+${safeFuncName}\\s*\\(|const\\s+${safeFuncName}\\s*=|let\\s+${safeFuncName}\\s*=|var\\s+${safeFuncName}\\s*=)`,
+        `((async\\s+)?(function\\s+)?${safeFuncName}\\s*\\(|(const|let|var)\\s+${safeFuncName}\\s*=|(static\\s+)?(private\\s+|protected\\s+|public\\s+)?(async\\s+)?${safeFuncName}\\s*\\(|(get|set)\\s+${safeFuncName}\\s*\\()`,
         "g"
       );
       const beforeContent = content.substring(0, match.index);
@@ -255378,6 +255408,8 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
     if (dryRun) {
       const filesModified2 = new Set(results.filter((r) => r.status === "applied").map((r) => r.file)).size;
       const data2 = {
+        dry_run: true,
+        written: false,
         edits: results,
         summary: {
           files_modified: filesModified2,
@@ -255389,9 +255421,11 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
       };
       return toCallToolResult(successResult(data2, outputMode, getElapsed()));
     }
-    for (const [filePath, content] of newContents) {
-      await fs7.mkdir(path7.dirname(filePath), { recursive: true });
-      await fs7.writeFile(filePath, content, "utf-8");
+    if (!dryRun) {
+      for (const [filePath, content] of newContents) {
+        await fs7.mkdir(path7.dirname(filePath), { recursive: true });
+        await fs7.writeFile(filePath, content, "utf-8");
+      }
     }
     const afterValidation = [];
     if (input.validate?.after) {
@@ -255399,12 +255433,14 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args) => {
         const result = await runValidation2(step, workDir);
         afterValidation.push(result);
         if (!result.passed && transaction.rollback_on_fail) {
-          for (const backup of backups) {
-            if (backup.content === null) {
-              await fs7.unlink(backup.path).catch(() => {
-              });
-            } else {
-              await fs7.writeFile(backup.path, backup.content, "utf-8");
+          if (!dryRun) {
+            for (const backup of backups) {
+              if (backup.content === null) {
+                await fs7.unlink(backup.path).catch(() => {
+                });
+              } else {
+                await fs7.writeFile(backup.path, backup.content, "utf-8");
+              }
             }
           }
           return toCallToolResult(errorResult(`After validation failed: ${step} - ${result.error}. Changes rolled back.`, outputMode, getElapsed()));

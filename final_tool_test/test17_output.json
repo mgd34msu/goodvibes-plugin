@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"success\": true,\n  \"data\": {\n    \"edits\": [\n      {\n        \"file\": \"C:/Users/buzzkill/Documents/vibeplug/final_tool_test/whitespace.txt\",\n        \"status\": \"applied\",\n        \"diff\": \" No    Extra    Spaces\\n   Indented Line\\n-\\tTab Character\\n-Mixed   Spacing   Here\\n+\\tTab CWhitespace Ignoredpacing   Here\"\n      }\n    ],\n    \"summary\": {\n      \"files_modified\": 1,\n      \"edits_applied\": 1,\n      \"edits_failed\": 0\n    },\n    \"rollback_id\": \"rb_1769387899525_uf7fe1\",\n    \"tokens_used\": 63\n  },\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": null,\n    \"execution_ms\": 1\n  }\n}"
+    }
+  ],
+  "isError": false
+}
