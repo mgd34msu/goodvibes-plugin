@@ -285,14 +285,17 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 1. **Fix ALL issues** - No issue is too minor to fix. Every problem must be addressed.
 2. **100% completion required** - 99.9% is not acceptable. Work must be fully complete before passing review.
+3. **CRITICAL** - Use non-blocking Task Output to monitor agent completion. Always know the number of running agents.
+4. **MANDATORY** - Maintain WRFC Loop as close to 6 concurrent agents at all times.
+5. **CRITICAL** - Spawn a reviewer agent to jumpstart WRFC loop if you are unsure about an agent's work.
 
 ## Agent Constraints
 
 - **CRITICAL** - When any one agent completes its task, ACTUALLY CONFIRM the total number of active agents.
 - **Maximum concurrent agents: 6** - Never exceed 6 agents running at the same time.
 - **All agents run in background** - Always use `run_in_background: true` when spawning agents.
-- **Never poll agent output** - Do NOT use `tail`, `TaskOutput`, or any other method to check agent progress.
 - **Wait for agent signals** - Agents will notify you when they finish. Only proceed after receiving completion notification.
+- **Agent Progress** - If you notice the number of agents running does not match completion notifications, read the user session jsonl file to catch anything you missed.
 
 ### Task Notifications
 
