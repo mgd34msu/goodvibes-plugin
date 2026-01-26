@@ -6,51 +6,90 @@
 
 > Plug in. Receive good vibes.
 
-GoodVibes is a comprehensive Claude Code plugin that transforms AI-assisted development through batch-first operations, precision tools, and autonomous execution. Built for enterprise-grade development, it provides a complete ecosystem of agents, skills, and tools for maximum efficiency and quality.
+GoodVibes is a comprehensive Claude Code plugin that transforms AI-assisted development through batch-first operations, precision tools, and autonomous execution. Built for high-quality, low(ish)-effort development, it provides a complete ecosystem of agents, skills, and tools for maximum efficiency and quality.
 
 ## 📊 At a Glance
 
 | Component | Count | Description |
 |-----------|-------|-------------|
 | 🤖 **Agents** | 9 | Specialized roles (engineer, reviewer, tester, etc.) |
-| 📚 **Skills** | 173 | Reusable knowledge modules across all tech stacks |
+| 📚 **Skills** | 173 | Reusable knowledge modules across all tech stacks (honestly, skills are becoming less important) |
 | 🔧 **MCP Tools** | 74 | Precision tools across 6 specialized engines |
-| 🪝 **Hooks** | 9 | Lifecycle event handlers for automation |
+| 🪝 **Hooks** | 9 | Lifecycle event handlers for automation (can use all 13 hook types) |
 | 🎨 **Output Styles** | 2 | vibecoding (interactive) and justvibes (autonomous) |
-| 📦 **Templates** | 3 | Production-ready project scaffolds |
+| 📦 **Templates** | 3 | Production-ready project scaffolds (changing this soon - more targeted) |
 
 ---
 
 ## Table of Contents
 
-- [Features Overview](#features-overview)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Core Concepts](#core-concepts)
-  - [Batch-First Architecture](#batch-first-architecture)
-  - [WRFC Loop](#wrfc-loop-write-review-fix-check)
-  - [Output Modes](#output-modes)
-  - [Transaction Modes](#transaction-modes)
-  - [Execution Modes](#execution-modes)
-- [MCP Tools (74)](#mcp-tools)
-  - [Precision Engine (9)](#precision-engine-9-tools)
-  - [Batch Engine (6)](#batch-engine-6-tools)
-  - [Registry Engine (7)](#registry-engine-7-tools)
-  - [Analysis Engine (19)](#analysis-engine-19-tools)
-  - [Project Engine (22)](#project-engine-22-tools)
-  - [Frontend Engine (11)](#frontend-engine-11-tools)
-- [Agents (9)](#agents)
-- [Skills (173)](#skills)
-- [Slash Commands](#slash-commands)
-- [Hooks (9)](#hooks)
-- [Output Styles](#output-styles)
-- [Memory System](#memory-system)
-- [Templates](#templates)
-- [Configuration](#configuration)
-- [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+- [GoodVibes Plugin](#goodvibes-plugin)
+  - [📊 At a Glance](#-at-a-glance)
+  - [Table of Contents](#table-of-contents)
+  - [Features Overview](#features-overview)
+    - [Philosophy](#philosophy)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [Installation Steps](#installation-steps)
+    - [Verification](#verification)
+  - [Quick Start](#quick-start)
+    - [Basic Usage Examples](#basic-usage-examples)
+    - [Running Your First Skill](#running-your-first-skill)
+    - [Using an Agent](#using-an-agent)
+  - [Core Concepts](#core-concepts)
+    - [Batch-First Architecture](#batch-first-architecture)
+    - [WRFC Loop (Write-Review-Fix-Check)](#wrfc-loop-write-review-fix-check)
+    - [Output Modes](#output-modes)
+    - [Transaction Modes](#transaction-modes)
+    - [Execution Modes](#execution-modes)
+  - [MCP Tools](#mcp-tools)
+    - [Precision Engine (9 tools)](#precision-engine-9-tools)
+    - [Batch Engine (6 tools)](#batch-engine-6-tools)
+    - [Registry Engine (7 tools)](#registry-engine-7-tools)
+    - [Analysis Engine (19 tools)](#analysis-engine-19-tools)
+    - [Project Engine (22 tools)](#project-engine-22-tools)
+    - [Frontend Engine (11 tools)](#frontend-engine-11-tools)
+  - [Agents](#agents)
+    - [Agent Spawning](#agent-spawning)
+    - [When to Use Each Agent](#when-to-use-each-agent)
+  - [Skills](#skills)
+    - [Skills Overview](#skills-overview)
+    - [Common Skills (29)](#common-skills-29)
+    - [WebDev Skills (138)](#webdev-skills-138)
+    - [Creation Skills (5)](#creation-skills-5)
+    - [Special Skills](#special-skills)
+    - [Discovering Skills](#discovering-skills)
+    - [Using Skills](#using-skills)
+  - [Slash Commands](#slash-commands)
+  - [Hooks](#hooks)
+    - [Hook Configuration](#hook-configuration)
+    - [Hook Execution Flow](#hook-execution-flow)
+  - [Output Styles](#output-styles)
+    - [vibecoding (Interactive)](#vibecoding-interactive)
+    - [justvibes (Autonomous)](#justvibes-autonomous)
+    - [Comparison](#comparison)
+    - [Switching Modes](#switching-modes)
+  - [Memory System](#memory-system)
+    - [Directory Structure](#directory-structure)
+    - [Logs (Session-Level)](#logs-session-level)
+    - [Memory (Cross-Session)](#memory-cross-session)
+    - [Memory Operations](#memory-operations)
+  - [Templates](#templates)
+    - [1. next-saas](#1-next-saas)
+    - [2. next-app](#2-next-app)
+    - [3. vite-react](#3-vite-react)
+    - [Using Templates](#using-templates)
+  - [Configuration](#configuration)
+    - [plugin.json](#pluginjson)
+    - [.mcp.json](#mcpjson)
+    - [hooks.json](#hooksjson)
+  - [Best Practices](#best-practices)
+    - [Before Any Task](#before-any-task)
+    - [During Execution](#during-execution)
+    - [After Execution](#after-execution)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+  - [License](#license)
 
 ---
 
@@ -257,22 +296,22 @@ Every code change goes through a quality assurance cycle:
 
 ```
 ┌─────────────┐
-│   WRITE     │  Create/edit files
+│   WORK      │  Engineer / Architect / Other agent writes/edits files
 └──────┬──────┘
        │
        v
 ┌─────────────┐
-│   REVIEW    │  Apply review skills (type-safety, error-handling, etc.)
+│   REVIEW    │  Reviewer agent checks all changes
 └──────┬──────┘
        │
        v
 ┌─────────────┐
-│    FIX      │  Auto-fix issues (ESLint, formatting)
+│    FIX      │  Engineer / Architect / Other agent fixes problems
 └──────┬──────┘
        │
        v
 ┌─────────────┐
-│   CHECK     │  Validate (typecheck, lint, build)
+│   CHECK     │  Reviewer agent checks fixes ... cycle continues
 └─────────────┘
 ```
 
@@ -1500,86 +1539,6 @@ search_skills:
     category: ["webdev"]
     max_results: 100
 ```
-
-### Getting Help
-
-1. Check plugin status: `/plugin-status`
-2. Review activity logs: `.goodvibes/logs/activity.md`
-3. Check error logs: `.goodvibes/logs/errors.md`
-4. Search issues: GitHub repository
-5. Ask in discussions: GitHub Discussions
-
----
-
-## Contributing
-
-Contributions are welcome! Here's how to contribute:
-
-### Adding a Skill
-
-1. Create skill file in `plugins/goodvibes/skills/[category]/[skill-name].md`
-2. Follow skill template format
-3. Add to skill registry: `plugins/goodvibes/skills/registry.json`
-4. Test with `/load-skill [skill-name]`
-5. Submit PR with skill description and use cases
-
-### Adding an Agent
-
-1. Create agent prompt in `plugins/goodvibes/agents/[agent-name].md`
-2. Define agent in `plugin.json`
-3. Add agent to registry
-4. Test agent spawning
-5. Submit PR with agent capabilities and use cases
-
-### Adding a Tool
-
-1. Determine which engine the tool belongs to
-2. Add tool handler in `plugins/goodvibes/[engine]/tools/`
-3. Register tool in engine server
-4. Add JSON schema for parameters
-5. Test with `mcp-cli call`
-6. Submit PR with tool documentation
-
-### Development Setup
-
-```bash
-# Clone repo
-git clone https://github.com/mgd34msu/goodvibes-plugin.git
-cd vibeplug
-
-# Install dependencies
-npm install
-
-# Build all engines
-npm run build
-
-# Run in watch mode for development
-npm run dev
-
-# Link to Claude Code
-claude plugin install ./plugins/goodvibes --scope project
-```
-
-### Testing
-
-```bash
-# Run all tests
-npm test
-
-# Test specific engine
-npm test -- precision-engine
-
-# Test specific tool
-mcp-cli call plugin_goodvibes_precision-engine/precision_read '{...}'
-```
-
-### Pull Request Guidelines
-
-- Follow conventional commits
-- Add tests for new features
-- Update documentation
-- Ensure all engines build successfully
-- Test with both vibecoding and justvibes modes
 
 ---
 

@@ -288,6 +288,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ## Agent Constraints
 
+- **CRITICAL** - When any one agent completes its task, ACTUALLY CONFIRM the total number of active agents.
 - **Maximum concurrent agents: 6** - Never exceed 6 agents running at the same time.
 - **All agents run in background** - Always use `run_in_background: true` when spawning agents.
 - **Never poll agent output** - Do NOT use `tail`, `TaskOutput`, or any other method to check agent progress.
