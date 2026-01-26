@@ -1,9 +1,0 @@
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "{\n  \"success\": true,\n  \"data\": {\n    \"edits\": [\n      {\n        \"file\": \"C:/Users/buzzkill/Documents/vibeplug/final_tool_test/simple.txt\",\n        \"status\": \"not_found\",\n        \"edits_applied\": 0,\n        \"error\": \"{\\n  \\\"message\\\": \\\"Pattern not found\\\",\\n  \\\"pattern_length\\\": 9,\\n  \\\"file_length\\\": 66,\\n  \\\"closest_matches\\\": \\\"No similar content found\\\"\\n}\"\n      }\n    ],\n    \"summary\": {\n      \"files_modified\": 0,\n      \"edits_applied\": 0,\n      \"edits_failed\": 1\n    },\n    \"tokens_used\": 68\n  },\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": null,\n    \"execution_ms\": 1\n  }\n}"
-    }
-  ],
-  "isError": false
-}

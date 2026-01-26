@@ -1,9 +1,0 @@
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "{\n  \"success\": false,\n  \"error\": \"After validation failed: typecheck - Command failed: npx tsc --noEmit\\n. Changes rolled back.\",\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": 23,\n    \"execution_ms\": 4249\n  }\n}"
-    }
-  ],
-  "isError": true
-}
