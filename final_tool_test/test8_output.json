@@ -1,9 +1,0 @@
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "{\n  \"success\": true,\n  \"data\": {\n    \"edits\": [\n      {\n        \"file\": \"C:/Users/buzzkill/Documents/vibeplug/final_tool_test/code.ts\",\n        \"status\": \"applied\",\n        \"diff\": \" export class UserService {\\n   private users: Array<User> = [];\\n \\n   getUser(id: number): User {\\n     return this.users.find(u => u.id === id);\\n   }\\n \\n   createUser(name: string): User {\\n     const user = { id: generateId(), name };\\n     this.users.push(user);\\n-    return user;\\n+    return user; // Modified\\n   }\\n \\n   deleteUser(id: number): boolean {\\n     const index = this.users.findIndex(u => u.id === id);\\n     if (index !== -1) {\\n       this.users.splice(index, 1);\\n       return true;\\n     }\\n     return false;\\n   }\\n }\\n \\n export function helperFunction() {\\n   return \\\"helper\\\";\\n }\\n \\n const CONSTANT_VALUE = 42;\"\n      }\n    ],\n    \"summary\": {\n      \"files_modified\": 1,\n      \"edits_applied\": 1,\n      \"edits_failed\": 0\n    },\n    \"rollback_id\": \"rb_1769387577007_v1l1ci\",\n    \"tokens_used\": 192\n  },\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": null,\n    \"execution_ms\": 2\n  }\n}"
-    }
-  ],
-  "isError": false
-}

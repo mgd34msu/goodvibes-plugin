@@ -1,3 +1,0 @@
-No    Extra    Spaces
-  Indented Line
-	Tab CWhitespace Ignoredpacing   Here
