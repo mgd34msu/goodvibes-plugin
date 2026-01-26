@@ -1,0 +1,4 @@
+Exact Match
+Case Insensitive Match
+HELLO WORLD
+HeLLo WoRLd

@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"success\": true,\n  \"data\": {\n    \"edits\": [\n      {\n        \"file\": \"C:/Users/buzzkill/Documents/vibeplug/final_tool_test/code.ts\",\n        \"status\": \"not_found\",\n        \"edits_applied\": 0,\n        \"error\": \"{\\n  \\\"message\\\": \\\"Pattern not found\\\",\\n  \\\"pattern_length\\\": 12,\\n  \\\"file_length\\\": 571,\\n  \\\"closest_matches\\\": [\\n    {\\n      \\\"line\\\": 18,\\n      \\\"similarity\\\": 1,\\n      \\\"preview\\\": \\\"      return true;\\\"\\n    },\\n    {\\n      \\\"line\\\": 20,\\n      \\\"similarity\\\": 0.6923076923076923,\\n      \\\"preview\\\": \\\"    return false;\\\"\\n    },\\n    {\\n      \\\"line\\\": 25,\\n      \\\"similarity\\\": 0.5625,\\n      \\\"preview\\\": \\\"  return \\\\\\\"helper\\\\\\\";\\\"\\n    }\\n  ]\\n}\"\n      }\n    ],\n    \"summary\": {\n      \"files_modified\": 0,\n      \"edits_applied\": 0,\n      \"edits_failed\": 1\n    },\n    \"tokens_used\": 148\n  },\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": null,\n    \"execution_ms\": 1\n  }\n}"
+    }
+  ],
+  "isError": false
+}
