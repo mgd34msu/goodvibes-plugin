@@ -254762,6 +254762,55 @@ function normalizeWhitespace(str) {
   return str.replace(/\s+/g, " ").trim();
 }
 __name(normalizeWhitespace, "normalizeWhitespace");
+function findWhitespaceInsensitiveMatches(content, pattern) {
+  const normalizedPattern = normalizeWhitespace(pattern);
+  const matches = [];
+  let pos = 0;
+  while (pos < content.length) {
+    let scanPos = pos;
+    let patternPos = 0;
+    let matchStart = -1;
+    let matchEnd = -1;
+    while (scanPos < content.length && patternPos < normalizedPattern.length) {
+      while (scanPos < content.length && /\s/.test(content[scanPos])) {
+        if (matchStart === -1)
+          scanPos++;
+        else
+          break;
+      }
+      while (patternPos < normalizedPattern.length && /\s/.test(normalizedPattern[patternPos])) {
+        patternPos++;
+        while (scanPos < content.length && /\s/.test(content[scanPos])) {
+          scanPos++;
+        }
+      }
+      if (patternPos >= normalizedPattern.length)
+        break;
+      if (scanPos >= content.length)
+        break;
+      if (matchStart === -1)
+        matchStart = scanPos;
+      if (content[scanPos] === normalizedPattern[patternPos]) {
+        scanPos++;
+        patternPos++;
+        matchEnd = scanPos;
+      } else {
+        break;
+      }
+    }
+    if (patternPos === normalizedPattern.length && matchStart !== -1) {
+      matches.push({
+        index: matchStart,
+        length: matchEnd - matchStart
+      });
+      pos = matchEnd;
+    } else {
+      pos++;
+    }
+  }
+  return matches;
+}
+__name(findWhitespaceInsensitiveMatches, "findWhitespaceInsensitiveMatches");
 function fuzzyMatch(content, search, caseSensitive, whitespaceSensitive) {
   const indices = [];
   let searchStr = search;
@@ -255039,13 +255088,16 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       searchFind = searchFind.toLowerCase();
     }
     if (matchConfig.whitespace_sensitive === false) {
-      searchContent = normalizeWhitespace(searchContent);
-      searchFind = normalizeWhitespace(searchFind);
-    }
-    let pos = 0;
-    while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-      allMatches.push({ index: pos, length: searchFind.length });
-      pos++;
+      allMatches = findWhitespaceInsensitiveMatches(
+        matchConfig.case_sensitive === false ? content.toLowerCase() : content,
+        searchFind
+      );
+    } else {
+      let pos = 0;
+      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+        allMatches.push({ index: pos, length: searchFind.length });
+        pos++;
+      }
     }
   }
   if (allMatches.length === 0)

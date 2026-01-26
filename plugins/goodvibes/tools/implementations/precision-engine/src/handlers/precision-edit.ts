@@ -143,6 +143,69 @@ function normalizeWhitespace(str: string): string {
   return str.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Finds matches in content that would normalize to the same string as pattern,
+ * but returns positions and lengths in the ORIGINAL content.
+ * This prevents corruption when whitespace_sensitive=false.
+ */
+function findWhitespaceInsensitiveMatches(content: string, pattern: string): MatchResult[] {
+  const normalizedPattern = normalizeWhitespace(pattern);
+  const matches: MatchResult[] = [];
+
+  // Scan through content looking for sequences that normalize to the pattern
+  let pos = 0;
+  while (pos < content.length) {
+    // Skip leading whitespace for this position
+    let scanPos = pos;
+    let patternPos = 0;
+    let matchStart = -1;
+    let matchEnd = -1;
+
+    while (scanPos < content.length && patternPos < normalizedPattern.length) {
+      // Skip whitespace in content
+      while (scanPos < content.length && /\s/.test(content[scanPos])) {
+        if (matchStart === -1) scanPos++;
+        else break; // Don't skip whitespace mid-match unless pattern also has it
+      }
+
+      // Skip whitespace in pattern
+      while (patternPos < normalizedPattern.length && /\s/.test(normalizedPattern[patternPos])) {
+        patternPos++;
+        // Skip corresponding whitespace in content
+        while (scanPos < content.length && /\s/.test(content[scanPos])) {
+          scanPos++;
+        }
+      }
+
+      if (patternPos >= normalizedPattern.length) break;
+      if (scanPos >= content.length) break;
+
+      if (matchStart === -1) matchStart = scanPos;
+
+      if (content[scanPos] === normalizedPattern[patternPos]) {
+        scanPos++;
+        patternPos++;
+        matchEnd = scanPos;
+      } else {
+        break; // No match
+      }
+    }
+
+    // Check if we matched the full pattern
+    if (patternPos === normalizedPattern.length && matchStart !== -1) {
+      matches.push({
+        index: matchStart,
+        length: matchEnd - matchStart
+      });
+      pos = matchEnd;
+    } else {
+      pos++;
+    }
+  }
+
+  return matches;
+}
+
 function fuzzyMatch(content: string, search: string, caseSensitive: boolean, whitespaceSensitive: boolean): number[] {
   const indices: number[] = [];
 
@@ -562,15 +625,18 @@ function findInContext(
     }
 
     if (matchConfig.whitespace_sensitive === false) {
-      searchContent = normalizeWhitespace(searchContent);
-      searchFind = normalizeWhitespace(searchFind);
-    }
-
-    // Standard exact match
-    let pos = 0;
-    while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
-      allMatches.push({ index: pos, length: searchFind.length });
-      pos++;
+      // Use whitespace-insensitive matching that preserves original positions
+      allMatches = findWhitespaceInsensitiveMatches(
+        matchConfig.case_sensitive === false ? content.toLowerCase() : content,
+        searchFind
+      );
+    } else {
+      // Standard exact match
+      let pos = 0;
+      while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
+        allMatches.push({ index: pos, length: searchFind.length });
+        pos++;
+      }
     }
   }
 
