@@ -1,9 +1,0 @@
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "{\n  \"success\": true,\n  \"data\": {\n    \"edits\": [\n      {\n        \"file\": \"C:/Users/buzzkill/Documents/vibeplug/final_tool_test/nonexistent_file.txt\",\n        \"status\": \"not_found\",\n        \"edits_applied\": 0,\n        \"error\": \"File does not exist\"\n      }\n    ],\n    \"summary\": {\n      \"files_modified\": 0,\n      \"edits_applied\": 0,\n      \"edits_failed\": 1\n    },\n    \"tokens_used\": 39\n  },\n  \"meta\": {\n    \"verbosity\": \"with_diff\",\n    \"token_estimate\": null,\n    \"execution_ms\": 0\n  }\n}"
-    }
-  ],
-  "isError": false
-}

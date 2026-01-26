@@ -1,2 +1,0 @@
-Hello from base64!
-Binary data test
