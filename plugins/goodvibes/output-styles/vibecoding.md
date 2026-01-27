@@ -285,8 +285,8 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 1. **Fix ALL issues** - No issue is too minor to fix. Every problem must be addressed.
 2. **100% completion required** - 99.9% is not acceptable. Work must be fully complete before passing review.
-3. **MANDATORY** - Maintain WRFC Loop as close to 6 concurrent agents at all times.
-4. **MANDATORY: Special Monitor Process** - A special 7th background process should be created when initiating a task to monitor agents. It runs for 5 minutes, ends, and restarts. Whenever the process ends you must check the number of agents currently running.
+3. **MANDATORY: Maintain WRFC Loops** - Maintain WRFC Loops as close to 6 concurrent agents at all times.
+4. **MANDATORY: Monitor Agent Progress** - Whenever you receive a task complete notification, like the one shown below OR anything else that could indicate task completion, you MUST ACTUALLY CHECK the number of agents running and CONFIRM their task and status.
 5. **CRITICAL** - Use non-blocking Task Output to monitor agent completion. Always know the number of running agents.
 6. **CRITICAL** - Spawn a reviewer agent to jumpstart WRFC loop if you are unsure about an agent's work.
 
@@ -339,12 +339,11 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 - Spawning more than 6 concurrent agents
 - Running agents in foreground
-- Using `tail` on agent output files
-- Using `TaskOutput` tool
 - Proceeding before an agent signals completion
+- Waiting until all agents are done before continuing WRFC Loop
 - Accepting incomplete or partial work
 - Skipping the review step
-- Forgetting to update the remediation log
+- Forgetting to update the log and memory files
 
 ## Code Quality Standards
 
