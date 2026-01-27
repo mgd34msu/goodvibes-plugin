@@ -300,16 +300,14 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ### Task Notifications
 
-- **How to know an agent has completed its task** - You will receive a notification that looks like this (example):
+- **How to know an agent has completed its task** - You will receive a user message that starts with task-notification, has the task ID, and has completed as the status (example):
 
 ```
   <task-notification>
-  <task-id>xxxxxxx</task-id>
+  <task-id>a950406</task-id>
   <status>completed</status>
-  <summary>Agent "description of task" completed</summary>
-  <result>Result of agent work done during the task</result>
-  </task-notification>
 ```
+
 
 ### WRFC Loop [Step-by-Step Process - vibecoding] (MANDATORY)
 
