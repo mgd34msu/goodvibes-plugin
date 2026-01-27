@@ -99,7 +99,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/notification-idle.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/notification-idle.mjs\"",
             "timeout": 5
           }
         ]
