@@ -95,6 +95,16 @@
     ],
     "Notification": [
       {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/notification-idle.js\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           {
