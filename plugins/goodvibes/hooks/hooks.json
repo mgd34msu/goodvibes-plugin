@@ -12,7 +12,7 @@
         ]
       },
       {
-        "matcher": "xRead|xEdit|xWrite|xGlob|xGrep",
+        "matcher": "remove-this-to-block-Read|remove-this-to-block-Edit|remove-this-to-block-Write|remove-this-to-block-Glob|remove-this-to-block-Grep",
         "hooks": [
           {
             "type": "command",
@@ -95,21 +95,11 @@
     ],
     "Notification": [
       {
-        "matcher": "idle_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/notification-idle.js\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/notification.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/notification-idle.js\"",
             "timeout": 5
           }
         ]

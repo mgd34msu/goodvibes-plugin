@@ -4,6 +4,7 @@
  * Handles idle_prompt notifications from Claude Code.
  * Triggered when Claude is waiting for user input after 60+ seconds of idle time.
  * Used to remind the orchestrator to check agent work and continue the WRFC loop.
+ * 
  */
 
 import {
@@ -21,7 +22,7 @@ import type { HookResponse } from './index.js';
  * This prompts the orchestrator to verify work and continue the WRFC loop.
  */
 const IDLE_PROMPT_MESSAGE =
-  'AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!';
+  'CRITICAL: IF YOU ARE WORKING ON A LONG TASK CHECK IF AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!';
 
 /**
  * Creates a hook response with optional system message.
@@ -69,7 +70,7 @@ async function runNotificationIdleHook(): Promise<void> {
 }
 
 // Only run the hook if not in test mode
-/* v8 ignore start - test environment guard */
+/* v8 ignore start - test environment guard 
 if (!isTestEnvironment()) {
   runNotificationIdleHook().catch((error: unknown) => {
     logError('Notification idle uncaught', error);
@@ -80,7 +81,7 @@ if (!isTestEnvironment()) {
     );
   });
 }
-/* v8 ignore stop */
+ v8 ignore stop */
 
 // Export for testing
 export { runNotificationIdleHook, createResponse, IDLE_PROMPT_MESSAGE };
