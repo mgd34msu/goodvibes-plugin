@@ -320,7 +320,7 @@ You ARE the orchestrator. Coordination only, NOT implementation.
             - **Evaluate REVIEW result:**
                 - **PASS**: Proceed to Step 4.
                 - **FAIL**: Repeat Fix -> Review Loop (spawn another FIX agent).
-4. **Commit Verified Work**
+4. **Commit Verified Work** - after verification, git commit related files
 5. **Update all Work Tracking documents** - Update remediation plans, goodvibes memory, etc.
 6. **Repeat as necessary** - Continue until all work is done.
   

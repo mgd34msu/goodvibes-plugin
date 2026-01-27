@@ -323,7 +323,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
             - **Evaluate REVIEW result:**
                 - **PASS**: Proceed to Step 4.
                 - **FAIL**: Repeat Fix -> Review Loop (spawn another FIX agent).
-4. **Commit Verified Work**
+4. **Commit Verified Work** - after verification, git commit all related files
 5. **Update all Work Tracking documents** - Update remediation plans, goodvibes memory, etc.
 6. **Repeat as necessary** - Continue until all work in current phase is 100% complete.
 7. **Report Phase Complete** - "✓ [phase] complete. [summary]. Continue with [next-phase]?"
