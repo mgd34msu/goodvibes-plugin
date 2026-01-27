@@ -69,19 +69,14 @@ async function runNotificationIdleHook(): Promise<void> {
   }
 }
 
-// Only run the hook if not in test mode
-/* v8 ignore start - test environment guard 
-if (!isTestEnvironment()) {
-  runNotificationIdleHook().catch((error: unknown) => {
-    logError('Notification idle uncaught', error);
-    respond(
-      createResponse(
-        `Notification idle error: ${error instanceof Error ? error.message : String(error)}`
-      )
-    );
-  });
-}
- v8 ignore stop */
+runNotificationIdleHook().catch((error: unknown) => {
+  logError('Notification idle uncaught', error);
+  respond(
+    createResponse(
+      `Notification idle error: ${error instanceof Error ? error.message : String(error)}`
+    )
+  );
+});
 
 // Export for testing
 export { runNotificationIdleHook, createResponse, IDLE_PROMPT_MESSAGE };
