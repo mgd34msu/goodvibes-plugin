@@ -10,6 +10,10 @@ GoodVibes is a comprehensive Claude Code plugin that transforms AI-assisted deve
 
 ## 📊 At a Glance
 
+**Autonomous AI development that actually works.**
+
+Most AI coding tools fail silently. They hit an error, give up, and hand you back a broken mess. GoodVibes doesn't. It recovers, learns, and delivers verified code.
+
 | Component | Count | Description |
 |-----------|-------|-------------|
 | 🤖 **Agents** | 9 | Specialized roles (engineer, reviewer, tester, etc.) |
@@ -28,12 +32,18 @@ GoodVibes is a comprehensive Claude Code plugin that transforms AI-assisted deve
   - [Table of Contents](#table-of-contents)
   - [Features Overview](#features-overview)
     - [Philosophy](#philosophy)
+      - [1. Errors Are Recoverable, Not Terminal](#1-errors-are-recoverable-not-terminal)
+      - [2. Memory That Persists](#2-memory-that-persists)
+      - [3. Verified Before Committed](#3-verified-before-committed)
+      - [4. Tools That Respect Your Context](#4-tools-that-respect-your-context)
+      - [5. Domain Knowledge Built In](#5-domain-knowledge-built-in)
   - [Installation](#installation)
     - [Prerequisites](#prerequisites)
-    - [Installation Steps](#installation-steps)
-    - [Verification](#verification)
+    - [Getting the Plugin](#getting-the-plugin)
+    - [First Run](#first-run)
+    - [Basic Usage](#basic-usage)
   - [Quick Start](#quick-start)
-    - [Basic Usage Examples](#basic-usage-examples)
+    - [Examples](#examples)
     - [Running Your First Skill](#running-your-first-skill)
     - [Using an Agent](#using-an-agent)
   - [Core Concepts](#core-concepts)
@@ -110,11 +120,74 @@ GoodVibes provides:
 
 ### Philosophy
 
-GoodVibes operates on three core principles:
+#### 1. Errors Are Recoverable, Not Terminal
 
-1. **Batch-First**: Multi-file operations are executed atomically for consistency and efficiency
-2. **Token-Efficient**: Configurable verbosity levels minimize token usage without sacrificing functionality
-3. **Autonomous**: justvibes mode enables fully autonomous execution with checkpoints and automatic recovery
+When something fails, GoodVibes doesn't stop. It escalates through three recovery phases:
+
+| Phase | Action |
+|-------|--------|
+| **Phase 1** | Attempt fix with existing knowledge |
+| **Phase 2** | Search official documentation, inject solutions |
+| **Phase 3** | Search community (Stack Overflow, GitHub), apply proven fixes |
+
+Most errors resolve without human intervention. Your project keeps moving.
+
+#### 2. Memory That Persists
+
+Every session starts fresh with most AI tools. Not GoodVibes.
+
+**Decisions** — Architectural choices and their rationale, searchable forever.
+**Patterns** — Code conventions discovered in your codebase, applied consistently.
+**Failures** — Past errors and their solutions. Same bug? Already knows the fix.
+
+Your AI gets smarter the more you use it.
+
+#### 3. Verified Before Committed
+
+The WRFC Loop ensures nothing ships unverified:
+
+```
+WORK → REVIEW → FIX → CHECK
+                 ↑      |
+                 └──────┘ (repeat until verified)
+```
+
+- **Work**: Agent completes the task
+- **Review**: Separate reviewer agent evaluates against spec
+- **Fix**: If issues found, fix agent addresses them
+- **Check**: Reviews fix agent work, sends it back if necessary
+
+When the loop ends for a task, it is committed and we move on.
+
+#### 4. Tools That Respect Your Context
+
+Token-efficient operations with output control:
+
+```typescript
+// Need just file paths? Get paths only.
+precision_glob({ patterns: ["**/*.ts"], output: "paths_only" })
+
+// Need full content? Get full content.
+precision_read({ files: ["src/auth.ts"], extract: "content" })
+
+// Need just the function signatures? Get outlines.
+precision_read({ files: ["src/auth.ts"], extract: "outline" })
+```
+
+Give agents the ability to use only the context they need.
+
+#### 5. Domain Knowledge Built In
+
+170+ skills, most with progressive disclosure, covering real-world development:
+
+- **Frameworks**: Next.js, Nuxt, Remix, Astro, SvelteKit
+- **Databases**: Prisma, Drizzle, PostgreSQL, MongoDB
+- **Auth**: Clerk, NextAuth, Auth0, Firebase, Lucia
+- **Payments**: Stripe, LemonSqueezy, Paddle
+- **Testing**: Vitest, Playwright, Jest, Testing Library
+- **Deployment**: Vercel, Netlify, Cloudflare, Docker, Railway
+
+Distilled directly from 1st-party documentation, not hallucinated patterns. Documented best practices with implementation examples.
 
 ---
 
@@ -123,55 +196,59 @@ GoodVibes operates on three core principles:
 ### Prerequisites
 
 - Claude Code CLI (latest version)
-- Node.js 18+ (for MCP servers)
+- Node.js 20+ (for MCP servers)
 - Git (for version control integration)
 
-### Installation Steps
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/mgd34msu/goodvibes-plugin.git vibeplug
-   cd vibeplug
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Build the plugin**:
-   ```bash
-   npm run build
-   ```
-
-4. **Link to Claude Code**:
-   ```bash
-   # Link the plugin to Claude Code's plugin directory
-   claude plugin install ./plugins/goodvibes --scope project
-   ```
-
-5. **Verify installation**:
-   ```bash
-   # Check plugin is loaded
-   claude plugin list
-   ```
-
-### Verification
-
-Run the plugin status command to verify all engines are active:
+### Getting the Plugin
 
 ```bash
-# In Claude Code, use the slash command
-/plugin-status
+# Install via marketplace
+claude plugin marketplace add mgd34msu/goodvibes-plugin
+claude plugin install goodvibes@goodvibes-market
+
+# Or clone the plugin repo
+git clone https://github.com/goodvibes/goodvibes-plugin ~/.claude/plugins/goodvibes
 ```
 
-You should see all 6 engines (precision, batch, registry, analysis, project, frontend) reporting as active.
+### First Run
+
+```bash
+# Start Claude Code in your project (recommend: bypass permissions mode)
+claude --dangerously-skip-permissions
+
+# GoodVibes auto-injects context on session start:
+# - Stack detection (frameworks, languages, tools)
+# - Git context (branch, uncommitted changes, recent commits)
+# - Project health (missing deps, env issues, TypeScript errors)
+# - TODOs and FIXMEs found in codebase
+
+# Set your output style
+# - vibecoding mode for an interactive experience
+/output-style goodvibes:vibecoding
+
+# - justvibes mode for exactly that, just vibes, total automation
+/output-style goodvibes:justvibes
+```
+
+### Basic Usage
+
+```
+You: "Add user authentication with email/password"
+
+GoodVibes:
+1. Planner or Architect (based on complexity) breaks down: schema, API routes, middleware, UI components
+2. Engineer implements each task
+3. Reviewer verifies against requirements
+4. Fix loop if issues found
+5. Commits verified code with descriptive messages
+6. Reports completion with summary
+```
 
 ---
 
 ## Quick Start
 
-### Basic Usage Examples
+### Examples
 
 **Example 1: Stack Detection**
 
@@ -1568,6 +1645,13 @@ SOFTWARE.
 
 ---
 
-**Built by the GoodVibes community**
+---
 
-*Plug in. Receive good vibes.*
+<p align="center">
+  <b>Plug in, receive good vibes</b>
+  <br>
+  <br>
+  <code>claude plugin marketplace add mgd34msu/goodvibes-plugin</code>
+  <br>
+  <code>claude plugin install goodvibes@goodvibes-market</code>
+</p>
