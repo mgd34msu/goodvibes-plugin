@@ -100,7 +100,7 @@ High-performance file operations with modes, filters, and batch support.
 
 **Use Cases**: File operations, code search, symbol navigation, command execution
 
-#### **Batch Engine** (5 tools)
+#### **Batch Engine** (5 tools) [implemented but not enforced; v1.1.0 will use this heavily]
 Multi-operation batching with atomic transactions and checkpoints.
 
 - `batch` - Execute multi-phase operations (read, write, exec, query)
@@ -291,32 +291,6 @@ behavior:
 
 ## Data Flow
 
-### Request Flow
-
-```
-1. User Request
-   ↓
-2. Claude Code (primary agent)
-   ↓
-3. Registry Engine (recommend skills/agents)
-   ↓
-4. Skill Loading (inject knowledge)
-   ↓
-5. Agent Selection (spawn specialist if needed)
-   ↓
-6. Discovery Phase (discover tool, precision_grep, precision_glob)
-   ↓
-7. Batch Planning (batch engine)
-   ↓
-8. Execution (MCP tools: precision_*, analysis_*, project_*)
-   ↓
-9. Validation (WRFC loop)
-   ↓
-10. State Tracking (hooks write to memory)
-    ↓
-11. Response to User
-```
-
 ### Tool Call Pattern
 
 ```
@@ -333,33 +307,9 @@ Agent
 5. Continue or return
 ```
 
-### Batch Execution Flow
-
-```
-1. Batch Request
-   ↓
-2. Discovery Phase (parallel queries)
-   │  - discover tool
-   │  - precision_grep
-   │  - precision_glob
-   ↓
-3. Read Phase (gather context)
-   │  - precision_read
-   │  - precision_symbols
-   ↓
-4. Checkpoint (before writes)
-   ↓
-5. Write Phase (apply changes)
-   │  - precision_write
-   │  - precision_edit
-   ↓
-6. Exec Phase (validate)
-   │  - precision_exec (typecheck, lint, test)
-   ↓
-7. Checkpoint (after validation)
-   ↓
-8. Return results
-```
+Claude Code strictly enforces a rule which forces mcp-cli info to be called prior to mcp-cli calls, that is (so far) not able to be circumvented.
+This results in higher token usage than is desirable for tools that are only called once in a session. 
+However, testing has shown that the mcp info overhead is more than made up for by the savings vs native tools across multiple calls.
 
 ## Memory System
 
@@ -460,42 +410,40 @@ agentContext.relevantDecisions = relevantDecisions;
 │          2. REVIEW                      │
 │  - Load review skills                   │
 │  - Static analysis (analysis_* tools)   │
-│  - Pattern validation                   │
-│  - Security scan                        │
+│  - Pattern validation, security scan    │
+│  - General code review                  │
 └──────────────┬──────────────────────────┘
                ↓
-       ┌───────────────┐
-       │  Issues Found?│
-       └───┬───────┬───┘
-           │ YES   │ NO
-           ↓       ↓
-┌──────────────┐  │
-│   3. FIX     │  │
-│ - Apply      │  │
-│   review     │  │
-│   fixes      │  │
-└──────┬───────┘  │
-       │          │
-       └──────────┼───────────┐
-                  ↓           │
-         ┌────────────────────┴────┐
-         │     4. CHECK            │
-         │  - precision_exec       │
-         │  - npm run typecheck    │
-         │  - npm run lint         │
-         │  - npm run test         │
-         └─────────┬───────────────┘
-                   ↓
-            ┌──────────────┐
-            │  All Pass?   │
-            └──┬───────┬───┘
-               │ YES   │ NO
-               ↓       ↓
-           ┌───────┐  │
-           │ DONE  │  │
-           └───────┘  │
-               │      │
-               └──────┴─────→ (Loop back to FIX)
+       ┌────────────────┐
+       │  Issues Found? │
+       └─┬─────────┬────┘
+         │ No      │ Yes
+         |         ↓
+         |      ┌──────────────┐  
+         |      │   3. FIX     │  
+         |      │ - Apply      │←────────┐
+         |      │   review     │         |
+         |      │   fixes      │         |
+         |      └──────┬───────┘         |       
+         |             │                 | 
+         |             │                 | 
+         |             ↓                 | 
+         |  ┌─────────────────────────┐  |
+         |  │     4. CHECK            │  |
+         |  │  - Load review skills   │  |
+         |  │  - Static analysis      │  |
+         |  │  - Validation, Security │  |
+         |  │  - Code review          │  |
+         |  └─────────┬───────────────┘  |
+         |            ↓                  |
+         |     ┌──────────────┐          |
+         |     │  All Pass?   │          |
+         |     └──┬───────┬───┘          |
+         |        │ YES   │ NO           |
+         |        ↓       └──────────────┘            
+         |    ┌───────┐
+         └───→│ DONE  │
+              └───────┘
 ```
 
 ### Review Skills Mapping
@@ -508,50 +456,12 @@ agentContext.relevantDecisions = relevantDecisions;
 | New files | import-ordering, documentation |
 | Configuration | config-hygiene |
 
-### WRFC in Practice
-
-```yaml
-# Example batch with WRFC
-batch:
-  id: implement-auth-endpoint
-
-  operations:
-    # WRITE
-    write:
-      - id: create-endpoint
-        type: create
-        files:
-          - path: "src/api/auth/login.ts"
-            content: "..."
-
-    # REVIEW (automated via hooks)
-    # - type-safety skill loaded
-    # - error-handling skill loaded
-    # - security skill loaded
-
-    # FIX (if issues found)
-    # - Automatic fixes applied
-    # - Manual review if needed
-
-    # CHECK
-    exec:
-      - id: validate
-        type: command
-        commands:
-          - cmd: "npm run typecheck"
-            expect: { exit_code: 0 }
-          - cmd: "npm run lint"
-            expect: { exit_code: 0 }
-          - cmd: "npm run test"
-            expect: { exit_code: 0 }
-```
-
 ### WRFC Continuity Rule
 
 **Critical**: The WRFC loop MUST continue until all checks pass.
 
 - If CHECK fails, loop back to FIX
-- If FIX introduces new issues, loop back to REVIEW
+- If FIX introduces new issues, those are added to the list to fix next
 - Never stop mid-loop
 - Never report completion until all checks pass
 
