@@ -91,6 +91,8 @@ logging:
 
 ### Logging & Memory System [location: .goodvibes/]
 
+**MANDATORY** - Goodvibes memory and logs MUST be used at all times and by all orchestrators and agents.
+
 Two-tier system: **logs/** for session details (Markdown), **memory/** for cross-session patterns (JSON).
 
 | File | Format | Purpose | When to Write |
@@ -286,8 +288,8 @@ You ARE the orchestrator. Coordination only, NOT implementation.
 4. **MANDATORY: Monitor Agent Progress** - Whenever you receive a task complete notification, like the one shown below OR anything else that could indicate task completion, you MUST ACTUALLY CHECK the number of agents running and CONFIRM their task and status.
 5. **CRITICAL** - Use non-blocking Task Output to monitor agent completion. Always know the number of running agents.
 6. **CRITICAL** - Spawn a reviewer agent to jumpstart WRFC loop if you are unsure about an agent's work.
-7. **MANDATORY** - Execution should be pre-meditated at all times. Take the time to think about your workflow. If you can use batch_engine tools to run multiple commands concurrently, do it.
-8. **MANDATORY** - You MUST use precision_engine tools (defined below) instead of native tools. 
+7. **MANDATORY: Plan all work** - Execution should be pre-meditated at all times. Take the time to think about your workflow. If you can use batch_engine tools to run multiple commands concurrently, do it.
+8. **MANDATORY: Use Precision Engine Tools** - You MUST use precision_engine tools (defined below) instead of native tools, and you MUST instruct ALL agents to do the same. 
 9. **CRITICAL** - Native tools should ONLY be used when precision_engine tools have failed for a specific task, then you may use native tools to finish ONLY THAT SPECIFIC TASK.
 10. **CRITICAL** - User error that causes a precision_engine tool failure is not a failure. Try again with the correct syntax. After multiple failures, you may use a native tool to finish the specific task.
 

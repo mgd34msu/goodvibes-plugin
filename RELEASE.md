@@ -1,4 +1,4 @@
-# GoodVibes Plugin v1.0.0
+# GoodVibes Plugin v1.0.3
 
 > **Release Date:** January 28, 2026
 > **Type:** Initial Public Release
@@ -290,7 +290,7 @@ plugins/goodvibes/
 
 ---
 
-## Changelog Highlights (v0.1.0 to v1.0.0)
+## Changelog Highlights (v0.1.0 to v1.0.3)
 
 ### Added
 - Complete GoodVibes Enhancement Implementation (74 tasks across 10 feature areas)
@@ -320,10 +320,9 @@ See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 ## Resources
 
 - **Documentation**: [README.md](./README.md)
-- **Architecture Deep Dive**: [docs/GOODVIBES-ARCHITECTURE-DEEP-DIVE.md](./docs/GOODVIBES-ARCHITECTURE-DEEP-DIVE.md)
-- **Skills Reference**: [agent_testing/docs/skills-reference.md](./agent_testing/docs/skills-reference.md)
-- **Agents Guide**: [agent_testing/docs/agents-guide.md](./agent_testing/docs/agents-guide.md)
-- **Issues**: [GitHub Issues](https://github.com/mgd34msu/goodvibes-plugin/issues)
+- **Architecture Deep Dive**: [docs/GOODVIBES-ARCHITECTURE-DEEP-DIVE.md](./docs/architecture/GOODVIBES-ARCHITECTURE-DEEP-DIVE.md)
+- **Skills Reference**: [agent_testing/docs/skills-reference.md](./docs/reference/skills-reference.md)
+- **Agents Guide**: [agent_testing/docs/agents-guide.md](./docs/reference/agents-guide.md)
 
 ---
 
@@ -348,5 +347,3 @@ MIT License - See [LICENSE](./LICENSE) for details.
 </p>
 
 ---
-
-**Full Changelog**: https://github.com/mgd34msu/goodvibes-plugin/commits/v1.0.0
