@@ -1,0 +1,368 @@
+{
+  "callTools": [
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/precision_read",
+      "usageCount": 1096,
+      "tokens": {
+        "input": 38315,
+        "output": 6943,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 43123618,
+        "calls": 1096.25
+      },
+      "cost": {
+        "inputCost": 0.1463945,
+        "outputCost": 0.1023075,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 13.22668135,
+        "totalCost": 13.47538335
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/precision_grep",
+      "usageCount": 754,
+      "tokens": {
+        "input": 31028,
+        "output": 4560,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 33603250,
+        "calls": 753.9166666666666
+      },
+      "cost": {
+        "inputCost": 0.12824,
+        "outputCost": 0.0743075,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 12.926837599999999,
+        "totalCost": 13.129385099999999
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/precision_edit",
+      "usageCount": 518,
+      "tokens": {
+        "input": 8744,
+        "output": 2538,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 28193513,
+        "calls": 518.0833333333334
+      },
+      "cost": {
+        "inputCost": 0.015464499999999999,
+        "outputCost": 0.026037499999999998,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 6.748725649999999,
+        "totalCost": 6.7902276499999985
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/precision_write",
+      "usageCount": 120,
+      "tokens": {
+        "input": 12896,
+        "output": 1012,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 6250403,
+        "calls": 119.58333333333334
+      },
+      "cost": {
+        "inputCost": 0.0637205,
+        "outputCost": 0.015272500000000001,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 2.44202705,
+        "totalCost": 2.52102005
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/precision_glob",
+      "usageCount": 157,
+      "tokens": {
+        "input": 15559,
+        "output": 1276,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 5805065,
+        "calls": 157.25
+      },
+      "cost": {
+        "inputCost": 0.0742405,
+        "outputCost": 0.01538,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 1.9072977,
+        "totalCost": 1.9969181999999999
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/discover",
+      "usageCount": 259,
+      "tokens": {
+        "input": 78208,
+        "output": 2151,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 7692893,
+        "calls": 258.6666666666667
+      },
+      "cost": {
+        "inputCost": 0.148347,
+        "outputCost": 0.02029,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 1.7594523,
+        "totalCost": 1.9280893
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_precision-engine/precision_exec",
+      "usageCount": 99,
+      "tokens": {
+        "input": 1031,
+        "output": 1154,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 3853382,
+        "calls": 98.58333333333333
+      },
+      "cost": {
+        "inputCost": 0.0048684999999999996,
+        "outputCost": 0.008772499999999999,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 0.6612129,
+        "totalCost": 0.6748539
+      }
+    },
+    {
+      "tool": "mcp:call:plugin_goodvibes_batch-engine/batch",
+      "usageCount": 52,
+      "tokens": {
+        "input": 86,
+        "output": 485,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 2153063,
+        "calls": 51.583333333333336
+      },
+      "cost": {
+        "inputCost": 0.0002235,
+        "outputCost": 0.00439,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 0.7185683,
+        "totalCost": 0.7231818000000001
+      }
+    }
+  ],
+  "infoTools": [
+    {
+      "tool": "mcp:info:plugin_goodvibes_precision-engine/precision_read",
+      "usageCount": 256,
+      "tokens": {
+        "input": 14986,
+        "output": 1150,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 5069174,
+        "calls": 256.03055555555557
+      },
+      "cost": {
+        "inputCost": 0.0292955,
+        "outputCost": 0.022455,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 1.8582887,
+        "totalCost": 1.9100392
+      }
+    },
+    {
+      "tool": "mcp:info:plugin_goodvibes_precision-engine/precision_grep",
+      "usageCount": 146,
+      "tokens": {
+        "input": 3028,
+        "output": 703,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 3268291,
+        "calls": 145.78055555555554
+      },
+      "cost": {
+        "inputCost": 0.0135385,
+        "outputCost": 0.013240000000000002,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 1.0951158,
+        "totalCost": 1.1218943
+      }
+    },
+    {
+      "tool": "mcp:info:plugin_goodvibes_precision-engine/precision_edit",
+      "usageCount": 108,
+      "tokens": {
+        "input": 454,
+        "output": 233,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 3630391,
+        "calls": 108.0638888888889
+      },
+      "cost": {
+        "inputCost": 0.00088,
+        "outputCost": 0.00271,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 0.81227205,
+        "totalCost": 0.81586205
+      }
+    },
+    {
+      "tool": "mcp:info:plugin_goodvibes_precision-engine/precision_write",
+      "usageCount": 43,
+      "tokens": {
+        "input": 548,
+        "output": 264,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 1846490,
+        "calls": 43.06388888888889
+      },
+      "cost": {
+        "inputCost": 0.001074,
+        "outputCost": 0.005025,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 0.7262895,
+        "totalCost": 0.7323885
+      }
+    }
+  ],
+  "nativeTools": [
+    {
+      "tool": "Bash",
+      "usageCount": 27334,
+      "tokens": {
+        "input": 1624552,
+        "output": 3173700,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 1704928258,
+        "calls": 27333.916666666686
+      },
+      "cost": {
+        "inputCost": 10.309489000000001,
+        "outputCost": 64.59640250000001,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 661.9035887,
+        "totalCost": 736.8094802
+      }
+    },
+    {
+      "tool": "Edit",
+      "usageCount": 13829,
+      "tokens": {
+        "input": 403223,
+        "output": 6797109,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 968577506,
+        "calls": 13828.583333333332
+      },
+      "cost": {
+        "inputCost": 1.7356850000000001,
+        "outputCost": 150.21530499999997,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 377.87659405000005,
+        "totalCost": 529.82758405
+      }
+    },
+    {
+      "tool": "Read",
+      "usageCount": 17287,
+      "tokens": {
+        "input": 2985647,
+        "output": 2138396,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 945836401,
+        "calls": 17286.57500000002
+      },
+      "cost": {
+        "inputCost": 22.289908999999998,
+        "outputCost": 45.86258500000001,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 372.14108825000005,
+        "totalCost": 440.29358225000004
+      }
+    },
+    {
+      "tool": "Write",
+      "usageCount": 3379,
+      "tokens": {
+        "input": 233187,
+        "output": 11397714,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 212682570,
+        "calls": 3378.6666666666665
+      },
+      "cost": {
+        "inputCost": 0.9434874999999999,
+        "outputCost": 241.0431175,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 86.8113886,
+        "totalCost": 328.7979936
+      }
+    },
+    {
+      "tool": "Grep",
+      "usageCount": 4246,
+      "tokens": {
+        "input": 906617,
+        "output": 499433,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 244048340,
+        "calls": 4246.283333333336
+      },
+      "cost": {
+        "inputCost": 5.915337,
+        "outputCost": 11.301420000000002,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 102.9174479,
+        "totalCost": 120.1342049
+      }
+    },
+    {
+      "tool": "Glob",
+      "usageCount": 2762,
+      "tokens": {
+        "input": 860328,
+        "output": 330133,
+        "cache5m": 0,
+        "cache1h": 0,
+        "cacheRead": 92242187,
+        "calls": 2761.6833333333325
+      },
+      "cost": {
+        "inputCost": 5.661855500000001,
+        "outputCost": 7.3933775,
+        "cache5mCost": 0,
+        "cache1hCost": 0,
+        "cacheReadCost": 40.52399629999999,
+        "totalCost": 53.579229299999994
+      }
+    }
+  ]
+}
