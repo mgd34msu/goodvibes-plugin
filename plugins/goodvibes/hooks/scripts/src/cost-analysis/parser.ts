@@ -106,6 +106,10 @@ export interface ParsedEntry {
 
 export function parseJournalFile(filePath: string, timeFilter: ParsedTimeFilter, seenHashes: Set<string>): ParsedEntry[] {
   const entries: ParsedEntry[] = [];
+  // Aggregate entries by hash to handle streaming/incremental updates
+  // Same msgId+reqId may appear multiple times with different tool_use blocks
+  const entryMap = new Map<string, { model: string; usage: TokenUsage; tools: Set<string> }>();
+
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const contentLines = fileContent.trim().split(String.fromCharCode(10));
@@ -121,28 +125,52 @@ export function parseJournalFile(filePath: string, timeFilter: ParsedTimeFilter,
           if (timestamp < timeFilter.startTime || timestamp > timeFilter.endTime) continue;
         }
         const hash = createEntryHash(entry);
-        if (seenHashes.has(hash)) continue;
-        seenHashes.add(hash);
-        const model = entry.message.model || 'unknown';
-        const usage = entry.message.usage;
-        const tools: string[] = [];
+
+        // Extract tools from this entry
+        const entryTools: string[] = [];
         if (Array.isArray(entry.message.content)) {
           for (const block of entry.message.content) {
             if (block.type === 'tool_use' && block.name) {
               if (block.name === 'Bash' && block.input) {
                 const mcpTool = extractMcpTool(block.input);
-                tools.push(mcpTool || 'Bash');
+                entryTools.push(mcpTool || 'Bash');
               } else {
-                tools.push(block.name);
+                entryTools.push(block.name);
               }
             }
           }
         }
-        if (tools.length === 0) tools.push('__text_response__');
-        entries.push({ model, usage, tools });
+
+        // Aggregate with existing entry or create new (within this file)
+        if (entryMap.has(hash)) {
+          const existing = entryMap.get(hash)!;
+          // Add new tools (use Set to avoid duplicates)
+          for (const tool of entryTools) {
+            existing.tools.add(tool);
+          }
+          // Keep the latest usage stats (they accumulate)
+          existing.usage = entry.message.usage;
+        } else {
+          entryMap.set(hash, {
+            model: entry.message.model || 'unknown',
+            usage: entry.message.usage,
+            tools: new Set(entryTools)
+          });
+        }
       } catch (error) {}
     }
   } catch (error) {}
+
+  // Convert aggregated entries to output format, checking global dedup
+  for (const [hash, data] of entryMap) {
+    if (seenHashes.has(hash)) continue;
+    seenHashes.add(hash);
+
+    const tools = Array.from(data.tools);
+    if (tools.length === 0) tools.push('__text_response__');
+    entries.push({ model: data.model, usage: data.usage, tools });
+  }
+
   return entries;
 }
 
