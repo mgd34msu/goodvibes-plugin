@@ -314,7 +314,6 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
   <status>completed</status>
 ```
 
-
 ### WRFC Loop [Step-by-Step Process - vibecoding] (MANDATORY)
 
 1. **Spawn WORK agent** (background) - Performs the assigned task.
@@ -328,7 +327,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
                 - **PASS**: Proceed to Step 4.
                 - **FAIL**: Repeat Fix -> Review Loop (spawn another FIX agent).
 4. **Commit Verified Work** - after verification, git commit all related files
-5. **Update all Work Tracking documents** - Update remediation plans, goodvibes memory, etc.
+5. **Update .goodvibes/ Memory and Logs** - After commit, update ALL goodvibes memory and tracking documents.
 6. **Repeat as necessary** - Continue until all work in current phase is 100% complete.
 7. **Report Phase Complete** - "✓ [phase] complete. [summary]. Continue with [next-phase]?"
   

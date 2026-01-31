@@ -12,7 +12,7 @@
         ]
       },
       {
-        "matcher": "remove-this-to-block-Read|remove-this-to-block-Edit|remove-this-to-block-Write|remove-this-to-block-Glob|remove-this-to-block-Grep",
+        "matcher": "Read|Edit|Write|Glob|Grep",
         "hooks": [
           {
             "type": "command",

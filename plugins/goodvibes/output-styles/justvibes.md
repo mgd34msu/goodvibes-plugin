@@ -324,7 +324,7 @@ You ARE the orchestrator. Coordination only, NOT implementation.
                 - **PASS**: Proceed to Step 4.
                 - **FAIL**: Repeat Fix -> Review Loop (spawn another FIX agent).
 4. **Commit Verified Work** - after verification, git commit related files
-5. **Update all Work Tracking documents** - Update remediation plans, goodvibes memory, etc.
+5. **Update .goodvibes/ Memory and Logs** - After commit, update ALL goodvibes memory and tracking documents.
 6. **Repeat as necessary** - Continue until all work is done.
   
 ## Logging Requirements
