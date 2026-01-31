@@ -1,15 +1,23 @@
-import type { CostAnalysisOptions, CostAnalysisResult } from './types.js';
+import type { CostAnalysisOptions, CostAnalysisResult, ExtendedCostAnalysisOptions, ExtendedCostAnalysisResult } from './types.js';
 import { loadPricing } from './pricing.js';
 import { parseTimeFilter, parseAllProjects } from './parser.js';
 import { aggregateByProject, aggregateByModel, aggregateByTool } from './aggregator.js';
 import { formatOutput } from './formatter.js';
+import { analyzeSubagents } from './subagent-analyzer.js';
+import { analyzeBatches } from './batch-analyzer.js';
+import { generateComparison } from './tool-comparison.js';
+import { summarizeNativeVsMcp } from './native-vs-mcp.js';
 
 export * from './types.js';
 export { formatOutput } from './formatter.js';
 export { loadPricing, calculateCost, getModelDisplayName } from './pricing.js';
 export { getProjectName } from './parser.js';
+export { analyzeSubagents } from './subagent-analyzer.js';
+export { analyzeBatches } from './batch-analyzer.js';
+export { generateComparison } from './tool-comparison.js';
+export { summarizeNativeVsMcp } from './native-vs-mcp.js';
 
-export async function analyzeCosts(options: CostAnalysisOptions = {}): Promise<CostAnalysisResult> {
+export async function analyzeCosts(options: ExtendedCostAnalysisOptions = {}): Promise<ExtendedCostAnalysisResult> {
   const pricing = loadPricing();
   const timeRange = parseTimeFilter(options.timeFilter);
   
@@ -80,12 +88,40 @@ export async function analyzeCosts(options: CostAnalysisOptions = {}): Promise<C
     }
   };
 
+  // Extended analysis
+  let subagents;
+  let batches;
+  let nativeVsMcp;
+  let comparisons;
+
+  if (options.includeSubagents) {
+    subagents = await analyzeSubagents(timeRange);
+  }
+
+  if (options.includeBatches) {
+    batches = await analyzeBatches(timeRange);
+  }
+
+  if (options.includeNativeVsMcp || options.includeComparisons) {
+    const allTools = aggregateByTool(parsedProjects, pricing);
+    nativeVsMcp = summarizeNativeVsMcp(allTools);
+  }
+
+  if (options.includeComparisons) {
+    const allTools = aggregateByTool(parsedProjects, pricing);
+    comparisons = generateComparison(allTools);
+  }
+
   return {
     timeRange,
     projects,
     models,
     tools,
     grandTotal,
-    mcpToolsSummary
+    mcpToolsSummary,
+    subagents,
+    batches,
+    nativeVsMcp,
+    comparisons
   };
 }

@@ -196,6 +196,7 @@ async function main(): Promise<void> {
 
     if (values.compare || values.all) {
       options.includeComparisons = true;
+      options.includeNativeVsMcp = true;
     }
 
     // Run analysis
