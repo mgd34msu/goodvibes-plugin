@@ -44,7 +44,7 @@ export const precisionWriteSchema: Tool = {
           properties: {
             path: { type: 'string', description: 'Path to the file to write' },
             content: { type: 'string', description: 'Content to write to the file' },
-            content_base64: { type: 'string', description: 'Base64-encoded content (use instead of content for complex content)' },
+            content_base64: { type: 'string', description: 'Base64-encoded content. REQUIRED when content contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "content" | base64 -w0' },
             content_file: { type: 'string', description: 'Path to file containing content to write (use instead of content)' },
             encoding: { type: 'string', description: 'File encoding (default: utf-8)' },
             mode: {
@@ -81,7 +81,7 @@ export const precisionExecSchema: Tool = {
           type: 'object',
           properties: {
             cmd: { type: 'string', description: 'Command to execute' },
-            cmd_base64: { type: 'string', description: 'Base64-encoded command (use instead of cmd for complex commands)' },
+            cmd_base64: { type: 'string', description: 'Base64-encoded command. REQUIRED when cmd contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "command" | base64 -w0' },
             args: { type: 'array', items: { type: 'string' }, description: 'Command arguments' },
             cwd: { type: 'string', description: 'Working directory' },
             timeout_ms: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 60000)' },
@@ -129,7 +129,7 @@ export const precisionFetchSchema: Tool = {
             method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method (default: GET)' },
             headers: { type: 'object', description: 'Custom headers to send' },
             body: { type: 'string', description: 'Request body (for POST/PUT)' },
-            body_base64: { type: 'string', description: 'Base64-encoded request body (use instead of body for complex content)' },
+            body_base64: { type: 'string', description: 'Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "body" | base64 -w0' },
             timeout_ms: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 30000)' },
             timeout: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 30000)' },
             extract: { type: 'string', enum: ['raw', 'text', 'json'], description: 'Extraction mode (default: text)' },
@@ -169,7 +169,7 @@ export const discoverSchema: Tool = {
             id: { type: 'string', description: 'Unique ID for this query' },
             type: { type: 'string', enum: ['grep', 'glob', 'symbols'], description: 'Query type' },
             pattern: { type: 'string', description: 'Regex pattern (for grep)' },
-            pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern for grep queries' },
+            pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "pattern" | base64 -w0' },
             glob: { type: 'string', description: 'File filter (for grep)' },
             patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns (for glob)' },
             patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns (for glob)' },
@@ -222,7 +222,7 @@ export const precisionGrepSchema: Tool = {
           properties: {
             id: { type: 'string', description: 'Query identifier' },
             pattern: { type: 'string', description: 'Regex pattern to search for' },
-            pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern (use instead of pattern for complex patterns)' },
+            pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "pattern" | base64 -w0' },
             glob: { type: 'string', description: 'File pattern to search in' },
             path: { type: 'string', description: 'Directory path to search' },
             exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
@@ -336,7 +336,7 @@ export const precisionGlobSchema: Tool = {
     type: 'object',
     properties: {
       patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns to match' },
-      patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns' },
+      patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Encode each with: echo -n "pattern" | base64 -w0' },
       preset: { type: 'string', enum: ['typescript', 'javascript', 'styles', 'config', 'tests', 'all'] },
       exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
       filters: {
@@ -458,8 +458,8 @@ export const precisionEditSchema: Tool = {
             file: { type: 'string', description: 'DEPRECATED: Use path instead. Path to the file to edit' },
             find: { type: 'string' },
             replace: { type: 'string' },
-            find_base64: { type: 'string', description: 'Base64-encoded text to find (use for complex patterns with special chars)' },
-            replace_base64: { type: 'string', description: 'Base64-encoded replacement text (use for complex content)' },
+            find_base64: { type: 'string', description: 'Base64-encoded text to find. REQUIRED when find contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "find text" | base64 -w0' },
+            replace_base64: { type: 'string', description: 'Base64-encoded replacement text. REQUIRED when replace contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "replacement" | base64 -w0' },
             occurrence: {
               oneOf: [
                 { type: 'string', enum: ['first', 'last', 'all'] },
