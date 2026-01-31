@@ -1,28 +1,28 @@
 {
-  "name": "goodvibes",
-  "version": "1.0.0",
-  "description": "Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
-  "author": {
-    "name": "Mike Davis",
-    "email": "mgd34msu@gmail.com"
+  \"name\": \"goodvibes\",
+  \"version\": \"1.0.8\",
+  \"description\": \"Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.\",
+  \"author\": {
+    \"name\": \"Mike Davis\",
+    \"email\": \"mgd34msu@gmail.com\"
   },
-  "homepage": "https://goodvibes.sh",
-  "repository": "https://github.com/mgd34msu/goodvibes.sh",
-  "license": "MIT",
-  "keywords": ["fullstack", "development", "mcp", "agents", "skills"],
-  "commands": "./commands/",
-  "agents": [
-    "./agents/agent-factory.md",
-    "./agents/skill-factory.md",
-    "./agents/engineer.md",
-    "./agents/reviewer.md",
-    "./agents/tester.md",
-    "./agents/architect.md",
-    "./agents/deployer.md",
-    "./agents/integrator.md",
-    "./agents/planner.md"
+  \"homepage\": \"https://goodvibes.sh\",
+  \"repository\": \"https://github.com/mgd34msu/goodvibes.sh\",
+  \"license\": \"MIT\",
+  \"keywords\": [\"fullstack\", \"development\", \"mcp\", \"agents\", \"skills\"],
+  \"commands\": \"./commands/\",
+  \"agents\": [
+    \"./agents/agent-factory.md\",
+    \"./agents/skill-factory.md\",
+    \"./agents/engineer.md\",
+    \"./agents/reviewer.md\",
+    \"./agents/tester.md\",
+    \"./agents/architect.md\",
+    \"./agents/deployer.md\",
+    \"./agents/integrator.md\",
+    \"./agents/planner.md\"
   ],
-  "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
-  "lspServers": "./.lsp.json"
+  \"skills\": \"./skills/\",
+  \"mcpServers\": \"./.mcp.json\",
+  \"lspServers\": \"./.lsp.json\"
 }
