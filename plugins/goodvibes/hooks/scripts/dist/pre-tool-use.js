@@ -947,19 +947,171 @@ var TOOL_VALIDATORS = {
   validate_implementation: validateImplementation
 };
 
+// src/pre-tool-use/platform-path-mapper.ts
+function rewritePlatformPaths(command) {
+  const warnings = [];
+  let rewritten = false;
+  let modifiedCommand = command;
+  if (process.platform !== "win32") {
+    return { rewritten: false, command, warnings };
+  }
+  const tmpRegex = /\/tmp(?:\/|(?=\s|"|'|$))/g;
+  if (tmpRegex.test(command)) {
+    modifiedCommand = modifiedCommand.replace(tmpRegex, (match) => {
+      rewritten = true;
+      return match === "/tmp/" ? "$TEMP/" : "$TEMP/";
+    });
+  }
+  const devNullRegex = /\/dev\/null\b/g;
+  if (devNullRegex.test(modifiedCommand)) {
+    modifiedCommand = modifiedCommand.replace(devNullRegex, "NUL");
+    rewritten = true;
+  }
+  if (/\/dev\/stdin\b/.test(modifiedCommand)) {
+    warnings.push(
+      "WARNING: /dev/stdin detected - no direct Windows equivalent. Consider using stdin redirection or named pipes instead."
+    );
+  }
+  const otherDevRegex = /\/dev\/(?!null\b|stdin\b)\w+/g;
+  const otherDevMatches = modifiedCommand.match(otherDevRegex);
+  if (otherDevMatches) {
+    warnings.push(
+      "WARNING: Unix device paths detected (" + otherDevMatches.join(", ") + ") - may not work on Windows."
+    );
+  }
+  return { rewritten, command: modifiedCommand, warnings };
+}
+
+// src/pre-tool-use/shell-safety-analyzer.ts
+var PRECISION_TOOLS = [
+  "precision_read",
+  "precision_write",
+  "precision_edit",
+  "precision_grep",
+  "precision_glob",
+  "precision_exec",
+  "precision_symbols",
+  "discover"
+];
+function isMcpPrecisionCall(command) {
+  for (const tool of PRECISION_TOOLS) {
+    if (command.includes("plugin_goodvibes_precision-engine/" + tool)) {
+      return true;
+    }
+  }
+  return false;
+}
+function extractJsonArgument(command) {
+  const inlineMatch = command.match(/mcp-cli\s+call\s+\S+\s+'([^']+)'/);
+  if (inlineMatch) {
+    return inlineMatch[1];
+  }
+  if (command.includes("<<") || command.includes("| mcp-cli")) {
+    return null;
+  }
+  return null;
+}
+function analyzeShellSafety(command) {
+  const issues = [];
+  if (!isMcpPrecisionCall(command)) {
+    return { safe: true, issues: [] };
+  }
+  const toolMatch = command.match(
+    /plugin_goodvibes_precision-engine\/(precision_\w+|discover)/
+  );
+  const toolName = toolMatch ? toolMatch[1] : void 0;
+  const jsonArg = extractJsonArgument(command);
+  if (!jsonArg) {
+    return { safe: true, issues: [], toolName };
+  }
+  if (jsonArg.includes("'")) {
+    issues.push({
+      type: "single_quote_in_json",
+      severity: "block",
+      message: "Single quote (') in JSON content breaks shell parsing",
+      fixable: false
+    });
+  }
+  const singleQuotes = (jsonArg.match(/'/g) || []).length;
+  const doubleQuotes = (jsonArg.match(/"/g) || []).length;
+  if (singleQuotes % 2 !== 0 || doubleQuotes % 2 !== 0) {
+    issues.push({
+      type: "unmatched_quotes",
+      severity: "block",
+      message: "Unmatched quotes in JSON content",
+      fixable: false
+    });
+  }
+  if (/\$\{[^}]+\}|\$\w+/.test(jsonArg)) {
+    issues.push({
+      type: "variable_expansion",
+      severity: "warn",
+      message: "Variable expansion pattern ($VAR or ${VAR}) detected",
+      fixable: true
+    });
+  }
+  if (jsonArg.includes("`")) {
+    issues.push({
+      type: "backtick_expansion",
+      severity: "warn",
+      message: "Backticks detected - may execute commands",
+      fixable: true
+    });
+  }
+  const safe = !issues.some((issue) => issue.severity === "block");
+  return { safe, issues, toolName, jsonArg };
+}
+function formatBlockMessage2(issues, toolName) {
+  const blockingIssues = issues.filter(
+    (issue) => issue.severity === "block"
+  );
+  const issueDescriptions = blockingIssues.map((issue) => issue.message).join("; ");
+  return "BLOCKED: Shell-unsafe content in " + toolName + " call.\n\nISSUE: " + issueDescriptions + '\n\nFIX THIS CALL: Use base64-encoded parameters instead.\n  - For "content": Use "content_base64" parameter\n  - For "find"/"replace": Use "find_base64"/"replace_base64" parameters\n  - Encode: echo "your content" | base64 -w0\n\nNEXT CALLS: Return to normal parameters after this call.\nBase64 encoding is only needed when content contains: \' " $ `  or nested shell/JSON syntax.';
+}
+
 // src/pre-tool-use/hook.ts
 async function handleBashTool(input) {
-  const command = extractBashCommand(input);
+  let command = extractBashCommand(input);
   if (!command) {
     respond(allowTool("PreToolUse"));
     return;
   }
+  const pathResult = rewritePlatformPaths(command);
+  if (pathResult.rewritten) {
+    command = pathResult.command;
+    const toolInput = input.tool_input;
+    toolInput.command = command;
+    if (pathResult.warnings.length > 0) {
+      console.error("[platform-path-mapper] " + pathResult.warnings.join("; "));
+    }
+  }
+  if (isMcpPrecisionCall(command)) {
+    const analysis = analyzeShellSafety(command);
+    if (!analysis.safe) {
+      const toolName = analysis.toolName || "precision_tool";
+      const message = formatBlockMessage2(analysis.issues, toolName);
+      blockTool(message);
+      return;
+    }
+  }
   if (isCommitCommand(command)) {
+    if (pathResult.rewritten) {
+      respond(allowTool("PreToolUse", void 0, input.tool_input));
+      return;
+    }
     await handleGitCommit(input, command);
     return;
   }
   if (isGitCommand(command)) {
+    if (pathResult.rewritten) {
+      respond(allowTool("PreToolUse", void 0, input.tool_input));
+      return;
+    }
     await handleGitCommand(input, command);
+    return;
+  }
+  if (pathResult.rewritten) {
+    respond(allowTool("PreToolUse", void 0, input.tool_input));
     return;
   }
   respond(allowTool("PreToolUse"));
@@ -990,7 +1142,7 @@ async function runPreToolUseHook() {
     respond(
       allowTool(
         "PreToolUse",
-        `Hook error: ${error instanceof Error ? error.message : String(error)}`
+        "Hook error: " + (error instanceof Error ? error.message : String(error))
       )
     );
   }

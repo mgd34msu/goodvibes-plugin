@@ -4,33 +4,18 @@
  * Main router/dispatcher for pre-tool-use validations.
  *
  * Validates prerequisites before tool execution:
+ * - Platform path mapping (Unix paths -> Windows equivalents)
+ * - Shell safety analysis (detect/block shell-unsafe content in mcp-cli calls)
  * - Bash tool: JSON auto-escape for mcp-cli, git command detection, quality gates
  * - Native tools (Read, Edit, Write, Glob, Grep): Block for ALL agents, redirect to precision-engine
  * - MCP tools: Resource availability checks
  *
  * ## Hook Priority Order
- * 1. Bash tool handling (JSON auto-escape, git commands, quality gates)
- *    - JSON auto-escape MUST fire first due to updatedInput constraints
- * 2. Native tool blocking for ALL agents (Read, Edit, Write, Glob, Grep)
- * 3. MCP tool validators
- *
- * ## Native Tool Blocking (ALL AGENTS)
- * All agents must use precision-engine tools for efficiency:
- * - Read -> precision_read
- * - Edit -> precision_edit
- * - Write -> precision_write
- * - Glob -> precision_glob
- * - Grep -> precision_grep
- *
- * ## Quality Gates (for git commit)
- * - TypeScript check (tsc --noEmit)
- * - ESLint check with auto-fix
- * - Prettier check with auto-fix
- * - Test runner (if enabled)
- *
- * ## Git Guards
- * - Branch protection (prevent force push to main)
- * - Merge readiness checks
+ * 1. Platform path mapping (rewrite /tmp, /dev/null on Windows)
+ * 2. Shell safety analysis (detect shell-unsafe content in precision tool calls)
+ * 3. Bash tool handling (JSON auto-escape, git commands, quality gates)
+ * 4. Native tool blocking for ALL agents (Read, Edit, Write, Glob, Grep)
+ * 5. MCP tool validators
  *
  * @module pre-tool-use/hook
  */
@@ -39,6 +24,7 @@ import {
   respond,
   readHookInput,
   allowTool,
+  blockTool,
   logError,
 } from '../shared/index.js';
 
@@ -54,39 +40,73 @@ import {
   isBlockedNativeTool,
 } from './subagent-blockers.js';
 import { TOOL_VALIDATORS } from './tool-validators.js';
+import { rewritePlatformPaths } from './platform-path-mapper.js';
+import {
+  isMcpPrecisionCall,
+  analyzeShellSafety,
+  formatBlockMessage,
+} from './shell-safety-analyzer.js';
 
 import type { HookInput } from '../shared/index.js';
 import type { PreToolUseInput } from './subagent-blockers.js';
 
 /**
- * Handles Bash tool invocations with JSON auto-escape and git command detection.
- *
- * Processing order:
- * 1. JSON auto-escape for mcp-cli calls (uses updatedInput, MUST be first)
- * 2. Git commit commands -> quality gates
- * 3. Other git commands -> git guards
- * 4. Allow other bash commands
- *
- * @param input - The hook input containing tool_input with command
- * @returns Promise that resolves when validation is complete
+ * Handles Bash tool invocations with platform path mapping, shell safety,
+ * JSON auto-escape, and git command detection.
  */
 async function handleBashTool(input: HookInput): Promise<void> {
-  const command = extractBashCommand(input);
+  let command = extractBashCommand(input);
 
   if (!command) {
     respond(allowTool('PreToolUse'));
     return;
   }
 
+  // LAYER 1: Platform path mapping (rewrite /tmp, /dev/null on Windows)
+  const pathResult = rewritePlatformPaths(command);
+  if (pathResult.rewritten) {
+    command = pathResult.command;
+    const toolInput = input.tool_input as Record<string, unknown>;
+    toolInput.command = command;
+    if (pathResult.warnings.length > 0) {
+      console.error('[platform-path-mapper] ' + pathResult.warnings.join('; '));
+    }
+  }
+
+  // LAYER 2: Shell safety analysis for mcp-cli precision tool calls
+  if (isMcpPrecisionCall(command)) {
+    const analysis = analyzeShellSafety(command);
+    if (!analysis.safe) {
+      const toolName = analysis.toolName || 'precision_tool';
+      const message = formatBlockMessage(analysis.issues, toolName);
+      blockTool(message);
+      return;
+    }
+  }
+
   // Check for git commit - run quality gates
   if (isCommitCommand(command)) {
+    if (pathResult.rewritten) {
+      respond(allowTool('PreToolUse', undefined, input.tool_input as Record<string, unknown>));
+      return;
+    }
     await handleGitCommit(input, command);
     return;
   }
 
   // Check for other git commands - run git guards
   if (isGitCommand(command)) {
+    if (pathResult.rewritten) {
+      respond(allowTool('PreToolUse', undefined, input.tool_input as Record<string, unknown>));
+      return;
+    }
     await handleGitCommand(input, command);
+    return;
+  }
+
+  // If command was rewritten, respond with updated input
+  if (pathResult.rewritten) {
+    respond(allowTool('PreToolUse', undefined, input.tool_input as Record<string, unknown>));
     return;
   }
 
@@ -96,22 +116,13 @@ async function handleBashTool(input: HookInput): Promise<void> {
 
 /**
  * Main entry point for pre-tool-use hook.
- * Validates tool prerequisites and runs quality gates.
- *
- * Priority order (important for updatedInput handling):
- * 1. Bash tool handling (JSON auto-escape MUST fire first)
- * 2. Native tool blocking for ALL agents (Read, Edit, Write, Glob, Grep)
- * 3. MCP tool validators
- *
- * @returns Promise that resolves when the hook completes
  */
 export async function runPreToolUseHook(): Promise<void> {
   try {
-  const rawInput = await readHookInput();
+    const rawInput = await readHookInput();
     const input = rawInput as PreToolUseInput;
 
-
-    // FIRST: Handle Bash tool (JSON auto-escape uses updatedInput, must be first)
+    // FIRST: Handle Bash tool
     if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
       await handleBashTool(input);
       return;
@@ -121,7 +132,7 @@ export async function runPreToolUseHook(): Promise<void> {
     if (isBlockedNativeTool(input.tool_name ?? '')) {
       const wasBlocked = handleNativeToolBlocking(input);
       if (wasBlocked) {
-        return; // Already responded with block
+        return;
       }
     }
 
@@ -136,14 +147,11 @@ export async function runPreToolUseHook(): Promise<void> {
     }
   } catch (error: unknown) {
     logError('PreToolUse main', error);
-    // On error, allow the tool to proceed but log the issue
     respond(
       allowTool(
         'PreToolUse',
-        `Hook error: ${error instanceof Error ? error.message : String(error)}`
+        'Hook error: ' + (error instanceof Error ? error.message : String(error))
       )
     );
   }
 }
-
-// Entry point is handled by pre-tool-use.ts - do not call here to avoid duplicate execution
