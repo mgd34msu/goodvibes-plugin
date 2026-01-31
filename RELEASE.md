@@ -1,20 +1,21 @@
-# GoodVibes Plugin v1.0.3
+# GoodVibes Plugin v1.0.6
 
-> **Release Date:** January 28, 2026
-> **Type:** Initial Public Release
+> **Release Date:** January 30, 2026
+> **Type:** Feature Release
 > **Status:** Stable
 
 ---
 
-## Introducing GoodVibes
+## Release Highlights
 
-**Plug in. Receive good vibes.**
+This release introduces the **Subagent Efficient Work (SEW) Loop** across all 9 agents, comprehensive cost analysis tooling, and enhanced output styles for better autonomous execution.
 
-GoodVibes is a comprehensive Claude Code plugin that transforms AI-assisted development through batch-first operations, precision tools, and autonomous execution. This initial release delivers a complete ecosystem for enterprise-grade, AI-powered software development.
+### What's New?
 
-### What Makes GoodVibes Different?
-
-Most AI coding tools fail silently. They hit an error, give up, and hand you back a broken mess. **GoodVibes doesn't.** It recovers, learns, and delivers verified code.
+- **SEW Loop Protocol**: All agents now follow a standardized efficient workflow using `discover` for parallel searches and `batch` for concurrent operations
+- **Mandatory Precision Tools**: Agents are required to use precision_engine tools over native tools for token efficiency
+- **12 Cost Analysis Scripts**: Complete toolkit for measuring and comparing tool usage costs
+- **Enhanced Output Styles**: Improved WRFC loop guidance and agent monitoring
 
 ---
 
@@ -22,319 +23,173 @@ Most AI coding tools fail silently. They hit an error, give up, and hand you bac
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| **Agents** | 9 | Specialized roles (engineer, reviewer, tester, architect, deployer, integrator, planner, factories) |
+| **Agents** | 9 | All updated with SEW Loop and Mandatory Behavior sections |
 | **Skills** | 173 | Reusable knowledge modules across all tech stacks |
 | **MCP Tools** | 74 | Precision tools across 6 specialized engines |
 | **Hooks** | 9 | Lifecycle event handlers for automation |
 | **Output Styles** | 2 | vibecoding (interactive) and justvibes (autonomous) |
-| **Templates** | 3 | Production-ready project scaffolds |
+| **Analysis Scripts** | 12 | Cost and token analysis utilities |
 
 ---
 
-## Key Features
+## Major Changes
 
-### 1. Token-Efficient Precision Tools
+### 1. SEW Loop (Subagent Efficient Work Loop)
 
-Native Claude Code tools return verbose output that rapidly consumes context. GoodVibes' Precision Engine provides graduated output modes:
+All 9 agents now include the SEW Loop protocol near the top of their files:
 
-```yaml
-precision_read:
-  files: ["src/auth.ts"]
-  extract: outline  # Just the structure, not full content
+```markdown
+## Subagent Efficient Work Loop [SEW Loop - SUBAGENTS ONLY]
 
-precision_grep:
-  pattern: "useState"
-  output: { format: "files_only" }  # 45x token reduction
+1. **Plan your work: discover and batch**
+   - Use discover to run multiple grep/glob/symbol queries in parallel
+   - Use batch to execute multiple precision_engine operations in a single call
+
+2. **Use precision_engine tools for all file operations**
+   - precision_read, precision_write, precision_edit
+   - precision_grep, precision_glob, precision_symbols
+   - precision_exec, precision_fetch
+
+3. **If a precision tool fails**
+   - You may use ONE native tool call as fallback
+   - Return to precision_engine immediately after
 ```
 
-### 2. WRFC Loop (Write-Review-Fix-Check)
+### 2. Mandatory Behavior Section
 
-Every code change goes through systematic quality assurance:
+Each agent now enforces these requirements at the bottom of their files:
 
-```
-WORK → REVIEW → FIX → CHECK
-                 ↑      |
-                 └──────┘ (repeat until verified)
-```
+- **MUST** follow the SEW Loop (Subagent Efficient Work Loop)
+- **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
+- **MUST** use discover for multi-query searches before starting work
+- **MUST** batch independent operations together when possible
+- **MUST** return to precision_engine tools after any fallback to native tools
 
-When the loop completes, code is committed. No unverified changes reach your codebase.
+### 3. Cost Analysis Scripts
 
-### 3. Specialized Agents
+12 new scripts in `scripts/` for analyzing tool usage and costs:
 
-| Agent | Specialty | Best For |
-|-------|-----------|----------|
-| `engineer` | Full-stack implementation | Features, APIs, components |
-| `reviewer` | Quality assessment | Code review, security audit |
-| `tester` | Test engineering | Unit, integration, E2E tests |
-| `architect` | System design | Planning, refactoring |
-| `deployer` | DevOps | CI/CD, Docker, cloud |
-| `integrator` | Complex features | State, real-time, AI |
-| `planner` | Project planning | Task breakdown |
-| `agent-factory` | Meta-agent | Create new agents |
-| `skill-factory` | Meta-agent | Create new skills |
+| Script | Purpose |
+|--------|---------|
+| `tool-use-48h.mjs` | Analyze all tool use over 48 hours including subagents |
+| `tool-cost-48h.mjs` | Detailed cost breakdown with per-call and overhead costs |
+| `agent-cost-analysis.mjs` | Comprehensive agent cost analysis with configurable period |
+| `subagent-check.mjs` | Verify subagent inclusion in analysis |
+| `mcp-analysis.mjs` | MCP vs Native tool usage comparison |
+| `mcp-scan.mjs` | Quick MCP tool scan utility |
+| `final-batch-analysis.mjs` | Batch engine cost savings analysis |
+| `find-batch-calls.mjs` | Find all batch-engine calls |
+| `analyze-batches-v2.mjs` | Advanced batch operation analysis |
+| `show-raw-batches.mjs` | Display raw batch command payloads |
+| `greatest-batch-detail.mjs` | Highlight highest-savings batch operations |
+| `entry-analysis.mjs` | Session entry type analysis |
 
-### 4. Persistent Memory System
+### 4. Output Styles Updates
 
-Two-tier memory that persists across sessions:
+**justvibes.md** and **vibecoding.md** improvements:
 
-- **Decisions**: Architectural choices and rationale, searchable forever
-- **Patterns**: Code conventions discovered in your codebase
-- **Failures**: Past errors and their solutions—same bug? Already knows the fix
+- Enhanced WRFC loop continuity rules
+- Non-blocking TaskOutput for agent completion tracking
+- Session file fallback for missed notifications
+- Improved agent monitoring guidance (maintain 6 concurrent agents)
+- Updated log references to include memory files
 
-### 5. Two Execution Modes
+### 5. Cost Analysis Parser
 
-**vibecoding** (Interactive)
-- User sees every decision
-- Asks on ambiguity
-- Best for learning and exploration
+Enhanced `plugins/goodvibes/hooks/scripts/src/cost-analysis/parser.ts`:
 
-**justvibes** (Autonomous)
-- Silent execution with file logging
-- Up to 6 parallel agents
-- Best for large refactors and batch operations
+- Aggregate streaming entries to capture all MCP tools
+- Improved tool call extraction from session logs
+- Better handling of batched operations
 
 ---
 
-## Installation
+## Cost Savings Analysis
 
-### Prerequisites
+Based on 48-hour analysis of 15,157 tool calls (88.9% from subagents):
 
-- Claude Code CLI (latest version)
-- Node.js 20+ (for MCP servers)
-- Git (for version control integration)
+### MCP vs Native Cost Comparison (with $0.15/100 info overhead)
 
-### Install via Marketplace
+| Operation | Native Cost/100 | MCP Cost/100 | Savings |
+|-----------|-----------------|--------------|----------|
+| Write | $9.73 | $2.24 | **76.9%** (4.3x cheaper) |
+| Exec | $6.49 | $1.99 | **69.3%** (3.3x cheaper) |
+| Edit | $3.83 | $1.46 | **61.9%** (2.6x cheaper) |
+| Read | $2.55 | $1.55 | **39.2%** (1.6x cheaper) |
+| Glob | $1.94 | $1.46 | **24.7%** (1.3x cheaper) |
 
-```bash
-claude plugin marketplace add mgd34msu/goodvibes-plugin
-claude plugin install goodvibes@goodvibes-market
-```
+### Greatest Batch Achievement
 
-### Or Clone Directly
-
-```bash
-git clone https://github.com/mgd34msu/goodvibes-plugin ~/.claude/plugins/goodvibes
-cd ~/.claude/plugins/goodvibes
-npm install && npm run build
-```
-
-### First Run
-
-```bash
-# Start Claude Code (recommended: bypass permissions for full power)
-claude --dangerously-skip-permissions
-
-# Set your output style
-/output-style goodvibes:vibecoding  # Interactive mode
-# or
-/output-style goodvibes:justvibes   # Autonomous mode
-```
+- **6 file writes in a single batch call**
+- Single batch cost: $0.0139
+- Native equivalent: $0.5838 (6 × $0.0973)
+- **Savings: $0.5699 (97.6%)**
+- **Efficiency: 42x cheaper than native**
 
 ---
 
-## Quick Start
+## Agents Updated
 
-### 1. Detect Your Stack
+All 9 agents received +31 lines each:
 
-```
-You: "Detect the stack for this project"
-
-GoodVibes: Uses detect_stack to identify frameworks, libraries, and tools
-```
-
-### 2. Find Relevant Skills
-
-```
-You: "Find skills related to authentication with NextAuth"
-
-GoodVibes: Searches 173 skills and loads the relevant ones into context
-```
-
-### 3. Build a Feature
-
-```
-You: "Add user authentication with email/password"
-
-GoodVibes:
-1. Planner breaks down: schema, API routes, middleware, UI components
-2. Engineer implements each task
-3. Reviewer verifies against requirements
-4. Fix loop if issues found
-5. Commits verified code
-6. Reports completion
-```
+1. `agent-factory.md` - Meta-agent for creating new agents
+2. `architect.md` - System design and planning
+3. `deployer.md` - DevOps and deployment
+4. `engineer.md` - Full-stack implementation
+5. `integrator.md` - Complex feature integration
+6. `planner.md` - Task breakdown and planning
+7. `reviewer.md` - Code quality assessment
+8. `skill-factory.md` - Meta-agent for creating skills
+9. `tester.md` - Test engineering
 
 ---
 
-## MCP Tool Engines
-
-### Precision Engine (9 tools)
-| Tool | Purpose |
-|------|---------|
-| `precision_read` | Read files with extract modes (outline, symbols, content) |
-| `precision_write` | Batch file creation with backup modes |
-| `precision_edit` | Atomic edits with transactions |
-| `precision_grep` | Pattern search with output control |
-| `precision_glob` | File finding with filters |
-| `precision_symbols` | Extract code symbols |
-| `precision_exec` | Command execution with validation |
-| `precision_fetch` | Web content fetching |
-| `discover` | Parallel multi-query discovery |
-
-### Batch Engine (6 tools)
-Orchestrate multi-operation workflows with atomic transactions, checkpoints, and recovery.
-
-### Registry Engine (7 tools)
-Discover and load skills, agents, and tools on-demand.
-
-### Analysis Engine (19 tools)
-Stack detection, pattern scanning, breaking change detection, security auditing, and debugging.
-
-### Project Engine (22 tools)
-Project scaffolding, database operations, Git workflows, and documentation.
-
-### Frontend Engine (11 tools)
-React component analysis, accessibility auditing, CSS debugging, and Tailwind conflict resolution.
-
----
-
-## Skills Library
-
-**173 curated skills** covering:
-
-- **AI Integration**: Vercel AI SDK, OpenAI, Anthropic, LangChain
-- **Authentication**: NextAuth, Clerk, Auth0, Firebase, Lucia, Supabase
-- **Databases**: Prisma, Drizzle, PostgreSQL, MongoDB, Redis, Turso
-- **Frameworks**: Next.js, Nuxt, Remix, Astro, SvelteKit, SolidStart
-- **Styling**: Tailwind, CSS Modules, Sass, styled-components, Panda CSS
-- **Testing**: Vitest, Playwright, Jest, Testing Library, Cypress
-- **Deployment**: Vercel, Netlify, Cloudflare, Docker, Railway, Fly.io
-- **Payments**: Stripe, LemonSqueezy, Paddle
-- **And much more...**
-
-Skills are loaded on-demand to preserve context. Use `/load-skill <name>` or let GoodVibes auto-recommend based on your task.
-
----
-
-## Templates
-
-### next-saas
-Full-featured SaaS starter with Next.js 14+, NextAuth, Prisma, Stripe, shadcn/ui, and more.
-
-### next-app
-Minimal Next.js starter with TypeScript, Tailwind, and ESLint.
-
-### vite-react
-Client-side React app with Vite 5+, TypeScript, and optional Tailwind/Vitest.
-
-```yaml
-scaffold_project:
-  template: "next-saas"
-  name: "my-app"
-  options:
-    auth: "clerk"
-    database: "prisma"
-    payments: "stripe"
-```
-
----
-
-## Project Structure
-
-```
-plugins/goodvibes/
-├── agents/           # 9 specialized agent definitions
-├── commands/         # 4 slash commands
-├── hooks/            # 9 lifecycle hooks
-├── output-styles/    # vibecoding & justvibes modes
-├── skills/           # 173 skills (common + webdev)
-├── templates/        # 3 project templates
-├── tools/            # 6 MCP engine implementations
-└── docs/             # Reference documentation
-```
-
----
-
-## Configuration
-
-### Output Style (settings.json)
-
-```json
-{
-  "outputStyle": "goodvibes:vibecoding"
-}
-```
-
-### MCP Servers (auto-configured)
-
-```json
-{
-  "mcpServers": {
-    "plugin_goodvibes_precision-engine": { ... },
-    "plugin_goodvibes_batch-engine": { ... },
-    "plugin_goodvibes_registry-engine": { ... },
-    "plugin_goodvibes_analysis-engine": { ... },
-    "plugin_goodvibes_project-engine": { ... },
-    "plugin_goodvibes_frontend-engine": { ... }
-  }
-}
-```
-
----
-
-## Known Limitations
-
-- **LSP integration**: Symbol extraction relies on TypeScript language service; other languages have partial support
-- **Large monorepos**: Projects with 100k+ files may experience slower initial stack detection
-- **Windows paths**: Some edge cases with Windows path handling in batch operations (workarounds documented)
-
----
-
-## Changelog Highlights (v0.1.0 to v1.0.3)
+## Changelog
 
 ### Added
-- Complete GoodVibes Enhancement Implementation (74 tasks across 10 feature areas)
-- Vibecoding and JustVibes output styles
-- Subagent telemetry and lifecycle hooks
-- Smart context injection on session start
-- Persistent memory system (`.goodvibes/memory/`)
-- 3-phase PostToolUseFailure smart recovery
-- Agent chaining and auto-checkpoint commits
-- Pre-commit quality gates (TypeScript, ESLint, Prettier, tests)
-- 262 tests with comprehensive coverage
+- SEW Loop protocol to all 9 agents
+- Mandatory Behavior section to all 9 agents
+- 12 cost analysis scripts in `scripts/` directory
+- Streaming entry aggregation in cost-analysis parser
 
 ### Changed
-- Enterprise-grade code standards enforced (no mocks, no placeholders)
-- Context window management optimized (150k target, 175k max)
-- All registries rebuilt (9 agents, 173 skills, 74 tools)
+- Output styles: Enhanced WRFC loop and agent monitoring
+- Registry timestamps bumped across all plugins
+- Removed temporary analysis/debug files (8.8k lines cleaned)
 
-### Security
-- Command injection vulnerabilities fixed
-- Cross-platform compatibility improvements
-- 200+ credential patterns in security-hardened .gitignore
-
-See [CHANGELOG.md](./CHANGELOG.md) for full version history.
+### Fixed
+- Cost-analysis parser now captures all MCP tools via streaming aggregation
 
 ---
 
-## Resources
+## Upgrade Notes
 
-- **Documentation**: [README.md](./README.md)
-- **Architecture Deep Dive**: [docs/GOODVIBES-ARCHITECTURE-DEEP-DIVE.md](./docs/architecture/GOODVIBES-ARCHITECTURE-DEEP-DIVE.md)
-- **Skills Reference**: [agent_testing/docs/skills-reference.md](./docs/reference/skills-reference.md)
-- **Agents Guide**: [agent_testing/docs/agents-guide.md](./docs/reference/agents-guide.md)
+### From v1.0.3 to v1.0.6
+
+No breaking changes. The SEW Loop and Mandatory Behavior sections are additive enhancements that improve agent efficiency automatically.
+
+**Recommended actions:**
+
+1. Pull the latest changes
+2. Agents will automatically follow the new SEW Loop protocol
+3. Use the cost analysis scripts to measure your own savings:
+
+```bash
+# Analyze last 48 hours of tool usage
+node scripts/tool-use-48h.mjs
+
+# Get detailed cost breakdown
+node scripts/tool-cost-48h.mjs
+
+# Analyze batch engine savings
+node scripts/final-batch-analysis.mjs
+```
 
 ---
 
-## Contributing
+## Previous Releases
 
-We welcome contributions! Please see our contributing guidelines and code of conduct.
-
----
-
-## License
-
-MIT License - See [LICENSE](./LICENSE) for details.
+- **v1.0.3** - Initial public release with 74 MCP tools, 173 skills, 9 agents
 
 ---
 
