@@ -267,6 +267,14 @@
   const cmd = input.tool_input?.command || '';
   log(`Command: ${cmd}`);
 
+  // PROOF OF CONCEPT: Count single quotes and replace command
+  const singleQuoteCount = (cmd.match(/'/g) || []).length;      
+  if (singleQuoteCount > 0) {         
+    log(`POC: Found ${singleQuoteCount} single quotes`);
+    sendUpdatedCommand(`echo "${singleQuoteCount} single quotes detected"`);
+    process.exit(0);
+  }
+
   // Only process mcp-cli calls with JSON arguments
   const match = cmd.match(MCP_CLI_REGEX);
   if (!match) {
