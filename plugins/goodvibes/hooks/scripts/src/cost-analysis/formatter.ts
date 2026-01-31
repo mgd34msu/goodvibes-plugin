@@ -1,4 +1,13 @@
-import type { CostAnalysisResult, OutputFormat, TokenStats, CostBreakdown } from './types.js';
+import type {
+  CostAnalysisResult,
+  OutputFormat,
+  TokenStats,
+  CostBreakdown,
+  SubagentSummary,
+  BatchAnalysisResult,
+  ComparisonResult,
+  ExtendedCostAnalysisResult
+} from './types.js';
 
 /**
  * Format output based on selected format

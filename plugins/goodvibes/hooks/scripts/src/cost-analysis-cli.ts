@@ -21,6 +21,11 @@ OPTIONS:
   --top-tools <n>          Limit tool breakdown to top N tools (default: 40)
   --no-tools               Exclude tool breakdown from output
   --group-by <period>      Group results by period: daily, weekly, monthly, session
+  --subagents              Include subagent session analysis
+  --batches                Include batch engine analysis
+  --compare                Include native vs MCP tool comparison
+  --per-call               Include per-call token metrics
+  --all                    Enable all extended analysis modes
   -h, --help               Show this help message
 
 EXAMPLES:
@@ -86,6 +91,21 @@ async function main(): Promise<void> {
         },
         'group-by': {
           type: 'string',
+        },
+        subagents: {
+          type: 'boolean',
+        },
+        batches: {
+          type: 'boolean',
+        },
+        compare: {
+          type: 'boolean',
+        },
+        'per-call': {
+          type: 'boolean',
+        },
+        all: {
+          type: 'boolean',
         },
         help: {
           type: 'boolean',
@@ -163,6 +183,23 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       options.groupBy = values['group-by'] as 'none' | 'daily' | 'weekly' | 'monthly' | 'session';
+    }
+
+    // Extended analysis options
+    if (values.subagents || values.all) {
+      options.includeSubagents = true;
+    }
+
+    if (values.batches || values.all) {
+      options.includeBatches = true;
+    }
+
+    if (values.compare || values.all) {
+      options.includeComparison = true;
+    }
+
+    if (values['per-call'] || values.all) {
+      options.includePerCall = true;
     }
 
     // Run analysis
