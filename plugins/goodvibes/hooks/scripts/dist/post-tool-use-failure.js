@@ -1509,38 +1509,7 @@ async function runPostToolUseFailureHook() {
       found: !!pattern,
       category: pattern?.category
     });
-    let suggestedFix = getSuggestedFix(category, errorMessage, errorState);
-    if (pattern?.category === "shell_escaping_error" && isRecord(input) && isRecord(input.tool_input)) {
-      const command = typeof input.tool_input.command === "string" ? input.tool_input.command : "";
-      const toolMatch = command.match(/mcp-cli\s+call\s+\S+\/(precision_\w+|discover)/);
-      if (toolMatch) {
-        const tool = toolMatch[1];
-        const syntaxMap = {
-          precision_write: `SHELL ESCAPING ERROR in precision_write.
-
-STEP 1: echo -n 'your content' | base64 -w0
-STEP 2: mcp-cli call .../precision_write '{"files":[{"path":"file.ts","content_base64":"YOUR_BASE64_HERE"}]}'`,
-          precision_edit: `SHELL ESCAPING ERROR in precision_edit.
-
-STEP 1: echo -n 'find text' | base64 -w0
-STEP 2: echo -n 'replace text' | base64 -w0
-STEP 3: mcp-cli call .../precision_edit '{"edits":[{"path":"file.ts","find_base64":"FIND_BASE64","replace_base64":"REPLACE_BASE64"}]}'`,
-          precision_grep: `SHELL ESCAPING ERROR in precision_grep.
-
-STEP 1: echo -n 'pattern' | base64 -w0
-STEP 2: mcp-cli call .../precision_grep '{"queries":[{"id":"q1","pattern_base64":"YOUR_BASE64_HERE"}]}'`,
-          precision_exec: `SHELL ESCAPING ERROR in precision_exec.
-
-STEP 1: echo -n 'command' | base64 -w0
-STEP 2: mcp-cli call .../precision_exec '{"commands":[{"cmd_base64":"YOUR_BASE64_HERE"}]}'`,
-          discover: `SHELL ESCAPING ERROR in discover.
-
-STEP 1: echo -n 'pattern' | base64 -w0
-STEP 2: mcp-cli call .../discover '{"queries":[{"id":"q1","type":"grep","pattern_base64":"YOUR_BASE64_HERE"}]}'`
-        };
-        suggestedFix = syntaxMap[tool] || suggestedFix;
-      }
-    }
+    const suggestedFix = getSuggestedFix(category, errorMessage, errorState);
     const _fixContext = buildFixContext(errorState, errorMessage);
     const effectiveCategory = pattern?.category ?? category;
     const hints = getResearchHints(effectiveCategory, errorMessage, errorState.phase);
