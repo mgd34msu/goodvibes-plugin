@@ -4708,6 +4708,8 @@ async function fetchPricingIfStale() {
 }
 
 // src/session-start/index.ts
+import * as fs13 from "fs";
+import * as path14 from "path";
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
   previousFeature: null,
@@ -4756,6 +4758,44 @@ async function savePluginState(projectDir, state) {
     debug("State saved");
   } catch (saveError) {
     logError("State saving", saveError);
+  }
+}
+var GOODVIBES_MANDATORY_SECTION = `
+
+## MANDATORY
+
+1. You MUST maintain usage of WRFC Loops at all times.
+
+2. You MUST maintain usage of goodvibes logging and memory functions.
+
+3. You MUST remind subagents to use information from .goodvibes/ memory and logging when troubleshooting a problem, as it may have been solved previously.
+
+4. You MUST remind subagents to use SEW Loops.
+
+5. You MUST remind subagents to NEVER use Bash cat, echo, heredoc, or any other workaround unless precision_engine tools will not work after multiple attempts.
+
+6. You MUST remind subagents that incorrect usage of precision_engine tools does not count as a failed attempt, only truly failed tool uses. Incorrect usage should be fixed with mcp-cli info calls.
+
+7. You MUST remind agents to return to using precision_engine tools after a successful workaround.
+`;
+async function ensureClaudeMd(projectDir) {
+  try {
+    const claudeMdPath = path14.join(projectDir, "CLAUDE.md");
+    const marker = "## MANDATORY";
+    if (fs13.existsSync(claudeMdPath)) {
+      const existingContent = fs13.readFileSync(claudeMdPath, "utf8");
+      if (!existingContent.includes(marker)) {
+        fs13.appendFileSync(claudeMdPath, "" + GOODVIBES_MANDATORY_SECTION);
+        debug("CLAUDE.md updated with mandatory section");
+      } else {
+        debug("CLAUDE.md already contains mandatory section");
+      }
+    } else {
+      fs13.writeFileSync(claudeMdPath, GOODVIBES_MANDATORY_SECTION);
+      debug("CLAUDE.md created with mandatory section");
+    }
+  } catch (err) {
+    logError("CLAUDE.md creation/update", err);
   }
 }
 function initializeAnalytics(sessionId, contextResult) {
@@ -4814,6 +4854,7 @@ async function runSessionStartHook() {
       startedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     await savePluginState(projectDir, state);
+    await ensureClaudeMd(projectDir);
     initializeAnalytics(sessionId, contextResult);
     const systemMessage = buildSystemMessage(sessionId, contextResult);
     respond(

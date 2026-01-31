@@ -63,3 +63,6 @@ prisma/*.db
 
 # Log files
 logs/
+
+# Release
+RELEASE.md
