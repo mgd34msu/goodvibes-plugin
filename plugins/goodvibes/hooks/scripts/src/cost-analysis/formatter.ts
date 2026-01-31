@@ -30,7 +30,7 @@ export function formatOutput(result: ExtendedCostAnalysisResult, format: OutputF
 /**
  * Format as detailed text (like current cost-analysis.cjs output)
  */
-function formatText(result: CostAnalysisResult): string {
+function formatText(result: ExtendedCostAnalysisResult): string {
   const lines: string[] = [];
 
   // Header
@@ -151,14 +151,14 @@ function formatText(result: CostAnalysisResult): string {
 /**
  * Format as JSON
  */
-function formatJson(result: CostAnalysisResult): string {
+function formatJson(result: ExtendedCostAnalysisResult): string {
   return JSON.stringify(result, null, 2);
 }
 
 /**
  * Format as Markdown tables
  */
-function formatMarkdown(result: CostAnalysisResult): string {
+function formatMarkdown(result: ExtendedCostAnalysisResult): string {
   const lines: string[] = [];
 
   lines.push(`# Cost Analysis: ${result.timeRange.description}\n`);
@@ -212,7 +212,7 @@ function formatMarkdown(result: CostAnalysisResult): string {
 /**
  * Format as minimal one-line summary
  */
-function formatMinimal(result: CostAnalysisResult): string {
+function formatMinimal(result: ExtendedCostAnalysisResult): string {
   return (
     `Cost: $${result.grandTotal.cost.totalCost.toFixed(2)} | ` +
     `Calls: ${result.grandTotal.tokens.calls.toLocaleString()} | ` +

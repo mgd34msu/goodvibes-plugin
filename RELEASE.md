@@ -1,4 +1,4 @@
-# GoodVibes Plugin v1.0.7
+# GoodVibes Plugin v1.0.8
 
 **Release Date:** 2026-01-30
 
