@@ -50,6 +50,8 @@ cost-analysis --all          # Full analysis
 - Removed 79 lines of duplicate interface declarations
 - Fixed TS2717 errors for conflicting `cost` property types
 - Consolidated to single set of JSDoc-documented interfaces
+- Updated SubagentSession/SubagentSummary to match actual implementation
+- Added cache_creation_input_tokens to TokenUsage interface
 
 ### pricing.ts
 - Added `getModelPricing()` function for simplified pricing lookup
@@ -61,6 +63,8 @@ cost-analysis --all          # Full analysis
 - Fixed unterminated string literals
 - Updated import to use loadPricingCache
 - Made parseSubagentSession async
+- Fixed null checks with nullish coalescing (??) for optional token properties
+- Removed duplicate interface declarations, now imports from types.ts
 
 ### batch-analyzer.ts
 - Fixed corrupted regex patterns
@@ -115,5 +119,9 @@ plugins/goodvibes/hooks/scripts/src/
 ## Testing
 
 - TypeScript compilation verified for all modified files
-- Review scores: pricing.ts (8.5/10), session-start (9.5/10)
+- Review scores: pricing.ts (8.5/10), session-start (9.5/10), batch-analyzer (9/10), formatter (9.2/10)
 - WRFC loop completed for all changes
+
+### cost-analysis-cli.ts
+- Updated to use ExtendedCostAnalysisOptions type
+- Fixed property names for new analysis flags
