@@ -1,7 +1,6 @@
 /**
  * Post Tool Use Failure Hook Entry Point
  *
- * This is a thin entry point that re-exports from the post-tool-use-failure module.
- * The actual implementation lives in src/post-tool-use-failure/index.ts
+ * Provides corrective feedback when precision tool calls fail.
  */
-import './post-tool-use-failure/index.js';
+export {};
