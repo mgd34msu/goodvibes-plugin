@@ -145,6 +145,28 @@ function formatText(result: ExtendedCostAnalysisResult): string {
     );
   }
 
+  if (result.subagents) {
+    lines.push('\n\nSUBAGENT ANALYSIS:');
+    lines.push('-'.repeat(100));
+    lines.push(`Sessions: ${result.subagents.totalSessions} | Calls: ${result.subagents.totalCalls}`);
+    lines.push(`MCP: ${result.subagents.mcpCallPercent.toFixed(1)}% | Native: ${result.subagents.nativeCallPercent.toFixed(1)}%`);
+    lines.push(`Cost: $${result.subagents.totalCost.toFixed(2)}`);
+  }
+
+  if (result.batches) {
+    lines.push('\n\nBATCH ANALYSIS:');
+    lines.push('-'.repeat(100));
+    lines.push(`Batches: ${result.batches.totalBatches} | Operations: ${result.batches.totalOperations}`);
+    lines.push(`Savings: $${result.batches.totalSavings.toFixed(2)} (${result.batches.avgSavingsPercent.toFixed(1)}%)`);
+  }
+
+  if (result.nativeVsMcp) {
+    lines.push('\n\nNATIVE VS MCP:');
+    lines.push('-'.repeat(100));
+    lines.push(`Native: ${result.nativeVsMcp.native.totalCalls} calls, $${result.nativeVsMcp.native.totalCost.toFixed(2)}`);
+    lines.push(`MCP: ${result.nativeVsMcp.mcp.totalCalls} calls, $${result.nativeVsMcp.mcp.totalCost.toFixed(2)}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -206,7 +228,39 @@ function formatMarkdown(result: ExtendedCostAnalysisResult): string {
     `**${result.grandTotal.tokens.calls.toLocaleString()} calls, $${result.grandTotal.cost.totalCost.toFixed(2)}**`
   );
 
+    // Extended analysis sections
+  if (result.comparisons && result.comparisons.headToHead) {
+    lines.push('\n## Native vs MCP Tool Comparison\n');
+    lines.push('| Operation | Native Tool | Native Cost | MCP Tool | MCP Cost | Savings |');
+    lines.push('|-----------|-------------|-------------|----------|----------|---------|');
+    for (const comp of result.comparisons.headToHead) {
+      const nCost = comp.nativeTool?.totalCost?.toFixed(2) || '0.00';
+      const mCost = comp.precisionTool?.totalCost?.toFixed(2) || '0.00';
+      const save = comp.deltas?.costPercent?.toFixed(1) || '0.0';
+      lines.push(`| ${comp.label} | ${comp.nativeTool?.displayName || 'N/A'} | $${nCost} | ${comp.precisionTool?.displayName || 'N/A'} | $${mCost} | ${save}% |`);
+    }
+  }
+
+  if (result.subagents) {
+    lines.push('\n## Subagent Analysis\n');
+    lines.push(`**Sessions:** ${result.subagents.totalSessions} | **Calls:** ${result.subagents.totalCalls} | **Cost:** $${result.subagents.totalCost.toFixed(2)}`);
+    lines.push(`**MCP Usage:** ${result.subagents.mcpCallPercent.toFixed(1)}% | **Native Usage:** ${result.subagents.nativeCallPercent.toFixed(1)}%`);
+  }
+
+  if (result.batches) {
+    lines.push('\n## Batch Analysis\n');
+    lines.push(`**Batches:** ${result.batches.totalBatches} | **Operations:** ${result.batches.totalOperations}`);
+    lines.push(`**Savings:** $${result.batches.totalSavings.toFixed(2)} (${result.batches.avgSavingsPercent.toFixed(1)}%)`);
+  }
+
+  if (result.nativeVsMcp) {
+    lines.push('\n## Native vs MCP Summary\n');
+    lines.push(`**Native:** ${result.nativeVsMcp.native.totalCalls} calls, $${result.nativeVsMcp.native.totalCost.toFixed(2)}`);
+    lines.push(`**MCP:** ${result.nativeVsMcp.mcp.totalCalls} calls, $${result.nativeVsMcp.mcp.totalCost.toFixed(2)}`);
+  }
+
   return lines.join('\n');
+
 }
 
 /**
