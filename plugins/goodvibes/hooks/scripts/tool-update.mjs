@@ -267,12 +267,33 @@
   const cmd = input.tool_input?.command || '';
   log(`Command: ${cmd}`);
 
-  // PROOF OF CONCEPT: Count single quotes and replace command
-  const singleQuoteCount = (cmd.match(/'/g) || []).length;      
-  if (singleQuoteCount > 0) {         
-    log(`POC: Found ${singleQuoteCount} single quotes`);
-    sendUpdatedCommand(`echo "${singleQuoteCount} single quotes detected"`);
-    process.exit(0);
+  // Detect shell-unsafe content in mcp-cli precision tool calls
+  const precisionMatch = cmd.match(/mcp-cli\s+call\s+\S+\/(precision_\w+|discover)/);                                              
+  if (precisionMatch) {
+    const singleQuotes = (cmd.match(/'/g) || []).length;                                                                           
+    const hasBackticks = cmd.includes('`');                       
+    const hasUnescapedVars = /\$[{a-zA-Z]/.test(cmd);
+    
+    if (singleQuotes > 2 || hasBackticks || hasUnescapedVars) {
+      const tool = precisionMatch[1];
+      const syntaxMap = {
+        precision_write: `STEP 1: echo -n 'your content' | base64 -w0
+        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_write '{"files":[{"path":"file.ts","content_base64":"YOUR_BASE64_HERE"}]}'`,
+        precision_edit: `STEP 1: echo -n 'find text' | base64 -w0
+        STEP 2: echo -n 'replace text' | base64 -w0
+        STEP 3: mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits":[{"path":"file.ts","find_base64":"FIND_BASE64","replace_base64":"REPLACE_BASE64"}]}'`,
+        precision_grep: `STEP 1: echo -n 'pattern' | base64 -w0
+        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries":[{"id":"q1","pattern_base64":"YOUR_BASE64_HERE"}]}'`,
+        precision_exec: `STEP 1: echo -n 'command' | base64 -w0
+        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_exec '{"commands":[{"cmd_base64":"YOUR_BASE64_HERE"}]}'`,       
+        discover: `STEP 1: echo -n 'pattern' | base64 -w0
+        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries":[{"id":"q1","type":"grep","pattern_base64":"YOUR_BASE64_HERE"}]}'`
+      };
+      const syntax = syntaxMap[tool] || 'Use base64 parameter variant for this tool.';
+      log(`SHELL UNSAFE: tool=${tool}, quotes=${singleQuotes}, backticks=${hasBackticks}, vars=${hasUnescapedVars}`);
+      console.error(`SHELL ESCAPING ERROR in ${tool}.\n\n${syntax}`);
+      process.exit(2);
+    }
   }
 
   // Only process mcp-cli calls with JSON arguments
