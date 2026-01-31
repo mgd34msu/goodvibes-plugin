@@ -51,6 +51,21 @@ export function calculateCost(stats: TokenStats, pricing: ModelPricing): CostBre
   return calcTokenCost(stats, pricing);
 }
 
+/**
+ * Get pricing for a specific model by ID
+ * Returns a simplified pricing object with input/output/cacheRead rates
+ */
+export function getModelPricing(modelId: string): { input: number; output: number; cacheRead: number } | null {
+  const pricingCache = loadPricing();
+  const modelPricing = pricingCache[modelId] || pricingCache['claude-opus-4.5']; // fallback to opus
+  if (!modelPricing) return null;
+  return {
+    input: modelPricing.inputPrice,
+    output: modelPricing.outputPrice,
+    cacheRead: modelPricing.cacheHits
+  };
+}
+
 export function getModelDisplayName(modelId: string): string {
   return getDisplayName(modelId);
 }

@@ -12,7 +12,7 @@ import type {
 /**
  * Format output based on selected format
  */
-export function formatOutput(result: CostAnalysisResult, format: OutputFormat): string {
+export function formatOutput(result: ExtendedCostAnalysisResult, format: OutputFormat): string {
   switch (format) {
     case 'text':
       return formatText(result);
@@ -218,4 +218,55 @@ function formatMinimal(result: CostAnalysisResult): string {
     `Calls: ${result.grandTotal.tokens.calls.toLocaleString()} | ` +
     `Period: ${result.timeRange.description}`
   );
+}
+
+/**
+ * Format subagent summary
+ */
+export function formatSubagentSummary(summary: SubagentSummary, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(summary, null, 2);
+    case 'markdown':
+      return `# Subagent Summary\n\n**Total Sessions:** ${summary.totalSessions}\n**Total Cost:** $${summary.totalCost.toFixed(2)}`;
+    case 'minimal':
+      return `Subagents: ${summary.totalSessions} | $${summary.totalCost.toFixed(2)}`;
+    case 'text':
+    default:
+      return `SUBAGENT SUMMARY\nSessions: ${summary.totalSessions}\nCost: $${summary.totalCost.toFixed(2)}`;
+  }
+}
+
+/**
+ * Format batch analysis
+ */
+export function formatBatchAnalysis(result: BatchAnalysisResult, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+    case 'markdown':
+      return `# Batch Analysis\n\n**Total Batches:** ${result.totalBatches}\n**Total Savings:** $${result.totalSavings.toFixed(2)}`;
+    case 'minimal':
+      return `Batches: ${result.totalBatches} | Saved: $${result.totalSavings.toFixed(2)}`;
+    case 'text':
+    default:
+      return `BATCH ANALYSIS\nBatches: ${result.totalBatches}\nSavings: $${result.totalSavings.toFixed(2)}`;
+  }
+}
+
+/**
+ * Format comparison analysis
+ */
+export function formatComparison(result: ComparisonResult, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+    case 'markdown':
+      return `# Tool Comparison\n\n**Categories:** ${result.categories.length}\n**Comparisons:** ${result.headToHead.length}`;
+    case 'minimal':
+      return `Comparison: ${result.categories.length} categories | ${result.headToHead.length} comparisons`;
+    case 'text':
+    default:
+      return `TOOL COMPARISON\nCategories: ${result.categories.length}\nComparisons: ${result.headToHead.length}`;
+  }
 }

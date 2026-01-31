@@ -5,51 +5,7 @@
  * between native and precision tool pairs.
  */
 
-import { ToolStats, TokenStats, CostBreakdown } from './types.js';
-
-export interface ToolMetrics {
-  tool: string;
-  displayName: string;
-  calls: number;
-  inputPerCall: number;
-  outputPerCall: number;
-  cachePerCall: number;
-  totalPerCall: number;
-  costPerCall: number;
-  totalCost: number;
-  category: string;
-}
-
-export interface CategoryMetrics {
-  category: string;
-  tools: string[];
-  totalCalls: number;
-  avgInputPerCall: number;
-  avgOutputPerCall: number;
-  avgCachePerCall: number;
-  avgTotalPerCall: number;
-  avgCostPerCall: number;
-  totalCost: number;
-}
-
-export interface HeadToHeadComparison {
-  label: string;
-  nativeTool: ToolMetrics;
-  precisionTool: ToolMetrics;
-  deltas: {
-    inputPercent: number;
-    outputPercent: number;
-    cachePercent: number;
-    totalPercent: number;
-    costPercent: number;
-  };
-}
-
-export interface ComparisonResult {
-  metrics: ToolMetrics[];
-  categories: CategoryMetrics[];
-  headToHead: HeadToHeadComparison[];
-}
+import { ToolStats, TokenStats, CostBreakdown, ToolMetrics, CategoryMetrics, HeadToHeadComparison, ComparisonResult } from './types.js';
 
 const TOOL_CATEGORIES: Record<string, string[]> = {
   'Native File Tools': ['Read', 'Edit', 'Write'],

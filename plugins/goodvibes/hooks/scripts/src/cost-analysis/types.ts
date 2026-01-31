@@ -38,6 +38,7 @@ export interface TokenUsage {
   input_tokens: number;
   output_tokens: number;
   cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
   cache_creation?: {
     ephemeral_5m?: number;
     ephemeral_1h?: number;
@@ -158,86 +159,6 @@ export interface CostAnalysisOptions {
   groupBy?: GroupBy;
 }
 
-// Subagent Analysis
-export interface SubagentSession {
-  sessionId: string;
-  calls: number;
-  cost: number;
-  mcpCalls: number;
-  nativeCalls: number;
-}
-
-export interface SubagentSummary {
-  totalSessions: number;
-  totalCalls: number;
-  totalCost: number;
-  mcpCalls: number;
-  nativeCalls: number;
-  tokens: TokenStats;
-  cost: CostBreakdown;
-  topSessions: SubagentSession[];
-}
-
-// Batch Analysis
-export interface BatchOperation {
-  type: 'read' | 'write' | 'exec' | 'query';
-  count: number;
-  estimatedSavings: number;
-}
-
-export interface GreatestBatch {
-  batchId: string;
-  operations: number;
-  savingsMultiplier: number;
-  cost: number;
-}
-
-export interface BatchAnalysisResult {
-  totalBatches: number;
-  totalOperations: number;
-  totalSavings: number;
-  operationsByType: BatchOperation[];
-  greatestBatches: GreatestBatch[];
-}
-
-// Comparison Analysis
-export interface CategoryMetrics {
-  category: string;
-  calls: number;
-  cost: number;
-  tokens: TokenStats;
-}
-
-export interface HeadToHeadComparison {
-  metric: string;
-  native: number;
-  mcp: number;
-  delta: number;
-  deltaPercentage: number;
-}
-
-export interface ComparisonResult {
-  categories: CategoryMetrics[];
-  headToHead: HeadToHeadComparison[];
-  nativeSummary: {
-    totalCalls: number;
-    totalCost: number;
-    perCallCost: number;
-  };
-  mcpSummary: {
-    totalCalls: number;
-    totalCost: number;
-    perCallCost: number;
-  };
-}
-
-// Extended Cost Analysis Result
-export interface ExtendedCostAnalysisResult extends CostAnalysisResult {
-  subagentSummary?: SubagentSummary;
-  batchAnalysis?: BatchAnalysisResult;
-  comparison?: ComparisonResult;
-}
-
 
 // Subagent Analysis interfaces
 
@@ -246,23 +167,27 @@ export interface ExtendedCostAnalysisResult extends CostAnalysisResult {
  */
 export interface SubagentSession {
   /** Unique session identifier */
-  sessionId: string;
-  /** Subagent name/type */
-  agentName: string;
-  /** Session start timestamp */
-  startTime: string;
-  /** Session end timestamp */
-  endTime: string;
-  /** Duration in milliseconds */
-  durationMs: number;
+  id: string;
+  /** Full path to the subagent file */
+  path: string;
+  /** Project name */
+  project: string;
+  /** Total number of tool calls */
+  calls: number;
   /** Token usage for this session */
-  tokens: TokenStats;
-  /** Cost breakdown for this session */
-  cost: CostBreakdown;
-  /** Number of tool calls made */
-  toolCalls: number;
-  /** Parent session ID if this is a nested subagent */
-  parentSessionId?: string;
+  tokens: TokenUsage;
+  /** Total cost for this session */
+  cost: number;
+  /** Number of MCP tool calls */
+  mcpCalls: number;
+  /** Number of native tool calls */
+  nativeCalls: number;
+  /** MCP tools usage breakdown */
+  mcpTools: Record<string, number>;
+  /** Native tools usage breakdown */
+  nativeTools: Record<string, number>;
+  /** Model used for this session */
+  model: string;
 }
 
 /**
@@ -271,19 +196,20 @@ export interface SubagentSession {
 export interface SubagentSummary {
   /** Total number of subagent sessions */
   totalSessions: number;
-  /** Unique subagent types used */
-  uniqueAgents: string[];
+  /** Total number of tool calls across all sessions */
+  totalCalls: number;
   /** Total tokens across all subagent sessions */
-  tokens: TokenStats;
+  totalTokens: TokenUsage;
   /** Total cost across all subagent sessions */
-  cost: CostBreakdown;
-  /** Per-agent breakdown */
-  byAgent: Record<string, {
-    sessions: number;
-    tokens: TokenStats;
-    cost: CostBreakdown;
-    avgDurationMs: number;
-  }>;
+  totalCost: number;
+  /** Percentage of calls that were MCP tools */
+  mcpCallPercent: number;
+  /** Percentage of calls that were native tools */
+  nativeCallPercent: number;
+  /** Top subagents by MCP usage */
+  topAgents: SubagentSession[];
+  /** All sessions */
+  sessions: SubagentSession[];
 }
 
 // Batch Analysis interfaces
@@ -292,75 +218,74 @@ export interface SubagentSummary {
  * Raw batch operation payload from journal
  */
 export interface BatchPayload {
-  /** Batch operation ID */
-  id: string;
-  /** Operations in the batch */
-  operations: Record<string, unknown>;
-  /** Batch configuration */
-  config?: Record<string, unknown>;
+  /** Operations array */
+  operations?: Array<{ tool: string; [key: string]: unknown }>;
+  /** Commands array */
+  commands?: Array<{ tool?: string; type?: string; [key: string]: unknown }>;
+  /** Files array */
+  files?: Array<{ path: string; [key: string]: unknown }>;
+  /** Queries array */
+  queries?: Array<{ id: string; type: string; [key: string]: unknown }>;
+  /** Edits array */
+  edits?: Array<{ file: string; [key: string]: unknown }>;
 }
 
 /**
  * Analyzed batch call with cost metrics
  */
 export interface BatchCall {
-  /** Request ID */
-  requestId: string;
-  /** Timestamp of the batch call */
+  file: string;
   timestamp: string;
-  /** Batch operation ID */
-  batchId: string;
-  /** Number of operations in the batch */
+  command: string;
+  payload: BatchPayload | null;
   operationCount: number;
-  /** Token usage for this batch */
-  tokens: TokenStats;
-  /** Cost for this batch */
-  cost: CostBreakdown;
-  /** Individual operations */
-  operations: Array<{
-    id: string;
-    type: string;
-  }>;
+  operationsByType: OperationCount;
 }
 
 /**
  * Calculated savings from batch operations
  */
 export interface BatchSavings {
-  /** Estimated tokens if operations were individual */
-  estimatedIndividualTokens: number;
-  /** Actual tokens used in batch */
-  actualBatchTokens: number;
-  /** Token savings */
-  tokensSaved: number;
-  /** Percentage saved */
-  percentageSaved: number;
-  /** Estimated individual cost */
-  estimatedIndividualCost: number;
-  /** Actual batch cost */
-  actualBatchCost: number;
-  /** Cost savings */
-  costSaved: number;
+  batchCost: number;
+  nativeEquivalent: number;
+  savings: number;
+  savingsPercent: number;
+  multiplier: number;
 }
 
 /**
  * Complete batch analysis result
  */
 export interface BatchAnalysisResult {
-  /** Time range analyzed */
-  timeRange: ParsedTimeFilter;
-  /** All batch calls */
-  batches: BatchCall[];
-  /** Total batch metrics */
   totalBatches: number;
   totalOperations: number;
-  tokens: TokenStats;
-  cost: CostBreakdown;
-  /** Calculated savings */
-  savings: BatchSavings;
-  /** Average operations per batch */
-  avgOperationsPerBatch: number;
+  operationsByType: OperationCount;
+  totalBatchCost: number;
+  totalNativeEquivalent: number;
+  totalSavings: number;
+  avgSavingsPercent: number;
+  avgOpsPerBatch: number;
+  greatestBatches: AnalyzedBatch[];
 }
+
+/**
+ * Operation count breakdown for batch analysis
+ */
+export interface OperationCount {
+  read: number;
+  write: number;
+  edit: number;
+  grep: number;
+  glob: number;
+  exec: number;
+  other: number;
+  total: number;
+}
+
+/**
+ * Analyzed batch with both call data and savings
+ */
+export interface AnalyzedBatch extends BatchCall, BatchSavings {}
 
 // Comparison interfaces
 
@@ -368,135 +293,106 @@ export interface BatchAnalysisResult {
  * Metrics for a specific tool
  */
 export interface ToolMetrics {
-  /** Tool name */
-  name: string;
-  /** Number of times used */
-  usageCount: number;
-  /** Token usage */
-  tokens: TokenStats;
-  /** Cost */
-  cost: CostBreakdown;
-  /** Average tokens per call */
-  avgTokensPerCall: number;
-  /** Average cost per call */
-  avgCostPerCall: number;
+  tool: string;
+  displayName: string;
+  calls: number;
+  inputPerCall: number;
+  outputPerCall: number;
+  cachePerCall: number;
+  totalPerCall: number;
+  costPerCall: number;
+  totalCost: number;
+  category: string;
 }
 
 /**
  * Aggregated metrics for a category of tools
  */
 export interface CategoryMetrics {
-  /** Category name */
   category: string;
-  /** Tools in this category */
-  tools: ToolMetrics[];
-  /** Total usage across category */
-  totalUsage: number;
-  /** Total tokens */
-  tokens: TokenStats;
-  /** Total cost */
-  cost: CostBreakdown;
+  tools: string[];
+  totalCalls: number;
+  avgInputPerCall: number;
+  avgOutputPerCall: number;
+  avgCachePerCall: number;
+  avgTotalPerCall: number;
+  avgCostPerCall: number;
+  totalCost: number;
 }
 
 /**
- * Head-to-head comparison between two tool categories
+ * Head-to-head comparison between two tools
  */
 export interface HeadToHeadComparison {
-  /** Category A name */
-  categoryA: string;
-  /** Category A metrics */
-  metricsA: CategoryMetrics;
-  /** Category B name */
-  categoryB: string;
-  /** Category B metrics */
-  metricsB: CategoryMetrics;
-  /** Difference metrics (B - A) */
-  difference: {
-    usageDiff: number;
-    tokensDiff: number;
-    costDiff: number;
-    percentageDiff: number;
+  label: string;
+  nativeTool: ToolMetrics;
+  precisionTool: ToolMetrics;
+  deltas: {
+    inputPercent: number;
+    outputPercent: number;
+    cachePercent: number;
+    totalPercent: number;
+    costPercent: number;
   };
-  /** Winner category */
-  winner: string;
 }
 
 /**
  * Complete comparison analysis result
  */
 export interface ComparisonResult {
-  /** Time range analyzed */
-  timeRange: ParsedTimeFilter;
-  /** All categories analyzed */
+  metrics: ToolMetrics[];
   categories: CategoryMetrics[];
-  /** Head-to-head comparisons */
-  comparisons: HeadToHeadComparison[];
-  /** Overall summary */
-  summary: {
-    totalTools: number;
-    totalUsage: number;
-    tokens: TokenStats;
-    cost: CostBreakdown;
-  };
+  headToHead: HeadToHeadComparison[];
 }
 
 // Native vs MCP interfaces
 
 /**
- * Classified tool names by type
+ * Classified tool stats by type
  */
 export interface ClassifiedTools {
-  /** Native tools (Read, Write, Edit, Grep, Glob, Bash, etc.) */
-  native: string[];
-  /** MCP tools (precision_*, discover, batch, etc.) */
-  mcp: string[];
-  /** Tools that couldn't be classified */
-  unclassified: string[];
+  native: ToolStats[];
+  mcp: ToolStats[];
+  mcpInfo: ToolStats[];
 }
 
 /**
  * Overhead analysis for mcp-cli info calls
  */
 export interface McpInfoOverhead {
-  /** Number of mcp-cli info calls */
-  infoCallCount: number;
-  /** Tokens spent on info calls */
-  tokens: TokenStats;
-  /** Cost of info calls */
-  cost: CostBreakdown;
-  /** Percentage of total MCP cost */
-  percentageOfMcpCost: number;
+  totalInfoCalls: number;
+  totalInfoCost: number;
+  infoRatio: number;
+  costRatio: number;
+  perCallOverhead: number;
 }
 
 /**
  * Native vs MCP tools comparison summary
  */
 export interface NativeVsMcpSummary {
-  /** Time range analyzed */
-  timeRange: ParsedTimeFilter;
-  /** Native tools metrics */
-  native: CategoryMetrics;
-  /** MCP tools metrics */
-  mcp: CategoryMetrics;
-  /** MCP info call overhead */
-  mcpInfoOverhead: McpInfoOverhead;
-  /** Net MCP metrics (excluding info overhead) */
-  mcpNet: CategoryMetrics;
-  /** Comparison results */
-  comparison: {
-    /** Which category was used more */
-    preferredCategory: string;
-    /** Usage difference */
-    usageDiff: number;
-    /** Token difference */
-    tokensDiff: number;
-    /** Cost difference */
-    costDiff: number;
-    /** Percentage difference */
-    percentageDiff: number;
+  native: {
+    totalCalls: number;
+    totalCost: number;
+    perCallCost: number;
+    tokens: TokenStats;
+    cost: CostBreakdown;
   };
-  /** Classified tool lists */
-  toolClassification: ClassifiedTools;
+  mcp: {
+    totalCalls: number;
+    totalCost: number;
+    perCallCost: number;
+    tokens: TokenStats;
+    cost: CostBreakdown;
+  };
+  mcpWithInfo: {
+    totalCalls: number;
+    totalCost: number;
+    perCallCost: number;
+    tokens: TokenStats;
+    cost: CostBreakdown;
+  };
+  infoOverhead: McpInfoOverhead;
 }
 
 // Extended options interfaces

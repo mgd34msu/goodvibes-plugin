@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { ParsedTimeFilter, TokenUsage } from './types.js';
+import type { ParsedTimeFilter, TokenUsage, BatchPayload, BatchCall, BatchSavings, BatchAnalysisResult, OperationCount, AnalyzedBatch } from './types.js';
 import { parseTimeFilter, walkDir, getProjectDirectories, extractMcpTool } from './parser.js';
 import { getModelPricing } from './pricing.js';
 
@@ -14,65 +14,13 @@ export const NATIVE_GREP_COST = 0.0283;
 export const NATIVE_GLOB_COST = 0.0194;
 export const NATIVE_EXEC_COST = 0.0321;
 
-export interface BatchPayload {
-  operations?: Array<{ tool: string; [key: string]: unknown }>;
-  commands?: Array<{ tool?: string; type?: string; [key: string]: unknown }>;
-  files?: Array<{ path: string; [key: string]: unknown }>;
-  queries?: Array<{ id: string; type: string; [key: string]: unknown }>;
-  edits?: Array<{ file: string; [key: string]: unknown }>;
-}
-
-export interface OperationCount {
-  read: number;
-  write: number;
-  edit: number;
-  grep: number;
-  glob: number;
-  exec: number;
-  other: number;
-  total: number;
-}
-
-export interface BatchCall {
-  file: string;
-  timestamp: string;
-  command: string;
-  payload: BatchPayload | null;
-  operationCount: number;
-  operationsByType: OperationCount;
-}
-
-export interface BatchSavings {
-  batchCost: number;
-  nativeEquivalent: number;
-  savings: number;
-  savingsPercent: number;
-  multiplier: number;
-}
-
-export interface AnalyzedBatch extends BatchCall, BatchSavings {}
-
-export interface BatchAnalysisResult {
-  totalBatches: number;
-  totalOperations: number;
-  operationsByType: OperationCount;
-  totalBatchCost: number;
-  totalNativeEquivalent: number;
-  totalSavings: number;
-  avgSavingsPercent: number;
-  avgOpsPerBatch: number;
-  greatestBatches: AnalyzedBatch[];
-}
-
 export function extractBatchPayload(command: string): BatchPayload | null {
   try {
-    const jsonMatch = command.match(/mcp-clis+calls+[^s]+s+'({[sS]*})'/);
+    const jsonMatch = command.match(/mcp-cli\s+call\s+[^\s]+\s+'(\{[\s\S]*\})'/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[1]);
     }
-    const stdinMatch = command.match(/mcp-clis+calls+[^s]+s+-s*<<['"]?EOF['"]?
-([sS]*?)
-EOF/);
+    const stdinMatch = command.match(/mcp-cli\s+call\s+[^\s]+\s+-\s*<<['"]?EOF['"]?\n([\s\S]*?)\nEOF/);
     if (stdinMatch) {
       return JSON.parse(stdinMatch[1]);
     }
@@ -143,8 +91,7 @@ export function findBatchCalls(timeFilter?: ParsedTimeFilter): BatchCall[] {
     for (const filePath of walkDir(dir)) {
       try {
         const content = fs.readFileSync(filePath, 'utf8');
-        const lines = content.split('
-');
+        const lines = content.split('\n');
         
         for (const line of lines) {
           if (!line.includes('batch-engine/batch')) continue;

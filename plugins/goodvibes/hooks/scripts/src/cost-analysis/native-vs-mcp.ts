@@ -5,49 +5,7 @@
  * Calculates overhead from mcp-cli info calls and provides comparative metrics.
  */
 
-import type { ToolStats, TokenStats, CostBreakdown } from './types.js';
-
-// Tool classification
-export interface ClassifiedTools {
-  native: ToolStats[];
-  mcp: ToolStats[];
-  mcpInfo: ToolStats[];
-}
-
-// MCP info overhead analysis
-export interface McpInfoOverhead {
-  totalInfoCalls: number;
-  totalInfoCost: number;
-  infoRatio: number; // Percentage of MCP calls that required info calls
-  costRatio: number; // Info cost as percentage of total MCP cost
-  perCallOverhead: number; // Average info cost per MCP call
-}
-
-// Native vs MCP comparison summary
-export interface NativeVsMcpSummary {
-  native: {
-    totalCalls: number;
-    totalCost: number;
-    perCallCost: number;
-    tokens: TokenStats;
-    cost: CostBreakdown;
-  };
-  mcp: {
-    totalCalls: number;
-    totalCost: number;
-    perCallCost: number;
-    tokens: TokenStats;
-    cost: CostBreakdown;
-  };
-  mcpWithInfo: {
-    totalCalls: number; // Same as mcp.totalCalls
-    totalCost: number; // mcp.totalCost + info overhead
-    perCallCost: number; // Adjusted for info overhead
-    tokens: TokenStats;
-    cost: CostBreakdown;
-  };
-  infoOverhead: McpInfoOverhead;
-}
+import type { ToolStats, TokenStats, CostBreakdown, ClassifiedTools, McpInfoOverhead, NativeVsMcpSummary } from './types.js';
 
 /**
  * Classify tools into native, MCP, and MCP info categories

@@ -129,7 +129,9 @@ async function savePluginState(
 }
 
 /** GoodVibes mandatory instructions for CLAUDE.md */
-const GOODVIBES_MANDATORY_SECTION = `## MANDATORY
+const GOODVIBES_MANDATORY_SECTION = `
+
+## MANDATORY
 
 1. You MUST maintain usage of WRFC Loops at all times.
 
@@ -142,6 +144,8 @@ const GOODVIBES_MANDATORY_SECTION = `## MANDATORY
 5. You MUST remind subagents to NEVER use Bash cat, echo, heredoc, or any other workaround unless precision_engine tools will not work after multiple attempts.
 
 6. You MUST remind subagents that incorrect usage of precision_engine tools does not count as a failed attempt, only truly failed tool uses. Incorrect usage should be fixed with mcp-cli info calls.
+
+7. You MUST remind agents to return to using precision_engine tools after a successful workaround.
 `;
 
 /** Creates or appends to CLAUDE.md in the project root */
@@ -154,9 +158,7 @@ async function ensureClaudeMd(projectDir: string): Promise<void> {
       const existingContent = fs.readFileSync(claudeMdPath, 'utf8');
       if (!existingContent.includes(marker)) {
         // Append mandatory section with newlines
-        fs.appendFileSync(claudeMdPath, '
-
-' + GOODVIBES_MANDATORY_SECTION);
+        fs.appendFileSync(claudeMdPath, '' + GOODVIBES_MANDATORY_SECTION);
         debug('CLAUDE.md updated with mandatory section');
       } else {
         debug('CLAUDE.md already contains mandatory section');

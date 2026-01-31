@@ -1,34 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { ParsedTimeFilter, TokenUsage } from './types.js';
+import type { ParsedTimeFilter, TokenUsage, SubagentSession, SubagentSummary } from './types.js';
 import { parseTimeFilter, walkDir, getProjectDirectories, extractMcpTool } from './parser.js';
 import { getModelPricing } from './pricing.js';
 
-export interface SubagentSession {
-  id: string;
-  path: string;
-  project: string;
-  calls: number;
-  tokens: TokenUsage;
-  cost: number;
-  mcpCalls: number;
-  nativeCalls: number;
-  mcpTools: Record<string, number>;
-  nativeTools: Record<string, number>;
-  model: string;
-}
-
-export interface SubagentSummary {
-  totalSessions: number;
-  totalCalls: number;
-  totalTokens: TokenUsage;
-  totalCost: number;
-  mcpCallPercent: number;
-  nativeCallPercent: number;
-  topAgents: SubagentSession[];
-  sessions: SubagentSession[];
-}
 
 function extractAgentId(filePath: string): string {
   const match = filePath.match(/agent-([a-f0-9]+).jsonl/);
@@ -36,7 +12,7 @@ function extractAgentId(filePath: string): string {
 }
 
 function extractProjectName(filePath: string): string {
-  const parts = filePath.replace(/\/g, '/').split('/');
+  const parts = filePath.replace(/\\/g, '/').split('/');
   const projectsIdx = parts.indexOf('projects');
   if (projectsIdx >= 0 && parts[projectsIdx + 1]) {
     return parts[projectsIdx + 1];
@@ -79,8 +55,7 @@ export function parseSubagentSession(filePath: string, timeFilter?: ParsedTimeFi
   
   try {
     const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('
-').filter(l => l.trim());
+    const lines = content.split('\n').filter(l => l.trim());
     
     const session: SubagentSession = {
       id: extractAgentId(filePath),
@@ -183,8 +158,8 @@ export async function analyzeSubagents(timeFilter?: ParsedTimeFilter): Promise<S
     totalCost += s.cost;
     totals.input_tokens += s.tokens.input_tokens;
     totals.output_tokens += s.tokens.output_tokens;
-    totals.cache_read_input_tokens += s.tokens.cache_read_input_tokens || 0;
-    totals.cache_creation_input_tokens += s.tokens.cache_creation_input_tokens || 0;
+    totals.cache_read_input_tokens = (totals.cache_read_input_tokens ?? 0) + (s.tokens.cache_read_input_tokens || 0);
+    totals.cache_creation_input_tokens = (totals.cache_creation_input_tokens ?? 0) + (s.tokens.cache_creation_input_tokens || 0);
   }
   
   // Sort by MCP calls descending

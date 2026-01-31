@@ -2,7 +2,7 @@
 
 import { parseArgs } from 'node:util';
 import { analyzeCosts, formatOutput } from './cost-analysis/index.js';
-import type { CostAnalysisOptions, OutputFormat, TimeFilter } from './cost-analysis/types.js';
+import type { ExtendedCostAnalysisOptions, OutputFormat, TimeFilter } from './cost-analysis/types.js';
 
 function printHelp(): void {
   console.log(`
@@ -150,7 +150,7 @@ async function main(): Promise<void> {
     }
 
     // Build options
-    const options: CostAnalysisOptions = {
+    const options: ExtendedCostAnalysisOptions = {
       timeFilter,
       outputFormat: format,
     };
@@ -195,11 +195,7 @@ async function main(): Promise<void> {
     }
 
     if (values.compare || values.all) {
-      options.includeComparison = true;
-    }
-
-    if (values['per-call'] || values.all) {
-      options.includePerCall = true;
+      options.includeComparisons = true;
     }
 
     // Run analysis
