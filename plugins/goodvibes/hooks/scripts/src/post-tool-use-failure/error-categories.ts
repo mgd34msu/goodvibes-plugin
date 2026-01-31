@@ -29,13 +29,15 @@ export const ERROR_CATEGORY_MAP: Record<ErrorCategory, string[]> = {
   git_conflict: ['git_error'],
   database_error: ['database_error'],
   api_error: ['api_error'],
-  unknown: [
+    unknown: [
     'undefined_reference',
     'lint_error',
     'permission_error',
     'resource_error',
     'syntax_error',
+    'shell_escaping_error',
   ],
+
 };
 
 /**

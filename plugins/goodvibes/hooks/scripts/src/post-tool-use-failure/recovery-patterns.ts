@@ -308,33 +308,21 @@ export const RECOVERY_PATTERNS: RecoveryPattern[] = [
       /Bad escaped character in JSON/,
       /syntax error near unexpected token/,
     ],
-        suggestedFix:
-      'SHELL ESCAPING ERROR: Content contains characters breaking shell parsing.
+    suggestedFix: `SHELL ESCAPING ERROR: Content contains characters breaking shell parsing.
 
-' +
-      'USE BASE64 PARAMETERS FOR THIS CALL:
-' +
-      '  precision_write: content_base64 (instead of content)
-' +
-      '  precision_edit: find_base64, replace_base64 (instead of find, replace)
-' +
-      '  precision_grep: pattern_base64 (instead of pattern)
-' +
-      '  precision_exec: cmd_base64 (instead of cmd)
-' +
-      '  discover: pattern_base64 (instead of pattern)
+    USE BASE64 PARAMETERS FOR THIS CALL:      
+      precision_write: content_base64 (instead of content)    
+      precision_edit: find_base64, replace_base64 (instead of find, replace)
+      precision_grep: pattern_base64 (instead of pattern)
+      precision_exec: cmd_base64 (instead of cmd)
+      discover: pattern_base64 (instead of pattern)
 
-' +
-      'HOW TO ENCODE:
-' +
-      '  cat << "CONTENT_EOF" | base64 -w0
-' +
-      '  your content here
-' +
-      '  CONTENT_EOF
+    HOW TO ENCODE:
+        cat << "CONTENT_EOF" | base64 -w0
+        your content here
+        CONTENT_EOF
 
-' +
-      'IMPORTANT: Only use base64 for THIS call. Return to normal parameters after.',
+    IMPORTANT: Only use base64 for THIS call. Return to normal parameters after.`,
     severity: 'critical',
   },
 ];

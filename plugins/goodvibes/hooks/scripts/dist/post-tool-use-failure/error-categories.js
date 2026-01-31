@@ -32,6 +32,7 @@ export const ERROR_CATEGORY_MAP = {
         'permission_error',
         'resource_error',
         'syntax_error',
+        'shell_escaping_error',
     ],
 };
 /**
