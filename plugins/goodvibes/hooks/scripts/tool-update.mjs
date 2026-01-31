@@ -278,16 +278,16 @@
       const tool = precisionMatch[1];
       const syntaxMap = {
         precision_write: `STEP 1: echo -n 'your content' | base64 -w0
-        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_write '{"files":[{"path":"file.ts","content_base64":"YOUR_BASE64_HERE"}]}'`,
+STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_write '{"files":[{"path":"file.ts","content_base64":"YOUR_BASE64_HERE"}]}'`,
         precision_edit: `STEP 1: echo -n 'find text' | base64 -w0
-        STEP 2: echo -n 'replace text' | base64 -w0
-        STEP 3: mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits":[{"path":"file.ts","find_base64":"FIND_BASE64","replace_base64":"REPLACE_BASE64"}]}'`,
+STEP 2: echo -n 'replace text' | base64 -w0
+STEP 3: mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits":[{"path":"file.ts","find_base64":"FIND_BASE64","replace_base64":"REPLACE_BASE64"}]}'`,
         precision_grep: `STEP 1: echo -n 'pattern' | base64 -w0
-        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries":[{"id":"q1","pattern_base64":"YOUR_BASE64_HERE"}]}'`,
+STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries":[{"id":"q1","pattern_base64":"YOUR_BASE64_HERE"}]}'`,
         precision_exec: `STEP 1: echo -n 'command' | base64 -w0
-        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_exec '{"commands":[{"cmd_base64":"YOUR_BASE64_HERE"}]}'`,       
+STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_exec '{"commands":[{"cmd_base64":"YOUR_BASE64_HERE"}]}'`,       
         discover: `STEP 1: echo -n 'pattern' | base64 -w0
-        STEP 2: mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries":[{"id":"q1","type":"grep","pattern_base64":"YOUR_BASE64_HERE"}]}'`
+STEP 2: mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries":[{"id":"q1","type":"grep","pattern_base64":"YOUR_BASE64_HERE"}]}'`
       };
       const syntax = syntaxMap[tool] || 'Use base64 parameter variant for this tool.';
       log(`SHELL UNSAFE: tool=${tool}, quotes=${singleQuotes}, backticks=${hasBackticks}, vars=${hasUnescapedVars}`);
