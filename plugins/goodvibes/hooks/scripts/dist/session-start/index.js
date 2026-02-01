@@ -21,6 +21,7 @@ import { createDefaultState } from '../types/state.js';
 import { gatherProjectContext, createFailedContextResult, } from './context-builder.js';
 import { checkCrashRecovery, } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
+import { checkForUpdates } from './version-checker.js';
 import { fetchPricingIfStale } from './pricing-fetcher.js';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -198,8 +199,11 @@ async function runSessionStartHook() {
         await ensureClaudeMd(projectDir);
         // Step 6: Initialize analytics
         initializeAnalytics(sessionId, contextResult);
+        // Step 7: Check for plugin updates
+        const versionCheck = await checkForUpdates();
+        debug('Version check', { isUpToDate: versionCheck.isUpToDate, local: versionCheck.localVersion, remote: versionCheck.remoteVersion });
         // Build system message
-        const systemMessage = buildSystemMessage(sessionId, contextResult);
+        const systemMessage = buildSystemMessage(sessionId, contextResult, versionCheck);
         // Success response with context injection
         respond(createResponse({
             systemMessage,

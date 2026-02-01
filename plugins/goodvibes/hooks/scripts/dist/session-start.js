@@ -4517,7 +4517,7 @@ function getToolCount() {
     return 0;
   }
 }
-function buildSystemMessage(sessionId, context) {
+function buildSystemMessage(sessionId, context, versionCheck) {
   const parts = [];
   parts.push(`GoodVibes plugin ${getPluginVersion()} initialized.`);
   parts.push(`${getToolCount()} tools available.`);
@@ -4533,16 +4533,130 @@ function buildSystemMessage(sessionId, context) {
   if (context.gatherTimeMs > 0) {
     parts.push(`(context: ${context.gatherTimeMs}ms)`);
   }
+  if (versionCheck?.message) {
+    return parts.join(" ") + "\n\n" + versionCheck.message;
+  }
   return parts.join(" ");
+}
+
+// src/session-start/version-checker.ts
+import * as fs13 from "fs";
+import * as path14 from "path";
+import * as https from "https";
+var GITHUB_REPO = "mgd34msu/goodvibes-plugin";
+var GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+var REQUEST_TIMEOUT_MS = 5e3;
+function getLocalVersion() {
+  try {
+    const packagePath = path14.join(PLUGIN_ROOT, "package.json");
+    const content = fs13.readFileSync(packagePath, "utf-8");
+    const pkg = JSON.parse(content);
+    return pkg.version || "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+function fetchLatestVersion() {
+  return new Promise((resolve2) => {
+    const options = {
+      headers: {
+        "User-Agent": "GoodVibes-Plugin-VersionCheck",
+        "Accept": "application/vnd.github.v3+json"
+      },
+      timeout: REQUEST_TIMEOUT_MS
+    };
+    const req = https.get(GITHUB_API_URL, options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk.toString();
+      });
+      res.on("end", () => {
+        try {
+          if (res.statusCode !== 200) {
+            debug(`GitHub API returned status ${res.statusCode}`);
+            resolve2(null);
+            return;
+          }
+          const release = JSON.parse(data);
+          const tagName = release.tag_name || "";
+          const version = tagName.replace(/^v/, "");
+          resolve2(version || null);
+        } catch {
+          resolve2(null);
+        }
+      });
+    });
+    req.on("error", () => {
+      resolve2(null);
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve2(null);
+    });
+  });
+}
+function compareVersions(a, b) {
+  const partsA = a.split(".").map(Number);
+  const partsB = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const numA = partsA[i] || 0;
+    const numB = partsB[i] || 0;
+    if (numA < numB) return -1;
+    if (numA > numB) return 1;
+  }
+  return 0;
+}
+async function checkForUpdates() {
+  const localVersion = getLocalVersion();
+  try {
+    const remoteVersion = await fetchLatestVersion();
+    if (!remoteVersion) {
+      debug("Could not fetch remote version");
+      return {
+        isUpToDate: true,
+        // Assume up to date if we can't check
+        localVersion,
+        remoteVersion: null,
+        message: ""
+        // Silent on network failure
+      };
+    }
+    const comparison = compareVersions(localVersion, remoteVersion);
+    if (comparison >= 0) {
+      return {
+        isUpToDate: true,
+        localVersion,
+        remoteVersion,
+        message: "GoodVibes Plugin is up to date with latest version."
+      };
+    } else {
+      return {
+        isUpToDate: false,
+        localVersion,
+        remoteVersion,
+        message: `Plugin Update Available! (v${localVersion} \u2192 v${remoteVersion}) Run: cd plugins/goodvibes && git pull && npm run build then restart your session.`
+      };
+    }
+  } catch (error) {
+    logError("Version check failed", error);
+    return {
+      isUpToDate: true,
+      // Assume up to date on error
+      localVersion,
+      remoteVersion: null,
+      message: "",
+      error: error instanceof Error ? error.message : "Unknown error"
+    };
+  }
 }
 
 // src/session-start/pricing-fetcher.ts
 import { readFile as readFile9, writeFile as writeFile5, mkdir as mkdir5 } from "node:fs/promises";
-import { join as join14, dirname as dirname2 } from "node:path";
+import { join as join15, dirname as dirname2 } from "node:path";
 import { existsSync } from "node:fs";
 var PLUGIN_ROOT2 = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
-var CONFIG_PATH = join14(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
-var CACHE_PATH = join14(PLUGIN_ROOT2, ".cache", "model-pricing.json");
+var CONFIG_PATH = join15(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
+var CACHE_PATH = join15(PLUGIN_ROOT2, ".cache", "model-pricing.json");
 async function loadConfig() {
   try {
     const content = await readFile9(CONFIG_PATH, "utf-8");
@@ -4708,8 +4822,8 @@ async function fetchPricingIfStale() {
 }
 
 // src/session-start/index.ts
-import * as fs13 from "fs";
-import * as path14 from "path";
+import * as fs14 from "fs";
+import * as path15 from "path";
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
   previousFeature: null,
@@ -4780,18 +4894,18 @@ var GOODVIBES_MANDATORY_SECTION = `
 `;
 async function ensureClaudeMd(projectDir) {
   try {
-    const claudeMdPath = path14.join(projectDir, "CLAUDE.md");
+    const claudeMdPath = path15.join(projectDir, "CLAUDE.md");
     const marker = "## MANDATORY";
-    if (fs13.existsSync(claudeMdPath)) {
-      const existingContent = fs13.readFileSync(claudeMdPath, "utf8");
+    if (fs14.existsSync(claudeMdPath)) {
+      const existingContent = fs14.readFileSync(claudeMdPath, "utf8");
       if (!existingContent.includes(marker)) {
-        fs13.appendFileSync(claudeMdPath, "" + GOODVIBES_MANDATORY_SECTION);
+        fs14.appendFileSync(claudeMdPath, "" + GOODVIBES_MANDATORY_SECTION);
         debug("CLAUDE.md updated with mandatory section");
       } else {
         debug("CLAUDE.md already contains mandatory section");
       }
     } else {
-      fs13.writeFileSync(claudeMdPath, GOODVIBES_MANDATORY_SECTION);
+      fs14.writeFileSync(claudeMdPath, GOODVIBES_MANDATORY_SECTION);
       debug("CLAUDE.md created with mandatory section");
     }
   } catch (err) {
@@ -4856,7 +4970,9 @@ async function runSessionStartHook() {
     await savePluginState(projectDir, state);
     await ensureClaudeMd(projectDir);
     initializeAnalytics(sessionId, contextResult);
-    const systemMessage = buildSystemMessage(sessionId, contextResult);
+    const versionCheck = await checkForUpdates();
+    debug("Version check", { isUpToDate: versionCheck.isUpToDate, local: versionCheck.localVersion, remote: versionCheck.remoteVersion });
+    const systemMessage = buildSystemMessage(sessionId, contextResult, versionCheck);
     respond(
       createResponse({
         systemMessage,

@@ -55,7 +55,7 @@ function getToolCount() {
  * @param context - The gathered context result
  * @returns A formatted system message string
  */
-export function buildSystemMessage(sessionId, context) {
+export function buildSystemMessage(sessionId, context, versionCheck) {
     const parts = [];
     // Base message
     parts.push(`GoodVibes plugin ${getPluginVersion()} initialized.`);
@@ -76,6 +76,10 @@ export function buildSystemMessage(sessionId, context) {
     // Performance note
     if (context.gatherTimeMs > 0) {
         parts.push(`(context: ${context.gatherTimeMs}ms)`);
+    }
+    // Version check message (on separate line)
+    if (versionCheck?.message) {
+        return parts.join(' ') + '\n\n' + versionCheck.message;
     }
     return parts.join(' ');
 }

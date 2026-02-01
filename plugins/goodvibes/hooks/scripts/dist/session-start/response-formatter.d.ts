@@ -5,6 +5,7 @@
  * including system message building and response structure.
  */
 import type { ContextGatheringResult } from './context-builder.js';
+import type { VersionCheckResult } from './version-checker.js';
 /**
  * Builds the system message based on context gathering results.
  *
@@ -15,4 +16,4 @@ import type { ContextGatheringResult } from './context-builder.js';
  * @param context - The gathered context result
  * @returns A formatted system message string
  */
-export declare function buildSystemMessage(sessionId: string, context: ContextGatheringResult): string;
+export declare function buildSystemMessage(sessionId: string, context: ContextGatheringResult, versionCheck?: VersionCheckResult): string;
