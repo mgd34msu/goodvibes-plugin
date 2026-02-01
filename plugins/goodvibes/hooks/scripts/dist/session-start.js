@@ -4534,7 +4534,7 @@ function buildSystemMessage(sessionId, context, versionCheck) {
     parts.push(`(context: ${context.gatherTimeMs}ms)`);
   }
   if (versionCheck?.message) {
-    return parts.join(" ") + "\n\n" + versionCheck.message;
+    return parts.join(" ") + "\n" + versionCheck.message;
   }
   return parts.join(" ");
 }
@@ -4636,7 +4636,7 @@ async function checkForUpdates() {
         isUpToDate: false,
         localVersion,
         remoteVersion,
-        message: `Plugin Update Available! (v${localVersion} \u2192 v${remoteVersion}) Run: /goodvibes:plugin update`
+        message: `Plugin Update Available! (v${localVersion} \u2192 v${remoteVersion}) To update, use command: /goodvibes:plugin update`
       };
     }
   } catch (error) {

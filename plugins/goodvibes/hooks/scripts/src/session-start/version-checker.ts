@@ -154,7 +154,7 @@ export async function checkForUpdates(): Promise<VersionCheckResult> {
         isUpToDate: false,
         localVersion,
         remoteVersion,
-        message: `Plugin Update Available! (v${localVersion} → v${remoteVersion}) Run: /goodvibes:plugin update`,
+        message: `Plugin Update Available! (v${localVersion} → v${remoteVersion}) To update, use command: /goodvibes:plugin update`,
       };
     }
   } catch (error) {

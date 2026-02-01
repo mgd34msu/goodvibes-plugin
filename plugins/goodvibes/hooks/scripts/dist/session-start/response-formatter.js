@@ -79,7 +79,7 @@ export function buildSystemMessage(sessionId, context, versionCheck) {
     }
     // Version check message (on separate line)
     if (versionCheck?.message) {
-        return parts.join(' ') + '\n\n' + versionCheck.message;
+        return parts.join(' ') + '\n' + versionCheck.message;
     }
     return parts.join(' ');
 }
