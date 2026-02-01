@@ -4636,7 +4636,7 @@ async function checkForUpdates() {
         isUpToDate: false,
         localVersion,
         remoteVersion,
-        message: `Plugin Update Available! (v${localVersion} \u2192 v${remoteVersion}) Run: cd plugins/goodvibes && git pull && npm run build then restart your session.`
+        message: `Plugin Update Available! (v${localVersion} \u2192 v${remoteVersion}) Run: /goodvibes:plugin update`
       };
     }
   } catch (error) {

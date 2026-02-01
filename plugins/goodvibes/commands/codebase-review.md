@@ -1,9 +1,6 @@
 ---
 description: |
-  Full codebase review with parallel goodvibes agent remediation.
-  Analyzes 10 quality dimensions, generates master report, creates
-  prioritized remediation plan, executes fixes with max 6 parallel
-  goodvibes background agents (one task per agent, fresh context).
+  Full codebase review with parallel goodvibes agent remediation. Analyzes 10 quality dimensions, generates master report, creates prioritized remediation plan, executes fixes with max 6 parallel goodvibes background agents (one task per agent, fresh context).
 allowed_tools: []
 ---
 
