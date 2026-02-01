@@ -13,6 +13,7 @@ import * as yaml from 'js-yaml';
 import { PLUGIN_ROOT } from '../shared/constants.js';
 
 import type { ContextGatheringResult } from './context-builder.js';
+import type { VersionCheckResult } from './version-checker.js';
 
 /**
  * Length of session ID suffix to display in system messages.
@@ -64,7 +65,8 @@ function getToolCount(): number {
  */
 export function buildSystemMessage(
   sessionId: string,
-  context: ContextGatheringResult
+  context: ContextGatheringResult,
+  versionCheck?: VersionCheckResult
 ): string {
   const parts: string[] = [];
 
@@ -90,6 +92,11 @@ export function buildSystemMessage(
   // Performance note
   if (context.gatherTimeMs > 0) {
     parts.push(`(context: ${context.gatherTimeMs}ms)`);
+  }
+
+  // Version check message (on separate line)
+  if (versionCheck?.message) {
+    return parts.join(' ') + '\n\n' + versionCheck.message;
   }
 
   return parts.join(' ');
