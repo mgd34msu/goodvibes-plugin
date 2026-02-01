@@ -4586,10 +4586,12 @@ function fetchLatestVersion() {
         }
       });
     });
-    req.on("error", () => {
+    req.on("error", (err) => {
+      debug(`GitHub API request failed: ${err.message}`);
       resolve2(null);
     });
     req.on("timeout", () => {
+      debug(`GitHub API request timed out after ${REQUEST_TIMEOUT_MS}ms`);
       req.destroy();
       resolve2(null);
     });

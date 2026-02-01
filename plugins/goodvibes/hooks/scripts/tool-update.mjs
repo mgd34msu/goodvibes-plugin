@@ -267,32 +267,94 @@
   const cmd = input.tool_input?.command || '';
   log(`Command: ${cmd}`);
 
-  // Detect shell-unsafe content in mcp-cli precision tool calls
-  const precisionMatch = cmd.match(/mcp-cli\s+call\s+\S+\/(precision_\w+|discover)/);                                              
+  // Detect shell-unsafe content in mcp-cli precision tool calls and auto-encode to base64
+  const precisionMatch = cmd.match(/mcp-cli\s+call\s+(\S+)\s+'(.+)'(\s*)$/);
   if (precisionMatch) {
-    const singleQuotes = (cmd.match(/'/g) || []).length;                                                                           
-    const hasBackticks = cmd.includes('`');                       
+    const [, toolPath, jsonStr, trailing] = precisionMatch;
+    const toolName = toolPath.split('/').pop();
+
+    const singleQuotes = (cmd.match(/'/g) || []).length;
+    const hasBackticks = cmd.includes('`');
     const hasUnescapedVars = /\$[{a-zA-Z]/.test(cmd);
-    
-    if (singleQuotes > 2 || hasBackticks || hasUnescapedVars) {
-      const tool = precisionMatch[1];
-      const syntaxMap = {
-        precision_write: `STEP 1: echo -n 'your content' | base64 -w0
-STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_write '{"files":[{"path":"file.ts","content_base64":"YOUR_BASE64_HERE"}]}'`,
-        precision_edit: `STEP 1: echo -n 'find text' | base64 -w0
-STEP 2: echo -n 'replace text' | base64 -w0
-STEP 3: mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{"edits":[{"path":"file.ts","find_base64":"FIND_BASE64","replace_base64":"REPLACE_BASE64"}]}'`,
-        precision_grep: `STEP 1: echo -n 'pattern' | base64 -w0
-STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{"queries":[{"id":"q1","pattern_base64":"YOUR_BASE64_HERE"}]}'`,
-        precision_exec: `STEP 1: echo -n 'command' | base64 -w0
-STEP 2: mcp-cli call plugin_goodvibes_precision-engine/precision_exec '{"commands":[{"cmd_base64":"YOUR_BASE64_HERE"}]}'`,       
-        discover: `STEP 1: echo -n 'pattern' | base64 -w0
-STEP 2: mcp-cli call plugin_goodvibes_precision-engine/discover '{"queries":[{"id":"q1","type":"grep","pattern_base64":"YOUR_BASE64_HERE"}]}'`
-      };
-      const syntax = syntaxMap[tool] || 'Use base64 parameter variant for this tool.';
-      log(`SHELL UNSAFE: tool=${tool}, quotes=${singleQuotes}, backticks=${hasBackticks}, vars=${hasUnescapedVars}`);
-      console.error(`SHELL ESCAPING ERROR in ${tool}.\n\n${syntax}`);
-      process.exit(2);
+
+    if ((singleQuotes > 2 || hasBackticks || hasUnescapedVars) &&
+        ['precision_write', 'precision_edit', 'precision_grep', 'precision_exec', 'discover'].includes(toolName)) {
+
+      log(`SHELL UNSAFE detected in ${toolName}, auto-encoding to base64`);
+
+      try {
+        // Parse the JSON
+        let parsed;
+        try {
+          parsed = JSON.parse(jsonStr);
+        } catch {
+          // Try fixing the JSON first
+          const fixed = tryFixJson(jsonStr);
+          if (!fixed) {
+            log('Could not parse JSON for base64 encoding, passing through');
+            passThrough();
+          }
+          parsed = JSON.parse(fixed);
+        }
+
+        // Helper to encode string to base64
+        const toBase64 = (str) => Buffer.from(str, 'utf-8').toString('base64');
+
+        // Transform based on tool type
+        if (toolName === 'precision_write' && parsed.files) {
+          parsed.files = parsed.files.map(f => {
+            if (f.content && !f.content_base64) {
+              return { ...f, content_base64: toBase64(f.content), content: undefined };
+            }
+            return f;
+          });
+        } else if (toolName === 'precision_edit' && parsed.edits) {
+          parsed.edits = parsed.edits.map(e => {
+            const result = { ...e };
+            if (e.find && !e.find_base64) {
+              result.find_base64 = toBase64(e.find);
+              delete result.find;
+            }
+            if (e.replace && !e.replace_base64) {
+              result.replace_base64 = toBase64(e.replace);
+              delete result.replace;
+            }
+            return result;
+          });
+        } else if (toolName === 'precision_grep' && parsed.queries) {
+          parsed.queries = parsed.queries.map(q => {
+            if (q.pattern && !q.pattern_base64) {
+              return { ...q, pattern_base64: toBase64(q.pattern), pattern: undefined };
+            }
+            return q;
+          });
+        } else if (toolName === 'precision_exec' && parsed.commands) {
+          parsed.commands = parsed.commands.map(c => {
+            if (c.cmd && !c.cmd_base64) {
+              return { ...c, cmd_base64: toBase64(c.cmd), cmd: undefined };
+            }
+            return c;
+          });
+        } else if (toolName === 'discover' && parsed.queries) {
+          parsed.queries = parsed.queries.map(q => {
+            if (q.pattern && !q.pattern_base64) {
+              return { ...q, pattern_base64: toBase64(q.pattern), pattern: undefined };
+            }
+            return q;
+          });
+        }
+
+        // Reconstruct the command with the encoded JSON
+        const newJsonStr = JSON.stringify(parsed);
+        const newCmd = `mcp-cli call ${toolPath} '${newJsonStr}'${trailing}`;
+
+        log(`Auto-encoded command: ${newCmd}`);
+        sendUpdatedCommand(newCmd);
+
+      } catch (encodeErr) {
+        log(`Base64 encoding failed: ${encodeErr.message}, passing through`);
+        passThrough();
+      }
     }
   }
 
