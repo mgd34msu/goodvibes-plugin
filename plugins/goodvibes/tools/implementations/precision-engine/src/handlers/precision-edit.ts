@@ -146,6 +146,14 @@ function normalizeWhitespace(str: string): string {
 }
 
 /**
+ * Normalize line endings to Unix format (\n)
+ * This ensures patterns match regardless of file's original line endings
+ */
+function normalizeLineEndings(str: string): string {
+  return str.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+/**
  * Finds matches in content that would normalize to the same string as pattern,
  * but returns positions and lengths in the ORIGINAL content.
  * This prevents corruption when whitespace_sensitive=false.
@@ -621,7 +629,11 @@ function findInContext(
   hints: EditHints,
   matchConfig: MatchConfig
 ): MatchResult[] {
-  const lines = content.split('\n');
+  // Normalize line endings for consistent matching
+  const normalizedContent = normalizeLineEndings(content);
+  const normalizedFind = normalizeLineEndings(find);
+  
+  const lines = normalizedContent.split('\n');
   const candidates: MatchResult[] = [];
 
   // Find all occurrences first
@@ -629,18 +641,18 @@ function findInContext(
 
   if (matchConfig.mode === 'ast') {
     // Use AST matching
-    const astMatches = astMatch(filePath, content, find);
+    const astMatches = astMatch(filePath, normalizedContent, normalizedFind);
 
     if (astMatches.length === 0 && isJavaScriptFile(filePath)) {
       // AST matching failed or found nothing, fall back to exact match with warning
       console.warn(`AST matching found no matches for "${find}" in ${filePath}, falling back to exact match`);
 
       // Fall back to exact match
-      let searchContent = content;
-      let searchFind = find;
+      let searchContent = normalizedContent;
+      let searchFind = normalizedFind;
       if (matchConfig.case_sensitive === false) {
-        searchContent = content.toLowerCase();
-        searchFind = find.toLowerCase();
+        searchContent = normalizedContent.toLowerCase();
+        searchFind = normalizedFind.toLowerCase();
       }
 
       let pos = 0;
@@ -652,11 +664,11 @@ function findInContext(
       // Non-JS/TS file, fall back to exact match
       console.warn(`AST mode only applies to .ts, .tsx, .js, .jsx files. Using exact match for ${filePath}`);
 
-      let searchContent = content;
-      let searchFind = find;
+      let searchContent = normalizedContent;
+      let searchFind = normalizedFind;
       if (matchConfig.case_sensitive === false) {
-        searchContent = content.toLowerCase();
-        searchFind = find.toLowerCase();
+        searchContent = normalizedContent.toLowerCase();
+        searchFind = normalizedFind.toLowerCase();
       }
 
       let pos = 0;
@@ -668,21 +680,21 @@ function findInContext(
       allMatches = astMatches;
     }
   } else if (matchConfig.mode === 'regex') {
-    const matches = regexMatch(content, find, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
+    const matches = regexMatch(normalizedContent, normalizedFind, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
     allMatches = matches.map(m => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === 'fuzzy') {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
     const fuzzyResults = fuzzyMatch(
-      content,
-      find,
+      normalizedContent,
+      normalizedFind,
       matchConfig.case_sensitive ?? true,
       threshold
     );
     allMatches = fuzzyResults.map(r => ({ index: r.index, length: r.length }));
   } else {
     // exact match
-    let searchContent = content;
-    let searchFind = find;
+    let searchContent = normalizedContent;
+    let searchFind = normalizedFind;
 
     if (matchConfig.case_sensitive === false) {
       searchContent = searchContent.toLowerCase();
@@ -692,7 +704,7 @@ function findInContext(
     if (matchConfig.whitespace_sensitive === false) {
       // Use whitespace-insensitive matching that preserves original positions
       allMatches = findWhitespaceInsensitiveMatches(
-        matchConfig.case_sensitive === false ? content.toLowerCase() : content,
+        matchConfig.case_sensitive === false ? normalizedContent.toLowerCase() : normalizedContent,
         searchFind
       );
     } else {
@@ -720,8 +732,9 @@ function findInContext(
   const scoredMatches: ScoredMatch[] = [];
 
   // Hoist indexOf calls outside loop for performance
-  const afterIdx = hints.after ? content.indexOf(hints.after) : -1;
-  const beforeIdx = hints.before ? content.indexOf(hints.before) : -1;
+  // Use normalizedContent for hint matching to align with normalized match positions
+  const afterIdx = hints.after ? normalizedContent.indexOf(normalizeLineEndings(hints.after)) : -1;
+  const beforeIdx = hints.before ? normalizedContent.indexOf(normalizeLineEndings(hints.before)) : -1;
 
   for (const match of allMatches) {
     const lineNumber = content.substring(0, match.index).split('\n').length;
@@ -912,7 +925,8 @@ async function applyEdit(
   }
 
   // Apply replacements (reverse order to preserve indices)
-  let newContent = content;
+  // CRITICAL: Normalize content before applying replacements to match normalized positions
+  let newContent = normalizeLineEndings(content);
   const sortedMatches = [...matchesToReplace].sort((a, b) => b.index - a.index);
 
   for (const match of sortedMatches) {

@@ -254762,6 +254762,10 @@ function normalizeWhitespace(str) {
   return str.replace(/\s+/g, " ").trim();
 }
 __name(normalizeWhitespace, "normalizeWhitespace");
+function normalizeLineEndings(str) {
+  return str.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+__name(normalizeLineEndings, "normalizeLineEndings");
 function findWhitespaceInsensitiveMatches(content, pattern) {
   const normalizedPattern = normalizeWhitespace(pattern);
   const matches = [];
@@ -255064,18 +255068,20 @@ function escapeRegex2(str) {
 }
 __name(escapeRegex2, "escapeRegex");
 function findInContext(filePath, content, find, hints, matchConfig) {
-  const lines = content.split("\n");
+  const normalizedContent = normalizeLineEndings(content);
+  const normalizedFind = normalizeLineEndings(find);
+  const lines = normalizedContent.split("\n");
   const candidates = [];
   let allMatches = [];
   if (matchConfig.mode === "ast") {
-    const astMatches = astMatch(filePath, content, find);
+    const astMatches = astMatch(filePath, normalizedContent, normalizedFind);
     if (astMatches.length === 0 && isJavaScriptFile(filePath)) {
       console.warn(`AST matching found no matches for "${find}" in ${filePath}, falling back to exact match`);
-      let searchContent = content;
-      let searchFind = find;
+      let searchContent = normalizedContent;
+      let searchFind = normalizedFind;
       if (matchConfig.case_sensitive === false) {
-        searchContent = content.toLowerCase();
-        searchFind = find.toLowerCase();
+        searchContent = normalizedContent.toLowerCase();
+        searchFind = normalizedFind.toLowerCase();
       }
       let pos = 0;
       while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
@@ -255084,11 +255090,11 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       }
     } else if (astMatches.length === 0 && !isJavaScriptFile(filePath)) {
       console.warn(`AST mode only applies to .ts, .tsx, .js, .jsx files. Using exact match for ${filePath}`);
-      let searchContent = content;
-      let searchFind = find;
+      let searchContent = normalizedContent;
+      let searchFind = normalizedFind;
       if (matchConfig.case_sensitive === false) {
-        searchContent = content.toLowerCase();
-        searchFind = find.toLowerCase();
+        searchContent = normalizedContent.toLowerCase();
+        searchFind = normalizedFind.toLowerCase();
       }
       let pos = 0;
       while ((pos = searchContent.indexOf(searchFind, pos)) !== -1) {
@@ -255099,27 +255105,27 @@ function findInContext(filePath, content, find, hints, matchConfig) {
       allMatches = astMatches;
     }
   } else if (matchConfig.mode === "regex") {
-    const matches = regexMatch(content, find, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
+    const matches = regexMatch(normalizedContent, normalizedFind, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
     allMatches = matches.map((m) => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === "fuzzy") {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
     const fuzzyResults = fuzzyMatch(
-      content,
-      find,
+      normalizedContent,
+      normalizedFind,
       matchConfig.case_sensitive ?? true,
       threshold
     );
     allMatches = fuzzyResults.map((r) => ({ index: r.index, length: r.length }));
   } else {
-    let searchContent = content;
-    let searchFind = find;
+    let searchContent = normalizedContent;
+    let searchFind = normalizedFind;
     if (matchConfig.case_sensitive === false) {
       searchContent = searchContent.toLowerCase();
       searchFind = searchFind.toLowerCase();
     }
     if (matchConfig.whitespace_sensitive === false) {
       allMatches = findWhitespaceInsensitiveMatches(
-        matchConfig.case_sensitive === false ? content.toLowerCase() : content,
+        matchConfig.case_sensitive === false ? normalizedContent.toLowerCase() : normalizedContent,
         searchFind
       );
     } else {
@@ -255136,8 +255142,8 @@ function findInContext(filePath, content, find, hints, matchConfig) {
     return allMatches;
   }
   const scoredMatches = [];
-  const afterIdx = hints.after ? content.indexOf(hints.after) : -1;
-  const beforeIdx = hints.before ? content.indexOf(hints.before) : -1;
+  const afterIdx = hints.after ? normalizedContent.indexOf(normalizeLineEndings(hints.after)) : -1;
+  const beforeIdx = hints.before ? normalizedContent.indexOf(normalizeLineEndings(hints.before)) : -1;
   for (const match of allMatches) {
     const lineNumber = content.substring(0, match.index).split("\n").length;
     let score = 100;
@@ -255276,7 +255282,7 @@ async function applyEdit(filePath, content, edit, matchConfig) {
   }
   if ((occurrence === "first" || occurrence === "last" || typeof occurrence === "number") && matches.length > 1) {
   }
-  let newContent = content;
+  let newContent = normalizeLineEndings(content);
   const sortedMatches = [...matchesToReplace].sort((a, b) => b.index - a.index);
   for (const match of sortedMatches) {
     newContent = newContent.slice(0, match.index) + replaceValue + newContent.slice(match.index + match.length);

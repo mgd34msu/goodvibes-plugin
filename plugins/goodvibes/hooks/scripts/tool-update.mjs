@@ -385,8 +385,26 @@
   // 3. Re-serialize with JSON.stringify (handles escaping correctly)
   // 4. No additional doubling needed - JSON.stringify does it right
 
-  function transformForStripping(value) {
+  /**
+   * Fields that contain literal file content - should NOT be transformed
+   */
+  const CONTENT_FIELDS = ['content', 'replace'];
+
+  /**
+   * Fields that contain patterns/commands - SHOULD be transformed
+   */
+  const PATTERN_FIELDS = ['find', 'pattern', 'cmd'];
+
+  /**
+   * Transform for stripping - but SKIP content fields
+   */
+  function transformForStrippingSelective(value, fieldName = null) {
     if (typeof value === 'string') {
+      // Skip transformation for content fields
+      if (fieldName && CONTENT_FIELDS.includes(fieldName)) {
+        return value;
+      }
+      // Apply transformation for pattern fields and unknown fields
       // Double ALL escape sequences so they survive Claude's stripping
       // After Claude strips one layer: \\ → \, \n → n, etc.
       // So we need: \ → \\, newline → \n (as two chars), etc.
@@ -403,12 +421,12 @@
         .replace(/[\x00-\x07\x0B\x0E-\x1F]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
     }
     if (Array.isArray(value)) {
-      return value.map(transformForStripping);
+      return value.map(v => transformForStrippingSelective(v, fieldName));
     }
     if (value && typeof value === 'object') {
       const result = {};
       for (const [k, v] of Object.entries(value)) {
-        result[k] = transformForStripping(v);
+        result[k] = transformForStrippingSelective(v, k);
       }
       return result;
     }
@@ -416,7 +434,7 @@
   }
 
   const parsed = JSON.parse(finalJson);
-  const transformed = transformForStripping(parsed);
+  const transformed = transformForStrippingSelective(parsed);
   const newJson = JSON.stringify(transformed);
 
   const result = prefix + newJson + suffix;
