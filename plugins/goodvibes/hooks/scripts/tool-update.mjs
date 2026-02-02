@@ -350,6 +350,7 @@
 
         log(`Auto-encoded command: ${newCmd}`);
         sendUpdatedCommand(newCmd);
+        process.exit(0);  // CRITICAL: Exit after sending updated command
 
       } catch (encodeErr) {
         log(`Base64 encoding failed: ${encodeErr.message}, passing through`);
