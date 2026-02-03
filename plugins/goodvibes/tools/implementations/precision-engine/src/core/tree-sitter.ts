@@ -392,16 +392,20 @@ export class TreeSitterCore {
   async findReferences(
     basePath: string,
     symbol: string,
-    definedIn?: string
+    options?: { definedIn?: string; maxFiles?: number; maxResults?: number }
   ): Promise<ReferenceInfo[]> {
+    const { definedIn, maxFiles = 1000, maxResults = 100 } = options ?? {};
     const references: ReferenceInfo[] = [];
 
     // Find all relevant files
-    const files = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
+    const allFiles = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
       cwd: basePath,
       absolute: true,
       ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
     });
+
+    // Limit files processed
+    const files = allFiles.slice(0, maxFiles);
 
     // Search for symbol in each file
     for (const file of files) {
@@ -409,6 +413,19 @@ export class TreeSitterCore {
         const content = await fs.readFile(file, 'utf-8');
         const tree = this.parse(content, file);
         const rootNode = tree.rootNode;
+
+        // If definedIn is specified, check if this is the definition file
+        let skipFile = false;
+        if (definedIn) {
+          const relativePath = path.relative(basePath, file);
+          const normalizedDefinedIn = definedIn.replace(/\\/g, '/');
+          const normalizedRelative = relativePath.replace(/\\/g, '/');
+          if (normalizedRelative === normalizedDefinedIn) {
+            skipFile = true;
+          }
+        }
+
+        if (!skipFile) {
 
         // Find all identifier nodes matching the symbol
         const findIdentifiers = (node: Parser.SyntaxNode): void => {
@@ -436,6 +453,12 @@ export class TreeSitterCore {
         };
 
         findIdentifiers(rootNode);
+        }
+
+        // Stop if we hit the result limit
+        if (references.length >= maxResults) {
+          break;
+        }
       } catch (error) {
         // Skip files that can't be parsed
         continue;
@@ -448,13 +471,16 @@ export class TreeSitterCore {
   /**
    * Find where a symbol is defined
    */
-  async findDefinition(basePath: string, symbol: string): Promise<SymbolInfo | null> {
+  async findDefinition(basePath: string, symbol: string, maxFiles = 1000): Promise<SymbolInfo | null> {
     // Find all relevant files
-    const files = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
+    const allFiles = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
       cwd: basePath,
       absolute: true,
       ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
     });
+
+    // Limit files processed
+    const files = allFiles.slice(0, maxFiles);
 
     // Search for symbol definition in each file
     for (const file of files) {

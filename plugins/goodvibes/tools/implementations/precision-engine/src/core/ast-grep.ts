@@ -23,6 +23,7 @@
 import { parse, NapiConfig, Lang } from '@ast-grep/napi';
 import fg from 'fast-glob';
 import * as fs from 'fs/promises';
+import { createTwoFilesPatch } from 'diff';
 import * as path from 'path';
 import { DEFAULT_EXCLUDES } from '../config.js';
 
@@ -103,7 +104,7 @@ const LANGUAGE_MAP: Record<string, string> = {
   '.mjs': 'javascript',
   '.cjs': 'javascript',
   '.ts': 'typescript',
-  '.tsx': 'typescript',
+  '.tsx': 'tsx',
   '.mts': 'typescript',
   '.cts': 'typescript',
   '.py': 'python',
@@ -222,9 +223,18 @@ export class AstGrepCore {
 
           // Extract captures (pattern variables)
           const captures: Record<string, string> = {};
-          // Note: @ast-grep/napi doesn't directly expose named captures
-          // This is a placeholder - actual implementation would need to parse
-          // the pattern and extract variable names, then get corresponding nodes
+          
+          // TODO: Implement capture extraction using ast-grep napi's getMatch() method
+          // KNOWN LIMITATION: Named captures from pattern variables ($VAR, $$$VAR) are not yet extracted.
+          // The @ast-grep/napi library provides getMatch() which returns a SgNode with methods like:
+          // - getMatch(metaVarName: string) - Gets the node matched by a pattern variable
+          // - text() - Gets the text content of a matched node
+          // Implementation approach:
+          //   1. Parse pattern to extract metavar names (e.g., $NAME, $$$ARGS from pattern)
+          //   2. Call sgNode.getMatch(varName) for each metavar
+          //   3. Call .text() on returned nodes to get captured text
+          //   4. Store in captures object: captures[varName] = matchedNode.text()
+          // Reference: https://ast-grep.github.io/reference/api.html#sgnode
 
           allMatches.push({
             file: path.relative(absolutePath, filePath),
@@ -381,33 +391,17 @@ function generateUnifiedDiff(
   original: string,
   modified: string
 ): string {
-  // Simple diff implementation - production version should use a proper diff library
   if (original === modified) {
     return "No changes in " + filePath;
   }
 
-  const originalLines = original.split('\n');
-  const modifiedLines = modified.split('\n');
-
-  let diff = "--- " + filePath + "\n+++ " + filePath + "\n";
-  diff += "@@ -1," + originalLines.length + " +1," + modifiedLines.length + " @@\n";
-
-  const maxLines = Math.max(originalLines.length, modifiedLines.length);
-  for (let i = 0; i < maxLines; i++) {
-    const origLine = originalLines[i];
-    const modLine = modifiedLines[i];
-
-    if (origLine !== modLine) {
-      if (origLine !== undefined) {
-        diff += "- " + origLine + "\n";
-      }
-      if (modLine !== undefined) {
-        diff += "+ " + modLine + "\n";
-      }
-    } else if (origLine !== undefined) {
-      diff += "  " + origLine + "\n";
-    }
-  }
-
-  return diff;
+  // Use the diff package for proper unified diffs
+  return createTwoFilesPatch(
+    filePath,
+    filePath,
+    original,
+    modified,
+    undefined,
+    undefined
+  );
 }

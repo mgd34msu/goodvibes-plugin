@@ -14,4 +14,4 @@ export * from './languages.js';
 // Other exports will be added as modules are created:
 export * from './tree-sitter.js';
 // export * from './ripgrep.js';
-// export * from './ast-grep.js';
+export * from './ast-grep.js';
