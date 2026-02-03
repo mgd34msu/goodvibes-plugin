@@ -17,6 +17,8 @@ import { startTimer } from '../logging.js';
 import type { OutputMode, SymbolKind as GoodVibesSymbolKind } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
+import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
+import { isLanguageSupported } from '../core/languages.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -57,6 +59,8 @@ interface SymbolInfo {
   kind: SymbolKind;
   line: number;
   column?: number;
+  endLine?: number;
+  endColumn?: number;
   signature?: string;
   exported?: boolean;
   container?: string;
@@ -66,6 +70,9 @@ interface OutlineItem {
   name: string;
   kind: string;
   line: number;
+  endLine?: number;
+  signature?: string;
+  exported?: boolean;
   children?: OutlineItem[];
 }
 
@@ -94,6 +101,13 @@ interface FileReadResult {
 // === Constants ===
 
 const MAX_BINARY_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Lazy tree-sitter instance
+let treeSitterCore: TreeSitterCore | null = null;
+function getTreeSitter(): TreeSitterCore {
+  if (!treeSitterCore) treeSitterCore = new TreeSitterCore();
+  return treeSitterCore;
+}
 
 // === Helper Functions ===
 
@@ -424,48 +438,104 @@ async function readSingleFile(
         break;
 
       case 'outline':
-        if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
-          const sourceFile = ts.createSourceFile(
-            filePath,
-            content,
-            ts.ScriptTarget.Latest,
-            true,
-            filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-          );
-          result.outline = extractOutline(sourceFile);
+        if (isLanguageSupported(filePath)) {
+          try {
+            const treeSitter = getTreeSitter();
+            const tree = treeSitter.parse(content, filePath);
+            const tsOutline = treeSitter.getOutline(tree, filePath);
+            // Map tree-sitter OutlineNode to OutlineItem
+            const mapNode = (node: TSOutlineNode): OutlineItem => ({
+              name: node.name,
+              kind: node.kind,
+              line: node.start.line,
+              endLine: node.end.line,
+              signature: node.signature,
+              exported: node.exported,
+              children: node.children?.map(mapNode),
+            });
+            result.outline = tsOutline.map(mapNode);
+          } catch (error) {
+            // Fallback to TypeScript compiler API for TS/JS files
+            if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
+              const sourceFile = ts.createSourceFile(
+                filePath,
+                content,
+                ts.ScriptTarget.Latest,
+                true,
+                filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+              );
+              result.outline = extractOutline(sourceFile);
+            } else {
+              result.error = `Outline extraction failed: ${(error as Error).message}`;
+            }
+          }
         } else {
-          result.error = 'Outline extraction only supported for TypeScript/JavaScript files';
+          result.error = 'Outline extraction not supported for this file type';
         }
         break;
 
       case 'symbols':
-        if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
-          const sourceFile = ts.createSourceFile(
-            filePath,
-            content,
-            ts.ScriptTarget.Latest,
-            true,
-            filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-          );
-          const includeSignatures = output.mode === 'verbose';
-          result.symbols = extractSymbols(sourceFile, symbolFilter, includeSignatures);
+        if (isLanguageSupported(filePath)) {
+          try {
+            const treeSitter = getTreeSitter();
+            const tree = treeSitter.parse(content, filePath);
+            const tsSymbols = treeSitter.getSymbols(tree, filePath, symbolFilter);
+            // Map tree-sitter SymbolInfo to local SymbolInfo
+            result.symbols = tsSymbols.map((sym: TSSymbolInfo) => ({
+              name: sym.name,
+              kind: sym.kind,
+              line: sym.start.line,
+              column: sym.start.column,
+              endLine: sym.end.line,
+              endColumn: sym.end.column,
+              signature: output.mode === 'verbose' ? sym.signature : undefined,
+              exported: sym.exported,
+              container: sym.container,
+            }));
+          } catch (error) {
+            // Fallback to TypeScript compiler API for TS/JS files
+            if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
+              const sourceFile = ts.createSourceFile(
+                filePath,
+                content,
+                ts.ScriptTarget.Latest,
+                true,
+                filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+              );
+              const includeSignatures = output.mode === 'verbose';
+              result.symbols = extractSymbols(sourceFile, symbolFilter, includeSignatures);
+            } else {
+              result.error = `Symbol extraction failed: ${(error as Error).message}`;
+            }
+          }
         } else {
-          result.error = 'Symbol extraction only supported for TypeScript/JavaScript files';
+          result.error = 'Symbol extraction not supported for this file type';
         }
         break;
 
       case 'ast':
-        if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
-          const sourceFile = ts.createSourceFile(
-            filePath,
-            content,
-            ts.ScriptTarget.Latest,
-            true,
-            filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-          );
-          result.ast = extractAst(sourceFile);
+        if (isLanguageSupported(filePath)) {
+          try {
+            const treeSitter = getTreeSitter();
+            const tree = treeSitter.parse(content, filePath);
+            result.ast = tree.rootNode;
+          } catch (error) {
+            // Fallback to TypeScript compiler API for TS/JS files
+            if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
+              const sourceFile = ts.createSourceFile(
+                filePath,
+                content,
+                ts.ScriptTarget.Latest,
+                true,
+                filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+              );
+              result.ast = extractAst(sourceFile);
+            } else {
+              result.error = `AST extraction failed: ${(error as Error).message}`;
+            }
+          }
         } else {
-          result.error = 'AST extraction only supported for TypeScript/JavaScript files';
+          result.error = 'AST extraction not supported for this file type';
         }
         break;
     }

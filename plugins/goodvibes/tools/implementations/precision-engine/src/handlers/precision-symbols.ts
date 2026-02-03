@@ -18,6 +18,11 @@ import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
+import { TreeSitterCore, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
+import { isLanguageSupported, getSupportedExtensions } from '../core/languages.js';
+
+// === Singleton Parser ===
+const treeSitterCore = new TreeSitterCore();
 
 // === Interfaces per SPEC-v2 ===
 
@@ -40,6 +45,7 @@ interface PrecisionSymbolsInput {
   kinds?: SymbolKind[];
   exported_only?: boolean;
   include_private?: boolean;
+  language?: 'auto' | 'typescript' | 'python' | 'rust' | 'go';
   output: SymbolOutput;
   output_mode?: OutputMode;
 }
@@ -50,6 +56,8 @@ interface SymbolResult {
   file?: string;
   line?: number;
   column?: number;
+  endLine?: number;
+  endColumn?: number;
   signature?: string;
   exported?: boolean;
   container?: string;
@@ -57,6 +65,28 @@ interface SymbolResult {
 }
 
 // === Helper Functions ===
+
+/**
+ * Get glob patterns for multi-language support
+ */
+function getGlobPatterns(language?: 'auto' | 'typescript' | 'python' | 'rust' | 'go'): string[] {
+  if (!language || language === 'auto') {
+    return ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.py', '**/*.rs', '**/*.go'];
+  }
+  
+  switch (language) {
+    case 'typescript':
+      return ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'];
+    case 'python':
+      return ['**/*.py'];
+    case 'rust':
+      return ['**/*.rs'];
+    case 'go':
+      return ['**/*.go'];
+    default:
+      return ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'];
+  }
+}
 
 function estimateTokens(str: string): number {
   return Math.ceil(str.length / 4);
@@ -322,21 +352,82 @@ async function processFile(
   const relativePath = path.relative(workDir, absolutePath);
 
   try {
-    // Only process TypeScript/JavaScript files
-    if (!/\.(ts|tsx|js|jsx)$/.test(absolutePath)) {
+    // Check if language is supported by tree-sitter
+    if (!isLanguageSupported(absolutePath)) {
       return [];
     }
 
     const content = await fs.readFile(absolutePath, 'utf-8');
-    const sourceFile = ts.createSourceFile(
-      absolutePath,
-      content,
-      ts.ScriptTarget.Latest,
-      true,
-      /\.tsx$|\.jsx$/.test(absolutePath) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-    );
-
-    return extractSymbols(sourceFile, relativePath, options);
+    
+    // Use tree-sitter for multi-language parsing
+    const tree = treeSitterCore.parse(content, absolutePath);
+    const tsSymbols = treeSitterCore.getSymbols(tree, absolutePath, options.kinds);
+    
+    // Map tree-sitter symbols to SymbolResult format with end positions
+    const symbols: SymbolResult[] = [];
+    const queryRegex = options.query ? new RegExp(options.query, 'i') : null;
+    
+    for (const tsSymbol of tsSymbols) {
+      // Apply filters
+      if (queryRegex && !queryRegex.test(tsSymbol.name)) {
+        continue;
+      }
+      
+      if (options.exportedOnly && !tsSymbol.exported) {
+        continue;
+      }
+      
+      const symbol: SymbolResult = {
+        name: tsSymbol.name,
+        kind: tsSymbol.kind,
+        file: relativePath,
+        line: tsSymbol.start.line,
+        column: tsSymbol.start.column,
+        endLine: tsSymbol.end.line,
+        endColumn: tsSymbol.end.column,
+      };
+      
+      if (options.includeSignatures || options.includeFull) {
+        symbol.signature = tsSymbol.signature;
+      }
+      
+      if (options.includeFull) {
+        symbol.exported = tsSymbol.exported;
+        symbol.container = tsSymbol.container;
+        
+        // For 'full' mode, fall back to TypeScript API for JSDoc extraction
+        if (/\.(ts|tsx|js|jsx)$/.test(absolutePath)) {
+          const sourceFile = ts.createSourceFile(
+            absolutePath,
+            content,
+            ts.ScriptTarget.Latest,
+            true,
+            /\.tsx$|\.jsx$/.test(absolutePath) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+          );
+          
+          // Find the node at this position for JSDoc
+          const findNodeAtPosition = (node: ts.Node): ts.Node | null => {
+            const nodeStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+            if (nodeStart.line + 1 === symbol.line && nodeStart.character + 1 === symbol.column) {
+              return node;
+            }
+            return ts.forEachChild(node, findNodeAtPosition) || null;
+          };
+          
+          const node = findNodeAtPosition(sourceFile);
+          if (node) {
+            const doc = getJsDocComment(node, sourceFile);
+            if (doc) {
+              symbol.documentation = doc;
+            }
+          }
+        }
+      }
+      
+      symbols.push(symbol);
+    }
+    
+    return symbols;
   } catch {
     return [];
   }
@@ -376,8 +467,9 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
     if (input.mode === 'document') {
       files = input.files!.map(f => path.isAbsolute(f) ? f : path.join(workDir, f));
     } else {
-      // Workspace mode - find all TS/JS files
-      files = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
+      // Workspace mode - find files matching language patterns
+      const patterns = getGlobPatterns(input.language);
+      files = await fg(patterns, {
         cwd: workDir,
         ignore: DEFAULT_EXCLUDES,
         absolute: true,

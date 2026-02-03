@@ -15,7 +15,7 @@ async function build() {
       format: 'cjs',
       outfile: join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: [],
+      external: ['@ast-grep/napi'],
       minify: false,
       keepNames: true,
     });

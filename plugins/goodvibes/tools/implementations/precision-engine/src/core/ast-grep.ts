@@ -26,6 +26,7 @@ import * as fs from 'fs/promises';
 import { createTwoFilesPatch } from 'diff';
 import * as path from 'path';
 import { DEFAULT_EXCLUDES } from '../config.js';
+import { detectLanguage as detectLang } from './languages.js';
 
 // === Interfaces ===
 
@@ -128,11 +129,16 @@ const LANGUAGE_MAP: Record<string, string> = {
 };
 
 /**
- * Detects the programming language from a file extension.
+ * Internal helper: Detects the programming language from a file extension.
+ * Returns the ast-grep-specific language name, with a fallback to 'javascript'.
  * @param filePath - File path to detect language from
- * @returns Language identifier for ast-grep
+ * @returns Language identifier for ast-grep (never null)
  */
 function detectLanguage(filePath: string): string {
+  const detected = detectLang(filePath);
+  if (detected) return detected;
+  
+  // Fallback to LANGUAGE_MAP for ast-grep-specific languages not in core languages.ts
   const ext = path.extname(filePath).toLowerCase();
   return LANGUAGE_MAP[ext] || 'javascript'; // Default to JavaScript
 }
@@ -142,7 +148,7 @@ function detectLanguage(filePath: string): string {
  * @param language - Language identifier string
  * @returns ast-grep Lang enum value
  */
-function toLangEnum(language: string): Lang {
+export function toLangEnum(language: string): Lang {
   const langMap: Record<string, Lang> = {
     'javascript': Lang.JavaScript,
     'typescript': Lang.TypeScript,

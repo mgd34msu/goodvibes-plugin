@@ -10,14 +10,38 @@ import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { handlePrecisionGrep } from './precision-grep.js';
 import { handlePrecisionGlob } from './precision-glob.js';
 import { handlePrecisionSymbols } from './precision-symbols.js';
+import { RipgrepCore } from '../core/ripgrep.js';
+import { TreeSitterCore } from '../core/tree-sitter.js';
+import { AstGrepCore } from '../core/ast-grep.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
+// Lazy-loaded core instances
+let ripgrepInstance: RipgrepCore | null = null;
+let treeSitterInstance: TreeSitterCore | null = null;
+let astGrepInstance: AstGrepCore | null = null;
+
+function getRipgrep(): RipgrepCore {
+  if (!ripgrepInstance) ripgrepInstance = new RipgrepCore();
+  return ripgrepInstance;
+}
+
+function getTreeSitter(): TreeSitterCore {
+  if (!treeSitterInstance) treeSitterInstance = new TreeSitterCore();
+  return treeSitterInstance;
+}
+
+function getAstGrep(): AstGrepCore {
+  if (!astGrepInstance) astGrepInstance = new AstGrepCore();
+  return astGrepInstance;
+}
+
+
 interface QuerySpec {
   id: string;
-  type: 'grep' | 'glob' | 'symbols';
+  type: 'grep' | 'glob' | 'symbols' | 'structural';
   // For grep:
   pattern?: string;
   pattern_base64?: string;
@@ -28,6 +52,10 @@ interface QuerySpec {
   // For symbols:
   query?: string;
   kinds?: string[];
+  // For structural (ast-grep):
+  structural_pattern?: string;
+  structural_pattern_base64?: string;
+  language?: string;
 }
 
 interface DiscoverInput {
@@ -44,7 +72,7 @@ interface LocationInfo {
 }
 
 interface QueryResult {
-  type?: 'grep' | 'glob' | 'symbols';
+  type?: 'grep' | 'glob' | 'symbols' | 'structural';
   count: number;
   files?: string[];
   locations?: LocationInfo[];
@@ -372,6 +400,62 @@ async function executeSymbolsQuery(
   }
 }
 
+async function executeStructuralQuery(
+  query: QuerySpec,
+  outputMode: DiscoverOutputMode,
+  searchRoot: string
+): Promise<QueryResult> {
+  // Resolve structural_pattern (supports regular strings and base64)
+  let patternValue: string;
+  try {
+    patternValue = resolveStringField(query as unknown as Record<string, unknown>, 'structural_pattern', {
+      allowFile: false,
+      basePath: process.cwd(),
+      required: true,
+      fieldName: 'structural_pattern'
+    });
+  } catch (error) {
+    return { type: 'structural', count: 0, error: (error as Error).message };
+  }
+
+  try {
+    const astGrep = getAstGrep();
+    
+    const result = await astGrep.search({
+      pattern: patternValue,
+      path: searchRoot,
+      glob: query.glob || '**/*',
+      language: query.language,
+    });
+
+    if (outputMode === 'count_only') {
+      return { type: 'structural', count: result.matchCount };
+    }
+
+    if (outputMode === 'locations') {
+      // Convert ast-grep matches to LocationInfo format
+      const locations: LocationInfo[] = result.matches.map(match => ({
+        file: match.file,
+        line: match.line,
+        column: match.column,
+        match: match.matchText,
+      }));
+
+      return {
+        type: 'structural',
+        count: locations.length,
+        locations,
+      };
+    }
+
+    // files_only mode - extract unique files
+    const files = [...new Set(result.matches.map(m => m.file))];
+    return { type: 'structural', count: result.matchCount, files };
+  } catch (e) {
+    return { type: 'structural', count: 0, error: (e as Error).message };
+  }
+}
+
 async function executeQuery(
   query: QuerySpec,
   outputMode: DiscoverOutputMode,
@@ -386,6 +470,8 @@ async function executeQuery(
       // Note: symbols search currently uses process.cwd() internally
       // and doesn't support base_path override
       return executeSymbolsQuery(query, outputMode, searchRoot);
+    case 'structural':
+      return executeStructuralQuery(query, outputMode, searchRoot);
     default:
       return { count: 0, error: `Unknown query type: ${query.type}` };
   }

@@ -34,6 +34,9 @@ import { promisify } from 'util';
 import { diffLines } from 'diff';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
+import { parse, Lang } from '@ast-grep/napi';
+import { detectLanguage } from '../core/languages.js';
+import { toLangEnum } from '../core/ast-grep.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
@@ -43,7 +46,7 @@ const execAsync = promisify(exec);
 // === Interfaces per SPEC-v2 ===
 
 type TransactionMode = 'atomic' | 'partial' | 'none';
-type MatchMode = 'exact' | 'fuzzy' | 'regex' | 'ast';
+type MatchMode = 'exact' | 'fuzzy' | 'regex' | 'ast' | 'ast_pattern';
 type EditOutputMode = 'count_only' | 'minimal' | 'with_diff' | 'verbose';
 type ValidationStep = 'typecheck' | 'lint' | 'test' | 'build';
 type OccurrenceType = 'first' | 'last' | 'all' | number;
@@ -79,6 +82,9 @@ interface MatchConfig {
   whitespace_sensitive?: boolean;
   multiline?: boolean;  // For regex mode: enables ^ and $ to match line boundaries
   fuzzy_threshold?: number;  // 0.0 to 1.0, similarity threshold for fuzzy matching (default 0.7)
+  ast_pattern?: {
+    language?: string;  // Override auto-detection
+  };
 }
 
 interface Validate {
@@ -608,10 +614,84 @@ function astMatch(filePath: string, content: string, pattern: string): AstMatch[
     return [];
   }
 }
-
 interface MatchResult {
   index: number;
   length: number; // For AST mode, length of the matched node
+  captures?: Record<string, string>;
+}
+
+/**
+ * Matches content using ast-grep pattern matching.
+ * Supports semantic search patterns with captures.
+ * 
+ * @param content - File content to search
+ * @param pattern - AST pattern (e.g., "console.log($$$ARGS)")
+ * @param filePath - File path for language detection
+ * @param language - Optional language override
+ * @returns Array of matches with index, length, and captures
+ */
+function astGrepMatch(
+  content: string,
+  pattern: string,
+  filePath: string,
+  language?: string
+): { index: number; length: number; captures?: Record<string, string> }[] {
+  try {
+    // Detect language from file path or use override
+    const lang = language || detectLanguage(filePath);
+    const langEnum = toLangEnum(lang);
+
+    // Parse the content using @ast-grep/napi
+    const root = parse(langEnum, content);
+
+    // Find all matches for the pattern
+    const matches = root.root().findAll(pattern);
+
+    const results: { index: number; length: number; captures?: Record<string, string> }[] = [];
+
+    for (const match of matches) {
+      const range = match.range();
+      const matchText = match.text();
+
+      // Calculate byte offset for the match
+      const lines = content.split('\n');
+      let offset = 0;
+      for (let i = 0; i < range.start.line; i++) {
+        offset += lines[i].length + 1; // +1 for newline
+      }
+      offset += range.start.column;
+
+      // Extract captures from pattern variables
+      const captures: Record<string, string> = {};
+      
+      // Extract metavariable names from pattern (e.g., $VAR, $$$ARGS)
+      const metaVarPattern = /\$(\$\$)?(\w+)/g;
+      let metaMatch;
+      while ((metaMatch = metaVarPattern.exec(pattern)) !== null) {
+        const varName = metaMatch[0]; // Full match like $VAR or $$$ARGS
+        try {
+          const capturedNode = match.getMatch(varName);
+          if (capturedNode) {
+            captures[varName] = capturedNode.text();
+          }
+        } catch (e) {
+          // Metavariable not found in this match, skip
+        }
+      }
+
+      results.push({
+        index: offset,
+        length: matchText.length,
+        captures: Object.keys(captures).length > 0 ? captures : undefined,
+      });
+    }
+
+    return results;
+  } catch (error) {
+    // If ast-grep parsing fails, return empty array
+    console.error(`ast-grep matching failed for ${filePath}:`, error);
+    return [];
+  }
 }
 
 /**
@@ -678,6 +758,14 @@ function findInContext(
       }
     } else {
       allMatches = astMatches;
+    }
+  } else if (matchConfig.mode === 'ast_pattern') {
+    // Use ast-grep pattern matching
+    const language = matchConfig.ast_pattern?.language;
+    allMatches = astGrepMatch(normalizedContent, normalizedFind, filePath, language);
+    
+    if (allMatches.length === 0) {
+      console.warn(`ast-grep pattern matching found no matches for "${find}" in ${filePath}`);
     }
   } else if (matchConfig.mode === 'regex') {
     const matches = regexMatch(normalizedContent, normalizedFind, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);

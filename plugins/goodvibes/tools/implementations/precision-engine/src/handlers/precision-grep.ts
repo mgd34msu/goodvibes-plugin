@@ -10,7 +10,6 @@
  * - Parallel query execution
  */
 
-import fg from 'fast-glob';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { startTimer } from '../logging.js';
@@ -18,6 +17,8 @@ import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
 import { createErrorResult, formatMissingParamError } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
+import { RipgrepCore, RipgrepSearchResult } from '../core/ripgrep.js';
+import { TreeSitterCore } from '../core/tree-sitter.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -84,6 +85,11 @@ interface GrepResult {
   note?: string;
 }
 
+// === Singleton Instances ===
+
+const ripgrepCore = new RipgrepCore();
+const treeSitterCore = new TreeSitterCore();
+
 // === Helper Functions ===
 
 
@@ -99,117 +105,179 @@ function truncateLine(line: string, maxLength: number | undefined): string {
   return line.substring(0, maxLength) + '... [truncated]';
 }
 
-function isBinaryContent(buffer: Buffer): boolean {
-  // Check for null bytes in first 8KB - indicates binary
-  const checkLength = Math.min(buffer.length, 8192);
-  for (let i = 0; i < checkLength; i++) {
-    if (buffer[i] === 0) {
-      return true;
-    }
-  }
-  return false;
-}
+/**
+ * Transform RipgrepSearchResult to GrepResult format with expand_to support
+ */
+async function transformRipgrepResult(
+  ripgrepResult: RipgrepSearchResult,
+  output: GrepOutput,
+  workDir: string,
+  maxFiles: number,
+  maxTotalMatches: number,
+  maxTokens: number
+): Promise<GrepResult> {
+  const fileMap = new Map<string, GrepFileResult>();
+  let totalMatches = 0;
+  let totalTokens = 0;
+  let truncated = ripgrepResult.truncated;
+  let linesTruncated = 0;
 
-function expandToBlock(lines: string[], lineIndex: number): { start: number; end: number } {
-  // Find block boundaries (empty lines or significant indentation changes)
-  let start = lineIndex;
-  let end = lineIndex;
-
-  // Search backward for block start
-  while (start > 0) {
-    const line = lines[start - 1];
-    if (line.trim() === '' || (line.length > 0 && line[0] !== ' ' && line[0] !== '\t')) {
+  // Group matches by file
+  for (const match of ripgrepResult.matches) {
+    if (fileMap.size >= maxFiles || totalMatches >= maxTotalMatches || totalTokens >= maxTokens) {
+      truncated = true;
       break;
     }
-    start--;
-  }
 
-  // Search forward for block end
-  while (end < lines.length - 1) {
-    const line = lines[end + 1];
-    if (line.trim() === '') {
-      break;
+    const relativePath = path.relative(workDir, match.file);
+    let fileResult = fileMap.get(relativePath);
+
+    if (!fileResult) {
+      fileResult = {
+        file: relativePath,
+        matches: [],
+        match_count: 0,
+      };
+      fileMap.set(relativePath, fileResult);
     }
-    end++;
-  }
 
-  return { start, end };
-}
+    totalMatches++;
+    fileResult.match_count!++;
 
-function expandToFunction(lines: string[], lineIndex: number): { start: number; end: number } {
-  // Find function boundaries using common patterns
-  let start = lineIndex;
-  let end = lineIndex;
+    const grepMatch: GrepMatch = {
+      line: match.line,
+    };
 
-  // Search backward for function declaration
-  const funcPattern = /^[\s]*(export\s+)?(async\s+)?function\s+\w+|^[\s]*(export\s+)?(const|let|var)\s+\w+\s*=\s*(async\s+)?\(|^[\s]*\w+\s*\([^)]*\)\s*{|^[\s]*(public|private|protected)?\s*(async\s+)?\w+\s*\(/;
-
-  while (start > 0) {
-    if (funcPattern.test(lines[start])) {
-      break;
+    // Add column for locations mode and above
+    if (output.mode !== 'count_only' && output.mode !== 'files_only') {
+      grepMatch.column = match.column;
     }
-    start--;
-  }
 
-  // Search forward for matching closing brace
-  let braceCount = 0;
-  let foundOpen = false;
+    // Add content and highlight for matches mode and above
+    if (output.mode === 'matches' || output.mode === 'context') {
+      const originalLine = match.lineContent;
+      grepMatch.content = truncateLine(match.lineContent, output.max_line_length);
+      if (grepMatch.content !== originalLine) {
+        linesTruncated++;
+      }
 
-  for (let i = start; i < lines.length; i++) {
-    const line = lines[i];
-    for (const char of line) {
-      if (char === '{') {
-        braceCount++;
-        foundOpen = true;
-      } else if (char === '}') {
-        braceCount--;
-        if (foundOpen && braceCount === 0) {
-          end = i;
-          return { start, end };
+      // Calculate highlight position
+      const matchStart = match.column - 1; // Convert to 0-indexed
+      const matchEnd = matchStart + match.matchText.length;
+      grepMatch.highlight = [matchStart, matchEnd];
+      totalTokens += estimateTokens(grepMatch.content);
+    }
+
+    // Add context for context mode
+    if (output.mode === 'context') {
+      // Handle expand_to with tree-sitter for function/class
+      if (output.expand_to === 'function' || output.expand_to === 'class') {
+        try {
+          const fileContent = await fs.readFile(path.join(workDir, relativePath), 'utf-8');
+          const tree = treeSitterCore.parse(fileContent, relativePath);
+          const range = output.expand_to === 'function'
+            ? treeSitterCore.getEnclosingFunction(tree, match.line)
+            : treeSitterCore.getEnclosingClass(tree, match.line);
+
+          if (range) {
+            const lines = fileContent.split('\n');
+            const start = range.start.line - 1; // Convert to 0-indexed
+            const end = range.end.line - 1;
+            const matchLineIndex = match.line - 1;
+
+            if (start < matchLineIndex) {
+              const beforeLines = lines.slice(start, matchLineIndex);
+              grepMatch.before = beforeLines.map(l => {
+                const truncated = truncateLine(l, output.max_line_length);
+                if (truncated !== l) linesTruncated++;
+                return truncated;
+              });
+              totalTokens += estimateTokens(grepMatch.before.join('\n'));
+            }
+
+            if (end > matchLineIndex) {
+              const afterLines = lines.slice(matchLineIndex + 1, end + 1);
+              grepMatch.after = afterLines.map(l => {
+                const truncated = truncateLine(l, output.max_line_length);
+                if (truncated !== l) linesTruncated++;
+                return truncated;
+              });
+              totalTokens += estimateTokens(grepMatch.after.join('\n'));
+            }
+          }
+        } catch {
+          // Fall back to ripgrep context if tree-sitter fails
+          if (match.contextBefore) {
+            grepMatch.before = match.contextBefore.map(l => {
+              const truncated = truncateLine(l, output.max_line_length);
+              if (truncated !== l) linesTruncated++;
+              return truncated;
+            });
+            totalTokens += estimateTokens(grepMatch.before.join('\n'));
+          }
+          if (match.contextAfter) {
+            grepMatch.after = match.contextAfter.map(l => {
+              const truncated = truncateLine(l, output.max_line_length);
+              if (truncated !== l) linesTruncated++;
+              return truncated;
+            });
+            totalTokens += estimateTokens(grepMatch.after.join('\n'));
+          }
+        }
+      } else {
+        // Use ripgrep context for line/block or no expand_to
+        if (match.contextBefore) {
+          grepMatch.before = match.contextBefore.map(l => {
+            const truncated = truncateLine(l, output.max_line_length);
+            if (truncated !== l) linesTruncated++;
+            return truncated;
+          });
+          totalTokens += estimateTokens(grepMatch.before.join('\n'));
+        }
+        if (match.contextAfter) {
+          grepMatch.after = match.contextAfter.map(l => {
+            const truncated = truncateLine(l, output.max_line_length);
+            if (truncated !== l) linesTruncated++;
+            return truncated;
+          });
+          totalTokens += estimateTokens(grepMatch.after.join('\n'));
         }
       }
     }
+
+    fileResult.matches!.push(grepMatch);
   }
 
-  return { start, end: Math.min(lineIndex + 20, lines.length - 1) };
-}
+  const files = Array.from(fileMap.values());
 
-function expandToClass(lines: string[], lineIndex: number): { start: number; end: number } {
-  // Find class boundaries
-  let start = lineIndex;
-  let end = lineIndex;
+  // Build result based on output mode
+  const result: GrepResult = {
+    truncated,
+  };
 
-  // Search backward for class declaration
-  const classPattern = /^[\s]*(export\s+)?(abstract\s+)?class\s+\w+|^[\s]*interface\s+\w+|^[\s]*type\s+\w+\s*=/;
-
-  while (start > 0) {
-    if (classPattern.test(lines[start])) {
+  switch (output.mode) {
+    case 'count_only':
+      result.file_count = files.length;
+      result.match_count = totalMatches;
       break;
-    }
-    start--;
+    case 'files_only':
+      result.files = files.map(r => ({ file: r.file, match_count: r.match_count }));
+      result.file_count = files.length;
+      result.match_count = totalMatches;
+      break;
+    default:
+      result.files = files;
+      result.file_count = files.length;
+      result.match_count = totalMatches;
   }
 
-  // Search forward for matching closing brace
-  let braceCount = 0;
-  let foundOpen = false;
-
-  for (let i = start; i < lines.length; i++) {
-    const line = lines[i];
-    for (const char of line) {
-      if (char === '{') {
-        braceCount++;
-        foundOpen = true;
-      } else if (char === '}') {
-        braceCount--;
-        if (foundOpen && braceCount === 0) {
-          end = i;
-          return { start, end };
-        }
-      }
-    }
+  // Add truncation info if lines were truncated
+  if (linesTruncated > 0) {
+    result.lines_truncated = linesTruncated;
+    result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Use max_line_length: null for full content.`;
   }
 
-  return { start, end: Math.min(lineIndex + 50, lines.length - 1) };
+  return result;
 }
 
 async function executeQuery(
@@ -225,200 +293,39 @@ async function executeQuery(
   const maxTokens = output.max_tokens ?? Infinity;
   const contextBefore = output.context_before ?? 0;
   const contextAfter = output.context_after ?? 0;
-  const includeBinary = query.include_binary ?? false;
 
-  // Build regex with multiline support
-  let patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
+  // Resolve pattern (support base64-encoded patterns)
+  const patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
     allowFile: true,
     basePath: process.cwd(),
     required: true,
     fieldName: 'pattern'
   });
-  if (query.whole_word) {
-    patternStr = `\\b${patternStr}\\b`;
-  }
-  let flags = query.case_sensitive === false ? 'gi' : 'g';
-  if (query.multiline) {
-    flags += 'm'; // Add multiline flag
-  }
-  const regex = new RegExp(patternStr, flags);
 
-  // Get files
+  // Map query options to RipgrepSearchOptions
   const searchPath = query.path ? path.resolve(workDir, query.path) : workDir;
-  const globPattern = query.glob ?? '**/*';
   const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
 
-  const files = await fg(globPattern, {
-    cwd: searchPath,
-    ignore: excludePatterns,
-    absolute: true,
-    onlyFiles: true,
-  });
-
-  const results: GrepFileResult[] = [];
-  let totalMatches = 0;
-  let totalTokens = 0;
-  let truncated = false;
-  let linesTruncated = 0;
-
-  for (const filePath of files) {
-    if (results.length >= maxFiles || totalMatches >= maxTotalMatches || totalTokens >= maxTokens) {
-      truncated = true;
-      break;
-    }
-
-    try {
-      // Read file as buffer first to check for binary content
-      const buffer = await fs.readFile(filePath);
-
-      // Skip binary files unless include_binary is true
-      if (!includeBinary && isBinaryContent(buffer)) {
-        continue;
-      }
-
-      const content = buffer.toString('utf-8');
-      const lines = content.split('\n');
-      const relativePath = path.relative(workDir, filePath);
-
-      const fileMatches: GrepMatch[] = [];
-      let fileMatchCount = 0;
-
-      for (let i = 0; i < lines.length; i++) {
-        if (fileMatchCount >= maxMatchesPerFile || totalMatches >= maxTotalMatches || totalTokens >= maxTokens) {
-          truncated = true;
-          break;
-        }
-
-        const line = lines[i];
-        regex.lastIndex = 0;
-
-        let match: RegExpExecArray | null;
-        while ((match = regex.exec(line)) !== null) {
-          if (fileMatchCount >= maxMatchesPerFile || totalMatches >= maxTotalMatches || totalTokens >= maxTokens) {
-            truncated = true;
-            break;
-          }
-
-          totalMatches++;
-          fileMatchCount++;
-
-          const grepMatch: GrepMatch = {
-            line: i + 1,
-          };
-
-          // Add column for locations mode and above
-          if (output.mode !== 'count_only' && output.mode !== 'files_only') {
-            grepMatch.column = match.index + 1;
-          }
-
-          // Add content and highlight for matches mode and above
-          if (output.mode === 'matches' || output.mode === 'context') {
-            const originalLine = line;
-            grepMatch.content = truncateLine(line, output.max_line_length);
-            if (grepMatch.content !== originalLine) {
-              linesTruncated++;
-            }
-            // highlight: [start, end] position of match within content
-            grepMatch.highlight = [match.index, match.index + match[0].length];
-            totalTokens += estimateTokens(grepMatch.content);
-          }
-
-          // Add context for context mode
-          if (output.mode === 'context') {
-            let start: number, end: number;
-
-            if (output.expand_to) {
-              switch (output.expand_to) {
-                case 'block':
-                  ({ start, end } = expandToBlock(lines, i));
-                  break;
-                case 'function':
-                  ({ start, end } = expandToFunction(lines, i));
-                  break;
-                case 'class':
-                  ({ start, end } = expandToClass(lines, i));
-                  break;
-                default:
-                  start = Math.max(0, i - contextBefore);
-                  end = Math.min(lines.length - 1, i + contextAfter);
-              }
-            } else {
-              start = Math.max(0, i - contextBefore);
-              end = Math.min(lines.length - 1, i + contextAfter);
-            }
-
-            if (start < i) {
-              const beforeLines = lines.slice(start, i);
-              grepMatch.before = beforeLines.map(l => {
-                const truncated = truncateLine(l, output.max_line_length);
-                if (truncated !== l) linesTruncated++;
-                return truncated;
-              });
-              totalTokens += estimateTokens(grepMatch.before.join('\n'));
-            }
-            if (end > i) {
-              const afterLines = lines.slice(i + 1, end + 1);
-              grepMatch.after = afterLines.map(l => {
-                const truncated = truncateLine(l, output.max_line_length);
-                if (truncated !== l) linesTruncated++;
-                return truncated;
-              });
-              totalTokens += estimateTokens(grepMatch.after.join('\n'));
-            }
-          }
-
-          fileMatches.push(grepMatch);
-
-          // Prevent infinite loop on zero-length matches
-          if (match[0].length === 0) regex.lastIndex++;
-        }
-      }
-
-      if (fileMatchCount > 0) {
-        const fileResult: GrepFileResult = {
-          file: relativePath,
-        };
-
-        if (output.mode !== 'count_only' && output.mode !== 'files_only') {
-          fileResult.matches = fileMatches;
-        }
-
-        fileResult.match_count = fileMatchCount;
-        results.push(fileResult);
-      }
-    } catch {
-      // Skip unreadable files
-    }
-  }
-
-  // Build result based on output mode
-  const result: GrepResult = {
-    truncated,
+  const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
+    pattern: patternStr,
+    path: searchPath,
+    glob: query.glob,
+    exclude: excludePatterns,
+    caseInsensitive: query.case_sensitive === false,
+    wholeWord: query.whole_word,
+    multiline: query.multiline,
+    includeBinary: query.include_binary,
+    contextBefore,
+    contextAfter,
+    maxCount: maxMatchesPerFile,
+    maxColumns: output.max_line_length,
   };
 
-  switch (output.mode) {
-    case 'count_only':
-      result.file_count = results.length;
-      result.match_count = totalMatches;
-      break;
-    case 'files_only':
-      result.files = results.map(r => ({ file: r.file, match_count: r.match_count }));
-      result.file_count = results.length;
-      result.match_count = totalMatches;
-      break;
-    default:
-      result.files = results;
-      result.file_count = results.length;
-      result.match_count = totalMatches;
-  }
+  // Use RipgrepCore for search (50-100x faster than fast-glob + JS RegExp)
+  const ripgrepResult = await ripgrepCore.search(ripgrepOptions);
 
-  // Add truncation info if lines were truncated
-  if (linesTruncated > 0) {
-    result.lines_truncated = linesTruncated;
-    result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Use max_line_length: null for full content.`;
-  }
-
-  return result;
+  // Transform RipgrepSearchResult to GrepResult format
+  return transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, maxTotalMatches, maxTokens);
 }
 
 // === Main Handler ===
@@ -437,7 +344,7 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
     const output: GrepOutput = {
-      mode: input.output?.mode ?? 'files_only',
+      mode: input.output?.format ?? input.output?.mode ?? 'files_only',
       context_before: input.output?.context_before ?? 0,
       context_after: input.output?.context_after ?? 0,
       // Support both new and old parameter names

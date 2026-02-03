@@ -19,6 +19,12 @@ import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
+import { RipgrepCore } from '../core/ripgrep.js';
+
+
+// === Ripgrep Instance ===
+
+const ripgrepCore = new RipgrepCore();
 
 // === Interfaces per SPEC-v2 ===
 
@@ -60,6 +66,7 @@ interface PrecisionGlobInput {
   base_path?: string;
   cwd?: string; // DEPRECATED: Use base_path instead
   output_mode?: OutputMode;
+  backend?: 'fast-glob' | 'ripgrep' | 'auto'; // Default 'auto'
 }
 
 interface FileStats {
@@ -81,15 +88,21 @@ function estimateTokens(str: string): number {
   return Math.ceil(str.length / 4);
 }
 
-async function checkContentFilter(filePath: string, pattern: string): Promise<boolean> {
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const regex = new RegExp(pattern);
-    return regex.test(content);
-  } catch {
-    return false;
-  }
+async function listFilesWithRipgrep(
+  basePath: string,
+  patterns: string[],
+  exclude: string[],
+  timeoutMs?: number
+): Promise<string[]> {
+  return ripgrepCore.listFiles({
+    path: basePath,
+    patterns,
+    exclude,
+    timeoutMs: timeoutMs ?? 30000,
+  });
 }
+
+
 
 async function getFilePreview(filePath: string, lines: number): Promise<string[]> {
   try {
@@ -182,15 +195,39 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       ...(input.exclude ?? []),
     ];
 
-    // Find files using fast-glob
-    const rawFiles = await fg(patterns, {
-      cwd: workDir,
-      ignore: excludePatterns,
-      absolute: true,
-      onlyFiles: true,
-      followSymbolicLinks: followSymlinks,
-      stats: true,
-    });
+    // Backend selection
+    const backend = input.backend ?? 'auto';
+    const useRipgrep = backend === 'ripgrep' || 
+      (backend === 'auto' && !input.filters?.has_content);
+
+    // Find files using selected backend
+    let rawFiles: Array<string | { path: string; stats: Stats | null }>;
+    if (useRipgrep) {
+      try {
+        const filePaths = await listFilesWithRipgrep(workDir, patterns, excludePatterns);
+        rawFiles = filePaths.map(path => ({ path, stats: null }));
+      } catch (error) {
+        // Fallback to fast-glob on error
+        console.warn('[precision_glob] Ripgrep failed, falling back to fast-glob:', (error as Error).message);
+        rawFiles = await fg(patterns, {
+          cwd: workDir,
+          ignore: excludePatterns,
+          absolute: true,
+          onlyFiles: true,
+          followSymbolicLinks: followSymlinks,
+          stats: true,
+        });
+      }
+    } else {
+      rawFiles = await fg(patterns, {
+        cwd: workDir,
+        ignore: excludePatterns,
+        absolute: true,
+        onlyFiles: true,
+        followSymbolicLinks: followSymlinks,
+        stats: true,
+      });
+    }
 
     // Apply filters
     let files: { path: string; stats: Stats | null }[] = rawFiles.map(f => ({
@@ -238,14 +275,18 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
 
     // Apply content filter (expensive - do last)
     if (input.filters?.has_content) {
-      const contentPattern = input.filters.has_content;
-      const filtered: typeof files = [];
-      for (const file of files) {
-        if (await checkContentFilter(file.path, contentPattern)) {
-          filtered.push(file);
-        }
-      }
-      files = filtered;
+      const matchingFiles = await ripgrepCore.filesWithMatches(
+        input.filters.has_content,
+        workDir,
+        undefined,
+        30000
+      );
+      // Normalize paths for comparison
+      const matchingSet = new Set(matchingFiles.map(f => path.resolve(workDir, f)));
+      files = files.filter(f => {
+        const normalizedPath = path.resolve(workDir, f.path);
+        return matchingSet.has(normalizedPath);
+      });
     }
 
     // Sort files
