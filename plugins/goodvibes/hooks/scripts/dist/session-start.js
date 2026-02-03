@@ -1909,7 +1909,7 @@ async function gatherProjectContext(projectDir, recoveryInfo, startTime) {
 import * as fs12 from "fs";
 import * as path13 from "path";
 
-// node_modules/js-yaml/dist/js-yaml.mjs
+// ../../../../node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
   return typeof subject === "undefined" || subject === null;
 }

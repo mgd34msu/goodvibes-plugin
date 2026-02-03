@@ -6,12 +6,10 @@
   "type": "module",
   "workspaces": [
     "plugins/goodvibes",
-    "plugins/goodvibes/tools/implementations/tool-search-server",
     "plugins/goodvibes/hooks/scripts"
   ],
   "scripts": {
     "build": "npm run build --workspace=plugins/goodvibes",
-    "build:server": "npm run build --workspace=plugins/goodvibes/tools/implementations/tool-search-server",
     "build:hooks": "npm run build --workspace=plugins/goodvibes/hooks/scripts",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",

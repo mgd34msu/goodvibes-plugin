@@ -21,8 +21,9 @@ yarn-error.log*
 Thumbs.db
 nul
 
-# Local powershell scripts
+# Local scripts
 *.ps1
+commit-push-reinstall.sh
 
 # Test coverage
 coverage/
