@@ -25,6 +25,10 @@ export function* walkDir(dir: string): Generator<string> {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
+        // Skip subagent directories - handled separately by analyzeSubagents()
+        if (entry.name === 'subagents') {
+          continue;
+        }
         yield* walkDir(fullPath);
       } else if (entry.name.endsWith('.jsonl')) {
         yield fullPath;
