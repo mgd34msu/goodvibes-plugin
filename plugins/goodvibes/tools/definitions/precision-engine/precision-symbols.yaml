@@ -32,6 +32,11 @@ inputSchema:
       type: boolean
       default: false
       description: Include private symbols
+    language:
+      type: string
+      enum: [auto, typescript, javascript, python, rust, go]
+      default: auto
+      description: Language for parsing (auto-detected if not specified)
     output:
       type: object
       properties:
@@ -39,7 +44,13 @@ inputSchema:
           type: string
           enum: [count_only, names_only, locations, signatures, full]
           default: locations
-          description: Output detail level
+          description: |
+            Output detail level:
+            - count_only: Just counts
+            - names_only: Symbol names
+            - locations: Names with file/line/column (includes endLine/endColumn)
+            - signatures: Names with type signatures
+            - full: Complete symbol information
         max_results:
           type: integer
           minimum: 1

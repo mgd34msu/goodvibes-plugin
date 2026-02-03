@@ -47,7 +47,18 @@ inputSchema:
         mode:
           type: string
           enum: [count_only, files_only, locations, matches, context]
-          description: Output mode
+          description: |
+            Output mode:
+            - count_only: Just match counts
+            - files_only: File paths with matches
+            - locations: File/line/column locations
+            - matches: Match text with locations
+            - context: Matches with surrounding context
+        format:
+          type: string
+          enum: [count_only, minimal, standard, verbose]
+          default: standard
+          description: Output data format (alias for output_mode)
         context_before:
           type: integer
           minimum: 0

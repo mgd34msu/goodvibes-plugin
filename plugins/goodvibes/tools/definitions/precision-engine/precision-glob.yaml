@@ -84,6 +84,15 @@ inputSchema:
       type: boolean
       default: false
       description: Follow symbolic links
+    backend:
+      type: string
+      enum: [auto, fast-glob, ripgrep]
+      default: auto
+      description: |
+        Backend implementation:
+        - auto: Choose best based on query (default)
+        - fast-glob: JavaScript glob implementation
+        - ripgrep: Fast CLI tool (better for large repos)
     output_mode:
       type: string
       enum: [count_only, minimal, standard, verbose]

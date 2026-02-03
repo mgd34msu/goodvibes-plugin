@@ -16,8 +16,8 @@ inputSchema:
             description: Unique ID for this query
           type:
             type: string
-            enum: [grep, glob, symbols]
-            description: Query type
+            enum: [grep, glob, symbols, structural]
+            description: Query type (grep=regex, glob=file patterns, symbols=code symbols, structural=AST patterns)
           pattern:
             type: string
             description: Regex pattern (for grep)
@@ -37,6 +37,16 @@ inputSchema:
             items:
               type: string
             description: Symbol kinds (for symbols)
+          structural_pattern:
+            type: string
+            description: AST pattern string (for structural queries)
+          structural_pattern_base64:
+            type: string
+            description: Base64-encoded AST pattern (for structural queries with special chars)
+          language:
+            type: string
+            enum: [auto, typescript, javascript, python, rust, go]
+            description: Language for structural pattern matching (default auto)
         required: [id, type]
     output_mode:
       type: string

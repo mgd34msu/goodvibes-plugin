@@ -69,9 +69,14 @@ inputSchema:
       properties:
         mode:
           type: string
-          enum: [exact, fuzzy, regex, ast]
+          enum: [exact, fuzzy, regex, ast_pattern]
           default: exact
-          description: Matching mode
+          description: |
+            Matching mode:
+            - exact: Literal string matching
+            - fuzzy: Whitespace-insensitive matching
+            - regex: Regular expression matching
+            - ast_pattern: AST structural pattern matching with captures ($VAR for single nodes, $$$VAR for sequences)
         case_sensitive:
           type: boolean
           default: true

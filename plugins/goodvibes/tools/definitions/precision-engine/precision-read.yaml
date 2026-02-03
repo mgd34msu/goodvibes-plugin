@@ -3,6 +3,7 @@ description: |
   Token-efficient file reading with extraction modes.
   Read full content, outlines, symbols, or specific line ranges.
   Supports per-file range overrides and symbol filtering.
+  Multi-language support: TypeScript, JavaScript, Python, Rust, Go (auto-detected).
 inputSchema:
   type: object
   properties:
@@ -18,7 +19,13 @@ inputSchema:
           extract:
             type: string
             enum: [content, outline, symbols, ast, lines]
-            description: Extraction mode
+            description: |
+              Extraction mode:
+              - content: Full file content
+              - outline: File structure (symbols with endLine/endColumn)
+              - symbols: Symbol list (includes endLine/endColumn)
+              - ast: Abstract syntax tree
+              - lines: Specific line ranges
           range:
             type: object
             properties:
@@ -36,7 +43,13 @@ inputSchema:
       type: string
       enum: [content, outline, symbols, ast, lines]
       default: content
-      description: Default extraction mode
+      description: |
+        Default extraction mode:
+        - content: Full file content
+        - outline: File structure (symbols with endLine/endColumn)
+        - symbols: Symbol list (includes endLine/endColumn)
+        - ast: Abstract syntax tree
+        - lines: Specific line ranges
     symbol_filter:
       type: array
       items:

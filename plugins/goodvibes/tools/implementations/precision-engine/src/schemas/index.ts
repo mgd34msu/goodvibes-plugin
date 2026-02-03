@@ -167,7 +167,7 @@ export const discoverSchema: Tool = {
           type: 'object',
           properties: {
             id: { type: 'string', description: 'Unique ID for this query' },
-            type: { type: 'string', enum: ['grep', 'glob', 'symbols'], description: 'Query type' },
+            type: { type: 'string', enum: ['grep', 'glob', 'symbols', 'structural'], description: 'Query type' },
             pattern: { type: 'string', description: 'Regex pattern (for grep)' },
             pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "pattern" | base64 -w0' },
             glob: { type: 'string', description: 'File filter (for grep)' },
@@ -175,6 +175,9 @@ export const discoverSchema: Tool = {
             patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns (for glob)' },
             query: { type: 'string', description: 'Symbol name (for symbols)' },
             kinds: { type: 'array', items: { type: 'string' }, description: 'Symbol kinds (for symbols)' },
+            structural_pattern: { type: 'string', description: 'AST pattern to search for (e.g., "console.log($$$ARGS)") (for structural)' },
+            structural_pattern_base64: { type: 'string', description: 'Base64-encoded structural pattern (for structural)' },
+            language: { type: 'string', description: 'Language hint for structural queries' },
           },
           required: ['id', 'type'],
         },
@@ -364,6 +367,7 @@ export const precisionGlobSchema: Tool = {
       },
       respect_gitignore: { type: 'boolean', default: true, description: 'Respect .gitignore rules' },
       follow_symlinks: { type: 'boolean', default: false, description: 'Follow symbolic links' },
+      backend: { type: 'string', enum: ['auto', 'fast-glob', 'ripgrep'], description: 'File listing backend' },
       base_path: { type: 'string', description: 'Base directory for glob patterns (defaults to process.cwd())' },
       cwd: { type: 'string', description: 'DEPRECATED: Use base_path instead. Working directory for glob patterns (defaults to process.cwd())' },
       verbosity: verbositySchema,
@@ -393,6 +397,7 @@ export const precisionSymbolsSchema: Tool = {
       mode: { type: 'string', enum: ['workspace', 'document'], default: 'workspace' },
       query: { type: 'string', description: 'Symbol name pattern (workspace mode)' },
       files: { type: 'array', items: { type: 'string' }, description: 'Files to analyze (document mode)' },
+      language: { type: 'string', enum: ['auto', 'typescript', 'python', 'rust', 'go'], description: 'Language to search' },
       kinds: {
         type: 'array',
         items: { type: 'string', enum: ['function', 'method', 'class', 'interface', 'type', 'variable', 'constant', 'enum', 'property', 'namespace'] },
@@ -490,7 +495,7 @@ export const precisionEditSchema: Tool = {
       match: {
         type: 'object',
         properties: {
-          mode: { type: 'string', enum: ['exact', 'fuzzy', 'regex', 'ast'], default: 'exact' },
+          mode: { type: 'string', enum: ['exact', 'fuzzy', 'regex', 'ast', 'ast_pattern'], default: 'exact' },
           case_sensitive: { type: 'boolean', default: true },
           whitespace_sensitive: { type: 'boolean', default: true },
         },
