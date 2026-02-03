@@ -26,22 +26,28 @@ export function findSubagentFiles(timeFilter?: ParsedTimeFilter): string[] {
   const directories = getProjectDirectories();
   
   for (const dir of directories) {
-    const subagentsDir = path.join(dir);
+    const projectsDir = path.join(dir);
     try {
-      for (const projectDir of fs.readdirSync(subagentsDir)) {
-        const subagentPath = path.join(subagentsDir, projectDir, 'subagents');
-        if (!fs.existsSync(subagentPath)) continue;
+      for (const projectDir of fs.readdirSync(projectsDir)) {
+        const projectPath = path.join(projectsDir, projectDir);
+        if (!fs.statSync(projectPath).isDirectory()) continue;
         
-        for (const file of fs.readdirSync(subagentPath)) {
-          if (!file.startsWith('agent-') || !file.endsWith('.jsonl')) continue;
-          const fullPath = path.join(subagentPath, file);
-          try {
-            const stat = fs.statSync(fullPath);
-            const mtime = stat.mtime.getTime();
-            if (mtime >= filter.startTime && mtime <= filter.endTime) {
-              files.push(fullPath);
-            }
-          } catch { }
+        // Iterate through session directories (UUIDs)
+        for (const sessionDir of fs.readdirSync(projectPath)) {
+          const subagentPath = path.join(projectPath, sessionDir, 'subagents');
+          if (!fs.existsSync(subagentPath)) continue;
+          
+          for (const file of fs.readdirSync(subagentPath)) {
+            if (!file.startsWith('agent-') || !file.endsWith('.jsonl')) continue;
+            const fullPath = path.join(subagentPath, file);
+            try {
+              const stat = fs.statSync(fullPath);
+              const mtime = stat.mtime.getTime();
+              if (mtime >= filter.startTime && mtime <= filter.endTime) {
+                files.push(fullPath);
+              }
+            } catch { }
+          }
         }
       }
     } catch { }
