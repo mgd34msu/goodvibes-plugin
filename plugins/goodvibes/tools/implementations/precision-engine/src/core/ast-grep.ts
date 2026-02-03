@@ -159,6 +159,9 @@ function toLangEnum(language: string): Lang {
     'csharp': Lang.CSharp,
     'html': Lang.Html,
     'css': Lang.Css,
+    'bash': Lang.Bash,
+    'scala': Lang.Scala,
+    'php': Lang.Php,
   };
 
   return langMap[language.toLowerCase()] || Lang.JavaScript;

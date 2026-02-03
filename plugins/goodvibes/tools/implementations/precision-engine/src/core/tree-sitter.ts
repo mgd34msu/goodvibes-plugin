@@ -277,8 +277,8 @@ export class TreeSitterCore {
     if (this.currentLanguage !== lang.name) {
       this.parser.setLanguage(lang.grammar as any);
       this.currentLanguage = lang.name;
-    this.lastParsedLanguage = lang.name;
     }
+    this.lastParsedLanguage = lang.name;
 
     const tree = this.parser.parse(content);
     return tree;

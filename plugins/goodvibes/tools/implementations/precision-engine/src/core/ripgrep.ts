@@ -14,6 +14,7 @@ export interface RipgrepSearchOptions {
   contextAfter?: number;
   maxCount?: number;
   maxColumns?: number;
+  timeoutMs?: number;
 }
 
 export interface RipgrepMatch {
@@ -34,6 +35,7 @@ export interface RipgrepSearchResult {
 }
 
 export interface RipgrepListOptions {
+  timeoutMs?: number;
   patterns?: string[];
   path: string;
   exclude?: string[];
@@ -96,10 +98,10 @@ export class RipgrepCore {
     const args = this.buildSearchArgs(options);
 
     try {
-      const output = await this.executeRipgrep(args);
+      const output = await this.executeRipgrep(args, options.timeoutMs);
       return this.parseSearchResults(output, options);
     } catch (error) {
-      throw new Error(`Ripgrep search failed: \${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Ripgrep search failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -114,23 +116,23 @@ export class RipgrepCore {
     }
 
     if (options.exclude && options.exclude.length > 0) {
-      args.push(...options.exclude.flatMap(e => ['--glob', `!\${e}`]));
+      args.push(...options.exclude.flatMap(e => ['--glob', `!${e}`]));
     }
 
     args.push(options.path);
 
     try {
-      const output = await this.executeRipgrep(args);
+      const output = await this.executeRipgrep(args, options.timeoutMs);
       return this.parseFileList(output);
     } catch (error) {
-      throw new Error(`Ripgrep list files failed: \${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Ripgrep list files failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   /**
    * Get list of files that contain matches (equivalent to rg -l).
    */
-  async filesWithMatches(pattern: string, path: string, glob?: string): Promise<string[]> {
+  async filesWithMatches(pattern: string, path: string, glob?: string, timeoutMs?: number): Promise<string[]> {
     const args = ['--files-with-matches', '--json', pattern];
 
     if (glob) {
@@ -140,10 +142,10 @@ export class RipgrepCore {
     args.push(path);
 
     try {
-      const output = await this.executeRipgrep(args);
+      const output = await this.executeRipgrep(args, timeoutMs);
       return this.parseFilesWithMatches(output);
     } catch (error) {
-      throw new Error(`Ripgrep files with matches failed: \${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Ripgrep files with matches failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -163,7 +165,7 @@ export class RipgrepCore {
 
     if (options.exclude && options.exclude.length > 0) {
       options.exclude.forEach(pattern => {
-        args.push('--glob', `!\${pattern}`);
+        args.push('--glob', `!${pattern}`);
       });
     }
 
@@ -210,9 +212,16 @@ export class RipgrepCore {
   /**
    * Execute ripgrep binary and return output.
    */
-  private executeRipgrep(args: string[]): Promise<string> {
+  private executeRipgrep(args: string[], timeoutMs?: number): Promise<string> {
     return new Promise((resolve, reject) => {
       const process = spawn(rgPath, args);
+
+      // Set up timeout
+      const timeout = timeoutMs ?? 30000;
+      const timeoutId = setTimeout(() => {
+        process.kill('SIGTERM');
+        reject(new Error(`Ripgrep search timed out after ${timeout}ms`));
+      }, timeout);
 
       let stdout = '';
       let stderr = '';
@@ -226,16 +235,18 @@ export class RipgrepCore {
       });
 
       process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ripgrep: \${error.message}`));
+    clearTimeout(timeoutId);
+        reject(new Error(`Failed to spawn ripgrep: ${error.message}`));
       });
 
       process.on('close', (code) => {
+        clearTimeout(timeoutId);
         // ripgrep returns:
         // 0 - matches found
         // 1 - no matches found (not an error)
         // 2+ - error
         if (code !== null && code > 1) {
-          reject(new Error(`Ripgrep exited with code \${code}: \${stderr}`));
+          reject(new Error(`Ripgrep exited with code ${code}: ${stderr}`));
         } else {
           resolve(stdout);
         }
@@ -243,87 +254,96 @@ export class RipgrepCore {
     });
   }
 
+
   /**
-   * Parse ripgrep JSON output into structured search results.
+   * Parse ripgrep JSON output line-by-line.
    */
+  private parseJsonOutput(output: string): RipgrepJsonOutput[] {
+    const records: RipgrepJsonOutput[] = [];
+    for (const line of output.split('\n')) {
+      if (line.trim()) {
+        try {
+          records.push(JSON.parse(line));
+        } catch {
+          // Skip invalid JSON lines
+        }
+      }
+    }
+    return records;
+  }
   private parseSearchResults(output: string, options: RipgrepSearchOptions): RipgrepSearchResult {
     const matches: RipgrepMatch[] = [];
     const files = new Set<string>();
     let totalMatches = 0;
     let truncated = false;
 
-    const lines = output.trim().split('\n').filter(line => line.length > 0);
+    // Parse all JSON records first
+    const records = this.parseJsonOutput(output);
 
-    // Group context lines with their matches
-    const contextMap = new Map<string, { before: string[], after: string[] }>();
-    let currentFile = '';
-    let currentLine = 0;
+    // Process records with two-pass context handling
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
 
-    for (const line of lines) {
-      try {
-        const json = JSON.parse(line) as RipgrepJsonOutput;
+      if (record.type === 'match') {
+        const { data } = record;
+        const file = data.path.text;
+        const lineNumber = data.line_number;
+        const lineContent = data.lines.text.replace(/\n$/, '');
 
-        if (json.type === 'match') {
-          const { data } = json;
-          const file = data.path.text;
-          const lineNumber = data.line_number;
-          const lineContent = data.lines.text.replace(/\n$/, '');
+        files.add(file);
 
-          files.add(file);
-          currentFile = file;
-          currentLine = lineNumber;
-
-          // Extract match text from submatches
-          for (const submatch of data.submatches) {
-            const match: RipgrepMatch = {
-              file,
-              line: lineNumber,
-              column: submatch.start + 1, // ripgrep uses 0-based columns
-              matchText: submatch.match.text,
-              lineContent,
-            };
-
-            // Attach context if available
-            const contextKey = `\${file}:\${lineNumber}`;
-            const context = contextMap.get(contextKey);
-            if (context) {
-              match.contextBefore = context.before;
-              match.contextAfter = context.after;
-              contextMap.delete(contextKey);
+        // Look backward for contextBefore
+        const contextBefore: string[] = [];
+        if (options.contextBefore && options.contextBefore > 0) {
+          for (let j = i - 1; j >= 0 && contextBefore.length < options.contextBefore; j--) {
+            const prevRecord = records[j];
+            if (prevRecord.type === 'context' && prevRecord.data.path.text === file && prevRecord.data.line_number < lineNumber) {
+              contextBefore.unshift(prevRecord.data.lines.text.replace(/\n$/, ''));
+            } else if (prevRecord.type === 'match') {
+              break; // Stop at previous match
             }
-
-            matches.push(match);
-            totalMatches++;
-          }
-        } else if (json.type === 'context') {
-          // Store context for later attachment to matches
-          const { data } = json;
-          const file = data.path.text;
-          const lineNumber = data.line_number;
-          const lineContent = data.lines.text.replace(/\n$/, '');
-
-          // Determine if this is before or after context
-          const contextKey = currentFile === file ? `\${file}:\${currentLine}` : '';
-          if (contextKey) {
-            const context = contextMap.get(contextKey) || { before: [], after: [] };
-
-            if (lineNumber < currentLine) {
-              context.before.push(lineContent);
-            } else if (lineNumber > currentLine) {
-              context.after.push(lineContent);
-            }
-
-            contextMap.set(contextKey, context);
-          }
-        } else if (json.type === 'summary') {
-          // Check if results were truncated by max-count
-          if (options.maxCount && totalMatches >= options.maxCount) {
-            truncated = true;
           }
         }
-      } catch (error) {
-        // Skip invalid JSON lines
-        continue;
+
+        // Look forward for contextAfter
+        const contextAfter: string[] = [];
+        if (options.contextAfter && options.contextAfter > 0) {
+          for (let j = i + 1; j < records.length && contextAfter.length < options.contextAfter; j++) {
+            const nextRecord = records[j];
+            if (nextRecord.type === 'context' && nextRecord.data.path.text === file && nextRecord.data.line_number > lineNumber) {
+              contextAfter.push(nextRecord.data.lines.text.replace(/\n$/, ''));
+            } else if (nextRecord.type === 'match') {
+              break; // Stop at next match
+            }
+          }
+        }
+
+        // Extract match text from submatches
+        for (const submatch of data.submatches) {
+          const match: RipgrepMatch = {
+            file,
+            line: lineNumber,
+            column: submatch.start + 1, // ripgrep uses 0-based columns
+            matchText: submatch.match.text,
+            lineContent,
+          };
+
+          if (contextBefore.length > 0) {
+            match.contextBefore = contextBefore;
+          }
+
+          if (contextAfter.length > 0) {
+            match.contextAfter = contextAfter;
+          }
+
+          matches.push(match);
+          totalMatches++;
+        }
+      } else if (record.type === 'summary') {
+        // Check if results were truncated by max-count
+        if (options.maxCount && totalMatches >= options.maxCount) {
+          truncated = true;
+        }
       }
     }
 
