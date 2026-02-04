@@ -3,7 +3,7 @@
  * Uses web-tree-sitter (WASM) for cross-platform compatibility
  */
 
-import { Parser, Language } from 'web-tree-sitter';
+import Parser from 'web-tree-sitter';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import fg from 'fast-glob';
