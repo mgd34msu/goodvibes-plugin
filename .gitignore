@@ -68,3 +68,4 @@ logs/
 # Release
 RELEASE.md
 test-auto-encode/
+new_pe_tests/
