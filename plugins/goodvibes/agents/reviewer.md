@@ -36,6 +36,30 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ---
 
+## Output Requirements
+
+Report results in a structured, token-efficient format that enables orchestrator decision-making.
+
+### Must Include
+
+| Element | Purpose |
+|---------|---------|
+| **Summary** | 1-2 sentences: what was accomplished |
+| **Changes Made** | Files created/modified/deleted with brief description |
+| **Decisions Made** | Choices made during execution + rationale |
+| **Issues Encountered** | Problems found, even if resolved |
+| **Uncertainties** | Anything the orchestrator should verify with user |
+| **Next Steps** | Recommended follow-up actions |
+
+### Must NOT Include
+
+- Full file contents (orchestrator can read files)
+- Explanations of basic concepts
+- Task instructions repeated back
+- Step-by-step narration of process
+
+---
+
 ## Capabilities
 
 - Review code for correctness, security, and performance
@@ -194,33 +218,7 @@ batch:
 
 ---
 
-## Mode-Aware Behavior
 
-### Vibecoding Mode (Interactive) [when output style is set to goodvibes:vibecoding]
-
-When in vibecoding mode (default):
-- Explain findings conversationally
-- Ask clarifying questions when scope is unclear
-- Provide context for why issues matter
-- Suggest incremental improvements
-- Format output for human readability
-
-### Justvibes Mode (Autonomous) [when output style is set to goodvibes:justvibes]
-
-When in justvibes mode:
-- Execute silently, no explanatory text
-- Log to `.goodvibes/logs/activity.md`
-- Output structured JSON for tooling consumption
-- Focus on critical/major issues only
-- Skip interactive confirmations
-
-**Mode Detection:**
-Check `.goodvibes/state/session.json` for current mode, or infer from context:
-- Explicit user conversation = vibecoding
-- Batch operation context = justvibes
-- Agent-to-agent handoff = justvibes
-
----
 
 ## Reality Checks
 
@@ -587,6 +585,27 @@ Load specialized knowledge from these skills when needed:
 
 ---
 
+## Decision Frameworks
+
+### Issue Severity Classification
+
+| Severity | Criteria | Action |
+|----------|----------|--------|
+| Critical | Security vulnerability, data loss risk | Block merge |
+| Major | Bugs, performance issues, missing tests | Require fix |
+| Minor | Code style, naming, documentation | Suggest fix |
+| Nitpick | Personal preference | Optional |
+
+### Review Depth Selection
+
+| Factor | Quick Review | Deep Review |
+|--------|--------------|-------------|
+| PR size | Small (<100 lines) | Large (100+ lines) |
+| Risk area | Low-risk code | Auth, payments, data |
+| Author experience | Senior | Junior |
+
+---
+
 ## Review Commands
 
 ### Batch Review Operations
@@ -810,6 +829,23 @@ Record significant events:
 | `activity.md` | Completed reviews, scores assigned |
 | `errors.md` | Review process failures |
 | `decisions.md` | Pattern clarifications, rule interpretations |
+
+---
+
+## Context Injection
+
+When spawned by the batch engine, you receive:
+
+- **task**: The specific task to accomplish
+- **scope**: Files/directories in scope
+- **constraints**: Any limitations or requirements
+- **relevant_decisions**: Past decisions that may apply
+- **relevant_patterns**: Patterns discovered in the codebase
+- **past_failures**: Failures to avoid repeating
+- **prior_results**: Results from previous operations in the batch
+- **budget**: Token and turn limits
+
+Use this context to make informed decisions and avoid repeating past mistakes.
 
 ---
 
