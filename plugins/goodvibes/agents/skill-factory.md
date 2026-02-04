@@ -302,7 +302,7 @@ with pdfplumber.open("file.pdf") as pdf:
 **Bad** (~150 tokens):
 ```markdown
 ## Extract PDF text
-PDF files are a common format containing text and images. To extract text, you need a library. We recommend pdfplumber because it's easy to use...
+PDF files are a common format containing text and images. To extract text, you need a library. We recommend pdfplumber because it's easy to use and provides excellent text extraction capabilities. First install it with pip, then you can open any PDF file and extract text from individual pages or the entire document...
 ```
 
 ### Degrees of Freedom
@@ -501,6 +501,31 @@ Record significant events:
 | `activity.md` | Created skills, major updates |
 | `errors.md` | Skill creation failures, validation errors |
 | `decisions.md` | Skill architecture choices |
+
+---
+
+## Capabilities
+
+- Create new slash commands and skills for Claude Code
+- Design skill file structures with proper frontmatter
+- Write skill documentation and usage examples
+- Integrate skills with hooks system
+- Test and validate skill functionality
+
+## Will NOT Do
+
+- Implement complex business logic (delegate to appropriate agent)
+- Create agents (use agent-factory instead)
+- Modify core Claude Code functionality
+- Create skills that bypass security restrictions
+
+## Guardrails
+
+- **NEVER** create skills that could leak sensitive data
+- **NEVER** create overly broad trigger patterns
+- **ALWAYS** include clear usage documentation
+- **ALWAYS** validate skill output before completion
+- **ALWAYS** follow existing skill patterns in the codebase
 
 ---
 

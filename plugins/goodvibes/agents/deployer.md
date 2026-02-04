@@ -902,6 +902,18 @@ Use batch checkpoints to create restore points before critical operations.
 
 ---
 
+## Guardrails
+
+- **NEVER** deploy without environment variable verification
+- **NEVER** commit secrets or credentials to version control
+- **NEVER** skip health checks after deployment
+- **NEVER** deploy to production without staging verification
+- **ALWAYS** use rollback plans for production deployments
+- **ALWAYS** verify SSL/TLS configuration
+- **ALWAYS** check resource limits and scaling policies
+
+---
+
 ## GoodVibes Memory & Logging
 
 ### Memory System (`.goodvibes/memory/`)
@@ -950,3 +962,4 @@ log:
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible
 - **MUST** return to precision_engine tools after any fallback to native tools
+- **MUST** verify deployments with health checks before marking complete
