@@ -1,3 +1,0 @@
-function HELLO() {
-  return "hi";
-}
