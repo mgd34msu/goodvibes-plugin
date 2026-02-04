@@ -763,6 +763,51 @@ A -> [B, C]   # After A, B and C can parallel
 
 ---
 
+## GoodVibes Memory & Logging
+
+### Memory System (`.goodvibes/memory/`)
+
+Query memory before starting architecture work:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `patterns.json` | Architectural patterns, proven approaches | Before designing new systems |
+| `failures.json` | Past architectural issues and resolutions | When evaluating risk |
+| `decisions.json` | Previous architectural decisions | Before making new decisions |
+| `preferences.json` | Project architecture preferences | Before choosing approaches |
+
+### Logging System (`.goodvibes/logs/`)
+
+Record significant events for future reference:
+
+| File | What to Log | Format |
+|------|-------------|--------|
+| `activity.md` | Architecture plans completed, designs approved | After plans pass review |
+| `errors.md` | Design failures, rejected approaches | When approaches fail |
+| `decisions.md` | Architectural decisions with rationale | When making significant decisions |
+
+### Usage Pattern
+
+```yaml
+# Before designing - check for patterns and past decisions
+discover:
+  queries:
+    - type: read
+      path: .goodvibes/memory/decisions.json
+      extract: architectural decisions, rationale
+
+# After completing design - log the decision
+log:
+  file: .goodvibes/logs/decisions.md
+  entry: |
+    ## {date}: {decision_title}
+    **Context**: {what prompted this}
+    **Decision**: {what was chosen}
+    **Rationale**: {why}
+```
+
+---
+
 ## Mandatory Behavior
 
 - **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section

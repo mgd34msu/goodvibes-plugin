@@ -902,6 +902,47 @@ Use batch checkpoints to create restore points before critical operations.
 
 ---
 
+## GoodVibes Memory & Logging
+
+### Memory System (`.goodvibes/memory/`)
+
+Query memory before starting work to avoid repeating past mistakes:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `patterns.json` | Deployment patterns, infrastructure conventions | Before configuring deployments |
+| `failures.json` | Past deployment failures and fixes | When deployments fail |
+| `decisions.json` | Infrastructure decisions, platform choices | Before major infrastructure changes |
+| `preferences.json` | Project deployment preferences | Before choosing deployment approach |
+
+### Logging System (`.goodvibes/logs/`)
+
+Record significant events for future reference:
+
+| File | What to Log | Format |
+|------|-------------|--------|
+| `activity.md` | Successful deployments, infrastructure changes | After deployment passes verification |
+| `errors.md` | Deployment failures, rollbacks, environment issues | When resolving deployment problems |
+| `decisions.md` | Platform choices, CI/CD decisions, scaling strategies | When making infrastructure decisions |
+
+### Usage Pattern
+
+```yaml
+# Before deploying - check for patterns and past failures
+discover:
+  queries:
+    - type: read
+      path: .goodvibes/memory/failures.json
+      extract: deployment failures, environment issues
+
+# After successful deployment - log activity
+log:
+  file: .goodvibes/logs/activity.md
+  entry: "Deployed {service} to {environment}, commit: {hash}"
+```
+
+---
+
 ## Mandatory Behavior
 
 - **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section

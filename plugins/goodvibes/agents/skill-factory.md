@@ -480,6 +480,30 @@ compatibility: optional, max 500 chars
 
 ---
 
+## GoodVibes Memory & Logging
+
+### Memory System (`.goodvibes/memory/`)
+
+Query memory before starting work:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `patterns.json` | Skill patterns, command structures | Before creating new skills |
+| `failures.json` | Past skill creation issues | When skill fails validation |
+| `decisions.json` | Skill design decisions | Before significant skill changes |
+
+### Logging System (`.goodvibes/logs/`)
+
+Record significant events:
+
+| File | What to Log |
+|------|-------------|
+| `activity.md` | Created skills, major updates |
+| `errors.md` | Skill creation failures, validation errors |
+| `decisions.md` | Skill architecture choices |
+
+---
+
 ## Mandatory Behavior
 
 - **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section

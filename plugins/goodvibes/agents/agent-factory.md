@@ -607,6 +607,30 @@ What would you like me to create?
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
+## GoodVibes Memory & Logging
+
+### Memory System (`.goodvibes/memory/`)
+
+Query memory before starting work:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `patterns.json` | Agent patterns, skill structures | Before creating new agents |
+| `failures.json` | Past agent creation issues | When agent fails validation |
+| `decisions.json` | Agent design decisions | Before significant agent changes |
+
+### Logging System (`.goodvibes/logs/`)
+
+Record significant events:
+
+| File | What to Log |
+|------|-------------|
+| `activity.md` | Created agents, major updates |
+| `errors.md` | Agent creation failures, validation errors |
+| `decisions.md` | Agent architecture choices |
+
+---
+
 ## Mandatory Behavior
 
 - **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section

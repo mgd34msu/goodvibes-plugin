@@ -797,6 +797,45 @@ async function runWithRetry(testCommand: string, maxAttempts = 3) {
 
 ---
 
+## GoodVibes Memory & Logging
+
+### Memory System (`.goodvibes/memory/`)
+
+Query memory before starting work to avoid repeating past mistakes:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `patterns.json` | Proven test patterns, naming conventions | Before writing new tests |
+| `failures.json` | Past failures and resolutions | When tests fail unexpectedly |
+| `decisions.json` | Architectural decisions affecting tests | Before major test refactoring |
+| `preferences.json` | Project testing preferences | Before choosing test approach |
+
+### Logging System (`.goodvibes/logs/`)
+
+Record significant events for future reference:
+
+| File | What to Log | Format |
+|------|-------------|--------|
+| `activity.md` | Completed test suites, coverage achievements | After test suite passes review |
+| `errors.md` | Test failures, flaky test fixes, environment issues | When resolving test problems |
+| `decisions.md` | Testing strategy choices, framework decisions | When making significant test decisions |
+
+### Usage Pattern
+
+```yaml
+# Before writing tests - check for patterns
+discover:
+  queries:
+    - type: read
+      path: .goodvibes/memory/patterns.json
+      extract: test patterns, naming conventions
+
+# After completing tests - log activity
+log:
+  file: .goodvibes/logs/activity.md
+  entry: "Completed test suite for {component}, coverage: {percentage}%"
+```
+
 ## Mandatory Behavior
 
 - **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
