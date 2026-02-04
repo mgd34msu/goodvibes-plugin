@@ -14,7 +14,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField, parseJsonField } from '../utils/index.js';
 import { createErrorResult, formatMissingParamError } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { RipgrepCore, RipgrepSearchResult } from '../core/ripgrep.js';

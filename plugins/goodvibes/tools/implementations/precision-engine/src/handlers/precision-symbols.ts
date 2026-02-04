@@ -15,7 +15,7 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { TreeSitterCore, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';

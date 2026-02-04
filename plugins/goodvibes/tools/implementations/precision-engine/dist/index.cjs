@@ -253385,7 +253385,7 @@ function resolveStringField(obj, fieldName, options) {
   return "";
 }
 __name(resolveStringField, "resolveStringField");
-function parseJsonField2(value) {
+function parseJsonField(value) {
   if (typeof value === "string") {
     try {
       return JSON.parse(value);
@@ -253395,7 +253395,7 @@ function parseJsonField2(value) {
   }
   return value;
 }
-__name(parseJsonField2, "parseJsonField");
+__name(parseJsonField, "parseJsonField");
 
 // src/handlers/precision-write.ts
 var import_crypto = require("crypto");
@@ -257396,7 +257396,7 @@ __name(readSingleFile, "readSingleFile");
 var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
   const rawInput = args2;
-  const input = { ...rawInput, files: parseJsonField2(rawInput.files) };
+  const input = { ...rawInput, files: parseJsonField(rawInput.files) };
   const outputMode = parseOutputMode(args2, "precision_read");
   const workDir = process.cwd();
   try {

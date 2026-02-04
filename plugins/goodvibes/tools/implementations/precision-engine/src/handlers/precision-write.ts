@@ -15,7 +15,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode, ValidationStep, ValidationResult } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
 

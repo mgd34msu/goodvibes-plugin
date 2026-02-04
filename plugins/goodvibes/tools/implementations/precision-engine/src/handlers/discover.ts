@@ -4,7 +4,7 @@
 
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, resolveStringField } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, resolveStringField, parseJsonField } from '../utils/index.js';
 import { TOOL_SPECIFIC_DEFAULTS } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { handlePrecisionGrep } from './precision-grep.js';
