@@ -85,8 +85,8 @@ logging:
 - Max 3 fix attempts before moving on
 
 ### Output
-- Show Diffs in Output: Yes
-- Show Telemetry in Output: Yes
+- Show Diffs in Output: No
+- Show Telemetry in Output: No
 - Update Logs & Memory: Yes
 
 ### Logging & Memory System [location: .goodvibes/]
