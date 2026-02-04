@@ -129,7 +129,8 @@ sed -i "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$PA
 echo -e "  ${GREEN}Updated package.json${NC}"
 
 if [[ -f "$PLUGIN_JSON" ]]; then
-  sed -i "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$PLUGIN_JSON"
+  # Use broader pattern to match ANY version, ensuring plugin.json is always synced
+  sed -i 's/"version": *"[0-9]\+\.[0-9]\+\.[0-9]\+"/"version": "'"$NEW_VERSION"'"/' "$PLUGIN_JSON"
   echo -e "  ${GREEN}Updated plugin.json${NC}"
 fi
 
