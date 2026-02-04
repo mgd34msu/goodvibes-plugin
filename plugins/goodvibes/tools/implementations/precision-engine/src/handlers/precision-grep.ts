@@ -332,7 +332,8 @@ async function executeQuery(
 
 export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionGrepInput;
+  const rawInput = args as PrecisionGrepInput;
+  const input = { ...rawInput, queries: parseJsonField(rawInput.queries) } as PrecisionGrepInput;
   const outputMode = parseOutputMode(args, "precision_grep");
   const workDir = process.cwd();
 

@@ -317,3 +317,17 @@ export async function resolveStringFieldAsync(
   // In the future, this could use fs.promises.readFile for true async
   return resolveStringField(obj, fieldName, options);
 }
+
+/**
+ * Parse a field that might be a JSON string (from Claude Code) into its actual type
+ */
+export function parseJsonField<T>(value: T | string): T {
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return value as unknown as T;
+    }
+  }
+  return value;
+}

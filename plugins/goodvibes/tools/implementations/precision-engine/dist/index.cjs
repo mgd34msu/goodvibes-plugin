@@ -253385,6 +253385,17 @@ function resolveStringField(obj, fieldName, options) {
   return "";
 }
 __name(resolveStringField, "resolveStringField");
+function parseJsonField2(value) {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+__name(parseJsonField2, "parseJsonField");
 
 // src/handlers/precision-write.ts
 var import_crypto = require("crypto");
@@ -253600,7 +253611,8 @@ async function writeFile2(spec, dryRun, workDir, options) {
 __name(writeFile2, "writeFile");
 var handlePrecisionWrite = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, files: parseJsonField(rawInput.files) };
   const outputMode = parseOutputMode(args2, "precision_write");
   const workDir = process.cwd();
   const dryRun = input.dry_run ?? false;
@@ -253963,7 +253975,8 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
 __name(executeCommand, "executeCommand");
 var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, commands: parseJsonField(rawInput.commands) };
   const outputMode = parseOutputMode(args2, "precision_exec");
   const parallel = input.parallel ?? false;
   const failFast = input.fail_fast ?? input.stop_on_error ?? true;
@@ -254346,7 +254359,8 @@ function normalizeUrlRequest(input) {
 __name(normalizeUrlRequest, "normalizeUrlRequest");
 var handlePrecisionFetch = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, urls: parseJsonField(rawInput.urls) };
   const outputMode = parseOutputMode(args2, "precision_fetch");
   const parallel = input.parallel ?? true;
   const cacheTtl = input.cache_ttl_seconds ?? DEFAULT_CACHE_TTL;
@@ -255377,7 +255391,8 @@ async function executeQuery(query, output, workDir) {
 __name(executeQuery, "executeQuery");
 var handlePrecisionGrep = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, queries: parseJsonField(rawInput.queries) };
   const outputMode = parseOutputMode(args2, "precision_grep");
   const workDir = process.cwd();
   try {
@@ -255487,7 +255502,8 @@ var GLOB_PRESETS = {
 };
 var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, patterns: parseJsonField(rawInput.patterns) };
   const outputMode = parseOutputMode(args2, "precision_glob");
   const workDir = input.base_path ?? input.cwd ?? process.cwd();
   if (input.cwd && !input.base_path) {
@@ -255843,7 +255859,8 @@ async function processFile(filePath, workDir, options) {
 __name(processFile, "processFile");
 var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, files: parseJsonField(rawInput.files), kinds: parseJsonField(rawInput.kinds) };
   const outputMode = parseOutputMode(args2, "precision_symbols");
   const workDir = process.cwd();
   try {
@@ -256969,7 +256986,8 @@ async function executeQuery2(query, outputMode, searchRoot) {
 __name(executeQuery2, "executeQuery");
 var handleDiscover = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, queries: parseJsonField(rawInput.queries) };
   const outputMode = input.output_mode || TOOL_SPECIFIC_DEFAULTS.discover?.output_mode || "files_only";
   const projectRoot = process.cwd();
   try {
@@ -257377,7 +257395,8 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
 __name(readSingleFile, "readSingleFile");
 var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  const input = { ...rawInput, files: parseJsonField2(rawInput.files) };
   const outputMode = parseOutputMode(args2, "precision_read");
   const workDir = process.cwd();
   try {

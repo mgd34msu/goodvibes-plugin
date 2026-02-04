@@ -353,7 +353,8 @@ async function performRollback(rollbackId: string): Promise<void> {
 
 export const handlePrecisionWrite: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionWriteInput;
+  const rawInput = args as PrecisionWriteInput;
+  const input = { ...rawInput, files: parseJsonField(rawInput.files) } as PrecisionWriteInput;
   const outputMode = parseOutputMode(args, "precision_write");
   const workDir = process.cwd();
   const dryRun = input.dry_run ?? false;

@@ -337,7 +337,8 @@ async function executeCommand(
 
 export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionExecInput;
+  const rawInput = args as PrecisionExecInput;
+  const input = { ...rawInput, commands: parseJsonField(rawInput.commands) } as PrecisionExecInput;
   const outputMode = parseOutputMode(args, "precision_exec");
 
   // Parse options with defaults

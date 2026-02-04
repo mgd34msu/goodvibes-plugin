@@ -424,7 +424,8 @@ function normalizeUrlRequest(input: string | FetchSpec): FetchSpec {
 
 export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionFetchInput;
+  const rawInput = args as PrecisionFetchInput;
+  const input = { ...rawInput, urls: parseJsonField(rawInput.urls) } as PrecisionFetchInput;
   const outputMode = parseOutputMode(args, "precision_fetch");
 
   // Parse options with defaults

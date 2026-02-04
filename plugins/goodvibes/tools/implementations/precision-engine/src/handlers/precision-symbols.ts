@@ -437,7 +437,8 @@ async function processFile(
 
 export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionSymbolsInput;
+  const rawInput = args as PrecisionSymbolsInput;
+  const input = { ...rawInput, files: parseJsonField(rawInput.files), kinds: parseJsonField(rawInput.kinds) } as PrecisionSymbolsInput;
   const outputMode = parseOutputMode(args, "precision_symbols");
   const workDir = process.cwd();
 

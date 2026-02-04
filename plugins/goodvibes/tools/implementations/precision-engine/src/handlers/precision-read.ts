@@ -16,6 +16,7 @@ import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode, SymbolKind as GoodVibesSymbolKind } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
 import { isLanguageSupported } from '../core/languages.js';
@@ -550,7 +551,8 @@ async function readSingleFile(
 
 export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionReadInput;
+  const rawInput = args as PrecisionReadInput;
+  const input = { ...rawInput, files: parseJsonField(rawInput.files) } as PrecisionReadInput;
   const outputMode = parseOutputMode(args, "precision_read");
   const workDir = process.cwd();
 

@@ -134,7 +134,8 @@ const GLOB_PRESETS: Record<GlobPreset, string[]> = {
 
 export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionGlobInput;
+  const rawInput = args as PrecisionGlobInput;
+  const input = { ...rawInput, patterns: parseJsonField(rawInput.patterns) } as PrecisionGlobInput;
   const outputMode = parseOutputMode(args, "precision_glob");
 
   // Use base_path if provided, fall back to cwd (deprecated), or default to process.cwd()
