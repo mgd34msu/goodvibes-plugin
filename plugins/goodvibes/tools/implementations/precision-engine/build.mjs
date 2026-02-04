@@ -38,6 +38,16 @@ async function build() {
       }
     }
     
+    // Copy core tree-sitter.wasm from web-tree-sitter
+    const coreSrc = join(__dirname, 'node_modules/web-tree-sitter/tree-sitter.wasm');
+    const coreDest = join(__dirname, 'dist/tree-sitter.wasm');
+    try {
+      await copyFile(coreSrc, coreDest);
+      console.log('Copied: tree-sitter.wasm (core)');
+    } catch (e) {
+      console.warn('Warning: Could not copy tree-sitter.wasm (core):', e.message);
+    }
+    
     console.log('Build completed: dist/index.cjs');
   } catch (error) {
     console.error('Build failed:', error);

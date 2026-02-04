@@ -254940,8 +254940,8 @@ var TreeSitterCore = class {
     if (this.initPromise)
       return this.initPromise;
     this.initPromise = (async () => {
-      await import_web_tree_sitter.Parser.init();
-      this.parser = new import_web_tree_sitter.Parser();
+      await import_web_tree_sitter.default.init();
+      this.parser = new import_web_tree_sitter.default();
       this.initialized = true;
     })();
     return this.initPromise;
@@ -254956,7 +254956,7 @@ var TreeSitterCore = class {
     try {
       const basePath = await findWasmBasePath();
       const wasmPath = path2.join(basePath, `tree-sitter-${langName}.wasm`);
-      const lang = await import_web_tree_sitter.Parser.Language.load(wasmPath);
+      const lang = await import_web_tree_sitter.default.Language.load(wasmPath);
       this.languages.set(langName, lang);
       return lang;
     } catch {
