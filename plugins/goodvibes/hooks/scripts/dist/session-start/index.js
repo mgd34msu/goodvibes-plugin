@@ -103,7 +103,7 @@ const GOODVIBES_MANDATORY_SECTION = `
 
 5. You MUST remind subagents to NEVER use Bash cat, echo, heredoc, or any other workaround unless precision_engine tools will not work after multiple attempts.
 
-6. You MUST remind subagents that incorrect usage of precision_engine tools does not count as a failed attempt, only truly failed tool uses. Incorrect usage should be fixed with mcp-cli info calls.
+6. You MUST remind subagents that incorrect usage of precision_engine tools does not count as a failed attempt, only truly failed tool uses.
 
 7. You MUST remind agents to return to using precision_engine tools after a successful workaround.
 `;
