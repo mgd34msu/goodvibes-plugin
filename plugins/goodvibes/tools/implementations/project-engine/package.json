@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "better-sqlite3": "^12.6.2",
     "fast-glob": "^3.3.2",
-    "fuse.js": "^7.0.0"
+    "fuse.js": "^7.0.0",
+    "sql.js": "^1.13.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

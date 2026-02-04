@@ -1,38 +1,50 @@
 /**
- * SQLite Connection Manager
+ * SQLite Connection Manager (sql.js - pure JS/WASM)
  *
  * Provides connection pooling and lifecycle management for SQLite databases.
+ * Uses sql.js for cross-platform compatibility (no native binaries).
  * Supports both file-based and in-memory databases with proper resource cleanup.
  */
+
+import { readFile, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
 
 // =============================================================================
 // Types
 // =============================================================================
 
 /**
- * SQLite database instance (better-sqlite3 compatible interface)
+ * sql.js Database instance interface
  */
 export interface SqliteDatabase {
+  run(sql: string, params?: unknown[]): void;
+  exec(sql: string): QueryExecResult[];
   prepare(sql: string): SqliteStatement;
-  exec(sql: string): void;
-  pragma(pragma: string, simplify?: boolean): unknown;
   close(): void;
-  readonly open: boolean;
-  readonly inTransaction: boolean;
-  readonly name: string;
-  readonly memory: boolean;
-  readonly readonly: boolean;
+  export(): Uint8Array;
+  getRowsModified(): number;
 }
 
 /**
- * SQLite prepared statement interface
+ * sql.js query result
+ */
+interface QueryExecResult {
+  columns: string[];
+  values: unknown[][];
+}
+
+/**
+ * SQLite prepared statement interface (sql.js compatible)
  */
 export interface SqliteStatement {
-  run(...params: unknown[]): SqliteRunResult;
-  get(...params: unknown[]): unknown;
-  all(...params: unknown[]): unknown[];
-  columns(): SqliteColumnInfo[];
-  bind(...params: unknown[]): SqliteStatement;
+  run(params?: unknown[]): void;
+  get(params?: unknown[]): unknown[];
+  getAsObject(params?: unknown[]): Record<string, unknown>;
+  step(): boolean;
+  reset(): void;
+  free(): void;
+  bind(params?: unknown[]): boolean;
+  getColumnNames(): string[];
 }
 
 /**
@@ -55,18 +67,10 @@ export interface SqliteColumnInfo {
 }
 
 /**
- * SQLite database constructor interface (better-sqlite3 compatible)
+ * sql.js module interface
  */
-interface SqliteDatabaseConstructor {
-  new (filepath: string, options?: { readonly?: boolean; timeout?: number }): SqliteDatabase;
-}
-
-/**
- * Dynamic import result for better-sqlite3 module
- * Handles both ESM (with default export) and CommonJS module formats
- */
-interface BetterSqlite3Module {
-  default?: SqliteDatabaseConstructor;
+interface SqlJsStatic {
+  Database: new (data?: ArrayLike<number> | Buffer | null) => SqliteDatabase;
 }
 
 /**
@@ -81,7 +85,7 @@ export interface SqliteConnectionOptions {
   timeout?: number;
   /** Enable foreign key enforcement */
   foreignKeys?: boolean;
-  /** Enable WAL mode for better concurrent access */
+  /** Enable WAL mode for better concurrent access (not supported in sql.js) */
   walMode?: boolean;
 }
 
@@ -94,6 +98,30 @@ interface PooledConnection {
   readonly: boolean;
   lastUsed: number;
   inUse: boolean;
+  isOpen: boolean;
+}
+
+// =============================================================================
+// sql.js Loader
+// =============================================================================
+
+let sqlJsInstance: SqlJsStatic | null = null;
+
+async function getSqlJs(): Promise<SqlJsStatic> {
+  if (sqlJsInstance) {
+    return sqlJsInstance;
+  }
+
+  try {
+    // Dynamic import of sql.js
+    const initSqlJs = (await import('sql.js')).default;
+    sqlJsInstance = await initSqlJs();
+    return sqlJsInstance;
+  } catch (error) {
+    throw new Error(
+      `SQLite driver (sql.js) failed to initialize: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 
 // =============================================================================
@@ -137,7 +165,7 @@ class SqliteConnectionPool {
     }
 
     // Try to find an available connection
-    const available = poolConnections.find(c => !c.inUse && c.database.open);
+    const available = poolConnections.find(c => !c.inUse && c.isOpen);
     if (available) {
       available.inUse = true;
       available.lastUsed = Date.now();
@@ -153,6 +181,7 @@ class SqliteConnectionPool {
         readonly: options.readonly ?? true,
         lastUsed: Date.now(),
         inUse: true,
+        isOpen: true,
       };
       poolConnections.push(pooled);
       return pooled;
@@ -164,7 +193,7 @@ class SqliteConnectionPool {
       const startTime = Date.now();
 
       const checkInterval = setInterval(() => {
-        const available = poolConnections!.find(c => !c.inUse && c.database.open);
+        const available = poolConnections!.find(c => !c.inUse && c.isOpen);
         if (available) {
           clearInterval(checkInterval);
           available.inUse = true;
@@ -187,64 +216,52 @@ class SqliteConnectionPool {
   }
 
   /**
+   * Save database to file (for write operations)
+   */
+  async saveToFile(connection: PooledConnection): Promise<void> {
+    if (connection.filepath === ':memory:' || connection.readonly) {
+      return;
+    }
+    const data = connection.database.export();
+    await writeFile(connection.filepath, Buffer.from(data));
+  }
+
+  /**
    * Create a new SQLite database connection
    */
   private async createConnection(options: SqliteConnectionOptions): Promise<SqliteDatabase> {
-    const sqliteModule = await this.loadDriver();
+    const SQL = await getSqlJs();
 
-    // Handle special :memory: path
-    const filepath = options.filepath === ':memory:'
-      ? ':memory:'
-      : options.filepath;
+    let db: SqliteDatabase;
 
-    // Create the database connection
-    // Handle both ESM (module.default) and CommonJS (module as constructor) formats
-    const moduleWithDefault = sqliteModule as BetterSqlite3Module;
-    const Database: SqliteDatabaseConstructor = moduleWithDefault.default ?? (sqliteModule as SqliteDatabaseConstructor);
-    const db: SqliteDatabase = new Database(filepath, {
-      readonly: options.readonly ?? true,
-      timeout: options.timeout ?? 5000,
-    });
+    if (options.filepath === ':memory:') {
+      // In-memory database
+      db = new SQL.Database();
+    } else if (existsSync(options.filepath)) {
+      // Load existing file
+      const fileBuffer = await readFile(options.filepath);
+      db = new SQL.Database(fileBuffer);
+    } else {
+      // Create new database
+      db = new SQL.Database();
+      if (!options.readonly) {
+        // Save empty database to create the file
+        const data = db.export();
+        await writeFile(options.filepath, Buffer.from(data));
+      }
+    }
 
     // Configure pragmas for better performance and safety
     try {
       if (options.foreignKeys !== false) {
-        db.pragma('foreign_keys = ON');
+        db.run('PRAGMA foreign_keys = ON');
       }
-
-      if (options.walMode && !options.readonly) {
-        db.pragma('journal_mode = WAL');
-      }
-
-      // Set reasonable defaults
-      db.pragma('busy_timeout = 5000');
-
-      if (!options.readonly) {
-        // Enable synchronous mode for data safety on writes
-        db.pragma('synchronous = NORMAL');
-      }
+      db.run('PRAGMA busy_timeout = 5000');
     } catch {
       // Pragmas may fail on some SQLite configurations, continue anyway
     }
 
     return db;
-  }
-
-  /**
-   * Load the SQLite driver dynamically
-   *
-   * Returns either the module with a default export (ESM) or the constructor directly (CommonJS)
-   */
-  private async loadDriver(): Promise<BetterSqlite3Module | SqliteDatabaseConstructor> {
-    try {
-      // Use indirect eval to avoid TypeScript module resolution
-      const importFn = new Function('name', 'return import(name)') as (name: string) => Promise<BetterSqlite3Module | SqliteDatabaseConstructor>;
-      return await importFn('better-sqlite3');
-    } catch {
-      throw new Error(
-        'SQLite driver (better-sqlite3) is not installed. Install with: npm install better-sqlite3'
-      );
-    }
   }
 
   /**
@@ -257,9 +274,10 @@ class SqliteConnectionPool {
       // Filter out idle connections past the timeout
       const active = connections.filter(c => {
         const isIdle = !c.inUse && (now - c.lastUsed > this.idleTimeoutMs);
-        if (isIdle && c.database.open) {
+        if (isIdle && c.isOpen) {
           try {
             c.database.close();
+            c.isOpen = false;
           } catch {
             // Ignore close errors
           }
@@ -286,9 +304,10 @@ class SqliteConnectionPool {
 
     for (const connections of this.connections.values()) {
       for (const conn of connections) {
-        if (conn.database.open) {
+        if (conn.isOpen) {
           try {
             conn.database.close();
+            conn.isOpen = false;
           } catch {
             // Ignore close errors
           }
@@ -334,10 +353,16 @@ export function shutdownConnectionPool(): void {
  * Execute a callback with a pooled SQLite connection
  *
  * Automatically acquires and releases the connection, ensuring proper cleanup.
+ * For write operations, saves changes back to file after the callback.
  *
  * @example
  * const result = await withConnection({ filepath: './data.db' }, async (db) => {
- *   return db.prepare('SELECT * FROM users WHERE id = ?').all(userId);
+ *   const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+ *   stmt.bind([userId]);
+ *   const rows = [];
+ *   while (stmt.step()) rows.push(stmt.getAsObject());
+ *   stmt.free();
+ *   return rows;
  * });
  */
 export async function withConnection<T>(
@@ -348,7 +373,12 @@ export async function withConnection<T>(
   const connection = await pool.acquire(options);
 
   try {
-    return await callback(connection.database);
+    const result = await callback(connection.database);
+    // Save to file if this was a write operation
+    if (!options.readonly) {
+      await pool.saveToFile(connection);
+    }
+    return result;
   } finally {
     pool.release(connection);
   }
