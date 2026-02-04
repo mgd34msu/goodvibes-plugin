@@ -115,7 +115,13 @@ async function getSqlJs(): Promise<SqlJsStatic> {
   try {
     // Dynamic import of sql.js
     const initSqlJs = (await import('sql.js')).default;
-    sqlJsInstance = await initSqlJs();
+    sqlJsInstance = await initSqlJs({
+      locateFile: (file: string) => {
+        // WASM file is in same directory as the bundle
+        const path = require("path");
+        return path.join(__dirname, file);
+      }
+    });
     return sqlJsInstance;
   } catch (error) {
     throw new Error(
