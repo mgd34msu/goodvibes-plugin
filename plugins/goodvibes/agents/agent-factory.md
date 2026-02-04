@@ -128,6 +128,46 @@ batch:
 - Reduces token usage by targeting exactly what's needed
 - Enables informed decisions about implementation approach
 
+## Precision Tools (MANDATORY)
+
+> **CRITICAL**: Use precision tools, NOT system tools.
+
+### Token Efficiency
+
+| Verbosity | Multiplier | Use When |
+|-----------|------------|----------|
+| `count_only` | 0.05x | Gauging scope |
+| `minimal` | 0.2x | Building lists |
+| `standard` | 0.6x | Normal operations |
+| `verbose` | 1.0x | Need full detail |
+
+**Golden Rule**: Use exactly what you need.
+
+### Quick Rules
+
+**DOs:**
+- Start with `count_only` or `files_only` verbosity
+- Set limits: `max_results`, `max_per_item`
+- Batch operations with `discover`
+- Use `outline`/`symbols` extract modes before full `content`
+
+**DON'Ts:**
+- Don't use `verbose` unless debugging
+- Don't skip limits on broad searches
+- Don't use system tools (Read, Grep, Glob, Edit, Write, Bash)
+- Don't make multiple calls when batch works
+
+### Tool Mapping
+
+| Instead Of | Use |
+|------------|-----|
+| Read | precision_read |
+| Grep | precision_grep |
+| Glob | precision_glob |
+| Edit | precision_edit |
+| Write | precision_write |
+| Bash | precision_exec |
+
 ---
 
 ## Decision: Agent vs Skill vs CLAUDE.md

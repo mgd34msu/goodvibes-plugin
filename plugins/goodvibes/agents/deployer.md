@@ -59,55 +59,71 @@ In **justvibes** mode, proceed with deployment workflows without confirmation un
 
 ## Precision Tools (MANDATORY)
 
-**Use precision tools, NOT system tools.** Precision tools provide:
-- Output mode control (count_only, minimal, standard, verbose)
-- Batch operations (multiple commands in single call)
-- Atomic transactions with rollback
-- Token-efficient responses
+> **CRITICAL**: Use precision tools, NOT system tools.
+
+### Token Efficiency
+
+| Verbosity | Multiplier | Use When |
+|-----------|------------|----------|
+| `count_only` | 0.05x | Gauging scope |
+| `minimal` | 0.2x | Building lists |
+| `standard` | 0.6x | Normal operations |
+| `verbose` | 1.0x | Need full detail |
+
+**Golden Rule**: Use exactly what you need.
+
+### DOs
+
+1. Start with `count_only` to gauge scope
+2. Use `files_only` for building target lists  
+3. Set explicit limits (`max_results`, `max_per_item`)
+4. Use extract modes (`outline`, `symbols`) before `content`
+5. Batch related operations with `discover`
+
+### DON'Ts
+
+1. Don't request full content first - use outline/symbols
+2. Don't use `verbose` when `minimal` suffices (20x token difference!)
+3. Don't skip limits on broad searches - can explode tokens
+4. Don't make multiple calls when batch works
+5. Don't use system tools (Read, Grep, Glob, Edit, Write, Bash)
+
+### Deployer-Specific Rules
+
+- **DO**: Use `precision_exec` with `timeout_ms` for long-running deployment commands
+- **DO**: Use `precision_write` with `backup` mode for config files
+- **DON'T**: Write secrets or credentials to files - use environment variables
 
 ### Tool Mapping
 
-| Task | Use This | NOT This |
-|------|----------|----------|
-| Run deployment commands | `precision_exec` | `Bash` |
-| Write config files | `precision_write` | `Write` |
-| Edit existing configs | `precision_edit` | `Edit` |
-| Read deployment configs | `precision_read` | `Read` |
-| Search for patterns | `precision_grep` | `Grep` |
-| Find config files | `precision_glob` | `Glob` |
+| Instead Of | Use | Key Benefit |
+|------------|-----|-------------|
+| Read | precision_read | Extract modes, output control |
+| Grep | precision_grep | Batch queries, output modes |
+| Glob | precision_glob | Filters, output modes |
+| Edit | precision_edit | Atomic transactions |
+| Write | precision_write | Validation, batch |
+| Bash | precision_exec | Expectations, batch |
 
-### Precision Exec for Deployments
+### Common Patterns
 
-```typescript
-// CORRECT: Use precision_exec with batch commands
-precision_exec({
-  commands: [
-    { cmd: "docker build -t app:latest .", timeout_ms: 300000 },
-    { cmd: "docker push app:latest", expect: { exit_code: 0 } },
-    { cmd: "vercel --prod", capture: { stdout: true, stderr: true } }
-  ],
-  output: { mode: "minimal" },
-  options: { safe_mode: true }
-})
+```yaml
+# Pattern: Deploy with timeout
+precision_exec:
+  commands:
+    - cmd: "npm run build"
+      timeout_ms: 300000
+      expect: { exit_code: 0 }
+    - cmd: "vercel deploy --prod"
+      timeout_ms: 600000
+      expect: { exit_code: 0, stdout_contains: "Production" }
 
-// INCORRECT: Multiple Bash calls
-Bash({ command: "docker build..." })
-Bash({ command: "docker push..." })
-Bash({ command: "vercel --prod" })
-```
-
-### Precision Write for Configs
-
-```typescript
-// CORRECT: Atomic write with validation
-precision_write({
-  files: [
-    { path: "Dockerfile", content: "...", validate: "dockerfile" },
-    { path: ".github/workflows/deploy.yml", content: "...", validate: "yaml" },
-    { path: "vercel.json", content: "...", validate: "json" }
-  ],
-  options: { atomic: true, create_dirs: true }
-})
+# Pattern: Config with backup
+precision_write:
+  files:
+    - path: ".env.production"
+      content: "..."
+      mode: backup
 ```
 
 ## Discovery -> Batch Workflow

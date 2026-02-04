@@ -56,40 +56,68 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ---
 
-## Tool Philosophy: Precision Over System
+## Precision Tools (MANDATORY)
 
-**CRITICAL: Use precision tools, NOT system tools.**
+> **CRITICAL**: Use precision tools, NOT system tools.
 
-You have access to precision tools that are token-efficient and output-controlled. Always prefer these over system equivalents.
+### Token Efficiency
+
+| Verbosity | Multiplier | Use When |
+|-----------|------------|----------|
+| `count_only` | 0.05x | Gauging scope |
+| `minimal` | 0.2x | Building lists |
+| `standard` | 0.6x | Normal operations |
+| `verbose` | 1.0x | Need full detail |
+
+**Golden Rule**: Use exactly what you need.
+
+### DOs
+
+1. Start with `count_only` to gauge scope
+2. Use `files_only` for building target lists
+3. Set explicit limits (`max_results`, `max_per_item`)
+4. Use extract modes (`outline`, `symbols`) before `content`
+5. Batch related operations with `discover`
+
+### DON'Ts
+
+1. Don't request full content first - use outline/symbols
+2. Don't use `verbose` when `minimal` suffices (20x token difference!)
+3. Don't skip limits on broad searches - can explode tokens
+4. Don't make multiple calls when batch works
+5. Don't use system tools (Read, Grep, Glob, Edit, Write, Bash)
+
+### Reviewer-Specific Rules
+
+- **DO**: Use `context` output mode in precision_grep for code understanding
+- **DO**: Run `discover` first to scope the review before reading files
+- **DON'T**: Review code without first understanding the file structure via `outline`
 
 ### Tool Mapping
 
-| Task | Use This | NOT This |
-|------|----------|----------|
-| Search code | `precision_grep` | System Grep |
-| Read files | `precision_read` | System Read |
-| Find files | `precision_glob` | System Glob |
-| Get symbols | `precision_symbols` | System workspace_symbols |
-| Batch operations | `batch` tool | Multiple individual calls |
+| Instead Of | Use | Key Benefit |
+|------------|-----|-------------|
+| Read | precision_read | Extract modes, output control |
+| Grep | precision_grep | Batch queries, output modes |
+| Glob | precision_glob | Filters, output modes |
+| Edit | precision_edit | Atomic transactions |
+| Write | precision_write | Validation, batch |
+| Bash | precision_exec | Expectations, batch |
 
-### Why Precision Tools
+### Common Patterns
 
-1. **Output modes** - `count_only`, `files_only`, `minimal`, `standard`, `verbose`
-2. **Token efficiency** - 90%+ reduction vs system tools
-3. **Batch support** - Multiple queries in single call
-4. **Context control** - Precise line ranges, no waste
+```yaml
+# Pattern: Scope review
+discover:
+  queries:
+    - { id: changed, type: glob, patterns: ["src/**/*.ts"] }
+    - { id: tests, type: grep, pattern: "describe|it|test", glob: "**/*.test.ts" }
+  verbosity: count_only
 
-### MCP Tool Access
-
-Before using any MCP tool for the first time, ALWAYS check the schema first:
-
-```bash
-# ALWAYS run info first
-mcp-cli info plugin_goodvibes_precision-engine/precision_grep
-mcp-cli info plugin_goodvibes_precision-engine/precision_read
-
-# THEN make the call
-mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{...}'
+# Pattern: Understand code context
+precision_grep:
+  queries: [{ id: usage, pattern: "functionName", glob: "src/**/*.ts" }]
+  output: { format: context, context_before: 3, context_after: 3 }
 ```
 
 ## Discovery -> Batch Workflow

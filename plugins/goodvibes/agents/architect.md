@@ -42,98 +42,106 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ## Precision Tools (MANDATORY)
 
-**Use precision tools, NOT system tools.** Precision tools provide token-efficient operations with output mode control.
+> **CRITICAL**: Use precision tools, NOT system tools. Precision tools provide output mode control and token efficiency that system tools lack.
 
-### Codebase Analysis
+### Token Efficiency
 
-Use precision tools AND analysis-engine for comprehensive codebase understanding.
+**Verbosity Levels (Token Multipliers):**
 
-```yaml
-# Understand codebase structure - use precision_read with extract: outline
-precision_read:
-  files: ["src/", "lib/"]
-  extract: outline
-  output:
-    mode: minimal  # Shows structure without content
+| Level | Multiplier | Use When |
+|-------|------------|----------|
+| `count_only` | 0.05x | Gauging scope, checking if matches exist |
+| `minimal` | 0.2x | Basic info sufficient, building file lists |
+| `standard` | 0.6x | Normal operations, need moderate detail |
+| `verbose` | 1.0x | Debugging, need full context |
 
-# Find all symbols - use precision_symbols
-precision_symbols:
-  mode: workspace
-  query: ""  # Empty for all
-  kinds: [class, interface, function, type]
-  output:
-    mode: signatures
-    group_by: file
+**Golden Rule: Use exactly what you need.**
 
-# Understand specific file structure
-precision_read:
-  files: ["src/core/batch-engine.ts"]
-  extract: symbols
-  output:
-    mode: standard
-    include_line_numbers: true
-```
+### DOs - Token Efficiency
 
-### Analysis-Engine Integration
+1. **Start with `count_only`** - Gauge scope before requesting content
+   ```yaml
+   precision_grep:
+     queries: [{ id: scope, pattern: "TODO", glob: "**/*.ts" }]
+     verbosity: count_only
+   ```
 
-Use analysis-engine tools for architecture-level insights:
+2. **Use `files_only` for targeting** - Get file list without content
+   ```yaml
+   precision_glob:
+     patterns: ["src/**/*.tsx"]
+     output: { format: paths_only }
+   ```
 
-```bash
-# Detect tech stack
-mcp-cli call plugin_goodvibes_analysis-engine/detect_stack
+3. **Set explicit limits** - Cap results to what you need
+   ```yaml
+   precision_grep:
+     queries: [{ id: find, pattern: "import", glob: "**/*.ts" }]
+     output: { max_results: 50, max_per_item: 5 }
+   ```
 
-# Check versions of dependencies
-mcp-cli call plugin_goodvibes_analysis-engine/check_versions
+4. **Use extract modes** - Get structure without full content
+   ```yaml
+   precision_read:
+     files: [{ path: "src/api/routes.ts" }]
+     extract: outline
+     verbosity: minimal
+   ```
 
-# Scan for architectural patterns
-mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{"kinds": ["architecture"]}'
+5. **Batch related operations** - Combine queries in single call
+   ```yaml
+   discover:
+     queries:
+       - { id: components, type: glob, patterns: ["src/components/**/*.tsx"] }
+       - { id: hooks, type: grep, pattern: "^export function use", glob: "src/**/*.ts" }
+     verbosity: files_only
+   ```
 
-# Get project conventions
-mcp-cli call plugin_goodvibes_analysis-engine/get_conventions
+### DON'Ts - Anti-Patterns
 
-# Find circular dependencies
-mcp-cli call plugin_goodvibes_analysis-engine/find_circular_deps
+1. **DON'T request full content first** - Use outline/symbols
+2. **DON'T use `verbose` when `minimal` suffices** - 20x token difference!
+3. **DON'T skip limits on broad searches** - Can explode tokens
+4. **DON'T make multiple calls when batch works**
+5. **DON'T use system tools** (Read, Grep, Glob, Edit, Write, Bash)
 
-# Get API surface
-mcp-cli call plugin_goodvibes_analysis-engine/get_api_surface '{"paths": ["src/"]}'
-```
+### Architect-Specific Rules
 
-### Dependency Analysis
+- **DO**: Use `count_only` to assess project scope before detailed analysis
+- **DO**: Use `precision_symbols` with `signatures` output for API surface analysis
+- **DON'T**: Plan operations without first running `discover` queries
 
-```yaml
-# Find imports and dependencies
-precision_grep:
-  queries:
-    - id: imports
-      pattern: "^import.*from"
-      glob: "src/**/*.ts"
-  output:
-    mode: matches
-    max_matches_per_file: 50
+### Tool Reference
 
-# Find cross-module dependencies
-precision_symbols:
-  mode: workspace
-  query: "export"
-  output:
-    mode: locations
-```
+#### precision_read
+- **Extract modes**: `content` | `outline` | `symbols` | `ast` | `lines`
+- **Verbosity**: `count_only` | `minimal` | `standard` | `verbose`
 
-### Pattern Discovery
+#### precision_grep  
+- **Output formats**: `count_only` | `files_only` | `locations` | `matches` | `context`
+- **Limits**: `max_results`, `max_per_item`, `max_total_matches`
 
-```yaml
-# Find existing patterns
-precision_grep:
-  queries:
-    - id: patterns
-      pattern: "interface|type|class"
-      glob: "src/**/*.ts"
-  output:
-    mode: context
-    context_before: 0
-    context_after: 5
-    expand_to: block
-```
+#### precision_glob
+- **Output formats**: `count_only` | `paths_only` | `with_stats` | `with_preview`
+- **Filters**: `min_size`, `max_size`, `has_content`
+
+#### precision_symbols
+- **Output formats**: `count_only` | `names_only` | `locations` | `signatures` | `full`
+- **Kinds**: `function`, `method`, `class`, `interface`, `type`
+
+#### discover
+- **Query types**: `grep`, `glob`, `symbols`, `structural`
+- **Verbosity**: `count_only` | `files_only` | `locations`
+
+### Tool Selection Matrix
+
+| I need to... | Tool | Output Mode |
+|--------------|------|-------------|
+| Assess project size | precision_glob | count_only |
+| Map dependencies | precision_grep | files_only |
+| Understand API surface | precision_symbols | signatures |
+| Analyze file structure | precision_read | outline |
+| Multiple queries | discover | files_only |
 
 ## Discovery -> Batch Workflow
 

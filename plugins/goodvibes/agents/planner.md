@@ -82,311 +82,181 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ---
 
-## Precision Tools Reference
+## Precision Tools (MANDATORY)
 
-### precision_read
+> **CRITICAL**: Use precision tools, NOT system tools. Precision tools provide output mode control and token efficiency that system tools lack.
 
-Token-efficient file reading with extraction modes.
+### Token Efficiency
 
-**Extract Modes:**
+**Verbosity Levels (Token Multipliers):**
 
-| Mode | Use When | Token Cost |
-|------|----------|------------|
-| `content` | Need full file content | High |
-| `outline` | Understand structure without content | Low |
-| `symbols` | List functions, classes, types | Low |
-| `ast` | Parse code structure | Medium |
-| `lines` | Specific line range only | Variable |
+| Level | Multiplier | Use When |
+|-------|------------|----------|
+| `count_only` | 0.05x | Gauging scope, checking if matches exist |
+| `minimal` | 0.2x | Basic info sufficient, building file lists |
+| `standard` | 0.6x | Normal operations, need moderate detail |
+| `verbose` | 1.0x | Debugging, need full context |
 
-**Output Modes:**
+**Golden Rule: Use exactly what you need.**
 
-| Mode | Use When |
-|------|----------|
-| `count_only` | Just need file count |
-| `minimal` | Basic info, lowest tokens |
-| `standard` | Normal operation |
-| `verbose` | Full details needed |
+- Start broad with `count_only`, narrow with `files_only`, then targeted `content`
+- Set explicit limits: `max_results`, `max_per_item`, `max_total_matches`
+- Use extract modes: `outline` and `symbols` before `content`
 
-**Example Usage:**
+### DOs - Token Efficiency
 
-```yaml
-precision_read:
-  files:
-    - path: "src/index.ts"
-    - path: "src/utils/helpers.ts"
-      range: { start: 1, end: 50 }
-  extract: outline
-  symbol_filter: [function, class, interface]
-  output:
-    mode: minimal
-    include_line_numbers: true
-    max_lines_per_file: 500
-```
+1. **Start with `count_only`** - Gauge scope before requesting content
+   ```yaml
+   precision_grep:
+     queries: [{ id: scope, pattern: "TODO", glob: "**/*.ts" }]
+     verbosity: count_only  # Returns: 47 matches in 12 files
+   ```
 
-### precision_grep
+2. **Use `files_only` for targeting** - Get file list without content
+   ```yaml
+   precision_glob:
+     patterns: ["src/**/*.tsx"]
+     output: { format: paths_only }
+   ```
 
-Search patterns with batch queries and precise output control.
+3. **Set explicit limits** - Cap results to what you need
+   ```yaml
+   precision_grep:
+     queries: [{ id: find, pattern: "import", glob: "**/*.ts" }]
+     output:
+       format: locations
+       max_results: 50
+       max_per_item: 5
+   ```
 
-**Output Modes:**
+4. **Use extract modes** - Get structure without full content
+   ```yaml
+   precision_read:
+     files: [{ path: "src/api/routes.ts" }]
+     extract: outline  # or: symbols, ast
+     verbosity: minimal
+   ```
 
-| Mode | Returns | Use When |
-|------|---------|----------|
-| `count_only` | Match count per query | Gauge scope |
-| `files_only` | File paths with matches | Build target list |
-| `locations` | File:line for each match | Precise edits |
-| `matches` | Matched text content | See what matched |
-| `context` | Match + surrounding lines | Understand context |
+5. **Batch related operations** - Combine queries in single call
+   ```yaml
+   discover:
+     queries:
+       - { id: components, type: glob, patterns: ["src/components/**/*.tsx"] }
+       - { id: hooks, type: grep, pattern: "^export function use", glob: "src/**/*.ts" }
+     verbosity: files_only
+   ```
 
-**Advanced Options:**
+### DON'Ts - Anti-Patterns
 
-| Option | Purpose |
-|--------|---------|
-| `context_before/after` | Lines around match |
-| `expand_to` | Expand to line/block/function/class |
-| `max_files` | Cap returned files |
-| `max_matches_per_file` | Cap per-file matches |
-| `max_total_matches` | Total cap |
+1. **DON'T request full content first** - Wasteful when you only need locations
+   ```yaml
+   # BAD: Wastes tokens
+   precision_read:
+     files: [{ path: "src/large-file.ts" }]
+     extract: content
+     verbosity: verbose
 
-**Example Usage:**
+   # GOOD: Efficient
+   precision_read:
+     files: [{ path: "src/large-file.ts" }]
+     extract: outline
+     verbosity: minimal
+   ```
 
-```yaml
-precision_grep:
-  queries:
-    - id: find_exports
-      pattern: "export (function|const|class)"
-      glob: "src/**/*.ts"
-      exclude: ["**/*.test.ts", "**/*.spec.ts"]
-    - id: find_imports
-      pattern: "^import.*from"
-      glob: "src/**/*.ts"
-  output:
-    mode: files_only
-    max_files: 100
-  parallel: true
-```
+2. **DON'T use `verbose` when `minimal` suffices** - 20x token difference!
+   ```yaml
+   # BAD: verbose = 1.0x tokens
+   verbosity: verbose
 
-### precision_glob
+   # GOOD: count_only = 0.05x tokens
+   verbosity: count_only
+   ```
 
-Token-efficient file finding with filters.
+3. **DON'T skip limits on broad searches** - Can explode token usage
+   ```yaml
+   # BAD: Could return thousands
+   precision_grep:
+     queries: [{ pattern: "import", glob: "**/*.ts" }]
 
-**Output Modes:**
+   # GOOD: Bounded
+   precision_grep:
+     queries: [{ pattern: "import", glob: "**/*.ts" }]
+     output: { max_results: 50, max_per_item: 3 }
+   ```
 
-| Mode | Returns | Use When |
-|------|---------|----------|
-| `count_only` | File count | Quick scope check |
-| `paths_only` | File paths | Build target list |
-| `with_stats` | Paths + size/modified | Size analysis |
-| `with_preview` | Paths + first N lines | Quick content peek |
+4. **DON'T make multiple calls when batch works** - N calls vs 1 call
+   ```yaml
+   # BAD: 5 separate calls
+   precision_read: { files: [{ path: "a.ts" }] }
+   precision_read: { files: [{ path: "b.ts" }] }
 
-**Filters:**
+   # GOOD: 1 batched call
+   precision_read:
+     files: [{ path: "a.ts" }, { path: "b.ts" }, { path: "c.ts" }]
+   ```
 
-| Filter | Purpose |
-|--------|---------|
-| `min_size/max_size` | File size bounds |
-| `modified_after/before` | Date filtering |
-| `has_content` | Regex content filter |
-| `is_empty` | Find empty files |
+5. **DON'T use system tools** - Precision tools exist for a reason
+   ```
+   BAD: Read, Grep, Glob, Edit, Write, Bash
+   GOOD: precision_read, precision_grep, precision_glob, precision_edit, precision_write, precision_exec
+   ```
 
-**Example Usage:**
+### Planner-Specific Rules
 
-```yaml
-precision_glob:
-  patterns:
-    - "src/**/*.ts"
-    - "src/**/*.tsx"
-  exclude:
-    - "**/*.test.ts"
-    - "**/node_modules/**"
-  filters:
-    max_size: 100000
-    modified_after: "2025-01-01T00:00:00Z"
-  output:
-    mode: paths_only
-    sort_by: modified
-    sort_order: desc
-    max_files: 50
-```
+- **DO**: Estimate token budgets using verbosity multipliers when designing plans
+- **DO**: Include output mode specifications in all planned operations
+- **DON'T**: Design plans without first querying .goodvibes/memory for patterns
 
-### precision_edit
+### Tool Reference
 
-Atomic file editing with transaction support.
+#### precision_read
+- **Extract modes**: `content` | `outline` | `symbols` | `ast` | `lines`
+- **Verbosity**: `count_only` | `minimal` | `standard` | `verbose`
+- **Limits**: `max_per_item` (lines per file)
 
-**Match Modes:**
+#### precision_grep
+- **Output formats**: `count_only` | `files_only` | `locations` | `matches` | `context`
+- **Limits**: `max_results`, `max_per_item`, `max_total_matches`
+- **Context**: `context_before`, `context_after`
 
-| Mode | Description | Use When |
-|------|-------------|----------|
-| `exact` | Exact string match | Precise known text |
-| `fuzzy` | Whitespace-insensitive | Formatting varies |
-| `regex` | Regular expression | Pattern-based |
-| `ast` | AST-aware replacement | Structural changes |
+#### precision_glob
+- **Output formats**: `count_only` | `paths_only` | `with_stats` | `with_preview`
+- **Filters**: `min_size`, `max_size`, `modified_after`, `modified_before`, `has_content`
+- **Limits**: `max_results`
 
-**Transaction Modes:**
+#### precision_symbols
+- **Output formats**: `count_only` | `names_only` | `locations` | `signatures` | `full`
+- **Kinds filter**: `function`, `method`, `class`, `interface`, `type`, `variable`, `constant`, `enum`
+- **Limits**: `max_results`
 
-| Mode | Behavior |
-|------|----------|
-| `atomic` | All succeed or all rollback |
-| `partial` | Apply successful edits, report failures |
-| `none` | No transaction protection |
+#### precision_edit
+- **Match modes**: `exact` | `fuzzy` | `regex` | `ast`
+- **Transaction**: `atomic` (default) | `partial` | `none`
+- **Output**: `count_only` | `minimal` | `with_diff` | `verbose`
 
-**Hints for Disambiguation:**
+#### precision_write
+- **Modes**: `fail_if_exists` | `overwrite` | `backup`
+- **Features**: Batch writes, automatic parent directory creation
 
-| Hint | Purpose |
-|------|---------|
-| `near_line` | Prefer match near this line |
-| `in_function` | Match within named function |
-| `in_class` | Match within named class |
-| `after/before` | Match after/before text |
+#### precision_exec
+- **Features**: Batch commands, parallel execution, expectations checking
+- **Expectations**: `exit_code`, `stdout_contains`, `stderr_contains`
 
-**Example Usage:**
-
-```yaml
-precision_edit:
-  edits:
-    - id: update_import
-      file: "src/index.ts"
-      find: "import { old } from './old'"
-      replace: "import { new } from './new'"
-      occurrence: first
-    - id: rename_function
-      file: "src/utils.ts"
-      find: "function oldName"
-      replace: "function newName"
-      hints:
-        in_function: oldName
-  transaction:
-    mode: atomic
-    rollback_on_fail: true
-  match:
-    mode: exact
-    case_sensitive: true
-  validate:
-    before: [typecheck]
-    after: [typecheck, lint]
-  output:
-    mode: with_diff
-    diff_context: 3
-```
-
-### precision_write
-
-Create or overwrite files with safety options.
-
-**Write Modes:**
-
-| Mode | Behavior |
-|------|----------|
-| `fail_if_exists` | Error if file exists (safe default) |
-| `overwrite` | Replace existing file |
-| `backup` | Backup existing before overwrite |
-
-**Example Usage:**
-
-```yaml
-precision_write:
-  files:
-    - path: "src/features/user/index.ts"
-      content: |
-        export * from './types';
-        export * from './api';
-        export * from './hooks';
-      mode: fail_if_exists
-    - path: "src/config.ts"
-      content: "export const CONFIG = {};"
-      mode: backup
-  dry_run: false
-  output_mode: standard
-```
-
-### precision_exec
-
-Execute commands with batch support and expectations.
-
-**Expectation Checks:**
-
-| Expectation | Purpose |
-|-------------|---------|
-| `exit_code` | Expected exit code |
-| `stdout_contains` | Required stdout content |
-| `stderr_contains` | Required stderr content |
-
-**Example Usage:**
-
-```yaml
-precision_exec:
-  commands:
-    - cmd: npm
-      args: [run, typecheck]
-      timeout: 60000
-      expect:
-        exit_code: 0
-    - cmd: npm
-      args: [run, test, --, --coverage]
-      timeout: 120000
-      expect:
-        exit_code: 0
-        stdout_contains: "All tests passed"
-  parallel: false
-  stop_on_error: true
-  output_mode: minimal
-```
-
-### discover
-
-Parallel multi-query discovery for batch preparation.
-
-**Query Types:**
-
-| Type | Parameters |
-|------|------------|
-| `glob` | patterns (array) |
-| `grep` | pattern, glob |
-| `symbols` | query, kinds |
-
-**Output Modes:**
-
-| Mode | Returns |
-|------|---------|
-| `count_only` | Counts per query |
-| `files_only` | File lists per query |
-| `locations` | File:line per query |
-
-**Example Usage:**
-
-```yaml
-discover:
-  queries:
-    - id: components
-      type: glob
-      patterns: ["src/components/**/*.tsx"]
-    - id: api_routes
-      type: glob
-      patterns: ["src/app/api/**/*.ts"]
-    - id: auth_usage
-      type: grep
-      pattern: "useAuth|getSession|withAuth"
-      glob: "src/**/*.{ts,tsx}"
-    - id: hooks
-      type: symbols
-      query: "use"
-      kinds: [function]
-  output_mode: files_only
-```
+#### discover
+- **Query types**: `grep`, `glob`, `symbols`, `structural`
+- **Verbosity**: `count_only` | `files_only` | `locations`
 
 ### Tool Selection Matrix
 
-| Need | Tool | Output Mode | Example |
-|------|------|-------------|---------|
-| Count files matching pattern | precision_glob | count_only | Scope assessment |
+| I need to... | Tool | Output Mode | Why |
+|--------------|------|-------------|-----|
+| Count matching files | precision_glob | count_only | Scope assessment |
 | List files for batch | precision_glob | paths_only | Build targets |
-| Find code patterns | precision_grep | files_only | Locate usage |
-| See matched content | precision_grep | matches | Understand patterns |
-| Match with context | precision_grep | context | Complex analysis |
-| Understand file structure | precision_read | outline | Architecture review |
-| Get symbols list | precision_read | symbols | API surface |
-| Read specific lines | precision_read | lines | Focused review |
-| Multi-query discovery | discover | files_only | Batch preparation |
-| Atomic multi-file edit | precision_edit | minimal | Safe changes |
-| Run validation commands | precision_exec | minimal | CI checks |
+| Check if pattern exists | precision_grep | count_only | Quick validation |
+| Find code locations | precision_grep | locations | Targeted edits |
+| Understand file structure | precision_read | outline | Navigate large files |
+| Get function signatures | precision_read | symbols | API understanding |
+| Multiple queries at once | discover | files_only | Parallel discovery |
 
 ---
 

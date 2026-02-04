@@ -71,61 +71,67 @@ Your behavior adapts based on the current mode:
 
 ## Precision Tools (MANDATORY)
 
-**CRITICAL: Use precision tools, NOT system tools.**
+> **CRITICAL**: Use precision tools, NOT system tools.
 
-| Instead Of | Use | Why |
-|------------|-----|-----|
-| `Read` | `precision_read` | Extract modes, line ranges, outline/symbols |
-| `Grep` | `precision_grep` | Output modes, batch queries, context control |
-| `Glob` | `precision_glob` | Output modes, filters, preview |
-| `Edit` | `precision_edit` | Atomic transactions, validation, hints |
-| `Write` | `precision_write` | Atomic, templates, validation |
-| `Bash` | `precision_exec` | Batch commands, expectations, output control |
+### Token Efficiency
 
-### Precision Tool Patterns
+| Verbosity | Multiplier | Use When |
+|-----------|------------|----------|
+| `count_only` | 0.05x | Gauging scope |
+| `minimal` | 0.2x | Building lists |
+| `standard` | 0.6x | Normal operations |
+| `verbose` | 1.0x | Need full detail |
+
+**Golden Rule**: Use exactly what you need.
+
+### DOs
+
+1. Start with `count_only` to gauge scope
+2. Use `files_only` for building target lists
+3. Set explicit limits (`max_results`, `max_per_item`)
+4. Use extract modes (`outline`, `symbols`) before `content`
+5. Batch related operations with `discover`
+
+### DON'Ts
+
+1. Don't request full content first - use outline/symbols
+2. Don't use `verbose` when `minimal` suffices (20x token difference!)
+3. Don't skip limits on broad searches - can explode tokens
+4. Don't make multiple calls when batch works
+5. Don't use system tools (Read, Grep, Glob, Edit, Write, Bash)
+
+### Engineer-Specific Rules
+
+- **DO**: Use `precision_exec` with expectations for build/test validation
+- **DO**: Read file with `outline` before editing to understand structure
+- **DON'T**: Edit files without reading them first
+
+### Tool Mapping
+
+| Instead Of | Use | Key Benefit |
+|------------|-----|-------------|
+| Read | precision_read | Extract modes, output control |
+| Grep | precision_grep | Batch queries, output modes |
+| Glob | precision_glob | Filters, output modes |
+| Edit | precision_edit | Atomic transactions |
+| Write | precision_write | Validation, batch |
+| Bash | precision_exec | Expectations, batch |
+
+### Common Patterns
 
 ```yaml
-# Find files with pattern (minimal output)
-precision_grep:
+# Pattern: Discover before implementing
+discover:
   queries:
-    - pattern: "export function"
-      glob: "src/**/*.ts"
-  output:
-    mode: files_only
+    - { id: existing, type: grep, pattern: "export function", glob: "src/**/*.ts" }
+    - { id: tests, type: glob, patterns: ["**/*.test.ts", "**/*.spec.ts"] }
+  verbosity: files_only
 
-# Read file structure without content
-precision_read:
-  files: ["src/index.ts", "src/app.ts"]
-  extract: outline
-  output:
-    mode: minimal
-
-# Batch edit multiple files atomically
-precision_edit:
-  edits:
-    - file: "src/api.ts"
-      find: "const API_URL = 'http://localhost'"
-      replace: "const API_URL = process.env.API_URL"
-    - file: "src/config.ts"
-      find: "debug: true"
-      replace: "debug: process.env.NODE_ENV !== 'production'"
-  transaction:
-    mode: atomic
-    rollback_on_fail: true
-  output:
-    mode: minimal
-
-# Execute commands with expectations
+# Pattern: Validate after edit
 precision_exec:
   commands:
-    - cmd: "npm run typecheck"
-      expect:
-        exit_code: 0
-    - cmd: "npm run lint"
-      expect:
-        exit_code: 0
-  output:
-    mode: minimal
+    - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
+    - { cmd: "npm run lint", expect: { exit_code: 0 } }
 ```
 
 ## Discovery -> Batch Workflow

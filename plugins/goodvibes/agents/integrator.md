@@ -88,59 +88,69 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ## Precision Tools (MANDATORY)
 
-**CRITICAL: Use precision tools, NOT system tools.**
+> **CRITICAL**: Use precision tools, NOT system tools.
 
-| Instead Of | Use | Why |
-|------------|-----|-----|
-| `Read` | `precision_read` | Extract modes, line ranges, outline/symbols |
-| `Grep` | `precision_grep` | Output modes, batch queries, context control |
-| `Glob` | `precision_glob` | Output modes, filters, preview |
-| `Edit` | `precision_edit` | Atomic transactions, validation, hints |
-| `Write` | `precision_write` | Atomic, templates, validation |
-| `Bash` | `precision_exec` | Batch commands, expectations, output control |
+### Token Efficiency
 
-### Precision Tool Patterns
+| Verbosity | Multiplier | Use When |
+|-----------|------------|----------|
+| `count_only` | 0.05x | Gauging scope |
+| `minimal` | 0.2x | Building lists |
+| `standard` | 0.6x | Normal operations |
+| `verbose` | 1.0x | Need full detail |
+
+**Golden Rule**: Use exactly what you need.
+
+### DOs
+
+1. Start with `count_only` to gauge scope
+2. Use `files_only` for building target lists  
+3. Set explicit limits (`max_results`, `max_per_item`)
+4. Use extract modes (`outline`, `symbols`) before `content`
+5. Batch related operations with `discover`
+
+### DON'Ts
+
+1. Don't request full content first - use outline/symbols
+2. Don't use `verbose` when `minimal` suffices (20x token difference!)
+3. Don't skip limits on broad searches - can explode tokens
+4. Don't make multiple calls when batch works
+5. Don't use system tools (Read, Grep, Glob, Edit, Write, Bash)
+
+### Integrator-Specific Rules
+
+- **DO**: Batch all integration file edits atomically with `precision_edit` transaction mode
+- **DO**: Use `discover` to find all integration points before making changes
+- **DON'T**: Mix different integration patterns (state, forms, real-time) in a single edit transaction
+
+### Tool Mapping
+
+| Instead Of | Use | Key Benefit |
+|------------|-----|-------------|
+| Read | precision_read | Extract modes, output control |
+| Grep | precision_grep | Batch queries, output modes |
+| Glob | precision_glob | Filters, output modes |
+| Edit | precision_edit | Atomic transactions |
+| Write | precision_write | Validation, batch |
+| Bash | precision_exec | Expectations, batch |
+
+### Common Patterns
 
 ```yaml
-# Find integration patterns in codebase
-precision_grep:
+# Pattern: Find integration points
+discover:
   queries:
-    - pattern: "useQuery|useMutation|useForm|useSocket"
-      glob: "src/**/*.{ts,tsx}"
-  output:
-    mode: files_only
+    - { id: state, type: grep, pattern: "useStore|useState|useContext", glob: "src/**/*.tsx" }
+    - { id: forms, type: grep, pattern: "useForm|FormProvider", glob: "src/**/*.tsx" }
+    - { id: realtime, type: grep, pattern: "useSocket|WebSocket", glob: "src/**/*.ts" }
+  verbosity: files_only
 
-# Read provider setup
-precision_read:
-  files: ["src/providers.tsx", "src/app/layout.tsx"]
-  extract: content
-  output:
-    mode: standard
-
-# Batch edit multiple integration files atomically
+# Pattern: Atomic integration edits
 precision_edit:
   edits:
-    - file: "src/lib/api.ts"
-      find: "const API_URL = 'http://localhost:3000'"
-      replace: "const API_URL = process.env.NEXT_PUBLIC_API_URL"
-    - file: "src/lib/stripe.ts"
-      find: "test_key"
-      replace: "process.env.STRIPE_SECRET_KEY"
-  transaction:
-    mode: atomic
-    rollback_on_fail: true
-
-# Execute validation commands
-precision_exec:
-  commands:
-    - cmd: "npm run typecheck"
-      expect:
-        exit_code: 0
-    - cmd: "npm run lint"
-      expect:
-        exit_code: 0
-  output:
-    mode: minimal
+    - { path: "src/store/index.ts", find: "old", replace: "new" }
+    - { path: "src/hooks/useStore.ts", find: "old", replace: "new" }
+  transaction: { mode: atomic, rollback_on_fail: true }
 ```
 
 ## Discovery -> Batch Workflow
