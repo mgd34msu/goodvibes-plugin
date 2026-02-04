@@ -173,7 +173,7 @@ export async function getTableIndexes(
     const safeTableName = sanitizeIdentifier(tableName);
 
     // Get index list
-    const indexList = queryAll(db, `PRAGMA index_list("${safeTableName}")`) as Array<{
+    const indexList = db.prepare(`PRAGMA index_list("${safeTableName}")`).all() as Array<{
       seq: number;
       name: string;
       unique: number;
@@ -183,7 +183,7 @@ export async function getTableIndexes(
 
     // Get columns for each index
     return indexList.map(idx => {
-      const indexInfo = queryAll(db, `PRAGMA index_info("${sanitizeIdentifier(idx.name)}")`) as Array<{
+      const indexInfo = db.prepare(`PRAGMA index_info("${sanitizeIdentifier(idx.name)}")`).all() as Array<{
         seqno: number;
         cid: number;
         name: string;
@@ -211,7 +211,7 @@ export async function getTableForeignKeys(
   return withConnection(options, (db) => {
     const safeTableName = sanitizeIdentifier(tableName);
 
-    const rows = queryAll(db, `PRAGMA foreign_key_list("${safeTableName}")`) as Array<{
+    const rows = db.prepare(`PRAGMA foreign_key_list("${safeTableName}")`).all() as Array<{
       id: number;
       seq: number;
       table: string;
@@ -245,18 +245,18 @@ export async function getTableTriggers(
   return withConnection(options, (db) => {
     const safeTableName = sanitizeIdentifier(tableName);
 
-    const rows = queryAll<{
-      name: string;
-      type: string;
-      table_name: string;
-      sql: string;
-    }>(db, `
+    const rows = db.prepare(`
       SELECT name, type, tbl_name as table_name, sql
       FROM sqlite_master
       WHERE type = 'trigger'
         AND tbl_name = ?
       ORDER BY name
-    `, [safeTableName]);
+    `).all(safeTableName) as Array<{
+      name: string;
+      type: string;
+      table_name: string;
+      sql: string;
+    }>;
 
     return rows.map(r => ({
       name: r.name,
@@ -277,12 +277,12 @@ export async function getCreateStatement(
   return withConnection(options, (db) => {
     const safeObjectName = sanitizeIdentifier(objectName);
 
-    const row = queryGet<{ sql: string }>(db, `
+    const row = db.prepare(`
       SELECT sql
       FROM sqlite_master
       WHERE name = ?
         AND type IN ('table', 'view')
-    `, [safeObjectName]);
+    `).get(safeObjectName) as { sql: string } | undefined;
 
     return row?.sql || '';
   });
@@ -300,9 +300,9 @@ export async function getRowCount(
 
     // Use a fast approximation from sqlite_stat1 if available
     try {
-      const stat = queryGet<{ stat: string }>(db, `
+      const stat = db.prepare(`
         SELECT stat FROM sqlite_stat1 WHERE tbl = ?
-      `, [safeTableName]);
+      `).get(safeTableName) as { stat: string } | undefined;
 
       if (stat) {
         const parts = stat.stat.split(' ');
@@ -313,7 +313,7 @@ export async function getRowCount(
     }
 
     // Fall back to actual count
-    const result = queryGet(db, `SELECT COUNT(*) as count FROM "${safeTableName}"`) as { count: number };
+    const result = db.prepare(`SELECT COUNT(*) as count FROM "${safeTableName}"`).get() as { count: number };
     return result.count;
   });
 }
@@ -329,12 +329,12 @@ export async function getTableSchema(
     const safeTableName = sanitizeIdentifier(tableName);
 
     // Check if it's a table or view
-    const master = queryGet<{ type: 'table' | 'view'; sql: string }>(db, `
+    const master = db.prepare(`
       SELECT type, sql
       FROM sqlite_master
       WHERE name = ?
         AND type IN ('table', 'view')
-    `, [safeTableName]);
+    `).get(safeTableName) as { type: 'table' | 'view'; sql: string } | undefined;
 
     if (!master) {
       throw new Error(`Table or view '${tableName}' not found`);
@@ -343,7 +343,7 @@ export async function getTableSchema(
     const type = master.type;
 
     // Get columns
-    const columns = queryAll(db, `PRAGMA table_info("${safeTableName}")`) as Array<{
+    const columns = db.prepare(`PRAGMA table_info("${safeTableName}")`).all() as Array<{
       cid: number;
       name: string;
       type: string;
@@ -355,7 +355,7 @@ export async function getTableSchema(
     // Get indexes (only for tables)
     let indexes: SqliteIndex[] = [];
     if (type === 'table') {
-      const indexList = queryAll(db, `PRAGMA index_list("${safeTableName}")`) as Array<{
+      const indexList = db.prepare(`PRAGMA index_list("${safeTableName}")`).all() as Array<{
         seq: number;
         name: string;
         unique: number;
@@ -364,7 +364,7 @@ export async function getTableSchema(
       }>;
 
       indexes = indexList.map(idx => {
-        const indexInfo = queryAll(db, `PRAGMA index_info("${sanitizeIdentifier(idx.name)}")`) as Array<{
+        const indexInfo = db.prepare(`PRAGMA index_info("${sanitizeIdentifier(idx.name)}")`).all() as Array<{
           seqno: number;
           cid: number;
           name: string;
@@ -384,7 +384,7 @@ export async function getTableSchema(
     // Get foreign keys (only for tables)
     let foreign_keys: SqliteForeignKey[] = [];
     if (type === 'table') {
-      const fkList = queryAll(db, `PRAGMA foreign_key_list("${safeTableName}")`) as Array<{
+      const fkList = db.prepare(`PRAGMA foreign_key_list("${safeTableName}")`).all() as Array<{
         id: number;
         seq: number;
         table: string;
@@ -408,18 +408,18 @@ export async function getTableSchema(
     }
 
     // Get triggers
-    const triggerRows = queryAll<{
-      name: string;
-      type: string;
-      table_name: string;
-      sql: string;
-    }>(db, `
+    const triggerRows = db.prepare(`
       SELECT name, type, tbl_name as table_name, sql
       FROM sqlite_master
       WHERE type = 'trigger'
         AND tbl_name = ?
       ORDER BY name
-    `, [safeTableName]);
+    `).all(safeTableName) as Array<{
+      name: string;
+      type: string;
+      table_name: string;
+      sql: string;
+    }>;
 
     const triggers = triggerRows.map(r => ({
       name: r.name,
@@ -431,7 +431,7 @@ export async function getTableSchema(
     // Get row count for tables
     let row_count: number | undefined;
     if (type === 'table') {
-      const countResult = queryGet(db, `SELECT COUNT(*) as count FROM "${safeTableName}"`) as { count: number };
+      const countResult = db.prepare(`SELECT COUNT(*) as count FROM "${safeTableName}"`).get() as { count: number };
       row_count = countResult.count;
     }
 
@@ -463,28 +463,28 @@ export async function getDatabaseSchema(
 ): Promise<SqliteDatabaseSchema> {
   return withConnection(options, (db) => {
     // Get SQLite version
-    const versionRow = queryGet(db, 'SELECT sqlite_version() as version') as { version: string };
+    const versionRow = db.prepare('SELECT sqlite_version() as version').get() as { version: string };
 
     // Get database stats
-    const pageCountRow = executePragma(db, 'page_count') as number;
-    const pageSizeRow = executePragma(db, 'page_size') as number;
+    const pageCountRow = db.pragma('page_count', true) as number;
+    const pageSizeRow = db.pragma('page_size', true) as number;
 
     // Get all tables
-    const tableRows = queryAll<{ name: string; type: string; sql: string }>(db, `
+    const tableRows = db.prepare(`
       SELECT name, type, sql
       FROM sqlite_master
       WHERE type = 'table'
         AND name NOT LIKE 'sqlite_%'
       ORDER BY name
-    `);
+    `).all() as Array<{ name: string; type: string; sql: string }>;
 
     // Get all views
-    const viewRows = queryAll<{ name: string; type: string; sql: string }>(db, `
+    const viewRows = db.prepare(`
       SELECT name, type, sql
       FROM sqlite_master
       WHERE type = 'view'
       ORDER BY name
-    `);
+    `).all() as Array<{ name: string; type: string; sql: string }>;
 
     const tables: SqliteTableSchema[] = [];
     const views: SqliteTableSchema[] = [];
@@ -524,7 +524,7 @@ function buildTableSchemaSync(
   const safeName = sanitizeIdentifier(name);
 
   // Get columns
-  const columns = queryAll(db, `PRAGMA table_info("${safeName}")`) as Array<{
+  const columns = db.prepare(`PRAGMA table_info("${safeName}")`).all() as Array<{
     cid: number;
     name: string;
     type: string;
@@ -536,7 +536,7 @@ function buildTableSchemaSync(
   // Get indexes (only for tables)
   let indexes: SqliteIndex[] = [];
   if (type === 'table') {
-    const indexList = queryAll(db, `PRAGMA index_list("${safeName}")`) as Array<{
+    const indexList = db.prepare(`PRAGMA index_list("${safeName}")`).all() as Array<{
       seq: number;
       name: string;
       unique: number;
@@ -545,7 +545,7 @@ function buildTableSchemaSync(
     }>;
 
     indexes = indexList.map(idx => {
-      const indexInfo = queryAll(db, `PRAGMA index_info("${sanitizeIdentifier(idx.name)}")`) as Array<{
+      const indexInfo = db.prepare(`PRAGMA index_info("${sanitizeIdentifier(idx.name)}")`).all() as Array<{
         seqno: number;
         cid: number;
         name: string;
@@ -565,7 +565,7 @@ function buildTableSchemaSync(
   // Get foreign keys (only for tables)
   let foreign_keys: SqliteForeignKey[] = [];
   if (type === 'table') {
-    const fkList = queryAll(db, `PRAGMA foreign_key_list("${safeName}")`) as Array<{
+    const fkList = db.prepare(`PRAGMA foreign_key_list("${safeName}")`).all() as Array<{
       id: number;
       seq: number;
       table: string;
@@ -580,18 +580,18 @@ function buildTableSchemaSync(
   }
 
   // Get triggers
-  const triggerRows = queryAll<{
-    name: string;
-    type: string;
-    table_name: string;
-    sql: string;
-  }>(db, `
+  const triggerRows = db.prepare(`
     SELECT name, type, tbl_name as table_name, sql
     FROM sqlite_master
     WHERE type = 'trigger'
       AND tbl_name = ?
     ORDER BY name
-  `, [name]);
+  `).all(name) as Array<{
+    name: string;
+    type: string;
+    table_name: string;
+    sql: string;
+  }>;
 
   const triggers = triggerRows.map(r => ({
     name: r.name,
@@ -604,7 +604,7 @@ function buildTableSchemaSync(
   let row_count: number | undefined;
   if (type === 'table') {
     try {
-      const countResult = queryGet(db, `SELECT COUNT(*) as count FROM "${safeName}"`) as { count: number };
+      const countResult = db.prepare(`SELECT COUNT(*) as count FROM "${safeName}"`).get() as { count: number };
       row_count = countResult.count;
     } catch {
       // Might fail for virtual tables

@@ -253147,7 +253147,7 @@ var precisionEditSchema = {
               }
             }
           },
-          required: ["file", "find", "replace"]
+          required: ["path", "find", "replace"]
         }
       },
       transaction: {

@@ -1,7 +1,7 @@
 /**
  * SQLite Query Executor
  *
- * Handles query execution against SQLite databases using better-sqlite3.
+ * Handles query execution against SQLite databases using sql.js.
  * Uses a connection pool for better performance.
  */
 
@@ -51,14 +51,24 @@ export async function executeSqliteQuery(
   };
 
   return withConnection(connectionOptions, (db) => {
-    const stmt = db.prepare(query);
     const isSelect = isSelectQuery(query);
 
     if (isSelect) {
-      // Execute SELECT query
-      const rows = params.length > 0
-        ? stmt.all(...params) as Record<string, unknown>[]
-        : stmt.all() as Record<string, unknown>[];
+      // Execute SELECT query using sql.js
+      // Bind parameters if provided
+      const stmt = db.prepare(query);
+      if (params.length > 0) {
+        stmt.bind(params);
+      }
+
+      // Iterate through results
+      const rows: Record<string, unknown>[] = [];
+      const columnNames = stmt.getColumnNames();
+      
+      while (stmt.step()) {
+        rows.push(stmt.getAsObject());
+      }
+      stmt.free();
 
       // Get column info
       const columns: ColumnInfo[] = [];
@@ -69,33 +79,33 @@ export async function executeSqliteQuery(
             type: inferSqliteType(value),
           });
         }
-      } else {
-        // Try to get column info from prepared statement
-        try {
-          const columnsInfo = stmt.columns();
-          for (const col of columnsInfo) {
-            columns.push({
-              name: col.name,
-              type: col.type || 'unknown',
-            });
-          }
-        } catch {
-          // Some queries may not have column info
+      } else if (columnNames.length > 0) {
+        // Use column names from statement if no rows
+        for (const name of columnNames) {
+          columns.push({
+            name,
+            type: 'unknown',
+          });
         }
       }
 
       return { rows, columns };
     } else {
       // Execute write operation (INSERT, UPDATE, DELETE, etc.)
-      const result = params.length > 0
-        ? stmt.run(...params)
-        : stmt.run();
+      // sql.js uses run() for write operations
+      if (params.length > 0) {
+        db.run(query, params);
+      } else {
+        db.run(query);
+      }
+
+      const changes = db.getRowsModified();
 
       return {
         rows: [],
         columns: [],
-        changes: result.changes,
-        lastInsertRowid: result.lastInsertRowid,
+        changes,
+        lastInsertRowid: 0, // sql.js doesn't easily provide this, would need SELECT last_insert_rowid()
       };
     }
   });

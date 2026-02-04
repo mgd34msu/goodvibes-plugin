@@ -9463,7 +9463,7 @@ var require_typescript = __commonJS({
         walkUpParenthesizedTypesAndGetParentAndChild: () => walkUpParenthesizedTypesAndGetParentAndChild,
         whitespaceOrMapCommentRegExp: () => whitespaceOrMapCommentRegExp,
         writeCommentRange: () => writeCommentRange,
-        writeFile: () => writeFile2,
+        writeFile: () => writeFile3,
         writeFileEnsuringDirectories: () => writeFileEnsuringDirectories,
         zipWith: () => zipWith
       });
@@ -16285,7 +16285,7 @@ ${lanes.join("\n")}
             writeOutputIsTTY() {
               return process.stdout.isTTY;
             },
-            readFile: readFile7,
+            readFile: readFile8,
             writeFile: writeFile22,
             watchFile: watchFile2,
             watchDirectory,
@@ -16500,7 +16500,7 @@ ${lanes.join("\n")}
             );
           }
           __name(fsWatchWorker, "fsWatchWorker");
-          function readFile7(fileName, _encoding) {
+          function readFile8(fileName, _encoding) {
             let buffer;
             try {
               buffer = _fs.readFileSync(fileName);
@@ -16525,7 +16525,7 @@ ${lanes.join("\n")}
             }
             return buffer.toString("utf8");
           }
-          __name(readFile7, "readFile");
+          __name(readFile8, "readFile");
           function writeFile22(fileName, data, writeByteOrderMark) {
             if (writeByteOrderMark) {
               data = byteOrderMarkIndicator + data;
@@ -29469,7 +29469,7 @@ ${lanes.join("\n")}
         return combinePaths(newDirPath, sourceFilePath);
       }
       __name(getSourceFilePathInNewDirWorker, "getSourceFilePathInNewDirWorker");
-      function writeFile2(host, diagnostics, fileName, text, writeByteOrderMark, sourceFiles, data) {
+      function writeFile3(host, diagnostics, fileName, text, writeByteOrderMark, sourceFiles, data) {
         host.writeFile(
           fileName,
           text,
@@ -29481,7 +29481,7 @@ ${lanes.join("\n")}
           data
         );
       }
-      __name(writeFile2, "writeFile");
+      __name(writeFile3, "writeFile");
       function ensureDirectoriesExist(directoryPath, createDirectory, directoryExists) {
         if (directoryPath.length > getRootLength(directoryPath) && !directoryExists(directoryPath)) {
           const parentDirectory = getDirectoryPath(directoryPath);
@@ -55886,7 +55886,7 @@ ${lanes.join("\n")}
         return possibleOption ? createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownDidYouMeanDiagnostic, unknownOptionErrorText || unknownOption, possibleOption.name) : createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownOptionDiagnostic, unknownOptionErrorText || unknownOption);
       }
       __name(createUnknownOptionError, "createUnknownOptionError");
-      function parseCommandLineWorker(diagnostics, commandLine, readFile7) {
+      function parseCommandLineWorker(diagnostics, commandLine, readFile8) {
         const options = {};
         let watchOptions;
         const fileNames = [];
@@ -55935,7 +55935,7 @@ ${lanes.join("\n")}
         }
         __name(parseStrings, "parseStrings");
         function parseResponseFile(fileName) {
-          const text = tryReadFile(fileName, readFile7 || ((fileName2) => sys.readFile(fileName2)));
+          const text = tryReadFile(fileName, readFile8 || ((fileName2) => sys.readFile(fileName2)));
           if (!isString(text)) {
             errors.push(text);
             return;
@@ -56046,8 +56046,8 @@ ${lanes.join("\n")}
         unknownDidYouMeanDiagnostic: Diagnostics.Unknown_compiler_option_0_Did_you_mean_1,
         optionTypeMismatchDiagnostic: Diagnostics.Compiler_option_0_expects_an_argument
       };
-      function parseCommandLine(commandLine, readFile7) {
-        return parseCommandLineWorker(compilerOptionsDidYouMeanDiagnostics, commandLine, readFile7);
+      function parseCommandLine(commandLine, readFile8) {
+        return parseCommandLineWorker(compilerOptionsDidYouMeanDiagnostics, commandLine, readFile8);
       }
       __name(parseCommandLine, "parseCommandLine");
       function getOptionFromName(optionName, allowShort) {
@@ -56136,8 +56136,8 @@ ${lanes.join("\n")}
         );
       }
       __name(getParsedCommandLineOfConfigFile, "getParsedCommandLineOfConfigFile");
-      function readConfigFile(fileName, readFile7) {
-        const textOrDiagnostic = tryReadFile(fileName, readFile7);
+      function readConfigFile(fileName, readFile8) {
+        const textOrDiagnostic = tryReadFile(fileName, readFile8);
         return isString(textOrDiagnostic) ? parseConfigFileTextToJson(fileName, textOrDiagnostic) : { config: {}, error: textOrDiagnostic };
       }
       __name(readConfigFile, "readConfigFile");
@@ -56154,15 +56154,15 @@ ${lanes.join("\n")}
         };
       }
       __name(parseConfigFileTextToJson, "parseConfigFileTextToJson");
-      function readJsonConfigFile(fileName, readFile7) {
-        const textOrDiagnostic = tryReadFile(fileName, readFile7);
+      function readJsonConfigFile(fileName, readFile8) {
+        const textOrDiagnostic = tryReadFile(fileName, readFile8);
         return isString(textOrDiagnostic) ? parseJsonText(fileName, textOrDiagnostic) : { fileName, parseDiagnostics: [textOrDiagnostic] };
       }
       __name(readJsonConfigFile, "readJsonConfigFile");
-      function tryReadFile(fileName, readFile7) {
+      function tryReadFile(fileName, readFile8) {
         let text;
         try {
-          text = readFile7(fileName);
+          text = readFile8(fileName);
         } catch (e) {
           return createCompilerDiagnostic(Diagnostics.Cannot_read_file_0_Colon_1, fileName, e.message);
         }
@@ -144966,7 +144966,7 @@ ${lanes.join("\n")}
             return;
           }
           const buildInfo = host.getBuildInfo() || { version: version2 };
-          writeFile2(
+          writeFile3(
             host,
             emitterDiagnostics,
             buildInfoPath,
@@ -145191,7 +145191,7 @@ ${lanes.join("\n")}
             }
             if (sourceMapFilePath) {
               const sourceMap = sourceMapGenerator.toString();
-              writeFile2(
+              writeFile3(
                 host,
                 emitterDiagnostics,
                 sourceMapFilePath,
@@ -145206,7 +145206,7 @@ ${lanes.join("\n")}
           }
           const text = writer.getText();
           const data = { sourceMapUrlPos, diagnostics: transform22.diagnostics };
-          writeFile2(host, emitterDiagnostics, jsFilePath, text, !!compilerOptions.emitBOM, sourceFiles, data);
+          writeFile3(host, emitterDiagnostics, jsFilePath, text, !!compilerOptions.emitBOM, sourceFiles, data);
           writer.clear();
           return !data.skippedDtsWrite;
         }
@@ -151036,12 +151036,12 @@ ${lanes.join("\n")}
         return createCompilerHostWorker(options, setParentNodes);
       }
       __name(createCompilerHost, "createCompilerHost");
-      function createGetSourceFile(readFile7, setParentNodes) {
+      function createGetSourceFile(readFile8, setParentNodes) {
         return (fileName, languageVersionOrOptions, onError) => {
           let text;
           try {
             mark("beforeIORead");
-            text = readFile7(fileName);
+            text = readFile8(fileName);
             mark("afterIORead");
             measure("I/O Read", "beforeIORead", "afterIORead");
           } catch (e) {
@@ -152011,7 +152011,7 @@ ${lanes.join("\n")}
           getRedirectFromOutput,
           forEachResolvedProjectReference: forEachResolvedProjectReference2
         });
-        const readFile7 = host.readFile.bind(host);
+        const readFile8 = host.readFile.bind(host);
         (_e = tracing) == null ? void 0 : _e.push(tracing.Phase.Program, "shouldProgramCreateNewSourceFiles", { hasOldProgram: !!oldProgram });
         const shouldCreateNewSourceFile = shouldProgramCreateNewSourceFiles(oldProgram, options);
         (_f = tracing) == null ? void 0 : _f.pop();
@@ -152238,7 +152238,7 @@ ${lanes.join("\n")}
           shouldTransformImportCall,
           emitBuildInfo,
           fileExists: fileExists2,
-          readFile: readFile7,
+          readFile: readFile8,
           directoryExists,
           getSymlinkCache,
           realpath: (_o = host.realpath) == null ? void 0 : _o.bind(host),
@@ -217563,7 +217563,7 @@ ${options.prefix}` : "\n" : options.prefix
         walkUpParenthesizedTypesAndGetParentAndChild: () => walkUpParenthesizedTypesAndGetParentAndChild,
         whitespaceOrMapCommentRegExp: () => whitespaceOrMapCommentRegExp,
         writeCommentRange: () => writeCommentRange,
-        writeFile: () => writeFile2,
+        writeFile: () => writeFile3,
         writeFileEnsuringDirectories: () => writeFileEnsuringDirectories,
         zipWith: () => zipWith
       });
@@ -245904,7 +245904,7 @@ var allSchemas = [
 var fs = __toESM(require("fs"), 1);
 var path3 = __toESM(require("path"), 1);
 
-// ../../../../../node_modules/js-yaml/dist/js-yaml.mjs
+// node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
   return typeof subject === "undefined" || subject === null;
 }
@@ -252648,6 +252648,24 @@ async function executeMysqlQuery(connectionInfo, query) {
 __name(executeMysqlQuery, "executeMysqlQuery");
 
 // src/handlers/database/sqlite-connection.ts
+var import_promises = require("fs/promises");
+var import_fs = require("fs");
+var sqlJsInstance = null;
+async function getSqlJs() {
+  if (sqlJsInstance) {
+    return sqlJsInstance;
+  }
+  try {
+    const initSqlJs = (await import("sql.js")).default;
+    sqlJsInstance = await initSqlJs();
+    return sqlJsInstance;
+  } catch (error3) {
+    throw new Error(
+      `SQLite driver (sql.js) failed to initialize: ${error3 instanceof Error ? error3.message : String(error3)}`
+    );
+  }
+}
+__name(getSqlJs, "getSqlJs");
 var SqliteConnectionPool = class {
   static {
     __name(this, "SqliteConnectionPool");
@@ -252676,7 +252694,7 @@ var SqliteConnectionPool = class {
       poolConnections = [];
       this.connections.set(key, poolConnections);
     }
-    const available = poolConnections.find((c) => !c.inUse && c.database.open);
+    const available = poolConnections.find((c) => !c.inUse && c.isOpen);
     if (available) {
       available.inUse = true;
       available.lastUsed = Date.now();
@@ -252689,7 +252707,8 @@ var SqliteConnectionPool = class {
         filepath: options.filepath,
         readonly: options.readonly ?? true,
         lastUsed: Date.now(),
-        inUse: true
+        inUse: true,
+        isOpen: true
       };
       poolConnections.push(pooled);
       return pooled;
@@ -252698,7 +252717,7 @@ var SqliteConnectionPool = class {
       const timeout = options.timeout ?? 5e3;
       const startTime = Date.now();
       const checkInterval = setInterval(() => {
-        const available2 = poolConnections.find((c) => !c.inUse && c.database.open);
+        const available2 = poolConnections.find((c) => !c.inUse && c.isOpen);
         if (available2) {
           clearInterval(checkInterval);
           available2.inUse = true;
@@ -252719,46 +252738,41 @@ var SqliteConnectionPool = class {
     connection.lastUsed = Date.now();
   }
   /**
+   * Save database to file (for write operations)
+   */
+  async saveToFile(connection) {
+    if (connection.filepath === ":memory:" || connection.readonly) {
+      return;
+    }
+    const data = connection.database.export();
+    await (0, import_promises.writeFile)(connection.filepath, Buffer.from(data));
+  }
+  /**
    * Create a new SQLite database connection
    */
   async createConnection(options) {
-    const sqliteModule = await this.loadDriver();
-    const filepath = options.filepath === ":memory:" ? ":memory:" : options.filepath;
-    const moduleWithDefault = sqliteModule;
-    const Database = moduleWithDefault.default ?? sqliteModule;
-    const db = new Database(filepath, {
-      readonly: options.readonly ?? true,
-      timeout: options.timeout ?? 5e3
-    });
+    const SQL = await getSqlJs();
+    let db;
+    if (options.filepath === ":memory:") {
+      db = new SQL.Database();
+    } else if ((0, import_fs.existsSync)(options.filepath)) {
+      const fileBuffer = await (0, import_promises.readFile)(options.filepath);
+      db = new SQL.Database(fileBuffer);
+    } else {
+      db = new SQL.Database();
+      if (!options.readonly) {
+        const data = db.export();
+        await (0, import_promises.writeFile)(options.filepath, Buffer.from(data));
+      }
+    }
     try {
       if (options.foreignKeys !== false) {
-        db.pragma("foreign_keys = ON");
+        db.run("PRAGMA foreign_keys = ON");
       }
-      if (options.walMode && !options.readonly) {
-        db.pragma("journal_mode = WAL");
-      }
-      db.pragma("busy_timeout = 5000");
-      if (!options.readonly) {
-        db.pragma("synchronous = NORMAL");
-      }
+      db.run("PRAGMA busy_timeout = 5000");
     } catch {
     }
     return db;
-  }
-  /**
-   * Load the SQLite driver dynamically
-   *
-   * Returns either the module with a default export (ESM) or the constructor directly (CommonJS)
-   */
-  async loadDriver() {
-    try {
-      const importFn = new Function("name", "return import(name)");
-      return await importFn("better-sqlite3");
-    } catch {
-      throw new Error(
-        "SQLite driver (better-sqlite3) is not installed. Install with: npm install better-sqlite3"
-      );
-    }
   }
   /**
    * Clean up idle connections
@@ -252768,9 +252782,10 @@ var SqliteConnectionPool = class {
     for (const [key, connections] of this.connections.entries()) {
       const active = connections.filter((c) => {
         const isIdle = !c.inUse && now - c.lastUsed > this.idleTimeoutMs;
-        if (isIdle && c.database.open) {
+        if (isIdle && c.isOpen) {
           try {
             c.database.close();
+            c.isOpen = false;
           } catch {
           }
         }
@@ -252793,9 +252808,10 @@ var SqliteConnectionPool = class {
     }
     for (const connections of this.connections.values()) {
       for (const conn of connections) {
-        if (conn.database.open) {
+        if (conn.isOpen) {
           try {
             conn.database.close();
+            conn.isOpen = false;
           } catch {
           }
         }
@@ -252816,7 +252832,11 @@ async function withConnection(options, callback) {
   const pool = getConnectionPool();
   const connection = await pool.acquire(options);
   try {
-    return await callback(connection.database);
+    const result = await callback(connection.database);
+    if (!options.readonly) {
+      await pool.saveToFile(connection);
+    }
+    return result;
   } finally {
     pool.release(connection);
   }
@@ -252849,10 +252869,18 @@ async function executeSqliteQuery(connectionInfo, query, params = [], readonly2 
     // Enable WAL for write operations
   };
   return withConnection(connectionOptions, (db) => {
-    const stmt = db.prepare(query);
     const isSelect = isSelectQuery(query);
     if (isSelect) {
-      const rows = params.length > 0 ? stmt.all(...params) : stmt.all();
+      const stmt = db.prepare(query);
+      if (params.length > 0) {
+        stmt.bind(params);
+      }
+      const rows = [];
+      const columnNames = stmt.getColumnNames();
+      while (stmt.step()) {
+        rows.push(stmt.getAsObject());
+      }
+      stmt.free();
       const columns = [];
       if (rows.length > 0) {
         for (const [key, value] of Object.entries(rows[0])) {
@@ -252861,26 +252889,28 @@ async function executeSqliteQuery(connectionInfo, query, params = [], readonly2 
             type: inferSqliteType(value)
           });
         }
-      } else {
-        try {
-          const columnsInfo = stmt.columns();
-          for (const col of columnsInfo) {
-            columns.push({
-              name: col.name,
-              type: col.type || "unknown"
-            });
-          }
-        } catch {
+      } else if (columnNames.length > 0) {
+        for (const name of columnNames) {
+          columns.push({
+            name,
+            type: "unknown"
+          });
         }
       }
       return { rows, columns };
     } else {
-      const result = params.length > 0 ? stmt.run(...params) : stmt.run();
+      if (params.length > 0) {
+        db.run(query, params);
+      } else {
+        db.run(query);
+      }
+      const changes = db.getRowsModified();
       return {
         rows: [],
         columns: [],
-        changes: result.changes,
-        lastInsertRowid: result.lastInsertRowid
+        changes,
+        lastInsertRowid: 0
+        // sql.js doesn't easily provide this, would need SELECT last_insert_rowid()
       };
     }
   });

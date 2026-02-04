@@ -482,7 +482,7 @@ export const precisionEditSchema: Tool = {
               },
             },
           },
-          required: ['file', 'find', 'replace'],
+          required: ['path', 'find', 'replace'],
         },
       },
       transaction: {

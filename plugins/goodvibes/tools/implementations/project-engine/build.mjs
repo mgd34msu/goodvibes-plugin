@@ -16,22 +16,23 @@ async function build() {
       format: 'cjs',
       outfile: join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: ['better-sqlite3'],
+      external: ['sql.js'],
       minify: false,
       keepNames: true,
     });
     
-    // Copy better-sqlite3 native module to dist/node_modules
+    // Copy sql.js WASM file to dist
     const nodeModulesDir = join(__dirname, 'dist/node_modules');
     await mkdir(nodeModulesDir, { recursive: true });
     
-    const src = join(__dirname, 'node_modules/better-sqlite3');
-    const dest = join(nodeModulesDir, 'better-sqlite3');
+    // Copy sql.js package including WASM files
+    const src = join(__dirname, 'node_modules/sql.js');
+    const dest = join(nodeModulesDir, 'sql.js');
     try {
       await cp(src, dest, { recursive: true });
-      console.log('Copied: better-sqlite3 native module');
+      console.log('Copied: sql.js WASM files');
     } catch (e) {
-      console.warn('Warning: Could not copy better-sqlite3:', e.message);
+      console.warn('Warning: Could not copy sql.js:', e.message);
     }
     
     console.log('Build completed: dist/index.cjs');
