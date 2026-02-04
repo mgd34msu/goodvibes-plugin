@@ -1,19 +1,12 @@
 /**
  * Tree-sitter wrapper for precision-engine
- * Provides AST parsing, symbol extraction, and code navigation
+ * Uses web-tree-sitter (WASM) for cross-platform compatibility
  */
 
-import Parser from 'tree-sitter';
+import { Parser, Language } from 'web-tree-sitter';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import fg from 'fast-glob';
-
-// Language imports
-import JavaScript from 'tree-sitter-javascript';
-import TypeScript from 'tree-sitter-typescript';
-import Python from 'tree-sitter-python';
-import Rust from 'tree-sitter-rust';
-import Go from 'tree-sitter-go';
 
 export interface Position {
   line: number;
@@ -65,24 +58,24 @@ export type SymbolKind =
   | 'namespace';
 
 /**
- * Language configuration mapping
+ * Language extension mapping
  */
-const LANGUAGE_MAP: Record<string, { grammar: unknown; ext: string[] }> = {
-  javascript: { grammar: JavaScript, ext: ['.js', '.jsx', '.mjs', '.cjs'] },
-  typescript: { grammar: TypeScript.typescript, ext: ['.ts', '.tsx', '.mts', '.cts'] },
-  python: { grammar: Python, ext: ['.py', '.pyi'] },
-  rust: { grammar: Rust, ext: ['.rs'] },
-  go: { grammar: Go, ext: ['.go'] },
+const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
+  javascript: ['.js', '.jsx', '.mjs', '.cjs'],
+  typescript: ['.ts', '.tsx', '.mts', '.cts'],
+  python: ['.py', '.pyi'],
+  rust: ['.rs'],
+  go: ['.go'],
 };
 
 /**
- * Get language from file extension
+ * Get language name from file extension
  */
-function getLanguageForFile(filePath: string): { name: string; grammar: unknown } | null {
+function getLanguageNameForFile(filePath: string): string | null {
   const ext = path.extname(filePath);
-  for (const [name, config] of Object.entries(LANGUAGE_MAP)) {
-    if (config.ext.includes(ext)) {
-      return { name, grammar: config.grammar };
+  for (const [name, exts] of Object.entries(LANGUAGE_EXTENSIONS)) {
+    if (exts.includes(ext)) {
+      return name;
     }
   }
   return null;
@@ -112,13 +105,11 @@ function toRange(node: Parser.SyntaxNode): Range {
  * Extract symbol name from node
  */
 function extractSymbolName(node: Parser.SyntaxNode): string | null {
-  // Look for name child
   const nameNode = node.childForFieldName('name');
   if (nameNode) {
     return nameNode.text;
   }
 
-  // Fallback: find first identifier child
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (child && (child.type === 'identifier' || child.type === 'type_identifier')) {
@@ -133,13 +124,11 @@ function extractSymbolName(node: Parser.SyntaxNode): string | null {
  * Check if node is exported (TypeScript/JavaScript)
  */
 function isExported(node: Parser.SyntaxNode): boolean {
-  // Check for export keyword in parent or node itself
   let current: Parser.SyntaxNode | null = node;
   while (current) {
     if (current.type === 'export_statement' || current.type === 'export_declaration') {
       return true;
     }
-    // Check first child for 'export' keyword
     const firstChild = current.child(0);
     if (firstChild && firstChild.type === 'export') {
       return true;
@@ -237,66 +226,146 @@ function mapNodeTypeToKind(nodeType: string, language: string): SymbolKind | nul
  */
 function extractSignature(node: Parser.SyntaxNode, maxLength = 200): string {
   let text = node.text;
-
-  // Truncate at first { or newline for functions/methods
   const braceIndex = text.indexOf('{');
   if (braceIndex !== -1) {
     text = text.slice(0, braceIndex).trim();
   }
-
-  // Limit length
   if (text.length > maxLength) {
     text = text.slice(0, maxLength) + '...';
   }
-
   return text;
 }
 
 /**
- * Core Tree-sitter wrapper class
+ * Get base directory for WASM files
+ * Works both in development (node_modules) and bundled (dist/wasm)
+ */
+function getWasmBasePath(): string {
+  // Try dist/wasm first (bundled), then node_modules (dev)
+  const possiblePaths = [
+    path.join(__dirname, 'wasm'),
+    path.join(__dirname, '../wasm'),
+    path.join(__dirname, '../../dist/wasm'),
+    path.join(process.cwd(), 'dist/wasm'),
+    path.join(__dirname, '../../node_modules/tree-sitter-wasms/out'),
+    path.join(process.cwd(), 'node_modules/tree-sitter-wasms/out'),
+  ];
+  
+  // Return the first path that might work - actual check happens at load time
+  return possiblePaths[0];
+}
+
+let wasmBasePath: string | null = null;
+
+/**
+ * Find and cache the WASM base path
+ */
+async function findWasmBasePath(): Promise<string> {
+  if (wasmBasePath) return wasmBasePath;
+  
+  const possiblePaths = [
+    path.join(__dirname, 'wasm'),
+    path.join(__dirname, '../wasm'),
+    path.join(__dirname, '../../dist/wasm'),
+    path.join(process.cwd(), 'dist/wasm'),
+    path.join(__dirname, '../../node_modules/tree-sitter-wasms/out'),
+    path.join(process.cwd(), 'node_modules/tree-sitter-wasms/out'),
+  ];
+  
+  for (const p of possiblePaths) {
+    try {
+      await fs.access(path.join(p, 'tree-sitter-typescript.wasm'));
+      wasmBasePath = p;
+      return p;
+    } catch {
+      // Try next path
+    }
+  }
+  
+  throw new Error('Could not find tree-sitter WASM files');
+}
+
+/**
+ * Core Tree-sitter wrapper class (web-tree-sitter / WASM)
  */
 export class TreeSitterCore {
-  private parser: Parser;
+  private parser: Parser | null = null;
+  private languages: Map<string, Parser.Language> = new Map();
   private currentLanguage: string | null = null;
   private lastParsedLanguage: string | null = null;
+  private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
-  constructor() {
-    this.parser = new Parser();
+  /**
+   * Initialize the parser (must be called before use)
+   */
+  async init(): Promise<void> {
+    if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      await Parser.init();
+      this.parser = new Parser();
+      this.initialized = true;
+    })();
+
+    return this.initPromise;
+  }
+
+  /**
+   * Load a language from WASM
+   */
+  private async loadLanguage(langName: string): Promise<Parser.Language | null> {
+    if (this.languages.has(langName)) {
+      return this.languages.get(langName)!;
+    }
+
+    try {
+      const basePath = await findWasmBasePath();
+      const wasmPath = path.join(basePath, `tree-sitter-${langName}.wasm`);
+      const lang = await Parser.Language.load(wasmPath);
+      this.languages.set(langName, lang);
+      return lang;
+    } catch {
+      return null;
+    }
   }
 
   /**
    * Parse content and return AST
    */
-  parse(content: string, filePath: string): Parser.Tree {
-    const lang = getLanguageForFile(filePath);
-    if (!lang) {
+  async parse(content: string, filePath: string): Promise<Parser.Tree> {
+    await this.init();
+
+    const langName = getLanguageNameForFile(filePath);
+    if (!langName) {
       throw new Error(`Unsupported file type: ${filePath}`);
     }
 
-    // Only set language if it changed (optimization)
-    if (this.currentLanguage !== lang.name) {
-      this.parser.setLanguage(lang.grammar as any);
-      this.currentLanguage = lang.name;
+    if (this.currentLanguage !== langName) {
+      const lang = await this.loadLanguage(langName);
+      if (!lang) {
+        throw new Error(`Language not available: ${langName}. WASM file not found.`);
+      }
+      this.parser!.setLanguage(lang);
+      this.currentLanguage = langName;
     }
-    this.lastParsedLanguage = lang.name;
+    this.lastParsedLanguage = langName;
 
-    const tree = this.parser.parse(content);
-    return tree;
+    return this.parser!.parse(content);
   }
 
   /**
    * Get hierarchical outline with start+end positions
    */
   getOutline(tree: Parser.Tree, filePath: string): OutlineNode[] {
-    const langInfo = getLanguageForFile(filePath);
-    const language = langInfo?.name ?? this.lastParsedLanguage ?? 'typescript';
-    const outline: OutlineNode[] = [];
+    const language = getLanguageNameForFile(filePath) ?? this.lastParsedLanguage ?? 'typescript';
     const rootNode = tree.rootNode;
 
-    const buildOutline = (node: Parser.SyntaxNode, parentContainer?: string): OutlineNode[] => {
+    const buildOutline = (node: Parser.SyntaxNode): OutlineNode[] => {
       const nodes: OutlineNode[] = [];
-
       const kind = mapNodeTypeToKind(node.type, language);
+
       if (kind) {
         const name = extractSymbolName(node);
         if (name) {
@@ -309,13 +378,12 @@ export class TreeSitterCore {
             exported: isExported(node),
           };
 
-          // Recursively process children for containers
           if (kind === 'class' || kind === 'interface' || kind === 'namespace') {
             const children: OutlineNode[] = [];
             for (let i = 0; i < node.childCount; i++) {
               const child = node.child(i);
               if (child) {
-                children.push(...buildOutline(child, name));
+                children.push(...buildOutline(child));
               }
             }
             if (children.length > 0) {
@@ -328,11 +396,10 @@ export class TreeSitterCore {
         }
       }
 
-      // Continue traversing children
       for (let i = 0; i < node.childCount; i++) {
         const child = node.child(i);
         if (child) {
-          nodes.push(...buildOutline(child, parentContainer));
+          nodes.push(...buildOutline(child));
         }
       }
 
@@ -346,8 +413,7 @@ export class TreeSitterCore {
    * Get flat symbol list with start+end positions
    */
   getSymbols(tree: Parser.Tree, filePath: string, filter?: SymbolKind[]): SymbolInfo[] {
-    const langInfo = getLanguageForFile(filePath);
-    const language = langInfo?.name ?? this.lastParsedLanguage ?? 'typescript';
+    const language = getLanguageNameForFile(filePath) ?? this.lastParsedLanguage ?? 'typescript';
     const symbols: SymbolInfo[] = [];
     const rootNode = tree.rootNode;
 
@@ -369,7 +435,6 @@ export class TreeSitterCore {
         }
       }
 
-      // Continue traversing
       const newContainer = kind && (kind === 'class' || kind === 'interface' || kind === 'namespace')
         ? extractSymbolName(node) || container
         : container;
@@ -397,70 +462,52 @@ export class TreeSitterCore {
     const { definedIn, maxFiles = 1000, maxResults = 100 } = options ?? {};
     const references: ReferenceInfo[] = [];
 
-    // Find all relevant files
     const allFiles = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
       cwd: basePath,
       absolute: true,
       ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
     });
 
-    // Limit files processed
     const files = allFiles.slice(0, maxFiles);
 
-    // Search for symbol in each file
     for (const file of files) {
       try {
         const content = await fs.readFile(file, 'utf-8');
-        const tree = this.parse(content, file);
+        const tree = await this.parse(content, file);
         const rootNode = tree.rootNode;
 
-        // If definedIn is specified, check if this is the definition file
         let skipFile = false;
         if (definedIn) {
           const relativePath = path.relative(basePath, file);
-          const normalizedDefinedIn = definedIn.replace(/\\/g, '/');
-          const normalizedRelative = relativePath.replace(/\\/g, '/');
-          if (normalizedRelative === normalizedDefinedIn) {
+          if (relativePath.replace(/\\/g, '/') === definedIn.replace(/\\/g, '/')) {
             skipFile = true;
           }
         }
 
         if (!skipFile) {
-
-        // Find all identifier nodes matching the symbol
-        const findIdentifiers = (node: Parser.SyntaxNode): void => {
-          if (node.type === 'identifier' && node.text === symbol) {
-            const pos = toPosition(node.startPosition);
-
-            // Get context (the line containing this reference)
-            const lines = content.split('\n');
-            const context = lines[pos.line - 1]?.trim();
-
-            references.push({
-              file: path.relative(basePath, file),
-              line: pos.line,
-              column: pos.column,
-              context,
-            });
-          }
-
-          for (let i = 0; i < node.childCount; i++) {
-            const child = node.child(i);
-            if (child) {
-              findIdentifiers(child);
+          const findIdentifiers = (node: Parser.SyntaxNode): void => {
+            if (node.type === 'identifier' && node.text === symbol) {
+              const pos = toPosition(node.startPosition);
+              const lines = content.split('\n');
+              references.push({
+                file: path.relative(basePath, file),
+                line: pos.line,
+                column: pos.column,
+                context: lines[pos.line - 1]?.trim(),
+              });
             }
-          }
-        };
 
-        findIdentifiers(rootNode);
+            for (let i = 0; i < node.childCount; i++) {
+              const child = node.child(i);
+              if (child) findIdentifiers(child);
+            }
+          };
+
+          findIdentifiers(rootNode);
         }
 
-        // Stop if we hit the result limit
-        if (references.length >= maxResults) {
-          break;
-        }
-      } catch (error) {
-        // Skip files that can't be parsed
+        if (references.length >= maxResults) break;
+      } catch {
         continue;
       }
     }
@@ -472,33 +519,22 @@ export class TreeSitterCore {
    * Find where a symbol is defined
    */
   async findDefinition(basePath: string, symbol: string, maxFiles = 1000): Promise<SymbolInfo | null> {
-    // Find all relevant files
     const allFiles = await fg(['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'], {
       cwd: basePath,
       absolute: true,
       ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
     });
 
-    // Limit files processed
     const files = allFiles.slice(0, maxFiles);
 
-    // Search for symbol definition in each file
     for (const file of files) {
       try {
         const content = await fs.readFile(file, 'utf-8');
-        const tree = this.parse(content, file);
-        const lang = getLanguageForFile(file);
-        if (!lang) continue;
-
+        const tree = await this.parse(content, file);
         const symbols = this.getSymbols(tree, file);
-
-        // Find matching symbol
         const match = symbols.find(s => s.name === symbol);
-        if (match) {
-          return match;
-        }
-      } catch (error) {
-        // Skip files that can't be parsed
+        if (match) return match;
+      } catch {
         continue;
       }
     }
@@ -510,17 +546,11 @@ export class TreeSitterCore {
    * Get the enclosing function for a line
    */
   getEnclosingFunction(tree: Parser.Tree, line: number): Range | null {
-    const rootNode = tree.rootNode;
-
-    // Convert 1-indexed line to 0-indexed
     const targetLine = line - 1;
-
     let enclosingFunc: Parser.SyntaxNode | null = null;
 
     const findEnclosing = (node: Parser.SyntaxNode): void => {
-      // Check if line is within this node
       if (node.startPosition.row <= targetLine && node.endPosition.row >= targetLine) {
-        // Check if this is a function-like node
         if (
           node.type === 'function_declaration' ||
           node.type === 'function_expression' ||
@@ -530,18 +560,14 @@ export class TreeSitterCore {
           enclosingFunc = node;
         }
 
-        // Continue searching children for more specific match
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child) {
-            findEnclosing(child);
-          }
+          if (child) findEnclosing(child);
         }
       }
     };
 
-    findEnclosing(rootNode);
-
+    findEnclosing(tree.rootNode);
     return enclosingFunc ? toRange(enclosingFunc) : null;
   }
 
@@ -549,17 +575,11 @@ export class TreeSitterCore {
    * Get the enclosing class for a line
    */
   getEnclosingClass(tree: Parser.Tree, line: number): Range | null {
-    const rootNode = tree.rootNode;
-
-    // Convert 1-indexed line to 0-indexed
     const targetLine = line - 1;
-
     let enclosingClass: Parser.SyntaxNode | null = null;
 
     const findEnclosing = (node: Parser.SyntaxNode): void => {
-      // Check if line is within this node
       if (node.startPosition.row <= targetLine && node.endPosition.row >= targetLine) {
-        // Check if this is a class-like node
         if (
           node.type === 'class_declaration' ||
           node.type === 'class' ||
@@ -568,18 +588,14 @@ export class TreeSitterCore {
           enclosingClass = node;
         }
 
-        // Continue searching children for more specific match
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child) {
-            findEnclosing(child);
-          }
+          if (child) findEnclosing(child);
         }
       }
     };
 
-    findEnclosing(rootNode);
-
+    findEnclosing(tree.rootNode);
     return enclosingClass ? toRange(enclosingClass) : null;
   }
 }
