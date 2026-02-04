@@ -61,9 +61,9 @@ export async function buildSubagentContext(
 
   // Batch processing reminder for efficiency
   contextParts.push(
-    `MANDATORY: If multiple tool uses are planned, you MUST use "discover -> batch" process.\n` +
-    ` - INFO: mcp-cli info plugin_goodvibes_precision-engine/discover\n` +
-    ` - INFO: mcp-cli info plugin_goodvibes_batch-engine/batch\n\n`
+    `MANDATORY: If multiple tool uses are planned, use discover and batch tools:\n` +
+    ` - mcp__plugin_goodvibes_precision-engine__discover\n` +
+    ` - mcp__plugin_goodvibes_batch-engine__batch\n\n`
   );
 
   // Add agent-specific reminders based on type

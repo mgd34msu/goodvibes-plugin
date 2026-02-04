@@ -784,53 +784,33 @@ async function handleGitCommand(input, command) {
 var TOOL_REPLACEMENTS = {
   Read: {
     replacement: "precision_read",
-    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_read '{
-  "files": ["path/to/file1.ts", "path/to/file2.ts"],
-  "extract": "full",
-  "output": {"mode": "minimal"}
-}'`,
-    capabilities: "Supports: extract modes (full/outline/lines), line ranges, output modes (minimal/standard/verbose)"
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_read with:
+{"files": [{"path": "path/to/file.ts"}], "extract": "content", "verbosity": "standard"}`,
+    capabilities: "Supports: extract modes (content/outline/symbols/ast/lines), line ranges, verbosity levels"
   },
   Edit: {
     replacement: "precision_edit",
-    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_edit '{
-  "edits": [
-    {"file": "path/to/file.ts", "find": "original", "replace": "replacement"}
-  ],
-  "transaction": {"mode": "atomic", "rollback_on_fail": true},
-  "output": {"mode": "minimal"}
-}'`,
-    capabilities: "Supports: atomic transactions, validation, hints, batch edits"
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_edit with:
+{"edits": [{"file": "path/to/file.ts", "find": "original", "replace": "new"}], "verbosity": "with_diff"}`,
+    capabilities: "Supports: atomic transactions, validation, hints, batch edits, fuzzy/regex/ast matching"
   },
   Write: {
     replacement: "precision_write",
-    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_write '{
-  "files": [
-    {"path": "path/to/file.ts", "content": "file content here"}
-  ],
-  "transaction": {"mode": "atomic"},
-  "output": {"mode": "minimal"}
-}'`,
-    capabilities: "Supports: create/overwrite operations, multiple files, atomic transactions, validation"
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_write with:
+{"files": [{"path": "path/to/file.ts", "content": "content here", "mode": "overwrite"}], "verbosity": "standard"}`,
+    capabilities: "Supports: create/overwrite/backup modes, multiple files, automatic parent directory creation"
   },
   Glob: {
     replacement: "precision_glob",
-    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_glob '{
-  "patterns": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/*.test.ts"],
-  "output": {"mode": "minimal"}
-}'`,
-    capabilities: "Supports: multiple patterns, exclusions, filters, output modes"
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_glob with:
+{"patterns": ["**/*.ts", "**/*.tsx"], "exclude": ["**/node_modules/**"], "verbosity": "standard"}`,
+    capabilities: "Supports: multiple patterns, exclusions, size/date filters, presets, sorting"
   },
   Grep: {
     replacement: "precision_grep",
-    usage: `mcp-cli call plugin_goodvibes_precision-engine/precision_grep '{
-  "queries": [
-    {"pattern": "searchPattern", "glob": "**/*.ts"}
-  ],
-  "output": {"mode": "files_only"}
-}'`,
-    capabilities: "Supports: batch queries, regex patterns, file filtering, context control, output modes"
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_grep with:
+{"queries": [{"id": "search1", "pattern": "searchPattern", "glob": "**/*.ts"}], "verbosity": "standard"}`,
+    capabilities: "Supports: batch queries, regex patterns, file filtering, context control, multiple output formats"
   }
 };
 var BLOCKED_NATIVE_TOOLS = [
@@ -841,18 +821,15 @@ var BLOCKED_NATIVE_TOOLS = [
   "Grep"
 ];
 function formatBlockMessage(toolName, replacement) {
-  const toolPath = `plugin_goodvibes_precision-engine/${replacement.replacement}`;
+  const mcpToolName = `mcp__plugin_goodvibes_precision-engine__${replacement.replacement}`;
   return `
-BLOCKED: '${toolName}' - MANDATORY: Use ${toolPath} instead.
-CRITICAL: If multiple tool uses are planned, "discover -> batch" process is MANDATORY:
-mcp-cli info plugin_goodvibes_precision-engine/discover
-mcp-cli info plugin_goodvibes_batch-engine/batch
+BLOCKED: '${toolName}' - MANDATORY: Use ${mcpToolName} instead.
+CRITICAL: If multiple tool uses are planned, use discover and batch tools.
 
-** ${toolPath} **TOOL INFO: 
+** ${mcpToolName} **
 ${replacement.usage}
 
-TOOL INFO: ${replacement.capabilities}
-MORE INFO: mcp-cli info ${toolPath}
+CAPABILITIES: ${replacement.capabilities}
 
 `;
 }

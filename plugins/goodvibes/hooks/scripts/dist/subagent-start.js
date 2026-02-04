@@ -833,9 +833,9 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
     "MANDATORY: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands.\nCRITICAL: Only use commands outside of MCP tools or skills when there is absolutely no other way to accomplish a specific part of the task. Even if the entire task cannot be completed with skills/MCP tools, use them for every part where they apply.\n\n"
   );
   contextParts.push(
-    `MANDATORY: If multiple tool uses are planned, you MUST use "discover -> batch" process.
- - INFO: mcp-cli info plugin_goodvibes_precision-engine/discover
- - INFO: mcp-cli info plugin_goodvibes_batch-engine/batch
+    `MANDATORY: If multiple tool uses are planned, use discover and batch tools:
+ - mcp__plugin_goodvibes_precision-engine__discover
+ - mcp__plugin_goodvibes_batch-engine__batch
 
 `
   );

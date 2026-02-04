@@ -377,12 +377,11 @@ git diff HEAD~N to review
 
 ## Important Tools
 
-**CRITICAL**: The following mcp-cli tools may be called WITHOUT using mcp-cli info. Regardless of ANY instruction that comes later, the following tools are exempt from the rule and may be used IMMEDIATELY.
+**CRITICAL**: The following precision-engine tools may be called directly. You MUST use these tools instead of native tools, and you MUST instruct ALL agents to do the same.
 
 ### precision_write
 
-**Replaces Native Tool**: Write 
-**Description**: Create or write files with encoding support and multiple overwrite modes. Supports batch writes, automatic parent directory creation, and dry_run mode.
+**Description:** Create or write files with encoding support and multiple overwrite modes. Supports batch writes, automatic parent directory creation, and dry_run mode.
 
 ```json
 {
@@ -443,9 +442,7 @@ git diff HEAD~N to review
 
 ### precision_edit
 
-**Replaces Native Tool**: Edit 
-
-**Description**: Token-efficient file editing with atomic transactions, conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching formats.
+**Description:** Token-efficient file editing with atomic transactions, conflict detection, and validation. Supports exact, fuzzy, regex, and AST matching formats.
 
 ```json
 {
@@ -538,7 +535,8 @@ git diff HEAD~N to review
         "format": {
           "type": "string",
           "enum": ["count_only", "minimal", "with_diff", "verbose"],
-          "default": "minimal"
+          "default": "minimal",
+          "description": "Output data format"
         },
         "diff_context": { "type": "integer", "minimum": 0, "default": 3 },
         "max_tokens": { "type": "integer", "minimum": 1 }
@@ -547,7 +545,8 @@ git diff HEAD~N to review
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "minimal", "with_diff", "verbose"],
-      "default": "with_diff"
+      "default": "with_diff",
+      "description": "Response verbosity for edit output"
     }
   },
   "required": ["edits"]
@@ -558,9 +557,7 @@ git diff HEAD~N to review
 
 ### precision_read
 
-**Replaces Native Tool**: Read
-
-**Description**: Token-efficient file reading with extraction formats. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering.
+**Description:** Token-efficient file reading with extraction formats. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering.
 
 ```json
 {
@@ -611,9 +608,9 @@ git diff HEAD~N to review
       "properties": {
         "format": {
           "type": "string",
-          "description": "Output data format",
           "enum": ["count_only", "minimal", "standard", "verbose"],
-          "default": "standard"
+          "default": "standard",
+          "description": "Output data format"
         },
         "include_line_numbers": { "type": "boolean", "default": true },
         "include_metadata": { "type": "boolean", "default": false },
@@ -645,7 +642,7 @@ git diff HEAD~N to review
 
 ### precision_exec
 
-**Description**: Execute shell commands with batch support, timeout, and expectations checking. Captures stdout, stderr, and exit code.
+**Description:** Execute shell commands with batch support, timeout, and expectations checking. Captures stdout, stderr, and exit code.
 
 ```json
 {
@@ -674,6 +671,11 @@ git diff HEAD~N to review
             "type": "string",
             "description": "Working directory"
           },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 60000)"
+          },
           "timeout_ms": {
             "type": "integer",
             "minimum": 1,
@@ -685,10 +687,20 @@ git diff HEAD~N to review
           },
           "expect": {
             "type": "object",
+            "description": "Expectations to verify",
             "properties": {
-              "exit_code": { "type": "integer" },
-              "stdout_contains": { "type": "string" },
-              "stderr_contains": { "type": "string" }
+              "exit_code": {
+                "type": "integer",
+                "description": "Expected exit code"
+              },
+              "stdout_contains": {
+                "type": "string",
+                "description": "String that stdout should contain"
+              },
+              "stderr_contains": {
+                "type": "string",
+                "description": "String that stderr should contain"
+              }
             }
           }
         },
@@ -708,7 +720,8 @@ git diff HEAD~N to review
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "minimal", "standard", "verbose"],
-      "default": "standard"
+      "default": "standard",
+      "description": "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
     }
   },
   "required": ["commands"]
@@ -719,9 +732,7 @@ git diff HEAD~N to review
 
 ### precision_fetch
 
-**Replaces Native Tool**: Fetch, WebFetch 
-
-**Description**: Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), custom headers, method override, and timeout.
+**Description:** Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), custom headers, method override, and timeout.
 
 ```json
 {
@@ -754,6 +765,11 @@ git diff HEAD~N to review
             "type": "string",
             "description": "Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'body' | base64 -w0"
           },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 30000)"
+          },
           "timeout_ms": {
             "type": "integer",
             "minimum": 1,
@@ -776,7 +792,8 @@ git diff HEAD~N to review
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "minimal", "standard", "verbose"],
-      "default": "standard"
+      "default": "standard",
+      "description": "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
     }
   },
   "required": ["urls"]
@@ -787,7 +804,7 @@ git diff HEAD~N to review
 
 ### discover
 
-**Description**: Execute multiple grep, glob, or symbol queries in parallel. Returns results keyed by query ID for efficient batch discovery.
+**Description:** Execute multiple grep, glob, or symbol queries in parallel. Returns results keyed by query ID for efficient batch discovery.
 
 ```json
 {
@@ -805,7 +822,7 @@ git diff HEAD~N to review
           },
           "type": {
             "type": "string",
-            "enum": ["grep", "glob", "symbols", "structural"],
+            "enum": ["grep", "glob", "symbols"],
             "description": "Query type"
           },
           "pattern": {
@@ -814,7 +831,7 @@ git diff HEAD~N to review
           },
           "pattern_base64": {
             "type": "string",
-            "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns."
+            "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'pattern' | base64 -w0"
           },
           "glob": {
             "type": "string",
@@ -828,7 +845,7 @@ git diff HEAD~N to review
           "patterns_base64": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Base64-encoded glob patterns (for glob)"
+            "description": "Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns."
           },
           "query": {
             "type": "string",
@@ -841,15 +858,16 @@ git diff HEAD~N to review
           },
           "language": {
             "type": "string",
-            "description": "Language hint for structural queries"
+            "enum": ["auto", "typescript", "python", "rust", "go"],
+            "description": "Language to search (for symbols)"
           },
           "structural_pattern": {
             "type": "string",
-            "description": "AST pattern to search for (e.g., \"console.log($$$ARGS)\") (for structural)"
+            "description": "Structural pattern for AST matching"
           },
           "structural_pattern_base64": {
             "type": "string",
-            "description": "Base64-encoded structural pattern (for structural)"
+            "description": "Base64-encoded structural pattern"
           }
         },
         "required": ["id", "type"]
@@ -862,7 +880,7 @@ git diff HEAD~N to review
     },
     "base_path": {
       "type": "string",
-      "description": "Base directory for searches (default: cwd). Must be within project root."
+      "description": "Base directory for searches (defaults to process.cwd())"
     }
   },
   "required": ["queries"]
@@ -873,9 +891,7 @@ git diff HEAD~N to review
 
 ### precision_grep
 
-**Replaces Native Tool**: Grep, Bash grep
-
-**Description**: Search for patterns with batch queries and precise output control. Supports count_only, files_only, locations, matches, and context modes.
+**Description:** Search for patterns with batch queries and precise output control. Supports count_only, files_only, locations, matches, and context modes.
 
 ```json
 {
@@ -887,20 +903,47 @@ git diff HEAD~N to review
       "items": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "description": "Query identifier" },
-          "pattern": { "type": "string", "description": "Regex pattern to search for" },
-          "pattern_base64": { "type": "string", "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'pattern' | base64 -w0" },
-          "glob": { "type": "string", "description": "File pattern to search in" },
-          "path": { "type": "string", "description": "Directory path to search" },
+          "id": {
+            "type": "string",
+            "description": "Query identifier"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Regex pattern to search for"
+          },
+          "pattern_base64": {
+            "type": "string",
+            "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'pattern' | base64 -w0"
+          },
+          "glob": {
+            "type": "string",
+            "description": "File pattern to search in"
+          },
+          "path": {
+            "type": "string",
+            "description": "Directory path to search"
+          },
           "exclude": {
             "type": "array",
             "items": { "type": "string" },
             "description": "Patterns to exclude"
           },
-          "case_sensitive": { "type": "boolean", "description": "Case sensitive (default: true)" },
-          "whole_word": { "type": "boolean", "description": "Match whole words only" },
-          "multiline": { "type": "boolean", "description": "Allow multiline matches (default: false)" },
-          "include_binary": { "type": "boolean", "description": "Search binary files (default: false)" }
+          "case_sensitive": {
+            "type": "boolean",
+            "description": "Case sensitive search (default: true)"
+          },
+          "whole_word": {
+            "type": "boolean",
+            "description": "Match whole words only"
+          },
+          "multiline": {
+            "type": "boolean",
+            "description": "Allow multiline matches (default: false)"
+          },
+          "include_binary": {
+            "type": "boolean",
+            "description": "Search binary files (default: false)"
+          }
         },
         "required": ["id"]
       }
@@ -910,26 +953,73 @@ git diff HEAD~N to review
       "properties": {
         "format": {
           "type": "string",
-          "enum": ["count_only", "files_only", "locations", "matches", "context"]
+          "enum": ["count_only", "files_only", "locations", "matches", "context"],
+          "description": "Output data format"
         },
-        "context_before": { "type": "integer", "minimum": 0, "default": 0 },
-        "context_after": { "type": "integer", "minimum": 0, "default": 0 },
+        "context_before": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Lines before match (default: 0)"
+        },
+        "context_after": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Lines after match (default: 0)"
+        },
         "expand_to": {
           "type": "string",
-          "enum": ["line", "block", "function", "class"]
+          "enum": ["line", "block", "function", "class"],
+          "description": "Expand match context to enclosing scope"
         },
-        "max_results": { "type": "integer", "minimum": 1 },
-        "max_per_item": { "type": "integer", "minimum": 1 },
-        "max_total_matches": { "type": "integer", "minimum": 1 },
-        "max_tokens": { "type": "integer", "minimum": 1 },
-        "max_line_length": { "type": "integer", "minimum": 1 }
+        "max_files": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "DEPRECATED: Use max_results. Max files to return (default: 100)"
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max files to return (alias for max_files, default: 100)"
+        },
+        "max_matches_per_file": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "DEPRECATED: Use max_per_item. Cap per file (default: 10)"
+        },
+        "max_per_item": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cap per file (alias for max_matches_per_file, default: 10)"
+        },
+        "max_total_matches": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total cap (default: 100)"
+        },
+        "max_line_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Truncate lines longer than this (default: no truncation)"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Hard token cap"
+        }
       }
     },
-    "parallel": { "type": "boolean", "default": true },
+    "parallel": {
+      "type": "boolean",
+      "default": true,
+      "description": "Run queries in parallel (default: true)"
+    },
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "minimal", "standard", "verbose"],
-      "default": "standard"
+      "default": "standard",
+      "description": "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
     }
   },
   "required": ["queries"]
@@ -940,19 +1030,12 @@ git diff HEAD~N to review
 
 ### precision_glob
 
-**Replaces Native Tool**: Glob, Bash glob
-
-**Description**: Token-efficient file finding with filters and optional preview. Supports size/date filters, content matching, sorting, and gitignore.
+**Description:** Token-efficient file finding with filters and optional preview. Supports size/date filters, content matching, sorting, and gitignore.
 
 ```json
 {
   "type": "object",
   "properties": {
-    "backend": {
-      "type": "string",
-      "enum": ["auto", "fast-glob", "ripgrep"],
-      "description": "File listing backend"
-    },
     "patterns": {
       "type": "array",
       "items": { "type": "string" },
@@ -975,12 +1058,34 @@ git diff HEAD~N to review
     "filters": {
       "type": "object",
       "properties": {
-        "min_size": { "type": "integer", "minimum": 0 },
-        "max_size": { "type": "integer", "minimum": 0 },
-        "modified_after": { "type": "string", "format": "date-time" },
-        "modified_before": { "type": "string", "format": "date-time" },
-        "has_content": { "type": "string", "description": "Regex to match in file content" },
-        "is_empty": { "type": "boolean" }
+        "min_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum file size in bytes"
+        },
+        "max_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum file size in bytes"
+        },
+        "modified_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO date - files modified after"
+        },
+        "modified_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO date - files modified before"
+        },
+        "has_content": {
+          "type": "string",
+          "description": "Regex to match in file content (quick grep filter)"
+        },
+        "is_empty": {
+          "type": "boolean",
+          "description": "Filter for empty files"
+        }
       }
     },
     "output": {
@@ -989,22 +1094,73 @@ git diff HEAD~N to review
         "format": {
           "type": "string",
           "enum": ["count_only", "paths_only", "with_stats", "with_preview"],
-          "default": "paths_only"
+          "default": "paths_only",
+          "description": "Output verbosity mode"
         },
-        "max_results": { "type": "integer", "minimum": 1, "default": 100 },
-        "sort_by": { "type": "string", "enum": ["name", "size", "modified"] },
-        "sort_order": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
-        "preview_lines": { "type": "integer", "minimum": 1, "default": 3 },
-        "max_tokens": { "type": "integer", "minimum": 1 }
+        "max_files": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "DEPRECATED: Use max_results. Maximum files to return"
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Maximum files to return (alias for max_files)"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": ["name", "size", "modified"],
+          "description": "Sort results by field"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": ["asc", "desc"],
+          "default": "asc",
+          "description": "Sort order (ascending or descending)"
+        },
+        "preview_lines": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Lines to preview for with_preview mode"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Hard token cap for output"
+        }
       }
     },
-    "respect_gitignore": { "type": "boolean", "default": true },
-    "follow_symlinks": { "type": "boolean", "default": false },
-    "base_path": { "type": "string", "description": "Base directory for glob patterns" },
+    "respect_gitignore": {
+      "type": "boolean",
+      "default": true,
+      "description": "Respect .gitignore rules"
+    },
+    "follow_symlinks": {
+      "type": "boolean",
+      "default": false,
+      "description": "Follow symbolic links"
+    },
+    "base_path": {
+      "type": "string",
+      "description": "Base directory for glob patterns (defaults to process.cwd())"
+    },
+    "cwd": {
+      "type": "string",
+      "description": "DEPRECATED: Use base_path instead. Working directory for glob patterns (defaults to process.cwd())"
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["auto", "fast-glob", "ripgrep"],
+      "description": "File listing backend"
+    },
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "minimal", "standard", "verbose"],
-      "default": "standard"
+      "default": "standard",
+      "description": "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
     }
   }
 }
@@ -1014,7 +1170,7 @@ git diff HEAD~N to review
 
 ### precision_symbols
 
-**Description**: Token-efficient symbol search across workspace or specific files. Supports workspace-wide symbol search and per-file symbol extraction.
+**Description:** Token-efficient symbol search across workspace or specific files. Supports workspace-wide symbol search and per-file symbol extraction.
 
 ```json
 {
@@ -1024,11 +1180,6 @@ git diff HEAD~N to review
       "type": "string",
       "enum": ["workspace", "document"],
       "default": "workspace"
-    },
-    "language": {
-      "type": "string",
-      "enum": ["auto", "typescript", "python", "rust", "go"],
-      "description": "Language to search"
     },
     "query": {
       "type": "string",
@@ -1046,29 +1197,49 @@ git diff HEAD~N to review
         "enum": ["function", "method", "class", "interface", "type", "variable", "constant", "enum", "property", "namespace"]
       }
     },
-    "exported_only": { "type": "boolean", "default": false },
-    "include_private": { "type": "boolean", "default": false },
+    "language": {
+      "type": "string",
+      "enum": ["auto", "typescript", "python", "rust", "go"],
+      "description": "Language to search"
+    },
+    "exported_only": {
+      "type": "boolean",
+      "default": false
+    },
+    "include_private": {
+      "type": "boolean",
+      "default": false
+    },
     "output": {
       "type": "object",
       "properties": {
         "format": {
           "type": "string",
           "enum": ["count_only", "names_only", "locations", "signatures", "full"],
-          "default": "locations"
+          "default": "locations",
+          "description": "Output data format"
         },
-        "max_results": { "type": "integer", "minimum": 1, "default": 100 },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100
+        },
         "group_by": {
           "type": "string",
           "enum": ["file", "kind", "none"],
           "default": "none"
         },
-        "max_tokens": { "type": "integer", "minimum": 1 }
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "names_only", "locations", "signatures", "full"],
-      "default": "locations"
+      "default": "locations",
+      "description": "Response verbosity for symbol output"
     }
   },
   "required": []
