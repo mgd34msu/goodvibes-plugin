@@ -16,7 +16,11 @@
     "lint:fix": "eslint . --fix",
     "lint:workspaces": "npm run lint --workspaces --if-present",
     "postinstall": "echo 'Run npm run build to build all workspaces'",
-    "cost-analysis": "node plugins/goodvibes/hooks/scripts/dist/cost-analysis-cli.js"
+    "cost-analysis": "node plugins/goodvibes/hooks/scripts/dist/cost-analysis-cli.js",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
   },
   "engines": {
     "node": ">=18.0.0"
