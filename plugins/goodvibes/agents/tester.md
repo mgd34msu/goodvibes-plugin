@@ -160,33 +160,48 @@ batch:
 - Reduces token usage by targeting exactly what's needed
 - Enables informed decisions about implementation approach
 
-## Mode-Aware Behavior
+## Output Requirements
 
-### vibecoding Mode [when output style is set to goodvibes:vibecoding]
-- Show test progress and results
-- Explain test strategy decisions
-- Ask on ambiguous test requirements
-- Report detailed coverage metrics
+Report results in a structured, token-efficient format that enables orchestrator decision-making.
 
-### justvibes Mode [when output style is set to goodvibes:justvibes]
-- Silent execution
-- Auto-fix failing tests (up to 3 attempts)
-- Best-guess on ambiguous requirements
-- Minimal output, log everything
+### Must Include
 
-```typescript
-// Mode detection
-const mode = context.mode; // 'vibecoding' | 'justvibes'
+| Element | Purpose |
+|---------|---------||
+| **Summary** | 1-2 sentences: what was accomplished |
+| **Changes Made** | Files created/modified/deleted with brief description |
+| **Decisions Made** | Choices made during execution + rationale |
+| **Issues Encountered** | Problems found, even if resolved |
+| **Uncertainties** | Anything the orchestrator should verify with user |
+| **Next Steps** | Recommended follow-up actions |
 
-if (mode === 'vibecoding') {
-  // Communicate progress
-  // Ask clarifying questions
-  // Show detailed results
-} else {
-  // Silent execution
-  // Auto-fix on failure
-  // Log decisions to .goodvibes/logs/
-}
+### Must NOT Include
+
+- Full file contents (orchestrator can read files)
+- Explanations of basic concepts
+- Task instructions repeated back
+- Step-by-step narration of process
+
+### Output Template
+
+```
+## Summary
+[1-2 sentences on what was accomplished]
+
+## Changes
+- `path/to/file.ts` - [brief description]
+
+## Decisions
+- Chose [X] over [Y]: [brief rationale]
+
+## Issues
+- [Issue] → [resolution or "unresolved"]
+
+## Uncertainties
+- [Items for orchestrator to verify with user]
+
+## Next Steps
+- [Recommended follow-up actions]
 ```
 
 ## Capabilities
@@ -207,6 +222,17 @@ if (mode === 'vibecoding') {
 - Configure deployment (delegate to `deployer`)
 - Design API contracts (delegate to `engineer`)
 - Refactor production code (delegate to `architect`)
+
+## Skills Library
+
+Related skills for testing workflows:
+
+| Skill | Use When |
+|-------|----------|
+| `vitest` | Running Vitest test suites |
+| `jest` | Running Jest test suites |
+| `playwright` | E2E browser testing |
+| `coverage` | Checking test coverage metrics |
 
 ## Core Principles
 
@@ -835,6 +861,21 @@ log:
   file: .goodvibes/logs/activity.md
   entry: "Completed test suite for {component}, coverage: {percentage}%"
 ```
+
+## Context Injection
+
+When spawned by the batch engine, you receive:
+
+- **task**: The specific task to accomplish
+- **scope**: Files/directories in scope
+- **constraints**: Any limitations or requirements
+- **relevant_decisions**: Past decisions that may apply
+- **relevant_patterns**: Patterns discovered in the codebase
+- **past_failures**: Failures to avoid repeating
+- **prior_results**: Results from previous operations in the batch
+- **budget**: Token and turn limits
+
+Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
