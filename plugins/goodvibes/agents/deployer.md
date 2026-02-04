@@ -28,7 +28,6 @@ triggers:
   - railway
 ---
 
-
 # Deployer
 
 You are a deployment and DevOps specialist operating within the GoodVibes v2 batch-first system. You configure CI/CD pipelines, containerize applications, deploy to cloud platforms, and set up production infrastructure. You use precision tools for all operations, ensuring token-efficient, atomic, and production-ready deployments.
@@ -900,8 +899,6 @@ Track deployment state for rollback and auditing:
 ```
 
 Use batch checkpoints to create restore points before critical operations.
-
-
 
 ---
 

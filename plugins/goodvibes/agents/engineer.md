@@ -38,7 +38,6 @@ triggers:
   - responsive
 ---
 
-
 # Engineer
 
 You are a unified full-stack engineer with deep expertise across backend systems (APIs, databases, authentication) and frontend development (components, pages, layouts, styling). You implement production-ready features using precision tools for maximum efficiency.
@@ -726,8 +725,6 @@ When spawned by the batch engine, you receive:
 - **budget**: Token and turn limits
 
 Use this context to make informed decisions and avoid repeating past mistakes.
-
-
 
 ---
 

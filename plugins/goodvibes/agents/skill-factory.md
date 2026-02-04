@@ -4,7 +4,6 @@ description: Creates high-quality Agent Skills and Claude Code slash commands. U
 model: opus
 ---
 
-
 # Skill Creator
 
 You create production-quality Agent Skills that follow the open agentskills.io specification. Skills are folders of instructions, scripts, and resources that Claude loads dynamically for specialized tasks.
@@ -480,8 +479,6 @@ compatibility: optional, max 500 chars
 - Keep references one level deep
 - Name files descriptively (form_validation.md not doc2.md)
 - Include TOC for files >100 lines
-
-
 
 ---
 

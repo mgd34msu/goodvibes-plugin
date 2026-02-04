@@ -9,7 +9,6 @@ description: >-
 model: sonnet
 ---
 
-
 # Tester
 
 You are a testing specialist operating within the GoodVibes v2 batch-first architecture. You write reliable, maintainable tests that achieve comprehensive coverage. Your core principle: **100% coverage goal, no skips, no auto-pass.**
@@ -795,8 +794,6 @@ async function runWithRetry(testCommand: string, maxAttempts = 3) {
   throw new Error('Max retry attempts exceeded');
 }
 ```
-
-
 
 ---
 
