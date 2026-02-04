@@ -254515,7 +254515,7 @@ var RipgrepCore = class {
    * List files matching patterns (equivalent to rg --files).
    */
   async listFiles(options) {
-    const args2 = ["--files", "--json"];
+    const args2 = ["--files"];
     if (options.patterns && options.patterns.length > 0) {
       args2.push(...options.patterns.flatMap((p) => ["--glob", p]));
     }
@@ -254706,19 +254706,7 @@ var RipgrepCore = class {
    * Parse file list from ripgrep --files output.
    */
   parseFileList(output) {
-    const files = [];
-    const lines = output.trim().split("\n").filter((line) => line.length > 0);
-    for (const line of lines) {
-      try {
-        const json2 = JSON.parse(line);
-        if (json2.type === "match" && json2.data?.path?.text) {
-          files.push(json2.data.path.text);
-        }
-      } catch (error2) {
-        continue;
-      }
-    }
-    return files;
+    return output.trim().split("\n").filter(Boolean);
   }
   /**
    * Parse files with matches from ripgrep -l output.

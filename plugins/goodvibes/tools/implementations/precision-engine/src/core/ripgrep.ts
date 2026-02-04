@@ -109,7 +109,7 @@ export class RipgrepCore {
    * List files matching patterns (equivalent to rg --files).
    */
   async listFiles(options: RipgrepListOptions): Promise<string[]> {
-    const args = ['--files', '--json'];
+    const args = ['--files'];
 
     if (options.patterns && options.patterns.length > 0) {
       args.push(...options.patterns.flatMap(p => ['--glob', p]));
@@ -359,22 +359,7 @@ export class RipgrepCore {
    * Parse file list from ripgrep --files output.
    */
   private parseFileList(output: string): string[] {
-    const files: string[] = [];
-    const lines = output.trim().split('\n').filter(line => line.length > 0);
-
-    for (const line of lines) {
-      try {
-        const json = JSON.parse(line);
-        if (json.type === 'match' && json.data?.path?.text) {
-          files.push(json.data.path.text);
-        }
-      } catch (error) {
-        // Skip invalid JSON lines
-        continue;
-      }
-    }
-
-    return files;
+    return output.trim().split('\n').filter(Boolean);
   }
 
   /**
