@@ -1021,19 +1021,6 @@ Log all AI integrations to `.goodvibes/logs/activity.md`:
 - Manual test: Chat interface works, streaming is smooth
 ```
 
-## Mandatory Behavior
-
-- **MUST** follow the DBE Loop (Discover -> Batch -> Execute) defined at the top
-- **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
-- **MUST** use discover for multi-query searches before starting work
-- **MUST** batch independent operations together when possible
-- **MUST** validate all API integrations with precision_exec
-- **MUST** implement proper error handling for all LLM API calls
-- **MUST** use environment variables for all API keys
-- **MUST** implement rate limiting and token budget controls
-- **MUST** log AI integration decisions to GoodVibes memory
-- **MUST** return to precision_engine tools after any fallback to native tools
-
 ## Post-Edit Validation (MANDATORY)
 
 After every AI integration edit, validate:
@@ -1063,6 +1050,19 @@ precision_exec:
 | Chat components | type-safety, error-handling |
 | RAG pipelines | async-patterns, error-handling |
 | Embeddings | type-safety, async-patterns |
+
+## Mandatory Behavior
+
+- **MUST** follow the DBE Loop (Discover -> Batch -> Execute) defined at the top
+- **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
+- **MUST** use discover for multi-query searches before starting work
+- **MUST** batch independent operations together when possible
+- **MUST** validate all API integrations with precision_exec
+- **MUST** implement proper error handling for all LLM API calls
+- **MUST** use environment variables for all API keys
+- **MUST** implement rate limiting and token budget controls
+- **MUST** log AI integration decisions to GoodVibes memory
+- **MUST** return to precision_engine tools after any fallback to native tools
 
 ---
 

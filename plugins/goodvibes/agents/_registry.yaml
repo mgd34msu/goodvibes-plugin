@@ -1,6 +1,6 @@
 version: 1.0.0
-generated: '2026-02-04T08:34:28.505Z'
-total: 9
+generated: '2026-02-04T20:00:45.465Z'
+total: 11
 categories:
   _items:
     - name: agent-factory
@@ -197,112 +197,176 @@ categories:
         - style
         - this
         - make
-    - name: integrator
-      path: integrator
+    - name: integrator-ai
+      path: integrator-ai
       description: >-
-        Integration specialist for state management, forms, real-time features, AI/LLM integration, CMS platforms,
-        payment processing, email services, and file uploads. Use PROACTIVELY when user mentions: state management,
-        Zustand, Redux, Jotai, TanStack Query, React Query, forms, validation, Zod, React Hook Form, Formik, real-time,
-        WebSocket, Socket.IO, Pusher, Ably, live updates, presence, AI, LLM, ChatGPT, Claude, OpenAI, Anthropic, Vercel
-        AI SDK, streaming, chat, completions, embeddings, RAG, vector, CMS, Sanity, Contentful, Strapi, Payload,
-        Directus, headless CMS, blog, content, email, Resend, SendGrid, Postmark, React Email, transactional,
-        newsletter, payment, Stripe, checkout, subscription, billing, invoice, LemonSqueezy, Paddle, file upload,
-        UploadThing, Cloudinary, S3, media, image optimization. Triggers on: "add state", "manage state", "build a
-        form", "form validation", "real-time updates", "WebSocket connection", "integrate AI", "add chat", "LLM
-        feature", "setup CMS", "content management", "send emails", "email templates", "payment integration", "accept
-        payments", "subscription billing", "upload files", "image upload", "media management".
+        AI and LLM integration specialist for chat interfaces, streaming responses, RAG pipelines, embeddings, vector
+        search, and tool/function calling. Use PROACTIVELY when user mentions: AI, LLM, ChatGPT, Claude, OpenAI,
+        Anthropic, Vercel AI SDK, streaming, chat, completions, embeddings, RAG, vector, Pinecone, Weaviate, pgvector,
+        function calling, tool use, AI agents. Triggers on: "integrate AI", "add chat", "LLM feature", "streaming
+        responses", "RAG pipeline", "vector search", "embeddings", "AI chat interface", "function calling", "tool use".
       triggers: &ref_4
         - integrator
+        - ai
+        - llm
         - integration
         - specialist
-        - state
-        - management
-        - forms
-        - real
-        - time
-        - features
-        - llm
-        - cms
-        - platforms
-        - payment
-        - processing
-        - email
-        - services
-        - file
-        - uploads
+        - chat
+        - interfaces
+        - streaming
+        - responses
+        - rag
+        - pipelines
+        - embeddings
+        - vector
+        - search
+        - tool
+        - function
+        - calling
         - proactively
         - user
         - mentions
-        - zustand
-        - redux
-        - jotai
-        - tanstack
-        - query
-        - react
-        - validation
-        - zod
-        - hook
-        - form
-        - formik
-        - websocket
-        - socket
-        - pusher
-        - ably
-        - live
-        - updates
-        - presence
         - chatgpt
         - claude
         - openai
         - anthropic
         - vercel
         - sdk
-        - streaming
-        - chat
         - completions
-        - embeddings
-        - rag
-        - vector
+        - pinecone
+        - weaviate
+        - pgvector
+        - agents
+        - triggers
+        - integrate
+        - add
+        - feature
+        - pipeline
+        - interface
+    - name: integrator-services
+      path: integrator-services
+      description: >-
+        External services specialist for payment processing (Stripe, LemonSqueezy, Paddle), email services (Resend,
+        SendGrid, Postmark, React Email), CMS platforms (Sanity, Contentful, Strapi, Payload, Directus), and file
+        uploads (UploadThing, Cloudinary, S3). Use PROACTIVELY when user mentions: payment, Stripe, checkout,
+        subscription, billing, invoice, LemonSqueezy, Paddle, email, Resend, SendGrid, Postmark, React Email,
+        transactional email, newsletter, CMS, Sanity, Contentful, Strapi, Payload, Directus, headless CMS, blog, content
+        management, upload, UploadThing, Cloudinary, S3, media, image optimization, file upload. Triggers on: "integrate
+        payments", "setup Stripe", "accept payments", "subscription billing", "send emails", "email templates", "setup
+        CMS", "content management", "upload files", "image upload", "media management".
+      triggers: &ref_5
+        - integrator
+        - services
+        - external
+        - specialist
+        - payment
+        - processing
+        - stripe
+        - lemonsqueezy
+        - paddle
+        - email
+        - resend
+        - sendgrid
+        - postmark
+        - react
+        - cms
+        - platforms
         - sanity
         - contentful
         - strapi
         - payload
         - directus
-        - headless
-        - blog
-        - content
-        - resend
-        - sendgrid
-        - postmark
-        - transactional
-        - newsletter
-        - stripe
+        - file
+        - uploads
+        - uploadthing
+        - cloudinary
+        - proactively
+        - user
+        - mentions
         - checkout
         - subscription
         - billing
         - invoice
-        - lemonsqueezy
-        - paddle
+        - transactional
+        - newsletter
+        - headless
+        - blog
+        - content
+        - management
         - upload
-        - uploadthing
-        - cloudinary
         - media
         - image
         - optimization
         - triggers
-        - add
-        - manage
-        - build
-        - connection
         - integrate
-        - feature
+        - payments
         - setup
+        - accept
         - send
         - emails
         - templates
-        - accept
-        - payments
         - files
+    - name: integrator-state
+      path: integrator-state
+      description: >-
+        State management, forms with validation, and real-time features specialist. Use PROACTIVELY when user mentions:
+        state, store, global state, client state, server state, cache, Zustand, Redux, Jotai, TanStack Query, React
+        Query, SWR, form, validation, schema, Zod, Yup, React Hook Form, Formik, real-time, WebSocket, Socket.IO,
+        Pusher, Ably, Liveblocks, collaborative, live updates, subscriptions. Also trigger on: "manage state", "create
+        store", "add form", "validate input", "real-time sync", "live collaboration", "optimistic update", "cache
+        invalidation".
+      triggers: &ref_6
+        - integrator
+        - state
+        - management
+        - forms
+        - validation
+        - real
+        - time
+        - features
+        - specialist
+        - proactively
+        - user
+        - mentions
+        - store
+        - global
+        - client
+        - server
+        - cache
+        - zustand
+        - redux
+        - jotai
+        - tanstack
+        - query
+        - react
+        - swr
+        - form
+        - schema
+        - zod
+        - yup
+        - hook
+        - formik
+        - websocket
+        - socket
+        - pusher
+        - ably
+        - liveblocks
+        - collaborative
+        - live
+        - updates
+        - subscriptions
+        - also
+        - trigger
+        - manage
+        - create
+        - add
+        - validate
+        - input
+        - sync
+        - collaboration
+        - optimistic
+        - update
+        - invalidation
     - name: planner
       path: planner
       description: >-
@@ -310,7 +374,7 @@ categories:
         tasks, planning batch operations, orchestrating multi-agent workflows, or when the user needs a detailed
         execution plan. Triggers on plan, strategy, breakdown, orchestrate, design approach, batch planning, workflow
         design, execution plan, parallel execution, agent coordination.
-      triggers: &ref_5
+      triggers: &ref_7
         - planner
         - goodvibes
         - planning
@@ -349,7 +413,7 @@ categories:
         Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
         changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
         performance, and adherence to project patterns.
-      triggers: &ref_6
+      triggers: &ref_8
         - reviewer
         - code
         - review
@@ -382,7 +446,7 @@ categories:
         Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
         update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge,
         workflows, or tool integrations.
-      triggers: &ref_7
+      triggers: &ref_9
         - skill
         - factory
         - creates
@@ -415,7 +479,7 @@ categories:
         E2E), improving test coverage, fixing failing tests, setting up test infrastructure, mocking APIs/data,
         debugging flaky tests, or when user mentions Vitest, Jest, Playwright, Cypress, Testing Library, MSW, coverage,
         TDD, fixtures, snapshots, or assertions. Enforces 100% coverage goal with no skips and no auto-pass.
-      triggers: &ref_8
+      triggers: &ref_10
         - tester
         - testing
         - specialist
@@ -490,23 +554,38 @@ search_index:
       responsive, CSS, Tailwind, styling, theme, dark mode, shadcn, Radix, animation, Framer Motion, accessibility, SSR,
       SSG, hydration. Also trigger on: "build an API", "create component", "add authentication", "implement feature",
       "fix bug", "add page", "build form", "connect database", "style this", "make responsive".
-  - name: integrator
+  - name: integrator-ai
     keywords: *ref_4
-    path: integrator
+    path: integrator-ai
     description: >-
-      Integration specialist for state management, forms, real-time features, AI/LLM integration, CMS platforms, payment
-      processing, email services, and file uploads. Use PROACTIVELY when user mentions: state management, Zustand,
-      Redux, Jotai, TanStack Query, React Query, forms, validation, Zod, React Hook Form, Formik, real-time, WebSocket,
-      Socket.IO, Pusher, Ably, live updates, presence, AI, LLM, ChatGPT, Claude, OpenAI, Anthropic, Vercel AI SDK,
-      streaming, chat, completions, embeddings, RAG, vector, CMS, Sanity, Contentful, Strapi, Payload, Directus,
-      headless CMS, blog, content, email, Resend, SendGrid, Postmark, React Email, transactional, newsletter, payment,
-      Stripe, checkout, subscription, billing, invoice, LemonSqueezy, Paddle, file upload, UploadThing, Cloudinary, S3,
-      media, image optimization. Triggers on: "add state", "manage state", "build a form", "form validation", "real-time
-      updates", "WebSocket connection", "integrate AI", "add chat", "LLM feature", "setup CMS", "content management",
-      "send emails", "email templates", "payment integration", "accept payments", "subscription billing", "upload
-      files", "image upload", "media management".
-  - name: planner
+      AI and LLM integration specialist for chat interfaces, streaming responses, RAG pipelines, embeddings, vector
+      search, and tool/function calling. Use PROACTIVELY when user mentions: AI, LLM, ChatGPT, Claude, OpenAI,
+      Anthropic, Vercel AI SDK, streaming, chat, completions, embeddings, RAG, vector, Pinecone, Weaviate, pgvector,
+      function calling, tool use, AI agents. Triggers on: "integrate AI", "add chat", "LLM feature", "streaming
+      responses", "RAG pipeline", "vector search", "embeddings", "AI chat interface", "function calling", "tool use".
+  - name: integrator-services
     keywords: *ref_5
+    path: integrator-services
+    description: >-
+      External services specialist for payment processing (Stripe, LemonSqueezy, Paddle), email services (Resend,
+      SendGrid, Postmark, React Email), CMS platforms (Sanity, Contentful, Strapi, Payload, Directus), and file uploads
+      (UploadThing, Cloudinary, S3). Use PROACTIVELY when user mentions: payment, Stripe, checkout, subscription,
+      billing, invoice, LemonSqueezy, Paddle, email, Resend, SendGrid, Postmark, React Email, transactional email,
+      newsletter, CMS, Sanity, Contentful, Strapi, Payload, Directus, headless CMS, blog, content management, upload,
+      UploadThing, Cloudinary, S3, media, image optimization, file upload. Triggers on: "integrate payments", "setup
+      Stripe", "accept payments", "subscription billing", "send emails", "email templates", "setup CMS", "content
+      management", "upload files", "image upload", "media management".
+  - name: integrator-state
+    keywords: *ref_6
+    path: integrator-state
+    description: >-
+      State management, forms with validation, and real-time features specialist. Use PROACTIVELY when user mentions:
+      state, store, global state, client state, server state, cache, Zustand, Redux, Jotai, TanStack Query, React Query,
+      SWR, form, validation, schema, Zod, Yup, React Hook Form, Formik, real-time, WebSocket, Socket.IO, Pusher, Ably,
+      Liveblocks, collaborative, live updates, subscriptions. Also trigger on: "manage state", "create store", "add
+      form", "validate input", "real-time sync", "live collaboration", "optimistic update", "cache invalidation".
+  - name: planner
+    keywords: *ref_7
     path: planner
     description: >-
       GoodVibes planning expert. Use PROACTIVELY when designing implementation strategies, breaking down complex tasks,
@@ -514,21 +593,21 @@ search_index:
       Triggers on plan, strategy, breakdown, orchestrate, design approach, batch planning, workflow design, execution
       plan, parallel execution, agent coordination.
   - name: reviewer
-    keywords: *ref_6
+    keywords: *ref_8
     path: reviewer
     description: >-
       Code review specialist enforcing enterprise-grade standards. Use PROACTIVELY when reviewing PRs, auditing code
       changes, performing quality assessments, or when user needs direct feedback on code correctness, security,
       performance, and adherence to project patterns.
   - name: skill-factory
-    keywords: *ref_7
+    keywords: *ref_9
     path: skill-factory
     description: >-
       Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create,
       update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows,
       or tool integrations.
   - name: tester
-    keywords: *ref_8
+    keywords: *ref_10
     path: tester
     description: >-
       Testing specialist for comprehensive test coverage. Use PROACTIVELY when: writing tests (unit, integration, E2E),

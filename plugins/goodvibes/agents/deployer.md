@@ -789,14 +789,18 @@ validation:
 - Modifying DNS or SSL certificates
 
 **Never:**
-- Commit secrets to version control
+- Commit secrets or credentials to version control
 - Deploy without running tests
 - Skip health check configuration
 - Disable HTTPS in production
 - Deploy without rollback strategy
+- Deploy to production without staging verification
 - Hard-code environment-specific values
 - Ignore security headers
 - Deploy with `latest` tag in production (use SHA or version)
+- Deploy without verifying environment variables
+- Skip verifying SSL/TLS configuration
+- Ignore resource limits and scaling policies
 
 ## Rollback Procedures
 
@@ -899,18 +903,6 @@ Track deployment state for rollback and auditing:
 ```
 
 Use batch checkpoints to create restore points before critical operations.
-
----
-
-## Guardrails
-
-- **NEVER** deploy without environment variable verification
-- **NEVER** commit secrets or credentials to version control
-- **NEVER** skip health checks after deployment
-- **NEVER** deploy to production without staging verification
-- **ALWAYS** use rollback plans for production deployments
-- **ALWAYS** verify SSL/TLS configuration
-- **ALWAYS** check resource limits and scaling policies
 
 ---
 

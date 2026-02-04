@@ -329,96 +329,6 @@ If any reality check fails critically, the review should note:
 
 ---
 
-## Review Workflows
-
-### Quick Review (5-10 min)
-
-For small PRs or single-file changes.
-
-```
-1. REALITY CHECKS - Quick integration verification
-   - Verify files exist
-   - Check for placeholder patterns (TODO, Not implemented)
-
-2. SCAN - Get file structure and changed lines
-   precision_read: extract=outline, files=[changed_files]
-
-3. HOTSPOTS - Check complexity indicators
-   precision_grep: pattern="TODO|FIXME|HACK|XXX"
-   precision_grep: pattern="catch\\s*\\(.*\\)\\s*\\{\\s*\\}"  # Empty catches
-
-4. TOP 3 - Identify critical issues
-   - Security: hardcoded secrets, injection risks
-   - Logic: null checks, edge cases
-   - Performance: loops with DB calls
-
-5. OUTPUT - Brief assessment with line numbers (note any reality check failures)
-```
-
-### Standard Review (15-30 min)
-
-For typical PRs.
-
-```
-1. REALITY CHECKS - Verify code integration
-   - Check file existence
-   - Verify exports are imported/used
-   - Detect placeholder/stub implementations
-   - Trace import chain to entry points
-
-2. CONTEXT - Understand scope
-   precision_read: extract=outline, files=[all_changed]
-   precision_grep: pattern changes to understand intent
-
-3. CATEGORY SCAN - Each of 10 categories
-   For each category:
-   - Run detection patterns
-   - Note issues with line numbers
-   - Classify severity
-
-4. PATTERN CHECK - Compare to project conventions
-   Load memory: .goodvibes/memory/patterns.md
-   Check: naming, file structure, error handling approach
-
-5. SCORE - Calculate weighted score
-   Apply formula: 10 - SUM(category_deductions * weights)
-
-6. OUTPUT - Full report with prioritized fixes (include reality check results)
-```
-
-### Deep Audit (1-2 hours)
-
-For critical paths, security-sensitive code, or baseline assessments.
-
-```
-1. REALITY CHECKS - Comprehensive integration audit
-   - Verify all files exist and are accessible
-   - Map all exports and their usage
-   - Identify orphaned modules with no import path
-   - Detect all placeholder/stub code
-
-2. INVENTORY - Map entire codebase
-   precision_glob: pattern="**/*.{ts,tsx,js,jsx}"
-   precision_read: extract=symbols for all files
-
-3. DEPENDENCY ANALYSIS
-   Check circular dependencies
-   Review package.json for CVEs
-   Map import graph
-
-4. FULL CATEGORY ANALYSIS
-   Each category with evidence gathering
-   Line-by-line for critical files
-
-5. TECHNICAL DEBT QUANTIFICATION
-   Estimate remediation effort per issue
-   Calculate debt ratio
-
-6. OUTPUT - Comprehensive report with roadmap (include reality check summary)
-```
-
----
-
 ## Detection Patterns
 
 ### Security Patterns
@@ -876,6 +786,30 @@ exec:
 9. Generate prioritized report
 
 **Output:** Structured report with score, issues by severity, and actionable fixes.
+
+---
+
+## GoodVibes Memory & Logging
+
+### Memory System (`.goodvibes/memory/`)
+
+Query memory before starting reviews:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `patterns.json` | Code patterns, conventions | Before reviewing for pattern compliance |
+| `failures.json` | Past review findings | When seeing similar issues |
+| `decisions.json` | Architectural decisions | Before flagging as violation |
+
+### Logging System (`.goodvibes/logs/`)
+
+Record significant events:
+
+| File | What to Log |
+|------|-------------|
+| `activity.md` | Completed reviews, scores assigned |
+| `errors.md` | Review process failures |
+| `decisions.md` | Pattern clarifications, rule interpretations |
 
 ---
 
