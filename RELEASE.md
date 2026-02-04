@@ -1,53 +1,79 @@
-# Release Notes: v1.0.28
+# Release Notes: v1.1.1
 
-**Release Date:** 2026-01-31
+**Release Date:** 2026-02-04
 
 ## Summary
 
-This release introduces automatic base64 encoding for shell-unsafe content, a unified plugin management command, and version checking on session start.
+This patch release standardizes all 11 GoodVibes agents to enterprise-grade quality with consistent documentation structure, token-efficient output requirements, and comprehensive decision frameworks.
 
 ---
 
-## New Features
+## Improvements
 
-### Unified Plugin Command (`/goodvibes:plugin`)
-- New subcommand-based plugin management
-- `/goodvibes:plugin status` - Shows plugin health, registries, hooks, and version
-- `/goodvibes:plugin update` - Runs OS-appropriate update script (PowerShell on Windows, bash on Linux/macOS)
-- Replaces the old `/goodvibes:plugin-status` command
+### Agent Standardization (All 11 Agents)
 
-### Version Check on Session Start
-- Automatically checks GitHub for latest release version on every session start
-- Displays update notification if a newer version is available
-- Shows the command to run: `/goodvibes:plugin update`
-- Silent on network failures (assumes up-to-date)
+All agents now include consistent sections:
 
-### Auto Base64 Encoding in tool-update Hook
-- Detects shell-unsafe content in precision tool calls (quotes, backticks, `${vars}`)
-- Automatically encodes content to base64 variants (`content_base64`, `find_base64`, `replace_base64`, etc.)
-- Transparent to the user - no manual encoding required
-- Supports: `precision_write`, `precision_edit`, `precision_grep`, `precision_exec`, `discover`
+| Section | Purpose |
+|---------|------|
+| **Filesystem Boundaries** | Write-local, read-global enforcement |
+| **Output Requirements** | Token-efficient reporting format with Must Include/Must NOT Include |
+| **Capabilities** | Clear list of what the agent can do |
+| **Will NOT Do** | Explicit boundaries to prevent scope creep |
+| **Skills Library** | Related skills for each domain |
+| **Decision Frameworks** | Tables for common architectural choices |
+| **Precision Tools** | Mandatory precision_engine tool usage |
+| **Workflows** | DBE Loop (Discover Batch Execute) |
+| **GoodVibes Memory & Logging** | Memory query and logging integration |
+| **Context Injection** | Variables received when spawned by batch engine |
+| **Mandatory Behavior** | Critical requirements summary |
+
+### Agents Updated
+
+- `engineer.md` - Full-stack implementation specialist
+- `tester.md` - Testing and coverage specialist
+- `reviewer.md` - Code review specialist
+- `integrator.md` - Integration specialist (state, forms, real-time, AI, CMS, payments, email, files)
+- `deployer.md` - Deployment and DevOps specialist
+- `planner.md` - Planning and orchestration specialist
+- `architect.md` - Architecture and design specialist
+- `agent-factory.md` - Meta-agent for creating new agents
+- `skill-factory.md` - Skill and slash command creator
+- `integrator-state.md` - State management specialist
+- `integrator-services.md` - External services integration
+- `integrator-ai.md` - AI/LLM integration specialist
+
+### Output Styles Consistency
+
+- Fixed `justvibes.md` output section to match YAML config (Show Diffs: No, Show Telemetry: No)
+- Clarified checkpoint frequency rationale:
+  - `vibecoding`: per_batch (frequent for immediate rollback with human present)
+  - `justvibes`: per_phase (less frequent for post-hoc analysis of unattended execution)
+
+### Memory Infrastructure
+
+- Created `.goodvibes/` directory structure
+- Added logging files: `activity.md`, `decisions.md`, `errors.md`
+- Added memory files: `decisions.json`, `patterns.json`, `failures.json`, `preferences.json`, `index.json`
+
+### Plugin Configuration
+
+- Added `plugins/goodvibes/CLAUDE.md` with mandatory orchestrator behaviors
 
 ---
 
-## Changes Since v1.0.23
+## Changes Since v1.1.0
 
-### v1.0.27
-- Rebuild with updated version checker message
-
-### v1.0.26
-- Simplified version checker update message to use `/goodvibes:plugin update`
-- Condensed codebase-review command description
-
-### v1.0.25
-- Added unified `/goodvibes:plugin` command with `update` and `status` subcommands
-- Removed standalone `/goodvibes:plugin-status` command
-- Added `.goodvibes/` to `.gitignore`
-
-### v1.0.24
-- Re-enabled and enhanced `tool-update.mjs` hook
-- Added automatic base64 encoding for shell-unsafe precision tool content
-- Improved hook functionality for transparent content encoding
+### v1.1.1
+- Standardized all 11 agents with consistent section structure
+- Added Output Requirements section (token-efficient reporting)
+- Added Skills Library section (related skills per domain)
+- Added Decision Frameworks section (architectural choice tables)
+- Added Context Injection section (batch engine variables)
+- Removed Mode-Aware Behavior section (moved to output styles)
+- Fixed justvibes.md output section consistency
+- Created .goodvibes/ memory and logging infrastructure
+- Added plugins/goodvibes/CLAUDE.md for orchestrator rules
 
 ---
 
@@ -63,4 +89,4 @@ Then restart your Claude Code session.
 
 ## Breaking Changes
 
-- `/goodvibes:plugin-status` has been removed. Use `/goodvibes:plugin status` instead.
+None. This is a backward-compatible patch release.
