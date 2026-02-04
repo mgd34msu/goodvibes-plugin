@@ -111,14 +111,7 @@ The working directory when you were spawned IS the project root. Stay within it 
      verbosity: count_only  # Returns: 47 matches in 12 files
    ```
 
-2. **Use `files_only` for targeting** - Get file list without content
-   ```yaml
-   precision_glob:
-     patterns: ["src/**/*.tsx"]
-     output: { format: paths_only }
-   ```
-
-3. **Set explicit limits** - Cap results to what you need
+2. **Set explicit limits** - Cap results to what you need
    ```yaml
    precision_grep:
      queries: [{ id: find, pattern: "import", glob: "**/*.ts" }]
@@ -128,15 +121,7 @@ The working directory when you were spawned IS the project root. Stay within it 
        max_per_item: 5
    ```
 
-4. **Use extract modes** - Get structure without full content
-   ```yaml
-   precision_read:
-     files: [{ path: "src/api/routes.ts" }]
-     extract: outline  # or: symbols, ast
-     verbosity: minimal
-   ```
-
-5. **Batch related operations** - Combine queries in single call
+3. **Batch related operations** - Combine queries in single call
    ```yaml
    discover:
      queries:
@@ -144,6 +129,8 @@ The working directory when you were spawned IS the project root. Stay within it 
        - { id: hooks, type: grep, pattern: "^export function use", glob: "src/**/*.ts" }
      verbosity: files_only
    ```
+
+**Also**: Use `files_only` for targeting (get file lists without content), use extract modes (`outline`, `symbols`) for structure.
 
 ### DON'Ts - Anti-Patterns
 
@@ -171,34 +158,13 @@ The working directory when you were spawned IS the project root. Stay within it 
    verbosity: count_only
    ```
 
-3. **DON'T skip limits on broad searches** - Can explode token usage
-   ```yaml
-   # BAD: Could return thousands
-   precision_grep:
-     queries: [{ pattern: "import", glob: "**/*.ts" }]
-
-   # GOOD: Bounded
-   precision_grep:
-     queries: [{ pattern: "import", glob: "**/*.ts" }]
-     output: { max_results: 50, max_per_item: 3 }
-   ```
-
-4. **DON'T make multiple calls when batch works** - N calls vs 1 call
-   ```yaml
-   # BAD: 5 separate calls
-   precision_read: { files: [{ path: "a.ts" }] }
-   precision_read: { files: [{ path: "b.ts" }] }
-
-   # GOOD: 1 batched call
-   precision_read:
-     files: [{ path: "a.ts" }, { path: "b.ts" }, { path: "c.ts" }]
-   ```
-
-5. **DON'T use system tools** - Precision tools exist for a reason
+3. **DON'T use system tools** - Precision tools exist for a reason
    ```
    BAD: Read, Grep, Glob, Edit, Write, Bash
    GOOD: precision_read, precision_grep, precision_glob, precision_edit, precision_write, precision_exec
    ```
+
+**Also avoid**: Skipping limits on broad searches (can return thousands), making multiple calls when batch works (N calls vs 1).
 
 ### Planner-Specific Rules
 
@@ -206,56 +172,18 @@ The working directory when you were spawned IS the project root. Stay within it 
 - **DO**: Include output mode specifications in all planned operations
 - **DON'T**: Design plans without first querying .goodvibes/memory for patterns
 
-### Tool Reference
+### Tool Quick Reference
 
-#### precision_read
-- **Extract modes**: `content` | `outline` | `symbols` | `ast` | `lines`
-- **Verbosity**: `count_only` | `minimal` | `standard` | `verbose`
-- **Limits**: `max_per_item` (lines per file)
-
-#### precision_grep
-- **Output formats**: `count_only` | `files_only` | `locations` | `matches` | `context`
-- **Limits**: `max_results`, `max_per_item`, `max_total_matches`
-- **Context**: `context_before`, `context_after`
-
-#### precision_glob
-- **Output formats**: `count_only` | `paths_only` | `with_stats` | `with_preview`
-- **Filters**: `min_size`, `max_size`, `modified_after`, `modified_before`, `has_content`
-- **Limits**: `max_results`
-
-#### precision_symbols
-- **Output formats**: `count_only` | `names_only` | `locations` | `signatures` | `full`
-- **Kinds filter**: `function`, `method`, `class`, `interface`, `type`, `variable`, `constant`, `enum`
-- **Limits**: `max_results`
-
-#### precision_edit
-- **Match modes**: `exact` | `fuzzy` | `regex` | `ast`
-- **Transaction**: `atomic` (default) | `partial` | `none`
-- **Output**: `count_only` | `minimal` | `with_diff` | `verbose`
-
-#### precision_write
-- **Modes**: `fail_if_exists` | `overwrite` | `backup`
-- **Features**: Batch writes, automatic parent directory creation
-
-#### precision_exec
-- **Features**: Batch commands, parallel execution, expectations checking
-- **Expectations**: `exit_code`, `stdout_contains`, `stderr_contains`
-
-#### discover
-- **Query types**: `grep`, `glob`, `symbols`, `structural`
-- **Verbosity**: `count_only` | `files_only` | `locations`
-
-### Tool Selection Matrix
-
-| I need to... | Tool | Output Mode | Why |
-|--------------|------|-------------|-----|
-| Count matching files | precision_glob | count_only | Scope assessment |
-| List files for batch | precision_glob | paths_only | Build targets |
-| Check if pattern exists | precision_grep | count_only | Quick validation |
-| Find code locations | precision_grep | locations | Targeted edits |
-| Understand file structure | precision_read | outline | Navigate large files |
-| Get function signatures | precision_read | symbols | API understanding |
-| Multiple queries at once | discover | files_only | Parallel discovery |
+| Tool | Purpose | Key Output Modes | Use When |
+|------|---------|------------------|----------|
+| precision_read | Read files | content, outline, symbols, lines | Need file content or structure |
+| precision_grep | Search patterns | count_only, files_only, locations, matches, context | Finding code locations |
+| precision_glob | Find files | count_only, paths_only, with_stats | Building file lists |
+| precision_symbols | Find symbols | count_only, names_only, signatures | Understanding APIs |
+| precision_edit | Edit files | count_only, minimal, with_diff | Making changes |
+| precision_write | Create files | fail_if_exists, overwrite, backup | New files |
+| precision_exec | Run commands | (batch, parallel, expectations) | Build, test, deploy |
+| discover | Parallel queries | count_only, files_only, locations | Multiple searches at once |
 
 ---
 

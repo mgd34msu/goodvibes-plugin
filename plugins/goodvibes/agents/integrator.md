@@ -379,80 +379,59 @@ Located at `plugins/goodvibes/skills/common/review/`:
 
 ## Decision Frameworks
 
-### Choosing State Management
+### Provider Selection Reference
 
-| Need | Solution |
-|------|----------|
-| Server state, API data caching | TanStack Query |
-| Simple global client state | Zustand |
-| Complex atomic state, derived values | Jotai |
-| Large app, time-travel debugging | Redux Toolkit |
-| Form state | React Hook Form |
-| URL state | Router (Next.js, Remix) |
-| Persistent local state | Zustand with persist middleware |
+> **Note**: This consolidated table covers all integration domains. Use this as your first reference when choosing providers.
 
-### Choosing Real-time Solution
-
-| Need | Solution |
-|------|----------|
-| Self-hosted, full control | Socket.IO |
-| Managed, quick setup | Pusher |
-| Collaborative features (CRDT) | Liveblocks |
-| Edge/serverless | PartyKit |
-| Enterprise, guaranteed delivery | Ably |
-| Simple presence only | Supabase Realtime |
-
-### Choosing AI Integration
-
-| Need | Solution |
-|------|----------|
-| Streaming chat UI, React | Vercel AI SDK |
-| Complex LLM workflows, chains | LangChain.js |
-| Direct Claude access, tool use | Anthropic API |
-| Direct GPT access, functions | OpenAI API |
-| Vector search, RAG | Pinecone, Weaviate, Supabase pgvector |
-| Edge-compatible AI | Vercel AI SDK Edge Runtime |
-
-### Choosing CMS
-
-| Need | Solution |
-|------|----------|
-| Real-time collaboration, GROQ | Sanity |
-| Enterprise, localization | Contentful |
-| Self-hosted, open source | Strapi |
-| TypeScript-first, Next.js | Payload |
-| SQL-based, flexible | Directus |
-| Markdown content | MDX, Contentlayer |
-
-### Choosing Payment Provider
-
-| Need | Solution |
-|------|----------|
-| Full control, custom flows | Stripe |
-| Merchant of record (tax/VAT handled) | LemonSqueezy or Paddle |
-| Subscription billing | Stripe Billing |
-| Global payments, multiple currencies | Stripe |
-| One-time digital products | Stripe Checkout or Gumroad |
-
-### Choosing Email Provider
-
-| Need | Solution |
-|------|----------|
-| Developer experience, React templates | Resend |
-| High volume, deliverability | SendGrid |
-| Transactional focus | Postmark |
-| Marketing + transactional | SendGrid or Mailchimp |
-| Self-hosted | Nodemailer with SMTP |
-
-### Choosing File/Media Solution
-
-| Need | Solution |
-|------|----------|
-| Simple uploads, Next.js | UploadThing |
-| Image optimization, transforms | Cloudinary |
-| Video processing | Mux or Cloudinary |
-| Raw storage, maximum control | AWS S3 |
-| Edge-optimized images | Vercel Image Optimization |
+| Domain | Provider | Best For | Avoid When |
+|--------|----------|----------|------------|
+| **State Management** | | | |
+| Server state | TanStack Query | API data caching, async state | Simple client-only state |
+| Client state | Zustand | Simple global state, TypeScript | Complex derived values |
+| Atomic state | Jotai | Derived values, fine-grained reactivity | Simple use cases |
+| Enterprise state | Redux Toolkit | Large apps, time-travel debugging | Small/medium apps |
+| Form state | React Hook Form | Forms with validation | Simple forms (use native) |
+| URL state | Next.js/Remix Router | Shareable state, navigation | Sensitive data |
+| Persistent state | Zustand + persist | Local storage sync | Sensitive data |
+| **Real-time** | | | |
+| Self-hosted | Socket.IO | Full control, custom logic | Need managed solution |
+| Managed | Pusher | Quick setup, no infrastructure | Complex workflows |
+| Collaboration | Liveblocks | CRDT, real-time editing | Simple chat only |
+| Edge/serverless | PartyKit | Edge deployment, low latency | Traditional hosting |
+| Enterprise | Ably | Guaranteed delivery, scale | Small projects |
+| Simple presence | Supabase Realtime | PostgreSQL integration | Complex real-time logic |
+| **AI/LLM** | | | |
+| Streaming UI | Vercel AI SDK | React streaming, hooks | Non-React frameworks |
+| Workflows | LangChain.js | Complex chains, agents | Simple completions |
+| Claude direct | Anthropic API | Tool use, latest models | Need multi-provider |
+| GPT direct | OpenAI API | Functions, assistants | Need Claude features |
+| Vector search | Pinecone, Weaviate | RAG, semantic search | No vector needs |
+| Edge AI | Vercel AI SDK + Edge | Low latency, serverless | Heavy processing |
+| **CMS** | | | |
+| Real-time | Sanity | Collaboration, GROQ queries | Offline-first needs |
+| Enterprise | Contentful | Localization, workflows | Simple blogs |
+| Self-hosted | Strapi | Open source, control | Need managed |
+| TypeScript-first | Payload | Next.js integration, type safety | Non-TS projects |
+| SQL-based | Directus | Existing database, SQL | Greenfield projects |
+| Markdown | MDX, Contentlayer | Developer blogs, docs | Dynamic content |
+| **Payments** | | | |
+| Full control | Stripe | Custom flows, flexibility | Simple use case |
+| Merchant of record | LemonSqueezy, Paddle | Tax/VAT handled automatically | Need Stripe features |
+| Subscriptions | Stripe Billing | Recurring revenue, plans | One-time only |
+| Global | Stripe | Multiple currencies, regions | Single market |
+| Digital products | Gumroad | Quick setup, creator focus | Complex checkout |
+| **Email** | | | |
+| Developer DX | Resend | React templates, modern API | High volume needs |
+| High volume | SendGrid | Deliverability, scale | Simple transactional |
+| Transactional | Postmark | Focused transactional | Marketing emails |
+| Marketing | Mailchimp, SendGrid | Campaigns, automation | Dev-only emails |
+| Self-hosted | Nodemailer + SMTP | Full control, no vendor | Need deliverability |
+| **File/Media** | | | |
+| Simple uploads | UploadThing | Next.js, type-safe | Complex transforms |
+| Image optimization | Cloudinary | Transforms, CDN | Simple storage |
+| Video | Mux, Cloudinary | Processing, streaming | Static videos |
+| Raw storage | AWS S3 | Control, cost-effective | Need transforms |
+| Edge images | Vercel Image Optimization | Next.js, auto-optimization | Non-Vercel hosting |
 
 ## Workflows
 
@@ -570,6 +549,8 @@ async function fetchPosts(filters: PostFilters): Promise<Post[]> {
   return res.json();
 }
 
+> **Pattern**: Apply this error handling to all fetch calls: parse error JSON gracefully with fallback message, throw Error with parsed message.
+
 // List hook with filters
 export function usePosts(
   filters: PostFilters = {},
@@ -606,10 +587,7 @@ export function useCreatePost() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ message: 'Failed to create post' }));
-        throw new Error(error.message);
-      }
+      if (!res.ok) throw new Error('Failed to create post'); // Apply error handling pattern
       return res.json() as Promise<Post>;
     },
     onSuccess: () => {
@@ -922,7 +900,7 @@ export function CreatePostForm({ onSuccess }: CreatePostFormProps) {
         </div>
       )}
 
-      {/* Title Field */}
+      {/* Title Field - Basic Input Pattern */}
       <div className="space-y-1">
         <label htmlFor="title" className="block text-sm font-medium">
           Title <span className="text-red-500">*</span>
@@ -935,62 +913,13 @@ export function CreatePostForm({ onSuccess }: CreatePostFormProps) {
             errors.title ? 'border-red-500' : 'border-gray-300'
           }`}
           aria-invalid={errors.title ? 'true' : 'false'}
-          aria-describedby={errors.title ? 'title-error' : undefined}
         />
         {errors.title && (
-          <p id="title-error" role="alert" className="text-sm text-red-500">
-            {errors.title.message}
-          </p>
+          <p role="alert" className="text-sm text-red-500">{errors.title.message}</p>
         )}
       </div>
 
-      {/* Content Field */}
-      <div className="space-y-1">
-        <label htmlFor="content" className="block text-sm font-medium">
-          Content <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          id="content"
-          rows={8}
-          {...register('content')}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.content ? 'border-red-500' : 'border-gray-300'
-          }`}
-          aria-invalid={errors.content ? 'true' : 'false'}
-          aria-describedby={errors.content ? 'content-error' : undefined}
-        />
-        {errors.content && (
-          <p id="content-error" role="alert" className="text-sm text-red-500">
-            {errors.content.message}
-          </p>
-        )}
-      </div>
-
-      {/* Category Select */}
-      <div className="space-y-1">
-        <label htmlFor="category" className="block text-sm font-medium">
-          Category <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="category"
-          {...register('category')}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.category ? 'border-red-500' : 'border-gray-300'
-          }`}
-          aria-invalid={errors.category ? 'true' : 'false'}
-        >
-          {CATEGORIES.map((cat) => (
-            <option key={cat.value} value={cat.value}>
-              {cat.label}
-            </option>
-          ))}
-        </select>
-        {errors.category && (
-          <p role="alert" className="text-sm text-red-500">
-            {errors.category.message}
-          </p>
-        )}
-      </div>
+      {/* Other basic fields: content (textarea), category (select) - follow same pattern */}
 
       {/* Tags Multi-select with Controller */}
       <div className="space-y-1">
@@ -1243,16 +1172,12 @@ export function initSocket(httpServer: HTTPServer) {
       io.to(roomId).emit('message', message);
     });
 
+    // Typing indicators - same pattern for startTyping/stopTyping
     socket.on('startTyping', (roomId) => {
-      if (socket.data.rooms.has(roomId)) {
-        socket.to(roomId).emit('typing', { userId, username });
-      }
+      if (socket.data.rooms.has(roomId)) socket.to(roomId).emit('typing', { userId, username });
     });
-
     socket.on('stopTyping', (roomId) => {
-      if (socket.data.rooms.has(roomId)) {
-        socket.to(roomId).emit('stopTyping', { userId });
-      }
+      if (socket.data.rooms.has(roomId)) socket.to(roomId).emit('stopTyping', { userId });
     });
 
     socket.on('disconnect', () => {
@@ -1501,42 +1426,13 @@ export async function POST(req: Request) {
       getWeather: tool({
         description: 'Get the current weather for a location',
         parameters: z.object({
-          location: z.string().describe('The city and state, e.g. San Francisco, CA'),
+          location: z.string().describe('The city and state'),
           unit: z.enum(['celsius', 'fahrenheit']).default('fahrenheit'),
         }),
-        execute: async ({ location, unit }) => {
-          // Replace with actual weather API call
-          const weather = await fetchWeather(location, unit);
-          return weather;
-        },
+        execute: async ({ location, unit }) => fetchWeather(location, unit),
       }),
-      searchDatabase: tool({
-        description: 'Search the product database',
-        parameters: z.object({
-          query: z.string().describe('The search query'),
-          category: z.string().optional().describe('Filter by category'),
-          limit: z.number().default(10).describe('Maximum results'),
-        }),
-        execute: async ({ query, category, limit }) => {
-          // Implement database search
-          const results = await searchProducts(query, category, limit);
-          return results;
-        },
-      }),
-      createTask: tool({
-        description: 'Create a new task for the user',
-        parameters: z.object({
-          title: z.string().describe('Task title'),
-          description: z.string().optional().describe('Task description'),
-          dueDate: z.string().optional().describe('Due date in ISO format'),
-          priority: z.enum(['low', 'medium', 'high']).default('medium'),
-        }),
-        execute: async ({ title, description, dueDate, priority }) => {
-          // Implement task creation
-          const task = await createTask({ title, description, dueDate, priority });
-          return { success: true, taskId: task.id };
-        },
-      }),
+      // Add more tools following the same pattern:
+      // searchDatabase, createTask, etc.
     },
     maxSteps: 5, // Allow multi-step tool use
     onStepFinish({ text, toolCalls, toolResults, finishReason }) {
@@ -1548,23 +1444,7 @@ export async function POST(req: Request) {
   return result.toDataStreamResponse();
 }
 
-// Placeholder implementations
-async function fetchWeather(location: string, unit: string) {
-  return { temperature: 72, condition: 'sunny', location, unit };
-}
-
-async function searchProducts(query: string, category?: string, limit?: number) {
-  return [];
-}
-
-async function createTask(data: {
-  title: string;
-  description?: string;
-  dueDate?: string;
-  priority: string;
-}) {
-  return { id: crypto.randomUUID() };
-}
+> **Pattern**: Each tool needs `description`, `parameters` (Zod schema), and `execute` function. Add as many tools as needed.
 ```
 
 **Step 2: Chat UI with streaming**
@@ -1850,46 +1730,23 @@ export async function POST(request: Request) {
     return Response.json({ error: `Webhook Error: ${message}` }, { status: 400 });
   }
 
+  // Handle relevant webhook events
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        await handleCheckoutCompleted(session);
+      case 'checkout.session.completed':
+        await handleCheckoutCompleted(event.data.object);
         break;
-      }
-
-      case 'customer.subscription.created': {
-        const subscription = event.data.object;
-        await handleSubscriptionCreated(subscription);
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        await handleSubscriptionChange(event.data.object, event.type);
         break;
-      }
-
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object;
-        await handleSubscriptionUpdated(subscription);
+      case 'invoice.payment_succeeded':
+      case 'invoice.payment_failed':
+        await handleInvoiceEvent(event.data.object, event.type);
         break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object;
-        await handleSubscriptionDeleted(subscription);
-        break;
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object;
-        await handlePaymentSucceeded(invoice);
-        break;
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object;
-        await handlePaymentFailed(invoice);
-        break;
-      }
-
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`Unhandled: ${event.type}`);
     }
 
     return Response.json({ received: true });
@@ -1901,88 +1758,10 @@ export async function POST(request: Request) {
   }
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.userId;
-  if (!userId) {
-    console.error('No userId in checkout session metadata');
-    return;
-  }
-
-  // Activate subscription in your database
-  await activateSubscription(userId, {
-    stripeSubscriptionId: session.subscription as string,
-    stripePriceId: session.line_items?.data[0]?.price?.id,
-    status: 'active',
-  });
-}
-
-async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata.userId;
-  if (!userId) return;
-
-  await createSubscriptionRecord(userId, {
-    stripeSubscriptionId: subscription.id,
-    stripePriceId: subscription.items.data[0]?.price.id,
-    status: subscription.status,
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
-  });
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata.userId;
-  if (!userId) return;
-
-  await updateSubscriptionRecord(userId, {
-    status: subscription.status,
-    stripePriceId: subscription.items.data[0]?.price.id,
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
-  });
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata.userId;
-  if (!userId) return;
-
-  await deactivateSubscription(userId);
-}
-
-async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  // Record successful payment
-  if (invoice.subscription) {
-    await recordPayment({
-      stripeInvoiceId: invoice.id,
-      stripeSubscriptionId: invoice.subscription as string,
-      amount: invoice.amount_paid,
-      status: 'succeeded',
-    });
-  }
-}
-
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  // Handle failed payment - send notification, update status
-  const customerId = invoice.customer as string;
-  const customer = await stripe.customers.retrieve(customerId);
-
-  if ('email' in customer && customer.email) {
-    await sendPaymentFailedEmail(customer.email, {
-      invoiceId: invoice.id,
-      amount: invoice.amount_due,
-      nextAttempt: invoice.next_payment_attempt
-        ? new Date(invoice.next_payment_attempt * 1000)
-        : null,
-    });
-  }
-}
-
-// Placeholder implementations
-async function activateSubscription(userId: string, data: unknown) {}
-async function createSubscriptionRecord(userId: string, data: unknown) {}
-async function updateSubscriptionRecord(userId: string, data: unknown) {}
-async function deactivateSubscription(userId: string) {}
-async function recordPayment(data: unknown) {}
-async function sendPaymentFailedEmail(email: string, data: unknown) {}
+// Implement webhook handlers based on your database schema:
+// - handleCheckoutCompleted: Extract userId from metadata, activate subscription
+// - handleSubscriptionChange: Update subscription status, price, period end
+// - handleInvoiceEvent: Record payments, send failure notifications
 ```
 
 **Step 3: Customer portal**
@@ -2221,66 +2000,40 @@ export function urlFor(source: SanityImageSource) {
 // lib/sanity/queries.ts
 import { groq } from 'next-sanity';
 
-export const postsQuery = groq`
-  *[_type == "post" && defined(publishedAt)] | order(publishedAt desc) {
+// Common field projections (reusable)
+const postFields = `
+  _id,
+  title,
+  "slug": slug.current,
+  excerpt,
+  publishedAt,
+  mainImage { asset->, alt },
+  "author": author-> {
+    _id,
+    name,
+    "slug": slug.current,
+    image
+  },
+  "categories": categories[]-> {
     _id,
     title,
-    "slug": slug.current,
-    excerpt,
-    publishedAt,
-    featured,
-    mainImage {
-      asset->,
-      alt
-    },
-    "author": author-> {
-      _id,
-      name,
-      "slug": slug.current,
-      image
-    },
-    "categories": categories[]-> {
-      _id,
-      title,
-      "slug": slug.current
-    }
+    "slug": slug.current
   }
 `;
 
+export const postsQuery = groq`*[_type == "post" && defined(publishedAt)] | order(publishedAt desc) { ${postFields} }`;
+
 export const postBySlugQuery = groq`
   *[_type == "post" && slug.current == $slug][0] {
-    _id,
-    title,
-    "slug": slug.current,
-    excerpt,
+    ${postFields},
     content,
-    publishedAt,
-    mainImage {
-      asset->,
-      alt
-    },
-    "author": author-> {
-      _id,
-      name,
-      "slug": slug.current,
-      image,
-      bio
-    },
-    "categories": categories[]-> {
-      _id,
-      title,
-      "slug": slug.current
-    },
-    "relatedPosts": *[_type == "post" && slug.current != $slug && count(categories[@._ref in ^.^.categories[]._ref]) > 0] | order(publishedAt desc) [0...3] {
-      _id,
-      title,
-      "slug": slug.current,
-      excerpt,
-      publishedAt,
-      mainImage
-    }
+    "author": author-> { _id, name, "slug": slug.current, image, bio },
+    "relatedPosts": *[_type == "post" && slug.current != $slug && count(categories[@._ref in ^.^.categories[]._ref]) > 0]
+      | order(publishedAt desc) [0...3] { _id, title, "slug": slug.current, excerpt, publishedAt, mainImage }
   }
 `;
+
+> **Pattern**: Extract common field projections to avoid duplication. Single queries add only filter + specific fields.
 
 // lib/sanity/fetchers.ts
 import { sanityClient, previewClient } from './client';
@@ -2311,81 +2064,41 @@ import { auth } from '@/lib/auth';
 const f = createUploadthing();
 
 export const uploadRouter = {
-  // Profile image upload
+  // Profile image upload - single file
   profileImage: f({ image: { maxFileSize: '2MB', maxFileCount: 1 } })
     .middleware(async ({ req }) => {
       const session = await auth();
-      if (!session?.user) {
-        throw new UploadThingError('Unauthorized');
-      }
+      if (!session?.user) throw new UploadThingError('Unauthorized');
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // Update user profile image in database
       await updateUserAvatar(metadata.userId, file.url);
       return { url: file.url };
     }),
 
-  // Post images - multiple allowed
+  // Post images - multiple files with higher limits
   postImages: f({ image: { maxFileSize: '4MB', maxFileCount: 10 } })
     .middleware(async ({ req }) => {
       const session = await auth();
-      if (!session?.user) {
-        throw new UploadThingError('Unauthorized');
-      }
+      if (!session?.user) throw new UploadThingError('Unauthorized');
+      // Optional: Add permission checks here
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      return { url: file.url, userId: metadata.userId };
-    }),
-
-  // Document uploads
-  documents: f({
-    pdf: { maxFileSize: '16MB' },
-    'application/msword': { maxFileSize: '16MB' },
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { maxFileSize: '16MB' },
-  })
-    .middleware(async ({ req }) => {
-      const session = await auth();
-      if (!session?.user) {
-        throw new UploadThingError('Unauthorized');
-      }
-      return { userId: session.user.id };
-    })
-    .onUploadComplete(async ({ metadata, file }) => {
-      // Save document reference to database
-      await saveDocument({
-        userId: metadata.userId,
-        name: file.name,
-        url: file.url,
-        size: file.size,
-        type: file.type,
-      });
-      return { url: file.url, name: file.name };
-    }),
-
-  // Video uploads (larger files)
-  videoUploader: f({ video: { maxFileSize: '256MB', maxFileCount: 1 } })
-    .middleware(async ({ req }) => {
-      const session = await auth();
-      if (!session?.user) {
-        throw new UploadThingError('Unauthorized');
-      }
-
-      // Check if user has video upload permission
-      const hasPermission = await checkVideoUploadPermission(session.user.id);
-      if (!hasPermission) {
-        throw new UploadThingError('Video upload not allowed on your plan');
-      }
-
-      return { userId: session.user.id };
-    })
-    .onUploadComplete(async ({ metadata, file }) => {
-      // Trigger video processing (thumbnail generation, etc.)
-      await queueVideoProcessing(file.url, metadata.userId);
+      // Optional: Save to database, process image, etc.
       return { url: file.url };
     }),
 } satisfies FileRouter;
+
+> **Pattern**: All upload endpoints follow the same structure:
+> 1. Define file type and size limits in `f({ type: { maxFileSize, maxFileCount } })`
+> 2. `.middleware()` - Authenticate user, check permissions, return metadata
+> 3. `.onUploadComplete()` - Process uploaded file, update database, return result
+>
+> **Variations**:
+> - Documents: Use multiple MIME types: `f({ pdf: {...}, 'application/msword': {...} })`
+> - Videos: Larger size limits (256MB+), optional permission checks in middleware
+> - Custom processing: Add logic in `onUploadComplete` (thumbnails, optimization, etc.)
 
 export type OurFileRouter = typeof uploadRouter;
 
@@ -2573,75 +2286,7 @@ export function WelcomeEmail({ name, verifyUrl }: WelcomeEmailProps) {
   );
 }
 
-// Styles
-const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, sans-serif',
-};
-
-const container = {
-  backgroundColor: '#ffffff',
-  margin: '0 auto',
-  padding: '40px 20px',
-  borderRadius: '8px',
-  maxWidth: '560px',
-};
-
-const logo = {
-  margin: '0 auto 24px',
-  display: 'block',
-};
-
-const heading = {
-  fontSize: '24px',
-  fontWeight: '600',
-  textAlign: 'center' as const,
-  margin: '0 0 24px',
-  color: '#1a1a1a',
-};
-
-const paragraph = {
-  fontSize: '16px',
-  lineHeight: '26px',
-  color: '#4a4a4a',
-  margin: '0 0 24px',
-};
-
-const buttonContainer = {
-  textAlign: 'center' as const,
-  margin: '32px 0',
-};
-
-const button = {
-  backgroundColor: '#000000',
-  borderRadius: '6px',
-  color: '#ffffff',
-  fontSize: '16px',
-  fontWeight: '600',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'inline-block',
-  padding: '12px 24px',
-};
-
-const hr = {
-  borderColor: '#e6e6e6',
-  margin: '32px 0',
-};
-
-const footer = {
-  fontSize: '14px',
-  color: '#8898aa',
-  margin: '0 0 8px',
-};
-
-const link = {
-  fontSize: '14px',
-  color: '#556cd6',
-  textDecoration: 'underline',
-  wordBreak: 'break-all' as const,
-};
+// Styles (main, container, heading, paragraph, button, etc.) - define inline styles for email template
 
 export default WelcomeEmail;
 ```
@@ -2693,63 +2338,9 @@ export async function sendWelcomeEmail(
   }
 }
 
-export async function sendPasswordResetEmail(
-  email: string,
-  resetToken: string
-): Promise<SendEmailResult> {
-  const resetUrl = `${process.env.NEXT_PUBLIC_URL}/reset-password?token=${resetToken}`;
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
-      to: email,
-      subject: 'Reset your password',
-      react: PasswordResetEmail({ resetUrl }),
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, messageId: data?.id };
-  } catch (error) {
-    return { success: false, error: 'Failed to send email' };
-  }
-}
-
-export async function sendInvoiceEmail(
-  email: string,
-  invoiceData: {
-    invoiceNumber: string;
-    amount: number;
-    dueDate: Date;
-    items: Array<{ description: string; amount: number }>;
-    pdfUrl: string;
-  }
-): Promise<SendEmailResult> {
-  try {
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
-      to: email,
-      subject: `Invoice #${invoiceData.invoiceNumber}`,
-      react: InvoiceEmail(invoiceData),
-      attachments: [
-        {
-          filename: `invoice-${invoiceData.invoiceNumber}.pdf`,
-          path: invoiceData.pdfUrl,
-        },
-      ],
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, messageId: data?.id };
-  } catch (error) {
-    return { success: false, error: 'Failed to send email' };
-  }
-}
+// Additional email functions follow the same pattern:
+// sendPasswordResetEmail, sendInvoiceEmail, etc.
+// Each uses resend.emails.send() with appropriate template and subject
 
 // Batch email sending for newsletters
 export async function sendBatchEmails(
@@ -2811,39 +2402,7 @@ function PostEditor() {
 
 ### Optimistic Updates with Rollback
 
-```typescript
-export function useUpdatePost() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: updatePost,
-    onMutate: async (newPost) => {
-      // Cancel in-flight queries
-      await queryClient.cancelQueries({ queryKey: postKeys.detail(newPost.id) });
-
-      // Snapshot current state
-      const previousPost = queryClient.getQueryData<Post>(postKeys.detail(newPost.id));
-
-      // Optimistically update
-      queryClient.setQueryData<Post>(postKeys.detail(newPost.id), (old) =>
-        old ? { ...old, ...newPost.data } : old
-      );
-
-      return { previousPost };
-    },
-    onError: (_err, newPost, context) => {
-      // Rollback on error
-      if (context?.previousPost) {
-        queryClient.setQueryData(postKeys.detail(newPost.id), context.previousPost);
-      }
-    },
-    onSettled: (_data, _error, { id }) => {
-      // Refetch to ensure consistency
-      void queryClient.invalidateQueries({ queryKey: postKeys.detail(id) });
-    },
-  });
-}
-```
+> **Note**: See useUpdatePost implementation in TanStack Query section above for full optimistic update pattern.
 
 ### Form + Upload Integration
 
