@@ -359,13 +359,13 @@ config:
 
 ```bash
 # List available checkpoints
-mcp-cli call plugin_goodvibes_batch-engine/batch_checkpoints
+mcp__plugin_goodvibes_batch-engine__batch_checkpoints
 
 # Recover to specific checkpoint
-mcp-cli call plugin_goodvibes_batch-engine/batch_recover '{"checkpoint_id": "cp_12345"}'
+mcp__plugin_goodvibes_batch-engine__batch_recover with {"checkpoint_id": "cp_12345"}
 
 # Get batch state
-mcp-cli call plugin_goodvibes_batch-engine/batch_state '{"batch_id": "batch_12345"}'
+mcp__plugin_goodvibes_batch-engine__batch_state with {"batch_id": "batch_12345"}
 ```
 
 ---

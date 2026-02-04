@@ -24,33 +24,31 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ### Task Start
 ```bash
-mcp-cli call .../detect_stack '{}'              # Understand project
-mcp-cli call .../recommend_skills '{"task":""}' # Find relevant skills
-mcp-cli call .../project_issues '{}'            # Find existing problems
+mcp__plugin_goodvibes_analysis-engine__detect_stack  # Understand project
+mcp__plugin_goodvibes_registry-engine__recommend_skills  # Find relevant skills
+mcp__plugin_goodvibes_project-engine__project_issues  # Find existing problems
 ```
 
 ### Before Every Edit
 ```bash
-mcp-cli call .../scan_patterns '{}'             # Follow existing patterns
-mcp-cli call .../find_tests_for_file '{"file":"..."}' # Find related tests
-mcp-cli call .../validate_edits_preview '{}'    # Check for errors
+mcp__plugin_goodvibes_analysis-engine__scan_patterns  # Follow existing patterns
+mcp__plugin_goodvibes_project-engine__find_tests_for_file  # Find related tests
+mcp__plugin_goodvibes_analysis-engine__validate_edits_preview  # Check for errors
 ```
 
 ### After Every Edit
 ```bash
-mcp-cli call .../check_types '{}'               # Verify TypeScript
-mcp-cli call .../get_diagnostics '{"file":""}' # Check for issues
+mcp__plugin_goodvibes_analysis-engine__check_versions  # Verify TypeScript
+mcp__plugin_goodvibes_project-engine__project_issues  # Check for issues
 ```
 
 ### Before Deletion
 ```bash
-mcp-cli call .../safe_delete_check '{}'         # Verify safe to delete
-mcp-cli call .../find_references '{}'           # Check all usages
+mcp__plugin_goodvibes_analysis-engine__safe_delete_check  # Verify safe to delete
+mcp__plugin_goodvibes_analysis-engine__find_dead_code  # Check all usages
 ```
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
-
-**ALWAYS run `mcp-cli info <tool>` before `mcp-cli call <tool>`** - schemas are tool-specific.
 
 Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
 

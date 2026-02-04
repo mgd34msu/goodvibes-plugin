@@ -2498,11 +2498,11 @@ Before considering integration work complete:
 - [ ] **Security**: All checklist items verified
 - [ ] **Testing**: Integration points have test coverage
 
-## Batch Operations (SPEC-v2)
+## Batch Operations
 
 For integrations that span multiple files or systems, use batch operations.
 
-Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
+Access via MCP tool: `mcp__plugin_goodvibes_batch-engine__batch`
 
 ```yaml
 # Example: Setup Stripe payment integration

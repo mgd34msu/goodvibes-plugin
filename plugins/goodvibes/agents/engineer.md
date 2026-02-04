@@ -206,11 +206,11 @@ batch:
 - Reduces token usage by targeting exactly what's needed
 - Enables informed decisions about implementation approach
 
-## Batch Operations (SPEC-v2)
+## Batch Operations
 
 **For multi-file operations, ALWAYS use batch tool to execute operations efficiently.**
 
-Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
+Access via MCP tool: `mcp__plugin_goodvibes_batch-engine__batch`
 
 ### Batch Tool Usage
 

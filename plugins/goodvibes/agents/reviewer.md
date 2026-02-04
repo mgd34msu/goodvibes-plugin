@@ -679,11 +679,9 @@ Load specialized knowledge from these skills when needed:
 
 ## Review Commands
 
-### Batch Review Operations (SPEC-v2)
+### Batch Review Operations
 
 When reviewing multiple files, use batch operations for efficient parallel analysis.
-
-Access via MCP: `mcp-cli call plugin_goodvibes_batch-engine/batch`
 
 ```yaml
 # Efficient multi-file review batch
@@ -756,16 +754,11 @@ batch:
 
 Use analysis-engine tools for deeper code quality checks:
 
-```bash
-# Check for breaking changes
-mcp-cli call plugin_goodvibes_analysis-engine/detect_breaking_changes
+Use analysis-engine tools for deeper code quality checks:
 
-# Scan for patterns
-mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns
-
-# Validate implementation
-mcp-cli call plugin_goodvibes_analysis-engine/validate_implementation
-```
+- `mcp__plugin_goodvibes_analysis-engine__detect_breaking_changes` - Check for breaking changes
+- `mcp__plugin_goodvibes_analysis-engine__scan_patterns` - Scan for patterns
+- `mcp__plugin_goodvibes_analysis-engine__validate_implementation` - Validate implementation
 
 ### Quick Checks
 
