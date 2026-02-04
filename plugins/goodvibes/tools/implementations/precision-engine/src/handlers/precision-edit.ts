@@ -1031,14 +1031,42 @@ async function applyEdit(
 
 export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
-  const input = args as PrecisionEditInput;
+  const rawInput = args as PrecisionEditInput;
+
+  // Handle case where edits might come as string from Claude Code
+
+  let edits = rawInput.edits;
+
+  if (typeof edits === "string") {
+
+    try {
+
+      edits = JSON.parse(edits);
+
+    } catch (e) {
+
+      // Leave as-is if parse fails
+
+    }
+
+  }
+
+  const input = { ...rawInput, edits } as PrecisionEditInput;
+
   const outputMode = parseOutputMode(args, "precision_edit");
+
   const workDir = process.cwd();
 
+
+
   try {
+
     // Validate input
+
     if (!input.edits || !Array.isArray(input.edits) || input.edits.length === 0) {
-      return toCallToolResult(errorResult('edits array is required', outputMode, getElapsed()));
+
+      return toCallToolResult(errorResult(`edits array is required (received type: ${typeof rawInput.edits}, isArray: ${Array.isArray(rawInput.edits)})`, outputMode, getElapsed()));
+
     }
 
     // Validate edit specs - ensure each has required fields

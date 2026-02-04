@@ -258077,12 +258077,20 @@ async function applyEdit(filePath, content, edit, matchConfig) {
 __name(applyEdit, "applyEdit");
 var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
-  const input = args2;
+  const rawInput = args2;
+  let edits = rawInput.edits;
+  if (typeof edits === "string") {
+    try {
+      edits = JSON.parse(edits);
+    } catch (e) {
+    }
+  }
+  const input = { ...rawInput, edits };
   const outputMode = parseOutputMode(args2, "precision_edit");
   const workDir = process.cwd();
   try {
     if (!input.edits || !Array.isArray(input.edits) || input.edits.length === 0) {
-      return toCallToolResult(errorResult("edits array is required", outputMode, getElapsed()));
+      return toCallToolResult(errorResult(`edits array is required (received type: ${typeof rawInput.edits}, isArray: ${Array.isArray(rawInput.edits)})`, outputMode, getElapsed()));
     }
     for (let i2 = 0; i2 < input.edits.length; i2++) {
       const edit = input.edits[i2];
