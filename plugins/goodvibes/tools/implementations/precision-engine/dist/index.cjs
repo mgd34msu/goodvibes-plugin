@@ -257275,7 +257275,7 @@ function extractSymbolName(node) {
   }
   for (let i2 = 0; i2 < node.childCount; i2++) {
     const child = node.child(i2);
-    if (child && (child.type === "identifier" || child.type === "type_identifier")) {
+    if (child && child.type && (child.type === "identifier" || child.type === "type_identifier")) {
       return child.text;
     }
   }
@@ -257289,7 +257289,7 @@ function isExported(node) {
       return true;
     }
     const firstChild = current.child(0);
-    if (firstChild && firstChild.type === "export") {
+    if (firstChild && firstChild.type && firstChild.type === "export") {
       return true;
     }
     current = current.parent;
@@ -257480,6 +257480,8 @@ var TreeSitterCore = class {
     const language = getLanguageNameForFile(filePath) ?? this.lastParsedLanguage ?? "typescript";
     const rootNode = tree.rootNode;
     const buildOutline = /* @__PURE__ */ __name((node) => {
+      if (!node || !node.type)
+        return [];
       const nodes = [];
       const kind = mapNodeTypeToKind(node.type, language);
       if (kind) {
@@ -257527,6 +257529,8 @@ var TreeSitterCore = class {
     const symbols = [];
     const rootNode = tree.rootNode;
     const extractSymbols2 = /* @__PURE__ */ __name((node, container) => {
+      if (!node || !node.type)
+        return;
       const kind = mapNodeTypeToKind(node.type, language);
       if (kind && (!filter || filter.includes(kind))) {
         const name2 = extractSymbolName(node);
@@ -257731,7 +257735,7 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, 
       if (output.expand_to === "function" || output.expand_to === "class") {
         try {
           const fileContent = await fs4.readFile(path3.join(workDir, relativePath), "utf-8");
-          const tree = treeSitterCore.parse(fileContent, relativePath);
+          const tree = await treeSitterCore.parse(fileContent, relativePath);
           const range = output.expand_to === "function" ? treeSitterCore.getEnclosingFunction(tree, match.line) : treeSitterCore.getEnclosingClass(tree, match.line);
           if (range) {
             const lines = fileContent.split("\n");
@@ -258269,7 +258273,7 @@ async function processFile(filePath, workDir, options) {
       return [];
     }
     const content = await fs6.readFile(absolutePath, "utf-8");
-    const tree = treeSitterCore2.parse(content, absolutePath);
+    const tree = await treeSitterCore2.parse(content, absolutePath);
     const tsSymbols = treeSitterCore2.getSymbols(tree, absolutePath, options.kinds);
     const symbols = [];
     const queryRegex = options.query ? new RegExp(options.query, "i") : null;
@@ -259764,7 +259768,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         if (isLanguageSupported(filePath)) {
           try {
             const treeSitter = getTreeSitter();
-            const tree = treeSitter.parse(content, filePath);
+            const tree = await treeSitter.parse(content, filePath);
             const tsOutline = treeSitter.getOutline(tree, filePath);
             const mapNode = /* @__PURE__ */ __name((node) => ({
               name: node.name,
@@ -259798,7 +259802,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         if (isLanguageSupported(filePath)) {
           try {
             const treeSitter = getTreeSitter();
-            const tree = treeSitter.parse(content, filePath);
+            const tree = await treeSitter.parse(content, filePath);
             const tsSymbols = treeSitter.getSymbols(tree, filePath, symbolFilter);
             result.symbols = tsSymbols.map((sym) => ({
               name: sym.name,
@@ -259834,7 +259838,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         if (isLanguageSupported(filePath)) {
           try {
             const treeSitter = getTreeSitter();
-            const tree = treeSitter.parse(content, filePath);
+            const tree = await treeSitter.parse(content, filePath);
             result.ast = tree.rootNode;
           } catch (error2) {
             if (filePath.endsWith(".ts") || filePath.endsWith(".tsx") || filePath.endsWith(".js") || filePath.endsWith(".jsx")) {

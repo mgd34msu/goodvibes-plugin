@@ -174,7 +174,7 @@ async function transformRipgrepResult(
       if (output.expand_to === 'function' || output.expand_to === 'class') {
         try {
           const fileContent = await fs.readFile(path.join(workDir, relativePath), 'utf-8');
-          const tree = treeSitterCore.parse(fileContent, relativePath);
+          const tree = await treeSitterCore.parse(fileContent, relativePath);
           const range = output.expand_to === 'function'
             ? treeSitterCore.getEnclosingFunction(tree, match.line)
             : treeSitterCore.getEnclosingClass(tree, match.line);

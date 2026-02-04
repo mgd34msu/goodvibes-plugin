@@ -1,6 +1,6 @@
 {
   "name": "goodvibes",
-  "version": "1.0.43",
+  "version": "1.0.44",
   "description": "Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
   "author": {
     "name": "Mike Davis",

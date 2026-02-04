@@ -360,7 +360,7 @@ async function processFile(
     const content = await fs.readFile(absolutePath, 'utf-8');
     
     // Use tree-sitter for multi-language parsing
-    const tree = treeSitterCore.parse(content, absolutePath);
+    const tree = await treeSitterCore.parse(content, absolutePath);
     const tsSymbols = treeSitterCore.getSymbols(tree, absolutePath, options.kinds);
     
     // Map tree-sitter symbols to SymbolResult format with end positions

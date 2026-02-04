@@ -112,7 +112,7 @@ function extractSymbolName(node: Parser.SyntaxNode): string | null {
 
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child && (child.type === 'identifier' || child.type === 'type_identifier')) {
+    if (child && child.type && (child.type === 'identifier' || child.type === 'type_identifier')) {
       return child.text;
     }
   }
@@ -130,7 +130,7 @@ function isExported(node: Parser.SyntaxNode): boolean {
       return true;
     }
     const firstChild = current.child(0);
-    if (firstChild && firstChild.type === 'export') {
+    if (firstChild && firstChild.type && firstChild.type === 'export') {
       return true;
     }
     current = current.parent;
@@ -363,6 +363,7 @@ export class TreeSitterCore {
     const rootNode = tree.rootNode;
 
     const buildOutline = (node: Parser.SyntaxNode): OutlineNode[] => {
+      if (!node || !node.type) return [];
       const nodes: OutlineNode[] = [];
       const kind = mapNodeTypeToKind(node.type, language);
 
@@ -418,6 +419,7 @@ export class TreeSitterCore {
     const rootNode = tree.rootNode;
 
     const extractSymbols = (node: Parser.SyntaxNode, container?: string): void => {
+      if (!node || !node.type) return;
       const kind = mapNodeTypeToKind(node.type, language);
 
       if (kind && (!filter || filter.includes(kind))) {

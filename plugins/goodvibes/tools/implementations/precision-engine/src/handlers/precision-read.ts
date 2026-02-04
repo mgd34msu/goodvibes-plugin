@@ -441,7 +441,7 @@ async function readSingleFile(
         if (isLanguageSupported(filePath)) {
           try {
             const treeSitter = getTreeSitter();
-            const tree = treeSitter.parse(content, filePath);
+            const tree = await treeSitter.parse(content, filePath);
             const tsOutline = treeSitter.getOutline(tree, filePath);
             // Map tree-sitter OutlineNode to OutlineItem
             const mapNode = (node: TSOutlineNode): OutlineItem => ({
@@ -478,7 +478,7 @@ async function readSingleFile(
         if (isLanguageSupported(filePath)) {
           try {
             const treeSitter = getTreeSitter();
-            const tree = treeSitter.parse(content, filePath);
+            const tree = await treeSitter.parse(content, filePath);
             const tsSymbols = treeSitter.getSymbols(tree, filePath, symbolFilter);
             // Map tree-sitter SymbolInfo to local SymbolInfo
             result.symbols = tsSymbols.map((sym: TSSymbolInfo) => ({
@@ -517,7 +517,7 @@ async function readSingleFile(
         if (isLanguageSupported(filePath)) {
           try {
             const treeSitter = getTreeSitter();
-            const tree = treeSitter.parse(content, filePath);
+            const tree = await treeSitter.parse(content, filePath);
             result.ast = tree.rootNode;
           } catch (error) {
             // Fallback to TypeScript compiler API for TS/JS files

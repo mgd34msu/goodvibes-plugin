@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "precision_read",
+    "arguments": {
+      "files": ["/home/buzzkill/Projects/goodvibes-plugin/new_pe_tests/test.py"],
+      "extract": "symbols",
+      "output": {
+        "mode": "standard"
+      }
+    }
+  }
+}
