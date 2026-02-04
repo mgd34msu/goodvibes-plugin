@@ -511,7 +511,7 @@ git diff HEAD~N to review
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["exact", "fuzzy", "regex", "ast"],
+          "enum": ["exact", "fuzzy", "regex", "ast", "ast_pattern"],
           "default": "exact"
         },
         "case_sensitive": { "type": "boolean", "default": true },
@@ -794,7 +794,7 @@ git diff HEAD~N to review
           },
           "type": {
             "type": "string",
-            "enum": ["grep", "glob", "symbols"],
+            "enum": ["grep", "glob", "symbols", "structural"],
             "description": "Query type"
           },
           "pattern": {
@@ -803,7 +803,7 @@ git diff HEAD~N to review
           },
           "pattern_base64": {
             "type": "string",
-            "description": "Base64-encoded regex pattern"
+            "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns."
           },
           "glob": {
             "type": "string",
@@ -814,6 +814,11 @@ git diff HEAD~N to review
             "items": { "type": "string" },
             "description": "Glob patterns (for glob)"
           },
+          "patterns_base64": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Base64-encoded glob patterns (for glob)"
+          },
           "query": {
             "type": "string",
             "description": "Symbol name (for symbols)"
@@ -822,6 +827,18 @@ git diff HEAD~N to review
             "type": "array",
             "items": { "type": "string" },
             "description": "Symbol kinds (for symbols)"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language hint for structural queries"
+          },
+          "structural_pattern": {
+            "type": "string",
+            "description": "AST pattern to search for (e.g., \"console.log($$$ARGS)\") (for structural)"
+          },
+          "structural_pattern_base64": {
+            "type": "string",
+            "description": "Base64-encoded structural pattern (for structural)"
           }
         },
         "required": ["id", "type"]
@@ -834,7 +851,7 @@ git diff HEAD~N to review
     },
     "base_path": {
       "type": "string",
-      "description": "Base directory for searches (default: cwd)"
+      "description": "Base directory for searches (default: cwd). Must be within project root."
     }
   },
   "required": ["queries"]
@@ -920,6 +937,11 @@ git diff HEAD~N to review
 {
   "type": "object",
   "properties": {
+    "backend": {
+      "type": "string",
+      "enum": ["auto", "fast-glob", "ripgrep"],
+      "description": "File listing backend"
+    },
     "patterns": {
       "type": "array",
       "items": { "type": "string" },
@@ -991,6 +1013,11 @@ git diff HEAD~N to review
       "type": "string",
       "enum": ["workspace", "document"],
       "default": "workspace"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["auto", "typescript", "python", "rust", "go"],
+      "description": "Language to search"
     },
     "query": {
       "type": "string",

@@ -507,7 +507,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["exact", "fuzzy", "regex", "ast"],
+          "enum": ["exact", "fuzzy", "regex", "ast", "ast_pattern"],
           "default": "exact"
         },
         "case_sensitive": { "type": "boolean", "default": true },
@@ -790,7 +790,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
           },
           "type": {
             "type": "string",
-            "enum": ["grep", "glob", "symbols"],
+            "enum": ["grep", "glob", "symbols", "structural"],
             "description": "Query type"
           },
           "pattern": {
@@ -916,6 +916,11 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 {
   "type": "object",
   "properties": {
+    "backend": {
+      "type": "string",
+      "enum": ["auto", "fast-glob", "ripgrep"],
+      "description": "File listing backend"
+    },
     "patterns": {
       "type": "array",
       "items": { "type": "string" },
@@ -987,6 +992,11 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
       "type": "string",
       "enum": ["workspace", "document"],
       "default": "workspace"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["auto", "typescript", "python", "rust", "go"],
+      "description": "Language to search"
     },
     "query": {
       "type": "string",
