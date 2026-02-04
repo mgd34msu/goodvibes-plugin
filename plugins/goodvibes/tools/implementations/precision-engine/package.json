@@ -20,7 +20,7 @@
     "diff": "^8.0.3",
     "fast-glob": "^3.3.2",
     "tree-sitter-wasms": "^0.1.13",
-    "web-tree-sitter": "^0.26.5"
+    "web-tree-sitter": "^0.22.6"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

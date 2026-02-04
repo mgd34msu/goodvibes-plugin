@@ -258,23 +258,46 @@ function getWasmBasePath(): string {
 let wasmBasePath: string | null = null;
 
 /**
+ * Get the directory containing this module (works in both dev and bundled)
+ */
+function getModuleDir(): string {
+  // In CJS, __dirname is the directory of the current module
+  // When bundled, this will be the dist directory
+  if (typeof __dirname !== 'undefined') {
+    return __dirname;
+  }
+  // Fallback for ESM or other contexts
+  return process.cwd();
+}
+
+/**
  * Find and cache the WASM base path
  */
 async function findWasmBasePath(): Promise<string> {
   if (wasmBasePath) return wasmBasePath;
   
+  const moduleDir = getModuleDir();
+  
   const possiblePaths = [
-    path.join(__dirname, 'wasm'),
-    path.join(__dirname, '../wasm'),
-    path.join(__dirname, '../../dist/wasm'),
+    // When bundled: dist/wasm (wasm is sibling to index.cjs)
+    path.join(moduleDir, 'wasm'),
+    // When running from source: look for dist/wasm
+    path.join(moduleDir, '../wasm'),
+    path.join(moduleDir, '../../dist/wasm'),
+    path.join(moduleDir, '../../../dist/wasm'),
+    // From cwd
     path.join(process.cwd(), 'dist/wasm'),
-    path.join(__dirname, '../../node_modules/tree-sitter-wasms/out'),
+    path.join(process.cwd(), 'wasm'),
+    // Node modules fallback
+    path.join(moduleDir, '../../node_modules/tree-sitter-wasms/out'),
+    path.join(moduleDir, '../../../node_modules/tree-sitter-wasms/out'),
     path.join(process.cwd(), 'node_modules/tree-sitter-wasms/out'),
   ];
   
   for (const p of possiblePaths) {
     try {
-      await fs.access(path.join(p, 'tree-sitter-typescript.wasm'));
+      const testFile = path.join(p, 'tree-sitter-typescript.wasm');
+      await fs.access(testFile);
       wasmBasePath = p;
       return p;
     } catch {
@@ -282,7 +305,7 @@ async function findWasmBasePath(): Promise<string> {
     }
   }
   
-  throw new Error('Could not find tree-sitter WASM files');
+  throw new Error(`Could not find tree-sitter WASM files. Searched in: ${possiblePaths.join(', ')}`);
 }
 
 /**
