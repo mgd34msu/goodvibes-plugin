@@ -1416,7 +1416,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the SEW Loop (Subagent Efficient Work Loop)
+- **MUST** follow the DBE Loop (Discover Batch Execute Loop)
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

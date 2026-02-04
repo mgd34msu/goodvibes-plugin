@@ -4886,7 +4886,7 @@ var GOODVIBES_MANDATORY_SECTION = `
 
 3. You MUST remind subagents to use information from .goodvibes/ memory and logging when troubleshooting a problem, as it may have been solved previously.
 
-4. You MUST remind subagents to use SEW Loops.
+4. You MUST remind subagents to use DBE Loops.
 
 5. You MUST remind subagents to NEVER use Bash cat, echo, heredoc, or any other workaround unless precision_engine tools will not work after multiple attempts.
 
