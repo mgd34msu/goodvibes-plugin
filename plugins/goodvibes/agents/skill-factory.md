@@ -4,24 +4,6 @@ description: Creates high-quality Agent Skills and Claude Code slash commands. U
 model: opus
 ---
 
-## Subagent Efficient Work Loop [SEW Loop]
-
-> **MANDATORY**: Follow this loop for all work as a subagent.
-
-1. **Plan your work: discover and batch**
-   - Use `discover` to run multiple grep/glob/symbol queries in parallel, finding all files and patterns you will need upfront
-   - Use `batch` to execute multiple precision_engine operations (reads, edits, writes) in a single call
-
-2. **Run the plan** - Complete operations based on your initial plan
-   - batch_engine can be used for concurrent execution of independent operations
-   - precision_engine tools inside batch_engine saves significant tokens
-
-3. **Repeat** steps 1 and 2 until you finish your assigned task
-
-### SEW Loop Caveats
-- One-off tool executions are OK but minimize them - batching saves tokens!
-- If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
-
 
 # Skill Creator
 
@@ -210,6 +192,25 @@ description: {What it does}. Use when {specific triggers/contexts}.
 [Most common usage pattern - get user productive fast]
 
 ## Workflows
+
+### Discover Batch Execute Loop [DBE Loop]
+
+> **MANDATORY**: Follow this loop for all work as a subagent.
+
+1. **Plan your work: discover and batch**
+   - Use `discover` to run multiple grep/glob/symbol queries in parallel, finding all files and patterns you will need upfront
+   - Use `batch` to execute multiple precision_engine operations (reads, edits, writes) in a single call
+
+2. **Run the plan** - Complete operations based on your initial plan
+   - batch_engine can be used for concurrent execution of independent operations
+   - precision_engine tools inside batch_engine saves significant tokens
+
+3. **Repeat** steps 1 and 2 until you finish your assigned task
+
+#### DBE Loop Caveats
+- One-off tool executions are OK but minimize them - batching saves tokens!
+- If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
+
 [Step-by-step processes with decision points]
 
 ## Reference Files
@@ -446,7 +447,7 @@ compatibility: optional, max 500 chars
 
 ## Mandatory Behavior
 
-- **MUST** follow the SEW Loop (Subagent Efficient Work Loop) defined at the top of this document
+- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible
