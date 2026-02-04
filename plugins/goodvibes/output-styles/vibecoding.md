@@ -400,7 +400,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
           },
           "content_base64": {
             "type": "string",
-            "description": "Base64-encoded content (use instead of content for complex content)"
+            "description": "Base64-encoded content. REQUIRED when content contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'content' | base64 -w0"
           },
           "content_file": {
             "type": "string",
@@ -428,7 +428,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
       "type": "string",
       "enum": ["count_only", "minimal", "standard", "verbose"],
       "default": "standard",
-      "description": "Response verbosity"
+      "description": "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
     }
   },
   "required": ["files"]
@@ -459,17 +459,17 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
           },
           "file": {
             "type": "string",
-            "description": "DEPRECATED: Use path instead"
+            "description": "DEPRECATED: Use path instead. Path to the file to edit"
           },
           "find": { "type": "string" },
           "replace": { "type": "string" },
           "find_base64": {
             "type": "string",
-            "description": "Base64-encoded text to find"
+            "description": "Base64-encoded text to find. REQUIRED when find contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'find text' | base64 -w0"
           },
           "replace_base64": {
             "type": "string",
-            "description": "Base64-encoded replacement text"
+            "description": "Base64-encoded replacement text. REQUIRED when replace contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'replacement' | base64 -w0"
           },
           "occurrence": {
             "oneOf": [
@@ -607,19 +607,30 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
       "properties": {
         "format": {
           "type": "string",
+          "description": "Output data format",
           "enum": ["count_only", "minimal", "standard", "verbose"],
           "default": "standard"
         },
         "include_line_numbers": { "type": "boolean", "default": true },
         "include_metadata": { "type": "boolean", "default": false },
-        "max_per_item": { "type": "integer", "minimum": 1 },
+        "max_lines_per_file": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "DEPRECATED: Use max_per_item. Max lines per file"
+        },
+        "max_per_item": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max lines per file (alias for max_lines_per_file)"
+        },
         "max_tokens": { "type": "integer", "minimum": 1 }
       }
     },
     "verbosity": {
       "type": "string",
       "enum": ["count_only", "minimal", "standard", "verbose"],
-      "default": "standard"
+      "default": "standard",
+      "description": "Response verbosity: count_only (minimal tokens), minimal (basic info), standard (normal), verbose (full details)"
     }
   },
   "required": ["files"]
@@ -648,7 +659,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
           },
           "cmd_base64": {
             "type": "string",
-            "description": "Base64-encoded command"
+            "description": "Base64-encoded command. REQUIRED when cmd contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'command' | base64 -w0"
           },
           "args": {
             "type": "array",
@@ -737,7 +748,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
           },
           "body_base64": {
             "type": "string",
-            "description": "Base64-encoded request body"
+            "description": "Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'body' | base64 -w0"
           },
           "timeout_ms": {
             "type": "integer",
@@ -799,7 +810,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
           },
           "pattern_base64": {
             "type": "string",
-            "description": "Base64-encoded regex pattern"
+            "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns."
           },
           "glob": {
             "type": "string",
@@ -810,6 +821,11 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
             "items": { "type": "string" },
             "description": "Glob patterns (for glob)"
           },
+          "patterns_base64": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Base64-encoded glob patterns (for glob)"
+          },
           "query": {
             "type": "string",
             "description": "Symbol name (for symbols)"
@@ -818,6 +834,18 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
             "type": "array",
             "items": { "type": "string" },
             "description": "Symbol kinds (for symbols)"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language hint for structural queries"
+          },
+          "structural_pattern": {
+            "type": "string",
+            "description": "AST pattern to search for (e.g., \"console.log($$$ARGS)\") (for structural)"
+          },
+          "structural_pattern_base64": {
+            "type": "string",
+            "description": "Base64-encoded structural pattern (for structural)"
           }
         },
         "required": ["id", "type"]
@@ -830,7 +858,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
     },
     "base_path": {
       "type": "string",
-      "description": "Base directory for searches (default: cwd)"
+      "description": "Base directory for searches (default: cwd). Must be within project root."
     }
   },
   "required": ["queries"]
@@ -857,7 +885,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
         "properties": {
           "id": { "type": "string", "description": "Query identifier" },
           "pattern": { "type": "string", "description": "Regex pattern to search for" },
-          "pattern_base64": { "type": "string", "description": "Base64-encoded regex pattern" },
+          "pattern_base64": { "type": "string", "description": "Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'pattern' | base64 -w0" },
           "glob": { "type": "string", "description": "File pattern to search in" },
           "path": { "type": "string", "description": "Directory path to search" },
           "exclude": {
@@ -929,7 +957,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
     "patterns_base64": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Base64-encoded glob patterns"
+      "description": "Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Encode each with: echo -n 'pattern' | base64 -w0"
     },
     "preset": {
       "type": "string",
