@@ -66,6 +66,7 @@ logging:
   log_errors: true
   log_activity: true
   log_path: .goodvibes/logs/
+  memory_path: .goodvibes/memory/
 ```
 
 ## Behavior
