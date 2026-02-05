@@ -15,6 +15,7 @@ import { TreeSitterCore } from '../core/tree-sitter.js';
 import { AstGrepCore } from '../core/ast-grep.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { getConfigValue } from '../runtime-config.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -80,8 +81,9 @@ interface QueryResult {
 }
 
 /**
- * Validates and resolves base_path to ensure it stays within project boundaries.
- * Prevents path traversal attacks and ensures the path is a valid directory.
+ * Validates and resolves base_path to ensure it's a valid accessible directory.
+ * When sandbox mode is enabled (default), also enforces project root boundaries.
+ * When sandbox is disabled via precision_config, allows paths outside project root.
  */
 async function validateBasePath(basePath: string, projectRoot: string): Promise<string> {
   // Resolve to absolute path
@@ -97,16 +99,23 @@ async function validateBasePath(basePath: string, projectRoot: string): Promise<
     throw new Error(`Invalid base_path: '${basePath}' does not exist or is not accessible.`);
   }
   
-  // Normalize for consistent comparison
-  const normalizedReal = path.normalize(realPath);
-  const normalizedRoot = path.normalize(projectRoot);
+  // Check sandbox config - if disabled, skip boundary enforcement
+  const sandboxEnabled = getConfigValue<boolean>('sandbox');
   
-  // Verify path is within allowed boundaries
-  if (!normalizedReal.startsWith(normalizedRoot)) {
-    throw new Error(`base_path '${basePath}' is outside project root. Path traversal is not allowed.`);
+  if (sandboxEnabled !== false) {
+    // Normalize for consistent comparison
+    const normalizedReal = path.normalize(realPath);
+    const normalizedRoot = path.normalize(projectRoot);
+    
+    // Verify path is within allowed boundaries
+    // Append path.sep to prevent prefix collision (e.g., /app-secrets matching /app)
+    const rootWithSep = normalizedRoot.endsWith(path.sep) ? normalizedRoot : normalizedRoot + path.sep;
+    if (normalizedReal !== normalizedRoot && !normalizedReal.startsWith(rootWithSep)) {
+      throw new Error(`base_path '${basePath}' is outside project root. Path traversal is not allowed. Use precision_config to disable sandbox if needed.`);
+    }
   }
   
-  // Verify it's a directory
+  // Verify it's a directory (always enforced regardless of sandbox)
   const stats = await fs.stat(realPath);
   if (!stats.isDirectory()) {
     throw new Error(`base_path '${basePath}' is not a directory.`);

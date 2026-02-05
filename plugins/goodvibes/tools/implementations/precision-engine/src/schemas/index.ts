@@ -190,7 +190,7 @@ export const discoverSchema: Tool = {
       },
       base_path: {
         type: 'string',
-        description: 'Base directory for searches (default: cwd). Must be within project root. Path traversal is not allowed.',
+        description: 'Base directory for searches (default: cwd). Must be within project root when sandbox is enabled (default). Use precision_config to allow external paths.',
       },
     },
     required: ['queries'],
@@ -434,6 +434,35 @@ const validationStepSchema = {
 };
 
 /**
+ * precision_config - Runtime configuration management.
+ */
+export const precisionConfigSchema: Tool = {
+  name: 'precision_config',
+  description:
+    'Get or set precision-engine runtime configuration. ' +
+    'Supports toggling sandbox mode (path boundary enforcement) and other settings.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['get', 'set', 'reload'],
+        description: 'Action to perform: get (read config), set (update config), reload (reload from file)',
+      },
+      key: {
+        type: 'string',
+        description: 'Config key to get or set (e.g., "sandbox"). Omit for get to return all config.',
+      },
+      value: {
+        // Intentionally no type constraint - accepts any JSON value (boolean, string, number)
+        description: 'Value to set (for set action). Type depends on the key.',
+      },
+    },
+    required: ['action'],
+  },
+};
+
+/**
  * precision_edit - Token-efficient file editing with atomic transactions.
  *
  * SPEC-v2 Section 13.1.5 compliant.
@@ -540,4 +569,5 @@ export const allSchemas: Tool[] = [
   precisionGlobSchema,
   precisionSymbolsSchema,
   precisionEditSchema,
+  precisionConfigSchema,
 ];
