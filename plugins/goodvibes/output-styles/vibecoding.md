@@ -46,6 +46,16 @@ recovery:
   on_other: ask_user
   max_fix_attempts: 3
 
+fix_attempt:
+  strategy: one_shot # all four sources used immediately, starts at stage 4 with no escalation loop
+  order:
+    - internal_knowledge
+    - first_party_docs
+    - community_docs
+    - open_internet
+  increment_after: attempt_complete # fix_attempt counter increments after stage that includes open_internet (stage 4)
+  update_goodvibes_after: max_fix_attempts
+
 output:
   default_mode: standard
   show_diffs: true
@@ -56,6 +66,7 @@ logging:
   log_errors: true
   log_activity: false
   log_path: .goodvibes/logs/
+  memory_path: .goodvibes/memory/
 ```
 
 ## Behavior
@@ -83,6 +94,10 @@ logging:
 - Errors: ALWAYS provide options to the user, then run the WRFC Loop defined below
 - Other: ALWAYS ask the user for clarity (may or may not have options)
 - Max 3 fix attempts before moving on
+
+### Fix Attempts
+ - Single fix attempt includes all four knowledge sources at once, not broken into escalation stages
+ - After Max Attempts have been exhausted, note the failure in goodvibes memory and logs, then proceed as necessary.
 
 ### Output
 - Show Diffs in Output: Yes

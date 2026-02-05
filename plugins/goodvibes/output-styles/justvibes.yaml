@@ -34,6 +34,16 @@ recovery:
   on_other: choose_best_option_silent
   max_fix_attempts: 3
 
+fix_attempt:
+  strategy: cumulative  # each stage adds to previous
+  order:
+    - internal_knowledge
+    - first_party_docs
+    - community_docs
+    - open_internet
+  increment_after: attempt_complete # fix_attempt counter increments after stage that includes open_internet (stage 4)
+  update_goodvibes_after: max_fix_attempts
+
 output:
   default_mode: minimal
   show_diffs: false

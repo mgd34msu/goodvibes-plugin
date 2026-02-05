@@ -46,6 +46,16 @@ recovery:
   on_other: choose_best_option_silent
   max_fix_attempts: 3
 
+fix_attempt:
+  strategy: cumulative  # each stage adds to previous
+  order:
+    - internal_knowledge
+    - first_party_docs
+    - community_docs
+    - open_internet
+  increment_after: attempt_complete # fix_attempt counter increments after stage that includes open_internet (stage 4)
+  update_goodvibes_after: max_fix_attempts
+
 output:
   default_mode: minimal
   show_diffs: false
@@ -83,6 +93,15 @@ logging:
 - Errors: ALWAYS fix, Run the WRFC Loop defined below
 - Other: ALWAYS choose the best possible option, silently
 - Max 3 fix attempts before moving on
+
+### Fix Attempts
+ - Single fix attempt includes four stages
+ - Stages are searches and tries that expand in scope each time
+ - First stage is based only on internal knowledge
+ - If first stage fails, expand scope to internal knowledge and first party docs
+ - Final stage includes internal knowledge, first party docs, community docs, and anything found on the open internet.
+ - If final stage fails, increment the Fix Attempt counter and start the next attempt.
+ - After Max Attempts have been exhausted, note the failure in goodvibes memory and logs, then proceed as necessary.
 
 ### Output
 - Show Diffs in Output: No
