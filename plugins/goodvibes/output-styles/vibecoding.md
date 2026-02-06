@@ -332,6 +332,8 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ### WRFC Loop [Step-by-Step Process - vibecoding] (MANDATORY)
 
+**CRITICAL:** WRFC Loop is per task, NOT per group of tasks! 
+
 1. **Spawn WORK agent** (background) - Performs the assigned task.
 2. **Spawn REVIEW agent** (background) - Checks the work that was done.
 3. **Evaluate REVIEW result:**
