@@ -221,28 +221,46 @@ export async function setConfigValue(key: string, value: unknown): Promise<void>
     pendingPersist = null;
   }
 
-  // Ensure config is loaded
+  // Re-read the file to get current contents (user may have edited it manually)
+  const configPath = getConfigPath();
+  let currentFileConfig: Record<string, unknown> = {};
+
+  try {
+    const content = await fs.promises.readFile(configPath, 'utf-8');
+    currentFileConfig = JSON.parse(content);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.warn('Failed to read config file for update, using cached config', {
+        path: configPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    // Fall back to cached configForFile if file can't be read
+    if (configForFile) {
+      currentFileConfig = { ...configForFile };
+    }
+  }
+
+  // Apply the new key/value
+  currentFileConfig[key] = value;
+
+  // Update in-memory caches
+  configForFile = currentFileConfig as PrecisionEngineConfig;
   if (!cachedConfig) {
-    await loadConfig();
+    cachedConfig = { ...configForFile };
+  } else {
+    cachedConfig[key] = value;
   }
 
-  if (!cachedConfig || !configForFile) {
-    throw new Error('Failed to initialize configuration');
-  }
-
-  // Update both runtime and file configs
-  cachedConfig[key] = value;
-  configForFile[key] = value;
-
-  // Persist the clean config (no env overrides)
+  // Persist to file
   try {
     await persistConfig(configForFile);
-    logger.info('Updated config', { key, value, path: getConfigPath() });
+    logger.info('Updated config', { key, value, path: configPath });
   } catch (error) {
     logger.error('Failed to persist config', {
       key,
       value,
-      path: getConfigPath(),
+      path: configPath,
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
