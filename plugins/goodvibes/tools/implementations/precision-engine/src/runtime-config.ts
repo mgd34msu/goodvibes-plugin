@@ -28,24 +28,63 @@ const DEFAULT_CONFIG: PrecisionEngineConfig = {
  * In-memory config cache.
  */
 let cachedConfig: PrecisionEngineConfig | null = null;
-let configLoaded = false;
+
+/**
+ * Clean config for persistence (defaults + file content, NO env overrides).
+ */
+let configForFile: PrecisionEngineConfig | null = null;
+
+/**
+ * Pending fire-and-forget persist operation.
+ */
+let pendingPersist: Promise<void> | null = null;
+
+/**
+ * Persist config to file (only file content + defaults, NOT env overrides).
+ * Used by both sync (fire-and-forget) and async (await) code paths.
+ */
+async function persistConfig(configToPersist: PrecisionEngineConfig): Promise<void> {
+  const configPath = getConfigPath();
+  const configDir = path.dirname(configPath);
+
+  // Ensure config directory exists
+  await fs.promises.mkdir(configDir, { recursive: true });
+
+  // Write config file
+  await fs.promises.writeFile(
+    configPath,
+    JSON.stringify(configToPersist, null, 2) + '\n',
+    'utf-8'
+  );
+
+  logger.debug('Persisted config to file', { path: configPath });
+}
 
 /**
  * Apply defaults and env var overrides to loaded file config.
  * Shared between sync and async load paths.
+ * Returns info about whether any default keys were missing from file.
  */
-function applyConfigOverrides(fileConfig: Partial<PrecisionEngineConfig>): PrecisionEngineConfig {
-  const config: PrecisionEngineConfig = { ...DEFAULT_CONFIG, ...fileConfig };
+function applyConfigOverrides(
+  fileConfig: Partial<PrecisionEngineConfig>
+): { config: PrecisionEngineConfig; keysAdded: boolean; configForPersistence: PrecisionEngineConfig } {
+  // Merge defaults with file config (this is what should be persisted)
+  const configForPersistence: PrecisionEngineConfig = { ...DEFAULT_CONFIG, ...fileConfig };
   
-  // Env var overrides
+  // Check if any default keys were missing
+  const addedKeys = Object.keys(DEFAULT_CONFIG).filter(k => !(k in fileConfig));
+  const keysAdded = addedKeys.length > 0;
+  
+  // Apply env var overrides (runtime-only, should NOT be persisted)
+  const config: PrecisionEngineConfig = { ...configForPersistence };
   if (process.env.ALLOW_EXTERNAL_PATHS === 'true') {
     config.sandbox = false;
     logger.info('Sandbox disabled via ALLOW_EXTERNAL_PATHS env var');
   }
   
   cachedConfig = config;
-  configLoaded = true;
-  return config;
+  configForFile = { ...configForPersistence };
+  return { config, keysAdded, configForPersistence };
 }
 
 /**
@@ -60,43 +99,17 @@ function getConfigPath(): string {
  * Used by sync getters to avoid async complications.
  */
 function loadConfigSync(): PrecisionEngineConfig {
-  if (configLoaded && cachedConfig) {
+  if (cachedConfig) {
     return cachedConfig;
   }
 
   let fileConfig: Partial<PrecisionEngineConfig> = {};
   const configPath = getConfigPath();
+  let fileExists = false;
 
   try {
-    if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, 'utf-8');
-      fileConfig = JSON.parse(content);
-      logger.debug('Loaded config from file', { path: configPath });
-    } else {
-      logger.debug('Config file not found, using defaults', { path: configPath });
-    }
-  } catch (error) {
-    logger.warn('Failed to load config file, using defaults', {
-      path: configPath,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return applyConfigOverrides(fileConfig);
-}
-
-/**
- * Load config from file asynchronously.
- * Can be called explicitly to reload configuration.
- *
- * @returns Promise that resolves when config is loaded
- */
-export async function loadConfig(): Promise<void> {
-  let fileConfig: Partial<PrecisionEngineConfig> = {};
-  const configPath = getConfigPath();
-
-  try {
-    const content = await fs.promises.readFile(configPath, 'utf-8');
+    const content = fs.readFileSync(configPath, 'utf-8');
+    fileExists = true;
     fileConfig = JSON.parse(content);
     logger.debug('Loaded config from file', { path: configPath });
   } catch (error) {
@@ -110,7 +123,60 @@ export async function loadConfig(): Promise<void> {
     }
   }
 
-  applyConfigOverrides(fileConfig);
+  const { config, keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
+  
+  // If file exists and we added default keys, persist them (fire-and-forget)
+  if (fileExists && keysAdded) {
+    pendingPersist = persistConfig(configForPersistence).catch(err => {
+      logger.warn('Failed to persist missing default keys (fire-and-forget)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+  
+  return config;
+}
+
+/**
+ * Load config from file asynchronously.
+ * Can be called explicitly to reload configuration.
+ *
+ * @returns Promise that resolves when config is loaded
+ */
+export async function loadConfig(): Promise<void> {
+  let fileConfig: Partial<PrecisionEngineConfig> = {};
+  const configPath = getConfigPath();
+  let fileExists = false;
+
+  try {
+    const content = await fs.promises.readFile(configPath, 'utf-8');
+    fileExists = true;
+    fileConfig = JSON.parse(content);
+    logger.debug('Loaded config from file', { path: configPath });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      logger.debug('Config file not found, using defaults', { path: configPath });
+    } else {
+      logger.warn('Failed to load config file, using defaults', {
+        path: configPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const { keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
+  
+  // If file exists and we added default keys, persist them (await)
+  if (fileExists && keysAdded) {
+    try {
+      await persistConfig(configForPersistence);
+    } catch (error) {
+      logger.warn('Failed to persist missing default keys', {
+        path: configPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 /**
@@ -144,39 +210,34 @@ export function getConfigValue<T = unknown>(key: string): T {
  * @returns Promise that resolves when config is persisted
  */
 export async function setConfigValue(key: string, value: unknown): Promise<void> {
+  // Drain any pending fire-and-forget persist
+  if (pendingPersist) {
+    await pendingPersist;
+    pendingPersist = null;
+  }
+
   // Ensure config is loaded
-  if (!configLoaded || !cachedConfig) {
+  if (!cachedConfig) {
     await loadConfig();
   }
 
-  // Update in-memory config
-  if (!cachedConfig) {
+  if (!cachedConfig || !configForFile) {
     throw new Error('Failed to initialize configuration');
   }
 
+  // Update both runtime and file configs
   cachedConfig[key] = value;
+  configForFile[key] = value;
 
-  // Persist to file
-  const configPath = getConfigPath();
-  const configDir = path.dirname(configPath);
-
+  // Persist the clean config (no env overrides)
   try {
-    // Ensure config directory exists
-    await fs.promises.mkdir(configDir, { recursive: true });
-
-    // Write config file
-    await fs.promises.writeFile(
-      configPath,
-      JSON.stringify(cachedConfig, null, 2) + '\n',
-      'utf-8'
-    );
-
-    logger.info('Updated config', { key, value, path: configPath });
+    await persistConfig(configForFile);
+    logger.info('Updated config', { key, value, path: getConfigPath() });
   } catch (error) {
     logger.error('Failed to persist config', {
       key,
       value,
-      path: configPath,
+      path: getConfigPath(),
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
