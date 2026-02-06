@@ -256801,6 +256801,7 @@ function getConfigValue(key) {
   return config2[key];
 }
 __name(getConfigValue, "getConfigValue");
+loadConfigSync();
 async function setConfigValue(key, value) {
   if (pendingPersist) {
     await pendingPersist;
