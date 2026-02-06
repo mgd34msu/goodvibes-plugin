@@ -1,9 +1,9 @@
 version: 2.0.0
-generated: '2026-02-05T19:24:32.313Z'
-total: 74
+generated: '2026-02-06T00:41:49.884Z'
+total: 75
 servers:
   - name: precision-engine
-    count: 9
+    count: 10
     tools:
       - name: precision_write
         path: precision-engine/precision-write.yaml
@@ -45,6 +45,11 @@ servers:
         description: >-
           Token-efficient symbol search across workspace or specific files. ' + 'Supports workspace-wide symbol search
           and per-file symbol extraction.
+      - name: precision_config
+        path: precision-engine/precision_config
+        description: >-
+          Get or set precision-engine runtime configuration. ' + 'Supports toggling sandbox mode (path boundary
+          enforcement) and other settings.
       - name: precision_edit
         path: precision-engine/precision-edit.yaml
         description: >-
@@ -635,6 +640,29 @@ search_index:
     description: >-
       Token-efficient symbol search across workspace or specific files. ' + 'Supports workspace-wide symbol search and
       per-file symbol extraction.
+    server: precision-engine
+  - name: precision_config
+    keywords:
+      - precision
+      - config
+      - get
+      - set
+      - engine
+      - runtime
+      - configuration
+      - supports
+      - toggling
+      - sandbox
+      - mode
+      - path
+      - boundary
+      - enforcement
+      - other
+      - settings
+    path: precision-engine/precision_config
+    description: >-
+      Get or set precision-engine runtime configuration. ' + 'Supports toggling sandbox mode (path boundary enforcement)
+      and other settings.
     server: precision-engine
   - name: precision_edit
     keywords:
