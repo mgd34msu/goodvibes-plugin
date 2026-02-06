@@ -256692,54 +256692,51 @@ var fs9 = __toESM(require("fs/promises"), 1);
 var fs8 = __toESM(require("fs"), 1);
 var path7 = __toESM(require("path"), 1);
 var DEFAULT_CONFIG = {
-  sandbox: true
+  sandbox: false
 };
 var cachedConfig = null;
-var configLoaded = false;
+var configForFile = null;
+var pendingPersist = null;
+async function persistConfig(configToPersist) {
+  const configPath = getConfigPath();
+  const configDir = path7.dirname(configPath);
+  await fs8.promises.mkdir(configDir, { recursive: true });
+  await fs8.promises.writeFile(
+    configPath,
+    JSON.stringify(configToPersist, null, 2) + "\n",
+    "utf-8"
+  );
+  logger.debug("Persisted config to file", { path: configPath });
+}
+__name(persistConfig, "persistConfig");
 function applyConfigOverrides(fileConfig) {
-  const config2 = { ...DEFAULT_CONFIG, ...fileConfig };
+  const configForPersistence = { ...DEFAULT_CONFIG, ...fileConfig };
+  const addedKeys = Object.keys(DEFAULT_CONFIG).filter((k) => !(k in fileConfig));
+  const keysAdded = addedKeys.length > 0;
+  const config2 = { ...configForPersistence };
   if (process.env.ALLOW_EXTERNAL_PATHS === "true") {
     config2.sandbox = false;
     logger.info("Sandbox disabled via ALLOW_EXTERNAL_PATHS env var");
   }
   cachedConfig = config2;
-  configLoaded = true;
-  return config2;
+  configForFile = { ...configForPersistence };
+  return { config: config2, keysAdded, configForPersistence };
 }
 __name(applyConfigOverrides, "applyConfigOverrides");
 function getConfigPath() {
-  const pluginRoot = process.env.PLUGIN_ROOT || process.cwd();
-  return path7.join(pluginRoot, "config", "precision-engine.json");
+  return path7.join(process.cwd(), ".goodvibes", "goodvibes.json");
 }
 __name(getConfigPath, "getConfigPath");
 function loadConfigSync() {
-  if (configLoaded && cachedConfig) {
+  if (cachedConfig) {
     return cachedConfig;
   }
   let fileConfig = {};
   const configPath = getConfigPath();
+  let fileExists2 = false;
   try {
-    if (fs8.existsSync(configPath)) {
-      const content = fs8.readFileSync(configPath, "utf-8");
-      fileConfig = JSON.parse(content);
-      logger.debug("Loaded config from file", { path: configPath });
-    } else {
-      logger.debug("Config file not found, using defaults", { path: configPath });
-    }
-  } catch (error2) {
-    logger.warn("Failed to load config file, using defaults", {
-      path: configPath,
-      error: error2 instanceof Error ? error2.message : String(error2)
-    });
-  }
-  return applyConfigOverrides(fileConfig);
-}
-__name(loadConfigSync, "loadConfigSync");
-async function loadConfig() {
-  let fileConfig = {};
-  const configPath = getConfigPath();
-  try {
-    const content = await fs8.promises.readFile(configPath, "utf-8");
+    const content = fs8.readFileSync(configPath, "utf-8");
+    fileExists2 = true;
     fileConfig = JSON.parse(content);
     logger.debug("Loaded config from file", { path: configPath });
   } catch (error2) {
@@ -256752,7 +256749,47 @@ async function loadConfig() {
       });
     }
   }
-  applyConfigOverrides(fileConfig);
+  const { config: config2, keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
+  if (fileExists2 && keysAdded) {
+    pendingPersist = persistConfig(configForPersistence).catch((err2) => {
+      logger.warn("Failed to persist missing default keys (fire-and-forget)", {
+        error: err2 instanceof Error ? err2.message : String(err2)
+      });
+    });
+  }
+  return config2;
+}
+__name(loadConfigSync, "loadConfigSync");
+async function loadConfig() {
+  let fileConfig = {};
+  const configPath = getConfigPath();
+  let fileExists2 = false;
+  try {
+    const content = await fs8.promises.readFile(configPath, "utf-8");
+    fileExists2 = true;
+    fileConfig = JSON.parse(content);
+    logger.debug("Loaded config from file", { path: configPath });
+  } catch (error2) {
+    if (error2.code === "ENOENT") {
+      logger.debug("Config file not found, using defaults", { path: configPath });
+    } else {
+      logger.warn("Failed to load config file, using defaults", {
+        path: configPath,
+        error: error2 instanceof Error ? error2.message : String(error2)
+      });
+    }
+  }
+  const { keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
+  if (fileExists2 && keysAdded) {
+    try {
+      await persistConfig(configForPersistence);
+    } catch (error2) {
+      logger.warn("Failed to persist missing default keys", {
+        path: configPath,
+        error: error2 instanceof Error ? error2.message : String(error2)
+      });
+    }
+  }
 }
 __name(loadConfig, "loadConfig");
 function getConfig() {
@@ -256765,28 +256802,26 @@ function getConfigValue(key) {
 }
 __name(getConfigValue, "getConfigValue");
 async function setConfigValue(key, value) {
-  if (!configLoaded || !cachedConfig) {
-    await loadConfig();
+  if (pendingPersist) {
+    await pendingPersist;
+    pendingPersist = null;
   }
   if (!cachedConfig) {
+    await loadConfig();
+  }
+  if (!cachedConfig || !configForFile) {
     throw new Error("Failed to initialize configuration");
   }
   cachedConfig[key] = value;
-  const configPath = getConfigPath();
-  const configDir = path7.dirname(configPath);
+  configForFile[key] = value;
   try {
-    await fs8.promises.mkdir(configDir, { recursive: true });
-    await fs8.promises.writeFile(
-      configPath,
-      JSON.stringify(cachedConfig, null, 2) + "\n",
-      "utf-8"
-    );
-    logger.info("Updated config", { key, value, path: configPath });
+    await persistConfig(configForFile);
+    logger.info("Updated config", { key, value, path: getConfigPath() });
   } catch (error2) {
     logger.error("Failed to persist config", {
       key,
       value,
-      path: configPath,
+      path: getConfigPath(),
       error: error2 instanceof Error ? error2.message : String(error2)
     });
     throw error2;

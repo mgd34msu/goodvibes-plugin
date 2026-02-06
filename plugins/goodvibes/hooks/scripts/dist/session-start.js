@@ -200,6 +200,10 @@ async function ensureGoodVibesDir(cwd) {
     const { ensureSecureGitignore: ensureSecureGitignore2 } = await Promise.resolve().then(() => (init_gitignore(), gitignore_exports));
     await ensureSecureGitignore2(cwd);
   }
+  const configFile = path3.join(goodvibesDir, "goodvibes.json");
+  if (!await fileExists(configFile)) {
+    await fs2.writeFile(configFile, "{}\n", "utf-8");
+  }
   return goodvibesDir;
 }
 
@@ -4653,7 +4657,7 @@ async function checkForUpdates() {
 }
 
 // src/session-start/pricing-fetcher.ts
-import { readFile as readFile9, writeFile as writeFile5, mkdir as mkdir5 } from "node:fs/promises";
+import { readFile as readFile9, writeFile as writeFile6, mkdir as mkdir5 } from "node:fs/promises";
 import { join as join15, dirname as dirname2 } from "node:path";
 import { existsSync } from "node:fs";
 var PLUGIN_ROOT2 = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
@@ -4797,7 +4801,7 @@ async function saveCache(cache) {
   if (!existsSync(dir)) {
     await mkdir5(dir, { recursive: true });
   }
-  await writeFile5(CACHE_PATH, JSON.stringify(cache, null, 2), "utf-8");
+  await writeFile6(CACHE_PATH, JSON.stringify(cache, null, 2), "utf-8");
   debug("Pricing cache saved", { path: CACHE_PATH, modelCount: Object.keys(cache.models).length });
 }
 async function fetchPricingIfStale() {

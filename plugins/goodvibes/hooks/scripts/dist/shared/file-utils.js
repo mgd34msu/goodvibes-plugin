@@ -164,6 +164,11 @@ export async function ensureGoodVibesDir(cwd) {
         const { ensureSecureGitignore } = await import('./gitignore.js');
         await ensureSecureGitignore(cwd);
     }
+    // Ensure goodvibes.json config file exists (create with empty object if missing)
+    const configFile = path.join(goodvibesDir, 'goodvibes.json');
+    if (!(await fileExists(configFile))) {
+        await fs.writeFile(configFile, '{}\n', 'utf-8');
+    }
     return goodvibesDir;
 }
 // =============================================================================

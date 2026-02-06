@@ -1739,6 +1739,10 @@ async function ensureGoodVibesDir(cwd) {
     const { ensureSecureGitignore: ensureSecureGitignore2 } = await Promise.resolve().then(() => (init_gitignore(), gitignore_exports));
     await ensureSecureGitignore2(cwd);
   }
+  const configFile = path3.join(goodvibesDir, "goodvibes.json");
+  if (!await fileExists(configFile)) {
+    await fs2.writeFile(configFile, "{}\n", "utf-8");
+  }
   return goodvibesDir;
 }
 function isExecError(error) {
