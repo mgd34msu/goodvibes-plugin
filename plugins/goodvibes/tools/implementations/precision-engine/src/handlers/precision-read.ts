@@ -15,7 +15,8 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode, SymbolKind as GoodVibesSymbolKind } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, toMixedCallToolResult, ToolHandler } from '../utils/index.js';
+import type { ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import { parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
@@ -34,6 +35,7 @@ interface FileReadSpec {
   // SPEC-v2 uses 'range', but we support 'lines' for backward compatibility
   range?: { start: number; end: number };
   lines?: { start: number; end: number };  // @deprecated - use 'range' instead
+  pages?: string; // PDF page range (e.g., "1-5", "3", "10-20")
 }
 
 interface ReadOutput {
@@ -53,6 +55,7 @@ interface PrecisionReadInput {
   output: ReadOutput;
   symbol_filter?: SymbolKind[];
   default_range?: { start: number; end: number };
+  pages?: string;
   output_mode?: OutputMode;
 }
 
@@ -98,11 +101,187 @@ interface FileReadResult {
   truncated?: boolean;
   encoding?: 'utf-8' | 'base64';
   is_binary?: boolean;
+  is_image?: boolean;
+  mime_type?: string;
+  image_base64?: string;
 }
 
 // === Constants ===
 
 const MAX_BINARY_SIZE = 5 * 1024 * 1024; // 5MB
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
+  '.tiff': 'image/tiff',
+  '.tif': 'image/tiff',
+  '.avif': 'image/avif',
+};
+const SVG_EXTENSIONS = new Set(['.svg']);
+
+function getImageMimeType(filePath: string): string | null {
+  const ext = path.extname(filePath).toLowerCase();
+  if (IMAGE_EXTENSIONS[ext]) return IMAGE_EXTENSIONS[ext];
+  if (SVG_EXTENSIONS.has(ext)) return 'image/svg+xml';
+  return null;
+}
+
+function isPdfFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === '.pdf';
+}
+
+function isNotebookFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === '.ipynb';
+}
+
+function parsePageRange(pages: string): { start: number; end: number } {
+  const trimmed = pages.trim();
+  if (trimmed.includes('-')) {
+    const parts = trimmed.split('-').map(s => s.trim());
+    if (parts.length !== 2) {
+      throw new Error(`Invalid page range: "${pages}". Use format like "1-5" or "3".`);
+    }
+    const [startStr, endStr] = parts;
+    const start = parseInt(startStr, 10);
+    const end = parseInt(endStr, 10);
+    if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
+      throw new Error(`Invalid page range: "${pages}". Use format like "1-5" or "3".`);
+    }
+    return { start, end };
+  }
+  const page = parseInt(trimmed, 10);
+  if (isNaN(page) || page < 1) {
+    throw new Error(`Invalid page number: "${pages}". Use format like "1-5" or "3".`);
+  }
+  return { start: page, end: page };
+}
+
+async function readPdfFile(
+  buffer: Buffer,
+  filePath: string,
+  result: FileReadResult,
+  pages?: string,
+): Promise<FileReadResult> {
+  try {
+    const pdfParse = (await import('pdf-parse')).default;
+
+    // Collect text per page using custom renderer
+    const pageTexts: string[] = [];
+
+    const options: Record<string, unknown> = {
+      pagerender: async function(pageData: { getTextContent: () => Promise<{ items: Array<{ str: string }> }> }) {
+        const textContent = await pageData.getTextContent();
+        const text = textContent.items.map((item: { str: string }) => item.str).join(' ');
+        pageTexts.push(text);
+        return text;
+      }
+    };
+
+    const pdfData = await pdfParse(buffer, options);
+    const totalPages = pdfData.numpages;
+
+    // If > 10 pages and no pages param, require page range
+    if (totalPages > 10 && !pages) {
+      result.error = `PDF has ${totalPages} pages. For PDFs with more than 10 pages, you MUST provide the pages parameter (e.g., pages: "1-5"). Maximum 20 pages per request.`;
+      result.line_count = 0;
+      return result;
+    }
+
+    let text: string;
+    if (pages) {
+      const range = parsePageRange(pages);
+      const requestedPages = range.end - range.start + 1;
+      if (requestedPages > 20) {
+        result.error = `Requested ${requestedPages} pages but maximum is 20 per request. Use a smaller range.`;
+        return result;
+      }
+      if (range.end > totalPages) {
+        result.error = `Requested pages ${range.start}-${range.end} but PDF only has ${totalPages} pages.`;
+        return result;
+      }
+      // Filter to requested page range (1-indexed)
+      const selectedPages = pageTexts.slice(range.start - 1, range.end);
+      text = selectedPages.map((pageText, i) => {
+        const pageNum = range.start + i;
+        return `--- Page ${pageNum} ---\n${pageText}`;
+      }).join('\n\n');
+    } else {
+      // Return all pages (≤10 pages, no range specified)
+      text = pageTexts.map((pageText, i) => {
+        return `--- Page ${i + 1} ---\n${pageText}`;
+      }).join('\n\n');
+    }
+
+    result.content = text;
+    result.encoding = 'utf-8';
+    result.line_count = text.split('\n').length;
+    result.is_binary = false;
+    return result;
+  } catch (err) {
+    result.error = `Failed to parse PDF: ${(err as Error).message}`;
+    return result;
+  }
+}
+
+function parseNotebook(content: string): string {
+  try {
+    const notebook = JSON.parse(content);
+    const cells = notebook.cells;
+    if (!Array.isArray(cells)) {
+      return content; // Fallback to raw JSON
+    }
+
+    const parts: string[] = [];
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      const cellType = cell.cell_type || 'unknown';
+      const source = Array.isArray(cell.source)
+        ? cell.source.join('')
+        : (cell.source || '');
+
+      parts.push(`--- Cell ${i + 1} [${cellType}] ---`);
+      parts.push(source);
+
+      // Handle outputs for code cells
+      if (cellType === 'code' && Array.isArray(cell.outputs)) {
+        for (const output of cell.outputs) {
+          if (output.output_type === 'stream') {
+            const text = Array.isArray(output.text) ? output.text.join('') : (output.text || '');
+            if (text) {
+              parts.push(`[output: stream]`);
+              parts.push(text);
+            }
+          } else if (output.output_type === 'execute_result' || output.output_type === 'display_data') {
+            const data = output.data || {};
+            if (data['text/plain']) {
+              const text = Array.isArray(data['text/plain'])
+                ? data['text/plain'].join('')
+                : data['text/plain'];
+              parts.push(`[output: ${output.output_type}]`);
+              parts.push(text);
+            }
+          } else if (output.output_type === 'error') {
+            parts.push(`[output: error]`);
+            parts.push(`${output.ename}: ${output.evalue}`);
+            if (Array.isArray(output.traceback)) {
+              parts.push(output.traceback.join('\n'));
+            }
+          }
+        }
+      }
+      parts.push('');
+    }
+
+    return parts.join('\n');
+  } catch {
+    return content; // Malformed JSON, return raw
+  }
+}
 
 // Lazy tree-sitter instance
 let treeSitterCore: TreeSitterCore | null = null;
@@ -387,20 +566,43 @@ async function readSingleFile(
 
     // Read file as buffer first to check if binary
     const buffer = await fs.readFile(validatedPath);
+    const mimeType = getImageMimeType(validatedPath);
     const isBinary = isBinaryFile(buffer);
 
     // Handle binary files
     if (isBinary) {
+      // Handle PDF files
+      if (isPdfFile(validatedPath)) {
+        return readPdfFile(buffer, validatedPath, result, spec.pages);
+      }
+
+      // Check binary file size
       if (buffer.length > MAX_BINARY_SIZE) {
-        result.error = `Binary file exceeds maximum size (${buffer.length} bytes > ${MAX_BINARY_SIZE} bytes)`;
         result.is_binary = true;
+        if (mimeType) {
+          result.is_image = true;
+          result.mime_type = mimeType;
+          result.error = `Image file exceeds maximum size (${buffer.length} bytes > ${MAX_BINARY_SIZE} bytes). No visual content returned.`;
+        } else {
+          result.error = `Binary file exceeds maximum size (${buffer.length} bytes > ${MAX_BINARY_SIZE} bytes)`;
+        }
         if (output.include_metadata && result.metadata) {
           result.metadata.size = buffer.length;
         }
         return result;
       }
 
-      // Return base64 encoded content for binary files
+      // Handle image files (binary images like PNG, JPG)
+      if (mimeType) {
+        result.is_binary = true;
+        result.is_image = true;
+        result.mime_type = mimeType;
+        result.encoding = 'base64';
+        result.image_base64 = buffer.toString('base64');
+        return result;
+      }
+
+      // Return base64 encoded content for other binary files
       result.is_binary = true;
       result.encoding = 'base64';
       result.content = buffer.toString('base64');
@@ -410,6 +612,27 @@ async function readSingleFile(
     // Handle text files - convert buffer to UTF-8 string
     const content = buffer.toString('utf-8');
     result.encoding = 'utf-8';
+
+    // SVG is text-based but still an image
+    if (mimeType === 'image/svg+xml') {
+      result.is_image = true;
+      result.mime_type = mimeType;
+      result.encoding = 'utf-8';
+      result.image_base64 = Buffer.from(content).toString('base64');
+      result.content = content;
+      result.line_count = content.split('\n').length;
+      return result;
+    }
+
+    // Handle Jupyter notebooks
+    if (isNotebookFile(validatedPath)) {
+      const formatted = parseNotebook(content);
+      result.content = formatted;
+      result.encoding = 'utf-8';
+      result.line_count = formatted.split('\n').length;
+      return result;
+    }
+
     const allLines = content.split('\n');
     result.line_count = allLines.length;
 
@@ -583,7 +806,9 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
 
     // Normalize file specs
     const fileSpecs: FileReadSpec[] = input.files.map(f =>
-      typeof f === 'string' ? { path: f } : f
+      typeof f === 'string'
+        ? { path: f, pages: input.pages }
+        : { pages: input.pages, ...f }  // per-file pages overrides top-level
     );
 
     // Read all files in parallel
@@ -607,6 +832,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       total_lines: totalLines,
       truncated: anyTruncated,
       files_binary: results.filter(r => r.is_binary).length,
+      files_image: results.filter(r => r.is_image).length,
     };
 
     switch (output.mode) {
@@ -633,7 +859,10 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
 
       case 'verbose':
         data = {
-          files: Object.fromEntries(results.map(r => [r.path, r])),
+          files: Object.fromEntries(results.map(r => {
+            const { image_base64, ...rest } = r;
+            return [r.path, rest];
+          })),
           summary,
           tokens_used: estimateTokens(JSON.stringify(results)),
         };
@@ -653,6 +882,9 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.error) entry.error = r.error;
               if (r.encoding !== undefined) entry.encoding = r.encoding;
               if (r.is_binary !== undefined) entry.is_binary = r.is_binary;
+              if (r.is_image) entry.is_image = r.is_image;
+              if (r.mime_type) entry.mime_type = r.mime_type;
+              // Don't include image_base64 in JSON - it's in the ImageContent block
               return [r.path, entry];
             })
           ),
@@ -661,7 +893,24 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
         };
     }
 
-    return toCallToolResult(successResult(data, outputMode, getElapsed()));
+    // Check if any results contain images
+    const imageResults = results.filter(r => r.is_image && r.image_base64);
+
+    if (imageResults.length === 0) {
+      return toCallToolResult(successResult(data, outputMode, getElapsed()));
+    }
+
+    // Build mixed response with ImageContent blocks
+    const imageBlocks: ImageContent[] = imageResults.map(r => ({
+      type: 'image' as const,
+      data: r.image_base64!,
+      mimeType: r.mime_type!,
+    }));
+
+    return toMixedCallToolResult(
+      successResult(data, outputMode, getElapsed()),
+      imageBlocks
+    );
   } catch (error) {
     return toCallToolResult(errorResult((error as Error).message, outputMode, getElapsed()));
   }

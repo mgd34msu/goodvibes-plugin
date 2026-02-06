@@ -1,9 +1,6 @@
 name: precision_read
 description: |
-  Token-efficient file reading with extraction modes.
-  Read full content, outlines, symbols, or specific line ranges.
-  Supports per-file range overrides and symbol filtering.
-  Multi-language support: TypeScript, JavaScript, Python, Rust, Go (auto-detected).
+  Token-efficient file reading with extraction formats. Read full content, outlines, symbols, or specific line ranges. Supports per-file range overrides and symbol filtering. Image files (.png, .jpg, .gif, .webp, .svg, etc.) are returned as visual content blocks. PDF files support page-based reading. Jupyter notebooks (.ipynb) return structured cell output.
 inputSchema:
   type: object
   properties:
@@ -38,6 +35,9 @@ inputSchema:
                 minimum: 1
                 description: End line number
             description: Line range override
+          pages:
+            type: string
+            description: Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request.
         required: [path]
     extract:
       type: string
@@ -66,6 +66,9 @@ inputSchema:
           type: integer
           minimum: 1
       description: Default line range
+    pages:
+      type: string
+      description: Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request.
     output:
       type: object
       properties:

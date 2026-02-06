@@ -2,7 +2,7 @@
  * Utility functions for precision-engine.
  */
 
-import { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResult, TextContent, ImageContent } from '@modelcontextprotocol/sdk/types.js';
 import { OutputMode, PrecisionResult } from '../types.js';
 
 /**
@@ -21,6 +21,25 @@ export function toCallToolResult<T>(result: PrecisionResult<T>): CallToolResult 
 
   return {
     content: [content],
+    isError: !result.success,
+  };
+}
+
+/**
+ * Convert a PrecisionResult to MCP CallToolResult with additional content blocks.
+ * Used when response includes image data alongside JSON metadata.
+ */
+export function toMixedCallToolResult<T>(
+  result: PrecisionResult<T>,
+  extraContent: (TextContent | ImageContent)[]
+): CallToolResult {
+  const textBlock: TextContent = {
+    type: 'text',
+    text: JSON.stringify(result, null, 2),
+  };
+
+  return {
+    content: [textBlock, ...extraContent],
     isError: !result.success,
   };
 }

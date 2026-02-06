@@ -275,7 +275,10 @@ export const precisionReadSchema: Tool = {
   description:
     'Token-efficient file reading with extraction formats. ' +
     'Read full content, outlines, symbols, or specific line ranges. ' +
-    'Supports per-file range overrides and symbol filtering.',
+    'Supports per-file range overrides and symbol filtering. ' +
+    'Image files (.png, .jpg, .gif, .webp, .svg, etc.) are returned as visual content blocks. ' +
+    'PDF files support page-based reading. ' +
+    'Jupyter notebooks (.ipynb) return structured cell output.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -293,6 +296,7 @@ export const precisionReadSchema: Tool = {
                 end: { type: 'integer', minimum: 1 },
               },
             },
+            pages: { type: 'string', description: "Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request." },
           },
           required: ['path'],
         },
@@ -309,6 +313,7 @@ export const precisionReadSchema: Tool = {
           end: { type: 'integer', minimum: 1 },
         },
       },
+      pages: { type: 'string', description: "Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request." },
       output: {
         type: 'object',
         properties: {

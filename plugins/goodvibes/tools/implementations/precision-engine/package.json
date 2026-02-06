@@ -19,6 +19,7 @@
     "@vscode/ripgrep": "^1.17.0",
     "diff": "^8.0.3",
     "fast-glob": "^3.3.2",
+    "pdf-parse": "^2.4.5",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.22.6"
   },
