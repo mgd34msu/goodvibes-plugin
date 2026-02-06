@@ -209,6 +209,11 @@ export function getConfigValue<T = unknown>(key: string): T {
  * @param value - Value to set
  * @returns Promise that resolves when config is persisted
  */
+// Eager initialization: load config (and persist missing defaults) at module import time.
+// This ensures the config file gets populated as soon as the MCP server starts,
+// regardless of which tool is called first.
+loadConfigSync();
+
 export async function setConfigValue(key: string, value: unknown): Promise<void> {
   // Drain any pending fire-and-forget persist
   if (pendingPersist) {
