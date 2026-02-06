@@ -20,6 +20,7 @@ import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHand
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { RipgrepCore } from '../core/ripgrep.js';
+import { validateDirectoryPath } from '../utils/path-validation.js';
 
 
 // === Ripgrep Instance ===
@@ -139,7 +140,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const outputMode = parseOutputMode(args, "precision_glob");
 
   // Use base_path if provided, fall back to cwd (deprecated), or default to process.cwd()
-  const workDir = input.base_path ?? input.cwd ?? process.cwd();
+  const rawWorkDir = input.base_path ?? input.cwd ?? process.cwd();
 
   // Warn if deprecated cwd is used
   if (input.cwd && !input.base_path) {
@@ -147,6 +148,9 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   }
 
   try {
+    const workDir = (input.base_path || input.cwd)
+      ? await validateDirectoryPath(rawWorkDir, process.cwd())
+      : rawWorkDir;
     // Decode patterns from base64 if provided
     let patterns = input.patterns_base64
       ? input.patterns_base64.map(p => Buffer.from(p, 'base64').toString('utf-8'))

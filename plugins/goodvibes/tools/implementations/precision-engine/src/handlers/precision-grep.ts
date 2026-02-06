@@ -19,6 +19,7 @@ import { createErrorResult, formatMissingParamError } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { RipgrepCore, RipgrepSearchResult } from '../core/ripgrep.js';
 import { TreeSitterCore } from '../core/tree-sitter.js';
+import { validateDirectoryPath } from '../utils/path-validation.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -303,7 +304,9 @@ async function executeQuery(
   });
 
   // Map query options to RipgrepSearchOptions
-  const searchPath = query.path ? path.resolve(workDir, query.path) : workDir;
+  const searchPath = query.path
+    ? await validateDirectoryPath(query.path, workDir)
+    : workDir;
   const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
 
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {

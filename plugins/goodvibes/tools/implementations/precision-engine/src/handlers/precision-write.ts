@@ -18,6 +18,7 @@ import type { OutputMode, ValidationStep, ValidationResult } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
+import { validateFilePath } from '../utils/path-validation.js';
 
 // Simple template engines - inline to avoid extra dependencies
 function renderHandlebars(template: string, data: Record<string, unknown>): string {
@@ -103,7 +104,7 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-async function resolveContent(spec: WriteSpec): Promise<string> {
+async function resolveContent(spec: WriteSpec, workDir: string): Promise<string> {
   const sources = [spec.content, spec.content_base64, spec.content_file].filter(Boolean);
   if (sources.length > 1) {
     throw new Error("Cannot specify multiple content sources. Use only one of: content, content_base64, content_file");
@@ -117,7 +118,10 @@ async function resolveContent(spec: WriteSpec): Promise<string> {
   }
   if (spec.content_file) {
     try {
-      return await fs.readFile(spec.content_file, 'utf-8');
+      // Validate content_file path against sandbox boundary (content_file must exist)
+      const contentFilePath = path.isAbsolute(spec.content_file) ? spec.content_file : path.join(workDir, spec.content_file);
+      await validateFilePath(contentFilePath, workDir, true);
+      return await fs.readFile(contentFilePath, 'utf-8');
     } catch (e) {
       throw new Error(`Failed to read content_file '${spec.content_file}': ${(e as Error).message}`);
     }
@@ -233,11 +237,14 @@ async function writeFile(
   const filePath = path.isAbsolute(spec.path) ? spec.path : path.join(workDir, spec.path);
   const encoding = spec.encoding ?? 'utf-8';
 
+  // Validate path against sandbox boundary (mustExist=false since we may be creating new files)
+  const validatedPath = await validateFilePath(filePath, workDir, false);
+
   try {
-    const exists = await fileExists(filePath);
+    const exists = await fileExists(validatedPath);
 
     // Resolve content from spec
-    const resolvedContent = await resolveContent(spec);
+    const resolvedContent = await resolveContent(spec, workDir);
 
     // Apply template
     const content = applyTemplate(resolvedContent, options.template);
@@ -291,22 +298,22 @@ async function writeFile(
     if (!dryRun) {
       // Create parent directories
       if (options.createDirs) {
-        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.mkdir(path.dirname(validatedPath), { recursive: true });
       }
 
       // Backup existing file
       if (exists && effectiveBackup) {
-        const backupPath = generateBackupPath(filePath);
-        await fs.copyFile(filePath, backupPath);
-        rollback = { path: filePath, backup_path: backupPath, was_new: false };
+        const backupPath = generateBackupPath(validatedPath);
+        await fs.copyFile(validatedPath, backupPath);
+        rollback = { path: validatedPath, backup_path: backupPath, was_new: false };
       } else if (!exists) {
-        rollback = { path: filePath, was_new: true };
+        rollback = { path: validatedPath, was_new: true };
       } else {
-        rollback = { path: filePath, was_new: false };
+        rollback = { path: validatedPath, was_new: false };
       }
 
       // Write the file
-      await fs.writeFile(filePath, content, { encoding });
+      await fs.writeFile(validatedPath, content, { encoding });
     }
 
     return {

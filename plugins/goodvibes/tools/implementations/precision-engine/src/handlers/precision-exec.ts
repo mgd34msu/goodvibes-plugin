@@ -18,6 +18,7 @@ import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
+import { validateDirectoryPath } from '../utils/path-validation.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -116,7 +117,9 @@ async function executeCommand(
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? DEFAULT_TIMEOUT;
   const args = spec.args ?? [];
-  const cwd = spec.cwd ?? globalWorkDir;
+  const cwd = spec.cwd
+    ? await validateDirectoryPath(spec.cwd, process.cwd())
+    : globalWorkDir;
 
   // Decode cmd_base64 if provided, otherwise use cmd
   const command = spec.cmd_base64
@@ -346,7 +349,9 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const failFast = input.fail_fast ?? input.stop_on_error ?? true;
   const safeMode = input.safe_mode ?? true;
   const globalEnv = input.env;
-  const globalWorkDir = input.working_dir;
+  const globalWorkDir = input.working_dir
+    ? await validateDirectoryPath(input.working_dir, process.cwd())
+    : undefined;
   const globalTimeout = input.timeout_ms ?? DEFAULT_TIMEOUT;
 
   // Output configuration

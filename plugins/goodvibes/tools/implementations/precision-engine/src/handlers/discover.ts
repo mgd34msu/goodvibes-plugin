@@ -15,7 +15,7 @@ import { TreeSitterCore } from '../core/tree-sitter.js';
 import { AstGrepCore } from '../core/ast-grep.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { getConfigValue } from '../runtime-config.js';
+import { validateDirectoryPath } from '../utils/path-validation.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -80,49 +80,7 @@ interface QueryResult {
   error?: string;
 }
 
-/**
- * Validates and resolves base_path to ensure it's a valid accessible directory.
- * When sandbox mode is enabled (default), also enforces project root boundaries.
- * When sandbox is disabled via precision_config, allows paths outside project root.
- */
-async function validateBasePath(basePath: string, projectRoot: string): Promise<string> {
-  // Resolve to absolute path
-  const absolutePath = path.isAbsolute(basePath) 
-    ? basePath 
-    : path.resolve(projectRoot, basePath);
-  
-  // Resolve symlinks to get real path
-  let realPath: string;
-  try {
-    realPath = await fs.realpath(absolutePath);
-  } catch (e) {
-    throw new Error(`Invalid base_path: '${basePath}' does not exist or is not accessible.`);
-  }
-  
-  // Check sandbox config - if disabled, skip boundary enforcement
-  const sandboxEnabled = getConfigValue<boolean>('sandbox');
-  
-  if (sandboxEnabled !== false) {
-    // Normalize for consistent comparison
-    const normalizedReal = path.normalize(realPath);
-    const normalizedRoot = path.normalize(projectRoot);
-    
-    // Verify path is within allowed boundaries
-    // Append path.sep to prevent prefix collision (e.g., /app-secrets matching /app)
-    const rootWithSep = normalizedRoot.endsWith(path.sep) ? normalizedRoot : normalizedRoot + path.sep;
-    if (normalizedReal !== normalizedRoot && !normalizedReal.startsWith(rootWithSep)) {
-      throw new Error(`base_path '${basePath}' is outside project root. Path traversal is not allowed. Use precision_config to disable sandbox if needed.`);
-    }
-  }
-  
-  // Verify it's a directory (always enforced regardless of sandbox)
-  const stats = await fs.stat(realPath);
-  if (!stats.isDirectory()) {
-    throw new Error(`base_path '${basePath}' is not a directory.`);
-  }
-  
-  return realPath;
-}
+
 
 async function executeGrepQuery(
   query: QuerySpec,
@@ -500,7 +458,7 @@ export const handleDiscover: ToolHandler = async (args: unknown) => {
 
     // Validate and resolve base_path if provided
     const searchRoot = input.base_path
-      ? await validateBasePath(input.base_path, projectRoot)
+      ? await validateDirectoryPath(input.base_path, projectRoot)
       : projectRoot;
 
     // Execute all queries in parallel

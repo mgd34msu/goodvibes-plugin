@@ -331,3 +331,6 @@ export function parseJsonField<T>(value: T | string): T {
   }
   return value;
 }
+
+// Export path validation utilities
+export { validateDirectoryPath, validateFilePath } from './path-validation.js';

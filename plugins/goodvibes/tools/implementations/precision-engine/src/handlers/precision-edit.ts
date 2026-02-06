@@ -40,6 +40,7 @@ import { toLangEnum } from '../core/ast-grep.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
+import { validateFilePath } from '../utils/path-validation.js';
 
 const execAsync = promisify(exec);
 
@@ -955,13 +956,21 @@ async function applyEdit(
   }
 
   // Resolve find and replace values (supports regular strings, base64, and file paths)
-  const findValue = resolveStringField(edit as unknown as Record<string, unknown>, 'find', {
+  // Security: Validate find_file and replace_file paths before resolving
+  const editRecord = edit as unknown as Record<string, unknown>;
+  if (editRecord.find_file) {
+    await validateFilePath(editRecord.find_file as string, process.cwd());
+  }
+  if (editRecord.replace_file) {
+    await validateFilePath(editRecord.replace_file as string, process.cwd());
+  }
+  const findValue = resolveStringField(editRecord, 'find', {
     allowFile: true,
     basePath: process.cwd(),
     required: true,
     fieldName: 'find'
   });
-  const replaceValue = resolveStringField(edit as unknown as Record<string, unknown>, 'replace', {
+  const replaceValue = resolveStringField(editRecord, 'replace', {
     allowFile: true,
     basePath: process.cwd(),
     required: true,
@@ -1142,9 +1151,21 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     const fileContents = new Map<string, string | null>();
     const uniqueFiles = [...new Set(input.edits.map(e => path.resolve(workDir, e.path ?? e.file!)))];
 
+    // Validate all file paths against sandbox boundary and build validated path map
+    const validatedPaths = new Map<string, string>();
     for (const filePath of uniqueFiles) {
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
+        const validated = await validateFilePath(filePath, workDir);
+        validatedPaths.set(filePath, validated);
+      } catch (e) {
+        return toCallToolResult(errorResult((e as Error).message, outputMode, getElapsed()));
+      }
+    }
+
+    for (const filePath of uniqueFiles) {
+      try {
+        const validatedPath = validatedPaths.get(filePath) ?? filePath;
+        const content = await fs.readFile(validatedPath, 'utf-8');
         fileContents.set(filePath, content);
         backups.push({ path: filePath, content });
       } catch {

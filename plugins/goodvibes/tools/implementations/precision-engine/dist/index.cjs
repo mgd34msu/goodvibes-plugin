@@ -3249,7 +3249,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve6.call(this, root, ref);
+      let _sch = resolve5.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a2 = root.localRefs) === null || _a2 === void 0 ? void 0 : _a2[ref];
         const { schemaId } = this.opts;
@@ -3280,13 +3280,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve6(root, ref) {
+    function resolve5(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve6, "resolve");
+    __name(resolve5, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3880,13 +3880,13 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize2, "normalize");
-    function resolve6(baseURI, relativeURI, options) {
+    function resolve5(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse5(baseURI, schemelessOptions), parse5(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve6, "resolve");
+    __name(resolve5, "resolve");
     function resolveComponent(base, relative7, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
@@ -4113,7 +4113,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize: normalize2,
-      resolve: resolve6,
+      resolve: resolve5,
       resolveComponent,
       equal,
       serialize,
@@ -7183,12 +7183,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name2}"`);
       return f;
     };
-    function addFormats(ajv, list, fs12, exportName) {
+    function addFormats(ajv, list, fs11, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs12[f]);
+        ajv.addFormat(f, fs11[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -12307,8 +12307,8 @@ var require_utils4 = __commonJS({
     exports2.array = array2;
     var errno = require_errno();
     exports2.errno = errno;
-    var fs12 = require_fs();
-    exports2.fs = fs12;
+    var fs11 = require_fs();
+    exports2.fs = fs11;
     var path11 = require_path();
     exports2.path = path11;
     var pattern = require_pattern2();
@@ -12504,12 +12504,12 @@ var require_fs2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs12 = require("fs");
+    var fs11 = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs12.lstat,
-      stat: fs12.stat,
-      lstatSync: fs12.lstatSync,
-      statSync: fs12.statSync
+      lstat: fs11.lstat,
+      stat: fs11.stat,
+      lstatSync: fs11.lstatSync,
+      statSync: fs11.statSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -12527,7 +12527,7 @@ var require_settings = __commonJS({
   "node_modules/@nodelib/fs.stat/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var fs12 = require_fs2();
+    var fs11 = require_fs2();
     var Settings = class {
       static {
         __name(this, "Settings");
@@ -12535,7 +12535,7 @@ var require_settings = __commonJS({
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLink = this._getValue(this._options.followSymbolicLink, true);
-        this.fs = fs12.createFileSystemAdapter(this._options.fs);
+        this.fs = fs11.createFileSystemAdapter(this._options.fs);
         this.markSymbolicLink = this._getValue(this._options.markSymbolicLink, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
       }
@@ -12704,8 +12704,8 @@ var require_utils5 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.fs = void 0;
-    var fs12 = require_fs3();
-    exports2.fs = fs12;
+    var fs11 = require_fs3();
+    exports2.fs = fs11;
   }
 });
 
@@ -12910,14 +12910,14 @@ var require_fs4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs12 = require("fs");
+    var fs11 = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs12.lstat,
-      stat: fs12.stat,
-      lstatSync: fs12.lstatSync,
-      statSync: fs12.statSync,
-      readdir: fs12.readdir,
-      readdirSync: fs12.readdirSync
+      lstat: fs11.lstat,
+      stat: fs11.stat,
+      lstatSync: fs11.lstatSync,
+      statSync: fs11.statSync,
+      readdir: fs11.readdir,
+      readdirSync: fs11.readdirSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -12937,7 +12937,7 @@ var require_settings2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var path11 = require("path");
     var fsStat = require_out();
-    var fs12 = require_fs4();
+    var fs11 = require_fs4();
     var Settings = class {
       static {
         __name(this, "Settings");
@@ -12945,7 +12945,7 @@ var require_settings2 = __commonJS({
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLinks = this._getValue(this._options.followSymbolicLinks, false);
-        this.fs = fs12.createFileSystemAdapter(this._options.fs);
+        this.fs = fs11.createFileSystemAdapter(this._options.fs);
         this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path11.sep);
         this.stats = this._getValue(this._options.stats, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
@@ -13287,13 +13287,13 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push(value) {
-        var p = new Promise(function(resolve6, reject) {
+        var p = new Promise(function(resolve5, reject) {
           pushCb(value, function(err2, result) {
             if (err2) {
               reject(err2);
               return;
             }
-            resolve6(result);
+            resolve5(result);
           });
         });
         p.catch(noop);
@@ -13301,13 +13301,13 @@ var require_queue = __commonJS({
       }
       __name(push, "push");
       function unshift(value) {
-        var p = new Promise(function(resolve6, reject) {
+        var p = new Promise(function(resolve5, reject) {
           unshiftCb(value, function(err2, result) {
             if (err2) {
               reject(err2);
               return;
             }
-            resolve6(result);
+            resolve5(result);
           });
         });
         p.catch(noop);
@@ -13315,16 +13315,16 @@ var require_queue = __commonJS({
       }
       __name(unshift, "unshift");
       function drained() {
-        var p = new Promise(function(resolve6) {
+        var p = new Promise(function(resolve5) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve6();
+              resolve5();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function")
                   previousDrain();
-                resolve6();
+                resolve5();
                 queue.drain = previousDrain;
               };
             }
@@ -13849,9 +13849,9 @@ var require_stream3 = __commonJS({
         });
       }
       _getStat(filepath) {
-        return new Promise((resolve6, reject) => {
+        return new Promise((resolve5, reject) => {
           this._stat(filepath, this._fsStatSettings, (error2, stats) => {
-            return error2 === null ? resolve6(stats) : reject(error2);
+            return error2 === null ? resolve5(stats) : reject(error2);
           });
         });
       }
@@ -13878,10 +13878,10 @@ var require_async5 = __commonJS({
         this._readerStream = new stream_1.default(this._settings);
       }
       dynamic(root, options) {
-        return new Promise((resolve6, reject) => {
+        return new Promise((resolve5, reject) => {
           this._walkAsync(root, options, (error2, entries) => {
             if (error2 === null) {
-              resolve6(entries);
+              resolve5(entries);
             } else {
               reject(error2);
             }
@@ -13891,10 +13891,10 @@ var require_async5 = __commonJS({
       async static(patterns, options) {
         const entries = [];
         const stream = this._readerStream.static(patterns, options);
-        return new Promise((resolve6, reject) => {
+        return new Promise((resolve5, reject) => {
           stream.once("error", reject);
           stream.on("data", (entry) => entries.push(entry));
-          stream.once("end", () => resolve6(entries));
+          stream.once("end", () => resolve5(entries));
         });
       }
     };
@@ -14429,16 +14429,16 @@ var require_settings4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = void 0;
-    var fs12 = require("fs");
+    var fs11 = require("fs");
     var os = require("os");
     var CPU_COUNT = Math.max(os.cpus().length, 1);
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = {
-      lstat: fs12.lstat,
-      lstatSync: fs12.lstatSync,
-      stat: fs12.stat,
-      statSync: fs12.statSync,
-      readdir: fs12.readdir,
-      readdirSync: fs12.readdirSync
+      lstat: fs11.lstat,
+      lstatSync: fs11.lstatSync,
+      stat: fs11.stat,
+      statSync: fs11.statSync,
+      readdir: fs11.readdir,
+      readdirSync: fs11.readdirSync
     };
     var Settings = class {
       static {
@@ -18448,10 +18448,10 @@ var require_typescript = __commonJS({
         return (arg) => f(arg) && g(arg);
       }
       __name(and, "and");
-      function or(...fs12) {
+      function or(...fs11) {
         return (...args2) => {
           let lastResult;
-          for (const f of fs12) {
+          for (const f of fs11) {
             lastResult = f(...args2);
             if (lastResult) {
               return lastResult;
@@ -20208,7 +20208,7 @@ ${lanes.join("\n")}
       var tracing;
       var tracingEnabled;
       ((tracingEnabled2) => {
-        let fs12;
+        let fs11;
         let traceCount = 0;
         let traceFd = 0;
         let mode;
@@ -20217,9 +20217,9 @@ ${lanes.join("\n")}
         const legend = [];
         function startTracing2(tracingMode, traceDir, configFilePath) {
           Debug.assert(!tracing, "Tracing already started");
-          if (fs12 === void 0) {
+          if (fs11 === void 0) {
             try {
-              fs12 = require("fs");
+              fs11 = require("fs");
             } catch (e) {
               throw new Error(`tracing requires having fs
 (original error: ${e.message || e})`);
@@ -20230,8 +20230,8 @@ ${lanes.join("\n")}
           if (legendPath === void 0) {
             legendPath = combinePaths(traceDir, "legend.json");
           }
-          if (!fs12.existsSync(traceDir)) {
-            fs12.mkdirSync(traceDir, { recursive: true });
+          if (!fs11.existsSync(traceDir)) {
+            fs11.mkdirSync(traceDir, { recursive: true });
           }
           const countPart = mode === "build" ? `.${process.pid}-${++traceCount}` : mode === "server" ? `.${process.pid}` : ``;
           const tracePath = combinePaths(traceDir, `trace${countPart}.json`);
@@ -20241,10 +20241,10 @@ ${lanes.join("\n")}
             tracePath,
             typesPath
           });
-          traceFd = fs12.openSync(tracePath, "w");
+          traceFd = fs11.openSync(tracePath, "w");
           tracing = tracingEnabled2;
           const meta3 = { cat: "__metadata", ph: "M", ts: 1e3 * timestamp(), pid: 1, tid: 1 };
-          fs12.writeSync(
+          fs11.writeSync(
             traceFd,
             "[\n" + [{ name: "process_name", args: { name: "tsc" }, ...meta3 }, { name: "thread_name", args: { name: "Main" }, ...meta3 }, { name: "TracingStartedInBrowser", ...meta3, cat: "disabled-by-default-devtools.timeline" }].map((v) => JSON.stringify(v)).join(",\n")
           );
@@ -20254,10 +20254,10 @@ ${lanes.join("\n")}
         function stopTracing() {
           Debug.assert(tracing, "Tracing is not in progress");
           Debug.assert(!!typeCatalog.length === (mode !== "server"));
-          fs12.writeSync(traceFd, `
+          fs11.writeSync(traceFd, `
 ]
 `);
-          fs12.closeSync(traceFd);
+          fs11.closeSync(traceFd);
           tracing = void 0;
           if (typeCatalog.length) {
             dumpTypes(typeCatalog);
@@ -20337,13 +20337,13 @@ ${lanes.join("\n")}
           if (mode === "server" && phase === "checkTypes")
             return;
           mark("beginTracing");
-          fs12.writeSync(traceFd, `,
+          fs11.writeSync(traceFd, `,
 {"pid":1,"tid":1,"ph":"${eventType}","cat":"${phase}","ts":${time3},"name":"${name2}"`);
           if (extras)
-            fs12.writeSync(traceFd, `,${extras}`);
+            fs11.writeSync(traceFd, `,${extras}`);
           if (args2)
-            fs12.writeSync(traceFd, `,"args":${JSON.stringify(args2)}`);
-          fs12.writeSync(traceFd, `}`);
+            fs11.writeSync(traceFd, `,"args":${JSON.stringify(args2)}`);
+          fs11.writeSync(traceFd, `}`);
           mark("endTracing");
           measure("Tracing", "beginTracing", "endTracing");
         }
@@ -20368,9 +20368,9 @@ ${lanes.join("\n")}
           var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
           mark("beginDumpTypes");
           const typesPath = legend[legend.length - 1].typesPath;
-          const typesFd = fs12.openSync(typesPath, "w");
+          const typesFd = fs11.openSync(typesPath, "w");
           const recursionIdentityMap = /* @__PURE__ */ new Map();
-          fs12.writeSync(typesFd, "[");
+          fs11.writeSync(typesFd, "[");
           const numTypes = types.length;
           for (let i2 = 0; i2 < numTypes; i2++) {
             const type = types[i2];
@@ -20466,13 +20466,13 @@ ${lanes.join("\n")}
               flags: Debug.formatTypeFlags(type.flags).split("|"),
               display
             };
-            fs12.writeSync(typesFd, JSON.stringify(descriptor));
+            fs11.writeSync(typesFd, JSON.stringify(descriptor));
             if (i2 < numTypes - 1) {
-              fs12.writeSync(typesFd, ",\n");
+              fs11.writeSync(typesFd, ",\n");
             }
           }
-          fs12.writeSync(typesFd, "]\n");
-          fs12.closeSync(typesFd);
+          fs11.writeSync(typesFd, "]\n");
+          fs11.closeSync(typesFd);
           mark("endDumpTypes");
           measure("Dump types", "beginDumpTypes", "endDumpTypes");
         }
@@ -20481,7 +20481,7 @@ ${lanes.join("\n")}
           if (!legendPath) {
             return;
           }
-          fs12.writeFileSync(legendPath, JSON.stringify(legend));
+          fs11.writeFileSync(legendPath, JSON.stringify(legend));
         }
         __name(dumpLegend, "dumpLegend");
         tracingEnabled2.dumpLegend = dumpLegend;
@@ -146093,7 +146093,7 @@ ${lanes.join("\n")}
         }
         __name(createImportCallExpressionUMD, "createImportCallExpressionUMD");
         function createImportCallExpressionAMD(arg, containsLexicalThis) {
-          const resolve6 = factory2.createUniqueName("resolve");
+          const resolve5 = factory2.createUniqueName("resolve");
           const reject = factory2.createUniqueName("reject");
           const parameters = [
             factory2.createParameterDeclaration(
@@ -146102,7 +146102,7 @@ ${lanes.join("\n")}
               /*dotDotDotToken*/
               void 0,
               /*name*/
-              resolve6
+              resolve5
             ),
             factory2.createParameterDeclaration(
               /*modifiers*/
@@ -146119,7 +146119,7 @@ ${lanes.join("\n")}
                 factory2.createIdentifier("require"),
                 /*typeArguments*/
                 void 0,
-                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve6, reject]
+                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve5, reject]
               )
             )
           ]);
@@ -238103,8 +238103,8 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         installPackage(options) {
           this.packageInstallId++;
           const request = { kind: "installPackage", ...options, id: this.packageInstallId };
-          const promise2 = new Promise((resolve6, reject) => {
-            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve6, reject });
+          const promise2 = new Promise((resolve5, reject) => {
+            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve5, reject });
           });
           this.installer.send(request);
           return promise2;
@@ -251600,7 +251600,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve6) => setTimeout(resolve6, pollInterval));
+        await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -251617,7 +251617,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve5, reject) => {
       const earlyReject = /* @__PURE__ */ __name((error2) => {
         reject(error2);
       }, "earlyReject");
@@ -251695,7 +251695,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve6(parseResult.data);
+            resolve5(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -251956,12 +251956,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve5, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve6, interval);
+      const timeoutId = setTimeout(resolve5, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -252712,12 +252712,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve6) => {
+    return new Promise((resolve5) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve6();
+        resolve5();
       } else {
-        this._stdout.once("drain", resolve6);
+        this._stdout.once("drain", resolve5);
       }
     });
   }
@@ -253228,8 +253228,8 @@ var allSchemas = [
 ];
 
 // src/handlers/precision-write.ts
-var fs2 = __toESM(require("fs/promises"), 1);
-var path = __toESM(require("path"), 1);
+var fs3 = __toESM(require("fs/promises"), 1);
+var path3 = __toESM(require("path"), 1);
 var import_child_process = require("child_process");
 
 // src/utils/errors.ts
@@ -253277,6 +253277,234 @@ __name(formatMutualExclusivityError, "formatMutualExclusivityError");
 // src/utils/index.ts
 var import_fs = require("fs");
 var import_path = require("path");
+
+// src/utils/path-validation.ts
+var path2 = __toESM(require("path"), 1);
+var fsPromises = __toESM(require("fs/promises"), 1);
+
+// src/runtime-config.ts
+var fs2 = __toESM(require("fs"), 1);
+var path = __toESM(require("path"), 1);
+var DEFAULT_CONFIG = {
+  sandbox: false
+};
+var cachedConfig = null;
+var configForFile = null;
+var pendingPersist = null;
+async function persistConfig(configToPersist) {
+  const configPath = getConfigPath();
+  const configDir = path.dirname(configPath);
+  await fs2.promises.mkdir(configDir, { recursive: true });
+  await fs2.promises.writeFile(
+    configPath,
+    JSON.stringify(configToPersist, null, 2) + "\n",
+    "utf-8"
+  );
+  logger.debug("Persisted config to file", { path: configPath });
+}
+__name(persistConfig, "persistConfig");
+function applyConfigOverrides(fileConfig) {
+  const configForPersistence = { ...DEFAULT_CONFIG, ...fileConfig };
+  const addedKeys = Object.keys(DEFAULT_CONFIG).filter((k) => !(k in fileConfig));
+  const keysAdded = addedKeys.length > 0;
+  const config2 = { ...configForPersistence };
+  if (process.env.ALLOW_EXTERNAL_PATHS === "true") {
+    config2.sandbox = false;
+    logger.info("Sandbox disabled via ALLOW_EXTERNAL_PATHS env var");
+  }
+  cachedConfig = config2;
+  configForFile = { ...configForPersistence };
+  return { config: config2, keysAdded, configForPersistence };
+}
+__name(applyConfigOverrides, "applyConfigOverrides");
+function getConfigPath() {
+  return path.join(process.cwd(), ".goodvibes", "goodvibes.json");
+}
+__name(getConfigPath, "getConfigPath");
+function loadConfigSync() {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+  let fileConfig = {};
+  const configPath = getConfigPath();
+  let fileExists2 = false;
+  try {
+    const content = fs2.readFileSync(configPath, "utf-8");
+    fileExists2 = true;
+    fileConfig = JSON.parse(content);
+    logger.debug("Loaded config from file", { path: configPath });
+  } catch (error2) {
+    if (error2.code === "ENOENT") {
+      logger.debug("Config file not found, using defaults", { path: configPath });
+    } else {
+      logger.warn("Failed to load config file, using defaults", {
+        path: configPath,
+        error: error2 instanceof Error ? error2.message : String(error2)
+      });
+    }
+  }
+  const { config: config2, keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
+  if (fileExists2 && keysAdded) {
+    pendingPersist = persistConfig(configForPersistence).catch((err2) => {
+      logger.warn("Failed to persist missing default keys (fire-and-forget)", {
+        error: err2 instanceof Error ? err2.message : String(err2)
+      });
+    });
+  }
+  return config2;
+}
+__name(loadConfigSync, "loadConfigSync");
+async function loadConfig() {
+  let fileConfig = {};
+  const configPath = getConfigPath();
+  let fileExists2 = false;
+  try {
+    const content = await fs2.promises.readFile(configPath, "utf-8");
+    fileExists2 = true;
+    fileConfig = JSON.parse(content);
+    logger.debug("Loaded config from file", { path: configPath });
+  } catch (error2) {
+    if (error2.code === "ENOENT") {
+      logger.debug("Config file not found, using defaults", { path: configPath });
+    } else {
+      logger.warn("Failed to load config file, using defaults", {
+        path: configPath,
+        error: error2 instanceof Error ? error2.message : String(error2)
+      });
+    }
+  }
+  const { keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
+  if (fileExists2 && keysAdded) {
+    try {
+      await persistConfig(configForPersistence);
+    } catch (error2) {
+      logger.warn("Failed to persist missing default keys", {
+        path: configPath,
+        error: error2 instanceof Error ? error2.message : String(error2)
+      });
+    }
+  }
+}
+__name(loadConfig, "loadConfig");
+function getConfig() {
+  return loadConfigSync();
+}
+__name(getConfig, "getConfig");
+function getConfigValue(key) {
+  const config2 = loadConfigSync();
+  return config2[key];
+}
+__name(getConfigValue, "getConfigValue");
+loadConfigSync();
+async function setConfigValue(key, value) {
+  if (pendingPersist) {
+    await pendingPersist;
+    pendingPersist = null;
+  }
+  const configPath = getConfigPath();
+  let currentFileConfig = {};
+  try {
+    const content = await fs2.promises.readFile(configPath, "utf-8");
+    currentFileConfig = JSON.parse(content);
+  } catch (error2) {
+    if (error2.code !== "ENOENT") {
+      logger.warn("Failed to read config file for update, using cached config", {
+        path: configPath,
+        error: error2 instanceof Error ? error2.message : String(error2)
+      });
+    }
+    if (configForFile) {
+      currentFileConfig = { ...configForFile };
+    }
+  }
+  currentFileConfig[key] = value;
+  configForFile = currentFileConfig;
+  if (!cachedConfig) {
+    cachedConfig = { ...configForFile };
+  } else {
+    cachedConfig[key] = value;
+  }
+  try {
+    await persistConfig(configForFile);
+    logger.info("Updated config", { key, value, path: configPath });
+  } catch (error2) {
+    logger.error("Failed to persist config", {
+      key,
+      value,
+      path: configPath,
+      error: error2 instanceof Error ? error2.message : String(error2)
+    });
+    throw error2;
+  }
+}
+__name(setConfigValue, "setConfigValue");
+
+// src/utils/path-validation.ts
+function enforceSandboxBoundary(resolvedPath, projectRoot, originalPath) {
+  const sandboxEnabled = getConfigValue("sandbox");
+  if (sandboxEnabled === false) {
+    return;
+  }
+  const normalizedReal = path2.normalize(resolvedPath);
+  const normalizedRoot = path2.normalize(projectRoot);
+  const rootWithSep = normalizedRoot.endsWith(path2.sep) ? normalizedRoot : normalizedRoot + path2.sep;
+  if (normalizedReal !== normalizedRoot && !normalizedReal.startsWith(rootWithSep)) {
+    throw new Error(
+      `Path '${originalPath}' resolves to '${resolvedPath}' which is outside the project root. Path traversal is not allowed when sandbox is enabled. Use precision_config to disable sandbox if needed.`
+    );
+  }
+}
+__name(enforceSandboxBoundary, "enforceSandboxBoundary");
+async function validateDirectoryPath(dirPath, projectRoot) {
+  const absolutePath = path2.isAbsolute(dirPath) ? dirPath : path2.resolve(projectRoot, dirPath);
+  let realPath;
+  try {
+    realPath = await fsPromises.realpath(absolutePath);
+  } catch {
+    throw new Error(
+      `Invalid path: '${dirPath}' does not exist or is not accessible.`
+    );
+  }
+  enforceSandboxBoundary(realPath, projectRoot, dirPath);
+  const stats = await fsPromises.stat(realPath);
+  if (!stats.isDirectory()) {
+    throw new Error(`Path '${dirPath}' is not a directory.`);
+  }
+  return realPath;
+}
+__name(validateDirectoryPath, "validateDirectoryPath");
+async function validateFilePath(filePath, projectRoot, mustExist = true) {
+  const absolutePath = path2.isAbsolute(filePath) ? filePath : path2.resolve(projectRoot, filePath);
+  try {
+    const realPath = await fsPromises.realpath(absolutePath);
+    enforceSandboxBoundary(realPath, projectRoot, filePath);
+    return realPath;
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("outside the project root")) {
+      throw e;
+    }
+    const parentDir = path2.dirname(absolutePath);
+    let ancestor = parentDir;
+    while (true) {
+      try {
+        const realAncestor = await fsPromises.realpath(ancestor);
+        enforceSandboxBoundary(realAncestor, projectRoot, filePath);
+        return absolutePath;
+      } catch {
+        const parent = path2.dirname(ancestor);
+        if (parent === ancestor) {
+          throw new Error(
+            `Invalid path: no accessible ancestor directory found for '${filePath}'.`
+          );
+        }
+        ancestor = parent;
+      }
+    }
+  }
+}
+__name(validateFilePath, "validateFilePath");
+
+// src/utils/index.ts
 function toCallToolResult(result) {
   const content = {
     type: "text",
@@ -253439,14 +253667,14 @@ __name(renderEjs, "renderEjs");
 var rollbackStore = /* @__PURE__ */ new Map();
 async function fileExists(filePath) {
   try {
-    await fs2.access(filePath);
+    await fs3.access(filePath);
     return true;
   } catch {
     return false;
   }
 }
 __name(fileExists, "fileExists");
-async function resolveContent(spec) {
+async function resolveContent(spec, workDir) {
   const sources = [spec.content, spec.content_base64, spec.content_file].filter(Boolean);
   if (sources.length > 1) {
     throw new Error("Cannot specify multiple content sources. Use only one of: content, content_base64, content_file");
@@ -253460,7 +253688,9 @@ async function resolveContent(spec) {
   }
   if (spec.content_file) {
     try {
-      return await fs2.readFile(spec.content_file, "utf-8");
+      const contentFilePath = path3.isAbsolute(spec.content_file) ? spec.content_file : path3.join(workDir, spec.content_file);
+      await validateFilePath(contentFilePath, workDir, true);
+      return await fs3.readFile(contentFilePath, "utf-8");
     } catch (e) {
       throw new Error(`Failed to read content_file '${spec.content_file}': ${e.message}`);
     }
@@ -253473,7 +253703,7 @@ async function resolveContent(spec) {
 __name(resolveContent, "resolveContent");
 function generateBackupPath(filePath) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-  const ext = path.extname(filePath);
+  const ext = path3.extname(filePath);
   const base = filePath.slice(0, -ext.length || void 0);
   return `${base}.backup-${timestamp}${ext}`;
 }
@@ -253523,7 +253753,7 @@ async function runValidation(files, steps) {
         continue;
     }
     try {
-      const result = await new Promise((resolve6) => {
+      const result = await new Promise((resolve5) => {
         const proc = (0, import_child_process.spawn)(cmd, args2, { shell: true, windowsHide: true });
         let stdout = "";
         let stderr = "";
@@ -253534,10 +253764,10 @@ async function runValidation(files, steps) {
           stderr += data.toString();
         });
         proc.on("close", (code) => {
-          resolve6({ code: code ?? 1, stdout, stderr });
+          resolve5({ code: code ?? 1, stdout, stderr });
         });
         proc.on("error", (err2) => {
-          resolve6({ code: 1, stdout: "", stderr: err2.message });
+          resolve5({ code: 1, stdout: "", stderr: err2.message });
         });
       });
       if (result.code !== 0) {
@@ -253558,11 +253788,12 @@ async function runValidation(files, steps) {
 }
 __name(runValidation, "runValidation");
 async function writeFile2(spec, dryRun, workDir, options) {
-  const filePath = path.isAbsolute(spec.path) ? spec.path : path.join(workDir, spec.path);
+  const filePath = path3.isAbsolute(spec.path) ? spec.path : path3.join(workDir, spec.path);
   const encoding = spec.encoding ?? "utf-8";
+  const validatedPath = await validateFilePath(filePath, workDir, false);
   try {
-    const exists = await fileExists(filePath);
-    const resolvedContent = await resolveContent(spec);
+    const exists = await fileExists(validatedPath);
+    const resolvedContent = await resolveContent(spec, workDir);
     const content = applyTemplate(resolvedContent, options.template);
     const size = Buffer.byteLength(content, encoding);
     const preview = options.previewLines ? content.split("\n").slice(0, options.previewLines) : void 0;
@@ -253600,18 +253831,18 @@ async function writeFile2(spec, dryRun, workDir, options) {
     let rollback;
     if (!dryRun) {
       if (options.createDirs) {
-        await fs2.mkdir(path.dirname(filePath), { recursive: true });
+        await fs3.mkdir(path3.dirname(validatedPath), { recursive: true });
       }
       if (exists && effectiveBackup) {
-        const backupPath = generateBackupPath(filePath);
-        await fs2.copyFile(filePath, backupPath);
-        rollback = { path: filePath, backup_path: backupPath, was_new: false };
+        const backupPath = generateBackupPath(validatedPath);
+        await fs3.copyFile(validatedPath, backupPath);
+        rollback = { path: validatedPath, backup_path: backupPath, was_new: false };
       } else if (!exists) {
-        rollback = { path: filePath, was_new: true };
+        rollback = { path: validatedPath, was_new: true };
       } else {
-        rollback = { path: filePath, was_new: false };
+        rollback = { path: validatedPath, was_new: false };
       }
-      await fs2.writeFile(filePath, content, { encoding });
+      await fs3.writeFile(validatedPath, content, { encoding });
     }
     return {
       result: {
@@ -253670,10 +253901,10 @@ var handlePrecisionWrite = /* @__PURE__ */ __name(async (args2) => {
         for (const info2 of rollbackInfos) {
           try {
             if (info2.was_new) {
-              await fs2.unlink(info2.path);
+              await fs3.unlink(info2.path);
             } else if (info2.backup_path) {
-              await fs2.copyFile(info2.backup_path, info2.path);
-              await fs2.unlink(info2.backup_path);
+              await fs3.copyFile(info2.backup_path, info2.path);
+              await fs3.unlink(info2.backup_path);
             }
           } catch {
           }
@@ -253690,7 +253921,7 @@ var handlePrecisionWrite = /* @__PURE__ */ __name(async (args2) => {
     }
     let validation;
     if (input.validate?.after && input.validate.after.length > 0 && !dryRun) {
-      const writtenFiles = results.filter((r) => r.status === "created" || r.status === "overwritten").map((r) => path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path));
+      const writtenFiles = results.filter((r) => r.status === "created" || r.status === "overwritten").map((r) => path3.isAbsolute(r.path) ? r.path : path3.join(workDir, r.path));
       if (writtenFiles.length > 0) {
         validation = await runValidation(writtenFiles, input.validate.after);
       }
@@ -253823,7 +254054,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? DEFAULT_TIMEOUT;
   const args2 = spec.args ?? [];
-  const cwd = spec.cwd ?? globalWorkDir;
+  const cwd = spec.cwd ? await validateDirectoryPath(spec.cwd, process.cwd()) : globalWorkDir;
   const command = spec.cmd_base64 ? Buffer.from(spec.cmd_base64, "base64").toString("utf-8") : spec.cmd;
   if (!command) {
     return Promise.resolve({
@@ -253834,7 +254065,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       expectation_failures: ["Command not provided"]
     });
   }
-  return new Promise((resolve6) => {
+  return new Promise((resolve5) => {
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -253972,7 +254203,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       if (expectationFailures.length > 0) {
         result.expectation_failures = expectationFailures;
       }
-      resolve6(result);
+      resolve5(result);
     });
     proc.on("error", (err2) => {
       clearTimeout(timeoutId);
@@ -253992,7 +254223,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       if (captureStderr) {
         result.stderr = err2.message;
       }
-      resolve6(result);
+      resolve5(result);
     });
   });
 }
@@ -254006,7 +254237,7 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
   const failFast = input.fail_fast ?? input.stop_on_error ?? true;
   const safeMode = input.safe_mode ?? true;
   const globalEnv = input.env;
-  const globalWorkDir = input.working_dir;
+  const globalWorkDir = input.working_dir ? await validateDirectoryPath(input.working_dir, process.cwd()) : void 0;
   const globalTimeout = input.timeout_ms ?? DEFAULT_TIMEOUT;
   const captureStdout = input.output?.capture_stdout ?? true;
   const captureStderr = input.output?.capture_stderr ?? true;
@@ -254513,8 +254744,8 @@ var handlePrecisionFetch = /* @__PURE__ */ __name(async (args2) => {
 }, "handlePrecisionFetch");
 
 // src/handlers/precision-grep.ts
-var fs4 = __toESM(require("fs/promises"), 1);
-var path3 = __toESM(require("path"), 1);
+var fs5 = __toESM(require("fs/promises"), 1);
+var path5 = __toESM(require("path"), 1);
 
 // src/core/ripgrep.ts
 var import_child_process3 = require("child_process");
@@ -254615,7 +254846,7 @@ var RipgrepCore = class {
    * Execute ripgrep binary and return output.
    */
   executeRipgrep(args2, timeoutMs) {
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve5, reject) => {
       const process4 = (0, import_child_process3.spawn)(import_ripgrep.rgPath, args2);
       const timeout = timeoutMs ?? 3e4;
       const timeoutId = setTimeout(() => {
@@ -254639,7 +254870,7 @@ var RipgrepCore = class {
         if (code !== null && code > 1) {
           reject(new Error(`Ripgrep exited with code ${code}: ${stderr}`));
         } else {
-          resolve6(stdout);
+          resolve5(stdout);
         }
       });
     });
@@ -254754,8 +254985,8 @@ var RipgrepCore = class {
 
 // src/core/tree-sitter.ts
 var import_web_tree_sitter = __toESM(require_tree_sitter(), 1);
-var fs3 = __toESM(require("fs/promises"), 1);
-var path2 = __toESM(require("path"), 1);
+var fs4 = __toESM(require("fs/promises"), 1);
+var path4 = __toESM(require("path"), 1);
 var import_fast_glob = __toESM(require_out4(), 1);
 var LANGUAGE_EXTENSIONS = {
   javascript: [".js", ".jsx", ".mjs", ".cjs"],
@@ -254765,7 +254996,7 @@ var LANGUAGE_EXTENSIONS = {
   go: [".go"]
 };
 function getLanguageNameForFile(filePath) {
-  const ext = path2.extname(filePath);
+  const ext = path4.extname(filePath);
   for (const [name2, exts] of Object.entries(LANGUAGE_EXTENSIONS)) {
     if (exts.includes(ext)) {
       return name2;
@@ -254922,23 +255153,23 @@ async function findWasmBasePath() {
   const moduleDir = getModuleDir();
   const possiblePaths = [
     // When bundled: dist/wasm (wasm is sibling to index.cjs)
-    path2.join(moduleDir, "wasm"),
+    path4.join(moduleDir, "wasm"),
     // When running from source: look for dist/wasm
-    path2.join(moduleDir, "../wasm"),
-    path2.join(moduleDir, "../../dist/wasm"),
-    path2.join(moduleDir, "../../../dist/wasm"),
+    path4.join(moduleDir, "../wasm"),
+    path4.join(moduleDir, "../../dist/wasm"),
+    path4.join(moduleDir, "../../../dist/wasm"),
     // From cwd
-    path2.join(process.cwd(), "dist/wasm"),
-    path2.join(process.cwd(), "wasm"),
+    path4.join(process.cwd(), "dist/wasm"),
+    path4.join(process.cwd(), "wasm"),
     // Node modules fallback
-    path2.join(moduleDir, "../../node_modules/tree-sitter-wasms/out"),
-    path2.join(moduleDir, "../../../node_modules/tree-sitter-wasms/out"),
-    path2.join(process.cwd(), "node_modules/tree-sitter-wasms/out")
+    path4.join(moduleDir, "../../node_modules/tree-sitter-wasms/out"),
+    path4.join(moduleDir, "../../../node_modules/tree-sitter-wasms/out"),
+    path4.join(process.cwd(), "node_modules/tree-sitter-wasms/out")
   ];
   for (const p of possiblePaths) {
     try {
-      const testFile = path2.join(p, "tree-sitter-typescript.wasm");
-      await fs3.access(testFile);
+      const testFile = path4.join(p, "tree-sitter-typescript.wasm");
+      await fs4.access(testFile);
       wasmBasePath = p;
       return p;
     } catch {
@@ -254981,7 +255212,7 @@ var TreeSitterCore = class {
     }
     try {
       const basePath = await findWasmBasePath();
-      const wasmPath = path2.join(basePath, `tree-sitter-${langName}.wasm`);
+      const wasmPath = path4.join(basePath, `tree-sitter-${langName}.wasm`);
       const lang = await import_web_tree_sitter.default.Language.load(wasmPath);
       this.languages.set(langName, lang);
       return lang;
@@ -255107,12 +255338,12 @@ var TreeSitterCore = class {
     const files = allFiles.slice(0, maxFiles);
     for (const file2 of files) {
       try {
-        const content = await fs3.readFile(file2, "utf-8");
+        const content = await fs4.readFile(file2, "utf-8");
         const tree = await this.parse(content, file2);
         const rootNode = tree.rootNode;
         let skipFile = false;
         if (definedIn) {
-          const relativePath = path2.relative(basePath, file2);
+          const relativePath = path4.relative(basePath, file2);
           if (relativePath.replace(/\\/g, "/") === definedIn.replace(/\\/g, "/")) {
             skipFile = true;
           }
@@ -255123,7 +255354,7 @@ var TreeSitterCore = class {
               const pos = toPosition(node.startPosition);
               const lines = content.split("\n");
               references.push({
-                file: path2.relative(basePath, file2),
+                file: path4.relative(basePath, file2),
                 line: pos.line,
                 column: pos.column,
                 context: lines[pos.line - 1]?.trim()
@@ -255157,7 +255388,7 @@ var TreeSitterCore = class {
     const files = allFiles.slice(0, maxFiles);
     for (const file2 of files) {
       try {
-        const content = await fs3.readFile(file2, "utf-8");
+        const content = await fs4.readFile(file2, "utf-8");
         const tree = await this.parse(content, file2);
         const symbols = this.getSymbols(tree, file2);
         const match = symbols.find((s) => s.name === symbol2);
@@ -255238,7 +255469,7 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, 
       truncated = true;
       break;
     }
-    const relativePath = path3.relative(workDir, match.file);
+    const relativePath = path5.relative(workDir, match.file);
     let fileResult = fileMap.get(relativePath);
     if (!fileResult) {
       fileResult = {
@@ -255270,7 +255501,7 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, 
     if (output.mode === "context") {
       if (output.expand_to === "function" || output.expand_to === "class") {
         try {
-          const fileContent = await fs4.readFile(path3.join(workDir, relativePath), "utf-8");
+          const fileContent = await fs5.readFile(path5.join(workDir, relativePath), "utf-8");
           const tree = await treeSitterCore.parse(fileContent, relativePath);
           const range = output.expand_to === "function" ? treeSitterCore.getEnclosingFunction(tree, match.line) : treeSitterCore.getEnclosingClass(tree, match.line);
           if (range) {
@@ -255381,7 +255612,7 @@ async function executeQuery(query, output, workDir) {
     required: true,
     fieldName: "pattern"
   });
-  const searchPath = query.path ? path3.resolve(workDir, query.path) : workDir;
+  const searchPath = query.path ? await validateDirectoryPath(query.path, workDir) : workDir;
   const excludePatterns = [...DEFAULT_EXCLUDES, ...query.exclude ?? []];
   const ripgrepOptions = {
     pattern: patternStr,
@@ -255471,8 +255702,8 @@ var handlePrecisionGrep = /* @__PURE__ */ __name(async (args2) => {
 
 // src/handlers/precision-glob.ts
 var import_fast_glob2 = __toESM(require_out4(), 1);
-var fs5 = __toESM(require("fs/promises"), 1);
-var path4 = __toESM(require("path"), 1);
+var fs6 = __toESM(require("fs/promises"), 1);
+var path6 = __toESM(require("path"), 1);
 var ripgrepCore2 = new RipgrepCore();
 function estimateTokens3(str) {
   return Math.ceil(str.length / 4);
@@ -255489,7 +255720,7 @@ async function listFilesWithRipgrep(basePath, patterns, exclude, timeoutMs) {
 __name(listFilesWithRipgrep, "listFilesWithRipgrep");
 async function getFilePreview(filePath, lines) {
   try {
-    const content = await fs5.readFile(filePath, "utf-8");
+    const content = await fs6.readFile(filePath, "utf-8");
     return content.split("\n").slice(0, lines);
   } catch {
     return [];
@@ -255517,11 +255748,12 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
   const rawInput = args2;
   const input = { ...rawInput, patterns: parseJsonField(rawInput.patterns) };
   const outputMode = parseOutputMode(args2, "precision_glob");
-  const workDir = input.base_path ?? input.cwd ?? process.cwd();
+  const rawWorkDir = input.base_path ?? input.cwd ?? process.cwd();
   if (input.cwd && !input.base_path) {
     console.warn('[precision_glob] DEPRECATION WARNING: Parameter "cwd" is deprecated. Use "base_path" instead.');
   }
   try {
+    const workDir = input.base_path || input.cwd ? await validateDirectoryPath(rawWorkDir, process.cwd()) : rawWorkDir;
     let patterns = input.patterns_base64 ? input.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : input.patterns;
     if ((!patterns || patterns.length === 0) && input.preset) {
       patterns = GLOB_PRESETS[input.preset];
@@ -255590,7 +255822,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
     for (const file2 of files) {
       if (!file2.stats) {
         try {
-          file2.stats = await fs5.stat(file2.path);
+          file2.stats = await fs6.stat(file2.path);
         } catch {
           files = files.filter((f) => f !== file2);
         }
@@ -255623,9 +255855,9 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
         void 0,
         3e4
       );
-      const matchingSet = new Set(matchingFiles.map((f) => path4.resolve(workDir, f)));
+      const matchingSet = new Set(matchingFiles.map((f) => path6.resolve(workDir, f)));
       files = files.filter((f) => {
-        const normalizedPath = path4.resolve(workDir, f.path);
+        const normalizedPath = path6.resolve(workDir, f.path);
         return matchingSet.has(normalizedPath);
       });
     }
@@ -255654,7 +255886,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
     for (const file2 of files) {
       if (totalTokens >= maxTokens)
         break;
-      const relativePath = path4.relative(workDir, file2.path);
+      const relativePath = path6.relative(workDir, file2.path);
       const result = { path: relativePath };
       totalSize += file2.stats?.size ?? 0;
       if (output.mode === "with_stats" || output.mode === "with_preview") {
@@ -255723,8 +255955,8 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
 
 // src/handlers/precision-symbols.ts
 var import_fast_glob3 = __toESM(require_out4(), 1);
-var fs6 = __toESM(require("fs/promises"), 1);
-var path5 = __toESM(require("path"), 1);
+var fs7 = __toESM(require("fs/promises"), 1);
+var path7 = __toESM(require("path"), 1);
 var ts = __toESM(require_typescript(), 1);
 
 // src/core/languages.ts
@@ -255804,13 +256036,13 @@ function getJsDocComment(node, sourceFile) {
 }
 __name(getJsDocComment, "getJsDocComment");
 async function processFile(filePath, workDir, options) {
-  const absolutePath = path5.isAbsolute(filePath) ? filePath : path5.join(workDir, filePath);
-  const relativePath = path5.relative(workDir, absolutePath);
+  const absolutePath = path7.isAbsolute(filePath) ? filePath : path7.join(workDir, filePath);
+  const relativePath = path7.relative(workDir, absolutePath);
   try {
     if (!isLanguageSupported(absolutePath)) {
       return [];
     }
-    const content = await fs6.readFile(absolutePath, "utf-8");
+    const content = await fs7.readFile(absolutePath, "utf-8");
     const tree = await treeSitterCore2.parse(content, absolutePath);
     const tsSymbols = treeSitterCore2.getSymbols(tree, absolutePath, options.kinds);
     const symbols = [];
@@ -255892,7 +256124,7 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
     const includeFull = input.output.mode === "full";
     let files;
     if (input.mode === "document") {
-      files = input.files.map((f) => path5.isAbsolute(f) ? f : path5.join(workDir, f));
+      files = input.files.map((f) => path7.isAbsolute(f) ? f : path7.join(workDir, f));
     } else {
       const patterns = getGlobPatterns(input.language);
       files = await (0, import_fast_glob3.default)(patterns, {
@@ -256003,7 +256235,7 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
 // src/core/ast-grep.ts
 var import_napi = require("@ast-grep/napi");
 var import_fast_glob4 = __toESM(require_out4(), 1);
-var fs7 = __toESM(require("fs/promises"), 1);
+var fs8 = __toESM(require("fs/promises"), 1);
 
 // node_modules/diff/libesm/diff/base.js
 var Diff = class {
@@ -256450,7 +256682,7 @@ function splitLines(text) {
 __name(splitLines, "splitLines");
 
 // src/core/ast-grep.ts
-var path6 = __toESM(require("path"), 1);
+var path8 = __toESM(require("path"), 1);
 var LANGUAGE_MAP = {
   ".js": "javascript",
   ".jsx": "javascript",
@@ -256483,7 +256715,7 @@ function detectLanguage2(filePath) {
   const detected = detectLanguage(filePath);
   if (detected)
     return detected;
-  const ext = path6.extname(filePath).toLowerCase();
+  const ext = path8.extname(filePath).toLowerCase();
   return LANGUAGE_MAP[ext] || "javascript";
 }
 __name(detectLanguage2, "detectLanguage");
@@ -256532,7 +256764,7 @@ var AstGrepCore = class {
       maxFiles = 1e3
     } = options;
     const excludePatterns = [...DEFAULT_EXCLUDES, ...exclude];
-    const absolutePath = path6.resolve(searchPath);
+    const absolutePath = path8.resolve(searchPath);
     const files = await (0, import_fast_glob4.default)(glob, {
       cwd: absolutePath,
       ignore: excludePatterns,
@@ -256547,7 +256779,7 @@ var AstGrepCore = class {
         break;
       filesProcessed++;
       try {
-        const content = await fs7.readFile(filePath, "utf-8");
+        const content = await fs8.readFile(filePath, "utf-8");
         const lang = language || detectLanguage2(filePath);
         const langEnum = toLangEnum(lang);
         const root = (0, import_napi.parse)(langEnum, content);
@@ -256560,7 +256792,7 @@ var AstGrepCore = class {
           const matchText = match.text();
           const captures = {};
           allMatches.push({
-            file: path6.relative(absolutePath, filePath),
+            file: path8.relative(absolutePath, filePath),
             line: range.start.line + 1,
             // Convert 0-indexed to 1-indexed
             column: range.start.column + 1,
@@ -256623,7 +256855,7 @@ var AstGrepCore = class {
       dryRun = false
     } = options;
     const excludePatterns = [...DEFAULT_EXCLUDES, ...exclude];
-    const absolutePath = path6.resolve(searchPath);
+    const absolutePath = path8.resolve(searchPath);
     const files = await (0, import_fast_glob4.default)(glob, {
       cwd: absolutePath,
       ignore: excludePatterns,
@@ -256633,7 +256865,7 @@ var AstGrepCore = class {
     const results = [];
     for (const filePath of files) {
       try {
-        const originalContent = await fs7.readFile(filePath, "utf-8");
+        const originalContent = await fs8.readFile(filePath, "utf-8");
         const lang = language || detectLanguage2(filePath);
         const langEnum = toLangEnum(lang);
         const root = (0, import_napi.parse)(langEnum, originalContent);
@@ -256656,10 +256888,10 @@ var AstGrepCore = class {
           modifiedContent
         );
         if (!dryRun && modifiedContent !== originalContent) {
-          await fs7.writeFile(filePath, modifiedContent, "utf-8");
+          await fs8.writeFile(filePath, modifiedContent, "utf-8");
         }
         results.push({
-          file: path6.relative(absolutePath, filePath),
+          file: path8.relative(absolutePath, filePath),
           diff
         });
       } catch (error2) {
@@ -256685,152 +256917,6 @@ function generateUnifiedDiff(filePath, original, modified) {
 __name(generateUnifiedDiff, "generateUnifiedDiff");
 
 // src/handlers/discover.ts
-var path8 = __toESM(require("path"), 1);
-var fs9 = __toESM(require("fs/promises"), 1);
-
-// src/runtime-config.ts
-var fs8 = __toESM(require("fs"), 1);
-var path7 = __toESM(require("path"), 1);
-var DEFAULT_CONFIG = {
-  sandbox: false
-};
-var cachedConfig = null;
-var configForFile = null;
-var pendingPersist = null;
-async function persistConfig(configToPersist) {
-  const configPath = getConfigPath();
-  const configDir = path7.dirname(configPath);
-  await fs8.promises.mkdir(configDir, { recursive: true });
-  await fs8.promises.writeFile(
-    configPath,
-    JSON.stringify(configToPersist, null, 2) + "\n",
-    "utf-8"
-  );
-  logger.debug("Persisted config to file", { path: configPath });
-}
-__name(persistConfig, "persistConfig");
-function applyConfigOverrides(fileConfig) {
-  const configForPersistence = { ...DEFAULT_CONFIG, ...fileConfig };
-  const addedKeys = Object.keys(DEFAULT_CONFIG).filter((k) => !(k in fileConfig));
-  const keysAdded = addedKeys.length > 0;
-  const config2 = { ...configForPersistence };
-  if (process.env.ALLOW_EXTERNAL_PATHS === "true") {
-    config2.sandbox = false;
-    logger.info("Sandbox disabled via ALLOW_EXTERNAL_PATHS env var");
-  }
-  cachedConfig = config2;
-  configForFile = { ...configForPersistence };
-  return { config: config2, keysAdded, configForPersistence };
-}
-__name(applyConfigOverrides, "applyConfigOverrides");
-function getConfigPath() {
-  return path7.join(process.cwd(), ".goodvibes", "goodvibes.json");
-}
-__name(getConfigPath, "getConfigPath");
-function loadConfigSync() {
-  if (cachedConfig) {
-    return cachedConfig;
-  }
-  let fileConfig = {};
-  const configPath = getConfigPath();
-  let fileExists2 = false;
-  try {
-    const content = fs8.readFileSync(configPath, "utf-8");
-    fileExists2 = true;
-    fileConfig = JSON.parse(content);
-    logger.debug("Loaded config from file", { path: configPath });
-  } catch (error2) {
-    if (error2.code === "ENOENT") {
-      logger.debug("Config file not found, using defaults", { path: configPath });
-    } else {
-      logger.warn("Failed to load config file, using defaults", {
-        path: configPath,
-        error: error2 instanceof Error ? error2.message : String(error2)
-      });
-    }
-  }
-  const { config: config2, keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
-  if (fileExists2 && keysAdded) {
-    pendingPersist = persistConfig(configForPersistence).catch((err2) => {
-      logger.warn("Failed to persist missing default keys (fire-and-forget)", {
-        error: err2 instanceof Error ? err2.message : String(err2)
-      });
-    });
-  }
-  return config2;
-}
-__name(loadConfigSync, "loadConfigSync");
-async function loadConfig() {
-  let fileConfig = {};
-  const configPath = getConfigPath();
-  let fileExists2 = false;
-  try {
-    const content = await fs8.promises.readFile(configPath, "utf-8");
-    fileExists2 = true;
-    fileConfig = JSON.parse(content);
-    logger.debug("Loaded config from file", { path: configPath });
-  } catch (error2) {
-    if (error2.code === "ENOENT") {
-      logger.debug("Config file not found, using defaults", { path: configPath });
-    } else {
-      logger.warn("Failed to load config file, using defaults", {
-        path: configPath,
-        error: error2 instanceof Error ? error2.message : String(error2)
-      });
-    }
-  }
-  const { keysAdded, configForPersistence } = applyConfigOverrides(fileConfig);
-  if (fileExists2 && keysAdded) {
-    try {
-      await persistConfig(configForPersistence);
-    } catch (error2) {
-      logger.warn("Failed to persist missing default keys", {
-        path: configPath,
-        error: error2 instanceof Error ? error2.message : String(error2)
-      });
-    }
-  }
-}
-__name(loadConfig, "loadConfig");
-function getConfig() {
-  return loadConfigSync();
-}
-__name(getConfig, "getConfig");
-function getConfigValue(key) {
-  const config2 = loadConfigSync();
-  return config2[key];
-}
-__name(getConfigValue, "getConfigValue");
-loadConfigSync();
-async function setConfigValue(key, value) {
-  if (pendingPersist) {
-    await pendingPersist;
-    pendingPersist = null;
-  }
-  if (!cachedConfig) {
-    await loadConfig();
-  }
-  if (!cachedConfig || !configForFile) {
-    throw new Error("Failed to initialize configuration");
-  }
-  cachedConfig[key] = value;
-  configForFile[key] = value;
-  try {
-    await persistConfig(configForFile);
-    logger.info("Updated config", { key, value, path: getConfigPath() });
-  } catch (error2) {
-    logger.error("Failed to persist config", {
-      key,
-      value,
-      path: getConfigPath(),
-      error: error2 instanceof Error ? error2.message : String(error2)
-    });
-    throw error2;
-  }
-}
-__name(setConfigValue, "setConfigValue");
-
-// src/handlers/discover.ts
 var astGrepInstance = null;
 function getAstGrep() {
   if (!astGrepInstance)
@@ -256838,30 +256924,6 @@ function getAstGrep() {
   return astGrepInstance;
 }
 __name(getAstGrep, "getAstGrep");
-async function validateBasePath(basePath, projectRoot) {
-  const absolutePath = path8.isAbsolute(basePath) ? basePath : path8.resolve(projectRoot, basePath);
-  let realPath;
-  try {
-    realPath = await fs9.realpath(absolutePath);
-  } catch (e) {
-    throw new Error(`Invalid base_path: '${basePath}' does not exist or is not accessible.`);
-  }
-  const sandboxEnabled = getConfigValue("sandbox");
-  if (sandboxEnabled !== false) {
-    const normalizedReal = path8.normalize(realPath);
-    const normalizedRoot = path8.normalize(projectRoot);
-    const rootWithSep = normalizedRoot.endsWith(path8.sep) ? normalizedRoot : normalizedRoot + path8.sep;
-    if (normalizedReal !== normalizedRoot && !normalizedReal.startsWith(rootWithSep)) {
-      throw new Error(`base_path '${basePath}' is outside project root. Path traversal is not allowed. Use precision_config to disable sandbox if needed.`);
-    }
-  }
-  const stats = await fs9.stat(realPath);
-  if (!stats.isDirectory()) {
-    throw new Error(`base_path '${basePath}' is not a directory.`);
-  }
-  return realPath;
-}
-__name(validateBasePath, "validateBasePath");
 async function executeGrepQuery(query, outputMode, searchRoot) {
   let patternValue;
   try {
@@ -257154,7 +257216,7 @@ var handleDiscover = /* @__PURE__ */ __name(async (args2) => {
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
       return toCallToolResult(createErrorResult(formatMissingParamError("discover", "queries", "array of query objects"), { output_mode: "standard", execution_ms: getElapsed() }));
     }
-    const searchRoot = input.base_path ? await validateBasePath(input.base_path, projectRoot) : projectRoot;
+    const searchRoot = input.base_path ? await validateDirectoryPath(input.base_path, projectRoot) : projectRoot;
     const queryPromises = input.queries.map(async (query) => {
       const result = await executeQuery2(query, outputMode, searchRoot);
       return { id: query.id, result };
@@ -257184,7 +257246,7 @@ var handleDiscover = /* @__PURE__ */ __name(async (args2) => {
 }, "handleDiscover");
 
 // src/handlers/precision-read.ts
-var fs10 = __toESM(require("fs/promises"), 1);
+var fs9 = __toESM(require("fs/promises"), 1);
 var path9 = __toESM(require("path"), 1);
 var ts2 = __toESM(require_typescript(), 1);
 var MAX_BINARY_SIZE = 5 * 1024 * 1024;
@@ -257397,8 +257459,15 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
     path: relativePath,
     exists: false
   };
+  let validatedPath;
   try {
-    const stats = await fs10.stat(filePath);
+    validatedPath = await validateFilePath(filePath, workDir);
+  } catch (e) {
+    result.error = e.message;
+    return result;
+  }
+  try {
+    const stats = await fs9.stat(validatedPath);
     result.exists = true;
     if (output.include_metadata) {
       result.metadata = {
@@ -257407,7 +257476,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         created: stats.birthtime?.toISOString()
       };
     }
-    const buffer = await fs10.readFile(filePath);
+    const buffer = await fs9.readFile(validatedPath);
     const isBinary = isBinaryFile(buffer);
     if (isBinary) {
       if (buffer.length > MAX_BINARY_SIZE) {
@@ -257654,7 +257723,7 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
 }, "handlePrecisionRead");
 
 // src/handlers/precision-edit.ts
-var fs11 = __toESM(require("fs/promises"), 1);
+var fs10 = __toESM(require("fs/promises"), 1);
 var path10 = __toESM(require("path"), 1);
 var import_child_process4 = require("child_process");
 var import_util6 = require("util");
@@ -258199,13 +258268,20 @@ async function applyEdit(filePath, content, edit, matchConfig) {
   if (content === null) {
     return { newContent: "", status: "not_found", editsApplied: 0, error: "File does not exist" };
   }
-  const findValue = resolveStringField(edit, "find", {
+  const editRecord = edit;
+  if (editRecord.find_file) {
+    await validateFilePath(editRecord.find_file, process.cwd());
+  }
+  if (editRecord.replace_file) {
+    await validateFilePath(editRecord.replace_file, process.cwd());
+  }
+  const findValue = resolveStringField(editRecord, "find", {
     allowFile: true,
     basePath: process.cwd(),
     required: true,
     fieldName: "find"
   });
-  const replaceValue = resolveStringField(edit, "replace", {
+  const replaceValue = resolveStringField(editRecord, "replace", {
     allowFile: true,
     basePath: process.cwd(),
     required: true,
@@ -258323,9 +258399,19 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
     const backups = [];
     const fileContents = /* @__PURE__ */ new Map();
     const uniqueFiles = [...new Set(input.edits.map((e) => path10.resolve(workDir, e.path ?? e.file)))];
+    const validatedPaths = /* @__PURE__ */ new Map();
     for (const filePath of uniqueFiles) {
       try {
-        const content = await fs11.readFile(filePath, "utf-8");
+        const validated = await validateFilePath(filePath, workDir);
+        validatedPaths.set(filePath, validated);
+      } catch (e) {
+        return toCallToolResult(errorResult(e.message, outputMode, getElapsed()));
+      }
+    }
+    for (const filePath of uniqueFiles) {
+      try {
+        const validatedPath = validatedPaths.get(filePath) ?? filePath;
+        const content = await fs10.readFile(validatedPath, "utf-8");
         fileContents.set(filePath, content);
         backups.push({ path: filePath, content });
       } catch {
@@ -258401,8 +258487,8 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
     }
     if (!dryRun) {
       for (const [filePath, content] of newContents) {
-        await fs11.mkdir(path10.dirname(filePath), { recursive: true });
-        await fs11.writeFile(filePath, content, "utf-8");
+        await fs10.mkdir(path10.dirname(filePath), { recursive: true });
+        await fs10.writeFile(filePath, content, "utf-8");
       }
     }
     const afterValidation = [];
@@ -258414,10 +258500,10 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
           if (!dryRun) {
             for (const backup of backups) {
               if (backup.content === null) {
-                await fs11.unlink(backup.path).catch(() => {
+                await fs10.unlink(backup.path).catch(() => {
                 });
               } else {
-                await fs11.writeFile(backup.path, backup.content, "utf-8");
+                await fs10.writeFile(backup.path, backup.content, "utf-8");
               }
             }
           }

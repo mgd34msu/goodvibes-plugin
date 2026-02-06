@@ -20,6 +20,7 @@ import { parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
 import { isLanguageSupported } from '../core/languages.js';
+import { validateFilePath } from '../utils/path-validation.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -362,9 +363,18 @@ async function readSingleFile(
     exists: false,
   };
 
+  // Validate path against sandbox boundary
+  let validatedPath: string;
+  try {
+    validatedPath = await validateFilePath(filePath, workDir);
+  } catch (e) {
+    result.error = (e as Error).message;
+    return result;
+  }
+
   try {
     // Check if file exists and get metadata
-    const stats = await fs.stat(filePath);
+    const stats = await fs.stat(validatedPath);
     result.exists = true;
 
     if (output.include_metadata) {
@@ -376,7 +386,7 @@ async function readSingleFile(
     }
 
     // Read file as buffer first to check if binary
-    const buffer = await fs.readFile(filePath);
+    const buffer = await fs.readFile(validatedPath);
     const isBinary = isBinaryFile(buffer);
 
     // Handle binary files
