@@ -11,7 +11,7 @@ import { logger } from './logging.js';
  * Configuration schema for precision-engine.
  */
 export interface PrecisionEngineConfig {
-  /** Path boundary enforcement (default: true) */
+  /** Path boundary enforcement (default: false) */
   sandbox: boolean;
   /** Extensible for future config */
   [key: string]: unknown;
@@ -21,7 +21,7 @@ export interface PrecisionEngineConfig {
  * Default configuration values.
  */
 const DEFAULT_CONFIG: PrecisionEngineConfig = {
-  sandbox: true,
+  sandbox: false,
 };
 
 /**
@@ -52,8 +52,7 @@ function applyConfigOverrides(fileConfig: Partial<PrecisionEngineConfig>): Preci
  * Get the config file path.
  */
 function getConfigPath(): string {
-  const pluginRoot = process.env.PLUGIN_ROOT || process.cwd();
-  return path.join(pluginRoot, 'config', 'precision-engine.json');
+  return path.join(process.cwd(), '.goodvibes', 'goodvibes.json');
 }
 
 /**

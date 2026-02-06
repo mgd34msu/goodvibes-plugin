@@ -5,7 +5,7 @@ argument-hint: [true|false]
 
 # Precision Engine Sandbox Control
 
-Toggle path boundary enforcement for precision-engine tools. When sandbox is enabled (default), tools like `discover`, `precision_glob`, and `precision_grep` are restricted to the project root directory. When disabled, they can access any path on the filesystem.
+Toggle path boundary enforcement for precision-engine tools. When sandbox is disabled (default), tools can access any path on the filesystem. When enabled, tools like `discover`, `precision_glob`, and `precision_grep` are restricted to the project root directory.
 
 ## Usage
 
@@ -29,10 +29,10 @@ If $ARGUMENTS is empty or not provided:
 ```
 Precision Engine Sandbox: {ENABLED|DISABLED}
 
-When enabled (default), precision-engine tools are restricted to the project root.
-When disabled, tools can read/write/search any accessible path on the filesystem.
+When disabled (default), precision-engine tools can access any path on the filesystem.
+When enabled, tools are restricted to the project root.
 
-Toggle with: /goodvibes:sandbox false
+Toggle with: /goodvibes:sandbox true
 ```
 
 ### `false` argument (disable sandbox)
@@ -44,7 +44,7 @@ Toggle with: /goodvibes:sandbox false
 Precision Engine Sandbox: DISABLED
 
 Tools can now access paths outside the project root.
-This setting persists for the current session and is saved to config.
+This setting is saved to .goodvibes/goodvibes.json and persists across sessions.
 
 Re-enable with: /goodvibes:sandbox true
 ```
