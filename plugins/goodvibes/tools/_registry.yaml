@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-02-06T01:59:17.592Z'
+generated: '2026-02-06T03:17:20.192Z'
 total: 75
 servers:
   - name: precision-engine
@@ -34,7 +34,9 @@ servers:
         path: precision-engine/precision-read.yaml
         description: >-
           Token-efficient file reading with extraction formats. ' + 'Read full content, outlines, symbols, or specific
-          line ranges. ' + 'Supports per-file range overrides and symbol filtering.
+          line ranges. ' + 'Supports per-file range overrides and symbol filtering. ' + 'Image files (.png, .jpg, .gif,
+          .webp, .svg, etc.) are returned as visual content blocks. ' + 'PDF files support page-based reading. ' +
+          'Jupyter notebooks (.ipynb) return structured cell output.
       - name: precision_glob
         path: precision-engine/precision-glob.yaml
         description: >-
@@ -591,10 +593,35 @@ search_index:
       - overrides
       - symbol
       - filtering
+      - image
+      - files
+      - png
+      - jpg
+      - gif
+      - webp
+      - svg
+      - etc
+      - are
+      - returned
+      - visual
+      - blocks
+      - pdf
+      - support
+      - page
+      - based
+      - jupyter
+      - notebooks
+      - ipynb
+      - return
+      - structured
+      - cell
+      - output
     path: precision-engine/precision-read.yaml
     description: >-
       Token-efficient file reading with extraction formats. ' + 'Read full content, outlines, symbols, or specific line
-      ranges. ' + 'Supports per-file range overrides and symbol filtering.
+      ranges. ' + 'Supports per-file range overrides and symbol filtering. ' + 'Image files (.png, .jpg, .gif, .webp,
+      .svg, etc.) are returned as visual content blocks. ' + 'PDF files support page-based reading. ' + 'Jupyter
+      notebooks (.ipynb) return structured cell output.
     server: precision-engine
   - name: precision_glob
     keywords:
