@@ -33,9 +33,9 @@ Precision tools fix this. Every tool lets the AI request exactly the amount of i
 - **Need specific lines?** Read a range instead of the whole document
 - **Need to check if a pattern exists?** `precision_grep` with `count_only` tells you how many matches without returning any content
 
-This adds up fast. A `count_only` operation averages ~95% fewer tokens than its verbose equivalent. For API users paying per token, that's direct cost savings. For Pro/Max users, it means significantly more work per conversation before hitting context limits.
+This adds up fast. A `count_only` operation averages ~95% fewer tokens than its verbose equivalent. For API users paying per token, that's direct cost savings. For Pro/Max users, it means fewer tokens consuming less of their allotted weekly usage.
 
-Batch operations compound the savings further: `precision_read` can read 10 files in one call instead of 10 separate `Read` calls. `discover` runs grep + glob + symbol queries in parallel, returning all results in a single response. `precision_edit` applies multiple edits across multiple files atomically.
+Batch operations compound the savings further: `precision_read` can read 10 or more files in one call instead of 10+ separate `Read` calls. `discover` runs grep + glob + symbol queries in parallel, returning all results in a single response. `precision_edit` applies multiple edits across multiple files atomically.
 
 ### Transparent Tool Upgrade
 
@@ -51,7 +51,7 @@ A two-tier memory system stores decisions, patterns, failures, and preferences i
 
 ### Quality Loops
 
-WRFC (Write-Review-Fix-Check) loops ensure code is reviewed before commit. The orchestrator spawns a reviewer after implementation, fixes issues, and re-reviews until verified.
+WRFC (Write-Review-Fix-Check) loops ensure code is reviewed before commit. The orchestrator spawns a reviewer after implementation, fixes issues, and re-reviews until verified, then creates a commit.
 
 ### Two Execution Modes
 
@@ -110,8 +110,8 @@ precision_edit supports 5 match modes:
 - **exact**: literal string match (default)
 - **fuzzy**: Levenshtein distance-based with configurable similarity threshold (default 70%)
 - **regex**: full regex with multiline support
-- **ast**: TypeScript AST structure matching
-- **ast_pattern**: AST-Grep structural patterns (e.g., `console.log($$$ARGS)`)
+- **ast**: AST structure matching for JavaScript and TypeScript (.js, .jsx, .ts, .tsx)
+- **ast_pattern**: AST-Grep structural patterns across 18 languages (JavaScript, TypeScript, Python, Rust, Go, C, C++, Java, Kotlin, Swift, Ruby, PHP, C#, Scala, Bash, HTML, CSS)
 
 ### Multi-Format Reading
 

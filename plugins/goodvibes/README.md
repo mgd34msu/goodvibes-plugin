@@ -23,19 +23,19 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 
 ### Token Efficiency
 
-Every precision tool has configurable verbosity with actual token multipliers:
+Native Claude Code tools are all-or-nothing. `Read` returns the entire file. `Grep` returns every match with full context. There's no way to say "just give me the count" or "just give me the file paths." Every operation consumes the maximum amount of tokens whether you need that information or not.
 
-| Verbosity | Token Multiplier | Use Case |
-|-----------|-----------------|----------|
-| count_only | 0.05x | Quick counts, minimal output |
-| minimal | 0.2x | Essential info only |
-| standard | 0.6x | Balanced (default for most tools) |
-| with_preview | 0.8x | Includes file previews |
-| verbose | 1.0x | Full details when needed |
+Precision tools fix this. Every tool lets the AI request exactly the amount of information needed to fulfill a task:
 
-This means a `count_only` grep uses ~95% fewer tokens than a verbose one. For API users paying per token, this is direct cost savings. For Pro/Max users, it means more work per conversation before hitting limits.
+- **Need a file count?** `precision_glob` with `count_only` returns just the number — not hundreds of file paths
+- **Need file paths?** `paths_only` returns paths without file contents or metadata
+- **Need a function signature?** `precision_read` with `symbols` extract mode returns signatures without reading the entire file
+- **Need specific lines?** Read a range instead of the whole document
+- **Need to check if a pattern exists?** `precision_grep` with `count_only` tells you how many matches without returning any content
 
-Batch operations compound the savings: `precision_read` can read 10 files in one call instead of 10 separate `Read` calls. `discover` runs grep + glob + symbol queries in parallel, returning all results keyed by query ID. `precision_edit` applies multiple edits across multiple files atomically.
+This adds up fast. A `count_only` operation averages ~95% fewer tokens than its verbose equivalent. For API users paying per token, that's direct cost savings. For Pro/Max users, it means fewer tokens consuming less of their allotted weekly usage.
+
+Batch operations compound the savings further: `precision_read` can read 10 or more files in one call instead of 10+ separate `Read` calls. `discover` runs grep + glob + symbol queries in parallel, returning all results in a single response. `precision_edit` applies multiple edits across multiple files atomically.
 
 ### Transparent Tool Upgrade
 
@@ -51,7 +51,7 @@ A two-tier memory system stores decisions, patterns, failures, and preferences i
 
 ### Quality Loops
 
-WRFC (Write-Review-Fix-Check) loops ensure code is reviewed before commit. The orchestrator spawns a reviewer after implementation, fixes issues, and re-reviews until verified.
+WRFC (Write-Review-Fix-Check) loops ensure code is reviewed before commit. The orchestrator spawns a reviewer after implementation, fixes issues, and re-reviews until verified, then creates a commit.
 
 ### Two Execution Modes
 
@@ -110,8 +110,8 @@ precision_edit supports 5 match modes:
 - **exact**: literal string match (default)
 - **fuzzy**: Levenshtein distance-based with configurable similarity threshold (default 70%)
 - **regex**: full regex with multiline support
-- **ast**: TypeScript AST structure matching
-- **ast_pattern**: AST-Grep structural patterns (e.g., `console.log($$$ARGS)`)
+- **ast**: AST structure matching for JavaScript and TypeScript (.js, .jsx, .ts, .tsx)
+- **ast_pattern**: AST-Grep structural patterns across 18 languages (JavaScript, TypeScript, Python, Rust, Go, C, C++, Java, Kotlin, Swift, Ruby, PHP, C#, Scala, Bash, HTML, CSS)
 
 ### Multi-Format Reading
 
