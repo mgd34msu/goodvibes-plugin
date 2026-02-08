@@ -12,6 +12,24 @@ export interface CodeBlock {
 /**
  * HTML entity decoding map for common entities.
  */
+/**
+ * Common CSS class names that are NOT language identifiers.
+ * Used to filter out false positives in bare language detection.
+ */
+const NON_LANGUAGE_CLASSES = new Set([
+  'prettyprint',
+  'highlight',
+  'code',
+  'pre',
+  'linenums',
+  'hljs',
+  'codehilite',
+  'sourceCode',
+]);
+
+/**
+ * HTML entity decoding map for common entities.
+ */
 const HTML_ENTITIES: Record<string, string> = {
   '&lt;': '<',
   '&gt;': '>',
@@ -25,14 +43,25 @@ const HTML_ENTITIES: Record<string, string> = {
 };
 
 /**
+ * Pre-compiled regex patterns for HTML entity decoding.
+ * Avoids creating new RegExp objects in the hot loop.
+ */
+const HTML_ENTITY_PATTERNS = Object.fromEntries(
+  Object.keys(HTML_ENTITIES).map(entity => [
+    entity,
+    new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+  ]),
+) as Record<string, RegExp>;
+
+/**
  * Decode HTML entities in text.
  */
 function decodeHtmlEntities(text: string): string {
   let decoded = text;
   
-  // Replace common named entities
+  // Replace common named entities using pre-compiled patterns
   for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
-    decoded = decoded.replace(new RegExp(entity, 'g'), char);
+    decoded = decoded.replace(HTML_ENTITY_PATTERNS[entity], char);
   }
   
   // Replace numeric entities (decimal and hex)
@@ -68,7 +97,11 @@ function detectLanguage(classAttr: string): string {
   for (const pattern of patterns) {
     const match = classAttr.match(pattern);
     if (match && match[1]) {
-      return match[1].toLowerCase();
+      const candidate = match[1].toLowerCase();
+      // Filter out common non-language class names
+      if (!NON_LANGUAGE_CLASSES.has(candidate)) {
+        return candidate;
+      }
     }
   }
   
@@ -83,7 +116,7 @@ function extractContext(html: string, codeBlockIndex: number): string | undefine
   const precedingHtml = html.substring(0, codeBlockIndex);
   
   // Find the last heading before this code block
-  const headingMatch = precedingHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/gi);
+  const headingMatch = precedingHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi);
   
   if (!headingMatch || headingMatch.length === 0) {
     return undefined;
@@ -92,10 +125,11 @@ function extractContext(html: string, codeBlockIndex: number): string | undefine
   // Get the last heading
   const lastHeading = headingMatch[headingMatch.length - 1];
   
-  // Extract text content
-  const textMatch = lastHeading.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
+  // Extract text content (may contain inner HTML like <a>, <code>)
+  const textMatch = lastHeading.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i);
   if (textMatch && textMatch[1]) {
-    return textMatch[1].trim();
+    // Strip any HTML tags from the heading text
+    return stripHtmlTags(textMatch[1]).trim();
   }
   
   return undefined;

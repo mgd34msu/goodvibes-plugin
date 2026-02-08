@@ -98,21 +98,43 @@ function extractOpenGraph(html: string): Record<string, string> {
 
   // Match both property="og:*" and name="og:*" variants
   // Handle both self-closing and non-self-closing tags
-  // Support both single and double quotes
-  const ogRegex = /<meta\s+(?:property|name)=["']og:([^"']+)["']\s+content=["']([^"']*)["'][^>]*>/gi;
+  // Support both single and double quotes with proper quote handling
+  
+  // Double-quoted attributes: property="og:*" ... content="..."
+  const ogRegexDouble = /<meta\s+(?:property|name)="og:([^"]+)"[^>]*?content="([^"]*)"/gi;
+  // Single-quoted attributes: property='og:*' ... content='...'
+  const ogRegexSingle = /<meta\s+(?:property|name)='og:([^']+)'[^>]*?content='([^']*)'/gi;
 
   let match: RegExpExecArray | null;
-  while ((match = ogRegex.exec(html)) !== null) {
+  
+  // Process double-quoted tags
+  while ((match = ogRegexDouble.exec(html)) !== null) {
     const [, property, content] = match;
     if (property && content !== undefined) {
       ogData[property] = content;
     }
   }
+  
+  // Process single-quoted tags
+  while ((match = ogRegexSingle.exec(html)) !== null) {
+    const [, property, content] = match;
+    if (property && content !== undefined && !ogData[property]) {
+      ogData[property] = content;
+    }
+  }
 
   // Also handle reversed attribute order: content before property
-  const ogReversedRegex = /<meta\s+content=["']([^"']*)["']\s+(?:property|name)=["']og:([^"']+)["'][^>]*>/gi;
+  const ogReversedDouble = /<meta\s+content="([^"]*)"[^>]*?(?:property|name)="og:([^"]+)"/gi;
+  const ogReversedSingle = /<meta\s+content='([^']*)'[^>]*?(?:property|name)='og:([^']+)'/gi;
 
-  while ((match = ogReversedRegex.exec(html)) !== null) {
+  while ((match = ogReversedDouble.exec(html)) !== null) {
+    const [, content, property] = match;
+    if (property && content !== undefined && !ogData[property]) {
+      ogData[property] = content;
+    }
+  }
+  
+  while ((match = ogReversedSingle.exec(html)) !== null) {
     const [, content, property] = match;
     if (property && content !== undefined && !ogData[property]) {
       ogData[property] = content;
@@ -139,21 +161,43 @@ function extractTwitterCard(html: string): Record<string, string> {
 
   // Match name="twitter:*" tags
   // Handle both self-closing and non-self-closing tags
-  // Support both single and double quotes
-  const twitterRegex = /<meta\s+name=["']twitter:([^"']+)["']\s+content=["']([^"']*)["'][^>]*>/gi;
+  // Support both single and double quotes with proper quote handling
+  
+  // Double-quoted attributes: name="twitter:*" ... content="..."
+  const twitterRegexDouble = /<meta\s+name="twitter:([^"]+)"[^>]*?content="([^"]*)"/gi;
+  // Single-quoted attributes: name='twitter:*' ... content='...'
+  const twitterRegexSingle = /<meta\s+name='twitter:([^']+)'[^>]*?content='([^']*)'/gi;
 
   let match: RegExpExecArray | null;
-  while ((match = twitterRegex.exec(html)) !== null) {
+  
+  // Process double-quoted tags
+  while ((match = twitterRegexDouble.exec(html)) !== null) {
     const [, property, content] = match;
     if (property && content !== undefined) {
       twitterData[property] = content;
     }
   }
+  
+  // Process single-quoted tags
+  while ((match = twitterRegexSingle.exec(html)) !== null) {
+    const [, property, content] = match;
+    if (property && content !== undefined && !twitterData[property]) {
+      twitterData[property] = content;
+    }
+  }
 
   // Also handle reversed attribute order: content before name
-  const twitterReversedRegex = /<meta\s+content=["']([^"']*)["']\s+name=["']twitter:([^"']+)["'][^>]*>/gi;
+  const twitterReversedDouble = /<meta\s+content="([^"]*)"[^>]*?name="twitter:([^"]+)"/gi;
+  const twitterReversedSingle = /<meta\s+content='([^']*)'[^>]*?name='twitter:([^']+)'/gi;
 
-  while ((match = twitterReversedRegex.exec(html)) !== null) {
+  while ((match = twitterReversedDouble.exec(html)) !== null) {
+    const [, content, property] = match;
+    if (property && content !== undefined && !twitterData[property]) {
+      twitterData[property] = content;
+    }
+  }
+  
+  while ((match = twitterReversedSingle.exec(html)) !== null) {
     const [, content, property] = match;
     if (property && content !== undefined && !twitterData[property]) {
       twitterData[property] = content;
@@ -181,11 +225,26 @@ function extractStandardMeta(html: string): Record<string, string> {
   const standardTags = ['description', 'author', 'keywords', 'robots', 'viewport', 'generator'];
 
   for (const tagName of standardTags) {
-    // Match name="tagName" content="..."
-    const regex = new RegExp(`<meta\\s+name=["']${tagName}["']\\s+content=["']([^"']*)["'][^>]*>`, 'gi');
+    // Match name="tagName" content="..." with proper quote handling
+    
+    // Double-quoted attributes
+    const regexDouble = new RegExp(`<meta\\s+name="${tagName}"[^>]*?content="([^"]*)"`, 'gi');
+    // Single-quoted attributes
+    const regexSingle = new RegExp(`<meta\\s+name='${tagName}'[^>]*?content='([^']*)'`, 'gi');
 
     let match: RegExpExecArray | null;
-    if ((match = regex.exec(html)) !== null) {
+    
+    // Try double-quoted version
+    if ((match = regexDouble.exec(html)) !== null) {
+      const content = match[1];
+      if (content !== undefined) {
+        metaData[tagName] = content;
+        continue;
+      }
+    }
+    
+    // Try single-quoted version
+    if ((match = regexSingle.exec(html)) !== null) {
       const content = match[1];
       if (content !== undefined) {
         metaData[tagName] = content;
@@ -194,9 +253,18 @@ function extractStandardMeta(html: string): Record<string, string> {
     }
 
     // Also try reversed attribute order: content before name
-    const reversedRegex = new RegExp(`<meta\\s+content=["']([^"']*)["']\\s+name=["']${tagName}["'][^>]*>`, 'gi');
+    const reversedDouble = new RegExp(`<meta\\s+content="([^"]*)"[^>]*?name="${tagName}"`, 'gi');
+    const reversedSingle = new RegExp(`<meta\\s+content='([^']*)'[^>]*?name='${tagName}'`, 'gi');
 
-    if ((match = reversedRegex.exec(html)) !== null) {
+    if ((match = reversedDouble.exec(html)) !== null) {
+      const content = match[1];
+      if (content !== undefined && !metaData[tagName]) {
+        metaData[tagName] = content;
+        continue;
+      }
+    }
+    
+    if ((match = reversedSingle.exec(html)) !== null) {
       const content = match[1];
       if (content !== undefined && !metaData[tagName]) {
         metaData[tagName] = content;

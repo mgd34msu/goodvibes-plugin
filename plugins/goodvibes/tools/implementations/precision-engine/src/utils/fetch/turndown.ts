@@ -26,6 +26,25 @@ export interface TurndownOptions {
 }
 
 /**
+ * Create a Turndown service instance with GFM plugin.
+ * Shared by both DOM and fallback conversion paths.
+ *
+ * @param options - Optional Turndown configuration
+ * @returns Configured TurndownService instance
+ */
+function createTurndownService(options?: TurndownOptions): TurndownService {
+  const service = new TurndownService({
+    headingStyle: options?.headingStyle ?? 'atx',
+    codeBlockStyle: options?.codeBlockStyle ?? 'fenced',
+    bulletListMarker: options?.bulletListMarker ?? '-',
+    emDelimiter: options?.emDelimiter ?? '_',
+    strongDelimiter: options?.strongDelimiter ?? '**',
+  });
+  service.use(gfm);
+  return service;
+}
+
+/**
  * Convert HTML to Markdown using Turndown library with GFM plugin.
  *
  * This function:
@@ -68,17 +87,8 @@ export function htmlToMarkdown(html: string, options?: TurndownOptions): string 
     // Parse HTML into DOM
     const { document } = parseHTML(trimmed);
 
-    // Create Turndown service with options
-    const turndownService = new TurndownService({
-      headingStyle: options?.headingStyle ?? 'atx',
-      codeBlockStyle: options?.codeBlockStyle ?? 'fenced',
-      bulletListMarker: options?.bulletListMarker ?? '-',
-      emDelimiter: options?.emDelimiter ?? '_',
-      strongDelimiter: options?.strongDelimiter ?? '**',
-    });
-
-    // Apply GFM plugin for tables, strikethrough, task lists
-    turndownService.use(gfm);
+    // Create Turndown service with GFM plugin
+    const turndownService = createTurndownService(options);
 
     // Convert DOM to markdown
     const markdown = turndownService.turndown(document);
@@ -88,23 +98,10 @@ export function htmlToMarkdown(html: string, options?: TurndownOptions): string 
     // If DOM parsing fails, try passing raw HTML directly to Turndown
     // (Turndown can handle HTML strings, though DOM is preferred)
     try {
-      const turndownService = new TurndownService({
-        headingStyle: options?.headingStyle ?? 'atx',
-        codeBlockStyle: options?.codeBlockStyle ?? 'fenced',
-        bulletListMarker: options?.bulletListMarker ?? '-',
-        emDelimiter: options?.emDelimiter ?? '_',
-        strongDelimiter: options?.strongDelimiter ?? '**',
-      });
-
-      turndownService.use(gfm);
-
+      const turndownService = createTurndownService(options);
       return turndownService.turndown(trimmed);
     } catch (fallbackError) {
       // Last resort: return original HTML with error comment
-      console.error('htmlToMarkdown: Both DOM and direct conversion failed', {
-        error,
-        fallbackError,
-      });
       return `<!-- HTML-to-Markdown conversion failed -->\n\n${trimmed}`;
     }
   }

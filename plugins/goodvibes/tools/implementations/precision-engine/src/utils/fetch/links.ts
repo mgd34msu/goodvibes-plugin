@@ -56,8 +56,11 @@ export function extractLinks(
     return [];
   }
 
+  // Hoist filter toLowerCase for performance (used in loop)
+  const filterLower = filter?.toLowerCase();
+
   // Extract headings for context (h1-h6)
-  const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+  const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/gi;
   const headings: Array<{ position: number; text: string }> = [];
   let headingMatch: RegExpExecArray | null;
   
@@ -70,7 +73,7 @@ export function extractLinks(
   }
 
   // Extract all anchor tags
-  const linkRegex = /<a\s+([^>]*?)>([\s\S]*?)<\/a>/gi;
+  const linkRegex = /<a\s*([^>]*?)>([\s\S]*?)<\/a>/gi;
   let linkMatch: RegExpExecArray | null;
 
   while ((linkMatch = linkRegex.exec(html)) !== null) {
@@ -83,7 +86,7 @@ export function extractLinks(
     if (!hrefMatch) continue;
 
     let href = hrefMatch[1] || hrefMatch[2];
-    if (!href) continue;
+    if (!href || !href.trim()) continue;
 
     href = decodeHtmlEntities(href.trim());
 
@@ -156,16 +159,20 @@ export function extractLinks(
       context,
     };
 
-    // Apply filter if provided
+    // Apply filter if provided (hoist filter.toLowerCase() outside loop)
     if (filter) {
-      const filterLower = filter.toLowerCase();
       const hrefLower = resolvedHref.toLowerCase();
       const textLower = text.toLowerCase();
 
       // Try as substring match first
       if (!hrefLower.includes(filterLower) && !textLower.includes(filterLower)) {
-        // Try as regex pattern
+        // Try as regex pattern with ReDoS protection
         try {
+          // Simple heuristic: reject patterns with nested quantifiers
+          if (/(\+|\*|\?)\s*(\+|\*|\?)/.test(filter)) {
+            // Skip potential ReDoS patterns
+            continue;
+          }
           const filterRegex = new RegExp(filter, 'i');
           if (!filterRegex.test(resolvedHref) && !filterRegex.test(text)) {
             continue;

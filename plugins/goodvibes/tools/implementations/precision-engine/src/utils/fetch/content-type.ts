@@ -160,24 +160,33 @@ function detectMimeFromBody(bodySniff: string): string | null {
 function classifyMime(mime: string): MimeClassification {
   const lower = mime.toLowerCase();
 
+  // XHTML is both HTML and XML
+  const isXhtml = lower === 'application/xhtml+xml';
   const isHtml = lower.includes('html');
   const isJson = lower.includes('json');
-  const isXml = lower.includes('xml') && !lower.includes('svg'); // SVG is image/svg+xml
+  const isXml = (lower.includes('xml') && !lower.includes('svg')) || isXhtml; // SVG is image/svg+xml
   const isPdf = lower.includes('pdf');
-  const isImage =
-    lower.startsWith('image/') ||
-    lower === 'image/svg+xml' ||
-    lower === 'image/jpeg' ||
-    lower === 'image/png' ||
-    lower === 'image/gif' ||
-    lower === 'image/webp';
+  const isImage = lower.startsWith('image/');
 
   // Binary: images, PDFs, or non-text types
+  // Exclude known text-based application/* types
+  const isTextBasedApp =
+    lower === 'application/javascript' ||
+    lower === 'application/x-javascript' ||
+    lower === 'application/typescript' ||
+    lower === 'application/x-www-form-urlencoded' ||
+    lower === 'application/graphql' ||
+    lower === 'application/x-yaml' ||
+    lower === 'application/yaml' ||
+    lower.startsWith('application/vnd.api+json') ||
+    lower.endsWith('+xml') || // e.g., application/atom+xml, application/rss+xml
+    lower.endsWith('+json'); // e.g., application/vnd.api+json
+
   const isBinary =
     isImage ||
     isPdf ||
     lower.startsWith('application/octet-stream') ||
-    (lower.startsWith('application/') && !isJson && !isXml) ||
+    (lower.startsWith('application/') && !isJson && !isXml && !isTextBasedApp) ||
     lower.startsWith('video/') ||
     lower.startsWith('audio/');
 
@@ -218,11 +227,9 @@ export function detectContentType(
       charset = parsed.charset;
     }
   } else if (headers && typeof headers === 'object') {
-    // Plain object
-    const contentType =
-      headers['content-type'] ||
-      headers['Content-Type'] ||
-      headers['CONTENT-TYPE'];
+    // Plain object - case-insensitive lookup
+    const key = Object.keys(headers).find(k => k.toLowerCase() === 'content-type');
+    const contentType = key ? (headers as Record<string, string>)[key] : undefined;
     if (contentType) {
       const parsed = parseContentTypeHeader(contentType);
       headerMime = parsed.mime;
