@@ -4,7 +4,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { constants } from 'os';
-import { openSync, closeSync, readSync, fstatSync, existsSync, mkdirSync } from 'fs';
+import { openSync, closeSync, readSync, fstatSync, existsSync, mkdirSync, createWriteStream } from 'fs';
 import * as path from 'path';
 import { getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
 
@@ -49,6 +49,116 @@ export class ProcessManager {
    */
   static resetInstance(): void {
     ProcessManager.instance = null;
+  }
+
+  /**
+   * Generate a unique background process ID.
+   * @returns Next available process ID (e.g., "bg-1")
+   */
+  generateId(): string {
+    return `bg-${this.counter++}`;
+  }
+
+  /**
+   * Adopt an existing ChildProcess into background management.
+   * Used for pattern-based early termination (Part J).
+   * @param id Process ID to assign (e.g., "bg-1")
+   * @param proc Existing ChildProcess to adopt
+   * @param command Command string for logging
+   * @param cwd Working directory
+   * @returns BgStartResult with process info
+   */
+  adopt(
+    id: string,
+    proc: ChildProcess,
+    command: string,
+    cwd: string
+  ): BgStartResult {
+    // Check max background process limit
+    const maxBackground = getExecMaxBackground();
+    const runningCount = Array.from(this.processes.values()).filter(
+      (p) => p.status === 'running'
+    ).length;
+    if (runningCount >= maxBackground) {
+      throw new Error(
+        `Maximum background processes (${maxBackground}) reached. Cannot promote process to background.`
+      );
+    }
+
+    // Guard against undefined PID
+    if (proc.pid === undefined) {
+      throw new Error(`Cannot adopt process: no PID available for "${command}"`);
+    }
+
+    // Create log directory if needed
+    const overflowDir = getExecOverflowDir();
+    if (!existsSync(overflowDir)) {
+      mkdirSync(overflowDir, { recursive: true });
+    }
+
+    // Create log file path
+    const logFile = path.join(overflowDir, `${id}.log`);
+
+    try {
+      // Redirect stdout/stderr to log file
+      // Since the process is already running, we pipe the streams
+      if (proc.stdout) {
+        proc.stdout.pipe(createWriteStream(logFile, { flags: 'a' }));
+      }
+      if (proc.stderr) {
+        proc.stderr.pipe(createWriteStream(logFile, { flags: 'a' }));
+      }
+
+      // Unref so parent can exit
+      proc.unref();
+
+      // Store process info
+      const bgProcess: BackgroundProcess = {
+        id,
+        pid: proc.pid,
+        command,
+        args: [],  // Not available for adopted processes
+        cwd,
+        started_at: Date.now(),
+        status: 'running',
+        exit_code: null,
+        log_file: logFile,
+        last_read_offset: 0,
+      };
+
+      this.processes.set(id, bgProcess);
+
+      // Register exit handler
+      proc.on('exit', (code, signal) => {
+        const p = this.processes.get(id);
+        if (p) {
+          p.status = signal ? 'killed' : 'exited';
+          const signalNum = signal ? (constants.signals[signal] ?? 9) : 0;
+          p.exit_code = code ?? (signal ? 128 + signalNum : 1);
+        }
+      });
+
+      // Register error handler
+      proc.on('error', (err) => {
+        const p = this.processes.get(id);
+        if (p) {
+          p.status = 'errored';
+          p.exit_code = 1;
+        }
+      });
+
+      // Return start result
+      return {
+        status: 'started',
+        process_id: id,
+        pid: proc.pid,
+        command,
+        log_file: logFile,
+        hint: `Process promoted to background. Use bg_status ${id} to check status, bg_output ${id} to read output, bg_stop ${id} to terminate.`,
+      };
+    } catch (err) {
+      throw err;
+    }
   }
 
   /**

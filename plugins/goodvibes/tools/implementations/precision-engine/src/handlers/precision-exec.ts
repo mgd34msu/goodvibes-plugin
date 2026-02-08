@@ -103,6 +103,12 @@ interface ExpectSpec {
   stderr_empty?: boolean;
 }
 
+interface UntilSpec {
+  pattern: string;       // Regex pattern to watch for in stdout/stderr
+  timeout_ms?: number;   // Max wait time (default: command timeout)
+  kill_after?: boolean;  // Kill process after pattern match? (default: false — leave running in background)
+}
+
 interface CommandSpec {
   id?: string;
   cmd?: string;
@@ -116,6 +122,7 @@ interface CommandSpec {
   background?: boolean;  // Run in background (Part E)
   progress?: boolean;  // Enable Tier 1 inline progress (Part F)
   progress_file?: boolean;  // Enable Tier 2 live file (Part F)
+  until?: UntilSpec;  // Pattern-based early termination (Part J)
   retry?: {
     max?: number;
     delay_ms?: number;
@@ -164,6 +171,15 @@ interface CommandResult {
   progress?: ProgressMilestone[];  // Tier 1: inline milestones (Part F)
   progress_file?: string;  // Tier 2: path to live log file (Part F)
   retries?: RetryResult;
+  until_status?: 'pattern_matched' | 'timeout' | 'exited_before_match';  // Part J: pattern termination status
+  matched_line?: string;  // Part J: the line that matched the pattern
+  matched_at_ms?: number;  // Part J: time from start to match
+  background?: {  // Part J: background process info (when promoted)
+    process_id: string;
+    pid: number;
+    log_file: string;
+    hint: string;
+  };
 }
 
 // Config defaults are now retrieved from runtime-config getters
@@ -214,6 +230,34 @@ async function executeCommand(
     let timedOut = false;
     let truncatedStdout = false;
     let truncatedStderr = false;
+
+    // Part J: Pattern-based early termination
+    let untilPattern: RegExp | null = null;
+    let untilTimeout: number | null = null;
+    let untilKillAfter = false;
+    let untilMatched = false;
+    let untilTimedOut = false;
+    let matchedLine: string | null = null;
+    let matchedAtMs: number | null = null;
+    let backgroundResult: BgStartResult | null = null;
+    let untilTimeoutId: NodeJS.Timeout | null = null;
+
+    if (spec.until) {
+      try {
+        untilPattern = new RegExp(spec.until.pattern);
+        untilTimeout = spec.until.timeout_ms ?? timeout;
+        untilKillAfter = spec.until.kill_after ?? false;
+      } catch (err) {
+        // Invalid regex pattern - return error immediately
+        return resolve({
+          cmd: command,
+          exit_code: 1,
+          duration_ms: 0,
+          expectations_met: false,
+          expectation_failures: [`Invalid until pattern: ${(err as Error).message}`],
+        });
+      }
+    }
 
     // Buffer cap: 5x the normal threshold to allow overflow handler to save full output
     const bufferCap = maxOutputChars * 5;
@@ -273,11 +317,100 @@ async function executeCommand(
       }
     }, timeout);
 
+    // Part J: Set up separate timeout for until pattern matching
+    if (untilTimeout !== null && untilTimeout !== timeout) {
+      untilTimeoutId = setTimeout(() => {
+        // Check if process already exited or pattern already matched
+        if (proc.exitCode !== null || untilMatched) return;
+
+        untilTimedOut = true;
+        // Clear the main timeout since we're handling it here
+        clearTimeout(timeoutId);
+        
+        if (process.platform === 'win32') {
+          execFile('taskkill', ['/pid', String(proc.pid), '/T', '/F'], (err) => {
+            if (err && !proc.killed) {
+              try {
+                proc.kill();
+              } catch {
+                // Process may have already exited
+              }
+            }
+          });
+        } else {
+          proc.kill('SIGTERM');
+          setTimeout(() => {
+            if (!proc.killed) proc.kill('SIGKILL');
+          }, 5000);
+        }
+      }, untilTimeout);
+    }
+
     if (captureStdout) {
       proc.stdout?.on('data', (data: Buffer) => {
         const chunk = data.toString();
         // Feed to progress collector (Part F)
         progressCollector.onData(chunk);
+        
+        // Part J: Check for until pattern match
+        if (untilPattern && !untilMatched) {
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (untilPattern.test(line)) {
+              untilMatched = true;
+              matchedLine = line;
+              matchedAtMs = Date.now() - startTime;
+              
+              clearTimeout(timeoutId);
+              if (untilTimeoutId) clearTimeout(untilTimeoutId);
+              
+              if (untilKillAfter) {
+                // Kill the process - wait for it to exit naturally via close handler
+                proc.kill('SIGTERM');
+              } else {
+                // Promote to background and resolve immediately
+                const bgId = processManager.generateId();
+                try {
+                  backgroundResult = processManager.adopt(bgId, proc, fullCommand, cwd);
+                  
+                  // Build result and resolve immediately
+                  clearTimeout(timeoutId);
+                  progressCollector.dispose();
+                  
+                  const result: CommandResult = {
+                    cmd: command,
+                    exit_code: -1, // Still running in background
+                    duration_ms: Date.now() - startTime,
+                    expectations_met: true,
+                    stdout: stdout.trim(),
+                    stderr: stderr.trim(),
+                    until_status: 'pattern_matched',
+                    matched_line: matchedLine ?? undefined,
+                    matched_at_ms: matchedAtMs ?? undefined,
+                    background: {
+                      process_id: backgroundResult.process_id,
+                      pid: backgroundResult.pid,
+                      log_file: backgroundResult.log_file,
+                      hint: backgroundResult.hint,
+                    },
+                  };
+                  
+                  if (spec.id) {
+                    result.id = spec.id;
+                  }
+                  
+                  resolve(result);
+                  return; // Exit the data handler
+                } catch (err) {
+                  // Adoption failed - fall through to normal handling
+                }
+              }
+              
+              // For kill_after: true, continue capturing until process exits
+              break;
+            }
+          }
+        }
         
         if (stdout.length < bufferCap) {
           stdout += chunk;
@@ -294,6 +427,67 @@ async function executeCommand(
     if (captureStderr) {
       proc.stderr?.on('data', (data: Buffer) => {
         const chunk = data.toString();
+        
+        // Part J: Check for until pattern match in stderr too
+        if (untilPattern && !untilMatched) {
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (untilPattern.test(line)) {
+              untilMatched = true;
+              matchedLine = line;
+              matchedAtMs = Date.now() - startTime;
+              
+              clearTimeout(timeoutId);
+              if (untilTimeoutId) clearTimeout(untilTimeoutId);
+              
+              if (untilKillAfter) {
+                // Kill the process - wait for it to exit naturally via close handler
+                proc.kill('SIGTERM');
+              } else {
+                // Promote to background and resolve immediately
+                const bgId = processManager.generateId();
+                try {
+                  backgroundResult = processManager.adopt(bgId, proc, fullCommand, cwd);
+                  
+                  // Build result and resolve immediately
+                  clearTimeout(timeoutId);
+                  progressCollector.dispose();
+                  
+                  const result: CommandResult = {
+                    cmd: command,
+                    exit_code: -1, // Still running in background
+                    duration_ms: Date.now() - startTime,
+                    expectations_met: true,
+                    stdout: stdout.trim(),
+                    stderr: stderr.trim(),
+                    until_status: 'pattern_matched',
+                    matched_line: matchedLine ?? undefined,
+                    matched_at_ms: matchedAtMs ?? undefined,
+                    background: {
+                      process_id: backgroundResult.process_id,
+                      pid: backgroundResult.pid,
+                      log_file: backgroundResult.log_file,
+                      hint: backgroundResult.hint,
+                    },
+                  };
+                  
+                  if (spec.id) {
+                    result.id = spec.id;
+                  }
+                  
+                  resolve(result);
+                  return; // Exit the data handler
+                } catch (err) {
+                  // Adoption failed - fall through to normal handling
+                }
+              }
+              
+              // For kill_after: true, continue capturing until process exits
+              break;
+            }
+          }
+        }
+        
         if (stderr.length < bufferCap) {
           stderr += chunk;
           if (stderr.length > bufferCap) {
@@ -307,7 +501,15 @@ async function executeCommand(
     }
 
     proc.on('close', async (code) => {
+      // Guard: If pattern matched with kill_after: false, resolve was already called
+      if (untilMatched && spec.until && !spec.until.kill_after) {
+        clearTimeout(timeoutId);
+        if (untilTimeoutId) clearTimeout(untilTimeoutId);
+        return;
+      }
+      
       clearTimeout(timeoutId);
+      if (untilTimeoutId) clearTimeout(untilTimeoutId);
       const exitCode = code ?? (timedOut ? 124 : 1);
       const duration_ms = Date.now() - startTime;
 
@@ -447,6 +649,29 @@ async function executeCommand(
       // Dispose collector
       progressCollector.dispose();
 
+      // Part J: Add until pattern status to result
+      if (spec.until) {
+        if (untilMatched) {
+          result.until_status = 'pattern_matched';
+          result.matched_line = matchedLine ?? undefined;
+          result.matched_at_ms = matchedAtMs ?? undefined;
+          
+          // Add background info if process was promoted
+          if (backgroundResult) {
+            result.background = {
+              process_id: backgroundResult.process_id,
+              pid: backgroundResult.pid,
+              log_file: backgroundResult.log_file,
+              hint: backgroundResult.hint,
+            };
+          }
+        } else if (timedOut || untilTimedOut) {
+          result.until_status = 'timeout';
+        } else {
+          result.until_status = 'exited_before_match';
+        }
+      }
+
       // Detect cd command and update session state
       // Skip cd detection when running in parallel to avoid race conditions
       if (exitCode === 0 && !isParallel) {
@@ -461,6 +686,7 @@ async function executeCommand(
 
     proc.on('error', (err) => {
       clearTimeout(timeoutId);
+      if (untilTimeoutId) clearTimeout(untilTimeoutId);
       progressCollector.dispose();
       const result: CommandResult = {
         cmd: command,
@@ -749,6 +975,15 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
         ));
       }
 
+      // Part J: Cannot use both until and background
+      if (cmd.until && cmd.background) {
+        return toCallToolResult(errorResult(
+          'Cannot use both "until" and "background" on the same command. "until" promotes to background automatically on pattern match.',
+          outputMode,
+          getElapsed()
+        ));
+      }
+
       // Safe mode: Check for destructive commands
       if (safeMode) {
         const command = cmd.cmd_base64
@@ -923,6 +1158,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             exit_code: r.exit_code,
             ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
             ...(r.retries && { retry_attempts: r.retries.attempts }),
+            ...(r.until_status && { until_status: r.until_status }),
           })),
           summary: {
             total: results.length,
@@ -942,6 +1178,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             duration_ms: r.duration_ms,
             expectations_met: r.expectations_met,
             ...(r.retries && { retry_attempts: r.retries.attempts }),
+            ...(r.until_status && { until_status: r.until_status }),
           })),
           summary: {
             total: results.length,
@@ -975,6 +1212,10 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
               ...(r.retries && { retries: r.retries }),
               ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
               ...(r.progress_file && { progress_file: r.progress_file }),
+              ...(r.until_status && { until_status: r.until_status }),
+              ...(r.matched_line && { matched_line: r.matched_line }),
+              ...(r.matched_at_ms !== undefined && { matched_at_ms: r.matched_at_ms }),
+              ...(r.background && { background: r.background }),
               ...(context?.previousRun && {
                 same_command_last_run: {
                   exit_code: context.previousRun.exit_code,
@@ -1017,6 +1258,10 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
               ...(r.retries && { retries: r.retries }),
               ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
               ...(r.progress_file && { progress_file: r.progress_file }),
+              ...(r.until_status && { until_status: r.until_status }),
+              ...(r.matched_line && { matched_line: r.matched_line }),
+              ...(r.matched_at_ms !== undefined && { matched_at_ms: r.matched_at_ms }),
+              ...(r.background && { background: r.background }),
               ...(context?.previousRun && {
                 same_command_last_run: {
                   exit_code: context.previousRun.exit_code,

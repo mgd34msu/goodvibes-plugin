@@ -88,7 +88,16 @@ export const precisionExecSchema: Tool = {
             timeout: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 120000)' },
             env: { type: 'object', description: 'Additional environment variables' },
             background: { type: 'boolean', description: 'Run this command in background (detached). Returns immediately. Use bg_status/bg_output/bg_stop to manage.' },
-            until: { type: 'string', description: 'Regex pattern — resolve early when stdout matches, promote process to background (reserved — not yet implemented)' },
+            until: {
+              type: 'object',
+              description: 'Pattern-based early termination. Stop capturing when pattern matches in stdout/stderr.',
+              properties: {
+                pattern: { type: 'string', description: 'Regex pattern to watch for in stdout/stderr' },
+                timeout_ms: { type: 'integer', minimum: 100, description: 'Max wait time in ms (default: command timeout)' },
+                kill_after: { type: 'boolean', default: false, description: 'Kill process after match? Default false (promotes to background)' },
+              },
+              required: ['pattern'],
+            },
             retry: {
               type: 'object',
               description: 'Retry configuration for transient failures. Retry is OFF by default.',
