@@ -297,6 +297,7 @@ export const precisionReadSchema: Tool = {
               },
             },
             pages: { type: 'string', description: "Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request." },
+            force: { type: 'boolean', default: false, description: 'Bypass size gate and cache. Read full file regardless of size.' },
           },
           required: ['path'],
         },
@@ -314,6 +315,7 @@ export const precisionReadSchema: Tool = {
         },
       },
       pages: { type: 'string', description: "Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request." },
+      force: { type: 'boolean', default: false, description: 'Bypass size gate and cache. Read full file regardless of size.' },
       output: {
         type: 'object',
         properties: {

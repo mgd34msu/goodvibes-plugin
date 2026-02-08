@@ -22,6 +22,8 @@ import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
 import { isLanguageSupported } from '../core/languages.js';
 import { validateFilePath } from '../utils/path-validation.js';
+import { getFileSuggestions, type FileSuggestion } from '../utils/file-suggestions.js';
+import { getSlowFsThreshold, getSlowFsPrefixes, getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines } from '../runtime-config.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -36,6 +38,7 @@ interface FileReadSpec {
   range?: { start: number; end: number };
   lines?: { start: number; end: number };  // @deprecated - use 'range' instead
   pages?: string; // PDF page range (e.g., "1-5", "3", "10-20")
+  force?: boolean; // Skip size gate and read entire file
 }
 
 interface ReadOutput {
@@ -85,6 +88,7 @@ interface FileMetadata {
   size: number;
   modified: string;
   created?: string;
+  [key: string]: unknown; // Allow dynamic properties for slow FS detection
 }
 
 interface FileReadResult {
@@ -107,8 +111,9 @@ interface FileReadResult {
   status?: 'empty' | 'normal';
   size_bytes?: number;
   warning?: string;
-  suggestions?: string[];
+  suggestions?: FileSuggestion[];
   hint?: string;
+  [key: string]: unknown; // Allow dynamic properties for pagination
 }
 
 // === Constants ===
@@ -557,9 +562,18 @@ async function readSingleFile(
   }
 
   try {
-    // Check if file exists and get metadata
+    // Item 5: Slow filesystem detection
+    const statStart = performance.now();
     const stats = await fs.stat(validatedPath);
+    const statMs = performance.now() - statStart;
     result.exists = true;
+
+    // Detect slow filesystem
+    const slowThreshold = getSlowFsThreshold();
+    const slowPrefixes = getSlowFsPrefixes();
+    const isUNC = validatedPath.startsWith('\\\\') || (validatedPath.startsWith('//') && !validatedPath.startsWith('///'));
+    const isKnownSlow = slowPrefixes.some(prefix => validatedPath.startsWith(prefix));
+    const isSlow = statMs > slowThreshold || isUNC || isKnownSlow;
 
     if (output.include_metadata) {
       result.metadata = {
@@ -567,6 +581,14 @@ async function readSingleFile(
         modified: stats.mtime.toISOString(),
         created: stats.birthtime?.toISOString(),
       };
+      if (isSlow) {
+        result.metadata.filesystem = 'slow';
+        result.metadata.stat_ms = Math.round(statMs * 100) / 100;
+        if (isUNC) {
+          result.metadata.is_network = true;
+        }
+        result.metadata.note = `File is on a slow filesystem (${Math.round(statMs)}ms stat). Consider using range or extract modes to minimize I/O.`;
+      }
     }
 
     // Item 4: Empty file detection
@@ -575,6 +597,57 @@ async function readSingleFile(
       result.size_bytes = 0;
       result.warning = 'File exists but is empty (0 bytes)';
       return result;
+    }
+
+    // Item 6B: Pre-read size gate — check file size before reading into memory
+    const maxFileBytes = getMaxFileBytes();
+    const maxTokenEstimate = getMaxTokenEstimate();
+    const pageSizeLines = getPageSizeLines();
+    const estimatedTokens = Math.ceil(stats.size / 4);
+
+    // Size gate only fires for full-content reads, not targeted extractions
+    const isContentRead = extract === 'content' || extract === 'lines';
+    const exceedsBytes = stats.size > maxFileBytes;
+    const exceedsTokens = estimatedTokens > maxTokenEstimate;
+
+    if (isContentRead && (exceedsBytes || exceedsTokens) && !spec.force) {
+      // Check if a range was already specified (user is paginating manually)
+      const hasRange = (spec.range && (spec.range.start !== undefined || spec.range.end !== undefined)) ||
+                       (spec.lines && (spec.lines.start !== undefined || spec.lines.end !== undefined)) ||
+                       (defaultRange && (defaultRange.start !== undefined || defaultRange.end !== undefined));
+      if (!hasRange) {
+        // Return first page with pagination metadata - read only necessary bytes
+        const estimatedBytesPerLine = 80; // Conservative estimate
+        const bytesToRead = Math.min(pageSizeLines * estimatedBytesPerLine * 2, stats.size);
+        
+        const fd = await fs.open(validatedPath, 'r');
+        const buf = Buffer.alloc(bytesToRead);
+        await fd.read(buf, 0, bytesToRead, 0);
+        await fd.close();
+        
+        const partialContent = buf.toString('utf-8');
+        const allPartialLines = partialContent.split('\n');
+        const firstPageLines = allPartialLines.slice(0, pageSizeLines);
+        
+        // Estimate total lines based on average bytes per line
+        const avgBytesPerLine = bytesToRead / allPartialLines.length;
+        const estimatedTotalLines = Math.ceil(stats.size / avgBytesPerLine);
+        
+        result.content = firstPageLines.join('\n');
+        result.lines = firstPageLines;
+        result.line_count = estimatedTotalLines;
+        result.truncated = true;
+        result.size_bytes = stats.size;
+        result.pagination = {
+          page: 1,
+          page_size: pageSizeLines,
+          total_lines: estimatedTotalLines,
+          total_pages: Math.ceil(estimatedTotalLines / pageSizeLines),
+          estimated_tokens: estimatedTokens,
+          hint: `Large file (${stats.size} bytes, ~${estimatedTokens} tokens). Showing first ${pageSizeLines} lines. Use range: {start: ${pageSizeLines + 1}, end: ${pageSizeLines * 2}} for next page, or extract: "outline"/"symbols" for structure.`
+        };
+        return result;
+      }
     }
 
     // Read file as buffer first to check if binary
@@ -787,7 +860,21 @@ async function readSingleFile(
         break;
     }
   } catch (error) {
-    result.error = (error as Error).message;
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      try {
+        const suggestions = await getFileSuggestions(validatedPath);
+        result.error = `File not found: ${filePath}`;
+        if (suggestions.length > 0) {
+          result.suggestions = suggestions;
+          result.hint = `Did you mean: ${suggestions[0].path}?`;
+        }
+      } catch {
+        result.error = `File not found: ${filePath}`;
+      }
+    } else {
+      result.error = err.message;
+    }
   }
 
   return result;
@@ -902,6 +989,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.warning) entry.warning = r.warning;
               if (r.suggestions !== undefined) entry.suggestions = r.suggestions;
               if (r.hint) entry.hint = r.hint;
+              if ((r as Record<string, unknown>).pagination) entry.pagination = (r as Record<string, unknown>).pagination;
               // Don't include image_base64 in JSON - it's in the ImageContent block
               return [r.path, entry];
             })
