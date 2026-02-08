@@ -3252,7 +3252,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve11.call(this, root, ref);
+      let _sch = resolve10.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a4 = root.localRefs) === null || _a4 === void 0 ? void 0 : _a4[ref];
         const { schemaId } = this.opts;
@@ -3283,13 +3283,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve11(root, ref) {
+    function resolve10(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve11, "resolve");
+    __name(resolve10, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3883,13 +3883,13 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize3, "normalize");
-    function resolve11(baseURI, relativeURI, options) {
+    function resolve10(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse10(baseURI, schemelessOptions), parse10(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve11, "resolve");
+    __name(resolve10, "resolve");
     function resolveComponent(base, relative10, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
@@ -4116,7 +4116,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize: normalize3,
-      resolve: resolve11,
+      resolve: resolve10,
       resolveComponent,
       equal,
       serialize,
@@ -13598,13 +13598,13 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push2(value) {
-        var p = new Promise(function(resolve11, reject) {
+        var p = new Promise(function(resolve10, reject) {
           pushCb(value, function(err2, result) {
             if (err2) {
               reject(err2);
               return;
             }
-            resolve11(result);
+            resolve10(result);
           });
         });
         p.catch(noop);
@@ -13612,13 +13612,13 @@ var require_queue = __commonJS({
       }
       __name(push2, "push");
       function unshift(value) {
-        var p = new Promise(function(resolve11, reject) {
+        var p = new Promise(function(resolve10, reject) {
           unshiftCb(value, function(err2, result) {
             if (err2) {
               reject(err2);
               return;
             }
-            resolve11(result);
+            resolve10(result);
           });
         });
         p.catch(noop);
@@ -13626,16 +13626,16 @@ var require_queue = __commonJS({
       }
       __name(unshift, "unshift");
       function drained() {
-        var p = new Promise(function(resolve11) {
+        var p = new Promise(function(resolve10) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve11();
+              resolve10();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function")
                   previousDrain();
-                resolve11();
+                resolve10();
                 queue.drain = previousDrain;
               };
             }
@@ -14160,9 +14160,9 @@ var require_stream3 = __commonJS({
         });
       }
       _getStat(filepath) {
-        return new Promise((resolve11, reject) => {
+        return new Promise((resolve10, reject) => {
           this._stat(filepath, this._fsStatSettings, (error2, stats) => {
-            return error2 === null ? resolve11(stats) : reject(error2);
+            return error2 === null ? resolve10(stats) : reject(error2);
           });
         });
       }
@@ -14189,10 +14189,10 @@ var require_async5 = __commonJS({
         this._readerStream = new stream_1.default(this._settings);
       }
       dynamic(root, options) {
-        return new Promise((resolve11, reject) => {
+        return new Promise((resolve10, reject) => {
           this._walkAsync(root, options, (error2, entries2) => {
             if (error2 === null) {
-              resolve11(entries2);
+              resolve10(entries2);
             } else {
               reject(error2);
             }
@@ -14202,10 +14202,10 @@ var require_async5 = __commonJS({
       async static(patterns2, options) {
         const entries2 = [];
         const stream = this._readerStream.static(patterns2, options);
-        return new Promise((resolve11, reject) => {
+        return new Promise((resolve10, reject) => {
           stream.once("error", reject);
           stream.on("data", (entry) => entries2.push(entry));
-          stream.once("end", () => resolve11(entries2));
+          stream.once("end", () => resolve10(entries2));
         });
       }
     };
@@ -15308,7 +15308,7 @@ var init_process_manager = __esm({
           process.kill(proc.pid, "SIGTERM");
           const startWait = Date.now();
           while (proc.status === "running" && Date.now() - startWait < 5e3) {
-            await new Promise((resolve11) => setTimeout(resolve11, 100));
+            await new Promise((resolve10) => setTimeout(resolve10, 100));
           }
           if (proc.status === "running") {
             process.kill(proc.pid, "SIGKILL");
@@ -37922,7 +37922,7 @@ async function fetchData(url2, type = "text") {
     }
     return response.text();
   }
-  return new Promise((resolve11, reject) => {
+  return new Promise((resolve10, reject) => {
     const request = new XMLHttpRequest();
     request.open("GET", url2, true);
     request.responseType = type;
@@ -37935,10 +37935,10 @@ async function fetchData(url2, type = "text") {
           case "arraybuffer":
           case "blob":
           case "json":
-            resolve11(request.response);
+            resolve10(request.response);
             return;
         }
-        resolve11(request.responseText);
+        resolve10(request.responseText);
         return;
       }
       reject(new Error(request.statusText));
@@ -42057,14 +42057,14 @@ var init_pdf = __esm({
           var aCallable = __webpack_require__2(9306);
           var $TypeError = TypeError;
           var PromiseCapability = /* @__PURE__ */ __name(function(C2) {
-            var resolve11, reject;
+            var resolve10, reject;
             this.promise = new C2(function($$resolve, $$reject) {
-              if (resolve11 !== void 0 || reject !== void 0)
+              if (resolve10 !== void 0 || reject !== void 0)
                 throw new $TypeError("Bad Promise constructor");
-              resolve11 = $$resolve;
+              resolve10 = $$resolve;
               reject = $$reject;
             });
-            this.resolve = aCallable(resolve11);
+            this.resolve = aCallable(resolve10);
             this.reject = aCallable(reject);
           }, "PromiseCapability");
           module2.exports.f = function(C2) {
@@ -45769,11 +45769,11 @@ var init_pdf = __esm({
             const mustRemoveAspectRatioPromise = _ImageManager._isSVGFittingCanvas;
             const fileReader = new FileReader();
             const imageElement = new Image();
-            const imagePromise = new Promise((resolve11, reject) => {
+            const imagePromise = new Promise((resolve10, reject) => {
               imageElement.onload = () => {
                 data.bitmap = imageElement;
                 data.isSvg = true;
-                resolve11();
+                resolve10();
               };
               fileReader.onload = async () => {
                 const url2 = data.svgUrl = fileReader.result;
@@ -46424,13 +46424,13 @@ var init_pdf = __esm({
           return;
         }
         const {
-          resolve: resolve11,
+          resolve: resolve10,
           promise: promise2
         } = Promise.withResolvers();
         const onEditorsRendered = /* @__PURE__ */ __name((evt) => {
           if (evt.pageNumber === pageNumber) {
             this._eventBus._off("editorsrendered", onEditorsRendered);
-            resolve11();
+            resolve10();
           }
         }, "onEditorsRendered");
         this._eventBus.on("editorsrendered", onEditorsRendered);
@@ -50523,8 +50523,8 @@ var init_pdf = __esm({
           if (this.isSyncFontLoadingSupported) {
             return;
           }
-          await new Promise((resolve11) => {
-            const request = this._queueLoadingCallback(resolve11);
+          await new Promise((resolve10) => {
+            const request = this._queueLoadingCallback(resolve10);
             this._prepareFontLoadEvent(font, request);
           });
         }
@@ -57331,14 +57331,14 @@ var init_pdf = __esm({
           return this.getXfa().then((xfa) => XfaText.textContent(xfa));
         }
         const readableStream = this.streamTextContent(params);
-        return new Promise(function(resolve11, reject) {
+        return new Promise(function(resolve10, reject) {
           function pump() {
             reader.read().then(function({
               value,
               done
             }) {
               if (done) {
-                resolve11(textContent2);
+                resolve10(textContent2);
                 return;
               }
               textContent2.lang ??= value.lang;
@@ -67105,7 +67105,7 @@ var init_pdf = __esm({
         input.type = "file";
         input.accept = SupportedImageMimeTypes.join(",");
         const signal = this._uiManager._signal;
-        this.#bitmapPromise = new Promise((resolve11) => {
+        this.#bitmapPromise = new Promise((resolve10) => {
           input.addEventListener("change", async () => {
             if (!input.files || input.files.length === 0) {
               this.remove();
@@ -67120,13 +67120,13 @@ var init_pdf = __esm({
               });
               this.#getBitmapFetched(data);
             }
-            resolve11();
+            resolve10();
           }, {
             signal
           });
           input.addEventListener("cancel", () => {
             this.remove();
-            resolve11();
+            resolve10();
           }, {
             signal
           });
@@ -70257,7 +70257,7 @@ ${pageNumber}
         }
       }
       resolveEmbeddedImage(pdfObjects, name2) {
-        return new Promise((resolve11, reject) => {
+        return new Promise((resolve10, reject) => {
           pdfObjects.get(name2, (imgData) => {
             if (imgData) {
               let dataBuff;
@@ -70284,7 +70284,7 @@ ${pageNumber}
                 reject(new Error(`Image object ${name2}: data buffer is empty (length: 0)`));
                 return;
               }
-              resolve11({ width: imgData.width, height: imgData.height, kind: imgData.kind, data: dataBuff });
+              resolve10({ width: imgData.width, height: imgData.height, kind: imgData.kind, data: dataBuff });
             } else {
               reject(new Error(`Image object ${name2} not found`));
             }
@@ -202077,7 +202077,7 @@ ${lanes.join("\n")}
         }
         __name(createImportCallExpressionUMD, "createImportCallExpressionUMD");
         function createImportCallExpressionAMD(arg, containsLexicalThis) {
-          const resolve11 = factory2.createUniqueName("resolve");
+          const resolve10 = factory2.createUniqueName("resolve");
           const reject = factory2.createUniqueName("reject");
           const parameters = [
             factory2.createParameterDeclaration(
@@ -202086,7 +202086,7 @@ ${lanes.join("\n")}
               /*dotDotDotToken*/
               void 0,
               /*name*/
-              resolve11
+              resolve10
             ),
             factory2.createParameterDeclaration(
               /*modifiers*/
@@ -202103,7 +202103,7 @@ ${lanes.join("\n")}
                 factory2.createIdentifier("require"),
                 /*typeArguments*/
                 void 0,
-                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve11, reject]
+                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve10, reject]
               )
             )
           ]);
@@ -294087,8 +294087,8 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         installPackage(options) {
           this.packageInstallId++;
           const request = { kind: "installPackage", ...options, id: this.packageInstallId };
-          const promise2 = new Promise((resolve11, reject) => {
-            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve11, reject });
+          const promise2 = new Promise((resolve10, reject) => {
+            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve10, reject });
           });
           this.installer.send(request);
           return promise2;
@@ -307584,7 +307584,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve11) => setTimeout(resolve11, pollInterval));
+        await new Promise((resolve10) => setTimeout(resolve10, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -307601,7 +307601,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve11, reject) => {
+    return new Promise((resolve10, reject) => {
       const earlyReject = /* @__PURE__ */ __name((error2) => {
         reject(error2);
       }, "earlyReject");
@@ -307679,7 +307679,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve11(parseResult.data);
+            resolve10(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -307940,12 +307940,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve11, reject) => {
+    return new Promise((resolve10, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve11, interval);
+      const timeoutId = setTimeout(resolve10, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -308696,12 +308696,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve11) => {
+    return new Promise((resolve10) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve11();
+        resolve10();
       } else {
-        this._stdout.once("drain", resolve11);
+        this._stdout.once("drain", resolve10);
       }
     });
   }
@@ -308932,8 +308932,7 @@ var precisionGrepSchema = {
             whole_word: { type: "boolean", description: "Match whole words only" },
             multiline: { type: "boolean", description: "Allow multiline matches (default: false)" },
             include_binary: { type: "boolean", description: "Search binary files (default: false)" },
-            negate: { type: "boolean", description: "Return files WITHOUT this pattern (negation search)" },
-            refine_from: { type: "string", description: "Refine within cached results from a previous query ID" }
+            negate: { type: "boolean", description: "Return files WITHOUT this pattern (negation search)" }
           },
           required: ["id"]
         }
@@ -309319,7 +309318,7 @@ __name(formatMutualExclusivityError, "formatMutualExclusivityError");
 
 // src/utils/index.ts
 var import_fs4 = require("fs");
-var import_path5 = require("path");
+var import_path4 = require("path");
 
 // src/utils/fuzzy.ts
 function levenshteinDistance(a, b) {
@@ -310134,34 +310133,40 @@ __name(extractTwitterCard, "extractTwitterCard");
 function extractStandardMeta(html) {
   const metaData = {};
   const standardTags = ["description", "author", "keywords", "robots", "viewport", "generator"];
+  const regexCache = /* @__PURE__ */ new Map();
   for (const tagName19 of standardTags) {
-    const regexDouble = new RegExp(`<meta\\s+name="${tagName19}"[^>]*?content="([^"]*)"`, "gi");
-    const regexSingle = new RegExp(`<meta\\s+name='${tagName19}'[^>]*?content='([^']*)'`, "gi");
+    regexCache.set(tagName19, {
+      double: new RegExp(`<meta\\s+name="${tagName19}"[^>]*?content="([^"]*)"`, "gi"),
+      single: new RegExp(`<meta\\s+name='${tagName19}'[^>]*?content='([^']*)'`, "gi"),
+      reversedDouble: new RegExp(`<meta\\s+content="([^"]*)"[^>]*?name="${tagName19}"`, "gi"),
+      reversedSingle: new RegExp(`<meta\\s+content='([^']*)'[^>]*?name='${tagName19}'`, "gi")
+    });
+  }
+  for (const tagName19 of standardTags) {
+    const regexes = regexCache.get(tagName19);
     let match;
-    if ((match = regexDouble.exec(html)) !== null) {
+    if ((match = regexes.double.exec(html)) !== null) {
       const content = match[1];
       if (content !== void 0) {
         metaData[tagName19] = content;
         continue;
       }
     }
-    if ((match = regexSingle.exec(html)) !== null) {
+    if ((match = regexes.single.exec(html)) !== null) {
       const content = match[1];
       if (content !== void 0) {
         metaData[tagName19] = content;
         continue;
       }
     }
-    const reversedDouble = new RegExp(`<meta\\s+content="([^"]*)"[^>]*?name="${tagName19}"`, "gi");
-    const reversedSingle = new RegExp(`<meta\\s+content='([^']*)'[^>]*?name='${tagName19}'`, "gi");
-    if ((match = reversedDouble.exec(html)) !== null) {
+    if ((match = regexes.reversedDouble.exec(html)) !== null) {
       const content = match[1];
       if (content !== void 0 && !metaData[tagName19]) {
         metaData[tagName19] = content;
         continue;
       }
     }
-    if ((match = reversedSingle.exec(html)) !== null) {
+    if ((match = regexes.reversedSingle.exec(html)) !== null) {
       const content = match[1];
       if (content !== void 0 && !metaData[tagName19]) {
         metaData[tagName19] = content;
@@ -310274,7 +310279,7 @@ var RipgrepCore = class {
    * Execute ripgrep binary and return output.
    */
   executeRipgrep(args2, timeoutMs) {
-    return new Promise((resolve11, reject) => {
+    return new Promise((resolve10, reject) => {
       const process4 = (0, import_child_process.spawn)(import_ripgrep.rgPath, args2);
       const timeout = timeoutMs ?? 3e4;
       const timeoutId = setTimeout(() => {
@@ -310298,7 +310303,7 @@ var RipgrepCore = class {
         if (code !== null && code > 1) {
           reject(new Error(`Ripgrep exited with code ${code}: ${stderr}`));
         } else {
-          resolve11(stdout);
+          resolve10(stdout);
         }
       });
     });
@@ -311091,7 +311096,8 @@ async function findRelatedFiles(filePath, symbol2, workDir) {
   const result = {
     source_file: filePath,
     related: [],
-    symbol: symbol2
+    symbol: symbol2,
+    warnings: []
   };
   try {
     await treeSitterCore.init();
@@ -311104,6 +311110,9 @@ async function findRelatedFiles(filePath, symbol2, workDir) {
         (s) => s.name === symbol2 && s.exported
       );
     } catch (error2) {
+      result.warnings?.push(
+        `TreeSitter parsing failed for ${filePath}: ${error2 instanceof Error ? error2.message : "unknown error"}. Relationship detection may be incomplete (using regex-only fallback).`
+      );
     }
     const relativePath = path6.relative(workDir, filePath);
     const fileBaseName = path6.basename(filePath, path6.extname(filePath));
@@ -312017,8 +312026,7 @@ var FileStateCache = class _FileStateCache {
 
 // src/utils/grep-ranking.ts
 var import_child_process2 = require("child_process");
-var import_path3 = require("path");
-var import_path4 = __toESM(require("path"), 1);
+var import_path3 = __toESM(require("path"), 1);
 var gitTimestampCache = /* @__PURE__ */ new Map();
 var WEIGHTS = {
   EXACT_MATCH: 0.3,
@@ -312033,7 +312041,7 @@ async function rankResults(files, pattern, workDir) {
   }
   const ranked = [];
   for (const fileEntry of files) {
-    const absolutePath = (0, import_path3.resolve)(workDir, fileEntry.file);
+    const absolutePath = import_path3.default.resolve(workDir, fileEntry.file);
     const reasons = [];
     let score = 0;
     const exactMatchScore = scoreExactMatch(fileEntry.matches, pattern);
@@ -312161,7 +312169,7 @@ function normalizeGitTimestamp(timestamp) {
 }
 __name(normalizeGitTimestamp, "normalizeGitTimestamp");
 function scorePathDepth(filePath) {
-  const depth = filePath.split(import_path4.default.sep).length;
+  const depth = filePath.split(import_path3.default.sep).length;
   if (depth <= 1)
     return 1;
   if (depth >= 5)
@@ -312401,7 +312409,7 @@ function resolveStringField(obj, fieldName, options) {
     if (typeof fileValue !== "string") {
       throw new Error(`${fieldName}_file must be a string path, got ${typeof fileValue}`);
     }
-    const filePath = (0, import_path5.resolve)(basePath, fileValue);
+    const filePath = (0, import_path4.resolve)(basePath, fileValue);
     try {
       return (0, import_fs4.readFileSync)(filePath, "utf-8");
     } catch (e) {
@@ -312442,14 +312450,14 @@ var import_child_process3 = require("child_process");
 init_runtime_config();
 async function checkGitStatus(filePath) {
   try {
-    const checkRepo = await new Promise((resolve11) => {
+    const checkRepo = await new Promise((resolve10) => {
       const proc = (0, import_child_process3.spawn)("git", ["rev-parse", "--is-inside-work-tree"], {
         cwd: path9.dirname(filePath),
         stdio: ["ignore", "pipe", "ignore"]
       });
       const timeout = setTimeout(() => {
         proc.kill();
-        resolve11(false);
+        resolve10(false);
       }, 5e3);
       let output = "";
       proc.stdout?.on("data", (data) => {
@@ -312457,24 +312465,24 @@ async function checkGitStatus(filePath) {
       });
       proc.on("close", (code) => {
         clearTimeout(timeout);
-        resolve11(code === 0 && output.trim() === "true");
+        resolve10(code === 0 && output.trim() === "true");
       });
       proc.on("error", () => {
         clearTimeout(timeout);
-        resolve11(false);
+        resolve10(false);
       });
     });
     if (!checkRepo) {
       return { status: null, inRepo: false };
     }
-    const status = await new Promise((resolve11) => {
+    const status = await new Promise((resolve10) => {
       const proc = (0, import_child_process3.spawn)("git", ["status", "--porcelain", "--", filePath], {
         cwd: path9.dirname(filePath),
         stdio: ["ignore", "pipe", "ignore"]
       });
       const timeout = setTimeout(() => {
         proc.kill();
-        resolve11("");
+        resolve10("");
       }, 5e3);
       let output = "";
       proc.stdout?.on("data", (data) => {
@@ -312482,11 +312490,11 @@ async function checkGitStatus(filePath) {
       });
       proc.on("close", () => {
         clearTimeout(timeout);
-        resolve11(output.trim());
+        resolve10(output.trim());
       });
       proc.on("error", () => {
         clearTimeout(timeout);
-        resolve11("");
+        resolve10("");
       });
     });
     if (!status) {
@@ -312684,7 +312692,7 @@ async function runValidation(files, steps) {
         continue;
     }
     try {
-      const result = await new Promise((resolve11) => {
+      const result = await new Promise((resolve10) => {
         const proc = (0, import_child_process4.spawn)(cmd, args2, { shell: true, windowsHide: true });
         let stdout = "";
         let stderr = "";
@@ -312695,10 +312703,10 @@ async function runValidation(files, steps) {
           stderr += data.toString();
         });
         proc.on("close", (code) => {
-          resolve11({ code: code ?? 1, stdout, stderr });
+          resolve10({ code: code ?? 1, stdout, stderr });
         });
         proc.on("error", (err2) => {
-          resolve11({ code: 1, stdout: "", stderr: err2.message });
+          resolve10({ code: 1, stdout: "", stderr: err2.message });
         });
       });
       if (result.code !== 0) {
@@ -313045,7 +313053,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       expectation_failures: ["Command not provided"]
     });
   }
-  return new Promise((resolve11) => {
+  return new Promise((resolve10) => {
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -313066,7 +313074,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         untilTimeout = spec.until.timeout_ms ?? timeout;
         untilKillAfter = spec.until.kill_after ?? false;
       } catch (err2) {
-        return resolve11({
+        return resolve10({
           cmd: command,
           exit_code: 1,
           duration_ms: 0,
@@ -313185,7 +313193,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
                   if (spec.id) {
                     result.id = spec.id;
                   }
-                  resolve11(result);
+                  resolve10(result);
                   return;
                 } catch (err2) {
                 }
@@ -313247,7 +313255,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
                   if (spec.id) {
                     result.id = spec.id;
                   }
-                  resolve11(result);
+                  resolve10(result);
                   return;
                 } catch (err2) {
                 }
@@ -313406,7 +313414,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
           sessionState.setCwd(detectedCd);
         }
       }
-      resolve11(result);
+      resolve10(result);
     });
     proc.on("error", (err2) => {
       clearTimeout(timeoutId);
@@ -313429,7 +313437,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       if (captureStderr) {
         result.stderr = err2.message;
       }
-      resolve11(result);
+      resolve10(result);
     });
   });
 }
@@ -313486,7 +313494,7 @@ async function executeWithRetry(spec, retryConfig, globalEnv, globalWorkDir, glo
     }
     const delay = computeDelay(retryConfig, attempt);
     delays.push(delay);
-    await new Promise((resolve11) => setTimeout(resolve11, delay));
+    await new Promise((resolve10) => setTimeout(resolve10, delay));
     attempt++;
   }
 }
@@ -313929,7 +313937,10 @@ var HTML_ENTITIES = {
   "&reg;": "\xAE",
   "&trade;": "\u2122"
 };
-var NAMED_ENTITY_PATTERN = /&(lt|gt|amp|quot|apos|#39|#x27|#x2f|#x60|nbsp|ndash|mdash|hellip|copy|reg|trade);/gi;
+var NAMED_ENTITY_PATTERN = new RegExp(
+  "&(" + Object.keys(HTML_ENTITIES).map((k) => k.slice(1, -1)).join("|") + ");",
+  "gi"
+);
 function decodeHtmlEntities(text) {
   let decoded = text.replace(
     NAMED_ENTITY_PATTERN,
@@ -313989,6 +314000,22 @@ function detectLanguage(classAttr) {
   return "text";
 }
 __name(detectLanguage, "detectLanguage");
+function processCodeBlock(tagAttributes, rawCode, html, blockIndex) {
+  const classMatch = tagAttributes.match(/class=["']([^"']+)["']/i);
+  const classAttr = classMatch ? classMatch[1] : "";
+  const language = detectLanguage(classAttr);
+  const code = processCodeContent(rawCode);
+  if (!code || code.trim() === "") {
+    return void 0;
+  }
+  const context = extractContext(html, blockIndex);
+  return {
+    language,
+    code,
+    ...context && { context }
+  };
+}
+__name(processCodeBlock, "processCodeBlock");
 function extractContext(html, codeBlockIndex) {
   const precedingHtml = html.substring(0, codeBlockIndex);
   const headingMatch = precedingHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi);
@@ -314024,19 +314051,10 @@ function extractCodeBlocks(html) {
     const codeTag = match[1] || "";
     const rawCode = match[2];
     const blockIndex = match.index;
-    const classMatch = codeTag.match(/class=["']([^"']+)["']/i);
-    const classAttr = classMatch ? classMatch[1] : "";
-    const language = detectLanguage(classAttr);
-    const code = processCodeContent(rawCode);
-    if (!code || code.trim() === "") {
-      continue;
+    const block = processCodeBlock(codeTag, rawCode, html, blockIndex);
+    if (block) {
+      blocks.push(block);
     }
-    const context = extractContext(html, blockIndex);
-    blocks.push({
-      language,
-      code,
-      ...context && { context }
-    });
   }
   const barePrePattern = /<pre([^>]*)>([\s\S]*?)<\/pre>/gi;
   const processedIndices = /* @__PURE__ */ new Set();
@@ -314055,19 +314073,10 @@ function extractCodeBlocks(html) {
     if (/<code[^>]*>/i.test(rawCode)) {
       continue;
     }
-    const classMatch = preTag.match(/class=["']([^"']+)["']/i);
-    const classAttr = classMatch ? classMatch[1] : "";
-    const language = detectLanguage(classAttr);
-    const code = processCodeContent(rawCode);
-    if (!code || code.trim() === "") {
-      continue;
+    const block = processCodeBlock(preTag, rawCode, html, blockIndex);
+    if (block) {
+      blocks.push(block);
     }
-    const context = extractContext(html, blockIndex);
-    blocks.push({
-      language,
-      code,
-      ...context && { context }
-    });
   }
   return blocks;
 }
@@ -314203,6 +314212,33 @@ function detectContentType(headers, url2, bodySniff) {
 __name(detectContentType, "detectContentType");
 
 // src/utils/fetch/links.ts
+var MAX_REGEX_PATTERN_LENGTH = 200;
+function isSimpleSubstring(filter2) {
+  return !/[.*+?^${}()|[\]\\]/.test(filter2);
+}
+__name(isSimpleSubstring, "isSimpleSubstring");
+function validateRegexPattern(pattern) {
+  if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+    throw new Error("Pattern too long");
+  }
+  if (/(\+|\*|\{[^}]*\})\s*([+*?]|\{[^}]*\})|([+*?])\s*\1/.test(pattern)) {
+    throw new Error("Nested quantifiers detected");
+  }
+  let depth = 0;
+  let maxDepth = 0;
+  for (let i2 = 0; i2 < pattern.length; i2++) {
+    if (pattern[i2] === "(" && (i2 === 0 || pattern[i2 - 1] !== "\\")) {
+      depth++;
+      maxDepth = Math.max(maxDepth, depth);
+    } else if (pattern[i2] === ")" && (i2 === 0 || pattern[i2 - 1] !== "\\")) {
+      depth--;
+    }
+  }
+  if (maxDepth > 5) {
+    throw new Error("Excessive nesting depth");
+  }
+}
+__name(validateRegexPattern, "validateRegexPattern");
 function extractLinks(html, baseUrl, filter2) {
   const links = [];
   const seen = /* @__PURE__ */ new Set();
@@ -314213,6 +314249,14 @@ function extractLinks(html, baseUrl, filter2) {
     return [];
   }
   const filterLower = filter2?.toLowerCase() ?? "";
+  let filterRegex = null;
+  if (filter2 && !isSimpleSubstring(filter2)) {
+    try {
+      validateRegexPattern(filter2);
+      filterRegex = new RegExp(filter2, "i");
+    } catch {
+    }
+  }
   const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/gi;
   const headings = [];
   let headingMatch;
@@ -314285,15 +314329,11 @@ function extractLinks(html, baseUrl, filter2) {
       const hrefLower = resolvedHref.toLowerCase();
       const textLower = text.toLowerCase();
       if (!hrefLower.includes(filterLower) && !textLower.includes(filterLower)) {
-        try {
-          if (/(\+|\*|\?)\s*(\+|\*|\?)/.test(filter2)) {
-            continue;
-          }
-          const filterRegex = new RegExp(filter2, "i");
+        if (filterRegex) {
           if (!filterRegex.test(resolvedHref) && !filterRegex.test(text)) {
             continue;
           }
-        } catch {
+        } else {
           continue;
         }
       }
@@ -318048,8 +318088,8 @@ var CustomElementRegistry = class {
     } : (element) => element.localName === localName;
     registry2.set(localName, { Class: Class2, check: check2 });
     if (waiting.has(localName)) {
-      for (const resolve11 of waiting.get(localName))
-        resolve11(Class2);
+      for (const resolve10 of waiting.get(localName))
+        resolve10(Class2);
       waiting.delete(localName);
     }
     ownerDocument.querySelectorAll(
@@ -318089,13 +318129,13 @@ var CustomElementRegistry = class {
    */
   whenDefined(localName) {
     const { registry: registry2, waiting } = this;
-    return new Promise((resolve11) => {
+    return new Promise((resolve10) => {
       if (registry2.has(localName))
-        resolve11(registry2.get(localName).Class);
+        resolve10(registry2.get(localName).Class);
       else {
         if (!waiting.has(localName))
           waiting.set(localName, []);
-        waiting.get(localName).push(resolve11);
+        waiting.get(localName).push(resolve10);
       }
     });
   }
@@ -324249,6 +324289,7 @@ function createNegotiationInfo(requestedAccept, receivedContentType, wasAutoNego
 __name(createNegotiationInfo, "createNegotiationInfo");
 
 // src/utils/fetch/pdf-routing.ts
+var MAX_PAGES_PER_REQUEST = 20;
 function isPdfResponse(contentType) {
   if (!contentType)
     return false;
@@ -324284,7 +324325,8 @@ ${text}`).join("\n\n");
 __name(formatPageTexts, "formatPageTexts");
 async function parsePdfBuffer(buffer, pages) {
   try {
-    const pdfParse = (await Promise.resolve().then(() => (init_esm(), esm_exports5))).default;
+    const pdfParseModule = await Promise.resolve().then(() => (init_esm(), esm_exports5));
+    const pdfParse = pdfParseModule.default;
     const pageTexts = [];
     const options = {
       pagerender: async function(pageData) {
@@ -324296,19 +324338,21 @@ async function parsePdfBuffer(buffer, pages) {
     };
     const pdfData = await pdfParse(buffer, options);
     const totalPages = pdfData.numpages;
-    const metadata2 = pdfData.info ? {
-      title: pdfData.info.Title,
-      author: pdfData.info.Author,
-      subject: pdfData.info.Subject,
-      creator: pdfData.info.Creator
+    const info3 = pdfData.info;
+    const hasMetadata = info3 && (info3.Title || info3.Author || info3.Subject || info3.Creator);
+    const metadata2 = hasMetadata ? {
+      title: info3?.Title,
+      author: info3?.Author,
+      subject: info3?.Subject,
+      creator: info3?.Creator
     } : void 0;
     let text;
     let pageRange;
     if (pages) {
       const range = parsePageRange(pages);
       const requestedPages = range.end - range.start + 1;
-      if (requestedPages > 20) {
-        throw new Error(`Requested ${requestedPages} pages but maximum is 20 per request. Use a smaller range.`);
+      if (requestedPages > MAX_PAGES_PER_REQUEST) {
+        throw new Error(`Requested ${requestedPages} pages but maximum is ${MAX_PAGES_PER_REQUEST} per request. Use a smaller range.`);
       }
       if (range.end > totalPages) {
         throw new Error(`Requested pages ${range.start}-${range.end} but PDF only has ${totalPages} pages.`);
@@ -324612,8 +324656,8 @@ var RateLimiter = class {
       state.last_request_at = Date.now();
       return;
     }
-    return new Promise((resolve11, reject) => {
-      state.queue.push({ resolve: resolve11, reject });
+    return new Promise((resolve10, reject) => {
+      state.queue.push({ resolve: resolve10, reject });
       this.processQueue(domain2);
     });
   }
@@ -324751,6 +324795,8 @@ function extractWithCssSelectors(html, selectors) {
           }
         }
       } catch (error2) {
+        const errorMsg = error2 instanceof Error ? error2.message : String(error2);
+        results[selector].push(`[SELECTOR_ERROR: ${errorMsg}]`);
       }
     }
   } catch (error2) {
@@ -325331,8 +325377,23 @@ async function executeQuery(query2, output, workDir) {
   const maxMatchesPerFile = output.max_per_item ?? output.max_matches_per_file ?? 10;
   const maxTotalMatches = output.max_total_matches ?? 100;
   const maxTokens = output.max_tokens ?? Infinity;
-  const contextBefore = output.context_before ?? 0;
-  const contextAfter = output.context_after ?? 0;
+  let contextBefore = output.context_before ?? 0;
+  let contextAfter = output.context_after ?? 0;
+  if (output.expand_to && contextBefore === 0 && contextAfter === 0) {
+    switch (output.expand_to) {
+      case "block":
+        contextBefore = 5;
+        contextAfter = 5;
+        break;
+      case "function":
+      case "class":
+        contextBefore = 10;
+        contextAfter = 10;
+        break;
+      case "line":
+        break;
+    }
+  }
   const patternStr = resolveStringField(query2, "pattern", {
     allowFile: true,
     basePath: process.cwd(),
@@ -325596,7 +325657,10 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
   }
   try {
     const workDir = input.base_path || input.cwd ? await validateDirectoryPath(rawWorkDir, process.cwd()) : rawWorkDir;
-    let patterns2 = input.patterns_base64 ? input.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : input.patterns;
+    let patterns2 = input.patterns_base64 ? input.patterns_base64.map((p) => {
+      const decoded = Buffer.from(p, "base64").toString("utf-8");
+      return decoded.replace(/([\[\]])/g, "\\$1");
+    }) : input.patterns;
     if ((!patterns2 || patterns2.length === 0) && input.preset) {
       patterns2 = GLOB_PRESETS[input.preset];
     }
@@ -326650,12 +326714,12 @@ init_logging();
 
 // src/utils/file-suggestions.ts
 var import_fs7 = require("fs");
-var import_path6 = require("path");
+var import_path5 = require("path");
 async function getFileSuggestions(requestedPath, maxSuggestions = 5) {
   const suggestions = [];
-  const dir = (0, import_path6.dirname)(requestedPath);
-  const base = (0, import_path6.basename)(requestedPath);
-  const ext = (0, import_path6.extname)(requestedPath);
+  const dir = (0, import_path5.dirname)(requestedPath);
+  const base = (0, import_path5.basename)(requestedPath);
+  const ext = (0, import_path5.extname)(requestedPath);
   await checkCommonMistakes(requestedPath, dir, base, ext, suggestions);
   await checkDirectoryListing(requestedPath, dir, base, suggestions);
   const seen = /* @__PURE__ */ new Set();
@@ -326701,7 +326765,7 @@ async function checkCommonMistakes(requested, dir, base, ext, suggestions) {
   }
   const baseNoExt = base.replace(ext, "");
   for (const testExt of commonExts) {
-    const indexPath = (0, import_path6.join)(dir, baseNoExt, "index" + testExt);
+    const indexPath = (0, import_path5.join)(dir, baseNoExt, "index" + testExt);
     if (await fileExists2(indexPath)) {
       suggestions.push({
         path: indexPath,
@@ -326718,7 +326782,7 @@ async function checkDirectoryListing(requested, dir, base, suggestions) {
     const ranked = rankBySimilarity(base, entries2, 0.4);
     for (const match of ranked.slice(0, 3)) {
       suggestions.push({
-        path: (0, import_path6.join)(dir, match.path),
+        path: (0, import_path5.join)(dir, match.path),
         reason: `similar name (${Math.round(match.similarity * 100)}% match)`,
         confidence: match.similarity > 0.7 ? "medium" : "low"
       });
@@ -327145,6 +327209,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
     if (stats.size === 0) {
       result.status = "empty";
       result.size_bytes = 0;
+      result.line_count = 1;
       result.warning = "File exists but is empty (0 bytes)";
       return result;
     }
@@ -327359,7 +327424,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
             }
           }
         } else {
-          result.error = "Symbol extraction not supported for this file type";
+          result.error = "Symbol extraction not supported for this file type. Only TypeScript/JavaScript files are supported.";
         }
         break;
       case "ast":
@@ -327367,7 +327432,12 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
           try {
             const treeSitter = getTreeSitter();
             const tree = await treeSitter.parse(content, filePath);
-            result.ast = tree.rootNode;
+            result.ast = {
+              file: filePath,
+              kind: "SourceFile",
+              children: []
+              // Tree-sitter AST structure - using simplified format for consistency
+            };
           } catch (error2) {
             if (filePath.endsWith(".ts") || filePath.endsWith(".tsx") || filePath.endsWith(".js") || filePath.endsWith(".jsx")) {
               const sourceFile = ts2.createSourceFile(
@@ -328005,13 +328075,22 @@ function findInContext(filePath, content, find2, hints, matchConfig) {
     allMatches = matches2.map((m) => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === "fuzzy") {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
-    const fuzzyResults = fuzzyMatch(
-      normalizedContent,
-      normalizedFind,
-      matchConfig.case_sensitive ?? true,
-      threshold
-    );
-    allMatches = fuzzyResults.map((r) => ({ index: r.index, length: r.length }));
+    const contentForMatching = matchConfig.whitespace_sensitive === false ? normalizedContent : normalizedContent;
+    const findForMatching = matchConfig.whitespace_sensitive === false ? normalizeWhitespace(normalizedFind) : normalizedFind;
+    if (matchConfig.whitespace_sensitive === false) {
+      allMatches = findWhitespaceInsensitiveMatches(
+        matchConfig.case_sensitive === false ? normalizedContent.toLowerCase() : normalizedContent,
+        findForMatching
+      );
+    } else {
+      const fuzzyResults = fuzzyMatch(
+        contentForMatching,
+        findForMatching,
+        matchConfig.case_sensitive ?? true,
+        threshold
+      );
+      allMatches = fuzzyResults.map((r) => ({ index: r.index, length: r.length }));
+    }
   } else {
     let searchContent = normalizedContent;
     let searchFind = normalizedFind;
@@ -328605,7 +328684,7 @@ function applyOperations(notebook, operations) {
             source: normalizeSource(op.source),
             metadata: {}
           };
-          if (op.cell_type === "code") {
+          if (op.cell_type === "code" || op.cell_type === "raw") {
             newCell.execution_count = null;
             newCell.outputs = [];
           }

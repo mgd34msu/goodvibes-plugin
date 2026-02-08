@@ -61,7 +61,7 @@ export class RateLimiter {
       const hostname = parsed.hostname;
       const port = parsed.port;
       
-      // Include port only if it's non-standard
+      // Exclude standard ports (80/443) from domain key
       const isStandardPort = 
         (parsed.protocol === 'http:' && port === '80') ||
         (parsed.protocol === 'https:' && port === '443') ||

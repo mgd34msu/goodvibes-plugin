@@ -81,8 +81,9 @@ export function extractWithCssSelectors(
           }
         }
       } catch (error) {
-        // Invalid selector - leave as empty array
-        // No logging needed, graceful degradation
+        // Invalid selector - add error note for visibility
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        results[selector].push(`[SELECTOR_ERROR: ${errorMsg}]`);
       }
     }
   } catch (error) {

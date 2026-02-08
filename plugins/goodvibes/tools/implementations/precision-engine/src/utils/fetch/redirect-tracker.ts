@@ -35,11 +35,12 @@ export async function fetchWithRedirectTracking(
   
   // Track redirects manually
   for (let i = 0; i < maxRedirects; i++) {
-    // Check for redirect loop
-    if (visitedUrls.has(currentUrl)) {
+    // Check for redirect loop (normalize URL to lowercase for case-insensitive comparison)
+    const normalizedUrl = currentUrl.toLowerCase();
+    if (visitedUrls.has(normalizedUrl)) {
       throw new Error(`Redirect loop detected: ${currentUrl} was already visited`);
     }
-    visitedUrls.add(currentUrl);
+    visitedUrls.add(normalizedUrl);
     
     let response: Response;
     try {

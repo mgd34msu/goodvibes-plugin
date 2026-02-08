@@ -42,6 +42,8 @@ export interface RelationshipResult {
   related: RelatedFile[];
   /** The symbol being traced */
   symbol: string;
+  /** Optional warnings about degraded functionality */
+  warnings?: string[];
 }
 
 // === Singleton Instances ===
@@ -84,6 +86,7 @@ export async function findRelatedFiles(
     source_file: filePath,
     related: [],
     symbol,
+    warnings: [],
   };
 
   try {
@@ -102,6 +105,10 @@ export async function findRelatedFiles(
     } catch (error) {
       // TreeSitter parsing failed - gracefully degrade
       // We'll continue with ripgrep-only approach
+      result.warnings?.push(
+        `TreeSitter parsing failed for ${filePath}: ${error instanceof Error ? error.message : 'unknown error'}. ` +
+        'Relationship detection may be incomplete (using regex-only fallback).'
+      );
     }
 
     // Step 2: Find files that import from this file

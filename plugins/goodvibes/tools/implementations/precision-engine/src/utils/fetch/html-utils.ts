@@ -7,7 +7,7 @@
  * Superset of all HTML entities used across tables, links, and code-blocks.
  * Case-insensitive matching via the NAMED_ENTITY_PATTERN regex.
  * NOTE: Entries like &#39; are intentionally included in both the map AND
- * the NAMED_ENTITY_PATTERN regex for single-pass performance. Keep both in sync.
+ * the NAMED_ENTITY_PATTERN regex for single-pass performance.
  */
 export const HTML_ENTITIES: Record<string, string> = {
   '&lt;': '<',
@@ -31,9 +31,12 @@ export const HTML_ENTITIES: Record<string, string> = {
 /**
  * Pre-compiled single-pass regex for all named/numeric entities.
  * Case-insensitive to handle mixed-case HTML entities.
- * MUST stay in sync with HTML_ENTITIES keys above.
+ * Dynamically generated from HTML_ENTITIES keys to stay in sync.
  */
-const NAMED_ENTITY_PATTERN = /&(lt|gt|amp|quot|apos|#39|#x27|#x2f|#x60|nbsp|ndash|mdash|hellip|copy|reg|trade);/gi;
+const NAMED_ENTITY_PATTERN = new RegExp(
+  '&(' + Object.keys(HTML_ENTITIES).map(k => k.slice(1, -1)).join('|') + ');',
+  'gi'
+);
 
 /**
  * Decode HTML entities in text.

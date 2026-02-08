@@ -224,18 +224,31 @@ function extractStandardMeta(html: string): Record<string, string> {
   // List of standard meta tag names to extract
   const standardTags = ['description', 'author', 'keywords', 'robots', 'viewport', 'generator'];
 
+  // Pre-compile regexes outside the loop for performance
+  const regexCache = new Map<string, {
+    double: RegExp;
+    single: RegExp;
+    reversedDouble: RegExp;
+    reversedSingle: RegExp;
+  }>();
+
+  for (const tagName of standardTags) {
+    regexCache.set(tagName, {
+      double: new RegExp(`<meta\\s+name="${tagName}"[^>]*?content="([^"]*)"`, 'gi'),
+      single: new RegExp(`<meta\\s+name='${tagName}'[^>]*?content='([^']*)'`, 'gi'),
+      reversedDouble: new RegExp(`<meta\\s+content="([^"]*)"[^>]*?name="${tagName}"`, 'gi'),
+      reversedSingle: new RegExp(`<meta\\s+content='([^']*)'[^>]*?name='${tagName}'`, 'gi'),
+    });
+  }
+
   for (const tagName of standardTags) {
     // Match name="tagName" content="..." with proper quote handling
-    
-    // Double-quoted attributes
-    const regexDouble = new RegExp(`<meta\\s+name="${tagName}"[^>]*?content="([^"]*)"`, 'gi');
-    // Single-quoted attributes
-    const regexSingle = new RegExp(`<meta\\s+name='${tagName}'[^>]*?content='([^']*)'`, 'gi');
+    const regexes = regexCache.get(tagName)!;
 
     let match: RegExpExecArray | null;
     
     // Try double-quoted version
-    if ((match = regexDouble.exec(html)) !== null) {
+    if ((match = regexes.double.exec(html)) !== null) {
       const content = match[1];
       if (content !== undefined) {
         metaData[tagName] = content;
@@ -244,7 +257,7 @@ function extractStandardMeta(html: string): Record<string, string> {
     }
     
     // Try single-quoted version
-    if ((match = regexSingle.exec(html)) !== null) {
+    if ((match = regexes.single.exec(html)) !== null) {
       const content = match[1];
       if (content !== undefined) {
         metaData[tagName] = content;
@@ -253,10 +266,7 @@ function extractStandardMeta(html: string): Record<string, string> {
     }
 
     // Also try reversed attribute order: content before name
-    const reversedDouble = new RegExp(`<meta\\s+content="([^"]*)"[^>]*?name="${tagName}"`, 'gi');
-    const reversedSingle = new RegExp(`<meta\\s+content='([^']*)'[^>]*?name='${tagName}'`, 'gi');
-
-    if ((match = reversedDouble.exec(html)) !== null) {
+    if ((match = regexes.reversedDouble.exec(html)) !== null) {
       const content = match[1];
       if (content !== undefined && !metaData[tagName]) {
         metaData[tagName] = content;
@@ -264,7 +274,7 @@ function extractStandardMeta(html: string): Record<string, string> {
       }
     }
     
-    if ((match = reversedSingle.exec(html)) !== null) {
+    if ((match = regexes.reversedSingle.exec(html)) !== null) {
       const content = match[1];
       if (content !== undefined && !metaData[tagName]) {
         metaData[tagName] = content;

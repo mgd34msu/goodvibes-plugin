@@ -21,7 +21,7 @@ import { FileStateCache } from '../state/file-cache.js';
  * Notebook cell structure
  */
 interface NotebookCell {
-  cell_type: 'code' | 'markdown';
+  cell_type: 'code' | 'markdown' | 'raw';
   source: string | string[];
   metadata?: Record<string, unknown>;
   execution_count?: number | null;
@@ -46,7 +46,7 @@ interface NotebookOperation {
   cell?: number;       // 0-indexed cell index (required for replace/delete)
   after?: number;      // 0-indexed position for insert (insert after this index, -1 for beginning)
   source?: string;     // Cell content (required for replace/insert)
-  cell_type?: 'code' | 'markdown'; // Cell type (required for replace/insert)
+  cell_type?: 'code' | 'markdown' | 'raw'; // Cell type (required for replace/insert)
   clear_outputs?: boolean; // For replace: clear outputs (default false)
 }
 
@@ -207,7 +207,7 @@ function applyOperations(
             metadata: {}
           };
           
-          if (op.cell_type === 'code') {
+          if (op.cell_type === 'code' || op.cell_type === 'raw') {
             newCell.execution_count = null;
             newCell.outputs = [];
           }

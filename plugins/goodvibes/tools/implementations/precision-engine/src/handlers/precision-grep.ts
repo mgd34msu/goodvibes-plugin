@@ -104,6 +104,7 @@ interface GrepResult {
   negation?: NegationResult;
   ranked_files?: RankedFile[];
   stats?: GrepStatsSummary;
+  tokens_used?: number;
 }
 
 // === Singleton Instances ===
@@ -299,6 +300,9 @@ async function transformRipgrepResult(
     result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Use max_line_length: null for full content.`;
   }
 
+  // Include token count for cumulative tracking
+  result.tokens_used = totalTokens;
+
   return result;
 }
 
@@ -313,8 +317,29 @@ async function executeQuery(
   const maxMatchesPerFile = output.max_per_item ?? output.max_matches_per_file ?? 10;
   const maxTotalMatches = output.max_total_matches ?? 100;
   const maxTokens = output.max_tokens ?? Infinity;
-  const contextBefore = output.context_before ?? 0;
-  const contextAfter = output.context_after ?? 0;
+  
+  // Set default context based on expand_to if not explicitly provided
+  let contextBefore = output.context_before ?? 0;
+  let contextAfter = output.context_after ?? 0;
+  
+  // If expand_to is set but no explicit context, use reasonable defaults
+  if (output.expand_to && contextBefore === 0 && contextAfter === 0) {
+    switch (output.expand_to) {
+      case 'block':
+        contextBefore = 5;
+        contextAfter = 5;
+        break;
+      case 'function':
+      case 'class':
+        // These use tree-sitter, but still need fallback context
+        contextBefore = 10;
+        contextAfter = 10;
+        break;
+      case 'line':
+        // No additional context needed
+        break;
+    }
+  }
 
   // Resolve pattern (support base64-encoded patterns)
   const patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
@@ -357,14 +382,7 @@ async function executeQuery(
     : workDir;
   const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
 
-  // TODO(Wave 4): Implement basic refinement logic
-  // If refine_from is provided, scope search to cached files from previous query
-  // if (query.refine_from) {
-  //   const cachedFiles = searchCache.getFiles(query.refine_from);
-  //   if (cachedFiles && cachedFiles.length > 0) {
-  //     searchOpts.paths = cachedFiles;
-  //   }
-  // }
+
 
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
     pattern: patternStr,
@@ -413,9 +431,7 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
       context_after: rawOutput.context_after ?? 0,
       // Support both new and old parameter names
       max_results: rawOutput.max_results ?? rawOutput.max_files ?? 100,
-      max_files: rawOutput.max_files ?? 100,
       max_per_item: rawOutput.max_per_item ?? rawOutput.max_matches_per_file ?? 10,
-      max_matches_per_file: rawOutput.max_matches_per_file ?? 10,
       max_total_matches: rawOutput.max_total_matches ?? 100,
     };
 
@@ -579,11 +595,13 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
     let totalFiles = 0;
     let totalMatches = 0;
     let anyTruncated = false;
+    let cumulativeTokens = 0;
 
     for (const result of Object.values(queryResults)) {
       totalFiles += result.file_count ?? 0;
       totalMatches += result.match_count ?? 0;
       if (result.truncated) anyTruncated = true;
+      cumulativeTokens += result.tokens_used ?? 0;
     }
 
     const data = {
@@ -593,7 +611,7 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
         total_matches: totalMatches,
         truncated: anyTruncated,
       },
-      tokens_used: estimateTokens(JSON.stringify(queryResults)),
+      tokens_used: cumulativeTokens,
     };
 
     return toCallToolResult(successResult(data, outputMode, getElapsed()));

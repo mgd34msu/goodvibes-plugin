@@ -729,13 +729,29 @@ function findInContext(
     allMatches = matches.map(m => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === 'fuzzy') {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
-    const fuzzyResults = fuzzyMatch(
-      normalizedContent,
-      normalizedFind,
-      matchConfig.case_sensitive ?? true,
-      threshold
-    );
-    allMatches = fuzzyResults.map(r => ({ index: r.index, length: r.length }));
+    // When whitespace_sensitive is false, normalize whitespace for fuzzy matching
+    const contentForMatching = matchConfig.whitespace_sensitive === false
+      ? normalizedContent
+      : normalizedContent;
+    const findForMatching = matchConfig.whitespace_sensitive === false
+      ? normalizeWhitespace(normalizedFind)
+      : normalizedFind;
+    
+    // If whitespace insensitive, use whitespace-insensitive matching first
+    if (matchConfig.whitespace_sensitive === false) {
+      allMatches = findWhitespaceInsensitiveMatches(
+        matchConfig.case_sensitive === false ? normalizedContent.toLowerCase() : normalizedContent,
+        findForMatching
+      );
+    } else {
+      const fuzzyResults = fuzzyMatch(
+        contentForMatching,
+        findForMatching,
+        matchConfig.case_sensitive ?? true,
+        threshold
+      );
+      allMatches = fuzzyResults.map(r => ({ index: r.index, length: r.length }));
+    }
   } else {
     // exact match
     let searchContent = normalizedContent;

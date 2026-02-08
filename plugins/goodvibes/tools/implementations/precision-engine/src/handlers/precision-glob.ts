@@ -152,8 +152,16 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       ? await validateDirectoryPath(rawWorkDir, process.cwd())
       : rawWorkDir;
     // Decode patterns from base64 if provided
+    // Note: Brackets [ ] are automatically escaped for literal matching.
+    // Other glob chars like *, ?, {}, () work normally.
     let patterns = input.patterns_base64
-      ? input.patterns_base64.map(p => Buffer.from(p, 'base64').toString('utf-8'))
+      ? input.patterns_base64.map(p => {
+          const decoded = Buffer.from(p, 'base64').toString('utf-8');
+          // Only escape square brackets for literal matching
+          // This allows base64 patterns to match filenames containing [ or ]
+          // while still supporting common glob patterns like *.ts
+          return decoded.replace(/([\[\]])/g, '\\$1');
+        })
       : input.patterns;
 
     // Expand preset if patterns not provided (empty array or undefined)

@@ -5,7 +5,6 @@
 
 import { FileStateCache } from '../state/file-cache.js';
 import { execFileSync } from 'child_process';
-import { resolve } from 'path';
 import path from 'path';
 
 /**
@@ -61,7 +60,7 @@ export async function rankResults(
   const ranked: RankedFile[] = [];
 
   for (const fileEntry of files) {
-    const absolutePath = resolve(workDir, fileEntry.file);
+    const absolutePath = path.resolve(workDir, fileEntry.file);
     const reasons: string[] = [];
     let score = 0;
 

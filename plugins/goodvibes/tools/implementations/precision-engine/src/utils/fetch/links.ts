@@ -6,6 +6,50 @@
 import { decodeHtmlEntities, stripHtmlTagsWithSpacing as stripHtmlTags } from './html-utils.js';
 
 /**
+ * Maximum allowed regex pattern length to prevent ReDoS
+ */
+const MAX_REGEX_PATTERN_LENGTH = 200;
+
+/**
+ * Check if a filter string is a simple substring (no regex special chars)
+ */
+function isSimpleSubstring(filter: string): boolean {
+  return !/[.*+?^${}()|[\]\\]/.test(filter);
+}
+
+/**
+ * Validate regex pattern for potential ReDoS vulnerabilities
+ * @throws Error if pattern is invalid or potentially dangerous
+ */
+function validateRegexPattern(pattern: string): void {
+  // Check pattern length
+  if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+    throw new Error('Pattern too long');
+  }
+
+  // Check for nested/consecutive quantifiers (ReDoS risk)
+  // Matches patterns like: (a+)+, (a*)*, (a?)+, a**+, etc.
+  if (/(\+|\*|\{[^}]*\})\s*([+*?]|\{[^}]*\})|([+*?])\s*\1/.test(pattern)) {
+    throw new Error('Nested quantifiers detected');
+  }
+
+  // Check for excessive quantifier nesting depth
+  let depth = 0;
+  let maxDepth = 0;
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i] === '(' && (i === 0 || pattern[i - 1] !== '\\')) {
+      depth++;
+      maxDepth = Math.max(maxDepth, depth);
+    } else if (pattern[i] === ')' && (i === 0 || pattern[i - 1] !== '\\')) {
+      depth--;
+    }
+  }
+  if (maxDepth > 5) {
+    throw new Error('Excessive nesting depth');
+  }
+}
+
+/**
  * Information about a link extracted from HTML
  */
 export interface LinkInfo {
@@ -60,6 +104,18 @@ export function extractLinks(
 
   // Hoist filter toLowerCase for performance (used in loop)
   const filterLower = filter?.toLowerCase() ?? '';
+
+  // Pre-compile filter regex once if filter looks like a regex pattern
+  let filterRegex: RegExp | null = null;
+  if (filter && !isSimpleSubstring(filter)) {
+    try {
+      // Validate pattern for ReDoS protection
+      validateRegexPattern(filter);
+      filterRegex = new RegExp(filter, 'i');
+    } catch {
+      // Invalid regex - will fall back to substring matching only
+    }
+  }
 
   // Extract headings for context (h1-h6)
   const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/gi;
@@ -161,26 +217,20 @@ export function extractLinks(
       context,
     };
 
-    // Apply filter if provided (hoist filter.toLowerCase() outside loop)
+    // Apply filter if provided
     if (filter) {
       const hrefLower = resolvedHref.toLowerCase();
       const textLower = text.toLowerCase();
 
       // Try as substring match first
       if (!hrefLower.includes(filterLower) && !textLower.includes(filterLower)) {
-        // Try as regex pattern with ReDoS protection
-        try {
-          // Simple heuristic: reject patterns with nested quantifiers
-          if (/(\+|\*|\?)\s*(\+|\*|\?)/.test(filter)) {
-            // Skip potential ReDoS patterns
-            continue;
-          }
-          const filterRegex = new RegExp(filter, 'i');
+        // Try pre-compiled regex if available
+        if (filterRegex) {
           if (!filterRegex.test(resolvedHref) && !filterRegex.test(text)) {
             continue;
           }
-        } catch {
-          // Invalid regex - already failed substring match
+        } else {
+          // No valid regex - failed substring match means no match
           continue;
         }
       }

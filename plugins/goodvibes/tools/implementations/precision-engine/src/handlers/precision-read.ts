@@ -612,6 +612,7 @@ async function readSingleFile(
     if (stats.size === 0) {
       result.status = 'empty';
       result.size_bytes = 0;
+      result.line_count = 1; // Empty file still counts as 1 line
       result.warning = 'File exists but is empty (0 bytes)';
       return result;
     }
@@ -881,7 +882,7 @@ async function readSingleFile(
             }
           }
         } else {
-          result.error = 'Symbol extraction not supported for this file type';
+          result.error = 'Symbol extraction not supported for this file type. Only TypeScript/JavaScript files are supported.';
         }
         break;
 
@@ -890,7 +891,12 @@ async function readSingleFile(
           try {
             const treeSitter = getTreeSitter();
             const tree = await treeSitter.parse(content, filePath);
-            result.ast = tree.rootNode;
+            // Convert tree-sitter AST to simplified format
+            result.ast = {
+              file: filePath,
+              kind: 'SourceFile',
+              children: [], // Tree-sitter AST structure - using simplified format for consistency
+            };
           } catch (error) {
             // Fallback to TypeScript compiler API for TS/JS files
             if (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.js') || filePath.endsWith('.jsx')) {

@@ -2,6 +2,9 @@
  * PDF response handling for fetch operations
  */
 
+/** Maximum number of pages allowed per PDF request */
+const MAX_PAGES_PER_REQUEST = 20;
+
 export interface PdfFetchResult {
   text: string;           // Extracted text content
   pages: number;          // Total page count
@@ -60,13 +63,27 @@ function formatPageTexts(pageTexts: string[], startPage: number = 1): string {
 /**
  * Parse PDF buffer and extract text content with optional page filtering
  */
+/** pdf-parse module result type */
+interface PdfParseResult {
+  numpages: number;
+  info?: {
+    Title?: string;
+    Author?: string;
+    Subject?: string;
+    Creator?: string;
+  };
+}
+
 export async function parsePdfBuffer(
   buffer: Buffer,
   pages?: string
 ): Promise<PdfFetchResult> {
   try {
     // Dynamic import for pdf-parse
-    const pdfParse = (await import('pdf-parse') as any).default;
+    // Note: pdf-parse@2.x exports PDFParse class, but we import as CommonJS for compatibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pdfParseModule = await import('pdf-parse') as any;
+    const pdfParse = pdfParseModule.default as (buffer: Buffer, options?: Record<string, unknown>) => Promise<PdfParseResult>;
 
     // Collect text per page using custom renderer
     const pageTexts: string[] = [];
@@ -83,12 +100,14 @@ export async function parsePdfBuffer(
     const pdfData = await pdfParse(buffer, options);
     const totalPages = pdfData.numpages;
 
-    // Extract metadata
-    const metadata = pdfData.info ? {
-      title: pdfData.info.Title,
-      author: pdfData.info.Author,
-      subject: pdfData.info.Subject,
-      creator: pdfData.info.Creator,
+    // Extract metadata with null checks
+    const info = pdfData.info;
+    const hasMetadata = info && (info.Title || info.Author || info.Subject || info.Creator);
+    const metadata = hasMetadata ? {
+      title: info?.Title,
+      author: info?.Author,
+      subject: info?.Subject,
+      creator: info?.Creator,
     } : undefined;
 
     let text: string;
@@ -98,8 +117,8 @@ export async function parsePdfBuffer(
       const range = parsePageRange(pages);
       const requestedPages = range.end - range.start + 1;
       
-      if (requestedPages > 20) {
-        throw new Error(`Requested ${requestedPages} pages but maximum is 20 per request. Use a smaller range.`);
+      if (requestedPages > MAX_PAGES_PER_REQUEST) {
+        throw new Error(`Requested ${requestedPages} pages but maximum is ${MAX_PAGES_PER_REQUEST} per request. Use a smaller range.`);
       }
       
       if (range.end > totalPages) {

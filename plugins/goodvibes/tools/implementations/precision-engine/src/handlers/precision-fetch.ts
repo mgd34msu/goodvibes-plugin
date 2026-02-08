@@ -57,7 +57,7 @@ export function clearFetchCache(): void {
 function summarizeContent(html: string, url: string, prompt?: string): string {
   // Try readability extraction first for cleaner text
   const readable = extractReadableContent(html, url);
-  // extractReadableContent returns simplified HTML content; strip remaining tags for plain text
+  // extractReadableContent returns Markdown content; strip remaining tags for plain text
   const text = readable
     ? readable.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     : html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -94,6 +94,21 @@ function summarizeContent(html: string, url: string, prompt?: string): string {
   return header ? `${header}\n\n${summary}` : summary;
 }
 
+/**
+ * Extraction modes for processing fetched content:
+ * - `raw`: Returns base64-encoded binary content without processing
+ * - `text`: Strips HTML tags and returns plain text
+ * - `json`: Parses and pretty-prints JSON content
+ * - `markdown`: Converts HTML to Markdown format
+ * - `structured`: Extracts content using CSS selectors (default: h1-h3, p, a)
+ * - `summary`: Creates a concise summary with readability-enhanced metadata
+ * - `code_blocks`: Extracts all code blocks from the content
+ * - `tables`: Extracts table data structures from HTML tables
+ * - `links`: Extracts all hyperlinks with their text and URLs
+ * - `metadata`: Extracts structured metadata (Open Graph, JSON-LD, etc.)
+ * - `readable`: Uses Mozilla Readability to extract main article content as Markdown
+ * - `pdf`: Parses PDF files and extracts text content by page
+ */
 type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary' | 'code_blocks' | 'tables' | 'links' | 'metadata' | 'readable' | 'pdf';
 
 interface FetchSpec {

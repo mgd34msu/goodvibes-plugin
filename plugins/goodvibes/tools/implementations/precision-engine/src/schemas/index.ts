@@ -266,7 +266,6 @@ export const precisionGrepSchema: Tool = {
             multiline: { type: 'boolean', description: 'Allow multiline matches (default: false)' },
             include_binary: { type: 'boolean', description: 'Search binary files (default: false)' },
             negate: { type: 'boolean', description: 'Return files WITHOUT this pattern (negation search)' },
-            refine_from: { type: 'string', description: 'Refine within cached results from a previous query ID' },
           },
           required: ['id'],
         },

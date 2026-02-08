@@ -57,6 +57,47 @@ function detectLanguage(classAttr: string): string {
 }
 
 /**
+ * Process a code block: extract class, detect language, process content, extract context.
+ * Shared logic for both <pre><code> and bare <pre> patterns.
+ * 
+ * @param tagAttributes - The tag attributes (from <code> or <pre>)
+ * @param rawCode - Raw code content
+ * @param html - Full HTML content for context extraction
+ * @param blockIndex - Index of code block in HTML
+ * @returns CodeBlock if valid, undefined if empty
+ */
+function processCodeBlock(
+  tagAttributes: string,
+  rawCode: string,
+  html: string,
+  blockIndex: number
+): CodeBlock | undefined {
+  // Extract class attribute
+  const classMatch = tagAttributes.match(/class=["']([^"']+)["']/i);
+  const classAttr = classMatch ? classMatch[1] : '';
+  
+  // Detect language
+  const language = detectLanguage(classAttr);
+  
+  // Process code content
+  const code = processCodeContent(rawCode);
+  
+  // Skip empty blocks
+  if (!code || code.trim() === '') {
+    return undefined;
+  }
+  
+  // Extract context (preceding heading)
+  const context = extractContext(html, blockIndex);
+  
+  return {
+    language,
+    code,
+    ...(context && { context }),
+  };
+}
+
+/**
  * Extract the nearest preceding heading (h1-h6) as context.
  */
 function extractContext(html: string, codeBlockIndex: number): string | undefined {
@@ -134,29 +175,10 @@ export function extractCodeBlocks(html: string): CodeBlock[] {
     const rawCode = match[2];
     const blockIndex = match.index;
     
-    // Extract class attribute
-    const classMatch = codeTag.match(/class=["']([^"']+)["']/i);
-    const classAttr = classMatch ? classMatch[1] : '';
-    
-    // Detect language
-    const language = detectLanguage(classAttr);
-    
-    // Process code content
-    const code = processCodeContent(rawCode);
-    
-    // Skip empty blocks
-    if (!code || code.trim() === '') {
-      continue;
+    const block = processCodeBlock(codeTag, rawCode, html, blockIndex);
+    if (block) {
+      blocks.push(block);
     }
-    
-    // Extract context (preceding heading)
-    const context = extractContext(html, blockIndex);
-    
-    blocks.push({
-      language,
-      code,
-      ...(context && { context }),
-    });
   }
   
   // Pattern 2: <pre class="...">content</pre> (without <code> wrapper)
@@ -188,29 +210,10 @@ export function extractCodeBlocks(html: string): CodeBlock[] {
       continue;
     }
     
-    // Extract class attribute
-    const classMatch = preTag.match(/class=["']([^"']+)["']/i);
-    const classAttr = classMatch ? classMatch[1] : '';
-    
-    // Detect language
-    const language = detectLanguage(classAttr);
-    
-    // Process code content
-    const code = processCodeContent(rawCode);
-    
-    // Skip empty blocks
-    if (!code || code.trim() === '') {
-      continue;
+    const block = processCodeBlock(preTag, rawCode, html, blockIndex);
+    if (block) {
+      blocks.push(block);
     }
-    
-    // Extract context (preceding heading)
-    const context = extractContext(html, blockIndex);
-    
-    blocks.push({
-      language,
-      code,
-      ...(context && { context }),
-    });
   }
   
   return blocks;
