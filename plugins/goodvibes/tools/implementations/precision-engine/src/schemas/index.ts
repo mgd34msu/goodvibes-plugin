@@ -385,7 +385,7 @@ export const precisionGlobSchema: Tool = {
     type: 'object',
     properties: {
       patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns to match' },
-      patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Encode each with: echo -n "pattern" | base64 -w0' },
+      patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Encode each with: echo -n "pattern" | base64 -w0. Note: Brackets [ ] are auto-escaped for literal matching. Use patterns parameter for character-class globs like *.[tj]s' },
       preset: { type: 'string', enum: ['typescript', 'javascript', 'styles', 'config', 'tests', 'all'] },
       exclude: { type: 'array', items: { type: 'string' }, description: 'Patterns to exclude' },
       filters: {

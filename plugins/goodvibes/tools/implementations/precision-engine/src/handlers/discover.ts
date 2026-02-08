@@ -197,7 +197,11 @@ async function executeGlobQuery(
 ): Promise<QueryResult> {
   // Decode patterns from base64 if provided
   const patterns = query.patterns_base64
-    ? query.patterns_base64.map(p => Buffer.from(p, 'base64').toString('utf-8'))
+    ? query.patterns_base64.map(p => {
+        const decoded = Buffer.from(p, 'base64').toString('utf-8');
+        // Escape brackets for literal matching (consistent with precision_glob)
+        return decoded.replace(/[\[\]]/g, '\\$&');
+      })
     : query.patterns;
 
   if (!patterns || patterns.length === 0) {

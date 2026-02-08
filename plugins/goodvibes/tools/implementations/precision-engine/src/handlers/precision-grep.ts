@@ -45,7 +45,6 @@ interface GrepQuery {
   multiline?: boolean;
   include_binary?: boolean;
   negate?: boolean;
-  refine_from?: string;
 }
 
 interface GrepOutput {
@@ -322,8 +321,8 @@ async function executeQuery(
   let contextBefore = output.context_before ?? 0;
   let contextAfter = output.context_after ?? 0;
   
-  // If expand_to is set but no explicit context, use reasonable defaults
-  if (output.expand_to && contextBefore === 0 && contextAfter === 0) {
+  // If expand_to is set but no explicit context was provided, use reasonable defaults
+  if (output.expand_to && output.context_before === undefined && output.context_after === undefined) {
     switch (output.expand_to) {
       case 'block':
         contextBefore = 5;
@@ -427,8 +426,8 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
     const output: GrepOutput = {
       ...rawOutput,
       mode: resolvedMode as GrepOutputMode,
-      context_before: rawOutput.context_before ?? 0,
-      context_after: rawOutput.context_after ?? 0,
+      context_before: rawOutput.context_before,
+      context_after: rawOutput.context_after,
       // Support both new and old parameter names
       max_results: rawOutput.max_results ?? rawOutput.max_files ?? 100,
       max_per_item: rawOutput.max_per_item ?? rawOutput.max_matches_per_file ?? 10,

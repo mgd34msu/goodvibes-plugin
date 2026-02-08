@@ -29,7 +29,7 @@ function validateRegexPattern(pattern: string): void {
 
   // Check for nested/consecutive quantifiers (ReDoS risk)
   // Matches patterns like: (a+)+, (a*)*, (a?)+, a**+, etc.
-  if (/(\+|\*|\{[^}]*\})\s*([+*?]|\{[^}]*\})|([+*?])\s*\1/.test(pattern)) {
+  if (/(\+|\*|\{[^}]*\})\s*([+*?]|\{[^}]*\})|([+*])\s*\3/.test(pattern)) {
     throw new Error('Nested quantifiers detected');
   }
 
@@ -37,7 +37,7 @@ function validateRegexPattern(pattern: string): void {
   let depth = 0;
   let maxDepth = 0;
   for (let i = 0; i < pattern.length; i++) {
-    if (pattern[i] === '(' && (i === 0 || pattern[i - 1] !== '\\')) {
+    if (pattern[i] === '(' && (i === 0 || pattern[i - 1] !== '\\' || (i >= 2 && pattern[i - 2] === '\\'))) {
       depth++;
       maxDepth = Math.max(maxDepth, depth);
     } else if (pattern[i] === ')' && (i === 0 || pattern[i - 1] !== '\\')) {

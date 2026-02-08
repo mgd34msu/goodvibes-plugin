@@ -160,7 +160,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
           // Only escape square brackets for literal matching
           // This allows base64 patterns to match filenames containing [ or ]
           // while still supporting common glob patterns like *.ts
-          return decoded.replace(/([\[\]])/g, '\\$1');
+          return decoded.replace(/[\[\]]/g, '\\$&');
         })
       : input.patterns;
 

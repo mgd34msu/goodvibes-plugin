@@ -729,23 +729,26 @@ function findInContext(
     allMatches = matches.map(m => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === 'fuzzy') {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
+    
     // When whitespace_sensitive is false, normalize whitespace for fuzzy matching
-    const contentForMatching = matchConfig.whitespace_sensitive === false
-      ? normalizedContent
-      : normalizedContent;
+    // Note: findForMatching normalization is intentional for safety, even though
+    // findWhitespaceInsensitiveMatches normalizes internally (idempotent operation)
     const findForMatching = matchConfig.whitespace_sensitive === false
       ? normalizeWhitespace(normalizedFind)
       : normalizedFind;
     
-    // If whitespace insensitive, use whitespace-insensitive matching first
+    // Use whitespace-insensitive matching instead of fuzzy for whitespace_sensitive=false
+    // This provides exact matching behavior that ignores whitespace differences,
+    // which is more predictable than fuzzy matching with normalized text
     if (matchConfig.whitespace_sensitive === false) {
       allMatches = findWhitespaceInsensitiveMatches(
         matchConfig.case_sensitive === false ? normalizedContent.toLowerCase() : normalizedContent,
         findForMatching
       );
     } else {
+      // Standard fuzzy matching for whitespace-sensitive mode
       const fuzzyResults = fuzzyMatch(
-        contentForMatching,
+        normalizedContent,
         findForMatching,
         matchConfig.case_sensitive ?? true,
         threshold

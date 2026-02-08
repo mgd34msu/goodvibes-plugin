@@ -325369,6 +325369,7 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, 
     result.lines_truncated = linesTruncated;
     result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Use max_line_length: null for full content.`;
   }
+  result.tokens_used = totalTokens;
   return result;
 }
 __name(transformRipgrepResult, "transformRipgrepResult");
@@ -325460,9 +325461,7 @@ var handlePrecisionGrep = /* @__PURE__ */ __name(async (args2) => {
       context_after: rawOutput.context_after ?? 0,
       // Support both new and old parameter names
       max_results: rawOutput.max_results ?? rawOutput.max_files ?? 100,
-      max_files: rawOutput.max_files ?? 100,
       max_per_item: rawOutput.max_per_item ?? rawOutput.max_matches_per_file ?? 10,
-      max_matches_per_file: rawOutput.max_matches_per_file ?? 10,
       max_total_matches: rawOutput.max_total_matches ?? 100
     };
     for (const query2 of input.queries) {
@@ -325581,11 +325580,13 @@ var handlePrecisionGrep = /* @__PURE__ */ __name(async (args2) => {
     let totalFiles = 0;
     let totalMatches = 0;
     let anyTruncated = false;
+    let cumulativeTokens = 0;
     for (const result of Object.values(queryResults)) {
       totalFiles += result.file_count ?? 0;
       totalMatches += result.match_count ?? 0;
       if (result.truncated)
         anyTruncated = true;
+      cumulativeTokens += result.tokens_used ?? 0;
     }
     const data = {
       queries: queryResults,
@@ -325594,7 +325595,7 @@ var handlePrecisionGrep = /* @__PURE__ */ __name(async (args2) => {
         total_matches: totalMatches,
         truncated: anyTruncated
       },
-      tokens_used: estimateTokens2(JSON.stringify(queryResults))
+      tokens_used: cumulativeTokens
     };
     return toCallToolResult(successResult(data, outputMode, getElapsed()));
   } catch (error2) {
@@ -328075,7 +328076,6 @@ function findInContext(filePath, content, find2, hints, matchConfig) {
     allMatches = matches2.map((m) => ({ index: m.index, length: m.match.length }));
   } else if (matchConfig.mode === "fuzzy") {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
-    const contentForMatching = matchConfig.whitespace_sensitive === false ? normalizedContent : normalizedContent;
     const findForMatching = matchConfig.whitespace_sensitive === false ? normalizeWhitespace(normalizedFind) : normalizedFind;
     if (matchConfig.whitespace_sensitive === false) {
       allMatches = findWhitespaceInsensitiveMatches(
@@ -328084,7 +328084,7 @@ function findInContext(filePath, content, find2, hints, matchConfig) {
       );
     } else {
       const fuzzyResults = fuzzyMatch(
-        contentForMatching,
+        normalizedContent,
         findForMatching,
         matchConfig.case_sensitive ?? true,
         threshold
