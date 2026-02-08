@@ -2445,8 +2445,8 @@ var require_resolve = __commonJS({
       return count;
     }
     __name(countKeys, "countKeys");
-    function getFullPath(resolver, id = "", normalize2) {
-      if (normalize2 !== false)
+    function getFullPath(resolver, id = "", normalize3) {
+      if (normalize3 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -3872,7 +3872,7 @@ var require_fast_uri = __commonJS({
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizeComponentEncoding, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
-    function normalize2(uri, options) {
+    function normalize3(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         serialize(parse5(uri, options), options);
@@ -3882,7 +3882,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    __name(normalize2, "normalize");
+    __name(normalize3, "normalize");
     function resolve8(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse5(baseURI, schemelessOptions), parse5(relativeURI, schemelessOptions), schemelessOptions, true);
@@ -4115,7 +4115,7 @@ var require_fast_uri = __commonJS({
     __name(parse5, "parse");
     var fastUri = {
       SCHEMES,
-      normalize: normalize2,
+      normalize: normalize3,
       resolve: resolve8,
       resolveComponent,
       equal,
@@ -66149,11 +66149,11 @@ ${lanes.join("\n")}
             if (i2 < rootLength) {
               return void 0;
             }
-            const sep3 = directory.lastIndexOf(directorySeparator, i2 - 1);
-            if (sep3 === -1) {
+            const sep4 = directory.lastIndexOf(directorySeparator, i2 - 1);
+            if (sep4 === -1) {
               return void 0;
             }
-            return directory.substr(0, Math.max(sep3, rootLength));
+            return directory.substr(0, Math.max(sep4, rootLength));
           }
           __name(getCommonPrefix, "getCommonPrefix");
         }
@@ -240415,9 +240415,9 @@ var init_pdf = __esm({
       1103: (
         /***/
         (module2) => {
-          module2.exports = function(exec3) {
+          module2.exports = function(exec2) {
             try {
-              return { error: false, value: exec3() };
+              return { error: false, value: exec2() };
             } catch (error2) {
               return { error: true, value: error2 };
             }
@@ -240795,7 +240795,7 @@ var init_pdf = __esm({
           var parseInt2 = globalThis2.parseInt;
           var min = Math.min;
           var NOT_HEX = /[^\da-f]/i;
-          var exec3 = uncurryThis(NOT_HEX.exec);
+          var exec2 = uncurryThis(NOT_HEX.exec);
           var stringSlice = uncurryThis("".slice);
           module2.exports = function(string3, into) {
             var stringLength = string3.length;
@@ -240807,7 +240807,7 @@ var init_pdf = __esm({
             var written = 0;
             while (written < maxLength) {
               var hexits = stringSlice(string3, read, read += 2);
-              if (exec3(NOT_HEX, hexits))
+              if (exec2(NOT_HEX, hexits))
                 throw new SyntaxError2("String should only contain hex characters");
               bytes[written++] = parseInt2(hexits, 16);
             }
@@ -241102,10 +241102,10 @@ var init_pdf = __esm({
           var isCallable = __webpack_require__2(4901);
           var replacement = /#|\.prototype\./;
           var isForced = /* @__PURE__ */ __name(function(feature, detection) {
-            var value = data[normalize2(feature)];
+            var value = data[normalize3(feature)];
             return value === POLYFILL ? true : value === NATIVE ? false : isCallable(detection) ? fails(detection) : !!detection;
           }, "isForced");
-          var normalize2 = isForced.normalize = function(string3) {
+          var normalize3 = isForced.normalize = function(string3) {
             return String(string3).replace(replacement, ".").toLowerCase();
           };
           var data = isForced.data = {};
@@ -243705,7 +243705,7 @@ var init_pdf = __esm({
           var fromCharCode = String.fromCharCode;
           var at = uncurryThis("".charAt);
           var slice = uncurryThis("".slice);
-          var exec3 = uncurryThis(/./.exec);
+          var exec2 = uncurryThis(/./.exec);
           var codePoints = {
             '\\"': '"',
             "\\\\": "\\",
@@ -243731,7 +243731,7 @@ var init_pdf = __esm({
                 } else if (twoChars === "\\u") {
                   i2 += 2;
                   var fourHexDigits = slice(source, i2, i2 + 4);
-                  if (!exec3(IS_4_HEX_DIGITS, fourHexDigits))
+                  if (!exec2(IS_4_HEX_DIGITS, fourHexDigits))
                     throw new $SyntaxError("Bad Unicode escape at: " + i2);
                   value += fromCharCode($parseInt(fourHexDigits, 16));
                   i2 += 4;
@@ -243742,7 +243742,7 @@ var init_pdf = __esm({
                 i2++;
                 break;
               } else {
-                if (exec3(IS_C0_CONTROL_CODE, chr))
+                if (exec2(IS_C0_CONTROL_CODE, chr))
                   throw new $SyntaxError("Bad control character in string literal at: " + i2);
                 value += chr;
                 i2++;
@@ -243832,7 +243832,7 @@ var init_pdf = __esm({
           var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
           var at = uncurryThis("".charAt);
           var slice = uncurryThis("".slice);
-          var exec3 = uncurryThis(/./.exec);
+          var exec2 = uncurryThis(/./.exec);
           var push = uncurryThis([].push);
           var IS_DIGIT = /^\d$/;
           var IS_NON_ZERO_DIGIT = /^[1-9]$/;
@@ -243906,7 +243906,7 @@ var init_pdf = __esm({
               var i2 = this.skip(IS_WHITESPACE, this.index);
               var fork = this.fork(i2);
               var chr = at(source, i2);
-              if (exec3(IS_NUMBER_START, chr))
+              if (exec2(IS_NUMBER_START, chr))
                 return fork.number();
               switch (chr) {
                 case "{":
@@ -243998,7 +243998,7 @@ var init_pdf = __esm({
                 i2++;
               if (at(source, i2) === "0")
                 i2++;
-              else if (exec3(IS_NON_ZERO_DIGIT, at(source, i2)))
+              else if (exec2(IS_NON_ZERO_DIGIT, at(source, i2)))
                 i2 = this.skip(IS_DIGIT, i2 + 1);
               else
                 throw new SyntaxError2("Failed to parse number at: " + i2);
@@ -244026,7 +244026,7 @@ var init_pdf = __esm({
             skip: function(regex, i2) {
               var source = this.source;
               for (; i2 < source.length; i2++)
-                if (!exec3(regex, at(source, i2)))
+                if (!exec2(regex, at(source, i2)))
                   break;
               return i2;
             },
@@ -244297,9 +244297,9 @@ var init_pdf = __esm({
       9039: (
         /***/
         (module2) => {
-          module2.exports = function(exec3) {
+          module2.exports = function(exec2) {
             try {
-              return !!exec3();
+              return !!exec2();
             } catch (error2) {
               return true;
             }
@@ -287285,13 +287285,13 @@ var Diff = class {
       editLength++;
     }, "execEditLength");
     if (callback) {
-      (/* @__PURE__ */ __name(function exec3() {
+      (/* @__PURE__ */ __name(function exec2() {
         setTimeout(function() {
           if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
             return callback(void 0);
           }
           if (!execEditLength()) {
-            exec3();
+            exec2();
           }
         }, 0);
       }, "exec"))();
@@ -288556,6 +288556,7 @@ var handlePrecisionWrite = /* @__PURE__ */ __name(async (args2) => {
 
 // src/handlers/precision-exec.ts
 var import_child_process3 = require("child_process");
+var import_os = require("os");
 
 // src/state/session-state.ts
 var path6 = __toESM(require("path"), 1);
@@ -288580,12 +288581,28 @@ var SessionState = class _SessionState {
   /**
    * Set the current working directory.
    * Resolves relative paths against current cwd.
-   * Only updates if the resolved path exists.
+   * Only updates if the resolved path exists and is within sandbox boundaries.
    */
   setCwd(newCwd) {
     const resolved = path6.resolve(this._cwd, newCwd);
-    if ((0, import_fs3.existsSync)(resolved)) {
-      this._cwd = resolved;
+    if (!(0, import_fs3.existsSync)(resolved)) {
+      return;
+    }
+    try {
+      const realPath = (0, import_fs3.realpathSync)(resolved);
+      const sandboxEnabled = getConfigValue("sandbox");
+      if (sandboxEnabled !== false) {
+        const projectRoot = process.cwd();
+        const normalizedReal = path6.normalize(realPath);
+        const normalizedRoot = path6.normalize(projectRoot);
+        const rootWithSep = normalizedRoot.endsWith(path6.sep) ? normalizedRoot : normalizedRoot + path6.sep;
+        if (normalizedReal !== normalizedRoot && !normalizedReal.startsWith(rootWithSep)) {
+          return;
+        }
+      }
+      this._cwd = realPath;
+    } catch {
+      return;
     }
   }
   /**
@@ -288703,16 +288720,30 @@ function isDestructiveCommand(cmd, args2) {
   return DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(fullCommand));
 }
 __name(isDestructiveCommand, "isDestructiveCommand");
+function shellEscape(arg) {
+  if (/^[a-zA-Z0-9_\/.,-]+$/.test(arg)) {
+    return arg;
+  }
+  return `'${arg.replace(/'/g, "'\\''")}' `;
+}
+__name(shellEscape, "shellEscape");
 function detectCdFromCommand(command) {
-  const cdMatch = command.match(/^\s*(cd|pushd)\s+([^;&|]+)/);
+  const cdMatch = command.match(/(?:^|&&|;|\|\|)\s*(cd|pushd)\s+([^;&|]+)\s*$/);
   if (cdMatch) {
-    const newDir = cdMatch[2].trim();
-    return newDir.replace(/^["']|["']$/g, "");
+    let newDir = cdMatch[2].trim();
+    if (newDir === "-")
+      return null;
+    const unquoted = newDir.replace(/^"(.*)"$|^'(.*)'$/, "$1$2");
+    newDir = unquoted || newDir;
+    if (newDir.startsWith("~")) {
+      newDir = newDir === "~" ? (0, import_os.homedir)() : newDir.replace(/^~/, (0, import_os.homedir)());
+    }
+    return newDir;
   }
   return null;
 }
 __name(detectCdFromCommand, "detectCdFromCommand");
-async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, captureStdout = true, captureStderr = true, maxOutputLines) {
+async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, captureStdout = true, captureStderr = true, maxOutputLines, isParallel = false) {
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? getExecDefaultTimeout();
   const effectiveMaxOutputLines = maxOutputLines ?? getExecMaxOutputLines();
@@ -288736,7 +288767,8 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
     let truncatedStdout = false;
     let truncatedStderr = false;
     const bufferCap = maxOutputChars * 5;
-    const proc = (0, import_child_process3.spawn)(command, args2, {
+    const fullCommand = args2.length > 0 ? `${command} ${args2.map(shellEscape).join(" ")}`.trim() : command;
+    const proc = (0, import_child_process3.spawn)(fullCommand, [], {
       cwd,
       env: { ...process.env, ...globalEnv, ...spec.env },
       shell: true,
@@ -288888,8 +288920,8 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       if (expectationFailures.length > 0) {
         result.expectation_failures = expectationFailures;
       }
-      if (exitCode === 0) {
-        const detectedCd = detectCdFromCommand(command);
+      if (exitCode === 0 && !isParallel) {
+        const detectedCd = detectCdFromCommand(fullCommand);
         if (detectedCd) {
           sessionState.setCwd(detectedCd);
         }
@@ -288925,7 +288957,7 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
   const input = { ...rawInput, commands: parseJsonField(rawInput.commands) };
   const outputMode = parseOutputMode(args2, "precision_exec");
   commandHistory.setMaxEntries(getExecHistoryMax());
-  if (input.commands.length === 1 && (input.commands[0].cmd === "exec_history" || input.commands[0].cmd_base64 === Buffer.from("exec_history").toString("base64"))) {
+  if (input.commands && input.commands.length === 1 && (input.commands[0].cmd === "exec_history" || input.commands[0].cmd_base64 === Buffer.from("exec_history").toString("base64"))) {
     const history = commandHistory.getAll();
     const stats = commandHistory.getStats();
     const data = {
@@ -288955,6 +288987,23 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
     if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
       return toCallToolResult(createErrorResult(formatMissingParamError("precision_exec", "commands", "array of command objects"), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
+    const commandsWithContext = [];
+    for (const cmd of input.commands) {
+      const command = cmd.cmd_base64 ? Buffer.from(cmd.cmd_base64, "base64").toString("utf-8") : cmd.cmd;
+      if (command) {
+        const previousRun = commandHistory.findByCommand(command);
+        commandsWithContext.push({
+          spec: cmd,
+          previousRun: previousRun ? {
+            exit_code: previousRun.exit_code,
+            duration_ms: previousRun.duration_ms,
+            timestamp: previousRun.timestamp
+          } : void 0
+        });
+      } else {
+        commandsWithContext.push({ spec: cmd });
+      }
+    }
     for (const cmd of input.commands) {
       if (!cmd.cmd && !cmd.cmd_base64) {
         return toCallToolResult(createErrorResult(
@@ -288977,27 +289026,30 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
     if (parallel) {
       results = await Promise.all(
         input.commands.map(
-          (cmd) => executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines)
+          (cmd) => executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, true)
         )
       );
     } else {
       results = [];
       for (const cmd of input.commands) {
-        const result = await executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines);
+        const result = await executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, false);
         results.push(result);
         if (failFast && (result.exit_code !== 0 || !result.expectations_met)) {
           break;
         }
       }
     }
-    for (const result of results) {
+    for (let i2 = 0; i2 < results.length; i2++) {
+      const result = results[i2];
+      const cmd = input.commands[i2];
       const stdoutLines = result.stdout ? result.stdout.split("\n").length : 0;
       const stderrLines = result.stderr ? result.stderr.split("\n").length : 0;
+      const resolvedCwd = cmd.cwd ? await validateDirectoryPath(cmd.cwd, process.cwd()).catch(() => cmd.cwd) : globalWorkDir ?? sessionState.cwd;
       commandHistory.add({
-        id: result.id || `cmd-${Date.now()}`,
+        id: result.id || `cmd-${Date.now()}-${i2}`,
         timestamp: Date.now(),
         command: result.cmd,
-        cwd: globalWorkDir || sessionState.cwd,
+        cwd: resolvedCwd,
         exit_code: result.exit_code,
         duration_ms: result.duration_ms,
         stdout_lines: stdoutLines,
@@ -289055,22 +289107,32 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
         break;
       case "standard":
         data = {
-          commands: results.map((r) => ({
-            ...r.id && { id: r.id },
-            cmd: r.cmd,
-            exit_code: r.exit_code,
-            duration_ms: r.duration_ms,
-            expectations_met: r.expectations_met,
-            ...r.truncated && { truncated: r.truncated },
-            ...r.timed_out && { timed_out: r.timed_out },
-            ...r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + "..." : r.stdout },
-            ...r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + "..." : r.stderr },
-            ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
-            ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
-            ...r.expectation_failures && { expectation_failures: r.expectation_failures },
-            ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
-            ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }
-          })),
+          commands: results.map((r, i2) => {
+            const context = commandsWithContext[i2];
+            return {
+              ...r.id && { id: r.id },
+              cmd: r.cmd,
+              exit_code: r.exit_code,
+              duration_ms: r.duration_ms,
+              expectations_met: r.expectations_met,
+              ...r.truncated && { truncated: r.truncated },
+              ...r.timed_out && { timed_out: r.timed_out },
+              ...r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + "..." : r.stdout },
+              ...r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + "..." : r.stderr },
+              ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
+              ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
+              ...r.expectation_failures && { expectation_failures: r.expectation_failures },
+              ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
+              ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
+              ...context?.previousRun && {
+                same_command_last_run: {
+                  exit_code: context.previousRun.exit_code,
+                  duration_ms: context.previousRun.duration_ms,
+                  timestamp: context.previousRun.timestamp
+                }
+              }
+            };
+          }),
           summary: {
             total: results.length,
             succeeded,
@@ -289082,22 +289144,32 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
       case "verbose":
       default:
         data = {
-          commands: results.map((r) => ({
-            ...r.id && { id: r.id },
-            cmd: r.cmd,
-            exit_code: r.exit_code,
-            duration_ms: r.duration_ms,
-            expectations_met: r.expectations_met,
-            ...r.truncated && { truncated: r.truncated },
-            ...r.timed_out && { timed_out: r.timed_out },
-            ...r.stdout !== void 0 && { stdout: r.stdout },
-            ...r.stderr !== void 0 && { stderr: r.stderr },
-            ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
-            ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
-            ...r.expectation_failures && { expectation_failures: r.expectation_failures },
-            ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
-            ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }
-          })),
+          commands: results.map((r, i2) => {
+            const context = commandsWithContext[i2];
+            return {
+              ...r.id && { id: r.id },
+              cmd: r.cmd,
+              exit_code: r.exit_code,
+              duration_ms: r.duration_ms,
+              expectations_met: r.expectations_met,
+              ...r.truncated && { truncated: r.truncated },
+              ...r.timed_out && { timed_out: r.timed_out },
+              ...r.stdout !== void 0 && { stdout: r.stdout },
+              ...r.stderr !== void 0 && { stderr: r.stderr },
+              ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
+              ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
+              ...r.expectation_failures && { expectation_failures: r.expectation_failures },
+              ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
+              ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
+              ...context?.previousRun && {
+                same_command_last_run: {
+                  exit_code: context.previousRun.exit_code,
+                  duration_ms: context.previousRun.duration_ms,
+                  timestamp: context.previousRun.timestamp
+                }
+              }
+            };
+          }),
           summary: {
             total: results.length,
             succeeded,

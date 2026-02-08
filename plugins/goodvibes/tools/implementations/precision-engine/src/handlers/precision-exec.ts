@@ -13,15 +13,15 @@
  * - tokens_used tracking
  */
 
-import { spawn, exec, execFile } from 'child_process';
+import { spawn, execFile } from 'child_process';
+import { homedir } from 'os';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
 import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax } from '../runtime-config.js';
-import { commandHistory } from '../state/index.js';
-import { sessionState } from '../state/index.js';
+import { commandHistory, sessionState } from '../state/index.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -50,17 +50,46 @@ function isDestructiveCommand(cmd: string, args?: string[]): boolean {
 }
 
 /**
+ * Shell-escape a single argument for safe concatenation.
+ * Wraps arguments containing special characters in single quotes,
+ * escaping any single quotes within the argument.
+ */
+function shellEscape(arg: string): string {
+  // If the argument contains no special characters, return as-is
+  if (/^[a-zA-Z0-9_\/.,-]+$/.test(arg)) {
+    return arg;
+  }
+  
+  // Otherwise, wrap in single quotes and escape any single quotes
+  return `'${arg.replace(/'/g, "'\\''")}' `;
+}
+
+/**
  * Detect cd command from command string and return new directory if found.
  * Handles: cd <path>, pushd <path>, cd ~ , cd ..
+ * Matches the LAST cd/pushd in a command chain (e.g., git clone repo && cd repo)
  */
 function detectCdFromCommand(command: string): string | null {
-  // Match cd or pushd followed by a path
-  // Handles: cd /path, cd ./path, cd ../path, cd ~, cd ~ /path, pushd /path
-  const cdMatch = command.match(/^\s*(cd|pushd)\s+([^;&|]+)/);
+  // Match the LAST cd or pushd in a command chain
+  // Handles: cd /path, cd ./path, cd ../path, cd ~, cd ~/path, pushd /path
+  // Also handles chained commands: git clone repo && cd repo
+  const cdMatch = command.match(/(?:^|&&|;|\|\|)\s*(cd|pushd)\s+([^;&|]+)\s*$/);
   if (cdMatch) {
-    const newDir = cdMatch[2].trim();
-    // Remove quotes if present
-    return newDir.replace(/^["']|["']$/g, '');
+    let newDir = cdMatch[2].trim();
+    
+    // Filter out cd - (return to previous directory - too complex to track)
+    if (newDir === '-') return null;
+    
+    // Remove paired quotes if present
+    const unquoted = newDir.replace(/^"(.*)"$|^'(.*)'$/, '$1$2');
+    newDir = unquoted || newDir;
+    
+    // Expand ~ to home directory
+    if (newDir.startsWith('~')) {
+      newDir = newDir === '~' ? homedir() : newDir.replace(/^~/, homedir());
+    }
+    
+    return newDir;
   }
   return null;
 }
@@ -133,7 +162,8 @@ async function executeCommand(
   globalTimeout?: number,
   captureStdout = true,
   captureStderr = true,
-  maxOutputLines?: number
+  maxOutputLines?: number,
+  isParallel = false
 ): Promise<CommandResult> {
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? getExecDefaultTimeout();
@@ -175,7 +205,14 @@ async function executeCommand(
     // Buffer cap: 5x the normal threshold to allow overflow handler to save full output
     const bufferCap = maxOutputChars * 5;
 
-    const proc = spawn(command, args, {
+    // When shell: true, we need to pass the full command as a single string to avoid
+    // the deprecation warning and ensure proper command execution.
+    // Properly escape arguments to prevent shell interpretation issues.
+    const fullCommand = args.length > 0 
+      ? `${command} ${args.map(shellEscape).join(' ')}`.trim()
+      : command;
+
+    const proc = spawn(fullCommand, [], {
       cwd,
       env: { ...process.env, ...globalEnv, ...spec.env },
       shell: true,
@@ -364,8 +401,9 @@ async function executeCommand(
       }
 
       // Detect cd command and update session state
-      if (exitCode === 0) {
-        const detectedCd = detectCdFromCommand(command);
+      // Skip cd detection when running in parallel to avoid race conditions
+      if (exitCode === 0 && !isParallel) {
+        const detectedCd = detectCdFromCommand(fullCommand);
         if (detectedCd) {
           sessionState.setCwd(detectedCd);
         }
@@ -411,10 +449,10 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   commandHistory.setMaxEntries(getExecHistoryMax());
 
   // Handle built-in exec_history command
-  if (input.commands.length === 1 && (input.commands[0].cmd === 'exec_history' || input.commands[0].cmd_base64 === Buffer.from('exec_history').toString('base64'))) {
+  if (input.commands && input.commands.length === 1 && (input.commands[0].cmd === 'exec_history' || input.commands[0].cmd_base64 === Buffer.from('exec_history').toString('base64'))) {
     const history = commandHistory.getAll();
     const stats = commandHistory.getStats();
-    const data = {
+    const data: Record<string, unknown> = {
       history,
       stats,
     };
@@ -509,13 +547,13 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
     if (parallel) {
       results = await Promise.all(
         input.commands.map(cmd =>
-          executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines)
+          executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, true)
         )
       );
     } else {
       results = [];
       for (const cmd of input.commands) {
-        const result = await executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines);
+        const result = await executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, false);
         results.push(result);
 
         if (failFast && (result.exit_code !== 0 || !result.expectations_met)) {
@@ -525,15 +563,22 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
     }
 
     // Add commands to history
-    for (const result of results) {
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const cmd = input.commands[i];
       const stdoutLines = result.stdout ? result.stdout.split('\n').length : 0;
       const stderrLines = result.stderr ? result.stderr.split('\n').length : 0;
       
+      // Resolve actual cwd the command ran in (same logic as executeCommand)
+      const resolvedCwd = cmd.cwd
+        ? (await validateDirectoryPath(cmd.cwd, process.cwd()).catch(() => cmd.cwd!))
+        : globalWorkDir ?? sessionState.cwd;
+      
       commandHistory.add({
-        id: result.id || `cmd-${Date.now()}`,
+        id: result.id || `cmd-${Date.now()}-${i}`,
         timestamp: Date.now(),
         command: result.cmd,
-        cwd: globalWorkDir || sessionState.cwd,
+        cwd: resolvedCwd,
         exit_code: result.exit_code,
         duration_ms: result.duration_ms,
         stdout_lines: stdoutLines,
@@ -599,22 +644,33 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
 
       case 'standard':
         data = {
-          commands: results.map(r => ({
-            ...(r.id && { id: r.id }),
-            cmd: r.cmd,
-            exit_code: r.exit_code,
-            duration_ms: r.duration_ms,
-            expectations_met: r.expectations_met,
-            ...(r.truncated && { truncated: r.truncated }),
-            ...(r.timed_out && { timed_out: r.timed_out }),
-            ...(r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + '...' : r.stdout }),
-            ...(r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + '...' : r.stderr }),
-            ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
-            ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
-            ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
-            ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
-            ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
-          })),
+          commands: results.map((r, i) => {
+            // Safe: results is a subset of input.commands in order (fail_fast may truncate), so i < commandsWithContext.length always holds
+            const context = commandsWithContext[i];
+            return {
+              ...(r.id && { id: r.id }),
+              cmd: r.cmd,
+              exit_code: r.exit_code,
+              duration_ms: r.duration_ms,
+              expectations_met: r.expectations_met,
+              ...(r.truncated && { truncated: r.truncated }),
+              ...(r.timed_out && { timed_out: r.timed_out }),
+              ...(r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + '...' : r.stdout }),
+              ...(r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + '...' : r.stderr }),
+              ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
+              ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
+              ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
+              ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
+              ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
+              ...(context?.previousRun && {
+                same_command_last_run: {
+                  exit_code: context.previousRun.exit_code,
+                  duration_ms: context.previousRun.duration_ms,
+                  timestamp: context.previousRun.timestamp,
+                },
+              }),
+            };
+          }),
           summary: {
             total: results.length,
             succeeded,
@@ -627,22 +683,33 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
       case 'verbose':
       default:
         data = {
-          commands: results.map(r => ({
-            ...(r.id && { id: r.id }),
-            cmd: r.cmd,
-            exit_code: r.exit_code,
-            duration_ms: r.duration_ms,
-            expectations_met: r.expectations_met,
-            ...(r.truncated && { truncated: r.truncated }),
-            ...(r.timed_out && { timed_out: r.timed_out }),
-            ...(r.stdout !== undefined && { stdout: r.stdout }),
-            ...(r.stderr !== undefined && { stderr: r.stderr }),
-            ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
-            ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
-            ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
-            ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
-            ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
-          })),
+          commands: results.map((r, i) => {
+            // Safe: results is a subset of input.commands in order (fail_fast may truncate), so i < commandsWithContext.length always holds
+            const context = commandsWithContext[i];
+            return {
+              ...(r.id && { id: r.id }),
+              cmd: r.cmd,
+              exit_code: r.exit_code,
+              duration_ms: r.duration_ms,
+              expectations_met: r.expectations_met,
+              ...(r.truncated && { truncated: r.truncated }),
+              ...(r.timed_out && { timed_out: r.timed_out }),
+              ...(r.stdout !== undefined && { stdout: r.stdout }),
+              ...(r.stderr !== undefined && { stderr: r.stderr }),
+              ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
+              ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
+              ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
+              ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
+              ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
+              ...(context?.previousRun && {
+                same_command_last_run: {
+                  exit_code: context.previousRun.exit_code,
+                  duration_ms: context.previousRun.duration_ms,
+                  timestamp: context.previousRun.timestamp,
+                },
+              }),
+            };
+          }),
           summary: {
             total: results.length,
             succeeded,

@@ -13,7 +13,9 @@ export interface CommandHistoryEntry {
   stdout_lines: number;
   stderr_lines: number;
   truncated: boolean;
+  /** Reserved for Part H (Smart Retry) — populated when retry logic is implemented */
   retries?: number;
+  /** Reserved for Part E (Background Execution) — populated when background mode is implemented */
   background?: boolean;
 }
 

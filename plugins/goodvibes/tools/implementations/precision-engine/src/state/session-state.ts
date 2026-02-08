@@ -3,7 +3,8 @@
  */
 
 import * as path from 'path';
-import { existsSync } from 'fs';
+import { existsSync, realpathSync } from 'fs';
+import { getConfigValue } from '../runtime-config.js';
 
 class SessionState {
   private static instance: SessionState;
@@ -25,12 +26,41 @@ class SessionState {
   /**
    * Set the current working directory.
    * Resolves relative paths against current cwd.
-   * Only updates if the resolved path exists.
+   * Only updates if the resolved path exists and is within sandbox boundaries.
    */
   setCwd(newCwd: string): void {
     const resolved = path.resolve(this._cwd, newCwd);
-    if (existsSync(resolved)) {
-      this._cwd = resolved;
+    
+    // Check if path exists
+    if (!existsSync(resolved)) {
+      return;
+    }
+    
+    // Resolve symlinks to get the real path
+    try {
+      const realPath = realpathSync(resolved);
+      const sandboxEnabled = getConfigValue<boolean>('sandbox');
+      
+      // Enforce sandbox boundary if sandbox is enabled
+      if (sandboxEnabled !== false) {
+        const projectRoot = process.cwd();
+        const normalizedReal = path.normalize(realPath);
+        const normalizedRoot = path.normalize(projectRoot);
+        const rootWithSep = normalizedRoot.endsWith(path.sep)
+          ? normalizedRoot
+          : normalizedRoot + path.sep;
+        
+        // Check if real path is within sandbox
+        if (normalizedReal !== normalizedRoot && !normalizedReal.startsWith(rootWithSep)) {
+          // Path is outside sandbox - reject
+          return;
+        }
+      }
+      
+      this._cwd = realPath;
+    } catch {
+      // If realpathSync fails (e.g., permission denied), don't update
+      return;
     }
   }
 
