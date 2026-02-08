@@ -26,9 +26,10 @@ export async function handleOverflow(
   // Ensure overflow directory exists
   await fs.mkdir(overflowDir, { recursive: true });
   
-  // Generate overflow file path
+  // Generate overflow file path with sanitized commandId to prevent path traversal
+  const safeId = commandId.replace(/[^a-zA-Z0-9_-]/g, '_');
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const fileName = `${commandId}-${timestamp}.log`;
+  const fileName = `${safeId}-${timestamp}.log`;
   const filePath = path.join(overflowDir, fileName);
   
   // Write full output to file
@@ -38,7 +39,11 @@ export async function handleOverflow(
   const halfThreshold = Math.floor(threshold / 2);
   const head = output.slice(0, halfThreshold);
   const tail = output.slice(-halfThreshold);
-  const totalLines = output.split('\n').length;
+  // Efficiently count lines without splitting the entire string
+  let totalLines = 1;
+  for (let i = 0; i < output.length; i++) {
+    if (output[i] === '\n') totalLines++;
+  }
   
   return {
     status: 'overflow',

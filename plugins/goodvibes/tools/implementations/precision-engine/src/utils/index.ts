@@ -370,7 +370,7 @@ export { detectFileType, type FileTypeInfo } from './file-type-detection.js';
 export { getContextForFile, type ContextMetadata } from './context-intelligence.js';
 
 // Export lock/error pattern detection utilities
-export { detectIssue, isRetryable, type DetectedIssue } from './lock-detection.js';
+export { detectIssue, isRetryable, type DetectedIssue, type IssueType } from './lock-detection.js';
 
 // Export exit code interpretation utilities
 export { interpretExitCode, type ExitInterpretation } from './exit-codes.js';

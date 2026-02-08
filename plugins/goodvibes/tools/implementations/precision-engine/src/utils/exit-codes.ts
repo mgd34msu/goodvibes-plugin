@@ -10,7 +10,6 @@ export interface ExitInterpretation {
 }
 
 const EXIT_CODE_SEMANTICS: Record<number, ExitInterpretation> = {
-  0:   { meaning: 'Success', suggestion: '' },
   1:   { meaning: 'General error', suggestion: 'Check stderr for details' },
   2:   { meaning: 'Misuse of shell command', suggestion: 'Check command syntax' },
   126: { meaning: 'Permission denied (not executable)', suggestion: 'Check file permissions, try chmod +x' },
@@ -28,7 +27,7 @@ const EXIT_CODE_SEMANTICS: Record<number, ExitInterpretation> = {
  * For codes 129-192, interprets as signal-based exit (128 + signal number).
  */
 export function interpretExitCode(code: number): ExitInterpretation | null {
-  // No interpretation for success
+  // Exit code 0 = success — return null for zero overhead (no interpretation needed)
   if (code === 0) return null;
   
   // Direct lookup
@@ -36,7 +35,9 @@ export function interpretExitCode(code: number): ExitInterpretation | null {
     return EXIT_CODE_SEMANTICS[code];
   }
   
-  // Signal-based exit codes: 128 + signal_number
+  // Signal-based exit codes: 128 + signal number
+  // Standard POSIX signals: 1-31 (codes 129-159)
+  // Linux real-time signals: 32-64 (codes 160-192)
   if (code > 128 && code <= 192) {
     const signal = code - 128;
     return {

@@ -87,11 +87,11 @@ export const precisionExecSchema: Tool = {
             timeout_ms: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 120000)' },
             timeout: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 120000)' },
             env: { type: 'object', description: 'Additional environment variables' },
-            background: { type: 'boolean', description: 'Run this command in background (detached)' },
-            until: { type: 'string', description: 'Regex pattern — resolve early when stdout matches, promote process to background' },
+            background: { type: 'boolean', description: 'Run this command in background (detached) (reserved — not yet implemented)' },
+            until: { type: 'string', description: 'Regex pattern — resolve early when stdout matches, promote process to background (reserved — not yet implemented)' },
             retry: {
               type: 'object',
-              description: 'Auto-retry configuration',
+              description: 'Auto-retry configuration (reserved — not yet implemented)',
               properties: {
                 max_attempts: { type: 'integer', minimum: 1, default: 3 },
                 delay_ms: { type: 'integer', minimum: 0, default: 1000 },
@@ -114,9 +114,9 @@ export const precisionExecSchema: Tool = {
           required: ['cmd'],
         },
       },
-      working_dir: { type: 'string', description: 'Global working directory for all commands (persists across calls)' },
-      background: { type: 'boolean', default: false, description: 'Run commands in background (detached). Returns immediately with process ID.' },
-      timeout_ms: { type: 'integer', minimum: 1, description: 'Global timeout in ms (default: 120000). Per-command timeout_ms overrides this.' },
+      working_dir: { type: 'string', description: 'Global working directory for all commands (persists across calls). No default (uses process.cwd()).' },
+      background: { type: 'boolean', default: false, description: 'Run commands in background (detached). Returns immediately with process ID. (reserved — not yet implemented)' },
+      timeout_ms: { type: 'integer', minimum: 1, default: 120000, description: 'Global timeout in ms (default: 120000). Per-command timeout_ms overrides this.' },
       parallel: { type: 'boolean', default: false, description: 'Execute commands in parallel' },
       stop_on_error: { type: 'boolean', default: true, description: 'Stop on first error (sequential only)' },
       verbosity: verbositySchema,
@@ -477,7 +477,7 @@ export const precisionConfigSchema: Tool = {
       },
       key: {
         type: 'string',
-        description: 'Config key to get or set. Available keys: sandbox (boolean), cache_mode ("hash_only"|"with_content", default: with_content), cache_max_mb (number, default: 200, minimum: 1), safe_overwrite (boolean, default: true), backup_dir (string, default: ".goodvibes/.backups"), backup_git_clean_skip (boolean, default: true), slow_fs_stat_threshold_ms (number), slow_fs_known_prefixes (string[]), max_file_bytes (number), max_token_estimate (number), max_diff_chars (number, default: 10000), page_size_lines (number), verbosity_defaults (object). Omit for get to return all config.',
+        description: 'Config key to get or set. Available keys: sandbox (boolean), cache_mode ("hash_only"|"with_content", default: with_content), cache_max_mb (number, default: 200, minimum: 1), safe_overwrite (boolean, default: true), backup_dir (string, default: ".goodvibes/.backups"), backup_git_clean_skip (boolean, default: true), slow_fs_stat_threshold_ms (number), slow_fs_known_prefixes (string[]), max_file_bytes (number), max_token_estimate (number), max_diff_chars (number, default: 10000), page_size_lines (number), verbosity_defaults (object), exec_max_output_chars (number, default: 50000), exec_default_timeout_ms (number, default: 120000), exec_max_output_lines (number, default: 500), exec_overflow_dir (string, default: ".goodvibes/.overflow"), exec_max_background (number, default: 10), exec_history_max (number, default: 100). Omit for get to return all config.',
       },
       value: {
         // Intentionally no type constraint - accepts any JSON value (boolean, string, number)

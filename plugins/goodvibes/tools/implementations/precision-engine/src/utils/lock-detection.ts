@@ -4,8 +4,20 @@
  * and provides actionable suggestions. Only runs on non-zero exit codes.
  */
 
+export type IssueType =
+  | 'git_index_lock'
+  | 'npm_lock_conflict'
+  | 'port_in_use'
+  | 'disk_full'
+  | 'out_of_memory'
+  | 'permission_denied'
+  | 'resource_busy'
+  | 'connection_refused'
+  | 'network_timeout'
+  | 'dns_failure';
+
 export interface DetectedIssue {
-  type: string;
+  type: IssueType;
   message: string;
   suggestion: string;
   matched_pattern?: string;
@@ -13,7 +25,7 @@ export interface DetectedIssue {
 
 interface LockPattern {
   pattern: RegExp;
-  type: string;
+  type: IssueType;
   message: string;
   suggestion: string;
 }
@@ -32,7 +44,7 @@ const LOCK_PATTERNS: LockPattern[] = [
     suggestion: 'Delete node_modules and package-lock.json, then retry npm install.',
   },
   {
-    pattern: /EADDRINUSE.*:(\d+)/,
+    pattern: /EADDRINUSE(?:.*:(\d+))?/,
     type: 'port_in_use',
     message: 'Port already in use',
     suggestion: 'Port is occupied. Kill the existing process or use a different port.',
@@ -94,7 +106,7 @@ export function detectIssue(stderr: string, stdout?: string): DetectedIssue | nu
     if (match) {
       // Substitute capture groups into suggestion if available
       let suggestion = lock.suggestion;
-      if (match[1] && suggestion.includes('Port')) {
+      if (match[1] && lock.type === 'port_in_use') {
         suggestion = `Port ${match[1]} is occupied. Kill the existing process or use a different port.`;
       }
       
@@ -110,18 +122,19 @@ export function detectIssue(stderr: string, stdout?: string): DetectedIssue | nu
   return null;
 }
 
+const RETRYABLE_TYPES = new Set<IssueType>([
+  'git_index_lock',
+  'npm_lock_conflict',
+  'resource_busy',
+  'connection_refused',
+  'network_timeout',
+  'dns_failure',
+]);
+
 /**
  * Check if a detected issue is retryable (for smart retry feature).
  * Returns true for transient failures that may succeed on retry.
  */
 export function isRetryable(issue: DetectedIssue): boolean {
-  const retryableTypes = new Set([
-    'git_index_lock',
-    'npm_lock_conflict',
-    'resource_busy',
-    'connection_refused',
-    'network_timeout',
-    'dns_failure',
-  ]);
-  return retryableTypes.has(issue.type);
+  return RETRYABLE_TYPES.has(issue.type);
 }

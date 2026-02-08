@@ -16,9 +16,10 @@
 import { spawn, exec, execFile } from 'child_process';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
+import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars } from '../runtime-config.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -97,13 +98,15 @@ interface CommandResult {
   expectation_failures?: string[];
   stdout?: string;
   stderr?: string;
+  stdout_overflow?: OverflowResult;
+  stderr_overflow?: OverflowResult;
   truncated?: boolean;
   timed_out?: boolean;
+  exit_interpretation?: ExitInterpretation;
+  detected_issue?: DetectedIssue;
 }
 
-const DEFAULT_TIMEOUT = 120000;        // was 30000 — match native Bash 120s
-const DEFAULT_MAX_OUTPUT_LINES = 500;  // was 100 — capture full test/build output
-const MAX_OUTPUT_CHARS = 50000;        // was 10000 — native is 30K, we do 50K
+// Config defaults are now retrieved from runtime-config getters
 
 async function executeCommand(
   spec: CommandSpec,
@@ -112,10 +115,12 @@ async function executeCommand(
   globalTimeout?: number,
   captureStdout = true,
   captureStderr = true,
-  maxOutputLines = DEFAULT_MAX_OUTPUT_LINES
+  maxOutputLines?: number
 ): Promise<CommandResult> {
   const startTime = Date.now();
-  const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? DEFAULT_TIMEOUT;
+  const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? getExecDefaultTimeout();
+  const effectiveMaxOutputLines = maxOutputLines ?? getExecMaxOutputLines();
+  const maxOutputChars = getExecMaxOutputChars();
   const args = spec.args ?? [];
   const cwd = spec.cwd
     ? await validateDirectoryPath(spec.cwd, process.cwd())
@@ -143,6 +148,9 @@ async function executeCommand(
     let timedOut = false;
     let truncatedStdout = false;
     let truncatedStderr = false;
+
+    // Buffer cap: 5x the normal threshold to allow overflow handler to save full output
+    const bufferCap = maxOutputChars * 5;
 
     const proc = spawn(command, args, {
       cwd,
@@ -178,10 +186,10 @@ async function executeCommand(
     if (captureStdout) {
       proc.stdout?.on('data', (data: Buffer) => {
         const chunk = data.toString();
-        if (stdout.length < MAX_OUTPUT_CHARS) {
+        if (stdout.length < bufferCap) {
           stdout += chunk;
-          if (stdout.length > MAX_OUTPUT_CHARS) {
-            stdout = stdout.slice(0, MAX_OUTPUT_CHARS);
+          if (stdout.length > bufferCap) {
+            stdout = stdout.slice(0, bufferCap);
             truncatedStdout = true;
           }
         } else {
@@ -193,10 +201,10 @@ async function executeCommand(
     if (captureStderr) {
       proc.stderr?.on('data', (data: Buffer) => {
         const chunk = data.toString();
-        if (stderr.length < MAX_OUTPUT_CHARS) {
+        if (stderr.length < bufferCap) {
           stderr += chunk;
-          if (stderr.length > MAX_OUTPUT_CHARS) {
-            stderr = stderr.slice(0, MAX_OUTPUT_CHARS);
+          if (stderr.length > bufferCap) {
+            stderr = stderr.slice(0, bufferCap);
             truncatedStderr = true;
           }
         } else {
@@ -205,22 +213,22 @@ async function executeCommand(
       });
     }
 
-    proc.on('close', (code) => {
+    proc.on('close', async (code) => {
       clearTimeout(timeoutId);
       const exitCode = code ?? (timedOut ? 124 : 1);
       const duration_ms = Date.now() - startTime;
 
       // Apply max_output_lines truncation
-      if (maxOutputLines > 0) {
+      if (effectiveMaxOutputLines > 0) {
         const stdoutLines = stdout.split('\n');
         const stderrLines = stderr.split('\n');
 
-        if (stdoutLines.length > maxOutputLines) {
-          stdout = stdoutLines.slice(0, maxOutputLines).join('\n');
+        if (stdoutLines.length > effectiveMaxOutputLines) {
+          stdout = stdoutLines.slice(0, effectiveMaxOutputLines).join('\n');
           truncatedStdout = true;
         }
-        if (stderrLines.length > maxOutputLines) {
-          stderr = stderrLines.slice(0, maxOutputLines).join('\n');
+        if (stderrLines.length > effectiveMaxOutputLines) {
+          stderr = stderrLines.slice(0, effectiveMaxOutputLines).join('\n');
           truncatedStderr = true;
         }
       }
@@ -288,11 +296,35 @@ async function executeCommand(
         result.id = spec.id;
       }
 
-      if (captureStdout) {
+      // Handle stdout overflow
+      if (captureStdout && stdout.length > maxOutputChars) {
+        try {
+          const commandId = spec.id || `cmd-${startTime}`;
+          const overflowResult = await handleOverflow(stdout, commandId, maxOutputChars);
+          result.stdout_overflow = overflowResult;
+          result.stdout = overflowResult.head.trim();
+        } catch {
+          // Fallback to simple truncation if overflow file write fails
+          result.stdout = stdout.slice(0, maxOutputChars).trim();
+          result.truncated = true;
+        }
+      } else if (captureStdout) {
         result.stdout = stdout.trim();
       }
 
-      if (captureStderr) {
+      // Handle stderr overflow
+      if (captureStderr && stderr.length > maxOutputChars) {
+        try {
+          const commandId = spec.id || `cmd-${startTime}`;
+          const overflowResult = await handleOverflow(stderr, `${commandId}-stderr`, maxOutputChars);
+          result.stderr_overflow = overflowResult;
+          result.stderr = overflowResult.head.trim();
+        } catch {
+          // Fallback to simple truncation if overflow file write fails
+          result.stderr = stderr.slice(0, maxOutputChars).trim();
+          result.truncated = true;
+        }
+      } else if (captureStderr) {
         result.stderr = stderr.trim();
       }
 
@@ -344,6 +376,9 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const input = { ...rawInput, commands: parseJsonField(rawInput.commands) } as PrecisionExecInput;
   const outputMode = parseOutputMode(args, "precision_exec");
 
+  // Clean up old overflow files (non-blocking, fire-and-forget)
+  cleanupOverflowFiles().catch(() => {});
+
   // Parse options with defaults
   const parallel = input.parallel ?? false;
   const failFast = input.fail_fast ?? input.stop_on_error ?? true;
@@ -352,12 +387,12 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const globalWorkDir = input.working_dir
     ? await validateDirectoryPath(input.working_dir, process.cwd())
     : undefined;
-  const globalTimeout = input.timeout_ms ?? DEFAULT_TIMEOUT;
+  const globalTimeout = input.timeout_ms;
 
   // Output configuration
   const captureStdout = input.output?.capture_stdout ?? true;
   const captureStderr = input.output?.capture_stderr ?? true;
-  const maxOutputLines = input.output?.max_output_lines ?? DEFAULT_MAX_OUTPUT_LINES;
+  const maxOutputLines = input.output?.max_output_lines;
 
   try {
     if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
@@ -436,6 +471,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             ...(r.id && { id: r.id }),
             cmd: r.cmd,
             exit_code: r.exit_code,
+            ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
           })),
           summary: {
             total: results.length,
@@ -476,7 +512,11 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             ...(r.timed_out && { timed_out: r.timed_out }),
             ...(r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + '...' : r.stdout }),
             ...(r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + '...' : r.stderr }),
+            ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
+            ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
             ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
+            ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
+            ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
           })),
           summary: {
             total: results.length,
@@ -500,7 +540,11 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             ...(r.timed_out && { timed_out: r.timed_out }),
             ...(r.stdout !== undefined && { stdout: r.stdout }),
             ...(r.stderr !== undefined && { stderr: r.stderr }),
+            ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
+            ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
             ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
+            ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
+            ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
           })),
           summary: {
             total: results.length,
