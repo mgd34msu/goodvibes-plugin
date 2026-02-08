@@ -286404,6 +286404,51 @@ __name(formatMutualExclusivityError, "formatMutualExclusivityError");
 var import_fs = require("fs");
 var import_path = require("path");
 
+// src/utils/fuzzy.ts
+function levenshteinDistance(a, b) {
+  if (a.length === 0)
+    return b.length;
+  if (b.length === 0)
+    return a.length;
+  const matrix = [];
+  for (let i2 = 0; i2 <= b.length; i2++) {
+    matrix[i2] = [i2];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i2 = 1; i2 <= b.length; i2++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i2 - 1) === a.charAt(j - 1)) {
+        matrix[i2][j] = matrix[i2 - 1][j - 1];
+      } else {
+        matrix[i2][j] = Math.min(
+          matrix[i2 - 1][j - 1] + 1,
+          matrix[i2][j - 1] + 1,
+          matrix[i2 - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+__name(levenshteinDistance, "levenshteinDistance");
+function calculateSimilarity(a, b) {
+  if (a === b)
+    return 1;
+  if (!a || !b)
+    return 0;
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+  if (longer.length === 0)
+    return 1;
+  if (longer.length > 500)
+    return 0;
+  const editDistance = levenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+__name(calculateSimilarity, "calculateSimilarity");
+
 // src/utils/path-validation.ts
 var path2 = __toESM(require("path"), 1);
 var fsPromises = __toESM(require("fs/promises"), 1);
@@ -290896,6 +290941,16 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
                 entry.is_image = r.is_image;
               if (r.mime_type)
                 entry.mime_type = r.mime_type;
+              if (r.status !== void 0)
+                entry.status = r.status;
+              if (r.size_bytes !== void 0)
+                entry.size_bytes = r.size_bytes;
+              if (r.warning)
+                entry.warning = r.warning;
+              if (r.suggestions !== void 0)
+                entry.suggestions = r.suggestions;
+              if (r.hint)
+                entry.hint = r.hint;
               return [r.path, entry];
             })
           ),
@@ -291077,49 +291132,6 @@ function isJavaScriptFile(filePath) {
   return [".ts", ".tsx", ".js", ".jsx"].includes(ext);
 }
 __name(isJavaScriptFile, "isJavaScriptFile");
-function levenshteinDistance(a, b) {
-  if (a.length === 0)
-    return b.length;
-  if (b.length === 0)
-    return a.length;
-  const matrix = [];
-  for (let i2 = 0; i2 <= b.length; i2++) {
-    matrix[i2] = [i2];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-  for (let i2 = 1; i2 <= b.length; i2++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i2 - 1) === a.charAt(j - 1)) {
-        matrix[i2][j] = matrix[i2 - 1][j - 1];
-      } else {
-        matrix[i2][j] = Math.min(
-          matrix[i2 - 1][j - 1] + 1,
-          matrix[i2][j - 1] + 1,
-          matrix[i2 - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-__name(levenshteinDistance, "levenshteinDistance");
-function calculateSimilarity(a, b) {
-  if (a === b)
-    return 1;
-  if (!a || !b)
-    return 0;
-  const longer = a.length > b.length ? a : b;
-  const shorter = a.length > b.length ? b : a;
-  if (longer.length === 0)
-    return 1;
-  if (longer.length > 500)
-    return 0;
-  const editDistance = levenshteinDistance(longer, shorter);
-  return (longer.length - editDistance) / longer.length;
-}
-__name(calculateSimilarity, "calculateSimilarity");
 function findClosestMatch(content, pattern, maxResults = 3) {
   const lines = content.split("\n");
   const patternLines = pattern.split("\n");

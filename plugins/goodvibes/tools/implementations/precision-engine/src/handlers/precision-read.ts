@@ -107,6 +107,8 @@ interface FileReadResult {
   status?: 'empty' | 'normal';
   size_bytes?: number;
   warning?: string;
+  suggestions?: string[];
+  hint?: string;
 }
 
 // === Constants ===
@@ -895,6 +897,11 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.is_binary !== undefined) entry.is_binary = r.is_binary;
               if (r.is_image) entry.is_image = r.is_image;
               if (r.mime_type) entry.mime_type = r.mime_type;
+              if (r.status !== undefined) entry.status = r.status;
+              if (r.size_bytes !== undefined) entry.size_bytes = r.size_bytes;
+              if (r.warning) entry.warning = r.warning;
+              if (r.suggestions !== undefined) entry.suggestions = r.suggestions;
+              if (r.hint) entry.hint = r.hint;
               // Don't include image_base64 in JSON - it's in the ImageContent block
               return [r.path, entry];
             })

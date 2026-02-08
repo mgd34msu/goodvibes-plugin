@@ -17,6 +17,16 @@ export interface PrecisionEngineConfig {
   verbosity_defaults?: Record<string, string>;
   /** Maximum diff characters before truncation (default: 10000) */
   max_diff_chars?: number;
+  /** Maximum file size in bytes before size gate prompts pagination (default: 524288 = 512KB) */
+  max_file_bytes?: number;
+  /** Maximum estimated tokens before size gate prompts pagination (default: 50000) */
+  max_token_estimate?: number;
+  /** Lines per page when paginating large file reads (default: 200) */
+  page_size_lines?: number;
+  /** Slow filesystem detection threshold in ms (default: 50) */
+  slow_fs_stat_threshold_ms?: number;
+  /** Known slow filesystem prefixes (default: ["/mnt/"]) */
+  slow_fs_known_prefixes?: string[];
   /** Extensible for future config */
   [key: string]: unknown;
 }
@@ -230,6 +240,64 @@ export function getToolVerbosityDefault(toolName: string): string | undefined {
 export function getMaxDiffChars(): number {
   const config = loadConfigSync();
   return typeof config.max_diff_chars === 'number' ? config.max_diff_chars : 10000;
+}
+
+/**
+ * Get the slow filesystem stat threshold from config.
+ * Returns 50ms if not configured.
+ *
+ * @returns Threshold in milliseconds for detecting slow filesystems
+ */
+export function getSlowFsThreshold(): number {
+  const config = loadConfigSync();
+  return typeof config.slow_fs_stat_threshold_ms === 'number' ? config.slow_fs_stat_threshold_ms : 50;
+}
+
+/**
+ * Get the known slow filesystem prefixes from config.
+ * Returns ["/mnt/"] if not configured.
+ *
+ * @returns Array of path prefixes known to be slow filesystems
+ */
+export function getSlowFsPrefixes(): string[] {
+  const config = loadConfigSync();
+  return Array.isArray(config.slow_fs_known_prefixes) ? config.slow_fs_known_prefixes : ['/mnt/'];
+}
+
+/**
+ * Get the max file bytes setting from config.
+ * Returns 524288 (512KB) if not configured or invalid.
+ *
+ * @returns Maximum file size in bytes before size gate prompts pagination
+ */
+export function getMaxFileBytes(): number {
+  const config = loadConfigSync();
+  const value = config.max_file_bytes;
+  return typeof value === 'number' && value > 0 ? value : 524288;
+}
+
+/**
+ * Get the max token estimate setting from config.
+ * Returns 50000 if not configured or invalid.
+ *
+ * @returns Maximum estimated tokens before size gate prompts pagination
+ */
+export function getMaxTokenEstimate(): number {
+  const config = loadConfigSync();
+  const value = config.max_token_estimate;
+  return typeof value === 'number' && value > 0 ? value : 50000;
+}
+
+/**
+ * Get the page size lines setting from config.
+ * Returns 200 if not configured or invalid.
+ *
+ * @returns Lines per page when paginating large file reads
+ */
+export function getPageSizeLines(): number {
+  const config = loadConfigSync();
+  const value = config.page_size_lines;
+  return typeof value === 'number' && value > 0 ? value : 200;
 }
 
 /**
