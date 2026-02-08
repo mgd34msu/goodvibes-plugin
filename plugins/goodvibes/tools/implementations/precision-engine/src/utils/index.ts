@@ -43,7 +43,6 @@ export function toMixedCallToolResult<T>(
     isError: !result.success,
   };
 }
-import { TOKEN_MULTIPLIERS } from '../config.js';
 import { estimateTokens } from '../logging.js';
 
 /**
@@ -56,14 +55,13 @@ export function successResult<T>(
 ): PrecisionResult<T> {
   const jsonStr = JSON.stringify(data);
   const baseTokens = estimateTokens(jsonStr);
-  const adjustedTokens = Math.ceil(baseTokens * TOKEN_MULTIPLIERS[outputMode]);
 
   return {
     success: true,
     data,
     meta: {
-      verbosity: outputMode,
-      token_estimate: adjustedTokens,
+      output_mode: outputMode,
+      token_estimate: baseTokens,
       execution_ms: executionMs,
     },
   };
@@ -81,7 +79,7 @@ export function errorResult(
     success: false,
     error,
     meta: {
-      verbosity: outputMode,
+      output_mode: outputMode,
       token_estimate: estimateTokens(error),
       execution_ms: executionMs,
     },
@@ -102,7 +100,8 @@ export const STANDARD_DEFAULTS = {
 export const TOOL_SPECIFIC_DEFAULTS: Record<string, Partial<typeof STANDARD_DEFAULTS & { verbosity: string }>> = {
   discover: { verbosity: 'files_only' },
   precision_symbols: { verbosity: 'signatures' },
-  precision_edit: { verbosity: 'with_diff' },
+  precision_edit: { verbosity: 'minimal' },     // was 'with_diff' — saves 1K-30K tokens per edit
+  precision_write: { verbosity: 'minimal' },     // NEW — agent knows what it wrote
   precision_glob: { verbosity: 'paths_only' },
   precision_grep: { verbosity: 'files_only' },
 };

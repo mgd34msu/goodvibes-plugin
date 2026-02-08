@@ -5,7 +5,19 @@
 /**
  * Output mode controls verbosity/token usage of responses.
  */
-export type OutputMode = 'count_only' | 'minimal' | 'standard' | 'verbose' | 'with_preview' | 'exit_codes';
+export type OutputMode =
+  // Universal modes
+  | 'count_only' | 'minimal' | 'standard' | 'verbose' | 'with_preview' | 'exit_codes'
+  // precision_grep / discover
+  | 'files_only' | 'locations' | 'matches' | 'context'
+  // precision_glob
+  | 'paths_only'
+  // precision_edit
+  | 'with_diff'
+  // precision_symbols
+  | 'signatures'
+  // names only (precision_symbols, discover)
+  | 'names_only';
 
 /**
  * Validation step for post-write validation.

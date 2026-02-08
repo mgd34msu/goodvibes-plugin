@@ -2,7 +2,6 @@
  * Configuration constants for precision-engine.
  */
 
-import { OutputMode } from './types.js';
 
 export const SERVER_NAME = 'precision-engine';
 export const SERVER_VERSION = '1.0.0';
@@ -21,18 +20,6 @@ export const DEFAULTS = {
   MAX_DEPTH: 10,
 };
 
-/**
- * Token multipliers for output modes.
- * Used to estimate token usage based on output mode.
- */
-export const TOKEN_MULTIPLIERS: Record<OutputMode, number> = {
-  count_only: 0.05,
-  exit_codes: 0.1,
-  minimal: 0.2,
-  standard: 0.6,
-  with_preview: 0.8,
-  verbose: 1.0,
-};
 
 /**
  * File extensions considered as text files.

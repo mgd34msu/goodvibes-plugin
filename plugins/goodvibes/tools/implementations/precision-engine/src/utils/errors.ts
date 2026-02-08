@@ -67,18 +67,24 @@ Did you mean: ${suggestions.slice(0, 3).join(", ")}?`;
   return msg;
 }
 
+import { PrecisionResult, OutputMode } from '../types.js';
+import { estimateTokens } from '../logging.js';
+
 /**
- * Create standard error result object
+ * Create standard error result object.
+ * This is a type-safe wrapper that matches the PrecisionResult signature.
  */
-export function createErrorResult(error: string, meta?: Record<string, unknown>) {
+export function createErrorResult(
+  error: string,
+  meta: { output_mode: OutputMode; execution_ms: number }
+): PrecisionResult<never> {
   return {
     success: false,
     error,
     meta: {
-      output_mode: "minimal",
-      token_estimate: Math.ceil(error.length / 4),
-      execution_ms: 0,
-      ...meta,
+      output_mode: meta.output_mode,
+      token_estimate: estimateTokens(error),
+      execution_ms: meta.execution_ms,
     },
   };
 }

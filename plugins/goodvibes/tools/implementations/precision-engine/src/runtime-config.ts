@@ -13,6 +13,10 @@ import { logger } from './logging.js';
 export interface PrecisionEngineConfig {
   /** Path boundary enforcement (default: false) */
   sandbox: boolean;
+  /** Per-tool verbosity defaults */
+  verbosity_defaults?: Record<string, string>;
+  /** Maximum diff characters before truncation (default: 10000) */
+  max_diff_chars?: number;
   /** Extensible for future config */
   [key: string]: unknown;
 }
@@ -199,6 +203,33 @@ export function getConfig(): PrecisionEngineConfig {
 export function getConfigValue<T = unknown>(key: string): T {
   const config = loadConfigSync();
   return config[key] as T;
+}
+
+/**
+ * Get the verbosity default for a specific tool from config.
+ * Returns undefined if no custom default is set.
+ *
+ * @param toolName - Name of the tool (e.g., 'precision_edit')
+ * @returns Verbosity default string or undefined
+ */
+export function getToolVerbosityDefault(toolName: string): string | undefined {
+  const config = loadConfigSync();
+  const defaults = config.verbosity_defaults;
+  if (defaults && typeof defaults === 'object') {
+    return defaults[toolName] as string | undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Get the max diff chars setting from config.
+ * Returns 10000 if not configured.
+ *
+ * @returns Maximum diff characters before truncation
+ */
+export function getMaxDiffChars(): number {
+  const config = loadConfigSync();
+  return typeof config.max_diff_chars === 'number' ? config.max_diff_chars : 10000;
 }
 
 /**
