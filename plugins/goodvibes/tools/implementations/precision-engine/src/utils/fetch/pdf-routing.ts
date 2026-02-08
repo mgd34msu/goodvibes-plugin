@@ -49,6 +49,15 @@ function parsePageRange(pages: string): { start: number; end: number } {
 }
 
 /**
+ * Format page texts with separators
+ */
+function formatPageTexts(pageTexts: string[], startPage: number = 1): string {
+  return pageTexts
+    .map((text, i) => `--- Page ${startPage + i} ---\n${text}`)
+    .join('\n\n');
+}
+
+/**
  * Parse PDF buffer and extract text content with optional page filtering
  */
 export async function parsePdfBuffer(
@@ -99,17 +108,12 @@ export async function parsePdfBuffer(
       
       // Filter to requested page range (1-indexed)
       const selectedPages = pageTexts.slice(range.start - 1, range.end);
-      text = selectedPages.map((pageText, i) => {
-        const pageNum = range.start + i;
-        return `--- Page ${pageNum} ---\n${pageText}`;
-      }).join('\n\n');
+      text = formatPageTexts(selectedPages, range.start);
       
       pageRange = pages;
     } else {
       // Return all pages with separators
-      text = pageTexts.map((pageText, i) => {
-        return `--- Page ${i + 1} ---\n${pageText}`;
-      }).join('\n\n');
+      text = formatPageTexts(pageTexts);
     }
 
     return {

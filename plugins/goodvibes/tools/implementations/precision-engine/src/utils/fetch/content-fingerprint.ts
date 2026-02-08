@@ -62,9 +62,9 @@ export interface ContentChangedResult extends CacheCheckResult {
 /**
  * Content-aware fetch cache with fingerprinting and change detection.
  * 
- * NOTE: precision-fetch.ts handler currently maintains its own inline cache (lines 33-75).
+ * NOTE: precision-fetch.ts handler currently maintains its own inline cache
+ * (CacheEntry interface, getFromCache(), setCache() functions).
  * This module is designed to replace that inline cache during handler integration.
- * The inline cache should be removed when this module is wired in.
  */
 class FetchCache {
   private cache = new Map<string, FetchCacheEntry>();
@@ -105,7 +105,11 @@ class FetchCache {
    * Uses the 'diff' package (already a project dependency) for correct multi-hunk diffs.
    */
   private generateDiff(oldContent: string, newContent: string): string {
-    return createPatch('content', oldContent, newContent, 'previous', 'current', { context: 3 });
+    try {
+      return createPatch('content', oldContent, newContent, 'previous', 'current', { context: 3 });
+    } catch {
+      return '[diff generation failed - content changed but diff unavailable]';
+    }
   }
 
   /**
