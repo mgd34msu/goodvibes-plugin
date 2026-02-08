@@ -166,6 +166,16 @@ function applyOperations(
           
           if (op.cell_type) {
             cell.cell_type = op.cell_type;
+            // Ensure code cells have required nbformat v4 fields
+            if (op.cell_type === 'code') {
+              if ((cell as any).execution_count === undefined) (cell as any).execution_count = null;
+              if ((cell as any).outputs === undefined) (cell as any).outputs = [];
+            }
+            // Clean non-applicable fields when converting away from code
+            if (op.cell_type !== 'code') {
+              delete (cell as any).execution_count;
+              delete (cell as any).outputs;
+            }
           }
           
           if (op.clear_outputs && cell.cell_type === 'code') {
@@ -207,7 +217,7 @@ function applyOperations(
             metadata: {}
           };
           
-          if (op.cell_type === 'code' || op.cell_type === 'raw') {
+          if (op.cell_type === 'code') {
             newCell.execution_count = null;
             newCell.outputs = [];
           }

@@ -300,7 +300,8 @@ async function transformRipgrepResult(
   }
 
   // Include token count for cumulative tracking
-  result.tokens_used = totalTokens;
+  // Content-level tracking for matches/context; fall back to structure estimate for count/files modes
+  result.tokens_used = totalTokens > 0 ? totalTokens : estimateTokens(JSON.stringify(result));
 
   return result;
 }
@@ -363,7 +364,7 @@ async function executeQuery(
       maxResults: maxFiles,
     });
 
-    return {
+    const negationReturn = {
       files: negationResult.files.map(f => ({
         file: f.file,
         match_count: 0,
@@ -372,7 +373,9 @@ async function executeQuery(
       match_count: 0,
       truncated: false,
       negation: negationResult,
+      tokens_used: estimateTokens(JSON.stringify({ files: negationResult.files, negation: negationResult })),
     };
+    return negationReturn;
   }
 
   // Map query options to RipgrepSearchOptions
@@ -380,8 +383,6 @@ async function executeQuery(
     ? await validateDirectoryPath(query.path, workDir)
     : workDir;
   const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
-
-
 
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
     pattern: patternStr,
@@ -477,7 +478,7 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
       });
 
       try {
-        // 1. SearchCache: Store results for future refinement
+        // 1. SearchCache: Store results for caching
         if (result.files && result.files.length > 0) {
           const filePaths = result.files.map(f => path.join(workDir, f.file));
           searchCache.store(queryId, filePaths, patternStr);

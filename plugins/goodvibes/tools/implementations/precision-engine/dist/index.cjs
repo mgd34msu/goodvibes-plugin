@@ -309028,7 +309028,7 @@ var precisionGlobSchema = {
     type: "object",
     properties: {
       patterns: { type: "array", items: { type: "string" }, description: "Glob patterns to match" },
-      patterns_base64: { type: "array", items: { type: "string" }, description: 'Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Encode each with: echo -n "pattern" | base64 -w0' },
+      patterns_base64: { type: "array", items: { type: "string" }, description: 'Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Encode each with: echo -n "pattern" | base64 -w0. Note: Brackets [ ] are auto-escaped for literal matching. Use patterns parameter for character-class globs like *.[tj]s' },
       preset: { type: "string", enum: ["typescript", "javascript", "styles", "config", "tests", "all"] },
       exclude: { type: "array", items: { type: "string" }, description: "Patterns to exclude" },
       filters: {
@@ -314221,13 +314221,13 @@ function validateRegexPattern(pattern) {
   if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
     throw new Error("Pattern too long");
   }
-  if (/(\+|\*|\{[^}]*\})\s*([+*?]|\{[^}]*\})|([+*?])\s*\1/.test(pattern)) {
+  if (/(\+|\*|\{[^}]*\})\s*([+*?]|\{[^}]*\})|([+*])\s*\3/.test(pattern)) {
     throw new Error("Nested quantifiers detected");
   }
   let depth = 0;
   let maxDepth = 0;
   for (let i2 = 0; i2 < pattern.length; i2++) {
-    if (pattern[i2] === "(" && (i2 === 0 || pattern[i2 - 1] !== "\\")) {
+    if (pattern[i2] === "(" && (i2 === 0 || pattern[i2 - 1] !== "\\" || i2 >= 2 && pattern[i2 - 2] === "\\")) {
       depth++;
       maxDepth = Math.max(maxDepth, depth);
     } else if (pattern[i2] === ")" && (i2 === 0 || pattern[i2 - 1] !== "\\")) {
@@ -325369,7 +325369,7 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, 
     result.lines_truncated = linesTruncated;
     result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Use max_line_length: null for full content.`;
   }
-  result.tokens_used = totalTokens;
+  result.tokens_used = totalTokens > 0 ? totalTokens : estimateTokens2(JSON.stringify(result));
   return result;
 }
 __name(transformRipgrepResult, "transformRipgrepResult");
@@ -325380,7 +325380,7 @@ async function executeQuery(query2, output, workDir) {
   const maxTokens = output.max_tokens ?? Infinity;
   let contextBefore = output.context_before ?? 0;
   let contextAfter = output.context_after ?? 0;
-  if (output.expand_to && contextBefore === 0 && contextAfter === 0) {
+  if (output.expand_to && output.context_before === void 0 && output.context_after === void 0) {
     switch (output.expand_to) {
       case "block":
         contextBefore = 5;
@@ -325411,7 +325411,7 @@ async function executeQuery(query2, output, workDir) {
       wholeWord: query2.whole_word,
       maxResults: maxFiles
     });
-    return {
+    const negationReturn = {
       files: negationResult.files.map((f) => ({
         file: f.file,
         match_count: 0
@@ -325419,8 +325419,10 @@ async function executeQuery(query2, output, workDir) {
       file_count: negationResult.total_files_without_match,
       match_count: 0,
       truncated: false,
-      negation: negationResult
+      negation: negationResult,
+      tokens_used: estimateTokens2(JSON.stringify({ files: negationResult.files, negation: negationResult }))
     };
+    return negationReturn;
   }
   const searchPath = query2.path ? await validateDirectoryPath(query2.path, workDir) : workDir;
   const excludePatterns = [...DEFAULT_EXCLUDES, ...query2.exclude ?? []];
@@ -325457,8 +325459,8 @@ var handlePrecisionGrep = /* @__PURE__ */ __name(async (args2) => {
     const output = {
       ...rawOutput,
       mode: resolvedMode,
-      context_before: rawOutput.context_before ?? 0,
-      context_after: rawOutput.context_after ?? 0,
+      context_before: rawOutput.context_before,
+      context_after: rawOutput.context_after,
       // Support both new and old parameter names
       max_results: rawOutput.max_results ?? rawOutput.max_files ?? 100,
       max_per_item: rawOutput.max_per_item ?? rawOutput.max_matches_per_file ?? 10,
@@ -325660,7 +325662,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
     const workDir = input.base_path || input.cwd ? await validateDirectoryPath(rawWorkDir, process.cwd()) : rawWorkDir;
     let patterns2 = input.patterns_base64 ? input.patterns_base64.map((p) => {
       const decoded = Buffer.from(p, "base64").toString("utf-8");
-      return decoded.replace(/([\[\]])/g, "\\$1");
+      return decoded.replace(/[\[\]]/g, "\\$&");
     }) : input.patterns;
     if ((!patterns2 || patterns2.length === 0) && input.preset) {
       patterns2 = GLOB_PRESETS[input.preset];
@@ -326475,7 +326477,10 @@ async function executeGrepQuery(query2, outputMode, searchRoot) {
 }
 __name(executeGrepQuery, "executeGrepQuery");
 async function executeGlobQuery(query2, outputMode, searchRoot) {
-  const patterns2 = query2.patterns_base64 ? query2.patterns_base64.map((p) => Buffer.from(p, "base64").toString("utf-8")) : query2.patterns;
+  const patterns2 = query2.patterns_base64 ? query2.patterns_base64.map((p) => {
+    const decoded = Buffer.from(p, "base64").toString("utf-8");
+    return decoded.replace(/[\[\]]/g, "\\$&");
+  }) : query2.patterns;
   if (!patterns2 || patterns2.length === 0) {
     return { type: "glob", count: 0, error: "Missing 'patterns' or 'patterns_base64' for glob query" };
   }
@@ -328649,6 +328654,16 @@ function applyOperations(notebook, operations) {
           cell.source = normalizeSource(op.source);
           if (op.cell_type) {
             cell.cell_type = op.cell_type;
+            if (op.cell_type === "code") {
+              if (cell.execution_count === void 0)
+                cell.execution_count = null;
+              if (cell.outputs === void 0)
+                cell.outputs = [];
+            }
+            if (op.cell_type !== "code") {
+              delete cell.execution_count;
+              delete cell.outputs;
+            }
           }
           if (op.clear_outputs && cell.cell_type === "code") {
             cell.outputs = [];
@@ -328684,7 +328699,7 @@ function applyOperations(notebook, operations) {
             source: normalizeSource(op.source),
             metadata: {}
           };
-          if (op.cell_type === "code" || op.cell_type === "raw") {
+          if (op.cell_type === "code") {
             newCell.execution_count = null;
             newCell.outputs = [];
           }
