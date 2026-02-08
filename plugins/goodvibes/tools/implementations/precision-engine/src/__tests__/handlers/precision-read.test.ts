@@ -196,6 +196,24 @@ describe('precision_read handler', () => {
       expect(parsed.data.files['sample.ts'].ast).toBeDefined();
       expect(parsed.data.files['sample.ts'].ast.kind).toBe('SourceFile');
     });
+
+    it('should populate AST children array with nodes', async () => {
+      const result = await handlePrecisionRead({
+        files: ['sample.ts'],
+        extract: 'ast',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      const ast = parsed.data.files['sample.ts'].ast;
+      expect(ast.children).toBeDefined();
+      expect(Array.isArray(ast.children)).toBe(true);
+      expect(ast.children.length).toBeGreaterThan(0);
+      // Verify children have expected structure
+      const firstChild = ast.children[0];
+      expect(firstChild).toHaveProperty('kind');
+      expect(firstChild).toHaveProperty('line');
+    });
   });
 
   describe('multiple files', () => {
@@ -341,7 +359,7 @@ describe('precision_read handler', () => {
       });
 
       const parsed = expectSuccess(result);
-      expect(parsed.data.files['file.txt'].error).toContain('TypeScript/JavaScript');
+      expect(parsed.data.files['file.txt'].error).toContain('Supported languages');
     });
   });
 

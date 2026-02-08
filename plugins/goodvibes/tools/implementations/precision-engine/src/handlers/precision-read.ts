@@ -882,7 +882,7 @@ async function readSingleFile(
             }
           }
         } else {
-          result.error = 'Symbol extraction not supported for this file type. Only TypeScript/JavaScript files are supported.';
+          result.error = 'Symbol extraction not supported for this file type. Supported languages include TypeScript, JavaScript, Python, Go, Rust, and more.';
         }
         break;
 
@@ -892,10 +892,25 @@ async function readSingleFile(
             const treeSitter = getTreeSitter();
             const tree = await treeSitter.parse(content, filePath);
             // Convert tree-sitter AST to simplified format
+            // Build simplified AST from tree-sitter parse result
+            function simplifyNode(node: any): Record<string, unknown> {
+              const simplified: Record<string, unknown> = {
+                kind: node.type,
+                line: node.startPosition.row + 1,
+              };
+              const nameNode = node.childForFieldName?.('name');
+              if (nameNode) simplified.name = nameNode.text;
+              const children = node.namedChildren
+                .filter((child: any) => child.namedChildCount > 0 || ['function_declaration', 'class_declaration', 'variable_declaration', 'import_declaration', 'export_statement', 'interface_declaration', 'type_alias_declaration', 'enum_declaration', 'method_definition'].includes(child.type))
+                .map((child: any) => simplifyNode(child));
+              if (children.length > 0) simplified.children = children;
+              return simplified;
+            }
+            const children = tree.rootNode.namedChildren.map((c: any) => simplifyNode(c));
             result.ast = {
               file: filePath,
               kind: 'SourceFile',
-              children: [], // Tree-sitter AST structure - using simplified format for consistency
+              children,
             };
           } catch (error) {
             // Fallback to TypeScript compiler API for TS/JS files

@@ -327430,19 +327430,34 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
             }
           }
         } else {
-          result.error = "Symbol extraction not supported for this file type. Only TypeScript/JavaScript files are supported.";
+          result.error = "Symbol extraction not supported for this file type. Supported languages include TypeScript, JavaScript, Python, Go, Rust, and more.";
         }
         break;
       case "ast":
         if (isLanguageSupported(filePath)) {
           try {
+            let simplifyNode2 = function(node) {
+              const simplified = {
+                kind: node.type,
+                line: node.startPosition.row + 1
+              };
+              const nameNode = node.childForFieldName?.("name");
+              if (nameNode)
+                simplified.name = nameNode.text;
+              const children2 = node.namedChildren.filter((child) => child.namedChildCount > 0 || ["function_declaration", "class_declaration", "variable_declaration", "import_declaration", "export_statement", "interface_declaration", "type_alias_declaration", "enum_declaration", "method_definition"].includes(child.type)).map((child) => simplifyNode2(child));
+              if (children2.length > 0)
+                simplified.children = children2;
+              return simplified;
+            };
+            var simplifyNode = simplifyNode2;
+            __name(simplifyNode2, "simplifyNode");
             const treeSitter = getTreeSitter();
             const tree = await treeSitter.parse(content, filePath);
+            const children = tree.rootNode.namedChildren.map((c) => simplifyNode2(c));
             result.ast = {
               file: filePath,
               kind: "SourceFile",
-              children: []
-              // Tree-sitter AST structure - using simplified format for consistency
+              children
             };
           } catch (error2) {
             if (filePath.endsWith(".ts") || filePath.endsWith(".tsx") || filePath.endsWith(".js") || filePath.endsWith(".jsx")) {
