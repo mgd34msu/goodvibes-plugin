@@ -285688,14 +285688,6 @@ var StdioServerTransport = class {
 // src/config.ts
 var SERVER_NAME = "precision-engine";
 var SERVER_VERSION = "1.0.0";
-var TOKEN_MULTIPLIERS = {
-  count_only: 0.05,
-  exit_codes: 0.1,
-  minimal: 0.2,
-  standard: 0.6,
-  with_preview: 0.8,
-  verbose: 1
-};
 var DEFAULT_EXCLUDES = [
   "node_modules/**",
   ".git/**",
@@ -286219,10 +286211,9 @@ function createErrorResult(error2, meta3) {
     success: false,
     error: error2,
     meta: {
-      output_mode: "minimal",
-      token_estimate: Math.ceil(error2.length / 4),
-      execution_ms: 0,
-      ...meta3
+      output_mode: meta3.output_mode,
+      token_estimate: estimateTokens(error2),
+      execution_ms: meta3.execution_ms
     }
   };
 }
@@ -286494,13 +286485,12 @@ __name(toMixedCallToolResult, "toMixedCallToolResult");
 function successResult(data, outputMode, executionMs) {
   const jsonStr = JSON.stringify(data);
   const baseTokens = estimateTokens(jsonStr);
-  const adjustedTokens = Math.ceil(baseTokens * TOKEN_MULTIPLIERS[outputMode]);
   return {
     success: true,
     data,
     meta: {
-      verbosity: outputMode,
-      token_estimate: adjustedTokens,
+      output_mode: outputMode,
+      token_estimate: baseTokens,
       execution_ms: executionMs
     }
   };
@@ -286511,7 +286501,7 @@ function errorResult(error2, outputMode, executionMs) {
     success: false,
     error: error2,
     meta: {
-      verbosity: outputMode,
+      output_mode: outputMode,
       token_estimate: estimateTokens(error2),
       execution_ms: executionMs
     }
@@ -286525,7 +286515,10 @@ var STANDARD_DEFAULTS = {
 var TOOL_SPECIFIC_DEFAULTS = {
   discover: { verbosity: "files_only" },
   precision_symbols: { verbosity: "signatures" },
-  precision_edit: { verbosity: "with_diff" },
+  precision_edit: { verbosity: "minimal" },
+  // was 'with_diff' — saves 1K-30K tokens per edit
+  precision_write: { verbosity: "minimal" },
+  // NEW — agent knows what it wrote
   precision_glob: { verbosity: "paths_only" },
   precision_grep: { verbosity: "files_only" }
 };
