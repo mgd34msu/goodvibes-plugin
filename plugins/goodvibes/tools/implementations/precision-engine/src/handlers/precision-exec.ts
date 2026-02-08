@@ -17,10 +17,11 @@ import { spawn, execFile } from 'child_process';
 import { homedir } from 'os';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue, createProgressCollector, type ProgressMilestone } from '../utils/index.js';
+import { parseRetryConfig, shouldRetry, computeDelay, type RetryConfig, type RetryResult } from '../utils/retry-engine.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
-import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax, getExecMaxBackground } from '../runtime-config.js';
+import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax, getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
 import { commandHistory, sessionState, processManager, type BgStartResult } from '../state/index.js';
 
 // Destructive command patterns for safe_mode
@@ -113,6 +114,14 @@ interface CommandSpec {
   env?: Record<string, string>;
   expect?: ExpectSpec;
   background?: boolean;  // Run in background (Part E)
+  progress?: boolean;  // Enable Tier 1 inline progress (Part F)
+  progress_file?: boolean;  // Enable Tier 2 live file (Part F)
+  retry?: {
+    max?: number;
+    delay_ms?: number;
+    backoff?: 'fixed' | 'exponential';
+    on?: string[];
+  };
 }
 
 interface OutputConfig {
@@ -152,6 +161,9 @@ interface CommandResult {
   timed_out?: boolean;
   exit_interpretation?: ExitInterpretation;
   detected_issue?: DetectedIssue;
+  progress?: ProgressMilestone[];  // Tier 1: inline milestones (Part F)
+  progress_file?: string;  // Tier 2: path to live log file (Part F)
+  retries?: RetryResult;
 }
 
 // Config defaults are now retrieved from runtime-config getters
@@ -220,6 +232,23 @@ async function executeCommand(
       windowsHide: true,
     });
 
+    // Initialize progress collector (Part F)
+    // Tier 1: Always enabled (costs nothing, filter later based on duration)
+    // Tier 2: Enabled when progress_file=true OR timeout > 30s
+    const commandId = spec.id || `cmd-${startTime}`;
+    const overflowDir = getExecOverflowDir();
+    const tier2Enabled = spec.progress_file === true || timeout > 30000;
+    const progressCollector = createProgressCollector(
+      {
+        enabled: true,  // Always collect
+        progress_file: tier2Enabled,
+        silence_gap_ms: 2000,
+        max_milestones: 20,
+      },
+      commandId,
+      overflowDir
+    );
+
     const timeoutId = setTimeout(() => {
       // Check if process already exited to prevent race condition
       if (proc.exitCode !== null) return;
@@ -247,6 +276,9 @@ async function executeCommand(
     if (captureStdout) {
       proc.stdout?.on('data', (data: Buffer) => {
         const chunk = data.toString();
+        // Feed to progress collector (Part F)
+        progressCollector.onData(chunk);
+        
         if (stdout.length < bufferCap) {
           stdout += chunk;
           if (stdout.length > bufferCap) {
@@ -401,12 +433,26 @@ async function executeCommand(
         result.expectation_failures = expectationFailures;
       }
 
+      // Finalize progress collection (Part F)
+      const milestones = progressCollector.finalize(duration_ms);
+      // Tier 1: Include progress if duration > 10s OR explicitly requested
+      if (duration_ms > 10000 || spec.progress === true) {
+        result.progress = milestones;
+      }
+      // Tier 2: Include progress file path if available
+      const progressFilePath = progressCollector.getProgressFilePath();
+      if (progressFilePath) {
+        result.progress_file = progressFilePath;
+      }
+      // Dispose collector
+      progressCollector.dispose();
+
       // Detect cd command and update session state
       // Skip cd detection when running in parallel to avoid race conditions
       if (exitCode === 0 && !isParallel) {
         const detectedCd = detectCdFromCommand(fullCommand);
         if (detectedCd) {
-          sessionState.setCwd(detectedCd);
+           sessionState.setCwd(detectedCd);
         }
       }
 
@@ -415,6 +461,7 @@ async function executeCommand(
 
     proc.on('error', (err) => {
       clearTimeout(timeoutId);
+      progressCollector.dispose();
       const result: CommandResult = {
         cmd: command,
         exit_code: 1,
@@ -438,6 +485,87 @@ async function executeCommand(
       resolve(result);
     });
   });
+}
+
+/**
+ * Execute a command with retry logic based on retry configuration.
+ * Wraps executeCommand and handles retry attempts with backoff.
+ */
+async function executeWithRetry(
+  spec: CommandSpec,
+  retryConfig: RetryConfig | null,
+  globalEnv: Record<string, string> | undefined,
+  globalWorkDir: string | undefined,
+  globalTimeout: number | undefined,
+  captureStdout: boolean,
+  captureStderr: boolean,
+  maxOutputLines: number | undefined,
+  isParallel: boolean
+): Promise<CommandResult> {
+  // No retry config - execute once
+  if (!retryConfig) {
+    return executeCommand(
+      spec,
+      globalEnv,
+      globalWorkDir,
+      globalTimeout,
+      captureStdout,
+      captureStderr,
+      maxOutputLines,
+      isParallel
+    );
+  }
+
+  let attempt = 0;
+  let lastResult: CommandResult;
+  const delays: number[] = [];
+
+  while (true) {
+    lastResult = await executeCommand(
+      spec,
+      globalEnv,
+      globalWorkDir,
+      globalTimeout,
+      captureStdout,
+      captureStderr,
+      maxOutputLines,
+      isParallel
+    );
+
+    // Success — no retry needed
+    if (lastResult.exit_code === 0 && lastResult.expectations_met) {
+      if (attempt > 0) {
+        lastResult.retries = {
+          attempts: attempt + 1,
+          delays,
+          reason: 'succeeded after retry',
+        };
+      }
+      return lastResult;
+    }
+
+    // Check if we should retry
+    const issue = detectIssue(lastResult.stderr || '', lastResult.stdout);
+    const decision = shouldRetry(issue, retryConfig, attempt);
+
+    if (!decision.retry || attempt >= retryConfig.max) {
+      if (attempt > 0) {
+        lastResult.retries = {
+          attempts: attempt + 1,
+          delays,
+          reason: decision.reason,
+          final_issue: issue?.type,
+        };
+      }
+      return lastResult;
+    }
+
+    // Wait and retry
+    const delay = computeDelay(retryConfig, attempt);
+    delays.push(delay);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    attempt++;
+  }
 }
 
 export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
@@ -704,14 +832,36 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
 
     if (parallel) {
       results = await Promise.all(
-        input.commands.map(cmd =>
-          executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, true)
-        )
+        input.commands.map((cmd) => {
+          const retryConfig = parseRetryConfig(cmd.retry);
+          return executeWithRetry(
+            cmd,
+            retryConfig,
+            globalEnv,
+            globalWorkDir,
+            globalTimeout,
+            captureStdout,
+            captureStderr,
+            maxOutputLines,
+            true
+          );
+        })
       );
     } else {
       results = [];
       for (const cmd of input.commands) {
-        const result = await executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, false);
+        const retryConfig = parseRetryConfig(cmd.retry);
+        const result = await executeWithRetry(
+          cmd,
+          retryConfig,
+          globalEnv,
+          globalWorkDir,
+          globalTimeout,
+          captureStdout,
+          captureStderr,
+          maxOutputLines,
+          false
+        );
         results.push(result);
 
         if (failFast && (result.exit_code !== 0 || !result.expectations_met)) {
@@ -772,6 +922,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             cmd: r.cmd,
             exit_code: r.exit_code,
             ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
+            ...(r.retries && { retry_attempts: r.retries.attempts }),
           })),
           summary: {
             total: results.length,
@@ -820,6 +971,9 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
               ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
               ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
               ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
+              ...(r.retries && { retries: r.retries }),
+              ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
+              ...(r.progress_file && { progress_file: r.progress_file }),
               ...(context?.previousRun && {
                 same_command_last_run: {
                   exit_code: context.previousRun.exit_code,
@@ -859,6 +1013,9 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
               ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
               ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
               ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
+              ...(r.retries && { retries: r.retries }),
+              ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
+              ...(r.progress_file && { progress_file: r.progress_file }),
               ...(context?.previousRun && {
                 same_command_last_run: {
                   exit_code: context.previousRun.exit_code,

@@ -377,3 +377,9 @@ export { interpretExitCode, type ExitInterpretation } from './exit-codes.js';
 
 // Export overflow handling utilities
 export { handleOverflow, cleanupOverflowFiles, type OverflowResult } from './overflow-handler.js';
+
+// Export retry engine utilities
+export { parseRetryConfig, shouldRetry, computeDelay, RETRY_CATEGORY_MAP, type RetryConfig, type RetryResult, type RetryCategory } from './retry-engine.js';
+
+// Export progress reporting utilities
+export { createProgressCollector, type ProgressMilestone, type ProgressConfig, type ProgressCollector } from './progress-collector.js';

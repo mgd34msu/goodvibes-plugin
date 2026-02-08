@@ -91,16 +91,21 @@ export const precisionExecSchema: Tool = {
             until: { type: 'string', description: 'Regex pattern — resolve early when stdout matches, promote process to background (reserved — not yet implemented)' },
             retry: {
               type: 'object',
-              description: 'Auto-retry configuration (reserved — not yet implemented)',
+              description: 'Retry configuration for transient failures. Retry is OFF by default.',
               properties: {
-                max_attempts: { type: 'integer', minimum: 1, default: 3 },
-                delay_ms: { type: 'integer', minimum: 0, default: 1000 },
+                max: { type: 'integer', minimum: 1, maximum: 10, default: 3, description: 'Maximum retry attempts' },
+                delay_ms: { type: 'integer', minimum: 100, default: 1000, description: 'Base delay between retries in milliseconds' },
+                backoff: { type: 'string', enum: ['fixed', 'exponential'], default: 'exponential', description: 'Backoff strategy' },
                 on: {
                   type: 'array',
-                  items: { type: 'string', enum: ['failure', 'lock', 'timeout', 'network'] },
+                  items: { type: 'string', enum: ['network', 'lock', 'busy', 'oom'] },
+                  default: ['network', 'lock', 'busy'],
+                  description: 'Error categories to retry on',
                 },
               },
             },
+            progress: { type: 'boolean', default: false, description: 'Enable inline progress milestones for long-running commands (auto-enabled for commands >10s)' },
+            progress_file: { type: 'boolean', default: false, description: 'Stream output to a pollable progress file. Auto-enabled for timeout_ms > 30000.' },
             expect: {
               type: 'object',
               properties: {

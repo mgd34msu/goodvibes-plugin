@@ -7509,12 +7509,12 @@ var init_runtime_config = __esm({
 });
 
 // src/state/session-state.ts
-var path6, import_fs3, SessionState, sessionState;
+var path6, import_fs5, SessionState, sessionState;
 var init_session_state = __esm({
   "src/state/session-state.ts"() {
     "use strict";
     path6 = __toESM(require("path"), 1);
-    import_fs3 = require("fs");
+    import_fs5 = require("fs");
     init_runtime_config();
     SessionState = class _SessionState {
       static {
@@ -7540,11 +7540,11 @@ var init_session_state = __esm({
        */
       setCwd(newCwd) {
         const resolved = path6.resolve(this._cwd, newCwd);
-        if (!(0, import_fs3.existsSync)(resolved)) {
+        if (!(0, import_fs5.existsSync)(resolved)) {
           return;
         }
         try {
-          const realPath = (0, import_fs3.realpathSync)(resolved);
+          const realPath = (0, import_fs5.realpathSync)(resolved);
           const sandboxEnabled = getConfigValue("sandbox");
           if (sandboxEnabled !== false) {
             const projectRoot = process.cwd();
@@ -7642,13 +7642,13 @@ var init_command_history = __esm({
 });
 
 // src/state/process-manager.ts
-var import_child_process3, import_os, import_fs4, path7, ProcessManager, processManager;
+var import_child_process3, import_os, import_fs6, path7, ProcessManager, processManager;
 var init_process_manager = __esm({
   "src/state/process-manager.ts"() {
     "use strict";
     import_child_process3 = require("child_process");
     import_os = require("os");
-    import_fs4 = require("fs");
+    import_fs6 = require("fs");
     path7 = __toESM(require("path"), 1);
     init_runtime_config();
     ProcessManager = class _ProcessManager {
@@ -7688,11 +7688,11 @@ var init_process_manager = __esm({
         }
         const id = `bg-${this.counter++}`;
         const overflowDir = getExecOverflowDir();
-        if (!(0, import_fs4.existsSync)(overflowDir)) {
-          (0, import_fs4.mkdirSync)(overflowDir, { recursive: true });
+        if (!(0, import_fs6.existsSync)(overflowDir)) {
+          (0, import_fs6.mkdirSync)(overflowDir, { recursive: true });
         }
         const logFile = path7.join(overflowDir, `${id}.log`);
-        const logFd = (0, import_fs4.openSync)(logFile, "a");
+        const logFd = (0, import_fs6.openSync)(logFile, "a");
         let fdClosed = false;
         try {
           const child = (0, import_child_process3.spawn)(command, args2, {
@@ -7701,7 +7701,7 @@ var init_process_manager = __esm({
             cwd: options.cwd || process.cwd(),
             env: options.env ? { ...process.env, ...options.env } : process.env
           });
-          (0, import_fs4.closeSync)(logFd);
+          (0, import_fs6.closeSync)(logFd);
           fdClosed = true;
           if (child.pid === void 0) {
             child.kill();
@@ -7746,7 +7746,7 @@ var init_process_manager = __esm({
           };
         } catch (err2) {
           if (!fdClosed) {
-            (0, import_fs4.closeSync)(logFd);
+            (0, import_fs6.closeSync)(logFd);
           }
           throw err2;
         }
@@ -7769,12 +7769,12 @@ var init_process_manager = __esm({
         if (!proc) {
           throw new Error(`Background process ${id} not found`);
         }
-        if (!(0, import_fs4.existsSync)(proc.log_file)) {
+        if (!(0, import_fs6.existsSync)(proc.log_file)) {
           return { output: "", complete: proc.status !== "running", bytes_read: 0, total_bytes: 0 };
         }
-        const fd = (0, import_fs4.openSync)(proc.log_file, "r");
+        const fd = (0, import_fs6.openSync)(proc.log_file, "r");
         try {
-          const stats = (0, import_fs4.fstatSync)(fd);
+          const stats = (0, import_fs6.fstatSync)(fd);
           const totalBytes = stats.size;
           const startOffset = proc.last_read_offset;
           if (startOffset >= totalBytes) {
@@ -7782,7 +7782,7 @@ var init_process_manager = __esm({
           }
           const bytesToRead = totalBytes - startOffset;
           const buffer = Buffer.alloc(bytesToRead);
-          (0, import_fs4.readSync)(fd, buffer, 0, bytesToRead, startOffset);
+          (0, import_fs6.readSync)(fd, buffer, 0, bytesToRead, startOffset);
           let output = buffer.toString("utf-8");
           if (lines !== void 0 && lines > 0) {
             const allLines = output.split("\n");
@@ -7800,7 +7800,7 @@ var init_process_manager = __esm({
             total_bytes: totalBytes
           };
         } finally {
-          (0, import_fs4.closeSync)(fd);
+          (0, import_fs6.closeSync)(fd);
         }
       }
       /**
@@ -240797,7 +240797,7 @@ var init_pdf = __esm({
           var defineProperty = Object.defineProperty;
           var stringSlice = uncurryThis("".slice);
           var replace = uncurryThis("".replace);
-          var join12 = uncurryThis([].join);
+          var join13 = uncurryThis([].join);
           var CONFIGURABLE_LENGTH = DESCRIPTORS && !fails(function() {
             return defineProperty(function() {
             }, "length", { value: 8 }).length !== 8;
@@ -240830,7 +240830,7 @@ var init_pdf = __esm({
             }
             var state = enforceInternalState(value);
             if (!hasOwn(state, "source")) {
-              state.source = join12(TEMPLATE, typeof name2 == "string" ? name2 : "");
+              state.source = join13(TEMPLATE, typeof name2 == "string" ? name2 : "");
             }
             return value;
           };
@@ -286464,16 +286464,21 @@ var precisionExecSchema = {
             until: { type: "string", description: "Regex pattern \u2014 resolve early when stdout matches, promote process to background (reserved \u2014 not yet implemented)" },
             retry: {
               type: "object",
-              description: "Auto-retry configuration (reserved \u2014 not yet implemented)",
+              description: "Retry configuration for transient failures. Retry is OFF by default.",
               properties: {
-                max_attempts: { type: "integer", minimum: 1, default: 3 },
-                delay_ms: { type: "integer", minimum: 0, default: 1e3 },
+                max: { type: "integer", minimum: 1, maximum: 10, default: 3, description: "Maximum retry attempts" },
+                delay_ms: { type: "integer", minimum: 100, default: 1e3, description: "Base delay between retries in milliseconds" },
+                backoff: { type: "string", enum: ["fixed", "exponential"], default: "exponential", description: "Backoff strategy" },
                 on: {
                   type: "array",
-                  items: { type: "string", enum: ["failure", "lock", "timeout", "network"] }
+                  items: { type: "string", enum: ["network", "lock", "busy", "oom"] },
+                  default: ["network", "lock", "busy"],
+                  description: "Error categories to retry on"
                 }
               }
             },
+            progress: { type: "boolean", default: false, description: "Enable inline progress milestones for long-running commands (auto-enabled for commands >10s)" },
+            progress_file: { type: "boolean", default: false, description: "Stream output to a pollable progress file. Auto-enabled for timeout_ms > 30000." },
             expect: {
               type: "object",
               properties: {
@@ -286920,8 +286925,8 @@ Please provide only ONE of:
 __name(formatMutualExclusivityError, "formatMutualExclusivityError");
 
 // src/utils/index.ts
-var import_fs2 = require("fs");
-var import_path2 = require("path");
+var import_fs4 = require("fs");
+var import_path3 = require("path");
 
 // src/utils/fuzzy.ts
 function levenshteinDistance(a, b) {
@@ -287449,6 +287454,194 @@ async function cleanupOverflowFiles(maxAgeMs = 36e5) {
 }
 __name(cleanupOverflowFiles, "cleanupOverflowFiles");
 
+// src/utils/retry-engine.ts
+var RETRY_CATEGORY_MAP = {
+  network: /* @__PURE__ */ new Set(["connection_refused", "network_timeout", "dns_failure"]),
+  lock: /* @__PURE__ */ new Set(["git_index_lock", "npm_lock_conflict"]),
+  busy: /* @__PURE__ */ new Set(["resource_busy"]),
+  oom: /* @__PURE__ */ new Set(["out_of_memory"])
+};
+function parseRetryConfig(raw) {
+  if (!raw) {
+    return null;
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const obj = raw;
+  const defaults = {
+    max: 3,
+    delay_ms: 1e3,
+    backoff: "exponential",
+    on: ["network", "lock", "busy"]
+  };
+  let max = defaults.max;
+  if ("max" in obj || "max_attempts" in obj) {
+    const rawMax = obj.max ?? obj.max_attempts;
+    if (typeof rawMax === "number" && rawMax >= 1 && rawMax <= 10) {
+      max = Math.floor(rawMax);
+    } else if (typeof rawMax === "number") {
+      max = Math.max(1, Math.min(10, Math.floor(rawMax)));
+    }
+  }
+  let delay_ms = defaults.delay_ms;
+  if ("delay_ms" in obj) {
+    const rawDelay = obj.delay_ms;
+    if (typeof rawDelay === "number" && rawDelay >= 100) {
+      delay_ms = Math.floor(rawDelay);
+    } else if (typeof rawDelay === "number") {
+      delay_ms = Math.max(100, Math.floor(rawDelay));
+    }
+  }
+  let backoff = defaults.backoff;
+  if ("backoff" in obj) {
+    const rawBackoff = obj.backoff;
+    if (rawBackoff === "fixed" || rawBackoff === "exponential") {
+      backoff = rawBackoff;
+    }
+  }
+  let on = defaults.on;
+  if ("on" in obj) {
+    const rawOn = obj.on;
+    if (Array.isArray(rawOn)) {
+      const validCategories = rawOn.filter(
+        (cat) => typeof cat === "string" && ["network", "lock", "busy", "oom"].includes(cat)
+      );
+      if (validCategories.length > 0) {
+        on = validCategories;
+      }
+    }
+  }
+  return { max, delay_ms, backoff, on };
+}
+__name(parseRetryConfig, "parseRetryConfig");
+function shouldRetry(issue2, config2, attempt) {
+  if (attempt >= config2.max) {
+    return {
+      retry: false,
+      delay_ms: 0,
+      reason: "max attempts reached"
+    };
+  }
+  if (!issue2) {
+    return {
+      retry: false,
+      delay_ms: 0,
+      reason: "no matching error pattern"
+    };
+  }
+  const matchesCategory = config2.on.some((category) => {
+    const issueTypes = RETRY_CATEGORY_MAP[category];
+    return issueTypes.has(issue2.type);
+  });
+  if (!matchesCategory) {
+    return {
+      retry: false,
+      delay_ms: 0,
+      reason: "issue type not in retry categories"
+    };
+  }
+  const delay_ms = computeDelay(config2, attempt);
+  return {
+    retry: true,
+    delay_ms,
+    reason: `retrying after ${issue2.type} (attempt ${attempt + 1}/${config2.max})`
+  };
+}
+__name(shouldRetry, "shouldRetry");
+function computeDelay(config2, attempt) {
+  if (config2.backoff === "fixed") {
+    return config2.delay_ms;
+  }
+  const exponentialDelay = config2.delay_ms * Math.pow(2, attempt);
+  return Math.min(exponentialDelay, 3e4);
+}
+__name(computeDelay, "computeDelay");
+
+// src/utils/progress-collector.ts
+var import_fs2 = require("fs");
+var import_path2 = require("path");
+var import_fs3 = require("fs");
+function createProgressCollector(config2, commandId, overflowDir) {
+  const startTime = Date.now();
+  let lastDataTimestamp = startTime;
+  const milestones = [];
+  let firstLine;
+  let lastLine;
+  let writeStream;
+  let progressFilePath;
+  if (config2.progress_file) {
+    try {
+      (0, import_fs3.mkdirSync)(overflowDir, { recursive: true });
+      const safeId = commandId.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const timestamp = Date.now();
+      progressFilePath = (0, import_path2.join)(overflowDir, `progress-${safeId}-${timestamp}.log`);
+      writeStream = (0, import_fs2.createWriteStream)(progressFilePath, { flags: "a" });
+      writeStream.on("error", () => {
+        writeStream = void 0;
+      });
+    } catch (error2) {
+      console.warn(`Failed to create progress file: ${error2.message}`);
+    }
+  }
+  return {
+    onData(chunk) {
+      const now = Date.now();
+      const elapsedSinceStart = now - startTime;
+      const gapSinceLastData = now - lastDataTimestamp;
+      const lines = chunk.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+      const firstNonEmpty = lines[0];
+      const lastNonEmpty = lines[lines.length - 1];
+      if (firstNonEmpty) {
+        if (!firstLine) {
+          firstLine = firstNonEmpty;
+        }
+        lastLine = lastNonEmpty ?? firstNonEmpty;
+        if (config2.enabled && gapSinceLastData >= config2.silence_gap_ms && milestones.length < config2.max_milestones) {
+          milestones.push({
+            at_ms: elapsedSinceStart,
+            line: firstNonEmpty
+          });
+        }
+      }
+      if (writeStream && firstNonEmpty) {
+        writeStream.write(`[${elapsedSinceStart}ms] ${firstNonEmpty}
+`);
+      }
+      lastDataTimestamp = now;
+    },
+    finalize(totalDurationMs) {
+      const result = [];
+      if (firstLine) {
+        result.push({ at_ms: 0, line: firstLine });
+      }
+      for (const milestone of milestones) {
+        if (milestone.at_ms === 0 || milestone.line === firstLine) {
+          continue;
+        }
+        if (milestone.line === lastLine) {
+          continue;
+        }
+        result.push(milestone);
+      }
+      if (lastLine && lastLine !== firstLine) {
+        result.push({ at_ms: totalDurationMs, line: lastLine });
+      }
+      return result;
+    },
+    getProgressFilePath() {
+      return progressFilePath;
+    },
+    dispose() {
+      if (writeStream) {
+        writeStream.end();
+        writeStream = void 0;
+      }
+    }
+  };
+}
+__name(createProgressCollector, "createProgressCollector");
+
 // src/utils/index.ts
 function toCallToolResult(result) {
   const content = {
@@ -287582,9 +287775,9 @@ function resolveStringField(obj, fieldName, options) {
     if (typeof fileValue !== "string") {
       throw new Error(`${fieldName}_file must be a string path, got ${typeof fileValue}`);
     }
-    const filePath = (0, import_path2.resolve)(basePath, fileValue);
+    const filePath = (0, import_path3.resolve)(basePath, fileValue);
     try {
-      return (0, import_fs2.readFileSync)(filePath, "utf-8");
+      return (0, import_fs4.readFileSync)(filePath, "utf-8");
     } catch (e) {
       throw new Error(`Failed to read ${fieldName}_file at '${filePath}': ${e.message}`);
     }
@@ -289075,6 +289268,20 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       shell: true,
       windowsHide: true
     });
+    const commandId = spec.id || `cmd-${startTime}`;
+    const overflowDir = getExecOverflowDir();
+    const tier2Enabled = spec.progress_file === true || timeout > 3e4;
+    const progressCollector = createProgressCollector(
+      {
+        enabled: true,
+        // Always collect
+        progress_file: tier2Enabled,
+        silence_gap_ms: 2e3,
+        max_milestones: 20
+      },
+      commandId,
+      overflowDir
+    );
     const timeoutId = setTimeout(() => {
       if (proc.exitCode !== null)
         return;
@@ -289099,6 +289306,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
     if (captureStdout) {
       proc.stdout?.on("data", (data) => {
         const chunk = data.toString();
+        progressCollector.onData(chunk);
         if (stdout.length < bufferCap) {
           stdout += chunk;
           if (stdout.length > bufferCap) {
@@ -289188,8 +289396,8 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       }
       if (captureStdout && stdout.length > maxOutputChars) {
         try {
-          const commandId = spec.id || `cmd-${startTime}`;
-          const overflowResult = await handleOverflow(stdout, commandId, maxOutputChars);
+          const commandId2 = spec.id || `cmd-${startTime}`;
+          const overflowResult = await handleOverflow(stdout, commandId2, maxOutputChars);
           result.stdout_overflow = overflowResult;
           result.stdout = overflowResult.head.trim();
         } catch {
@@ -289201,8 +289409,8 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       }
       if (captureStderr && stderr.length > maxOutputChars) {
         try {
-          const commandId = spec.id || `cmd-${startTime}`;
-          const overflowResult = await handleOverflow(stderr, `${commandId}-stderr`, maxOutputChars);
+          const commandId2 = spec.id || `cmd-${startTime}`;
+          const overflowResult = await handleOverflow(stderr, `${commandId2}-stderr`, maxOutputChars);
           result.stderr_overflow = overflowResult;
           result.stderr = overflowResult.head.trim();
         } catch {
@@ -289221,6 +289429,15 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       if (expectationFailures.length > 0) {
         result.expectation_failures = expectationFailures;
       }
+      const milestones = progressCollector.finalize(duration_ms);
+      if (duration_ms > 1e4 || spec.progress === true) {
+        result.progress = milestones;
+      }
+      const progressFilePath = progressCollector.getProgressFilePath();
+      if (progressFilePath) {
+        result.progress_file = progressFilePath;
+      }
+      progressCollector.dispose();
       if (exitCode === 0 && !isParallel) {
         const detectedCd = detectCdFromCommand(fullCommand);
         if (detectedCd) {
@@ -289231,6 +289448,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
     });
     proc.on("error", (err2) => {
       clearTimeout(timeoutId);
+      progressCollector.dispose();
       const result = {
         cmd: command,
         exit_code: 1,
@@ -289252,6 +289470,63 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
   });
 }
 __name(executeCommand, "executeCommand");
+async function executeWithRetry(spec, retryConfig, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, isParallel) {
+  if (!retryConfig) {
+    return executeCommand(
+      spec,
+      globalEnv,
+      globalWorkDir,
+      globalTimeout,
+      captureStdout,
+      captureStderr,
+      maxOutputLines,
+      isParallel
+    );
+  }
+  let attempt = 0;
+  let lastResult;
+  const delays = [];
+  while (true) {
+    lastResult = await executeCommand(
+      spec,
+      globalEnv,
+      globalWorkDir,
+      globalTimeout,
+      captureStdout,
+      captureStderr,
+      maxOutputLines,
+      isParallel
+    );
+    if (lastResult.exit_code === 0 && lastResult.expectations_met) {
+      if (attempt > 0) {
+        lastResult.retries = {
+          attempts: attempt + 1,
+          delays,
+          reason: "succeeded after retry"
+        };
+      }
+      return lastResult;
+    }
+    const issue2 = detectIssue(lastResult.stderr || "", lastResult.stdout);
+    const decision = shouldRetry(issue2, retryConfig, attempt);
+    if (!decision.retry || attempt >= retryConfig.max) {
+      if (attempt > 0) {
+        lastResult.retries = {
+          attempts: attempt + 1,
+          delays,
+          reason: decision.reason,
+          final_issue: issue2?.type
+        };
+      }
+      return lastResult;
+    }
+    const delay = computeDelay(retryConfig, attempt);
+    delays.push(delay);
+    await new Promise((resolve8) => setTimeout(resolve8, delay));
+    attempt++;
+  }
+}
+__name(executeWithRetry, "executeWithRetry");
 var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
   const rawInput = args2;
@@ -289453,14 +289728,36 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
     let results;
     if (parallel) {
       results = await Promise.all(
-        input.commands.map(
-          (cmd) => executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, true)
-        )
+        input.commands.map((cmd) => {
+          const retryConfig = parseRetryConfig(cmd.retry);
+          return executeWithRetry(
+            cmd,
+            retryConfig,
+            globalEnv,
+            globalWorkDir,
+            globalTimeout,
+            captureStdout,
+            captureStderr,
+            maxOutputLines,
+            true
+          );
+        })
       );
     } else {
       results = [];
       for (const cmd of input.commands) {
-        const result = await executeCommand(cmd, globalEnv, globalWorkDir, globalTimeout, captureStdout, captureStderr, maxOutputLines, false);
+        const retryConfig = parseRetryConfig(cmd.retry);
+        const result = await executeWithRetry(
+          cmd,
+          retryConfig,
+          globalEnv,
+          globalWorkDir,
+          globalTimeout,
+          captureStdout,
+          captureStderr,
+          maxOutputLines,
+          false
+        );
         results.push(result);
         if (failFast && (result.exit_code !== 0 || !result.expectations_met)) {
           break;
@@ -289506,7 +289803,8 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
             ...r.id && { id: r.id },
             cmd: r.cmd,
             exit_code: r.exit_code,
-            ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }
+            ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
+            ...r.retries && { retry_attempts: r.retries.attempts }
           })),
           summary: {
             total: results.length,
@@ -289552,6 +289850,9 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
               ...r.expectation_failures && { expectation_failures: r.expectation_failures },
               ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
               ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
+              ...r.retries && { retries: r.retries },
+              ...r.progress && r.progress.length > 0 && { progress: r.progress },
+              ...r.progress_file && { progress_file: r.progress_file },
               ...context?.previousRun && {
                 same_command_last_run: {
                   exit_code: context.previousRun.exit_code,
@@ -289589,6 +289890,9 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
               ...r.expectation_failures && { expectation_failures: r.expectation_failures },
               ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
               ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
+              ...r.retries && { retries: r.retries },
+              ...r.progress && r.progress.length > 0 && { progress: r.progress },
+              ...r.progress_file && { progress_file: r.progress_file },
               ...context?.previousRun && {
                 same_command_last_run: {
                   exit_code: context.previousRun.exit_code,
@@ -292052,13 +292356,13 @@ var ts2 = __toESM(require_typescript(), 1);
 init_logging();
 
 // src/utils/file-suggestions.ts
-var import_fs5 = require("fs");
-var import_path3 = require("path");
+var import_fs7 = require("fs");
+var import_path4 = require("path");
 async function getFileSuggestions(requestedPath, maxSuggestions = 5) {
   const suggestions = [];
-  const dir = (0, import_path3.dirname)(requestedPath);
-  const base = (0, import_path3.basename)(requestedPath);
-  const ext = (0, import_path3.extname)(requestedPath);
+  const dir = (0, import_path4.dirname)(requestedPath);
+  const base = (0, import_path4.basename)(requestedPath);
+  const ext = (0, import_path4.extname)(requestedPath);
   await checkCommonMistakes(requestedPath, dir, base, ext, suggestions);
   await checkDirectoryListing(requestedPath, dir, base, suggestions);
   const seen = /* @__PURE__ */ new Set();
@@ -292104,7 +292408,7 @@ async function checkCommonMistakes(requested, dir, base, ext, suggestions) {
   }
   const baseNoExt = base.replace(ext, "");
   for (const testExt of commonExts) {
-    const indexPath = (0, import_path3.join)(dir, baseNoExt, "index" + testExt);
+    const indexPath = (0, import_path4.join)(dir, baseNoExt, "index" + testExt);
     if (await fileExists2(indexPath)) {
       suggestions.push({
         path: indexPath,
@@ -292117,11 +292421,11 @@ async function checkCommonMistakes(requested, dir, base, ext, suggestions) {
 __name(checkCommonMistakes, "checkCommonMistakes");
 async function checkDirectoryListing(requested, dir, base, suggestions) {
   try {
-    const entries = await import_fs5.promises.readdir(dir);
+    const entries = await import_fs7.promises.readdir(dir);
     const ranked = rankBySimilarity(base, entries, 0.4);
     for (const match of ranked.slice(0, 3)) {
       suggestions.push({
-        path: (0, import_path3.join)(dir, match.path),
+        path: (0, import_path4.join)(dir, match.path),
         reason: `similar name (${Math.round(match.similarity * 100)}% match)`,
         confidence: match.similarity > 0.7 ? "medium" : "low"
       });
@@ -292132,7 +292436,7 @@ async function checkDirectoryListing(requested, dir, base, suggestions) {
 __name(checkDirectoryListing, "checkDirectoryListing");
 async function fileExists2(filePath) {
   try {
-    await import_fs5.promises.access(filePath);
+    await import_fs7.promises.access(filePath);
     return true;
   } catch {
     return false;
