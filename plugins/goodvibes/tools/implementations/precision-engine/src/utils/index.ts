@@ -383,3 +383,6 @@ export { parseRetryConfig, shouldRetry, computeDelay, RETRY_CATEGORY_MAP, type R
 
 // Export progress reporting utilities
 export { createProgressCollector, type ProgressMilestone, type ProgressConfig, type ProgressCollector } from './progress-collector.js';
+
+// Export structured data extraction utilities (for precision_fetch)
+export { extractStructuredData, type StructuredData } from './fetch/structured-data.js';
