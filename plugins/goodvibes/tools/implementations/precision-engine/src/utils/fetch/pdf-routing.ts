@@ -6,6 +6,7 @@ export interface PdfFetchResult {
   text: string;           // Extracted text content
   pages: number;          // Total page count
   page_range?: string;    // If specific pages were requested
+  error?: string;         // Error message if parsing failed
   metadata?: {
     title?: string;
     author?: string;
@@ -19,7 +20,7 @@ export interface PdfFetchResult {
  */
 export function isPdfResponse(contentType: string | null): boolean {
   if (!contentType) return false;
-  return contentType.toLowerCase().includes('application/pdf');
+  return contentType.toLowerCase().startsWith('application/pdf');
 }
 
 /**
@@ -56,7 +57,7 @@ export async function parsePdfBuffer(
 ): Promise<PdfFetchResult> {
   try {
     // Dynamic import for pdf-parse
-    const pdfParse = (await import('pdf-parse')).default;
+    const pdfParse = (await import('pdf-parse') as any).default;
 
     // Collect text per page using custom renderer
     const pageTexts: string[] = [];
@@ -119,9 +120,11 @@ export async function parsePdfBuffer(
     };
   } catch (err) {
     // Return descriptive error text in the result
+    const errorMessage = `Failed to parse PDF: ${(err as Error).message}`;
     return {
-      text: `Failed to parse PDF: ${(err as Error).message}`,
+      text: errorMessage,
       pages: 0,
+      error: errorMessage,
       metadata: undefined,
     };
   }

@@ -273,7 +273,7 @@ async function fetchSingleUrl(
       rawContent = await response.text();
     }
 
-    const contentTypeInfo = detectContentType(response.headers, url, rawContent?.slice(0, 512));
+    const contentTypeInfo = detectContentType(response.headers, url, rawContent.slice(0, 512));
 
     // Cache successful GET responses
     if (method === 'GET' && response.ok && cacheTtl > 0) {

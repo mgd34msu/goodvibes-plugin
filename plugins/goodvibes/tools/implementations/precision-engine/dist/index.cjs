@@ -13088,23 +13088,23 @@ var require_NodeIterator = __commonJS({
 var require_URL = __commonJS({
   "node_modules/@mixmark-io/domino/lib/URL.js"(exports2, module2) {
     "use strict";
-    module2.exports = URL2;
-    function URL2(url2) {
+    module2.exports = URL3;
+    function URL3(url2) {
       if (!url2)
-        return Object.create(URL2.prototype);
+        return Object.create(URL3.prototype);
       this.url = url2.replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, "");
-      var match = URL2.pattern.exec(this.url);
+      var match = URL3.pattern.exec(this.url);
       if (match) {
         if (match[2])
           this.scheme = match[2];
         if (match[4]) {
-          var userinfo = match[4].match(URL2.userinfoPattern);
+          var userinfo = match[4].match(URL3.userinfoPattern);
           if (userinfo) {
             this.username = userinfo[1];
             this.password = userinfo[3];
             match[4] = match[4].substring(userinfo[0].length);
           }
-          if (match[4].match(URL2.portPattern)) {
+          if (match[4].match(URL3.portPattern)) {
             var pos = match[4].lastIndexOf(":");
             this.host = match[4].substring(0, pos);
             this.port = match[4].substring(pos + 1);
@@ -13120,30 +13120,30 @@ var require_URL = __commonJS({
           this.fragment = match[9];
       }
     }
-    __name(URL2, "URL");
-    URL2.pattern = /^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$/;
-    URL2.userinfoPattern = /^([^@:]*)(:([^@]*))?@/;
-    URL2.portPattern = /:\d+$/;
-    URL2.authorityPattern = /^[^:\/?#]+:\/\//;
-    URL2.hierarchyPattern = /^[^:\/?#]+:\//;
-    URL2.percentEncode = /* @__PURE__ */ __name(function percentEncode(s) {
+    __name(URL3, "URL");
+    URL3.pattern = /^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$/;
+    URL3.userinfoPattern = /^([^@:]*)(:([^@]*))?@/;
+    URL3.portPattern = /:\d+$/;
+    URL3.authorityPattern = /^[^:\/?#]+:\/\//;
+    URL3.hierarchyPattern = /^[^:\/?#]+:\//;
+    URL3.percentEncode = /* @__PURE__ */ __name(function percentEncode(s) {
       var c = s.charCodeAt(0);
       if (c < 256)
         return "%" + c.toString(16);
       else
         throw Error("can't percent-encode codepoints > 255 yet");
     }, "percentEncode");
-    URL2.prototype = {
-      constructor: URL2,
+    URL3.prototype = {
+      constructor: URL3,
       // XXX: not sure if this is the precise definition of absolute
       isAbsolute: function() {
         return !!this.scheme;
       },
       isAuthorityBased: function() {
-        return URL2.authorityPattern.test(this.url);
+        return URL3.authorityPattern.test(this.url);
       },
       isHierarchical: function() {
-        return URL2.hierarchyPattern.test(this.url);
+        return URL3.hierarchyPattern.test(this.url);
       },
       toString: function() {
         var s = "";
@@ -13176,8 +13176,8 @@ var require_URL = __commonJS({
       // and https://url.spec.whatwg.org/#constructors
       resolve: function(relative8) {
         var base = this;
-        var r = new URL2(relative8);
-        var t = new URL2();
+        var r = new URL3(relative8);
+        var t = new URL3();
         if (r.scheme !== void 0) {
           t.scheme = r.scheme;
           t.username = r.username;
@@ -13560,14 +13560,14 @@ var require_CSSStyleDeclaration = __commonJS({
 var require_URLUtils = __commonJS({
   "node_modules/@mixmark-io/domino/lib/URLUtils.js"(exports2, module2) {
     "use strict";
-    var URL2 = require_URL();
+    var URL3 = require_URL();
     module2.exports = URLUtils;
     function URLUtils() {
     }
     __name(URLUtils, "URLUtils");
     URLUtils.prototype = Object.create(Object.prototype, {
       _url: { get: function() {
-        return new URL2(this.href);
+        return new URL3(this.href);
       } },
       protocol: {
         get: function() {
@@ -13579,10 +13579,10 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute()) {
             v = v.replace(/:+$/, "");
-            v = v.replace(/[^-+\.a-zA-Z0-9]/g, URL2.percentEncode);
+            v = v.replace(/[^-+\.a-zA-Z0-9]/g, URL3.percentEncode);
             if (v.length > 0) {
               url2.scheme = v;
               output = url2.toString();
@@ -13601,9 +13601,9 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute() && url2.isAuthorityBased()) {
-            v = v.replace(/[^-+\._~!$&'()*,;:=a-zA-Z0-9]/g, URL2.percentEncode);
+            v = v.replace(/[^-+\._~!$&'()*,;:=a-zA-Z0-9]/g, URL3.percentEncode);
             if (v.length > 0) {
               url2.host = v;
               delete url2.port;
@@ -13623,10 +13623,10 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute() && url2.isAuthorityBased()) {
             v = v.replace(/^\/+/, "");
-            v = v.replace(/[^-+\._~!$&'()*,;:=a-zA-Z0-9]/g, URL2.percentEncode);
+            v = v.replace(/[^-+\._~!$&'()*,;:=a-zA-Z0-9]/g, URL3.percentEncode);
             if (v.length > 0) {
               url2.host = v;
               output = url2.toString();
@@ -13645,7 +13645,7 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute() && url2.isAuthorityBased()) {
             v = "" + v;
             v = v.replace(/[^0-9].*$/, "");
@@ -13670,11 +13670,11 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute() && url2.isHierarchical()) {
             if (v.charAt(0) !== "/")
               v = "/" + v;
-            v = v.replace(/[^-+\._~!$&'()*,;:=@\/a-zA-Z0-9]/g, URL2.percentEncode);
+            v = v.replace(/[^-+\._~!$&'()*,;:=@\/a-zA-Z0-9]/g, URL3.percentEncode);
             url2.path = v;
             output = url2.toString();
           }
@@ -13691,11 +13691,11 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute() && url2.isHierarchical()) {
             if (v.charAt(0) === "?")
               v = v.substring(1);
-            v = v.replace(/[^-+\._~!$&'()*,;:=@\/?a-zA-Z0-9]/g, URL2.percentEncode);
+            v = v.replace(/[^-+\._~!$&'()*,;:=@\/?a-zA-Z0-9]/g, URL3.percentEncode);
             url2.query = v;
             output = url2.toString();
           }
@@ -13713,10 +13713,10 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (v.charAt(0) === "#")
             v = v.substring(1);
-          v = v.replace(/[^-+\._~!$&'()*,;:=@\/?a-zA-Z0-9]/g, URL2.percentEncode);
+          v = v.replace(/[^-+\._~!$&'()*,;:=@\/?a-zA-Z0-9]/g, URL3.percentEncode);
           url2.fragment = v;
           output = url2.toString();
           this.href = output;
@@ -13729,9 +13729,9 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute()) {
-            v = v.replace(/[\x00-\x1F\x7F-\uFFFF "#<>?`\/@\\:]/g, URL2.percentEncode);
+            v = v.replace(/[\x00-\x1F\x7F-\uFFFF "#<>?`\/@\\:]/g, URL3.percentEncode);
             url2.username = v;
             output = url2.toString();
           }
@@ -13745,12 +13745,12 @@ var require_URLUtils = __commonJS({
         },
         set: function(v) {
           var output = this.href;
-          var url2 = new URL2(output);
+          var url2 = new URL3(output);
           if (url2.isAbsolute()) {
             if (v === "") {
               url2.password = null;
             } else {
-              v = v.replace(/[\x00-\x1F\x7F-\uFFFF "#<>?`\/@\\]/g, URL2.percentEncode);
+              v = v.replace(/[\x00-\x1F\x7F-\uFFFF "#<>?`\/@\\]/g, URL3.percentEncode);
               url2.password = v;
             }
             output = url2.toString();
@@ -13898,7 +13898,7 @@ var require_htmlelts = __commonJS({
       return defineElement(spec, HTMLElement3, htmlElements, htmlNameToImpl);
     }
     __name(define, "define");
-    function URL2(attr) {
+    function URL3(attr) {
       return {
         get: function() {
           var v = this._getattr(attr);
@@ -13913,7 +13913,7 @@ var require_htmlelts = __commonJS({
         }
       };
     }
-    __name(URL2, "URL");
+    __name(URL3, "URL");
     function CORS(attr) {
       return {
         get: function() {
@@ -14144,7 +14144,7 @@ var require_htmlelts = __commonJS({
         } }
       },
       attributes: {
-        href: URL2,
+        href: URL3,
         ping: String,
         download: String,
         target: String,
@@ -14174,7 +14174,7 @@ var require_htmlelts = __commonJS({
         download: String,
         rel: String,
         media: String,
-        href: URL2,
+        href: URL3,
         hreflang: String,
         type: String,
         shape: String,
@@ -14266,7 +14266,7 @@ var require_htmlelts = __commonJS({
         autofocus: Boolean,
         type: { type: ["submit", "reset", "button", "menu"], missing: "submit" },
         formTarget: String,
-        formAction: URL2,
+        formAction: URL3,
         formNoValidate: Boolean,
         formMethod: { type: ["get", "post", "dialog"], invalid: "get", missing: "" },
         formEnctype: { type: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalid: "application/x-www-form-urlencoded", missing: "" }
@@ -14328,7 +14328,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLEmbedElement"),
       attributes: {
-        src: URL2,
+        src: URL3,
         type: String,
         width: String,
         height: String,
@@ -14408,7 +14408,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLHtmlElement"),
       attributes: {
-        xmlns: URL2,
+        xmlns: URL3,
         // Obsolete
         version: String
       }
@@ -14420,7 +14420,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLIFrameElement"),
       attributes: {
-        src: URL2,
+        src: URL3,
         srcdoc: String,
         name: String,
         width: String,
@@ -14437,7 +14437,7 @@ var require_htmlelts = __commonJS({
         align: String,
         scrolling: String,
         frameBorder: String,
-        longDesc: URL2,
+        longDesc: URL3,
         marginHeight: { type: String, treatNullAsEmptyString: true },
         marginWidth: { type: String, treatNullAsEmptyString: true }
       }
@@ -14450,7 +14450,7 @@ var require_htmlelts = __commonJS({
       }, "HTMLImageElement"),
       attributes: {
         alt: String,
-        src: URL2,
+        src: URL3,
         srcset: String,
         crossOrigin: CORS,
         useMap: String,
@@ -14462,11 +14462,11 @@ var require_htmlelts = __commonJS({
         loading: { type: ["eager", "lazy"], missing: "" },
         // Obsolete:
         name: String,
-        lowsrc: URL2,
+        lowsrc: URL3,
         align: String,
         hspace: { type: "unsigned long", default: 0 },
         vspace: { type: "unsigned long", default: 0 },
-        longDesc: URL2,
+        longDesc: URL3,
         border: { type: String, treatNullAsEmptyString: true }
       }
     });
@@ -14508,7 +14508,7 @@ var require_htmlelts = __commonJS({
         readOnly: Boolean,
         checked: Boolean,
         value: String,
-        src: URL2,
+        src: URL3,
         defaultChecked: { name: "checked", type: Boolean },
         size: { type: "unsigned long", default: 20, min: 1, setmin: 1 },
         width: { type: "unsigned long", min: 0, setmin: 0, default: 0 },
@@ -14612,7 +14612,7 @@ var require_htmlelts = __commonJS({
       }, "HTMLLinkElement"),
       attributes: {
         // XXX Reflect DOMSettableTokenList sizes also DOMTokenList relList
-        href: URL2,
+        href: URL3,
         rel: String,
         media: String,
         hreflang: String,
@@ -14683,7 +14683,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLModElement"),
       attributes: {
-        cite: URL2,
+        cite: URL3,
         dateTime: String
       }
     });
@@ -14729,7 +14729,7 @@ var require_htmlelts = __commonJS({
       }, "HTMLObjectElement"),
       props: formAssociatedProps,
       attributes: {
-        data: URL2,
+        data: URL3,
         type: String,
         name: String,
         useMap: String,
@@ -14744,7 +14744,7 @@ var require_htmlelts = __commonJS({
         hspace: { type: "unsigned long", default: 0 },
         standby: String,
         vspace: { type: "unsigned long", default: 0 },
-        codeBase: URL2,
+        codeBase: URL3,
         codeType: String,
         border: { type: String, treatNullAsEmptyString: true }
       }
@@ -14870,7 +14870,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLQuoteElement"),
       attributes: {
-        cite: URL2
+        cite: URL3
       }
     });
     define({
@@ -14899,7 +14899,7 @@ var require_htmlelts = __commonJS({
         }
       },
       attributes: {
-        src: URL2,
+        src: URL3,
         type: String,
         charset: String,
         referrerPolicy: REFERRER,
@@ -15172,7 +15172,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLMediaElement"),
       attributes: {
-        src: URL2,
+        src: URL3,
         crossOrigin: CORS,
         preload: { type: ["metadata", "none", "auto", { value: "", alias: "auto" }], missing: "auto" },
         loop: Boolean,
@@ -15198,7 +15198,7 @@ var require_htmlelts = __commonJS({
         htmlElements.HTMLMediaElement.call(this, doc, localName, prefix);
       }, "HTMLVideoElement"),
       attributes: {
-        poster: URL2,
+        poster: URL3,
         width: { type: "unsigned long", min: 0, default: 0 },
         height: { type: "unsigned long", min: 0, default: 0 }
       }
@@ -15302,7 +15302,7 @@ var require_htmlelts = __commonJS({
       },
       attributes: {
         type: { type: ["command", "checkbox", "radio"], missing: "command" },
-        icon: URL2,
+        icon: URL3,
         disabled: Boolean,
         checked: Boolean,
         radiogroup: String,
@@ -15319,7 +15319,7 @@ var require_htmlelts = __commonJS({
         srcset: String,
         sizes: String,
         media: String,
-        src: URL2,
+        src: URL3,
         type: String,
         width: String,
         height: String
@@ -15332,7 +15332,7 @@ var require_htmlelts = __commonJS({
         HTMLElement3.call(this, doc, localName, prefix);
       }, "HTMLTrackElement"),
       attributes: {
-        src: URL2,
+        src: URL3,
         srclang: String,
         label: String,
         default: Boolean,
@@ -15607,7 +15607,7 @@ var require_Document = __commonJS({
     var TreeWalker2 = require_TreeWalker();
     var NodeIterator = require_NodeIterator();
     var NodeFilter2 = require_NodeFilter();
-    var URL2 = require_URL();
+    var URL3 = require_URL();
     var select = require_select();
     var events = require_events();
     var xml = require_xmlnames();
@@ -15910,7 +15910,7 @@ var require_Document = __commonJS({
       contentType: { get: /* @__PURE__ */ __name(function contentType() {
         return this._contentType;
       }, "contentType") },
-      URL: { get: /* @__PURE__ */ __name(function URL3() {
+      URL: { get: /* @__PURE__ */ __name(function URL4() {
         return this._address;
       }, "URL") },
       domain: { get: utils.nyi, set: utils.nyi },
@@ -16159,7 +16159,7 @@ var require_Document = __commonJS({
         }
       }, "delId") },
       _resolve: { value: function(href) {
-        return new URL2(this._documentBaseURL).resolve(href);
+        return new URL3(this._documentBaseURL).resolve(href);
       } },
       _documentBaseURL: { get: function() {
         var url2 = this._address;
@@ -16167,7 +16167,7 @@ var require_Document = __commonJS({
           url2 = "/";
         var base = this.querySelector("base[href]");
         if (base) {
-          return new URL2(url2).resolve(base.getAttribute("href"));
+          return new URL3(url2).resolve(base.getAttribute("href"));
         }
         return url2;
       } },
@@ -24750,7 +24750,7 @@ var require_DOMImplementation = __commonJS({
 var require_Location = __commonJS({
   "node_modules/@mixmark-io/domino/lib/Location.js"(exports2, module2) {
     "use strict";
-    var URL2 = require_URL();
+    var URL3 = require_URL();
     var URLUtils = require_URLUtils();
     module2.exports = Location;
     function Location(window3, href) {
@@ -24770,7 +24770,7 @@ var require_Location = __commonJS({
         }
       },
       assign: { value: function(url2) {
-        var current = new URL2(this._href);
+        var current = new URL3(this._href);
         var newurl = current.resolve(url2);
         this._href = newurl;
       } },
@@ -265644,14 +265644,14 @@ var init_pdf = __esm({
           var validateArgumentsLength = __webpack_require__2(2812);
           var toString2 = __webpack_require__2(655);
           var USE_NATIVE_URL = __webpack_require__2(7416);
-          var URL2 = getBuiltIn("URL");
+          var URL3 = getBuiltIn("URL");
           $({ target: "URL", stat: true, forced: !USE_NATIVE_URL }, {
             parse: /* @__PURE__ */ __name(function parse10(url2) {
               var length = validateArgumentsLength(arguments.length, 1);
               var urlString = toString2(url2);
               var base = length < 2 || arguments[1] === void 0 ? void 0 : toString2(arguments[1]);
               try {
-                return new URL2(urlString, base);
+                return new URL3(urlString, base);
               } catch (error2) {
                 return null;
               }
@@ -308736,12 +308736,13 @@ var precisionFetchSchema = {
             body_base64: { type: "string", description: 'Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "body" | base64 -w0' },
             timeout_ms: { type: "integer", minimum: 1, description: "Timeout in ms (default: 30000)" },
             timeout: { type: "integer", minimum: 1, description: "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 30000)" },
-            extract: { type: "string", enum: ["raw", "text", "json", "markdown", "code_blocks", "tables", "links", "metadata"], description: "Extraction mode (default: text)" }
+            extract: { type: "string", enum: ["raw", "text", "json", "markdown", "structured", "summary", "code_blocks", "tables", "links", "metadata"], description: "Extraction mode (default: text)" }
           },
           required: ["url"]
         }
       },
       parallel: { type: "boolean", default: true, description: "Fetch URLs in parallel" },
+      extract: { type: "string", enum: ["raw", "text", "json", "markdown", "structured", "summary", "code_blocks", "tables", "links", "metadata"], default: "text", description: "Global extraction mode applied to all URLs (default: text). Per-URL extract overrides this." },
       verbosity: verbositySchema
     },
     required: ["urls"]
@@ -322746,6 +322747,397 @@ function extractTables(html) {
 }
 __name(extractTables, "extractTables");
 
+// src/utils/fetch/content-fingerprint.ts
+var import_node_crypto = require("node:crypto");
+var FetchCache = class {
+  static {
+    __name(this, "FetchCache");
+  }
+  cache = /* @__PURE__ */ new Map();
+  DEFAULT_TTL = 900;
+  // 15 minutes in seconds
+  /**
+   * Generate a cache key from URL and method.
+   */
+  getCacheKey(url2, method = "GET") {
+    return `${method.toUpperCase()}:${url2}`;
+  }
+  /**
+   * Generate SHA-256 hash of content.
+   */
+  hashContent(content) {
+    return (0, import_node_crypto.createHash)("sha256").update(content, "utf8").digest("hex");
+  }
+  /**
+   * Format milliseconds into human-readable time ago string.
+   */
+  formatTimeAgo(ms) {
+    const seconds = Math.floor(ms / 1e3);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    if (days > 0)
+      return `${days}d ago`;
+    if (hours > 0)
+      return `${hours}h ago`;
+    if (minutes > 0)
+      return `${minutes}m ago`;
+    return `${seconds}s ago`;
+  }
+  /**
+   * Generate unified diff between two strings.
+   */
+  generateDiff(oldContent, newContent) {
+    const oldLines = oldContent.split("\n");
+    const newLines = newContent.split("\n");
+    const diff = [];
+    diff.push("--- previous");
+    diff.push("+++ current");
+    let prefixLen = 0;
+    while (prefixLen < oldLines.length && prefixLen < newLines.length && oldLines[prefixLen] === newLines[prefixLen]) {
+      prefixLen++;
+    }
+    let suffixLen = 0;
+    while (suffixLen < oldLines.length - prefixLen && suffixLen < newLines.length - prefixLen && oldLines[oldLines.length - 1 - suffixLen] === newLines[newLines.length - 1 - suffixLen]) {
+      suffixLen++;
+    }
+    const oldStart = prefixLen;
+    const oldEnd = oldLines.length - suffixLen;
+    const newStart = prefixLen;
+    const newEnd = newLines.length - suffixLen;
+    const oldCount = oldEnd - oldStart;
+    const newCount = newEnd - newStart;
+    if (oldCount > 0 || newCount > 0) {
+      diff.push(
+        `@@ -${oldStart + 1},${oldCount} +${newStart + 1},${newCount} @@`
+      );
+      const contextStart = Math.max(0, oldStart - 3);
+      for (let i2 = contextStart; i2 < oldStart; i2++) {
+        diff.push(` ${oldLines[i2]}`);
+      }
+      for (let i2 = oldStart; i2 < oldEnd; i2++) {
+        diff.push(`-${oldLines[i2]}`);
+      }
+      for (let i2 = newStart; i2 < newEnd; i2++) {
+        diff.push(`+${newLines[i2]}`);
+      }
+      const contextEnd = Math.min(newLines.length, newEnd + 3);
+      for (let i2 = newEnd; i2 < contextEnd; i2++) {
+        diff.push(` ${newLines[i2]}`);
+      }
+    }
+    return diff.join("\n");
+  }
+  /**
+   * Store a fetch result in the cache.
+   */
+  set(url2, content, options = {}) {
+    const {
+      method = "GET",
+      ttl = this.DEFAULT_TTL,
+      pageType = "unknown",
+      headers = {},
+      httpStatus = 200,
+      contentType
+    } = options;
+    const key2 = this.getCacheKey(url2, method);
+    const contentHash = this.hashContent(content);
+    this.cache.set(key2, {
+      url: url2,
+      contentHash,
+      extractedContent: content,
+      fetchedAt: Date.now(),
+      ttl,
+      pageType,
+      headers,
+      httpStatus,
+      contentType
+    });
+  }
+  /**
+   * Check cache and compare content if found.
+   * Returns cache status with diff if content changed.
+   */
+  check(url2, newContent, method = "GET") {
+    const key2 = this.getCacheKey(url2, method);
+    const cached2 = this.cache.get(key2);
+    if (!cached2) {
+      return { status: "not_found" };
+    }
+    const now = Date.now();
+    const age = now - cached2.fetchedAt;
+    const ageSeconds = Math.floor(age / 1e3);
+    if (ageSeconds > cached2.ttl) {
+      return {
+        status: "expired",
+        entry: cached2,
+        cached_at: this.formatTimeAgo(age),
+        hash: cached2.contentHash,
+        hint: "Cache entry expired. Re-fetching."
+      };
+    }
+    const newHash = this.hashContent(newContent);
+    if (newHash === cached2.contentHash) {
+      return {
+        status: "unchanged",
+        entry: cached2,
+        cached_at: this.formatTimeAgo(age),
+        hash: cached2.contentHash,
+        hint: "Content hasn't changed since last fetch. Use force: true to re-fetch."
+      };
+    }
+    const diff = this.generateDiff(cached2.extractedContent, newContent);
+    return {
+      status: "content_changed",
+      entry: cached2,
+      diff,
+      content: newContent,
+      newHash,
+      cached_at: this.formatTimeAgo(age)
+    };
+  }
+  /**
+   * Get cached entry if it exists and is not expired.
+   */
+  get(url2, method = "GET") {
+    const key2 = this.getCacheKey(url2, method);
+    const cached2 = this.cache.get(key2);
+    if (!cached2) {
+      return null;
+    }
+    const now = Date.now();
+    const ageSeconds = Math.floor((now - cached2.fetchedAt) / 1e3);
+    if (ageSeconds > cached2.ttl) {
+      this.cache.delete(key2);
+      return null;
+    }
+    return cached2;
+  }
+  /**
+   * Clear all cache entries.
+   */
+  clear() {
+    this.cache.clear();
+  }
+  /**
+   * Get cache statistics.
+   */
+  stats() {
+    const now = Date.now();
+    const entries2 = Array.from(this.cache.values()).map((entry) => ({
+      url: entry.url,
+      age_seconds: Math.floor((now - entry.fetchedAt) / 1e3),
+      pageType: entry.pageType
+    }));
+    return {
+      size: this.cache.size,
+      entries: entries2
+    };
+  }
+};
+var fetchCache = new FetchCache();
+
+// src/utils/fetch/rate-limiter.ts
+var import_url = require("url");
+var DEFAULT_RATE_LIMIT_CONFIG = {
+  per_domain: 2,
+  delay_ms: 500
+};
+var RateLimiter = class {
+  static {
+    __name(this, "RateLimiter");
+  }
+  domainStates = /* @__PURE__ */ new Map();
+  config;
+  constructor(config2) {
+    this.config = { ...DEFAULT_RATE_LIMIT_CONFIG, ...config2 };
+  }
+  /**
+   * Extract domain from URL for rate limiting
+   * Returns hostname:port if port is non-standard, otherwise just hostname
+   */
+  getDomain(url2) {
+    try {
+      const parsed = new import_url.URL(url2);
+      const hostname3 = parsed.hostname;
+      const port = parsed.port;
+      const isStandardPort = parsed.protocol === "http:" && port === "80" || parsed.protocol === "https:" && port === "443" || port === "";
+      return isStandardPort ? hostname3 : `${hostname3}:${port}`;
+    } catch (error2) {
+      return url2;
+    }
+  }
+  /**
+   * Get or create domain state
+   */
+  getState(domain2) {
+    let state = this.domainStates.get(domain2);
+    if (!state) {
+      state = {
+        active: 0,
+        last_request_at: 0,
+        queue: []
+      };
+      this.domainStates.set(domain2, state);
+    }
+    return state;
+  }
+  /**
+   * Process next queued request if capacity allows
+   */
+  processQueue(domain2) {
+    const state = this.getState(domain2);
+    if (state.queue.length === 0 || state.active >= this.config.per_domain) {
+      return;
+    }
+    if (state.retry_after && Date.now() < state.retry_after) {
+      const delay = state.retry_after - Date.now();
+      setTimeout(() => this.processQueue(domain2), delay);
+      return;
+    }
+    const timeSinceLastRequest = Date.now() - state.last_request_at;
+    if (timeSinceLastRequest < this.config.delay_ms) {
+      const delay = this.config.delay_ms - timeSinceLastRequest;
+      setTimeout(() => this.processQueue(domain2), delay);
+      return;
+    }
+    const next = state.queue.shift();
+    if (next) {
+      state.active++;
+      state.last_request_at = Date.now();
+      next.resolve();
+    }
+  }
+  /**
+   * Acquire permission to make a request to the given URL
+   * Returns a promise that resolves when the request can proceed
+   * 
+   * @param url - The URL to request
+   * @returns Promise that resolves when request can proceed
+   */
+  async acquire(url2) {
+    const domain2 = this.getDomain(url2);
+    const state = this.getState(domain2);
+    const timeSinceLastRequest = Date.now() - state.last_request_at;
+    const needsDelay = state.last_request_at > 0 && timeSinceLastRequest < this.config.delay_ms;
+    const needsRetryAfterWait = state.retry_after && Date.now() < state.retry_after;
+    if (state.active < this.config.per_domain && !needsDelay && !needsRetryAfterWait) {
+      state.active++;
+      state.last_request_at = Date.now();
+      return Promise.resolve();
+    }
+    return new Promise((resolve8, reject) => {
+      state.queue.push({ resolve: resolve8, reject });
+      this.processQueue(domain2);
+    });
+  }
+  /**
+   * Release a slot after request completes
+   * 
+   * @param url - The URL that was requested
+   * @param response - Optional Response object to check for Retry-After header
+   */
+  release(url2, response) {
+    const domain2 = this.getDomain(url2);
+    const state = this.getState(domain2);
+    state.active = Math.max(0, state.active - 1);
+    if (response) {
+      const retryAfter = this.parseRetryAfter(response);
+      if (retryAfter) {
+        state.retry_after = Date.now() + retryAfter;
+      }
+    }
+    this.processQueue(domain2);
+  }
+  /**
+   * Parse Retry-After header value
+   * Supports both delay-seconds and HTTP-date formats
+   * 
+   * @param response - Response object to check
+   * @returns Delay in milliseconds, or null if no Retry-After header
+   */
+  parseRetryAfter(response) {
+    const retryAfter = response.headers.get("retry-after");
+    if (!retryAfter) {
+      return null;
+    }
+    const seconds = parseInt(retryAfter, 10);
+    if (!isNaN(seconds) && seconds > 0) {
+      return seconds * 1e3;
+    }
+    try {
+      const date4 = new Date(retryAfter);
+      const delay = date4.getTime() - Date.now();
+      return delay > 0 ? delay : null;
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Execute a function with rate limiting
+   * Automatically acquires slot, executes function, and releases slot
+   * 
+   * @param url - The URL being requested
+   * @param fn - Async function to execute (should return Response or throw)
+   * @returns Promise resolving to the function's return value
+   */
+  async execute(url2, fn) {
+    await this.acquire(url2);
+    try {
+      const result = await fn();
+      if (result instanceof Response) {
+        this.release(url2, result);
+      } else {
+        this.release(url2);
+      }
+      return result;
+    } catch (error2) {
+      this.release(url2);
+      throw error2;
+    }
+  }
+  /**
+   * Get current statistics for a domain
+   * Useful for debugging and monitoring
+   * 
+   * @param url - URL to check (domain will be extracted)
+   * @returns Statistics about the domain's rate limiting state
+   */
+  getStats(url2) {
+    const domain2 = this.getDomain(url2);
+    const state = this.getState(domain2);
+    return {
+      domain: domain2,
+      active: state.active,
+      queued: state.queue.length,
+      last_request_at: state.last_request_at,
+      retry_after: state.retry_after
+    };
+  }
+  /**
+   * Clear all rate limiting state
+   * Useful for testing or resetting between batches
+   */
+  reset() {
+    for (const state of this.domainStates.values()) {
+      for (const item of state.queue) {
+        item.reject(new Error("Rate limiter was reset"));
+      }
+    }
+    this.domainStates.clear();
+  }
+  /**
+   * Update rate limit configuration
+   * Does not affect requests already in queue
+   * 
+   * @param config - Partial configuration to update
+   */
+  updateConfig(config2) {
+    this.config = { ...this.config, ...config2 };
+  }
+};
+var globalRateLimiter = new RateLimiter();
+
 // src/handlers/precision-fetch.ts
 var cache = /* @__PURE__ */ new Map();
 var DEFAULT_CACHE_TTL = 900;
@@ -322879,7 +323271,7 @@ async function fetchSingleUrl(request, cacheTtl, globalExtract, globalSelectors,
     } else {
       rawContent = await response.text();
     }
-    const contentTypeInfo = detectContentType(response.headers, url2, rawContent?.slice(0, 512));
+    const contentTypeInfo = detectContentType(response.headers, url2, rawContent.slice(0, 512));
     if (method === "GET" && response.ok && cacheTtl > 0) {
       setCache(url2, method, {
         content: rawContent,
