@@ -19,6 +19,7 @@ import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputM
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
 import { validateFilePath } from '../utils/path-validation.js';
+import { FileStateCache } from '../state/file-cache.js';
 
 // Simple template engines - inline to avoid extra dependencies
 function renderHandlebars(template: string, data: Record<string, unknown>): string {
@@ -314,6 +315,14 @@ async function writeFile(
 
       // Write the file
       await fs.writeFile(validatedPath, content, { encoding });
+
+      // Update FileStateCache with new content
+      try {
+        const cache = FileStateCache.getInstance();
+        cache.update(validatedPath, content, 'precision_write', undefined, `wrote ${spec.path}`);
+      } catch {
+        // Cache update is non-critical — don't fail the write
+      }
     }
 
     return {

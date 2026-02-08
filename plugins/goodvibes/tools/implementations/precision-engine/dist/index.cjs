@@ -12054,8 +12054,8 @@ var require_pattern2 = __commonJS({
     __name(endsWithSlashGlobStar, "endsWithSlashGlobStar");
     exports2.endsWithSlashGlobStar = endsWithSlashGlobStar;
     function isAffectDepthOfReadingPattern(pattern) {
-      const basename2 = path11.basename(pattern);
-      return endsWithSlashGlobStar(pattern) || isStaticPattern(basename2);
+      const basename3 = path11.basename(pattern);
+      return endsWithSlashGlobStar(pattern) || isStaticPattern(basename3);
     }
     __name(isAffectDepthOfReadingPattern, "isAffectDepthOfReadingPattern");
     exports2.isAffectDepthOfReadingPattern = isAffectDepthOfReadingPattern;
@@ -159811,10 +159811,10 @@ ${lanes.join("\n")}
             /*ignoreCase*/
             false
           )) {
-            const basename2 = getBaseFileName(a.fileName);
-            if (basename2 === "lib.d.ts" || basename2 === "lib.es6.d.ts")
+            const basename3 = getBaseFileName(a.fileName);
+            if (basename3 === "lib.d.ts" || basename3 === "lib.es6.d.ts")
               return 0;
-            const name2 = removeSuffix(removePrefix(basename2, "lib."), ".d.ts");
+            const name2 = removeSuffix(removePrefix(basename3, "lib."), ".d.ts");
             const index = libs.indexOf(name2);
             if (index !== -1)
               return index + 1;
@@ -227582,8 +227582,8 @@ ${options.prefix}` : "\n" : options.prefix
             }
           }, "createProjectWatcher");
           for (const file2 of files) {
-            const basename2 = getBaseFileName(file2);
-            if (basename2 === "package.json" || basename2 === "bower.json") {
+            const basename3 = getBaseFileName(file2);
+            if (basename3 === "package.json" || basename3 === "bower.json") {
               createProjectWatcher(
                 file2,
                 "FileWatcher"
@@ -231420,8 +231420,8 @@ All files are: ${JSON.stringify(names)}`,
               const fileOrDirectoryPath = removeIgnoredPath(this.toPath(fileOrDirectory));
               if (!fileOrDirectoryPath)
                 return;
-              const basename2 = getBaseFileName(fileOrDirectoryPath);
-              if (((_a2 = result.affectedModuleSpecifierCacheProjects) == null ? void 0 : _a2.size) && (basename2 === "package.json" || basename2 === "node_modules")) {
+              const basename3 = getBaseFileName(fileOrDirectoryPath);
+              if (((_a2 = result.affectedModuleSpecifierCacheProjects) == null ? void 0 : _a2.size) && (basename3 === "package.json" || basename3 === "node_modules")) {
                 result.affectedModuleSpecifierCacheProjects.forEach((project) => {
                   var _a22;
                   (_a22 = project.getModuleSpecifierCache()) == null ? void 0 : _a22.clear();
@@ -286083,7 +286083,7 @@ var precisionConfigSchema = {
       },
       key: {
         type: "string",
-        description: 'Config key to get or set (e.g., "sandbox"). Omit for get to return all config.'
+        description: 'Config key to get or set. Available keys: sandbox (boolean), cache_mode ("hash_only"|"with_content", default: with_content), cache_max_mb (number, default: 200, minimum: 1), slow_fs_stat_threshold_ms (number), slow_fs_known_prefixes (string[]), max_file_bytes (number), max_token_estimate (number), max_diff_chars (number, default: 10000), page_size_lines (number), verbosity_defaults (object). Omit for get to return all config.'
       },
       value: {
         // Intentionally no type constraint - accepts any JSON value (boolean, string, number)
@@ -286721,7 +286721,843 @@ function parseJsonField(value) {
 __name(parseJsonField, "parseJsonField");
 
 // src/handlers/precision-write.ts
+var import_crypto2 = require("crypto");
+
+// src/state/file-cache.ts
 var import_crypto = require("crypto");
+
+// node_modules/diff/libesm/diff/base.js
+var Diff = class {
+  static {
+    __name(this, "Diff");
+  }
+  diff(oldStr, newStr, options = {}) {
+    let callback;
+    if (typeof options === "function") {
+      callback = options;
+      options = {};
+    } else if ("callback" in options) {
+      callback = options.callback;
+    }
+    const oldString = this.castInput(oldStr, options);
+    const newString = this.castInput(newStr, options);
+    const oldTokens = this.removeEmpty(this.tokenize(oldString, options));
+    const newTokens = this.removeEmpty(this.tokenize(newString, options));
+    return this.diffWithOptionsObj(oldTokens, newTokens, options, callback);
+  }
+  diffWithOptionsObj(oldTokens, newTokens, options, callback) {
+    var _a2;
+    const done = /* @__PURE__ */ __name((value) => {
+      value = this.postProcess(value, options);
+      if (callback) {
+        setTimeout(function() {
+          callback(value);
+        }, 0);
+        return void 0;
+      } else {
+        return value;
+      }
+    }, "done");
+    const newLen = newTokens.length, oldLen = oldTokens.length;
+    let editLength = 1;
+    let maxEditLength = newLen + oldLen;
+    if (options.maxEditLength != null) {
+      maxEditLength = Math.min(maxEditLength, options.maxEditLength);
+    }
+    const maxExecutionTime = (_a2 = options.timeout) !== null && _a2 !== void 0 ? _a2 : Infinity;
+    const abortAfterTimestamp = Date.now() + maxExecutionTime;
+    const bestPath = [{ oldPos: -1, lastComponent: void 0 }];
+    let newPos = this.extractCommon(bestPath[0], newTokens, oldTokens, 0, options);
+    if (bestPath[0].oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+      return done(this.buildValues(bestPath[0].lastComponent, newTokens, oldTokens));
+    }
+    let minDiagonalToConsider = -Infinity, maxDiagonalToConsider = Infinity;
+    const execEditLength = /* @__PURE__ */ __name(() => {
+      for (let diagonalPath = Math.max(minDiagonalToConsider, -editLength); diagonalPath <= Math.min(maxDiagonalToConsider, editLength); diagonalPath += 2) {
+        let basePath;
+        const removePath = bestPath[diagonalPath - 1], addPath = bestPath[diagonalPath + 1];
+        if (removePath) {
+          bestPath[diagonalPath - 1] = void 0;
+        }
+        let canAdd = false;
+        if (addPath) {
+          const addPathNewPos = addPath.oldPos - diagonalPath;
+          canAdd = addPath && 0 <= addPathNewPos && addPathNewPos < newLen;
+        }
+        const canRemove = removePath && removePath.oldPos + 1 < oldLen;
+        if (!canAdd && !canRemove) {
+          bestPath[diagonalPath] = void 0;
+          continue;
+        }
+        if (!canRemove || canAdd && removePath.oldPos < addPath.oldPos) {
+          basePath = this.addToPath(addPath, true, false, 0, options);
+        } else {
+          basePath = this.addToPath(removePath, false, true, 1, options);
+        }
+        newPos = this.extractCommon(basePath, newTokens, oldTokens, diagonalPath, options);
+        if (basePath.oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+          return done(this.buildValues(basePath.lastComponent, newTokens, oldTokens)) || true;
+        } else {
+          bestPath[diagonalPath] = basePath;
+          if (basePath.oldPos + 1 >= oldLen) {
+            maxDiagonalToConsider = Math.min(maxDiagonalToConsider, diagonalPath - 1);
+          }
+          if (newPos + 1 >= newLen) {
+            minDiagonalToConsider = Math.max(minDiagonalToConsider, diagonalPath + 1);
+          }
+        }
+      }
+      editLength++;
+    }, "execEditLength");
+    if (callback) {
+      (/* @__PURE__ */ __name(function exec3() {
+        setTimeout(function() {
+          if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
+            return callback(void 0);
+          }
+          if (!execEditLength()) {
+            exec3();
+          }
+        }, 0);
+      }, "exec"))();
+    } else {
+      while (editLength <= maxEditLength && Date.now() <= abortAfterTimestamp) {
+        const ret = execEditLength();
+        if (ret) {
+          return ret;
+        }
+      }
+    }
+  }
+  addToPath(path11, added, removed, oldPosInc, options) {
+    const last = path11.lastComponent;
+    if (last && !options.oneChangePerToken && last.added === added && last.removed === removed) {
+      return {
+        oldPos: path11.oldPos + oldPosInc,
+        lastComponent: { count: last.count + 1, added, removed, previousComponent: last.previousComponent }
+      };
+    } else {
+      return {
+        oldPos: path11.oldPos + oldPosInc,
+        lastComponent: { count: 1, added, removed, previousComponent: last }
+      };
+    }
+  }
+  extractCommon(basePath, newTokens, oldTokens, diagonalPath, options) {
+    const newLen = newTokens.length, oldLen = oldTokens.length;
+    let oldPos = basePath.oldPos, newPos = oldPos - diagonalPath, commonCount = 0;
+    while (newPos + 1 < newLen && oldPos + 1 < oldLen && this.equals(oldTokens[oldPos + 1], newTokens[newPos + 1], options)) {
+      newPos++;
+      oldPos++;
+      commonCount++;
+      if (options.oneChangePerToken) {
+        basePath.lastComponent = { count: 1, previousComponent: basePath.lastComponent, added: false, removed: false };
+      }
+    }
+    if (commonCount && !options.oneChangePerToken) {
+      basePath.lastComponent = { count: commonCount, previousComponent: basePath.lastComponent, added: false, removed: false };
+    }
+    basePath.oldPos = oldPos;
+    return newPos;
+  }
+  equals(left, right, options) {
+    if (options.comparator) {
+      return options.comparator(left, right);
+    } else {
+      return left === right || !!options.ignoreCase && left.toLowerCase() === right.toLowerCase();
+    }
+  }
+  removeEmpty(array2) {
+    const ret = [];
+    for (let i2 = 0; i2 < array2.length; i2++) {
+      if (array2[i2]) {
+        ret.push(array2[i2]);
+      }
+    }
+    return ret;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  castInput(value, options) {
+    return value;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  tokenize(value, options) {
+    return Array.from(value);
+  }
+  join(chars) {
+    return chars.join("");
+  }
+  postProcess(changeObjects, options) {
+    return changeObjects;
+  }
+  get useLongestToken() {
+    return false;
+  }
+  buildValues(lastComponent, newTokens, oldTokens) {
+    const components = [];
+    let nextComponent;
+    while (lastComponent) {
+      components.push(lastComponent);
+      nextComponent = lastComponent.previousComponent;
+      delete lastComponent.previousComponent;
+      lastComponent = nextComponent;
+    }
+    components.reverse();
+    const componentLen = components.length;
+    let componentPos = 0, newPos = 0, oldPos = 0;
+    for (; componentPos < componentLen; componentPos++) {
+      const component = components[componentPos];
+      if (!component.removed) {
+        if (!component.added && this.useLongestToken) {
+          let value = newTokens.slice(newPos, newPos + component.count);
+          value = value.map(function(value2, i2) {
+            const oldValue = oldTokens[oldPos + i2];
+            return oldValue.length > value2.length ? oldValue : value2;
+          });
+          component.value = this.join(value);
+        } else {
+          component.value = this.join(newTokens.slice(newPos, newPos + component.count));
+        }
+        newPos += component.count;
+        if (!component.added) {
+          oldPos += component.count;
+        }
+      } else {
+        component.value = this.join(oldTokens.slice(oldPos, oldPos + component.count));
+        oldPos += component.count;
+      }
+    }
+    return components;
+  }
+};
+
+// node_modules/diff/libesm/diff/line.js
+var LineDiff = class extends Diff {
+  static {
+    __name(this, "LineDiff");
+  }
+  constructor() {
+    super(...arguments);
+    this.tokenize = tokenize;
+  }
+  equals(left, right, options) {
+    if (options.ignoreWhitespace) {
+      if (!options.newlineIsToken || !left.includes("\n")) {
+        left = left.trim();
+      }
+      if (!options.newlineIsToken || !right.includes("\n")) {
+        right = right.trim();
+      }
+    } else if (options.ignoreNewlineAtEof && !options.newlineIsToken) {
+      if (left.endsWith("\n")) {
+        left = left.slice(0, -1);
+      }
+      if (right.endsWith("\n")) {
+        right = right.slice(0, -1);
+      }
+    }
+    return super.equals(left, right, options);
+  }
+};
+var lineDiff = new LineDiff();
+function diffLines(oldStr, newStr, options) {
+  return lineDiff.diff(oldStr, newStr, options);
+}
+__name(diffLines, "diffLines");
+function tokenize(value, options) {
+  if (options.stripTrailingCr) {
+    value = value.replace(/\r\n/g, "\n");
+  }
+  const retLines = [], linesAndNewlines = value.split(/(\n|\r\n)/);
+  if (!linesAndNewlines[linesAndNewlines.length - 1]) {
+    linesAndNewlines.pop();
+  }
+  for (let i2 = 0; i2 < linesAndNewlines.length; i2++) {
+    const line = linesAndNewlines[i2];
+    if (i2 % 2 && !options.newlineIsToken) {
+      retLines[retLines.length - 1] += line;
+    } else {
+      retLines.push(line);
+    }
+  }
+  return retLines;
+}
+__name(tokenize, "tokenize");
+
+// node_modules/diff/libesm/patch/create.js
+var INCLUDE_HEADERS = {
+  includeIndex: true,
+  includeUnderline: true,
+  includeFileHeaders: true
+};
+function structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
+  let optionsObj;
+  if (!options) {
+    optionsObj = {};
+  } else if (typeof options === "function") {
+    optionsObj = { callback: options };
+  } else {
+    optionsObj = options;
+  }
+  if (typeof optionsObj.context === "undefined") {
+    optionsObj.context = 4;
+  }
+  const context = optionsObj.context;
+  if (optionsObj.newlineIsToken) {
+    throw new Error("newlineIsToken may not be used with patch-generation functions, only with diffing functions");
+  }
+  if (!optionsObj.callback) {
+    return diffLinesResultToPatch(diffLines(oldStr, newStr, optionsObj));
+  } else {
+    const { callback } = optionsObj;
+    diffLines(oldStr, newStr, Object.assign(Object.assign({}, optionsObj), { callback: (diff) => {
+      const patch = diffLinesResultToPatch(diff);
+      callback(patch);
+    } }));
+  }
+  function diffLinesResultToPatch(diff) {
+    if (!diff) {
+      return;
+    }
+    diff.push({ value: "", lines: [] });
+    function contextLines(lines) {
+      return lines.map(function(entry) {
+        return " " + entry;
+      });
+    }
+    __name(contextLines, "contextLines");
+    const hunks = [];
+    let oldRangeStart = 0, newRangeStart = 0, curRange = [], oldLine = 1, newLine = 1;
+    for (let i2 = 0; i2 < diff.length; i2++) {
+      const current = diff[i2], lines = current.lines || splitLines(current.value);
+      current.lines = lines;
+      if (current.added || current.removed) {
+        if (!oldRangeStart) {
+          const prev = diff[i2 - 1];
+          oldRangeStart = oldLine;
+          newRangeStart = newLine;
+          if (prev) {
+            curRange = context > 0 ? contextLines(prev.lines.slice(-context)) : [];
+            oldRangeStart -= curRange.length;
+            newRangeStart -= curRange.length;
+          }
+        }
+        for (const line of lines) {
+          curRange.push((current.added ? "+" : "-") + line);
+        }
+        if (current.added) {
+          newLine += lines.length;
+        } else {
+          oldLine += lines.length;
+        }
+      } else {
+        if (oldRangeStart) {
+          if (lines.length <= context * 2 && i2 < diff.length - 2) {
+            for (const line of contextLines(lines)) {
+              curRange.push(line);
+            }
+          } else {
+            const contextSize = Math.min(lines.length, context);
+            for (const line of contextLines(lines.slice(0, contextSize))) {
+              curRange.push(line);
+            }
+            const hunk = {
+              oldStart: oldRangeStart,
+              oldLines: oldLine - oldRangeStart + contextSize,
+              newStart: newRangeStart,
+              newLines: newLine - newRangeStart + contextSize,
+              lines: curRange
+            };
+            hunks.push(hunk);
+            oldRangeStart = 0;
+            newRangeStart = 0;
+            curRange = [];
+          }
+        }
+        oldLine += lines.length;
+        newLine += lines.length;
+      }
+    }
+    for (const hunk of hunks) {
+      for (let i2 = 0; i2 < hunk.lines.length; i2++) {
+        if (hunk.lines[i2].endsWith("\n")) {
+          hunk.lines[i2] = hunk.lines[i2].slice(0, -1);
+        } else {
+          hunk.lines.splice(i2 + 1, 0, "\\ No newline at end of file");
+          i2++;
+        }
+      }
+    }
+    return {
+      oldFileName,
+      newFileName,
+      oldHeader,
+      newHeader,
+      hunks
+    };
+  }
+  __name(diffLinesResultToPatch, "diffLinesResultToPatch");
+}
+__name(structuredPatch, "structuredPatch");
+function formatPatch(patch, headerOptions) {
+  if (!headerOptions) {
+    headerOptions = INCLUDE_HEADERS;
+  }
+  if (Array.isArray(patch)) {
+    if (patch.length > 1 && !headerOptions.includeFileHeaders) {
+      throw new Error("Cannot omit file headers on a multi-file patch. (The result would be unparseable; how would a tool trying to apply the patch know which changes are to which file?)");
+    }
+    return patch.map((p) => formatPatch(p, headerOptions)).join("\n");
+  }
+  const ret = [];
+  if (headerOptions.includeIndex && patch.oldFileName == patch.newFileName) {
+    ret.push("Index: " + patch.oldFileName);
+  }
+  if (headerOptions.includeUnderline) {
+    ret.push("===================================================================");
+  }
+  if (headerOptions.includeFileHeaders) {
+    ret.push("--- " + patch.oldFileName + (typeof patch.oldHeader === "undefined" ? "" : "	" + patch.oldHeader));
+    ret.push("+++ " + patch.newFileName + (typeof patch.newHeader === "undefined" ? "" : "	" + patch.newHeader));
+  }
+  for (let i2 = 0; i2 < patch.hunks.length; i2++) {
+    const hunk = patch.hunks[i2];
+    if (hunk.oldLines === 0) {
+      hunk.oldStart -= 1;
+    }
+    if (hunk.newLines === 0) {
+      hunk.newStart -= 1;
+    }
+    ret.push("@@ -" + hunk.oldStart + "," + hunk.oldLines + " +" + hunk.newStart + "," + hunk.newLines + " @@");
+    for (const line of hunk.lines) {
+      ret.push(line);
+    }
+  }
+  return ret.join("\n") + "\n";
+}
+__name(formatPatch, "formatPatch");
+function createTwoFilesPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
+  if (typeof options === "function") {
+    options = { callback: options };
+  }
+  if (!(options === null || options === void 0 ? void 0 : options.callback)) {
+    const patchObj = structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options);
+    if (!patchObj) {
+      return;
+    }
+    return formatPatch(patchObj, options === null || options === void 0 ? void 0 : options.headerOptions);
+  } else {
+    const { callback } = options;
+    structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, Object.assign(Object.assign({}, options), { callback: (patchObj) => {
+      if (!patchObj) {
+        callback(void 0);
+      } else {
+        callback(formatPatch(patchObj, options.headerOptions));
+      }
+    } }));
+  }
+}
+__name(createTwoFilesPatch, "createTwoFilesPatch");
+function createPatch(fileName, oldStr, newStr, oldHeader, newHeader, options) {
+  return createTwoFilesPatch(fileName, fileName, oldStr, newStr, oldHeader, newHeader, options);
+}
+__name(createPatch, "createPatch");
+function splitLines(text) {
+  const hasTrailingNl = text.endsWith("\n");
+  const result = text.split("\n").map((line) => line + "\n");
+  if (hasTrailingNl) {
+    result.pop();
+  } else {
+    result.push(result.pop().slice(0, -1));
+  }
+  return result;
+}
+__name(splitLines, "splitLines");
+
+// src/state/file-cache.ts
+var FileStateCache = class _FileStateCache {
+  static {
+    __name(this, "FileStateCache");
+  }
+  static instance = null;
+  cache = /* @__PURE__ */ new Map();
+  totalContentBytes = 0;
+  conflictsDetected = 0;
+  get cacheMode() {
+    return getConfigValue("cache_mode") || "with_content";
+  }
+  get maxMemoryBytes() {
+    const mb = getConfigValue("cache_max_mb");
+    return (typeof mb === "number" && mb > 0 ? mb : 200) * 1024 * 1024;
+  }
+  constructor() {
+  }
+  /**
+   * Get the singleton instance of the cache.
+   */
+  static getInstance() {
+    if (!_FileStateCache.instance) {
+      _FileStateCache.instance = new _FileStateCache();
+    }
+    return _FileStateCache.instance;
+  }
+  /**
+   * Reset the singleton instance (for testing).
+   */
+  static resetInstance() {
+    _FileStateCache.instance = null;
+  }
+  /**
+   * Compute sha256 hash of content.
+   */
+  computeHash(content) {
+    return (0, import_crypto.createHash)("sha256").update(content, "utf8").digest("hex");
+  }
+  /**
+   * Estimate token count from content length.
+   * Uses the same approximation as logging.ts: ~4 characters per token.
+   */
+  estimateTokens(content) {
+    return Math.ceil(content.length / 4);
+  }
+  /**
+   * Parse diff hunks to extract modified line ranges.
+   */
+  extractModifiedRanges(diff) {
+    const ranges = [];
+    const hunkPattern = /@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/g;
+    let match;
+    while ((match = hunkPattern.exec(diff)) !== null) {
+      const startLine = parseInt(match[3], 10);
+      const lineCount = match[4] ? parseInt(match[4], 10) : 1;
+      const endLine = startLine + lineCount - 1;
+      if (lineCount === 1) {
+        ranges.push(String(startLine));
+      } else {
+        ranges.push(`${startLine}-${endLine}`);
+      }
+    }
+    return ranges;
+  }
+  /**
+   * Count added and removed lines from diff.
+   */
+  countDiffChanges(diff) {
+    const lines = diff.split("\n");
+    let added = 0;
+    let removed = 0;
+    for (const line of lines) {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        added++;
+      } else if (line.startsWith("-") && !line.startsWith("---")) {
+        removed++;
+      }
+    }
+    return { added, removed };
+  }
+  /**
+   * Generate unified diff between old and new content.
+   */
+  generateDiff(filePath, oldContent, newContent) {
+    return createPatch(filePath, oldContent, newContent, "", "", {
+      context: 3
+    });
+  }
+  /**
+   * Track memory usage after adding/updating an entry.
+   */
+  trackMemory(entry, oldBytes) {
+    if (oldBytes !== void 0) {
+      this.totalContentBytes -= oldBytes;
+    }
+    this.totalContentBytes += entry.contentBytes;
+    while (this.totalContentBytes > this.maxMemoryBytes && this.cache.size > 1) {
+      this.evictLRU();
+    }
+  }
+  /**
+   * Evict the least recently used (LRU) cache entry.
+   */
+  evictLRU() {
+    let oldestPath = null;
+    let oldestTime = Infinity;
+    for (const [path11, entry] of this.cache.entries()) {
+      if (entry.lastReadAt < oldestTime) {
+        oldestTime = entry.lastReadAt;
+        oldestPath = path11;
+      }
+    }
+    if (oldestPath) {
+      const evictedEntry = this.cache.get(oldestPath);
+      if (evictedEntry) {
+        this.totalContentBytes -= evictedEntry.contentBytes;
+        this.cache.delete(oldestPath);
+      }
+    }
+  }
+  /**
+   * Lookup file in cache and determine if content has changed.
+   * Returns cache hit status, diff if modified, and tokens saved if unchanged.
+   */
+  lookup(filePath, content, extract, offset, limit) {
+    const contentHash = this.computeHash(content);
+    const existing = this.cache.get(filePath);
+    const now = Date.now();
+    if (!existing) {
+      const lines = content.split("\n");
+      const tokenCost = this.estimateTokens(content);
+      const contentBytes2 = Buffer.byteLength(content, "utf8");
+      const newEntry = {
+        contentHash,
+        content: this.cacheMode === "with_content" ? content : "",
+        contentBytes: this.cacheMode === "with_content" ? contentBytes2 : 0,
+        lineCount: lines.length,
+        byteSize: contentBytes2,
+        firstReadAt: now,
+        lastReadAt: now,
+        lastExtract: extract,
+        offset,
+        limit,
+        readCount: 1,
+        tokenCost,
+        tokensSaved: 0,
+        version: 1,
+        modificationLog: []
+      };
+      this.cache.set(filePath, newEntry);
+      if (this.cacheMode === "with_content") {
+        this.trackMemory(newEntry);
+      }
+      return {
+        status: "miss",
+        entry: newEntry
+      };
+    }
+    const oldBytes = existing.contentBytes;
+    existing.lastReadAt = now;
+    existing.readCount++;
+    existing.lastExtract = extract;
+    existing.offset = offset;
+    existing.limit = limit;
+    if (contentHash === existing.contentHash) {
+      const tokensSaved = existing.tokenCost;
+      existing.tokensSaved += tokensSaved;
+      return {
+        status: "unchanged",
+        entry: existing,
+        tokensSaved
+      };
+    }
+    let diff;
+    let changes;
+    const previousLineCount = existing.lineCount;
+    if (this.cacheMode === "with_content" && existing.content) {
+      diff = this.generateDiff(filePath, existing.content, content);
+      const counts = this.countDiffChanges(diff);
+      const ranges = this.extractModifiedRanges(diff);
+      changes = {
+        added: counts.added,
+        removed: counts.removed,
+        modifiedRanges: ranges
+      };
+    }
+    const contentBytes = Buffer.byteLength(content, "utf8");
+    existing.contentHash = contentHash;
+    existing.content = this.cacheMode === "with_content" ? content : "";
+    existing.contentBytes = this.cacheMode === "with_content" ? contentBytes : 0;
+    existing.lineCount = content.split("\n").length;
+    existing.byteSize = contentBytes;
+    existing.tokenCost = this.estimateTokens(content);
+    if (this.cacheMode === "with_content") {
+      this.trackMemory(existing, oldBytes);
+    }
+    return {
+      status: "modified",
+      entry: existing,
+      diff,
+      changes,
+      modifiedBy: existing.lastModifiedBy,
+      previousLineCount
+    };
+  }
+  /**
+   * Update cache after a file modification.
+   * Returns conflict if version doesn't match (OCC violation).
+   */
+  update(filePath, newContent, tool, agentId, summary, expectedVersion) {
+    const existing = this.cache.get(filePath);
+    const now = Date.now();
+    if (existing && expectedVersion !== void 0 && expectedVersion !== existing.version) {
+      this.conflictsDetected++;
+      const modificationsSinceRead = existing.modificationLog.filter(
+        (m) => m.version > expectedVersion
+      );
+      return {
+        status: "conflict",
+        version: existing.version,
+        conflictInfo: {
+          yourVersion: expectedVersion,
+          currentVersion: existing.version,
+          modifiedBy: existing.lastModifiedBy,
+          modifiedAt: existing.lastModifiedAt,
+          modificationsSinceRead,
+          diffSinceRead: this.cacheMode === "with_content" && existing.content ? this.generateDiff(filePath, existing.content, newContent) : void 0
+        }
+      };
+    }
+    if (!existing) {
+      const contentHash2 = this.computeHash(newContent);
+      const contentBytes2 = Buffer.byteLength(newContent, "utf8");
+      const lines = newContent.split("\n");
+      const newEntry = {
+        contentHash: contentHash2,
+        content: this.cacheMode === "with_content" ? newContent : "",
+        contentBytes: this.cacheMode === "with_content" ? contentBytes2 : 0,
+        lineCount: lines.length,
+        byteSize: contentBytes2,
+        firstReadAt: now,
+        lastReadAt: now,
+        lastExtract: "content",
+        readCount: 0,
+        tokenCost: this.estimateTokens(newContent),
+        tokensSaved: 0,
+        version: 1,
+        lastModifiedBy: agentId ?? tool,
+        lastModifiedAt: now,
+        modificationLog: [
+          {
+            version: 1,
+            agentId,
+            tool,
+            timestamp: now,
+            summary
+          }
+        ]
+      };
+      this.cache.set(filePath, newEntry);
+      if (this.cacheMode === "with_content") {
+        this.trackMemory(newEntry);
+      }
+      return {
+        status: "updated",
+        version: 1
+      };
+    }
+    const oldBytes = existing.contentBytes;
+    const contentHash = this.computeHash(newContent);
+    const contentBytes = Buffer.byteLength(newContent, "utf8");
+    existing.contentHash = contentHash;
+    existing.content = this.cacheMode === "with_content" ? newContent : "";
+    existing.contentBytes = this.cacheMode === "with_content" ? contentBytes : 0;
+    existing.lineCount = newContent.split("\n").length;
+    existing.byteSize = contentBytes;
+    existing.tokenCost = this.estimateTokens(newContent);
+    existing.version++;
+    existing.lastModifiedBy = agentId ?? tool;
+    existing.lastModifiedAt = now;
+    const modEntry = {
+      version: existing.version,
+      agentId,
+      tool,
+      timestamp: now,
+      summary
+    };
+    existing.modificationLog.push(modEntry);
+    if (existing.modificationLog.length > 10) {
+      existing.modificationLog.shift();
+    }
+    if (this.cacheMode === "with_content") {
+      this.trackMemory(existing, oldBytes);
+    }
+    return {
+      status: "updated",
+      version: existing.version
+    };
+  }
+  /**
+   * Check if a file has been modified since last read (potential conflict).
+   * Returns null if file not in cache.
+   */
+  checkConflict(filePath, sinceVersion) {
+    const entry = this.cache.get(filePath);
+    if (!entry) {
+      return null;
+    }
+    const baseVersion = sinceVersion ?? 0;
+    const hasConflict = entry.version > baseVersion;
+    const modificationsSinceRead = sinceVersion !== void 0 ? entry.modificationLog.filter((m) => m.version > sinceVersion) : entry.modificationLog;
+    return {
+      hasConflict,
+      yourVersion: baseVersion,
+      currentVersion: entry.version,
+      modifiedBy: entry.lastModifiedBy,
+      modificationsSinceRead
+    };
+  }
+  /**
+   * Invalidate a cache entry (e.g., after external modification).
+   */
+  invalidate(filePath) {
+    const entry = this.cache.get(filePath);
+    if (entry) {
+      this.totalContentBytes -= entry.contentBytes;
+      this.cache.delete(filePath);
+    }
+  }
+  /**
+   * Clear all cache entries.
+   */
+  clear() {
+    this.cache.clear();
+    this.totalContentBytes = 0;
+    this.conflictsDetected = 0;
+  }
+  /**
+   * Get session statistics for analytics.
+   */
+  getStats() {
+    const uniqueFilesRead = this.cache.size;
+    let totalReads = 0;
+    let cacheHits = 0;
+    let tokensSaved = 0;
+    const fileStats = Array.from(this.cache.entries()).map(([path11, entry]) => ({
+      path: path11,
+      reads: entry.readCount,
+      tokensSaved: entry.tokensSaved,
+      modifications: entry.modificationLog.length
+    }));
+    for (const entry of this.cache.values()) {
+      totalReads += entry.readCount;
+      if (entry.readCount > 1) {
+        cacheHits += entry.readCount - 1;
+      }
+      tokensSaved += entry.tokensSaved;
+    }
+    const cacheHitRate = totalReads > 0 ? (cacheHits / totalReads * 100).toFixed(1) + "%" : "0.0%";
+    const mostReadFiles = fileStats.sort((a, b) => b.reads - a.reads).slice(0, 10).map(({ path: path11, reads, tokensSaved: tokensSaved2 }) => ({ path: path11, reads, tokensSaved: tokensSaved2 }));
+    const mostModifiedFiles = fileStats.filter((f) => f.modifications > 0).sort((a, b) => b.modifications - a.modifications).slice(0, 10).map(({ path: path11, modifications }) => ({ path: path11, modifications }));
+    return {
+      uniqueFilesRead,
+      totalReads,
+      cacheHits,
+      cacheHitRate,
+      tokensSaved,
+      memoryUsedMb: parseFloat((this.totalContentBytes / (1024 * 1024)).toFixed(2)),
+      memoryBudgetMb: this.maxMemoryBytes / (1024 * 1024),
+      conflictsDetected: this.conflictsDetected,
+      mostReadFiles,
+      mostModifiedFiles
+    };
+  }
+  /**
+   * Get cache entry information for a specific file.
+   */
+  getEntryInfo(filePath) {
+    return this.cache.get(filePath);
+  }
+};
+
+// src/handlers/precision-write.ts
 function renderHandlebars(template, data) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     return String(data[key] ?? "");
@@ -286914,6 +287750,11 @@ async function writeFile2(spec, dryRun, workDir, options) {
         rollback = { path: validatedPath, was_new: false };
       }
       await fs3.writeFile(validatedPath, content, { encoding });
+      try {
+        const cache2 = FileStateCache.getInstance();
+        cache2.update(validatedPath, content, "precision_write", void 0, `wrote ${spec.path}`);
+      } catch {
+      }
     }
     return {
       result: {
@@ -286955,7 +287796,7 @@ var handlePrecisionWrite = /* @__PURE__ */ __name(async (args2) => {
     const rollbackInfos = [];
     let rollbackId;
     if (transactionMode === "atomic" && !dryRun) {
-      rollbackId = (0, import_crypto.randomUUID)();
+      rollbackId = (0, import_crypto2.randomUUID)();
     }
     for (const spec of input.files) {
       const { result, rollback } = await writeFile2(spec, dryRun, workDir, {
@@ -289307,452 +290148,6 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
 var import_napi = require("@ast-grep/napi");
 var import_fast_glob4 = __toESM(require_out4(), 1);
 var fs8 = __toESM(require("fs/promises"), 1);
-
-// node_modules/diff/libesm/diff/base.js
-var Diff = class {
-  static {
-    __name(this, "Diff");
-  }
-  diff(oldStr, newStr, options = {}) {
-    let callback;
-    if (typeof options === "function") {
-      callback = options;
-      options = {};
-    } else if ("callback" in options) {
-      callback = options.callback;
-    }
-    const oldString = this.castInput(oldStr, options);
-    const newString = this.castInput(newStr, options);
-    const oldTokens = this.removeEmpty(this.tokenize(oldString, options));
-    const newTokens = this.removeEmpty(this.tokenize(newString, options));
-    return this.diffWithOptionsObj(oldTokens, newTokens, options, callback);
-  }
-  diffWithOptionsObj(oldTokens, newTokens, options, callback) {
-    var _a2;
-    const done = /* @__PURE__ */ __name((value) => {
-      value = this.postProcess(value, options);
-      if (callback) {
-        setTimeout(function() {
-          callback(value);
-        }, 0);
-        return void 0;
-      } else {
-        return value;
-      }
-    }, "done");
-    const newLen = newTokens.length, oldLen = oldTokens.length;
-    let editLength = 1;
-    let maxEditLength = newLen + oldLen;
-    if (options.maxEditLength != null) {
-      maxEditLength = Math.min(maxEditLength, options.maxEditLength);
-    }
-    const maxExecutionTime = (_a2 = options.timeout) !== null && _a2 !== void 0 ? _a2 : Infinity;
-    const abortAfterTimestamp = Date.now() + maxExecutionTime;
-    const bestPath = [{ oldPos: -1, lastComponent: void 0 }];
-    let newPos = this.extractCommon(bestPath[0], newTokens, oldTokens, 0, options);
-    if (bestPath[0].oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
-      return done(this.buildValues(bestPath[0].lastComponent, newTokens, oldTokens));
-    }
-    let minDiagonalToConsider = -Infinity, maxDiagonalToConsider = Infinity;
-    const execEditLength = /* @__PURE__ */ __name(() => {
-      for (let diagonalPath = Math.max(minDiagonalToConsider, -editLength); diagonalPath <= Math.min(maxDiagonalToConsider, editLength); diagonalPath += 2) {
-        let basePath;
-        const removePath = bestPath[diagonalPath - 1], addPath = bestPath[diagonalPath + 1];
-        if (removePath) {
-          bestPath[diagonalPath - 1] = void 0;
-        }
-        let canAdd = false;
-        if (addPath) {
-          const addPathNewPos = addPath.oldPos - diagonalPath;
-          canAdd = addPath && 0 <= addPathNewPos && addPathNewPos < newLen;
-        }
-        const canRemove = removePath && removePath.oldPos + 1 < oldLen;
-        if (!canAdd && !canRemove) {
-          bestPath[diagonalPath] = void 0;
-          continue;
-        }
-        if (!canRemove || canAdd && removePath.oldPos < addPath.oldPos) {
-          basePath = this.addToPath(addPath, true, false, 0, options);
-        } else {
-          basePath = this.addToPath(removePath, false, true, 1, options);
-        }
-        newPos = this.extractCommon(basePath, newTokens, oldTokens, diagonalPath, options);
-        if (basePath.oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
-          return done(this.buildValues(basePath.lastComponent, newTokens, oldTokens)) || true;
-        } else {
-          bestPath[diagonalPath] = basePath;
-          if (basePath.oldPos + 1 >= oldLen) {
-            maxDiagonalToConsider = Math.min(maxDiagonalToConsider, diagonalPath - 1);
-          }
-          if (newPos + 1 >= newLen) {
-            minDiagonalToConsider = Math.max(minDiagonalToConsider, diagonalPath + 1);
-          }
-        }
-      }
-      editLength++;
-    }, "execEditLength");
-    if (callback) {
-      (/* @__PURE__ */ __name(function exec3() {
-        setTimeout(function() {
-          if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
-            return callback(void 0);
-          }
-          if (!execEditLength()) {
-            exec3();
-          }
-        }, 0);
-      }, "exec"))();
-    } else {
-      while (editLength <= maxEditLength && Date.now() <= abortAfterTimestamp) {
-        const ret = execEditLength();
-        if (ret) {
-          return ret;
-        }
-      }
-    }
-  }
-  addToPath(path11, added, removed, oldPosInc, options) {
-    const last = path11.lastComponent;
-    if (last && !options.oneChangePerToken && last.added === added && last.removed === removed) {
-      return {
-        oldPos: path11.oldPos + oldPosInc,
-        lastComponent: { count: last.count + 1, added, removed, previousComponent: last.previousComponent }
-      };
-    } else {
-      return {
-        oldPos: path11.oldPos + oldPosInc,
-        lastComponent: { count: 1, added, removed, previousComponent: last }
-      };
-    }
-  }
-  extractCommon(basePath, newTokens, oldTokens, diagonalPath, options) {
-    const newLen = newTokens.length, oldLen = oldTokens.length;
-    let oldPos = basePath.oldPos, newPos = oldPos - diagonalPath, commonCount = 0;
-    while (newPos + 1 < newLen && oldPos + 1 < oldLen && this.equals(oldTokens[oldPos + 1], newTokens[newPos + 1], options)) {
-      newPos++;
-      oldPos++;
-      commonCount++;
-      if (options.oneChangePerToken) {
-        basePath.lastComponent = { count: 1, previousComponent: basePath.lastComponent, added: false, removed: false };
-      }
-    }
-    if (commonCount && !options.oneChangePerToken) {
-      basePath.lastComponent = { count: commonCount, previousComponent: basePath.lastComponent, added: false, removed: false };
-    }
-    basePath.oldPos = oldPos;
-    return newPos;
-  }
-  equals(left, right, options) {
-    if (options.comparator) {
-      return options.comparator(left, right);
-    } else {
-      return left === right || !!options.ignoreCase && left.toLowerCase() === right.toLowerCase();
-    }
-  }
-  removeEmpty(array2) {
-    const ret = [];
-    for (let i2 = 0; i2 < array2.length; i2++) {
-      if (array2[i2]) {
-        ret.push(array2[i2]);
-      }
-    }
-    return ret;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  castInput(value, options) {
-    return value;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  tokenize(value, options) {
-    return Array.from(value);
-  }
-  join(chars) {
-    return chars.join("");
-  }
-  postProcess(changeObjects, options) {
-    return changeObjects;
-  }
-  get useLongestToken() {
-    return false;
-  }
-  buildValues(lastComponent, newTokens, oldTokens) {
-    const components = [];
-    let nextComponent;
-    while (lastComponent) {
-      components.push(lastComponent);
-      nextComponent = lastComponent.previousComponent;
-      delete lastComponent.previousComponent;
-      lastComponent = nextComponent;
-    }
-    components.reverse();
-    const componentLen = components.length;
-    let componentPos = 0, newPos = 0, oldPos = 0;
-    for (; componentPos < componentLen; componentPos++) {
-      const component = components[componentPos];
-      if (!component.removed) {
-        if (!component.added && this.useLongestToken) {
-          let value = newTokens.slice(newPos, newPos + component.count);
-          value = value.map(function(value2, i2) {
-            const oldValue = oldTokens[oldPos + i2];
-            return oldValue.length > value2.length ? oldValue : value2;
-          });
-          component.value = this.join(value);
-        } else {
-          component.value = this.join(newTokens.slice(newPos, newPos + component.count));
-        }
-        newPos += component.count;
-        if (!component.added) {
-          oldPos += component.count;
-        }
-      } else {
-        component.value = this.join(oldTokens.slice(oldPos, oldPos + component.count));
-        oldPos += component.count;
-      }
-    }
-    return components;
-  }
-};
-
-// node_modules/diff/libesm/diff/line.js
-var LineDiff = class extends Diff {
-  static {
-    __name(this, "LineDiff");
-  }
-  constructor() {
-    super(...arguments);
-    this.tokenize = tokenize;
-  }
-  equals(left, right, options) {
-    if (options.ignoreWhitespace) {
-      if (!options.newlineIsToken || !left.includes("\n")) {
-        left = left.trim();
-      }
-      if (!options.newlineIsToken || !right.includes("\n")) {
-        right = right.trim();
-      }
-    } else if (options.ignoreNewlineAtEof && !options.newlineIsToken) {
-      if (left.endsWith("\n")) {
-        left = left.slice(0, -1);
-      }
-      if (right.endsWith("\n")) {
-        right = right.slice(0, -1);
-      }
-    }
-    return super.equals(left, right, options);
-  }
-};
-var lineDiff = new LineDiff();
-function diffLines(oldStr, newStr, options) {
-  return lineDiff.diff(oldStr, newStr, options);
-}
-__name(diffLines, "diffLines");
-function tokenize(value, options) {
-  if (options.stripTrailingCr) {
-    value = value.replace(/\r\n/g, "\n");
-  }
-  const retLines = [], linesAndNewlines = value.split(/(\n|\r\n)/);
-  if (!linesAndNewlines[linesAndNewlines.length - 1]) {
-    linesAndNewlines.pop();
-  }
-  for (let i2 = 0; i2 < linesAndNewlines.length; i2++) {
-    const line = linesAndNewlines[i2];
-    if (i2 % 2 && !options.newlineIsToken) {
-      retLines[retLines.length - 1] += line;
-    } else {
-      retLines.push(line);
-    }
-  }
-  return retLines;
-}
-__name(tokenize, "tokenize");
-
-// node_modules/diff/libesm/patch/create.js
-var INCLUDE_HEADERS = {
-  includeIndex: true,
-  includeUnderline: true,
-  includeFileHeaders: true
-};
-function structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
-  let optionsObj;
-  if (!options) {
-    optionsObj = {};
-  } else if (typeof options === "function") {
-    optionsObj = { callback: options };
-  } else {
-    optionsObj = options;
-  }
-  if (typeof optionsObj.context === "undefined") {
-    optionsObj.context = 4;
-  }
-  const context = optionsObj.context;
-  if (optionsObj.newlineIsToken) {
-    throw new Error("newlineIsToken may not be used with patch-generation functions, only with diffing functions");
-  }
-  if (!optionsObj.callback) {
-    return diffLinesResultToPatch(diffLines(oldStr, newStr, optionsObj));
-  } else {
-    const { callback } = optionsObj;
-    diffLines(oldStr, newStr, Object.assign(Object.assign({}, optionsObj), { callback: (diff) => {
-      const patch = diffLinesResultToPatch(diff);
-      callback(patch);
-    } }));
-  }
-  function diffLinesResultToPatch(diff) {
-    if (!diff) {
-      return;
-    }
-    diff.push({ value: "", lines: [] });
-    function contextLines(lines) {
-      return lines.map(function(entry) {
-        return " " + entry;
-      });
-    }
-    __name(contextLines, "contextLines");
-    const hunks = [];
-    let oldRangeStart = 0, newRangeStart = 0, curRange = [], oldLine = 1, newLine = 1;
-    for (let i2 = 0; i2 < diff.length; i2++) {
-      const current = diff[i2], lines = current.lines || splitLines(current.value);
-      current.lines = lines;
-      if (current.added || current.removed) {
-        if (!oldRangeStart) {
-          const prev = diff[i2 - 1];
-          oldRangeStart = oldLine;
-          newRangeStart = newLine;
-          if (prev) {
-            curRange = context > 0 ? contextLines(prev.lines.slice(-context)) : [];
-            oldRangeStart -= curRange.length;
-            newRangeStart -= curRange.length;
-          }
-        }
-        for (const line of lines) {
-          curRange.push((current.added ? "+" : "-") + line);
-        }
-        if (current.added) {
-          newLine += lines.length;
-        } else {
-          oldLine += lines.length;
-        }
-      } else {
-        if (oldRangeStart) {
-          if (lines.length <= context * 2 && i2 < diff.length - 2) {
-            for (const line of contextLines(lines)) {
-              curRange.push(line);
-            }
-          } else {
-            const contextSize = Math.min(lines.length, context);
-            for (const line of contextLines(lines.slice(0, contextSize))) {
-              curRange.push(line);
-            }
-            const hunk = {
-              oldStart: oldRangeStart,
-              oldLines: oldLine - oldRangeStart + contextSize,
-              newStart: newRangeStart,
-              newLines: newLine - newRangeStart + contextSize,
-              lines: curRange
-            };
-            hunks.push(hunk);
-            oldRangeStart = 0;
-            newRangeStart = 0;
-            curRange = [];
-          }
-        }
-        oldLine += lines.length;
-        newLine += lines.length;
-      }
-    }
-    for (const hunk of hunks) {
-      for (let i2 = 0; i2 < hunk.lines.length; i2++) {
-        if (hunk.lines[i2].endsWith("\n")) {
-          hunk.lines[i2] = hunk.lines[i2].slice(0, -1);
-        } else {
-          hunk.lines.splice(i2 + 1, 0, "\\ No newline at end of file");
-          i2++;
-        }
-      }
-    }
-    return {
-      oldFileName,
-      newFileName,
-      oldHeader,
-      newHeader,
-      hunks
-    };
-  }
-  __name(diffLinesResultToPatch, "diffLinesResultToPatch");
-}
-__name(structuredPatch, "structuredPatch");
-function formatPatch(patch, headerOptions) {
-  if (!headerOptions) {
-    headerOptions = INCLUDE_HEADERS;
-  }
-  if (Array.isArray(patch)) {
-    if (patch.length > 1 && !headerOptions.includeFileHeaders) {
-      throw new Error("Cannot omit file headers on a multi-file patch. (The result would be unparseable; how would a tool trying to apply the patch know which changes are to which file?)");
-    }
-    return patch.map((p) => formatPatch(p, headerOptions)).join("\n");
-  }
-  const ret = [];
-  if (headerOptions.includeIndex && patch.oldFileName == patch.newFileName) {
-    ret.push("Index: " + patch.oldFileName);
-  }
-  if (headerOptions.includeUnderline) {
-    ret.push("===================================================================");
-  }
-  if (headerOptions.includeFileHeaders) {
-    ret.push("--- " + patch.oldFileName + (typeof patch.oldHeader === "undefined" ? "" : "	" + patch.oldHeader));
-    ret.push("+++ " + patch.newFileName + (typeof patch.newHeader === "undefined" ? "" : "	" + patch.newHeader));
-  }
-  for (let i2 = 0; i2 < patch.hunks.length; i2++) {
-    const hunk = patch.hunks[i2];
-    if (hunk.oldLines === 0) {
-      hunk.oldStart -= 1;
-    }
-    if (hunk.newLines === 0) {
-      hunk.newStart -= 1;
-    }
-    ret.push("@@ -" + hunk.oldStart + "," + hunk.oldLines + " +" + hunk.newStart + "," + hunk.newLines + " @@");
-    for (const line of hunk.lines) {
-      ret.push(line);
-    }
-  }
-  return ret.join("\n") + "\n";
-}
-__name(formatPatch, "formatPatch");
-function createTwoFilesPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
-  if (typeof options === "function") {
-    options = { callback: options };
-  }
-  if (!(options === null || options === void 0 ? void 0 : options.callback)) {
-    const patchObj = structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options);
-    if (!patchObj) {
-      return;
-    }
-    return formatPatch(patchObj, options === null || options === void 0 ? void 0 : options.headerOptions);
-  } else {
-    const { callback } = options;
-    structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, Object.assign(Object.assign({}, options), { callback: (patchObj) => {
-      if (!patchObj) {
-        callback(void 0);
-      } else {
-        callback(formatPatch(patchObj, options.headerOptions));
-      }
-    } }));
-  }
-}
-__name(createTwoFilesPatch, "createTwoFilesPatch");
-function splitLines(text) {
-  const hasTrailingNl = text.endsWith("\n");
-  const result = text.split("\n").map((line) => line + "\n");
-  if (hasTrailingNl) {
-    result.pop();
-  } else {
-    result.push(result.pop().slice(0, -1));
-  }
-  return result;
-}
-__name(splitLines, "splitLines");
-
-// src/core/ast-grep.ts
 var path8 = __toESM(require("path"), 1);
 var LANGUAGE_MAP = {
   ".js": "javascript",
@@ -290763,6 +291158,15 @@ function extractAst(sourceFile) {
   };
 }
 __name(extractAst, "extractAst");
+function formatTimeAgo(timestamp) {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1e3));
+  if (seconds < 60)
+    return `${seconds}s ago`;
+  if (seconds < 3600)
+    return `${Math.round(seconds / 60)}m ago`;
+  return `${Math.round(seconds / 3600)}h ago`;
+}
+__name(formatTimeAgo, "formatTimeAgo");
 async function readSingleFile(spec, globalExtract, output, symbolFilter, defaultRange, workDir = process.cwd()) {
   const normalizedPath = normalizePath(spec.path);
   const filePath = path9.isAbsolute(normalizedPath) ? normalizedPath : path9.join(workDir, normalizedPath);
@@ -290902,6 +291306,34 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
     }
     const allLines = content.split("\n");
     result.line_count = allLines.length;
+    const cache2 = FileStateCache.getInstance();
+    const cacheLookup = cache2.lookup(validatedPath, content, extract);
+    if (cacheLookup.status === "unchanged" && !spec.force) {
+      result.content = void 0;
+      result.status = "unchanged";
+      result.line_count = cacheLookup.entry.lineCount;
+      result.size_bytes = cacheLookup.entry.byteSize;
+      result.cache = {
+        status: "unchanged",
+        last_read: formatTimeAgo(cacheLookup.entry.lastReadAt),
+        read_count: cacheLookup.entry.readCount,
+        tokens_saved: cacheLookup.tokensSaved,
+        hash: cacheLookup.entry.contentHash.substring(0, 8),
+        hint: "Use force: true to get full content"
+      };
+      return result;
+    }
+    if (cacheLookup.status === "modified" && !spec.force) {
+      result.cache = {
+        status: "modified",
+        previous_lines: cacheLookup.previousLineCount,
+        changes: cacheLookup.changes,
+        diff: cacheLookup.diff,
+        modified_by: cacheLookup.modifiedBy,
+        tokens_saved: cacheLookup.tokensSaved ?? 0,
+        hint: "Use force: true for full content without diff"
+      };
+    }
     const lineRange = spec.range ?? spec.lines ?? defaultRange;
     let lines = allLines;
     let truncated = false;
@@ -291088,15 +291520,20 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
       case "minimal":
         data = {
           files: Object.fromEntries(
-            results.map((r) => [
-              r.path,
-              {
+            results.map((r) => {
+              const fileObj = {
                 exists: r.exists,
                 line_count: r.line_count,
                 error: r.error,
                 is_binary: r.is_binary
+              };
+              const filePath = path9.isAbsolute(r.path) ? r.path : path9.join(workDir, r.path);
+              const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
+              if (cacheEntry) {
+                fileObj.cache_version = cacheEntry.version;
               }
-            ])
+              return [r.path, fileObj];
+            })
           ),
           summary
         };
@@ -291105,6 +291542,11 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
         data = {
           files: Object.fromEntries(results.map((r) => {
             const { image_base64, ...rest } = r;
+            const filePath = path9.isAbsolute(r.path) ? r.path : path9.join(workDir, r.path);
+            const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
+            if (cacheEntry) {
+              rest.cache_version = cacheEntry.version;
+            }
             return [r.path, rest];
           })),
           summary,
@@ -291150,6 +291592,13 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
                 entry.hint = r.hint;
               if (r.pagination)
                 entry.pagination = r.pagination;
+              if (r.cache)
+                entry.cache = r.cache;
+              const filePath = path9.isAbsolute(r.path) ? r.path : path9.join(workDir, r.path);
+              const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
+              if (cacheEntry) {
+                entry.cache_version = cacheEntry.version;
+              }
               return [r.path, entry];
             })
           ),
@@ -291909,6 +292358,11 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
       for (const [filePath, content] of newContents) {
         await fs11.mkdir(path10.dirname(filePath), { recursive: true });
         await fs11.writeFile(filePath, content, "utf-8");
+        try {
+          const cache2 = FileStateCache.getInstance();
+          cache2.update(filePath, content, "precision_edit", void 0, `edited ${path10.basename(filePath)}`);
+        } catch {
+        }
       }
     }
     const afterValidation = [];
@@ -292134,6 +292588,13 @@ var PrecisionEngineServer = class {
     logger.info(`Tools: ${listHandlers().join(", ")}`);
   }
   async stop() {
+    try {
+      const cache2 = FileStateCache.getInstance();
+      const stats = cache2.getStats();
+      logger.info("FileStateCache session stats", stats);
+      cache2.clear();
+    } catch {
+    }
     await this.server.close();
   }
 };

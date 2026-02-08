@@ -27,6 +27,10 @@ export interface PrecisionEngineConfig {
   slow_fs_stat_threshold_ms?: number;
   /** Known slow filesystem prefixes (default: ["/mnt/"]) */
   slow_fs_known_prefixes?: string[];
+  /** Cache mode: 'hash_only' (minimal memory) or 'with_content' (enables diffs). Default: 'with_content' */
+  cache_mode?: 'hash_only' | 'with_content';
+  /** Maximum memory budget for file cache in megabytes. Default: 200 MB */
+  cache_max_mb?: number;
   /** Extensible for future config */
   [key: string]: unknown;
 }
@@ -298,6 +302,30 @@ export function getPageSizeLines(): number {
   const config = loadConfigSync();
   const value = config.page_size_lines;
   return typeof value === 'number' && value > 0 ? value : 200;
+}
+
+/**
+ * Get cache mode: 'hash_only' (minimal memory) or 'with_content' (enables diffs).
+ * Default: 'with_content'
+ * @returns Cache mode string, either 'hash_only' or 'with_content'
+ */
+export function getCacheMode(): 'hash_only' | 'with_content' {
+  const config = loadConfigSync();
+  const value = config.cache_mode;
+  if (value === 'hash_only' || value === 'with_content') return value;
+  return 'with_content';
+}
+
+/**
+ * Get maximum memory budget for file cache in megabytes.
+ * Default: 200 MB
+ * @returns Maximum cache memory in megabytes
+ */
+export function getCacheMaxMb(): number {
+  const config = loadConfigSync();
+  const value = config.cache_max_mb;
+  if (typeof value === 'number' && value > 0) return value;
+  return 200;
 }
 
 /**

@@ -43,6 +43,7 @@ import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHand
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { validateFilePath } from '../utils/path-validation.js';
 import { levenshteinDistance, calculateSimilarity } from '../utils/fuzzy.js';
+import { FileStateCache } from '../state/file-cache.js';
 
 const execAsync = promisify(exec);
 
@@ -1228,6 +1229,14 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
       for (const [filePath, content] of newContents) {
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, content, 'utf-8');
+        
+        // Update FileStateCache with edited content
+        try {
+          const cache = FileStateCache.getInstance();
+          cache.update(filePath, content, 'precision_edit', undefined, `edited ${path.basename(filePath)}`);
+        } catch {
+          // Cache update is non-critical — don't fail the edit
+        }
       }
     }
 

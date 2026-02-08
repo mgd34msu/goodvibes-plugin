@@ -24,6 +24,7 @@ import { isLanguageSupported } from '../core/languages.js';
 import { validateFilePath } from '../utils/path-validation.js';
 import { getFileSuggestions, type FileSuggestion } from '../utils/file-suggestions.js';
 import { getSlowFsThreshold, getSlowFsPrefixes, getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines } from '../runtime-config.js';
+import { FileStateCache } from '../state/file-cache.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -108,7 +109,7 @@ interface FileReadResult {
   is_image?: boolean;
   mime_type?: string;
   image_base64?: string;
-  status?: 'empty' | 'normal';
+  status?: 'empty' | 'normal' | 'unchanged';
   size_bytes?: number;
   warning?: string;
   suggestions?: FileSuggestion[];
@@ -532,6 +533,16 @@ function extractAst(sourceFile: ts.SourceFile): unknown {
   };
 }
 
+/**
+ * Format a timestamp as a human-readable relative time string
+ */
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
+  return `${Math.round(seconds / 3600)}h ago`;
+}
+
 async function readSingleFile(
   spec: FileReadSpec,
   globalExtract: ExtractMode,
@@ -721,6 +732,41 @@ async function readSingleFile(
 
     const allLines = content.split('\n');
     result.line_count = allLines.length;
+
+    // FileStateCache lookup — check if content is unchanged since last read
+    const cache = FileStateCache.getInstance();
+    const cacheLookup = cache.lookup(validatedPath, content, extract);
+
+    if (cacheLookup.status === 'unchanged' && !spec.force) {
+      // Return abbreviated response — file hasn't changed
+      result.content = undefined; // Don't send full content
+      result.status = 'unchanged';
+      result.line_count = cacheLookup.entry.lineCount;
+      result.size_bytes = cacheLookup.entry.byteSize;
+      result.cache = {
+        status: 'unchanged',
+        last_read: formatTimeAgo(cacheLookup.entry.lastReadAt),
+        read_count: cacheLookup.entry.readCount,
+        tokens_saved: cacheLookup.tokensSaved,
+        hash: cacheLookup.entry.contentHash.substring(0, 8),
+        hint: 'Use force: true to get full content',
+      };
+      return result;
+    }
+
+    if (cacheLookup.status === 'modified' && !spec.force) {
+      // File changed since last read — include diff info in metadata
+      result.cache = {
+        status: 'modified',
+        previous_lines: cacheLookup.previousLineCount,
+        changes: cacheLookup.changes,
+        diff: cacheLookup.diff,
+        modified_by: cacheLookup.modifiedBy,
+        tokens_saved: cacheLookup.tokensSaved ?? 0,
+        hint: 'Use force: true for full content without diff',
+      };
+      // Continue with normal content return (agent gets both content and diff)
+    }
 
     // Determine line range (SPEC-v2 uses 'range', fallback to 'lines' for backward compatibility)
     const lineRange = spec.range ?? spec.lines ?? defaultRange;
@@ -943,15 +989,23 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       case 'minimal':
         data = {
           files: Object.fromEntries(
-            results.map(r => [
-              r.path,
-              {
+            results.map(r => {
+              const fileObj: Record<string, unknown> = {
                 exists: r.exists,
                 line_count: r.line_count,
                 error: r.error,
                 is_binary: r.is_binary,
-              },
-            ])
+              };
+              
+              // Add cache version to response metadata for OCC tracking
+              const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
+              const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
+              if (cacheEntry) {
+                fileObj.cache_version = cacheEntry.version;
+              }
+              
+              return [r.path, fileObj];
+            })
           ),
           summary,
         };
@@ -961,6 +1015,14 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
         data = {
           files: Object.fromEntries(results.map(r => {
             const { image_base64, ...rest } = r;
+            
+            // Add cache version to response metadata for OCC tracking
+            const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
+            const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
+            if (cacheEntry) {
+              (rest as Record<string, unknown>).cache_version = cacheEntry.version;
+            }
+            
             return [r.path, rest];
           })),
           summary,
@@ -990,6 +1052,15 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.suggestions !== undefined) entry.suggestions = r.suggestions;
               if (r.hint) entry.hint = r.hint;
               if ((r as Record<string, unknown>).pagination) entry.pagination = (r as Record<string, unknown>).pagination;
+              if ((r as Record<string, unknown>).cache) entry.cache = (r as Record<string, unknown>).cache;
+              
+              // Add cache version to response metadata for OCC tracking
+              const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
+              const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
+              if (cacheEntry) {
+                entry.cache_version = cacheEntry.version;
+              }
+              
               // Don't include image_base64 in JSON - it's in the ImageContent block
               return [r.path, entry];
             })
