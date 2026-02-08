@@ -34,6 +34,7 @@ import { promisify } from 'util';
 import { diffLines } from 'diff';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
+import { getMaxDiffChars } from '../runtime-config.js';
 import { parse, Lang } from '@ast-grep/napi';
 import { detectLanguage } from '../core/languages.js';
 import { toLangEnum } from '../core/ast-grep.js';
@@ -117,6 +118,10 @@ interface EditResult {
   status: EditStatus;
   edits_applied?: number;
   diff?: string;
+  diff_truncated?: boolean;
+  diff_lines_total?: number;
+  diff_preview?: string;
+  hint?: string;
   error?: string;
 }
 
@@ -1207,7 +1212,19 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
 
         // Generate diff if requested
         if (output.mode === 'with_diff' || output.mode === 'verbose') {
-          result.diff = generateDiff(currentContent ?? '', newContent, diffContext);
+          const diff = generateDiff(currentContent ?? '', newContent, diffContext);
+          
+          // Smart diff size gate (Item 8H)
+          const maxDiffChars = getMaxDiffChars();
+          if (diff.length > maxDiffChars) {
+            result.diff = undefined;
+            result.diff_truncated = true;
+            result.diff_lines_total = diff.split('\n').length;
+            result.diff_preview = diff.slice(0, Math.floor(maxDiffChars / 2)) + '\n...\n' + diff.slice(-Math.floor(maxDiffChars / 2));
+            result.hint = 'Diff truncated. Use precision_read to see full file.';
+          } else {
+            result.diff = diff;
+          }
         }
       } else {
         hasFailures = true;
@@ -1319,7 +1336,13 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
 
       case 'with_diff':
         data = {
-          edits: results.map(r => ({ id: r.id, file: r.file, status: r.status, diff: r.diff, error: r.error })),
+          edits: results.map(r => ({
+            id: r.id, file: r.file, status: r.status,
+            diff: r.diff, diff_truncated: r.diff_truncated,
+            diff_lines_total: r.diff_lines_total,
+            diff_preview: r.diff_preview,
+            hint: r.hint, error: r.error
+          })),
           summary: {
             files_modified: filesModified,
             edits_applied: totalEditsApplied,

@@ -286188,55 +286188,6 @@ var fs3 = __toESM(require("fs/promises"), 1);
 var path3 = __toESM(require("path"), 1);
 var import_child_process = require("child_process");
 
-// src/utils/errors.ts
-var TOOL_EXAMPLES = {
-  precision_read: '{"files": [{"path": "src/index.ts"}], "output_mode": "standard"}',
-  precision_write: '{"files": [{"path": "output.txt", "content": "Hello"}], "output_mode": "minimal"}',
-  precision_edit: '{"edits": [{"path": "file.ts", "old": "foo", "new": "bar"}], "output_mode": "with_diff"}',
-  precision_grep: '{"queries": [{"id": "search", "pattern": "TODO"}], "output_mode": "standard"}',
-  precision_glob: '{"patterns": ["**/*.ts"], "output_mode": "paths_only"}',
-  precision_symbols: '{"files": ["src/index.ts"], "output_mode": "signatures"}',
-  precision_exec: '{"command": "echo hello", "output_mode": "standard"}',
-  precision_fetch: '{"url": "https://example.com", "output_mode": "standard"}',
-  discover: '{"queries": [{"id": "find", "type": "glob", "patterns": ["**/*.ts"]}], "output_mode": "files_only"}'
-};
-function formatMissingParamError(toolName, paramName, expectedType) {
-  const example = TOOL_EXAMPLES[toolName] || "{}";
-  return `Missing required parameter '${paramName}'. Expected: ${expectedType}.
-Example: ${example}`;
-}
-__name(formatMissingParamError, "formatMissingParamError");
-function createErrorResult(error2, meta3) {
-  return {
-    success: false,
-    error: error2,
-    meta: {
-      output_mode: meta3.output_mode,
-      token_estimate: estimateTokens(error2),
-      execution_ms: meta3.execution_ms
-    }
-  };
-}
-__name(createErrorResult, "createErrorResult");
-function formatMutualExclusivityError(fieldName, providedSources) {
-  return `Multiple input sources provided for '${fieldName}'.
-Found: ${providedSources.join(", ")}
-Please provide only ONE of:
-  - ${fieldName}: Direct string value
-  - ${fieldName}_base64: Base64-encoded value
-  - ${fieldName}_file: Path to file containing value
-`;
-}
-__name(formatMutualExclusivityError, "formatMutualExclusivityError");
-
-// src/utils/index.ts
-var import_fs = require("fs");
-var import_path = require("path");
-
-// src/utils/path-validation.ts
-var path2 = __toESM(require("path"), 1);
-var fsPromises = __toESM(require("fs/promises"), 1);
-
 // src/runtime-config.ts
 var fs2 = __toESM(require("fs"), 1);
 var path = __toESM(require("path"), 1);
@@ -286350,6 +286301,20 @@ function getConfigValue(key) {
   return config2[key];
 }
 __name(getConfigValue, "getConfigValue");
+function getToolVerbosityDefault(toolName) {
+  const config2 = loadConfigSync();
+  const defaults = config2.verbosity_defaults;
+  if (defaults && typeof defaults === "object") {
+    return defaults[toolName];
+  }
+  return void 0;
+}
+__name(getToolVerbosityDefault, "getToolVerbosityDefault");
+function getMaxDiffChars() {
+  const config2 = loadConfigSync();
+  return typeof config2.max_diff_chars === "number" ? config2.max_diff_chars : 1e4;
+}
+__name(getMaxDiffChars, "getMaxDiffChars");
 loadConfigSync();
 async function setConfigValue(key, value) {
   if (pendingPersist) {
@@ -286394,7 +286359,54 @@ async function setConfigValue(key, value) {
 }
 __name(setConfigValue, "setConfigValue");
 
+// src/utils/errors.ts
+var TOOL_EXAMPLES = {
+  precision_read: '{"files": [{"path": "src/index.ts"}], "output_mode": "standard"}',
+  precision_write: '{"files": [{"path": "output.txt", "content": "Hello"}], "output_mode": "minimal"}',
+  precision_edit: '{"edits": [{"path": "file.ts", "old": "foo", "new": "bar"}], "output_mode": "with_diff"}',
+  precision_grep: '{"queries": [{"id": "search", "pattern": "TODO"}], "output_mode": "standard"}',
+  precision_glob: '{"patterns": ["**/*.ts"], "output_mode": "paths_only"}',
+  precision_symbols: '{"files": ["src/index.ts"], "output_mode": "signatures"}',
+  precision_exec: '{"command": "echo hello", "output_mode": "standard"}',
+  precision_fetch: '{"url": "https://example.com", "output_mode": "standard"}',
+  discover: '{"queries": [{"id": "find", "type": "glob", "patterns": ["**/*.ts"]}], "output_mode": "files_only"}'
+};
+function formatMissingParamError(toolName, paramName, expectedType) {
+  const example = TOOL_EXAMPLES[toolName] || "{}";
+  return `Missing required parameter '${paramName}'. Expected: ${expectedType}.
+Example: ${example}`;
+}
+__name(formatMissingParamError, "formatMissingParamError");
+function createErrorResult(error2, meta3) {
+  return {
+    success: false,
+    error: error2,
+    meta: {
+      output_mode: meta3.output_mode,
+      token_estimate: estimateTokens(error2),
+      execution_ms: meta3.execution_ms
+    }
+  };
+}
+__name(createErrorResult, "createErrorResult");
+function formatMutualExclusivityError(fieldName, providedSources) {
+  return `Multiple input sources provided for '${fieldName}'.
+Found: ${providedSources.join(", ")}
+Please provide only ONE of:
+  - ${fieldName}: Direct string value
+  - ${fieldName}_base64: Base64-encoded value
+  - ${fieldName}_file: Path to file containing value
+`;
+}
+__name(formatMutualExclusivityError, "formatMutualExclusivityError");
+
+// src/utils/index.ts
+var import_fs = require("fs");
+var import_path = require("path");
+
 // src/utils/path-validation.ts
+var path2 = __toESM(require("path"), 1);
+var fsPromises = __toESM(require("fs/promises"), 1);
 function enforceSandboxBoundary(resolvedPath, projectRoot, originalPath) {
   const sandboxEnabled = getConfigValue("sandbox");
   if (sandboxEnabled === false) {
@@ -286546,6 +286558,12 @@ function parseOutputMode(args2, toolName) {
       if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose"].includes(output.mode)) {
         return output.mode;
       }
+    }
+  }
+  if (toolName) {
+    const configDefault = getToolVerbosityDefault(toolName);
+    if (configDefault && ["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose", "paths_only", "files_only", "with_diff", "signatures", "locations", "matches", "context", "names_only"].includes(configDefault)) {
+      return configDefault;
     }
   }
   if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.verbosity) {
@@ -291620,7 +291638,17 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
         newContents.set(filePath, newContent);
         totalEditsApplied += editsApplied;
         if (output.mode === "with_diff" || output.mode === "verbose") {
-          result.diff = generateDiff(currentContent ?? "", newContent, diffContext);
+          const diff = generateDiff(currentContent ?? "", newContent, diffContext);
+          const maxDiffChars = getMaxDiffChars();
+          if (diff.length > maxDiffChars) {
+            result.diff = void 0;
+            result.diff_truncated = true;
+            result.diff_lines_total = diff.split("\n").length;
+            result.diff_preview = diff.slice(0, Math.floor(maxDiffChars / 2)) + "\n...\n" + diff.slice(-Math.floor(maxDiffChars / 2));
+            result.hint = "Diff truncated. Use precision_read to see full file.";
+          } else {
+            result.diff = diff;
+          }
         }
       } else {
         hasFailures = true;
@@ -291713,7 +291741,17 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
         break;
       case "with_diff":
         data = {
-          edits: results.map((r) => ({ id: r.id, file: r.file, status: r.status, diff: r.diff, error: r.error })),
+          edits: results.map((r) => ({
+            id: r.id,
+            file: r.file,
+            status: r.status,
+            diff: r.diff,
+            diff_truncated: r.diff_truncated,
+            diff_lines_total: r.diff_lines_total,
+            diff_preview: r.diff_preview,
+            hint: r.hint,
+            error: r.error
+          })),
           summary: {
             files_modified: filesModified,
             edits_applied: totalEditsApplied,

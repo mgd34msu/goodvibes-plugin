@@ -4,6 +4,7 @@
 
 import { CallToolResult, TextContent, ImageContent } from '@modelcontextprotocol/sdk/types.js';
 import { OutputMode, PrecisionResult } from '../types.js';
+import { getToolVerbosityDefault } from '../runtime-config.js';
 
 /**
  * Handler function type.
@@ -175,6 +176,14 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
       if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.mode)) {
         return output.mode as OutputMode;
       }
+    }
+  }
+
+  // Check goodvibes.json per-tool verbosity default
+  if (toolName) {
+    const configDefault = getToolVerbosityDefault(toolName);
+    if (configDefault && ['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context', 'names_only'].includes(configDefault)) {
+      return configDefault as OutputMode;
     }
   }
 
