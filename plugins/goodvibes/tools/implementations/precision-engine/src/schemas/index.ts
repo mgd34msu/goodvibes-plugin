@@ -265,6 +265,8 @@ export const precisionGrepSchema: Tool = {
             whole_word: { type: 'boolean', description: 'Match whole words only' },
             multiline: { type: 'boolean', description: 'Allow multiline matches (default: false)' },
             include_binary: { type: 'boolean', description: 'Search binary files (default: false)' },
+            negate: { type: 'boolean', description: 'Return files WITHOUT this pattern (negation search)' },
+            refine_from: { type: 'string', description: 'Refine within cached results from a previous query ID' },
           },
           required: ['id'],
         },
@@ -272,7 +274,7 @@ export const precisionGrepSchema: Tool = {
       output: {
         type: 'object',
         properties: {
-          format: { type: 'string', description: 'Output data format', enum: ['count_only', 'files_only', 'locations', 'matches', 'context'] },
+          format: { type: 'string', description: 'Output data format', enum: ['count_only', 'files_only', 'locations', 'matches', 'context', 'stats'] },
           context_before: { type: 'integer', minimum: 0, description: 'Lines before match (default: 0)' },
           context_after: { type: 'integer', minimum: 0, description: 'Lines after match (default: 0)' },
           expand_to: { type: 'string', enum: ['line', 'block', 'function', 'class'], description: 'Expand match context to enclosing scope' },
@@ -283,9 +285,13 @@ export const precisionGrepSchema: Tool = {
           max_total_matches: { type: 'integer', minimum: 1, description: 'Total cap (default: 100)' },
           max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap' },
           max_line_length: { type: 'integer', minimum: 1, description: 'Truncate lines longer than this (default: no truncation)' },
+          offset: { type: 'integer', minimum: 0, description: 'Skip first N file results for pagination (default: 0)' },
         },
       },
       parallel: { type: 'boolean', default: true, description: 'Run queries in parallel (default: true)' },
+      relationships: { type: 'boolean', description: 'Show cross-file import/export relationships for matched symbols' },
+      preview_replace: { type: 'string', description: 'Preview replacement string — shows what find-and-replace would look like without writing' },
+      ranked: { type: 'boolean', description: 'Rank results by relevance (exact match, exports, recency) instead of file-path order' },
       verbosity: verbositySchema,
     },
     required: ['queries'],
@@ -475,6 +481,62 @@ const validationStepSchema = {
 };
 
 /**
+ * precision_notebook - Jupyter Notebook cell editing
+ */
+export const precisionNotebookSchema: Tool = {
+  name: 'precision_notebook',
+  description:
+    'Edit Jupyter notebook (.ipynb) cells with batch operations. ' +
+    'Supports replace, insert, and delete with index adjustment.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      path: { type: 'string', description: 'Path to the .ipynb notebook file' },
+      operations: {
+        type: 'array',
+        description: 'Array of cell operations to apply in order',
+        items: {
+          type: 'object',
+          properties: {
+            op: {
+              type: 'string',
+              enum: ['replace', 'insert', 'delete'],
+              description: 'Operation type',
+            },
+            cell: {
+              type: 'integer',
+              minimum: 0,
+              description: 'Cell index (0-based). Required for replace and delete.',
+            },
+            after: {
+              type: 'integer',
+              minimum: -1,
+              description: 'Insert after this cell index (-1 for beginning). Required for insert.',
+            },
+            source: {
+              type: 'string',
+              description: 'New cell source content. Required for replace and insert.',
+            },
+            cell_type: {
+              type: 'string',
+              enum: ['code', 'markdown', 'raw'],
+              description: 'Cell type. Required for insert, optional for replace.',
+            },
+            clear_outputs: {
+              type: 'boolean',
+              description: 'Clear cell outputs on replace (default: false)',
+            },
+          },
+          required: ['op'],
+        },
+      },
+      verbosity: verbositySchema,
+    },
+    required: ['path', 'operations'],
+  },
+};
+
+/**
  * precision_config - Runtime configuration management.
  */
 export const precisionConfigSchema: Tool = {
@@ -611,4 +673,5 @@ export const allSchemas: Tool[] = [
   precisionSymbolsSchema,
   precisionEditSchema,
   precisionConfigSchema,
+  precisionNotebookSchema,
 ];

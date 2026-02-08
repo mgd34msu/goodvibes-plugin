@@ -12,6 +12,7 @@
  */
 
 import * as path from 'path';
+import { readFile } from 'fs/promises';
 import { TreeSitterCore } from '../core/tree-sitter.js';
 import { RipgrepCore } from '../core/ripgrep.js';
 
@@ -48,6 +49,16 @@ export interface RelationshipResult {
 const treeSitterCore = new TreeSitterCore();
 const ripgrepCore = new RipgrepCore();
 
+// === Helper Functions ===
+
+/**
+ * Escapes special regex characters in a string.
+ * Prevents regex injection when using user input in RegExp constructors.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // === Main Function ===
 
 /**
@@ -82,10 +93,9 @@ export async function findRelatedFiles(
     // Step 1: Check if symbol is exported from the source file
     let isExported = false;
     try {
-      const fileContent = await import('fs/promises').then(fs => 
-        fs.readFile(filePath, 'utf-8')
-      );
-      const symbols = await treeSitterCore.getSymbols(fileContent, filePath);
+      const fileContent = await readFile(filePath, 'utf-8');
+      const tree = await treeSitterCore.parse(fileContent, filePath);
+      const symbols = treeSitterCore.getSymbols(tree, filePath);
       isExported = symbols.some(
         s => s.name === symbol && s.exported
       );
@@ -102,14 +112,18 @@ export async function findRelatedFiles(
     const relativePath = path.relative(workDir, filePath);
     const fileBaseName = path.basename(filePath, path.extname(filePath));
     
+    // Escape special regex characters to prevent injection
+    const escapedSymbol = escapeRegex(symbol);
+    const escapedFileBaseName = escapeRegex(fileBaseName);
+    
     // Build import pattern - match various import styles
     const importPatterns = [
       // ESM named imports: import { symbol } from './file'
-      `import\\s+\\{[^}]*\\b${symbol}\\b[^}]*\\}\\s+from\\s+['\"].*${fileBaseName}`,
+      `import\\s+\\{[^}]*\\b${escapedSymbol}\\b[^}]*\\}\\s+from\\s+['\"].*${escapedFileBaseName}`,
       // ESM namespace imports: import * as name from './file'
-      `import\\s+\\*\\s+as\\s+\\w+\\s+from\\s+['\"].*${fileBaseName}`,
+      `import\\s+\\*\\s+as\\s+\\w+\\s+from\\s+['\"].*${escapedFileBaseName}`,
       // CJS require: const { symbol } = require('./file')
-      `require\\s*\\(['\"].*${fileBaseName}`,
+      `require\\s*\\(['\"].*${escapedFileBaseName}`,
     ];
 
     for (const pattern of importPatterns) {
@@ -152,7 +166,7 @@ export async function findRelatedFiles(
     if (isExported) {
       try {
         // Pattern for exports
-        const exportPattern = `export\\s+(const|let|var|function|class|interface|type|enum)\\s+${symbol}\\b|export\\s+\\{[^}]*\\b${symbol}\\b`;
+        const exportPattern = `export\\s+(const|let|var|function|class|interface|type|enum)\\s+${escapedSymbol}\\b|export\\s+\\{[^}]*\\b${escapedSymbol}\\b`;
         
         const exportResult = await ripgrepCore.search({
           pattern: exportPattern,

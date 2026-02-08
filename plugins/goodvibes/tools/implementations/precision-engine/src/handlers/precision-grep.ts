@@ -20,10 +20,17 @@ import { DEFAULT_EXCLUDES } from '../config.js';
 import { RipgrepCore, RipgrepSearchResult } from '../core/ripgrep.js';
 import { TreeSitterCore } from '../core/tree-sitter.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
+import { applyPagination, type PaginationParams, type PaginationMetadata } from '../utils/grep-pagination.js';
+import { findFilesWithoutPattern, type NegationResult } from '../utils/grep-negation.js';
+import { generateReplacePreview, type ReplacePreviewResult } from '../utils/grep-replace-preview.js';
+import { rankResults, type RankedFile } from '../utils/grep-ranking.js';
+import { computeStats, type GrepStatsSummary } from '../utils/grep-stats.js';
+import { findRelatedFiles, type RelationshipResult } from '../utils/grep-relationships.js';
+import { SearchCache } from '../state/search-cache.js';
 
 // === Interfaces per SPEC-v2 ===
 
-type GrepOutputMode = 'count_only' | 'files_only' | 'locations' | 'matches' | 'context';
+type GrepOutputMode = 'count_only' | 'files_only' | 'locations' | 'matches' | 'context' | 'stats';
 type ExpandTo = 'line' | 'block' | 'function' | 'class';
 
 interface GrepQuery {
@@ -37,10 +44,13 @@ interface GrepQuery {
   whole_word?: boolean;
   multiline?: boolean;
   include_binary?: boolean;
+  negate?: boolean;
+  refine_from?: string;
 }
 
 interface GrepOutput {
   mode: GrepOutputMode;
+  format?: string;
   context_before?: number;
   context_after?: number;
   expand_to?: ExpandTo;
@@ -53,6 +63,7 @@ interface GrepOutput {
   max_total_matches?: number;
   max_tokens?: number;
   max_line_length?: number;
+  offset?: number;
 }
 
 interface PrecisionGrepInput {
@@ -60,6 +71,9 @@ interface PrecisionGrepInput {
   output: GrepOutput;
   parallel?: boolean;
   output_mode?: OutputMode;
+  relationships?: boolean;
+  preview_replace?: string;
+  ranked?: boolean;
 }
 
 interface GrepMatch {
@@ -84,12 +98,19 @@ interface GrepResult {
   truncated?: boolean;
   lines_truncated?: number;
   note?: string;
+  pagination?: PaginationMetadata;
+  relationships?: RelationshipResult[];
+  replace_preview?: ReplacePreviewResult;
+  negation?: NegationResult;
+  ranked_files?: RankedFile[];
+  stats?: GrepStatsSummary;
 }
 
 // === Singleton Instances ===
 
 const ripgrepCore = new RipgrepCore();
 const treeSitterCore = new TreeSitterCore();
+const searchCache = SearchCache.getInstance();
 
 // === Helper Functions ===
 
@@ -303,11 +324,47 @@ async function executeQuery(
     fieldName: 'pattern'
   });
 
+  // Handle negation search (files WITHOUT pattern)
+  if (query.negate === true) {
+    const searchPath = query.path
+      ? await validateDirectoryPath(query.path, workDir)
+      : workDir;
+    const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
+    
+    const negationResult = await findFilesWithoutPattern(patternStr, searchPath, {
+      glob: query.glob,
+      exclude: excludePatterns,
+      caseInsensitive: query.case_sensitive === false,
+      wholeWord: query.whole_word,
+      maxResults: maxFiles,
+    });
+
+    return {
+      files: negationResult.files.map(f => ({
+        file: f.file,
+        match_count: 0,
+      })),
+      file_count: negationResult.total_files_without_match,
+      match_count: 0,
+      truncated: false,
+      negation: negationResult,
+    };
+  }
+
   // Map query options to RipgrepSearchOptions
   const searchPath = query.path
     ? await validateDirectoryPath(query.path, workDir)
     : workDir;
   const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
+
+  // TODO(Wave 4): Implement basic refinement logic
+  // If refine_from is provided, scope search to cached files from previous query
+  // if (query.refine_from) {
+  //   const cachedFiles = searchCache.getFiles(query.refine_from);
+  //   if (cachedFiles && cachedFiles.length > 0) {
+  //     searchOpts.paths = cachedFiles;
+  //   }
+  // }
 
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
     pattern: patternStr,
@@ -347,17 +404,19 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
+    const rawOutput = (input.output ?? {}) as GrepOutput;
+    const resolvedMode = rawOutput.format ?? rawOutput.mode ?? 'files_only';
     const output: GrepOutput = {
-      mode: input.output?.format ?? input.output?.mode ?? 'files_only',
-      context_before: input.output?.context_before ?? 0,
-      context_after: input.output?.context_after ?? 0,
+      ...rawOutput,
+      mode: resolvedMode as GrepOutputMode,
+      context_before: rawOutput.context_before ?? 0,
+      context_after: rawOutput.context_after ?? 0,
       // Support both new and old parameter names
-      max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
-      max_files: input.output?.max_files ?? 100,
-      max_per_item: input.output?.max_per_item ?? input.output?.max_matches_per_file ?? 10,
-      max_matches_per_file: input.output?.max_matches_per_file ?? 10,
-      max_total_matches: input.output?.max_total_matches ?? 100,
-      ...input.output
+      max_results: rawOutput.max_results ?? rawOutput.max_files ?? 100,
+      max_files: rawOutput.max_files ?? 100,
+      max_per_item: rawOutput.max_per_item ?? rawOutput.max_matches_per_file ?? 10,
+      max_matches_per_file: rawOutput.max_matches_per_file ?? 10,
+      max_total_matches: rawOutput.max_total_matches ?? 100,
     };
 
     // Validate each query
@@ -384,6 +443,135 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
     } else {
       for (const query of input.queries) {
         queryResults[query.id] = await executeQuery(query, output, workDir);
+      }
+    }
+
+    // === POST-PROCESSING PIPELINE ===
+    // Apply enhancements to query results
+
+    for (const [queryId, result] of Object.entries(queryResults)) {
+      const query = input.queries.find(q => q.id === queryId);
+      if (!query) continue;
+
+      // Resolve pattern once at the top of the loop for reuse
+      const patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
+        allowFile: true,
+        basePath: process.cwd(),
+        required: true,
+        fieldName: 'pattern'
+      });
+
+      try {
+        // 1. SearchCache: Store results for future refinement
+        if (result.files && result.files.length > 0) {
+          const filePaths = result.files.map(f => path.join(workDir, f.file));
+          searchCache.store(queryId, filePaths, patternStr);
+        }
+      } catch (err) {
+        // Non-critical: cache failures shouldn't break the search
+        result.note = (result.note ? result.note + '; ' : '') + 
+          `Cache storage failed: ${(err as Error).message}`;
+      }
+
+      try {
+        // 2. Stats mode: Compute statistics
+        if (output.mode === 'stats' && result.files) {
+          result.stats = computeStats(result.files, patternStr);
+        }
+      } catch (err) {
+        // Non-critical: stats failures shouldn't break the search
+        result.note = (result.note ? result.note + '; ' : '') + 
+          `Stats computation failed: ${(err as Error).message}`;
+      }
+
+      try {
+        // 3. Pagination: Apply offset and limit
+        if (output.offset && output.offset > 0 && result.files) {
+          const paginationParams: PaginationParams = {
+            offset: output.offset,
+            max_results: output.max_results,
+          };
+          const paginationResult = applyPagination(
+            result.files,
+            result.match_count ?? 0,
+            paginationParams
+          );
+          result.files = paginationResult.files;
+          result.pagination = paginationResult.pagination;
+        }
+      } catch (err) {
+        // Non-critical: pagination failures shouldn't break the search
+        result.note = (result.note ? result.note + '; ' : '') + 
+          `Pagination failed: ${(err as Error).message}`;
+      }
+
+      try {
+        // 4. Ranking: Rank results by relevance
+        if (input.ranked === true && result.files && result.files.length > 0) {
+          result.ranked_files = await rankResults(result.files, patternStr, workDir);
+          // Sort files by relevance (descending)
+          result.files = result.ranked_files.map(rf => ({
+            file: rf.file,
+            matches: rf.matches,
+            match_count: rf.match_count,
+          }));
+        }
+      } catch (err) {
+        // Non-critical: ranking failures shouldn't break the search
+        result.note = (result.note ? result.note + '; ' : '') + 
+          `Ranking failed: ${(err as Error).message}`;
+      }
+
+      try {
+        // 5. Replace preview: Generate replacement previews
+        if (input.preview_replace && result.files && result.files.length > 0) {
+          result.replace_preview = generateReplacePreview(
+            result.files,
+            patternStr,
+            input.preview_replace
+          );
+        }
+      } catch (err) {
+        // Non-critical: preview failures shouldn't break the search
+        result.note = (result.note ? result.note + '; ' : '') + 
+          `Replace preview failed: ${(err as Error).message}`;
+      }
+
+      try {
+        // 6. Relationships: Find related files (bounded)
+        if (input.relationships === true && result.files && result.files.length > 0) {
+          const relationshipResults: RelationshipResult[] = [];
+          
+          // Limit to first 5 files to avoid excessive processing
+          const filesToProcess = result.files.slice(0, 5);
+          
+          for (const fileResult of filesToProcess) {
+            if (!fileResult.matches || fileResult.matches.length === 0) continue;
+            
+            // Limit to first 3 matches per file
+            const matchesToProcess = fileResult.matches.slice(0, 3);
+            
+            for (const match of matchesToProcess) {
+              if (!match.content) continue;
+              
+              // Extract symbol from match content (simple heuristic: first word)
+              const symbolMatch = match.content.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/);
+              if (!symbolMatch) continue;
+              
+              const symbol = symbolMatch[0];
+              const absolutePath = path.join(workDir, fileResult.file);
+              
+              const relationships = await findRelatedFiles(absolutePath, symbol, workDir);
+              relationshipResults.push(relationships);
+            }
+          }
+          
+          result.relationships = relationshipResults;
+        }
+      } catch (err) {
+        // Non-critical: relationship failures shouldn't break the search
+        result.note = (result.note ? result.note + '; ' : '') + 
+          `Relationships analysis failed: ${(err as Error).message}`;
       }
     }
 

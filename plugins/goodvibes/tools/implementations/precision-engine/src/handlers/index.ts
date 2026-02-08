@@ -15,6 +15,7 @@ import { handlePrecisionGlob } from './precision-glob.js';
 import { handlePrecisionSymbols } from './precision-symbols.js';
 import { handlePrecisionEdit } from './precision-edit.js';
 import { handlePrecisionConfig } from './precision-config.js';
+import { handlePrecisionNotebook } from './precision-notebook.js';
 
 // Re-export SPEC-v2 handlers for direct access
 export {
@@ -28,6 +29,7 @@ export {
   handlePrecisionSymbols,
   handlePrecisionEdit,
   handlePrecisionConfig,
+  handlePrecisionNotebook,
 };
 
 // Re-export ToolHandler type
@@ -47,6 +49,7 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['precision_symbols', handlePrecisionSymbols],
   ['precision_edit', handlePrecisionEdit],
   ['precision_config', handlePrecisionConfig],
+  ['precision_notebook', handlePrecisionNotebook],
 ]);
 
 /**
