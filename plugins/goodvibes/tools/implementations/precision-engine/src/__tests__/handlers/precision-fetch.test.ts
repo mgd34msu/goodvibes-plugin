@@ -49,6 +49,7 @@ describe('precision_fetch handler', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
+        url: 'https://example.com',
         headers: new Headers({ 'content-type': 'text/html' }),
         text: () => Promise.resolve('<html><body>Hello World</body></html>'),
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
@@ -93,6 +94,7 @@ describe('precision_fetch handler', () => {
         mockFetch.mockResolvedValue({
           ok: true,
           status: 200,
+          url: 'https://example.com',
           headers: new Headers({ 'content-type': 'text/html' }),
           text: () => Promise.resolve('<html><body><p>Hello</p> <p>World</p></body></html>'),
         });
@@ -115,6 +117,7 @@ describe('precision_fetch handler', () => {
         mockFetch.mockResolvedValue({
           ok: true,
           status: 200,
+          url: 'https://api.example.com',
           headers: new Headers({ 'content-type': 'application/json' }),
           text: () => Promise.resolve('{"name":"test","value":123}'),
         });
@@ -137,6 +140,7 @@ describe('precision_fetch handler', () => {
         mockFetch.mockResolvedValue({
           ok: true,
           status: 200,
+          url: 'https://example.com',
           headers: new Headers({ 'content-type': 'text/html' }),
           text: () => Promise.resolve('<html><body><h1>Title</h1><p>Content</p><a href="/link">Link</a></body></html>'),
         });
@@ -158,6 +162,7 @@ describe('precision_fetch handler', () => {
         mockFetch.mockResolvedValue({
           ok: true,
           status: 200,
+          url: 'https://example.com',
           headers: new Headers({ 'content-type': 'text/html' }),
           text: () => Promise.resolve('<html><body><h1>Header 1</h1><h1>Header 2</h1><p class="intro">Intro text</p></body></html>'),
         });
@@ -181,6 +186,7 @@ describe('precision_fetch handler', () => {
         mockFetch.mockResolvedValue({
           ok: true,
           status: 200,
+          url: 'https://example.com',
           headers: new Headers({ 'content-type': 'text/html' }),
           text: () => Promise.resolve('<html><body><p>This is a long text that should be summarized. It contains many sentences about various topics.</p></body></html>'),
         });
@@ -207,6 +213,7 @@ describe('precision_fetch handler', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
+          url: 'https://example.com/cacheable',
           headers: new Headers({ 'content-type': 'text/plain' }),
           text: () => Promise.resolve(`Call ${callCount}`),
         });
@@ -235,6 +242,7 @@ describe('precision_fetch handler', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        url: 'https://example.com/new-url',
         headers: new Headers({ 'content-type': 'text/plain' }),
         text: () => Promise.resolve('Content'),
       });
@@ -254,6 +262,7 @@ describe('precision_fetch handler', () => {
         ok: false,
         status: 404,
         statusText: 'Not Found',
+        url: 'https://example.com/notfound',
         headers: new Headers(),
         text: () => Promise.resolve('Not found'),
       });
@@ -301,6 +310,7 @@ describe('precision_fetch handler', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 201,
+        url: 'https://api.example.com/create',
         headers: new Headers({ 'content-type': 'application/json' }),
         text: () => Promise.resolve('{"id": 1}'),
       });
@@ -330,6 +340,7 @@ describe('precision_fetch handler', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
+        url: 'https://example.com',
         headers: new Headers({ 'content-type': 'text/plain' }),
         text: () => Promise.resolve('Content'),
       });
@@ -375,6 +386,7 @@ describe('precision_fetch handler', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
+        url: 'https://example.com',
         headers: new Headers({ 'content-type': 'text/plain' }),
         text: () => Promise.resolve('Content'),
       });
@@ -413,6 +425,7 @@ describe('precision_fetch handler', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 201,
+        url: 'https://api.example.com/post',
         headers: new Headers({ 'content-type': 'application/json' }),
         text: () => Promise.resolve('{"success": true}'),
       });
@@ -522,6 +535,7 @@ describe('precision_fetch handler', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
+        url: 'https://example.com',
         headers: new Headers({ 'content-type': 'text/plain' }),
         text: () => Promise.resolve('Content'),
       });

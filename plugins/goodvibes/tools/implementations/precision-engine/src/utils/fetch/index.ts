@@ -15,3 +15,4 @@ export * from './redirect-tracker.js';
 export * from './pdf-routing.js';
 export * from './content-fingerprint.js';
 export * from './rate-limiter.js';
+export * from './css-selectors.js';

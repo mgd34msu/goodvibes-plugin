@@ -145,7 +145,7 @@ export const precisionExecSchema: Tool = {
 export const precisionFetchSchema: Tool = {
   name: 'precision_fetch',
   description:
-    'Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata), ' +
+    'Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), ' +
     'custom headers, method override, timeout, and content type detection.',
   inputSchema: {
     type: 'object',
@@ -163,13 +163,13 @@ export const precisionFetchSchema: Tool = {
             body_base64: { type: 'string', description: 'Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "body" | base64 -w0' },
             timeout_ms: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 30000)' },
             timeout: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 30000)' },
-            extract: { type: 'string', enum: ['raw', 'text', 'json', 'markdown', 'structured', 'summary', 'code_blocks', 'tables', 'links', 'metadata'], description: 'Extraction mode (default: text)' },
+            extract: { type: 'string', enum: ['raw', 'text', 'json', 'markdown', 'structured', 'summary', 'code_blocks', 'tables', 'links', 'metadata', 'readable', 'pdf'], description: 'Extraction mode (default: text)' },
           },
           required: ['url'],
         },
       },
       parallel: { type: 'boolean', default: true, description: 'Fetch URLs in parallel' },
-      extract: { type: 'string', enum: ['raw', 'text', 'json', 'markdown', 'structured', 'summary', 'code_blocks', 'tables', 'links', 'metadata'], default: 'text', description: 'Global extraction mode applied to all URLs (default: text). Per-URL extract overrides this.' },
+      extract: { type: 'string', enum: ['raw', 'text', 'json', 'markdown', 'structured', 'summary', 'code_blocks', 'tables', 'links', 'metadata', 'readable', 'pdf'], default: 'text', description: 'Global extraction mode applied to all URLs (default: text). Per-URL extract overrides this.' },
       verbosity: verbositySchema,
     },
     required: ['urls'],

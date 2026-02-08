@@ -22,22 +22,25 @@ import {
   extractLinks,
   extractStructuredData,
   detectContentType,
+  rateLimitedFetch,
+  shouldRequestJson,
+  getJsonHeaders,
+  createNegotiationInfo,
+  extractWithCssSelectors,
+  extractReadableContent,
+  fetchCache,
+  detectPageType,
+  isPdfResponse,
+  parsePdfBuffer,
   type CodeBlock,
   type TableData,
   type LinkInfo,
   type StructuredData,
   type ContentTypeInfo,
+  type NegotiationInfo,
+  type ReadabilityResult,
 } from '../utils/fetch/index.js';
 
-// Simple in-memory cache
-interface CacheEntry {
-  content: string;
-  contentType?: string;
-  status: number;
-  timestamp: number;
-}
-
-const cache = new Map<string, CacheEntry>();
 const DEFAULT_CACHE_TTL = 900; // 15 minutes in seconds
 const DEFAULT_TIMEOUT = 30000;
 
@@ -45,95 +48,24 @@ const DEFAULT_TIMEOUT = 30000;
  * Clear the fetch cache. Useful for testing.
  */
 export function clearFetchCache(): void {
-  cache.clear();
-}
-
-function getCacheKey(url: string, method: string = 'GET'): string {
-  return `${method}:${url}`;
-}
-
-function getFromCache(url: string, method: string, ttlSeconds: number): CacheEntry | null {
-  const key = getCacheKey(url, method);
-  const entry = cache.get(key);
-
-  if (!entry) return null;
-
-  const now = Date.now();
-  const age = (now - entry.timestamp) / 1000;
-
-  if (age > ttlSeconds) {
-    cache.delete(key);
-    return null;
-  }
-
-  return entry;
-}
-
-function setCache(url: string, method: string, entry: Omit<CacheEntry, 'timestamp'>): void {
-  const key = getCacheKey(url, method);
-  cache.set(key, { ...entry, timestamp: Date.now() });
+  fetchCache.clear();
 }
 
 
 
-// Simple CSS selector extractor
-function extractWithSelectors(html: string, selectors: string[]): Record<string, string[]> {
-  const result: Record<string, string[]> = {};
+// Readability-enhanced summarizer
+function summarizeContent(html: string, url: string, prompt?: string): string {
+  // Try readability extraction first for cleaner text
+  const readable = extractReadableContent(html, url);
+  // extractReadableContent returns simplified HTML content; strip remaining tags for plain text
+  const text = readable
+    ? readable.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-  for (const selector of selectors) {
-    const matches: string[] = [];
+  const maxLength = 2000;
+  let summary = text.slice(0, maxLength);
 
-    // Handle simple selectors: tag, .class, #id, tag.class
-    if (selector.startsWith('.')) {
-      // Class selector
-      const className = selector.slice(1);
-      const regex = new RegExp(`<[^>]*class=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/`, 'gi');
-      let match;
-      while ((match = regex.exec(html)) !== null) {
-        matches.push(match[1].replace(/<[^>]+>/g, '').trim());
-      }
-    } else if (selector.startsWith('#')) {
-      // ID selector
-      const id = selector.slice(1);
-      const regex = new RegExp(`<[^>]*id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/`, 'gi');
-      let match;
-      while ((match = regex.exec(html)) !== null) {
-        matches.push(match[1].replace(/<[^>]+>/g, '').trim());
-      }
-    } else if (selector.includes('.')) {
-      // tag.class selector
-      const [tag, className] = selector.split('.');
-      const regex = new RegExp(`<${tag}[^>]*class=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
-      let match;
-      while ((match = regex.exec(html)) !== null) {
-        matches.push(match[1].replace(/<[^>]+>/g, '').trim());
-      }
-    } else {
-      // Tag selector
-      const regex = new RegExp(`<${selector}[^>]*>([\\s\\S]*?)<\\/${selector}>`, 'gi');
-      let match;
-      while ((match = regex.exec(html)) !== null) {
-        matches.push(match[1].replace(/<[^>]+>/g, '').trim());
-      }
-    }
-
-    result[selector] = matches;
-  }
-
-  return result;
-}
-
-// Simple summarizer (extracts key content)
-function summarizeContent(text: string, prompt?: string): string {
-  // Remove extra whitespace
-  const cleaned = text.replace(/\s+/g, ' ').trim();
-
-  // Extract first N characters as summary
-  const maxLength = 1000;
-  let summary = cleaned.slice(0, maxLength);
-
-  if (cleaned.length > maxLength) {
-    // Try to end at a sentence boundary
+  if (text.length > maxLength) {
     const lastPeriod = summary.lastIndexOf('.');
     const lastQuestion = summary.lastIndexOf('?');
     const lastExclaim = summary.lastIndexOf('!');
@@ -146,15 +78,23 @@ function summarizeContent(text: string, prompt?: string): string {
     }
   }
 
+  // Add metadata header from readability if available
+  const header = readable
+    ? [
+        readable.title && `Title: ${readable.title}`,
+        readable.byline && `Author: ${readable.byline}`,
+        readable.excerpt && `Excerpt: ${readable.excerpt}`,
+      ].filter(Boolean).join('\n')
+    : '';
+
   if (prompt) {
-    // If a prompt is provided, prepend context
-    summary = `[Summary for: ${prompt}]\n${summary}`;
+    return `[Summary for: ${prompt}]\n${header ? header + '\n' : ''}${summary}`;
   }
 
-  return summary;
+  return header ? `${header}\n\n${summary}` : summary;
 }
 
-type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary' | 'code_blocks' | 'tables' | 'links' | 'metadata';
+type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary' | 'code_blocks' | 'tables' | 'links' | 'metadata' | 'readable' | 'pdf';
 
 interface FetchSpec {
   url: string;
@@ -202,6 +142,11 @@ interface FetchResult {
   tables?: TableData[];
   links?: LinkInfo[];
   metadata?: StructuredData;
+  negotiation?: NegotiationInfo;
+  final_url?: string;
+  redirected?: boolean;
+  readable?: ReadabilityResult;
+  pdf?: { text: string; pages: number; page_range?: string; metadata?: Record<string, string | undefined> };
 }
 
 async function fetchSingleUrl(
@@ -221,20 +166,20 @@ async function fetchSingleUrl(
 
   // Check cache first (only for GET requests)
   if (method === 'GET' && cacheTtl > 0) {
-    const cached = getFromCache(url, method, cacheTtl);
+    const cached = fetchCache.get(url, method);
     if (cached) {
       const result: FetchResult = {
         url,
         status: 'cached',
-        http_status: cached.status,
+        http_status: cached.httpStatus,
         contentType: cached.contentType,
-        size: cached.content.length,
+        size: cached.extractedContent.length,
         duration_ms: Date.now() - startTime,
         from_cache: true,
       };
 
       // Process cached content based on extract mode
-      await processContent(result, cached.content, extract, selectors, summaryPrompt, maxContentLength);
+      await processContent(result, cached.extractedContent, extract, selectors, summaryPrompt, maxContentLength);
 
       return result;
     }
@@ -250,6 +195,13 @@ async function fetchSingleUrl(
       signal: controller.signal,
     };
 
+    // Auto-negotiate JSON for API-like URLs
+    let autoNegotiated = false;
+    if (shouldRequestJson(url, method, request.headers)) {
+      fetchOptions.headers = getJsonHeaders(request.headers);
+      autoNegotiated = true;
+    }
+
     if (method !== 'GET') {
       const requestBody = request.body_base64
         ? Buffer.from(request.body_base64, 'base64').toString('utf-8')
@@ -260,12 +212,62 @@ async function fetchSingleUrl(
       }
     }
 
-    const response = await fetch(url, fetchOptions);
+    // Rate-limited fetch (replaces raw fetch)
+    const response = await rateLimitedFetch(url, fetchOptions);
     clearTimeout(timeoutId);
 
-    const contentType = response.headers.get('content-type') ?? undefined;
-    let rawContent: string;
+    // Track redirects if the response URL differs from request URL
+    const wasRedirected = response.url !== url;
+    const finalUrl = response.url;
 
+    const contentType = response.headers.get('content-type') ?? undefined;
+
+    // Detect PDF responses and handle binary parsing
+    if (isPdfResponse(contentType) || extract === 'pdf') {
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const pdfResult = await parsePdfBuffer(buffer);
+
+      const pdfFetchResult: FetchResult = {
+        url,
+        status: response.ok ? 'success' : 'failed',
+        http_status: response.status,
+        contentType,
+        size: buffer.length,
+        duration_ms: Date.now() - startTime,
+        from_cache: false,
+        content_type_info: detectContentType(response.headers, url, ''),
+        final_url: wasRedirected ? finalUrl : undefined,
+        redirected: wasRedirected,
+        pdf: {
+          text: pdfResult.text,
+          pages: pdfResult.pages,
+          page_range: pdfResult.page_range,
+          metadata: pdfResult.metadata as Record<string, string | undefined> | undefined,
+        },
+        content: pdfResult.text.slice(0, maxContentLength ?? 50000),
+      };
+
+      if (pdfResult.error) {
+        pdfFetchResult.error = pdfResult.error;
+      }
+
+      // Cache PDF text content
+      if (method === 'GET' && response.ok && cacheTtl > 0) {
+        fetchCache.set(url, pdfResult.text, {
+          method,
+          ttl: cacheTtl,
+          pageType: 'pdf_document',
+          headers: Object.fromEntries(response.headers.entries()),
+          httpStatus: response.status,
+          contentType,
+        });
+      }
+
+      return pdfFetchResult;
+    }
+
+    // Normal content extraction
+    let rawContent: string;
     if (extract === 'raw') {
       const buffer = await response.arrayBuffer();
       rawContent = Buffer.from(buffer).toString('base64');
@@ -277,10 +279,13 @@ async function fetchSingleUrl(
 
     // Cache successful GET responses
     if (method === 'GET' && response.ok && cacheTtl > 0) {
-      setCache(url, method, {
-        content: rawContent,
+      fetchCache.set(url, rawContent, {
+        method,
+        ttl: cacheTtl,
+        pageType: detectPageType(url, contentType, rawContent.slice(0, 512)),
+        headers: Object.fromEntries(response.headers.entries()),
+        httpStatus: response.status,
         contentType,
-        status: response.status,
       });
     }
 
@@ -293,6 +298,13 @@ async function fetchSingleUrl(
       duration_ms: Date.now() - startTime,
       from_cache: false,
       content_type_info: contentTypeInfo,
+      negotiation: autoNegotiated ? createNegotiationInfo(
+        'application/json',
+        response.headers.get('content-type') ?? undefined,
+        autoNegotiated
+      ) : undefined,
+      final_url: wasRedirected ? finalUrl : undefined,
+      redirected: wasRedirected,
     };
 
     if (!response.ok) {
@@ -369,16 +381,14 @@ async function processContent(
 
     case 'structured':
       if (selectors && selectors.length > 0) {
-        result.structured = extractWithSelectors(rawContent, selectors);
+        result.structured = extractWithCssSelectors(rawContent, selectors);
       } else {
-        // Default: extract common elements
-        result.structured = extractWithSelectors(rawContent, ['h1', 'h2', 'h3', 'p', 'a']);
+        result.structured = extractWithCssSelectors(rawContent, ['h1', 'h2', 'h3', 'p', 'a']);
       }
       break;
 
     case 'summary':
-      const plainText = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      result.summary = summarizeContent(plainText, summaryPrompt);
+      result.summary = summarizeContent(rawContent, result.url, summaryPrompt);
       break;
 
     case 'code_blocks':
@@ -395,6 +405,23 @@ async function processContent(
 
     case 'metadata':
       result.metadata = extractStructuredData(rawContent);
+      break;
+
+    case 'readable': {
+      const readable = extractReadableContent(rawContent, result.url);
+      if (readable) {
+        result.readable = readable;
+      } else {
+        // Fallback: return markdown conversion
+        result.content = htmlToMarkdown(rawContent).slice(0, maxLen);
+      }
+      break;
+    }
+
+    case 'pdf':
+      // PDF content requires binary response — handled in fetchSingleUrl
+      // If we reach here with non-PDF content, return as-is
+      result.content = rawContent.slice(0, maxLen);
       break;
 
     default:
@@ -487,6 +514,8 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             status: r.status,
             http_status: r.http_status,
             from_cache: r.from_cache,
+            ...(r.final_url && { final_url: r.final_url }),
+            ...(r.redirected !== undefined && { redirected: r.redirected }),
           })),
           summary: {
             fetched,
@@ -515,6 +544,11 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.links && { links: r.links }),
             ...(r.metadata && { metadata: r.metadata }),
             ...(r.content_type_info && { content_type_info: r.content_type_info }),
+            ...(r.negotiation && { negotiation: r.negotiation }),
+            ...(r.final_url && { final_url: r.final_url }),
+            ...(r.redirected !== undefined && { redirected: r.redirected }),
+            ...(r.readable && { readable: r.readable }),
+            ...(r.pdf && { pdf: r.pdf }),
             ...(r.error && { error: r.error }),
           })),
           summary: {
@@ -545,6 +579,11 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.links && { links: r.links }),
             ...(r.metadata && { metadata: r.metadata }),
             ...(r.content_type_info && { content_type_info: r.content_type_info }),
+            ...(r.negotiation && { negotiation: r.negotiation }),
+            ...(r.final_url && { final_url: r.final_url }),
+            ...(r.redirected !== undefined && { redirected: r.redirected }),
+            ...(r.readable && { readable: r.readable }),
+            ...(r.pdf && { pdf: r.pdf }),
             ...(r.error && { error: r.error }),
           })),
           summary: {
