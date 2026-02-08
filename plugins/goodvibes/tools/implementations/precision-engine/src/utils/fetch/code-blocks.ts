@@ -3,15 +3,14 @@
  * Parses <pre><code> blocks, detects language, and provides context.
  */
 
+import { decodeHtmlEntities, stripHtmlTags } from './html-utils.js';
+
 export interface CodeBlock {
   language: string;   // detected language or 'text' if unknown
   code: string;       // the code content, trimmed
   context?: string;   // surrounding heading or description if available
 }
 
-/**
- * HTML entity decoding map for common entities.
- */
 /**
  * Common CSS class names that are NOT language identifiers.
  * Used to filter out false positives in bare language detection.
@@ -26,57 +25,6 @@ const NON_LANGUAGE_CLASSES = new Set([
   'codehilite',
   'sourceCode',
 ]);
-
-/**
- * HTML entity decoding map for common entities.
- */
-const HTML_ENTITIES: Record<string, string> = {
-  '&lt;': '<',
-  '&gt;': '>',
-  '&amp;': '&',
-  '&quot;': '"',
-  '&apos;': "'",
-  '&#39;': "'",
-  '&#x27;': "'",
-  '&#x2F;': '/',
-  '&#x60;': '`',
-};
-
-/**
- * Pre-compiled regex patterns for HTML entity decoding.
- * Avoids creating new RegExp objects in the hot loop.
- */
-const HTML_ENTITY_PATTERNS = Object.fromEntries(
-  Object.keys(HTML_ENTITIES).map(entity => [
-    entity,
-    new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-  ]),
-) as Record<string, RegExp>;
-
-/**
- * Decode HTML entities in text.
- */
-function decodeHtmlEntities(text: string): string {
-  let decoded = text;
-  
-  // Replace common named entities using pre-compiled patterns
-  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
-    decoded = decoded.replace(HTML_ENTITY_PATTERNS[entity], char);
-  }
-  
-  // Replace numeric entities (decimal and hex)
-  decoded = decoded.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
-  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
-  
-  return decoded;
-}
-
-/**
- * Extract text content from HTML, removing all tags.
- */
-function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]+>/g, '');
-}
 
 /**
  * Detect language from class attributes.

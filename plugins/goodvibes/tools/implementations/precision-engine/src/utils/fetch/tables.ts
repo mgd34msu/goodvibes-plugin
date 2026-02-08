@@ -3,6 +3,8 @@
  * Extracts tables from HTML strings with support for complex table structures.
  */
 
+import { decodeHtmlEntities, stripHtmlTags } from './html-utils.js';
+
 /**
  * Represents a single table extracted from HTML.
  */
@@ -13,61 +15,6 @@ export interface TableData {
   rows: string[][];
   /** <caption> text if present */
   caption?: string;
-}
-
-/**
- * HTML entity mappings for decoding.
- */
-const HTML_ENTITIES: Record<string, string> = {
-  '&lt;': '<',
-  '&gt;': '>',
-  '&amp;': '&',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&apos;': "'",
-  '&nbsp;': ' ',
-  '&ndash;': '\u2013',
-  '&mdash;': '\u2014',
-  '&hellip;': '\u2026',
-  '&copy;': '\u00a9',
-  '&reg;': '\u00ae',
-  '&trade;': '\u2122',
-};
-
-/**
- * Decode HTML entities in text.
- * Handles both named entities (&lt;) and numeric entities (&#39;).
- *
- * @param text - Text containing HTML entities
- * @returns Decoded text
- */
-function decodeHtmlEntities(text: string): string {
-  let decoded = text;
-
-  // Decode named entities
-  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
-    decoded = decoded.replace(new RegExp(entity, 'g'), char);
-  }
-
-  // Decode numeric entities (&#123; or &#x7B;)
-  decoded = decoded.replace(/&#(\d+);/g, (_, code) => {
-    return String.fromCharCode(parseInt(code, 10));
-  });
-  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => {
-    return String.fromCharCode(parseInt(code, 16));
-  });
-
-  return decoded;
-}
-
-/**
- * Strip HTML tags from text, keeping only inner content.
- *
- * @param html - HTML string
- * @returns Plain text content
- */
-function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, '');
 }
 
 /**
@@ -238,6 +185,47 @@ function hasNestedTables(tableHtml: string): boolean {
 }
 
 /**
+ * Find all top-level <table> elements in HTML using balanced tag matching.
+ * Handles nested tables correctly by tracking tag depth.
+ *
+ * @param html - HTML string containing tables
+ * @returns Array of top-level table HTML strings
+ */
+function findTopLevelTables(html: string): string[] {
+  const tables: string[] = [];
+  const openTag = /<table[^>]*>/gi;
+  let match;
+
+  while ((match = openTag.exec(html)) !== null) {
+    let depth = 1;
+    let pos = openTag.lastIndex;
+
+    while (depth > 0 && pos < html.length) {
+      const nextOpen = html.indexOf('<table', pos);
+      const nextClose = html.indexOf('</table>', pos);
+
+      if (nextClose === -1) break; // No closing tag found
+
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        // Found nested opening tag
+        depth++;
+        pos = nextOpen + 6; // Skip past '<table'
+      } else {
+        // Found closing tag
+        depth--;
+        if (depth === 0) {
+          // Found matching close tag for our top-level table
+          tables.push(html.substring(match.index, nextClose + 8));
+        }
+        pos = nextClose + 8; // Skip past '</table>'
+      }
+    }
+  }
+
+  return tables;
+}
+
+/**
  * Extract all tables from HTML content.
  * Returns structured data for each table including headers, rows, and caption.
  *
@@ -254,18 +242,10 @@ function hasNestedTables(tableHtml: string): boolean {
 export function extractTables(html: string): TableData[] {
   const tables: TableData[] = [];
 
-  // Find all <table> elements
-  const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
-  let tableMatch;
+  // Find all top-level <table> elements using balanced tag matching
+  const topLevelTables = findTopLevelTables(html);
 
-  while ((tableMatch = tableRegex.exec(html)) !== null) {
-    const tableHtml = tableMatch[0];
-
-    // Skip tables with nested tables (only extract top-level)
-    if (hasNestedTables(tableHtml)) {
-      continue;
-    }
-
+  for (const tableHtml of topLevelTables) {
     // Extract caption
     const caption = extractCaption(tableHtml);
 
@@ -276,8 +256,8 @@ export function extractTables(html: string): TableData[] {
     // Extract data rows
     const rows = extractDataRows(tableHtml, hasTheadHeaders);
 
-    // Only add tables with content
-    if (rows.length > 0) {
+    // Add tables with content (headers or rows)
+    if (rows.length > 0 || headers.length > 0) {
       tables.push({
         headers,
         rows,

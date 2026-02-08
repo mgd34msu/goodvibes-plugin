@@ -3,6 +3,8 @@
  * Parses HTML to extract, resolve, and classify links with context
  */
 
+import { decodeHtmlEntities, stripHtmlTagsWithSpacing as stripHtmlTags } from './html-utils.js';
+
 /**
  * Information about a link extracted from HTML
  */
@@ -57,7 +59,7 @@ export function extractLinks(
   }
 
   // Hoist filter toLowerCase for performance (used in loop)
-  const filterLower = filter?.toLowerCase();
+  const filterLower = filter?.toLowerCase() ?? '';
 
   // Extract headings for context (h1-h6)
   const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/gi;
@@ -192,50 +194,4 @@ export function extractLinks(
   }
 
   return links;
-}
-
-/**
- * Strip HTML tags from content, preserving text
- */
-function stripHtmlTags(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ') // Replace tags with space
-    .replace(/\s+/g, ' ') // Collapse whitespace
-    .trim();
-}
-
-/**
- * Decode common HTML entities
- */
-function decodeHtmlEntities(text: string): string {
-  const entities: Record<string, string> = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&#39;': "'",
-    '&apos;': "'",
-    '&nbsp;': ' ',
-    '&mdash;': '—',
-    '&ndash;': '–',
-    '&hellip;': '…',
-    '&copy;': '©',
-    '&reg;': '®',
-    '&trade;': '™',
-  };
-
-  let decoded = text;
-  for (const [entity, char] of Object.entries(entities)) {
-    decoded = decoded.replace(new RegExp(entity, 'g'), char);
-  }
-
-  // Decode numeric entities (&#123; or &#x7B;)
-  decoded = decoded.replace(/&#(\d+);/g, (_, code) => 
-    String.fromCharCode(parseInt(code, 10))
-  );
-  decoded = decoded.replace(/&#x([0-9a-f]+);/gi, (_, code) => 
-    String.fromCharCode(parseInt(code, 16))
-  );
-
-  return decoded;
 }
