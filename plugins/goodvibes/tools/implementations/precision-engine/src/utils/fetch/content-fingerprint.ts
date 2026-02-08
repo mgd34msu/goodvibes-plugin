@@ -3,7 +3,8 @@
  * Tracks content changes via hashing and provides cache hit/miss logic with diffs.
  */
 
-import { createHash } from 'node:crypto';
+import { createHash } from 'crypto';
+import { createPatch } from 'diff';
 
 /**
  * Interface for a fetch cache entry with content fingerprinting.
@@ -59,11 +60,16 @@ export interface ContentChangedResult extends CacheCheckResult {
 }
 
 /**
- * Session-scoped fetch cache singleton.
+ * Content-aware fetch cache with fingerprinting and change detection.
+ * 
+ * NOTE: precision-fetch.ts handler currently maintains its own inline cache (lines 33-75).
+ * This module is designed to replace that inline cache during handler integration.
+ * The inline cache should be removed when this module is wired in.
  */
 class FetchCache {
   private cache = new Map<string, FetchCacheEntry>();
-  private readonly DEFAULT_TTL = 900; // 15 minutes in seconds
+  private readonly DEFAULT_TTL_SECONDS = 900; // 15 minutes in seconds
+  private readonly MAX_ENTRIES = 50;
 
   /**
    * Generate a cache key from URL and method.
@@ -96,75 +102,10 @@ class FetchCache {
 
   /**
    * Generate unified diff between two strings.
+   * Uses the 'diff' package (already a project dependency) for correct multi-hunk diffs.
    */
   private generateDiff(oldContent: string, newContent: string): string {
-    // Simple line-based diff
-    const oldLines = oldContent.split('\n');
-    const newLines = newContent.split('\n');
-    const diff: string[] = [];
-
-    diff.push('--- previous');
-    diff.push('+++ current');
-
-    // Find common prefix length
-    let prefixLen = 0;
-    while (
-      prefixLen < oldLines.length &&
-      prefixLen < newLines.length &&
-      oldLines[prefixLen] === newLines[prefixLen]
-    ) {
-      prefixLen++;
-    }
-
-    // Find common suffix length (from end)
-    let suffixLen = 0;
-    while (
-      suffixLen < oldLines.length - prefixLen &&
-      suffixLen < newLines.length - prefixLen &&
-      oldLines[oldLines.length - 1 - suffixLen] ===
-        newLines[newLines.length - 1 - suffixLen]
-    ) {
-      suffixLen++;
-    }
-
-    // Calculate change region
-    const oldStart = prefixLen;
-    const oldEnd = oldLines.length - suffixLen;
-    const newStart = prefixLen;
-    const newEnd = newLines.length - suffixLen;
-
-    const oldCount = oldEnd - oldStart;
-    const newCount = newEnd - newStart;
-
-    if (oldCount > 0 || newCount > 0) {
-      diff.push(
-        `@@ -${oldStart + 1},${oldCount} +${newStart + 1},${newCount} @@`
-      );
-
-      // Show context (3 lines before)
-      const contextStart = Math.max(0, oldStart - 3);
-      for (let i = contextStart; i < oldStart; i++) {
-        diff.push(` ${oldLines[i]}`);
-      }
-
-      // Show removed lines
-      for (let i = oldStart; i < oldEnd; i++) {
-        diff.push(`-${oldLines[i]}`);
-      }
-
-      // Show added lines
-      for (let i = newStart; i < newEnd; i++) {
-        diff.push(`+${newLines[i]}`);
-      }
-
-      // Show context (3 lines after)
-      const contextEnd = Math.min(newLines.length, newEnd + 3);
-      for (let i = newEnd; i < contextEnd; i++) {
-        diff.push(` ${newLines[i]}`);
-      }
-    }
-
-    return diff.join('\n');
+    return createPatch('content', oldContent, newContent, 'previous', 'current', { context: 3 });
   }
 
   /**
@@ -184,7 +125,7 @@ class FetchCache {
   ): void {
     const {
       method = 'GET',
-      ttl = this.DEFAULT_TTL,
+      ttl = this.DEFAULT_TTL_SECONDS,
       pageType = 'unknown',
       headers = {},
       httpStatus = 200,
@@ -205,6 +146,21 @@ class FetchCache {
       httpStatus,
       contentType,
     });
+
+    // Evict oldest entries if over limit
+    if (this.cache.size > this.MAX_ENTRIES) {
+      let oldestKey: string | null = null;
+      let oldestTime = Infinity;
+      for (const [key, entry] of this.cache) {
+        if (entry.fetchedAt < oldestTime) {
+          oldestTime = entry.fetchedAt;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
   }
 
   /**
@@ -229,6 +185,7 @@ class FetchCache {
 
     // Check if expired
     if (ageSeconds > cached.ttl) {
+      this.cache.delete(key);  // Clean up expired entry
       return {
         status: 'expired',
         entry: cached,

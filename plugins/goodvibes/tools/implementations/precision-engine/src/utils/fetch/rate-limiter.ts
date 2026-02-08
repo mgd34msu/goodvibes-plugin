@@ -3,7 +3,7 @@
  * Prevents overwhelming servers with too many concurrent requests
  */
 
-import { URL } from 'url';
+
 
 /**
  * Configuration for rate limiting
@@ -41,7 +41,7 @@ interface DomainState {
 }
 
 /**
- * Per-domain rate limiter using token bucket approach
+ * Per-domain rate limiter using counting semaphore with FIFO queue
  */
 export class RateLimiter {
   private domainStates: Map<string, DomainState> = new Map();
@@ -96,33 +96,30 @@ export class RateLimiter {
   private processQueue(domain: string): void {
     const state = this.getState(domain);
     
-    // If queue is empty or we're at capacity, nothing to do
-    if (state.queue.length === 0 || state.active >= this.config.per_domain) {
-      return;
-    }
-    
-    // Check if we need to wait for Retry-After
-    if (state.retry_after && Date.now() < state.retry_after) {
-      // Schedule retry after the backoff expires
-      const delay = state.retry_after - Date.now();
-      setTimeout(() => this.processQueue(domain), delay);
-      return;
-    }
-    
-    // Check if we need to wait for delay_ms
-    const timeSinceLastRequest = Date.now() - state.last_request_at;
-    if (timeSinceLastRequest < this.config.delay_ms) {
-      const delay = this.config.delay_ms - timeSinceLastRequest;
-      setTimeout(() => this.processQueue(domain), delay);
-      return;
-    }
-    
-    // Capacity available and delay satisfied — process next request
-    const next = state.queue.shift();
-    if (next) {
-      state.active++;
-      state.last_request_at = Date.now();
-      next.resolve();
+    while (state.queue.length > 0 && state.active < this.config.per_domain) {
+      // Check if we need to wait for Retry-After
+      if (state.retry_after && Date.now() < state.retry_after) {
+        // Schedule retry after the backoff expires
+        const delay = state.retry_after - Date.now();
+        setTimeout(() => this.processQueue(domain), delay);
+        return;
+      }
+      
+      // Check if we need to wait for delay_ms
+      const timeSinceLastRequest = Date.now() - state.last_request_at;
+      if (timeSinceLastRequest < this.config.delay_ms) {
+        const delay = this.config.delay_ms - timeSinceLastRequest;
+        setTimeout(() => this.processQueue(domain), delay);
+        return;
+      }
+      
+      // Capacity available and delay satisfied — process next request
+      const next = state.queue.shift();
+      if (next) {
+        state.active++;
+        state.last_request_at = Date.now();
+        next.resolve();
+      }
     }
   }
 
@@ -145,7 +142,7 @@ export class RateLimiter {
     if (state.active < this.config.per_domain && !needsDelay && !needsRetryAfterWait) {
       state.active++;
       state.last_request_at = Date.now();
-      return Promise.resolve();
+      return;
     }
     
     // Need to wait — add to queue
@@ -202,13 +199,9 @@ export class RateLimiter {
     }
     
     // Try parsing as HTTP-date
-    try {
-      const date = new Date(retryAfter);
-      const delay = date.getTime() - Date.now();
-      return delay > 0 ? delay : null;
-    } catch {
-      return null;
-    }
+    const date = new Date(retryAfter);
+    const delay = date.getTime() - Date.now();
+    return delay > 0 ? delay : null;
   }
 
   /**
@@ -315,6 +308,8 @@ export async function rateLimitedFetch(
   options?: RequestInit,
   config?: Partial<RateLimitConfig>
 ): Promise<Response> {
-  const limiter = config ? new RateLimiter(config) : globalRateLimiter;
-  return limiter.execute(url, () => fetch(url, options));
+  if (config) {
+    globalRateLimiter.updateConfig(config);
+  }
+  return globalRateLimiter.execute(url, () => fetch(url, options));
 }

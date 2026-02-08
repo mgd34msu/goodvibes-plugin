@@ -145,7 +145,7 @@ export const precisionExecSchema: Tool = {
 export const precisionFetchSchema: Tool = {
   name: 'precision_fetch',
   description:
-    'Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json/markdown/code_blocks/tables/links/metadata), ' +
+    'Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata), ' +
     'custom headers, method override, timeout, and content type detection.',
   inputSchema: {
     type: 'object',
