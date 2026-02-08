@@ -386,3 +386,12 @@ export { createProgressCollector, type ProgressMilestone, type ProgressConfig, t
 
 // Export structured data extraction utilities (for precision_fetch)
 export { extractStructuredData, type StructuredData } from './fetch/structured-data.js';
+
+// Export grep negation utilities
+export { findFilesWithoutPattern, type NegationResult, type NegationOptions } from './grep-negation.js';
+
+// Export grep replace preview utilities
+export { generateReplacePreview, type ReplacePreviewMatch, type ReplacePreviewResult } from './grep-replace-preview.js';
+
+// Export grep pagination utilities
+export { applyPagination, type PaginationParams, type PaginationMetadata } from './grep-pagination.js';

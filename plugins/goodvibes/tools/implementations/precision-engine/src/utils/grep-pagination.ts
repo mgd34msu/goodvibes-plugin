@@ -30,15 +30,6 @@ export interface PaginationMetadata {
 }
 
 /**
- * Grep file result structure (matches handler definition).
- */
-export interface GrepFileResult {
-  file: string;
-  matches?: any[];
-  match_count?: number;
-}
-
-/**
  * Apply offset-based pagination to grep file results.
  *
  * @param files - Array of file results from grep operation
@@ -56,14 +47,30 @@ export interface GrepFileResult {
  * // Returns files 20-29, pagination.next_offset = 30 if more exist
  * ```
  */
-export function applyPagination(
-  files: GrepFileResult[],
+export function applyPagination<T>(
+  files: T[],
   totalMatches: number,
   params: PaginationParams
-): { files: GrepFileResult[]; pagination: PaginationMetadata } {
+): { files: T[]; pagination: PaginationMetadata } {
   // Validate and normalize inputs
   const offset = Math.max(0, params.offset ?? 0);
-  const maxResults = params.max_results;
+  const maxResults = params.max_results !== undefined
+    ? Math.max(0, params.max_results)
+    : undefined;
+
+  // Edge case: max_results is 0
+  if (maxResults === 0) {
+    return {
+      files: [],
+      pagination: {
+        offset,
+        returned: 0,
+        total_matches: totalMatches,
+        has_more: false,
+        next_offset: null,
+      },
+    };
+  }
 
   // Edge case: offset exceeds available files
   if (offset >= files.length) {

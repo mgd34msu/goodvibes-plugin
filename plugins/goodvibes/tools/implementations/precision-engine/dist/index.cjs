@@ -7642,11 +7642,11 @@ var init_command_history = __esm({
 });
 
 // src/state/process-manager.ts
-var import_child_process3, import_os, import_fs6, path7, ProcessManager, processManager;
+var import_child_process4, import_os, import_fs6, path7, ProcessManager, processManager;
 var init_process_manager = __esm({
   "src/state/process-manager.ts"() {
     "use strict";
-    import_child_process3 = require("child_process");
+    import_child_process4 = require("child_process");
     import_os = require("os");
     import_fs6 = require("fs");
     path7 = __toESM(require("path"), 1);
@@ -7778,7 +7778,7 @@ var init_process_manager = __esm({
         const logFd = (0, import_fs6.openSync)(logFile, "a");
         let fdClosed = false;
         try {
-          const child = (0, import_child_process3.spawn)(command, args2, {
+          const child = (0, import_child_process4.spawn)(command, args2, {
             detached: true,
             stdio: ["ignore", logFd, logFd],
             cwd: options.cwd || process.cwd(),
@@ -7961,13 +7961,132 @@ var init_process_manager = __esm({
   }
 });
 
+// src/state/search-cache.ts
+var SearchCache, searchCache;
+var init_search_cache = __esm({
+  "src/state/search-cache.ts"() {
+    "use strict";
+    SearchCache = class _SearchCache {
+      static {
+        __name(this, "SearchCache");
+      }
+      static instance = null;
+      cache = /* @__PURE__ */ new Map();
+      MAX_ENTRIES = 20;
+      constructor() {
+      }
+      /**
+       * Get the singleton instance of the cache.
+       */
+      static getInstance() {
+        if (!_SearchCache.instance) {
+          _SearchCache.instance = new _SearchCache();
+        }
+        return _SearchCache.instance;
+      }
+      /**
+       * Reset the singleton instance (for testing).
+       */
+      static resetInstance() {
+        _SearchCache.instance = null;
+      }
+      /**
+       * Store query results after execution.
+       * If queryId already exists, it will be replaced.
+       * If MAX_ENTRIES is exceeded, evicts the oldest entry (FIFO).
+       */
+      store(queryId, files, pattern) {
+        if (!this.cache.has(queryId) && this.cache.size >= this.MAX_ENTRIES) {
+          this.evictOldest();
+        }
+        const entry = {
+          queryId,
+          pattern,
+          files: [...files],
+          // Defensive copy
+          timestamp: Date.now()
+        };
+        this.cache.set(queryId, entry);
+      }
+      /**
+       * Get cached files for refinement.
+       * Returns null if queryId not found in cache.
+       */
+      getFiles(queryId) {
+        const entry = this.cache.get(queryId);
+        if (!entry) {
+          return null;
+        }
+        return [...entry.files];
+      }
+      /**
+       * Get full cache entry.
+       * Returns null if queryId not found in cache.
+       */
+      get(queryId) {
+        const entry = this.cache.get(queryId);
+        if (!entry) {
+          return null;
+        }
+        return {
+          queryId: entry.queryId,
+          pattern: entry.pattern,
+          files: [...entry.files],
+          timestamp: entry.timestamp
+        };
+      }
+      /**
+       * Clear all cache entries.
+       */
+      clear() {
+        this.cache.clear();
+      }
+      /**
+       * Get cache statistics for debugging.
+       */
+      stats() {
+        const now = Date.now();
+        const entries2 = Array.from(this.cache.values()).map((entry) => ({
+          queryId: entry.queryId,
+          fileCount: entry.files.length,
+          age_seconds: Math.floor((now - entry.timestamp) / 1e3)
+        }));
+        return {
+          size: this.cache.size,
+          entries: entries2
+        };
+      }
+      /**
+       * Evict the oldest entry (FIFO eviction).
+       * Called when MAX_ENTRIES is exceeded.
+       */
+      evictOldest() {
+        let oldestId = null;
+        let oldestTimestamp = Infinity;
+        for (const [queryId, entry] of this.cache.entries()) {
+          if (entry.timestamp < oldestTimestamp) {
+            oldestTimestamp = entry.timestamp;
+            oldestId = queryId;
+          }
+        }
+        if (oldestId !== null) {
+          this.cache.delete(oldestId);
+        }
+      }
+    };
+    searchCache = SearchCache.getInstance();
+  }
+});
+
 // src/state/index.ts
 var state_exports = {};
 __export(state_exports, {
   CommandHistory: () => CommandHistory,
   ProcessManager: () => ProcessManager,
+  SearchCache: () => SearchCache,
   commandHistory: () => commandHistory,
   processManager: () => processManager,
+  searchCache: () => searchCache,
   sessionState: () => sessionState
 });
 var init_state = __esm({
@@ -7976,6 +8095,7 @@ var init_state = __esm({
     init_session_state();
     init_command_history();
     init_process_manager();
+    init_search_cache();
   }
 });
 
@@ -309091,7 +309211,7 @@ var allSchemas = [
 // src/handlers/precision-write.ts
 var fs5 = __toESM(require("fs/promises"), 1);
 var path5 = __toESM(require("path"), 1);
-var import_child_process2 = require("child_process");
+var import_child_process3 = require("child_process");
 init_logging();
 
 // src/utils/index.ts
@@ -309994,6 +310114,245 @@ function extractStandardMeta(html) {
   return metaData;
 }
 __name(extractStandardMeta, "extractStandardMeta");
+
+// src/core/ripgrep.ts
+var import_child_process = require("child_process");
+var import_ripgrep = require("@vscode/ripgrep");
+var RipgrepCore = class {
+  static {
+    __name(this, "RipgrepCore");
+  }
+  /**
+   * Search for pattern in files and return structured match results.
+   */
+  async search(options) {
+    const args2 = this.buildSearchArgs(options);
+    try {
+      const output = await this.executeRipgrep(args2, options.timeoutMs);
+      return this.parseSearchResults(output, options);
+    } catch (error2) {
+      throw new Error(`Ripgrep search failed: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+  }
+  /**
+   * List files matching patterns (equivalent to rg --files).
+   */
+  async listFiles(options) {
+    const args2 = ["--files"];
+    if (options.patterns && options.patterns.length > 0) {
+      args2.push(...options.patterns.flatMap((p) => ["--glob", p]));
+    }
+    if (options.exclude && options.exclude.length > 0) {
+      args2.push(...options.exclude.flatMap((e) => ["--glob", `!${e}`]));
+    }
+    args2.push(options.path);
+    try {
+      const output = await this.executeRipgrep(args2, options.timeoutMs);
+      return this.parseFileList(output);
+    } catch (error2) {
+      throw new Error(`Ripgrep list files failed: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+  }
+  /**
+   * Get list of files that contain matches (equivalent to rg -l).
+   */
+  async filesWithMatches(pattern, path15, glob, timeoutMs) {
+    const args2 = ["--files-with-matches", "--json", pattern];
+    if (glob) {
+      args2.push("--glob", glob);
+    }
+    args2.push(path15);
+    try {
+      const output = await this.executeRipgrep(args2, timeoutMs);
+      return this.parseFilesWithMatches(output);
+    } catch (error2) {
+      throw new Error(`Ripgrep files with matches failed: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+  }
+  /**
+   * Build ripgrep command line arguments from search options.
+   */
+  buildSearchArgs(options) {
+    const args2 = ["--json"];
+    args2.push(options.pattern);
+    if (options.glob) {
+      args2.push("--glob", options.glob);
+    }
+    if (options.exclude && options.exclude.length > 0) {
+      options.exclude.forEach((pattern) => {
+        args2.push("--glob", `!${pattern}`);
+      });
+    }
+    if (options.caseInsensitive) {
+      args2.push("--ignore-case");
+    }
+    if (options.wholeWord) {
+      args2.push("--word-regexp");
+    }
+    if (options.multiline) {
+      args2.push("--multiline");
+    }
+    if (options.includeBinary) {
+      args2.push("--text");
+    }
+    if (options.contextBefore !== void 0 && options.contextBefore > 0) {
+      args2.push("--before-context", String(options.contextBefore));
+    }
+    if (options.contextAfter !== void 0 && options.contextAfter > 0) {
+      args2.push("--after-context", String(options.contextAfter));
+    }
+    if (options.maxCount !== void 0 && options.maxCount > 0) {
+      args2.push("--max-count", String(options.maxCount));
+    }
+    if (options.maxColumns !== void 0 && options.maxColumns > 0) {
+      args2.push("--max-columns", String(options.maxColumns));
+    }
+    args2.push(options.path);
+    return args2;
+  }
+  /**
+   * Execute ripgrep binary and return output.
+   */
+  executeRipgrep(args2, timeoutMs) {
+    return new Promise((resolve8, reject) => {
+      const process4 = (0, import_child_process.spawn)(import_ripgrep.rgPath, args2);
+      const timeout = timeoutMs ?? 3e4;
+      const timeoutId = setTimeout(() => {
+        process4.kill("SIGTERM");
+        reject(new Error(`Ripgrep search timed out after ${timeout}ms`));
+      }, timeout);
+      let stdout = "";
+      let stderr = "";
+      process4.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+      process4.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+      process4.on("error", (error2) => {
+        clearTimeout(timeoutId);
+        reject(new Error(`Failed to spawn ripgrep: ${error2.message}`));
+      });
+      process4.on("close", (code) => {
+        clearTimeout(timeoutId);
+        if (code !== null && code > 1) {
+          reject(new Error(`Ripgrep exited with code ${code}: ${stderr}`));
+        } else {
+          resolve8(stdout);
+        }
+      });
+    });
+  }
+  /**
+   * Parse ripgrep JSON output line-by-line.
+   */
+  parseJsonOutput(output) {
+    const records = [];
+    for (const line of output.split("\n")) {
+      if (line.trim()) {
+        try {
+          records.push(JSON.parse(line));
+        } catch {
+        }
+      }
+    }
+    return records;
+  }
+  parseSearchResults(output, options) {
+    const matches2 = [];
+    const files = /* @__PURE__ */ new Set();
+    let totalMatches = 0;
+    let truncated = false;
+    const records = this.parseJsonOutput(output);
+    for (let i2 = 0; i2 < records.length; i2++) {
+      const record2 = records[i2];
+      if (record2.type === "match") {
+        const { data } = record2;
+        const file2 = data.path.text;
+        const lineNumber = data.line_number;
+        const lineContent = data.lines.text.replace(/\n$/, "");
+        files.add(file2);
+        const contextBefore = [];
+        if (options.contextBefore && options.contextBefore > 0) {
+          for (let j = i2 - 1; j >= 0 && contextBefore.length < options.contextBefore; j--) {
+            const prevRecord = records[j];
+            if (prevRecord.type === "context" && prevRecord.data.path.text === file2 && prevRecord.data.line_number < lineNumber) {
+              contextBefore.unshift(prevRecord.data.lines.text.replace(/\n$/, ""));
+            } else if (prevRecord.type === "match") {
+              break;
+            }
+          }
+        }
+        const contextAfter = [];
+        if (options.contextAfter && options.contextAfter > 0) {
+          for (let j = i2 + 1; j < records.length && contextAfter.length < options.contextAfter; j++) {
+            const nextRecord = records[j];
+            if (nextRecord.type === "context" && nextRecord.data.path.text === file2 && nextRecord.data.line_number > lineNumber) {
+              contextAfter.push(nextRecord.data.lines.text.replace(/\n$/, ""));
+            } else if (nextRecord.type === "match") {
+              break;
+            }
+          }
+        }
+        for (const submatch of data.submatches) {
+          const match = {
+            file: file2,
+            line: lineNumber,
+            column: submatch.start + 1,
+            // ripgrep uses 0-based columns
+            matchText: submatch.match.text,
+            lineContent
+          };
+          if (contextBefore.length > 0) {
+            match.contextBefore = contextBefore;
+          }
+          if (contextAfter.length > 0) {
+            match.contextAfter = contextAfter;
+          }
+          matches2.push(match);
+          totalMatches++;
+        }
+      } else if (record2.type === "summary") {
+        if (options.maxCount && totalMatches >= options.maxCount) {
+          truncated = true;
+        }
+      }
+    }
+    return {
+      matches: matches2,
+      fileCount: files.size,
+      matchCount: totalMatches,
+      truncated
+    };
+  }
+  /**
+   * Parse file list from ripgrep --files output.
+   */
+  parseFileList(output) {
+    return output.trim().split("\n").filter(Boolean);
+  }
+  /**
+   * Parse files with matches from ripgrep -l output.
+   */
+  parseFilesWithMatches(output) {
+    const files = [];
+    const lines = output.trim().split("\n").filter((line) => line.length > 0);
+    for (const line of lines) {
+      try {
+        const json2 = JSON.parse(line);
+        if (json2.type === "match" && json2.data?.path?.text) {
+          files.push(json2.data.path.text);
+        }
+      } catch (error2) {
+        continue;
+      }
+    }
+    return Array.from(new Set(files));
+  }
+};
+
+// src/utils/grep-negation.ts
+var ripgrepCore = new RipgrepCore();
 
 // src/utils/index.ts
 function toCallToolResult(result) {
@@ -311000,12 +311359,12 @@ var FileStateCache = class _FileStateCache {
 // src/utils/safe-overwrite.ts
 var fs4 = __toESM(require("fs/promises"), 1);
 var path4 = __toESM(require("path"), 1);
-var import_child_process = require("child_process");
+var import_child_process2 = require("child_process");
 init_runtime_config();
 async function checkGitStatus(filePath) {
   try {
     const checkRepo = await new Promise((resolve8) => {
-      const proc = (0, import_child_process.spawn)("git", ["rev-parse", "--is-inside-work-tree"], {
+      const proc = (0, import_child_process2.spawn)("git", ["rev-parse", "--is-inside-work-tree"], {
         cwd: path4.dirname(filePath),
         stdio: ["ignore", "pipe", "ignore"]
       });
@@ -311030,7 +311389,7 @@ async function checkGitStatus(filePath) {
       return { status: null, inRepo: false };
     }
     const status = await new Promise((resolve8) => {
-      const proc = (0, import_child_process.spawn)("git", ["status", "--porcelain", "--", filePath], {
+      const proc = (0, import_child_process2.spawn)("git", ["status", "--porcelain", "--", filePath], {
         cwd: path4.dirname(filePath),
         stdio: ["ignore", "pipe", "ignore"]
       });
@@ -311247,7 +311606,7 @@ async function runValidation(files, steps) {
     }
     try {
       const result = await new Promise((resolve8) => {
-        const proc = (0, import_child_process2.spawn)(cmd, args2, { shell: true, windowsHide: true });
+        const proc = (0, import_child_process3.spawn)(cmd, args2, { shell: true, windowsHide: true });
         let stdout = "";
         let stderr = "";
         proc.stdout?.on("data", (data) => {
@@ -311521,7 +311880,7 @@ var handlePrecisionWrite = /* @__PURE__ */ __name(async (args2) => {
 }, "handlePrecisionWrite");
 
 // src/handlers/precision-exec.ts
-var import_child_process4 = require("child_process");
+var import_child_process5 = require("child_process");
 var import_os2 = require("os");
 init_logging();
 init_runtime_config();
@@ -311639,7 +311998,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
     }
     const bufferCap = maxOutputChars * 5;
     const fullCommand = args2.length > 0 ? `${command} ${args2.map(shellEscape).join(" ")}`.trim() : command;
-    const proc = (0, import_child_process4.spawn)(fullCommand, [], {
+    const proc = (0, import_child_process5.spawn)(fullCommand, [], {
       cwd,
       env: { ...process.env, ...globalEnv, ...spec.env },
       shell: true,
@@ -311664,7 +312023,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         return;
       timedOut = true;
       if (process.platform === "win32") {
-        (0, import_child_process4.execFile)("taskkill", ["/pid", String(proc.pid), "/T", "/F"], (err2) => {
+        (0, import_child_process5.execFile)("taskkill", ["/pid", String(proc.pid), "/T", "/F"], (err2) => {
           if (err2 && !proc.killed) {
             try {
               proc.kill();
@@ -311687,7 +312046,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         untilTimedOut = true;
         clearTimeout(timeoutId);
         if (process.platform === "win32") {
-          (0, import_child_process4.execFile)("taskkill", ["/pid", String(proc.pid), "/T", "/F"], (err2) => {
+          (0, import_child_process5.execFile)("taskkill", ["/pid", String(proc.pid), "/T", "/F"], (err2) => {
             if (err2 && !proc.killed) {
               try {
                 proc.kill();
@@ -323733,242 +324092,6 @@ var fs7 = __toESM(require("fs/promises"), 1);
 var path9 = __toESM(require("path"), 1);
 init_logging();
 
-// src/core/ripgrep.ts
-var import_child_process5 = require("child_process");
-var import_ripgrep = require("@vscode/ripgrep");
-var RipgrepCore = class {
-  static {
-    __name(this, "RipgrepCore");
-  }
-  /**
-   * Search for pattern in files and return structured match results.
-   */
-  async search(options) {
-    const args2 = this.buildSearchArgs(options);
-    try {
-      const output = await this.executeRipgrep(args2, options.timeoutMs);
-      return this.parseSearchResults(output, options);
-    } catch (error2) {
-      throw new Error(`Ripgrep search failed: ${error2 instanceof Error ? error2.message : String(error2)}`);
-    }
-  }
-  /**
-   * List files matching patterns (equivalent to rg --files).
-   */
-  async listFiles(options) {
-    const args2 = ["--files"];
-    if (options.patterns && options.patterns.length > 0) {
-      args2.push(...options.patterns.flatMap((p) => ["--glob", p]));
-    }
-    if (options.exclude && options.exclude.length > 0) {
-      args2.push(...options.exclude.flatMap((e) => ["--glob", `!${e}`]));
-    }
-    args2.push(options.path);
-    try {
-      const output = await this.executeRipgrep(args2, options.timeoutMs);
-      return this.parseFileList(output);
-    } catch (error2) {
-      throw new Error(`Ripgrep list files failed: ${error2 instanceof Error ? error2.message : String(error2)}`);
-    }
-  }
-  /**
-   * Get list of files that contain matches (equivalent to rg -l).
-   */
-  async filesWithMatches(pattern, path15, glob, timeoutMs) {
-    const args2 = ["--files-with-matches", "--json", pattern];
-    if (glob) {
-      args2.push("--glob", glob);
-    }
-    args2.push(path15);
-    try {
-      const output = await this.executeRipgrep(args2, timeoutMs);
-      return this.parseFilesWithMatches(output);
-    } catch (error2) {
-      throw new Error(`Ripgrep files with matches failed: ${error2 instanceof Error ? error2.message : String(error2)}`);
-    }
-  }
-  /**
-   * Build ripgrep command line arguments from search options.
-   */
-  buildSearchArgs(options) {
-    const args2 = ["--json"];
-    args2.push(options.pattern);
-    if (options.glob) {
-      args2.push("--glob", options.glob);
-    }
-    if (options.exclude && options.exclude.length > 0) {
-      options.exclude.forEach((pattern) => {
-        args2.push("--glob", `!${pattern}`);
-      });
-    }
-    if (options.caseInsensitive) {
-      args2.push("--ignore-case");
-    }
-    if (options.wholeWord) {
-      args2.push("--word-regexp");
-    }
-    if (options.multiline) {
-      args2.push("--multiline");
-    }
-    if (options.includeBinary) {
-      args2.push("--text");
-    }
-    if (options.contextBefore !== void 0 && options.contextBefore > 0) {
-      args2.push("--before-context", String(options.contextBefore));
-    }
-    if (options.contextAfter !== void 0 && options.contextAfter > 0) {
-      args2.push("--after-context", String(options.contextAfter));
-    }
-    if (options.maxCount !== void 0 && options.maxCount > 0) {
-      args2.push("--max-count", String(options.maxCount));
-    }
-    if (options.maxColumns !== void 0 && options.maxColumns > 0) {
-      args2.push("--max-columns", String(options.maxColumns));
-    }
-    args2.push(options.path);
-    return args2;
-  }
-  /**
-   * Execute ripgrep binary and return output.
-   */
-  executeRipgrep(args2, timeoutMs) {
-    return new Promise((resolve8, reject) => {
-      const process4 = (0, import_child_process5.spawn)(import_ripgrep.rgPath, args2);
-      const timeout = timeoutMs ?? 3e4;
-      const timeoutId = setTimeout(() => {
-        process4.kill("SIGTERM");
-        reject(new Error(`Ripgrep search timed out after ${timeout}ms`));
-      }, timeout);
-      let stdout = "";
-      let stderr = "";
-      process4.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-      process4.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      process4.on("error", (error2) => {
-        clearTimeout(timeoutId);
-        reject(new Error(`Failed to spawn ripgrep: ${error2.message}`));
-      });
-      process4.on("close", (code) => {
-        clearTimeout(timeoutId);
-        if (code !== null && code > 1) {
-          reject(new Error(`Ripgrep exited with code ${code}: ${stderr}`));
-        } else {
-          resolve8(stdout);
-        }
-      });
-    });
-  }
-  /**
-   * Parse ripgrep JSON output line-by-line.
-   */
-  parseJsonOutput(output) {
-    const records = [];
-    for (const line of output.split("\n")) {
-      if (line.trim()) {
-        try {
-          records.push(JSON.parse(line));
-        } catch {
-        }
-      }
-    }
-    return records;
-  }
-  parseSearchResults(output, options) {
-    const matches2 = [];
-    const files = /* @__PURE__ */ new Set();
-    let totalMatches = 0;
-    let truncated = false;
-    const records = this.parseJsonOutput(output);
-    for (let i2 = 0; i2 < records.length; i2++) {
-      const record2 = records[i2];
-      if (record2.type === "match") {
-        const { data } = record2;
-        const file2 = data.path.text;
-        const lineNumber = data.line_number;
-        const lineContent = data.lines.text.replace(/\n$/, "");
-        files.add(file2);
-        const contextBefore = [];
-        if (options.contextBefore && options.contextBefore > 0) {
-          for (let j = i2 - 1; j >= 0 && contextBefore.length < options.contextBefore; j--) {
-            const prevRecord = records[j];
-            if (prevRecord.type === "context" && prevRecord.data.path.text === file2 && prevRecord.data.line_number < lineNumber) {
-              contextBefore.unshift(prevRecord.data.lines.text.replace(/\n$/, ""));
-            } else if (prevRecord.type === "match") {
-              break;
-            }
-          }
-        }
-        const contextAfter = [];
-        if (options.contextAfter && options.contextAfter > 0) {
-          for (let j = i2 + 1; j < records.length && contextAfter.length < options.contextAfter; j++) {
-            const nextRecord = records[j];
-            if (nextRecord.type === "context" && nextRecord.data.path.text === file2 && nextRecord.data.line_number > lineNumber) {
-              contextAfter.push(nextRecord.data.lines.text.replace(/\n$/, ""));
-            } else if (nextRecord.type === "match") {
-              break;
-            }
-          }
-        }
-        for (const submatch of data.submatches) {
-          const match = {
-            file: file2,
-            line: lineNumber,
-            column: submatch.start + 1,
-            // ripgrep uses 0-based columns
-            matchText: submatch.match.text,
-            lineContent
-          };
-          if (contextBefore.length > 0) {
-            match.contextBefore = contextBefore;
-          }
-          if (contextAfter.length > 0) {
-            match.contextAfter = contextAfter;
-          }
-          matches2.push(match);
-          totalMatches++;
-        }
-      } else if (record2.type === "summary") {
-        if (options.maxCount && totalMatches >= options.maxCount) {
-          truncated = true;
-        }
-      }
-    }
-    return {
-      matches: matches2,
-      fileCount: files.size,
-      matchCount: totalMatches,
-      truncated
-    };
-  }
-  /**
-   * Parse file list from ripgrep --files output.
-   */
-  parseFileList(output) {
-    return output.trim().split("\n").filter(Boolean);
-  }
-  /**
-   * Parse files with matches from ripgrep -l output.
-   */
-  parseFilesWithMatches(output) {
-    const files = [];
-    const lines = output.trim().split("\n").filter((line) => line.length > 0);
-    for (const line of lines) {
-      try {
-        const json2 = JSON.parse(line);
-        if (json2.type === "match" && json2.data?.path?.text) {
-          files.push(json2.data.path.text);
-        }
-      } catch (error2) {
-        continue;
-      }
-    }
-    return Array.from(new Set(files));
-  }
-};
-
 // src/core/tree-sitter.ts
 var import_web_tree_sitter = __toESM(require_tree_sitter(), 1);
 var fs6 = __toESM(require("fs/promises"), 1);
@@ -324431,7 +324554,7 @@ var TreeSitterCore = class {
 };
 
 // src/handlers/precision-grep.ts
-var ripgrepCore = new RipgrepCore();
+var ripgrepCore2 = new RipgrepCore();
 var treeSitterCore = new TreeSitterCore();
 function estimateTokens2(str) {
   return Math.ceil(str.length / 4);
@@ -324614,7 +324737,7 @@ async function executeQuery(query2, output, workDir) {
     maxCount: maxMatchesPerFile,
     maxColumns: output.max_line_length
   };
-  const ripgrepResult = await ripgrepCore.search(ripgrepOptions);
+  const ripgrepResult = await ripgrepCore2.search(ripgrepOptions);
   return transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, maxTotalMatches, maxTokens);
 }
 __name(executeQuery, "executeQuery");
@@ -324691,13 +324814,13 @@ var import_fast_glob2 = __toESM(require_out4(), 1);
 var fs8 = __toESM(require("fs/promises"), 1);
 var path10 = __toESM(require("path"), 1);
 init_logging();
-var ripgrepCore2 = new RipgrepCore();
+var ripgrepCore3 = new RipgrepCore();
 function estimateTokens3(str) {
   return Math.ceil(str.length / 4);
 }
 __name(estimateTokens3, "estimateTokens");
 async function listFilesWithRipgrep(basePath, patterns2, exclude, timeoutMs) {
-  return ripgrepCore2.listFiles({
+  return ripgrepCore3.listFiles({
     path: basePath,
     patterns: patterns2,
     exclude,
@@ -324836,7 +324959,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
       });
     }
     if (input.filters?.has_content) {
-      const matchingFiles = await ripgrepCore2.filesWithMatches(
+      const matchingFiles = await ripgrepCore3.filesWithMatches(
         input.filters.has_content,
         workDir,
         void 0,
